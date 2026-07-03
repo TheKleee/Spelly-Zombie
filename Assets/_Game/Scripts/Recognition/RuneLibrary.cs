@@ -22,6 +22,13 @@ namespace SpellyZombie
         DensityDown = 12
     }
 
+    /// One collectable card = one of these = BOTH directions of the pair.
+    /// Picking up the Heat card teaches heat-up AND heat-down at once.
+    public enum RuneCardType
+    {
+        Heat, State, Luminance, Sticky, Direction, Density
+    }
+
     /// Holds one $1 template per rune. Ships with rough synthesized glyphs based on
     /// the design sketches; each can be overwritten in play mode (draw the glyph,
     /// press F1-F12) and the recording persists to disk.
@@ -42,6 +49,52 @@ namespace SpellyZombie
         static List<Entry> _entries;
         static string SavePath => Path.Combine(Application.persistentDataPath, "sz_rune_templates.json");
 
+        // ---- unlocks: per-run, in memory only (design: every run starts with no runes) ----
+
+        /// Graybox switch. The match flow sets this false and grants cards as
+        /// players find them; while true, everything is drawable for testing.
+        public static bool AllRunesUnlockedForTesting = true;
+
+        static readonly HashSet<RuneCardType> _unlockedCards = new HashSet<RuneCardType>();
+
+        public static void UnlockCard(RuneCardType card) => _unlockedCards.Add(card);
+        public static void ResetUnlocks() => _unlockedCards.Clear();
+
+        public static bool IsUnlocked(RuneType type) =>
+            type != RuneType.None && (AllRunesUnlockedForTesting || _unlockedCards.Contains(CardOf(type)));
+
+        public static RuneCardType CardOf(RuneType type)
+        {
+            switch (type)
+            {
+                case RuneType.HeatUp:
+                case RuneType.HeatDown: return RuneCardType.Heat;
+                case RuneType.StateSolid:
+                case RuneType.StateLiquid: return RuneCardType.State;
+                case RuneType.LuminanceUp:
+                case RuneType.LuminanceDown: return RuneCardType.Luminance;
+                case RuneType.StickyUp:
+                case RuneType.StickyDown: return RuneCardType.Sticky;
+                case RuneType.DirectionAway:
+                case RuneType.DirectionToward: return RuneCardType.Direction;
+                default: return RuneCardType.Density;
+            }
+        }
+
+        /// Grimoire copy: what the card teaches, in plain words.
+        public static string CardDescription(RuneCardType card)
+        {
+            switch (card)
+            {
+                case RuneCardType.Heat: return "Heat — one glyph raises temperature, the mirrored glyph lowers it.";
+                case RuneCardType.State: return "State — turn matter solid, or melt it toward liquid.";
+                case RuneCardType.Luminance: return "Luminance — brighten the area, or swallow the light.";
+                case RuneCardType.Sticky: return "Sticky — make surfaces grip, or make them slick.";
+                case RuneCardType.Direction: return "Direction — arrow pushes away from the surface, Y pulls toward it.";
+                default: return "Density — thicken matter so it sinks, or thin it so it rises.";
+            }
+        }
+
         public static readonly RuneType[] RecordableRunes =
         {
             RuneType.HeatUp, RuneType.HeatDown, RuneType.StateSolid, RuneType.StateLiquid,
@@ -58,19 +111,25 @@ namespace SpellyZombie
             LoadRecorded();
         }
 
-        /// Classify a raw 2D stroke. Returns the best rune and its raw score;
-        /// the caller decides whether the score is good enough to count.
+        /// Classify a raw 2D stroke against the runes the player has UNLOCKED
+        /// (design: strokes are compared to unlocked templates only). Returns the
+        /// best rune and its raw score; the caller decides if it's good enough.
         public static (RuneType type, float score) Classify(IReadOnlyList<Vector2> rawShape)
         {
             Init();
             var candidate = DollarRecognizer.Normalize(rawShape);
             if (candidate == null) return (RuneType.None, 0f);
 
-            var templates = new List<Vector2[]>(_entries.Count);
-            foreach (var e in _entries) templates.Add(e.Normalized);
+            var candidates = new List<Entry>(_entries.Count);
+            foreach (var e in _entries)
+                if (IsUnlocked(e.Type)) candidates.Add(e);
+            if (candidates.Count == 0) return (RuneType.None, 0f);
+
+            var templates = new List<Vector2[]>(candidates.Count);
+            foreach (var e in candidates) templates.Add(e.Normalized);
             var (index, score) = DollarRecognizer.Recognize(candidate, templates);
             if (index < 0) return (RuneType.None, 0f);
-            return (_entries[index].Type, score);
+            return (candidates[index].Type, score);
         }
 
         /// Replace the template for a rune with a player-recorded stroke and persist it.

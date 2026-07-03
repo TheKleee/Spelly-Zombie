@@ -274,7 +274,7 @@ namespace SpellyZombie
             // controls + template recording reference, bottom left
             var help = new Rect(10, Screen.height - 132, 980, 126);
             GUI.Label(help,
-                "LMB draw ink  ·  hold LeftAlt = precision cursor  ·  hold R = erase  ·  T / 1-9 = emotes  ·  B = pose editor (author your own emotes)\n" +
+                "LMB draw ink  ·  hold LeftAlt = precision cursor  ·  hold R = erase  ·  T / 1-9 = poses  ·  B = Pose Studio (make your own)\n" +
                 "Close a loop = seal activates (0.1s per edge, circle = 36s). Open strokes inside the loop = runes. Opening the ring cancels the spell.\n" +
                 "Ink on characters/weapons is permanent: after the spell it goes SPENT (dim gold) and re-arms when the pose opens the loop. Environment ink is consumed.\n" +
                 "Record templates — draw a glyph, then press:  F1 HeatUp  F2 HeatDown  F3 StateSolid  F4 StateLiquid  F5 LumUp  F6 LumDown\n" +

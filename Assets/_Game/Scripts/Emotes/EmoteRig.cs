@@ -16,6 +16,9 @@ namespace SpellyZombie
         {
             public string Id;
             public Transform T;
+            /// Where the visible "grab me" marker sits (e.g. the hand at the end
+            /// of the arm). Falls back to the joint pivot when unset.
+            public Transform GrabHint;
             [NonSerialized] public Quaternion Rest;
         }
 

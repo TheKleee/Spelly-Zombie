@@ -30,8 +30,8 @@ namespace SpellyZombie
                 return;
             }
 
-            // pose editor owns the mouse while active — the pen stays capped
-            if (PoseEditor.IsEditing)
+            // the Pose Studio owns the mouse while open — the pen stays capped
+            if (PoseStudio.IsOpen)
             {
                 IsPenActive = false;
                 EndStroke();
@@ -77,6 +77,13 @@ namespace SpellyZombie
 
         void HandleDrawHit(RaycastHit hit)
         {
+            // ink cannot exist on water — the pen just refuses (design: water is the seal-killer)
+            if (hit.collider.GetComponent<WaterSurface>() != null)
+            {
+                EndStroke();
+                return;
+            }
+
             if (_current != null && Vector3.Distance(hit.point, _lastHitPoint) > DrawingConfig.MaxStrokeJump)
                 EndStroke(); // aim jumped to a distant surface — that's a new stroke
 

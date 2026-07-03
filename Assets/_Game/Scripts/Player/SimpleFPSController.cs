@@ -25,6 +25,7 @@ namespace SpellyZombie
         void Awake()
         {
             _cc = GetComponent<CharacterController>();
+            LookSensitivity = PlayerPrefs.GetFloat("sz_look_sens", LookSensitivity);
             LockCursor();
         }
 
@@ -33,6 +34,9 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             var mouse = Mouse.current;
             if (kb == null || mouse == null) return;
+
+            // frozen while posing in the studio; it restores the cursor on close
+            if (PoseStudio.IsOpen) return;
 
             // ---- cursor handling ----
             bool precision = kb.leftAltKey.isPressed;
@@ -56,9 +60,8 @@ namespace SpellyZombie
             }
             _wasPrecision = precision;
 
-            // ---- look (only while the cursor is captured, and not while a
-            //      limb is being dragged in the pose editor) ----
-            if (Cursor.lockState == CursorLockMode.Locked && !PoseEditor.IsRotatingJoint)
+            // ---- look (only while the cursor is captured) ----
+            if (Cursor.lockState == CursorLockMode.Locked)
             {
                 // steady the hand: the camera slows way down while ink is flowing
                 float sens = SurfaceDrawer.IsPenActive

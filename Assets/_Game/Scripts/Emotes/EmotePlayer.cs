@@ -41,7 +41,8 @@ namespace SpellyZombie
         {
             var kb = Keyboard.current;
             if (kb == null) return;
-            // Ctrl+number belongs to the pose editor (slot assignment)
+            // in the Pose Studio, number keys bind poses instead of playing them
+            if (PoseStudio.IsOpen) return;
             if (kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed) return;
 
             if (kb.tKey.wasPressedThisFrame) ToggleSlot(1);
@@ -62,7 +63,7 @@ namespace SpellyZombie
             var def = EmoteLibrary.GetSlot(slot);
             if (def == null || def.frames.Count == 0)
             {
-                DrawingWorld.Instance?.LogEvent($"Emote slot {slot} is empty — pose with B, save with Ctrl+{slot}");
+                DrawingWorld.Instance?.LogEvent($"Key {slot} has no pose — open the Pose Studio (B) to make and bind one");
                 return;
             }
             Play(def, slot);
