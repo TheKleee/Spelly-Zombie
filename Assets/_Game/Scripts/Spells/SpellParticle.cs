@@ -30,6 +30,7 @@ namespace SpellyZombie
         public float SrcSize = 1f; // zone radius of the rune that emitted it —
                                    // rides the chain so a rift knows how big a
                                    // demon the original DRAWING deserves
+        public int Echo;           // ECHO powerup stacks: landing may re-emit
 
         // the attribute payload every particle carries
         public float Temp, Lum, Density, Stick;
@@ -546,6 +547,15 @@ namespace SpellyZombie
             }
 
             Donate(c, m, creature, rb);
+
+            // ECHO powerup: the payload delivered, the particle sometimes
+            // ricochets back to life at half power (mayhem compounding)
+            if (Echo > 0 && _generation < 2 && Random.value < 0.22f * Echo)
+            {
+                var e = Emit(Kind, transform.position + Vector3.up * 0.15f,
+                    (Random.onUnitSphere + Vector3.up).normalized, Power * 0.6f, _generation + 1);
+                e.SrcSize = SrcSize;
+            }
             Die();
         }
 

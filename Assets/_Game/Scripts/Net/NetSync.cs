@@ -22,6 +22,20 @@ namespace SpellyZombie
             public float Yaw;
             public byte Flags; // 1 = downed, 2 = sprawled
             public float Health;
+            public byte Team;  // MatchLobby team color index
+        }
+
+        public struct ReadyMsg : IBroadcast // client → host: lobby ready toggle
+        {
+            public bool Ready;
+        }
+
+        public struct LobbyMsg : IBroadcast // host → clients: lobby clocks
+        {
+            public byte Ready;
+            public byte Total;
+            public float Countdown;
+            public float LobbyLeft;
         }
 
         public struct StrokeMsg : IBroadcast
@@ -165,6 +179,8 @@ namespace SpellyZombie
             InstanceFinder.ClientManager.RegisterBroadcast<ZombieSnap>(OnZombieSnapClient);
             InstanceFinder.ClientManager.RegisterBroadcast<KillFeed>(OnKillFeedClient);
             InstanceFinder.ClientManager.RegisterBroadcast<RoundState>(OnRoundStateClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<ReadyMsg>(OnReadyServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<LobbyMsg>(OnLobbyClient);
             InstanceFinder.ServerManager.OnRemoteConnectionState += OnRemoteConnection;
         }
 
@@ -187,7 +203,8 @@ namespace SpellyZombie
                 Pos = player.transform.position,
                 Yaw = player.transform.eulerAngles.y,
                 Flags = flags,
-                Health = player.Health
+                Health = player.Health,
+                Team = MatchLobby.LocalTeam
             }, Channel.Unreliable);
         }
 
@@ -255,6 +272,21 @@ namespace SpellyZombie
             InstanceFinder.ServerManager.Broadcast(new KillFeed { Pos = pos });
         }
 
+        /// Client's lobby ready toggle, host-ward.
+        public static void SendReady(bool ready)
+        {
+            if (_instance == null || !NetGame.Connected || NetGame.IsHost) return;
+            InstanceFinder.ClientManager.Broadcast(new ReadyMsg { Ready = ready });
+        }
+
+        /// Host streams lobby clocks to clients (MatchLobby throttles).
+        public static void PushLobby(byte ready, byte total, float countdown, float lobbyLeft)
+        {
+            if (!NetGame.IsHost) return;
+            InstanceFinder.ServerManager.Broadcast(new LobbyMsg
+                { Ready = ready, Total = total, Countdown = countdown, LobbyLeft = lobbyLeft });
+        }
+
         // ------------------------------------------------- server relaying --
         void OnZombieHitServer(NetworkConnection conn, ZombieHit msg, Channel channel)
         {
@@ -281,10 +313,14 @@ namespace SpellyZombie
             InstanceFinder.ServerManager.BroadcastExcept(conn, msg);
         }
 
+        void OnReadyServer(NetworkConnection conn, ReadyMsg msg, Channel channel) =>
+            MatchLobby.SetRemoteReady(conn.ClientId, msg.Ready);
+
         void OnRemoteConnection(NetworkConnection conn, RemoteConnectionStateArgs args)
         {
             if (args.ConnectionState != RemoteConnectionState.Stopped) return;
             RemoveAvatar(conn.ClientId);
+            MatchLobby.SetRemoteReady(conn.ClientId, false); // leavers aren't ready
             InstanceFinder.ServerManager.Broadcast(new PlayerLeft { Id = conn.ClientId });
         }
 
@@ -337,6 +373,7 @@ namespace SpellyZombie
             if (InstanceFinder.ServerManager.Started) return;
             PlayerInk.AwardAll(DrawingConfig.InkPerKill); // shared economy, client side
             SealAutopsy.OnKill();
+            Powerups.OnKill(); // clients level off shared kills too
         }
 
         void OnRoundStateClient(RoundState msg, Channel channel)
@@ -350,6 +387,12 @@ namespace SpellyZombie
             NetKills = msg.Kills;
         }
 
+        void OnLobbyClient(LobbyMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            MatchLobby.NetLobby(msg.Ready, msg.Total, msg.Countdown, msg.LobbyLeft);
+        }
+
         // ------------------------------------------------------------ apply --
         void ApplyState(PlayerState msg)
         {
@@ -359,7 +402,7 @@ namespace SpellyZombie
                 avatar = NetAvatar.Build(msg.Id);
                 _avatars[msg.Id] = avatar;
             }
-            avatar.Target(msg.Pos, msg.Yaw, msg.Flags, msg.Health);
+            avatar.Target(msg.Pos, msg.Yaw, msg.Flags, msg.Health, msg.Team);
         }
 
         void ApplyStroke(StrokeMsg msg)
@@ -411,6 +454,7 @@ namespace SpellyZombie
         Vector3 _targetPos;
         float _targetYaw;
         byte _flags;
+        byte _team = 255;
 
         public bool Downed => (_flags & 1) != 0;
 
@@ -431,11 +475,20 @@ namespace SpellyZombie
             return a;
         }
 
-        public void Target(Vector3 pos, float yaw, byte flags, float health)
+        public void Target(Vector3 pos, float yaw, byte flags, float health, byte team)
         {
             _targetPos = pos;
             _targetYaw = yaw;
             _flags = flags;
+            if (team != _team) // friends wear their team color
+            {
+                _team = team;
+                var rend = GetComponent<Renderer>();
+                if (rend != null)
+                    rend.sharedMaterial = MatterFX.Get(
+                        MatchLobby.TeamColors[Mathf.Min(team, (byte)(MatchLobby.TeamColors.Length - 1))],
+                        MoteShade.Opaque);
+            }
         }
 
         void Update()

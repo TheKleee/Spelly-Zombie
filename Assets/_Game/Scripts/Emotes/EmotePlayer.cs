@@ -43,6 +43,8 @@ namespace SpellyZombie
             if (kb == null) return;
             // in the Pose Studio, number keys bind poses instead of playing them
             if (PoseStudio.IsOpen) return;
+            // while choosing a powerup, 1-3 pick cards, not poses
+            if (Powerups.IsChoosing) return;
             if (kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed) return;
 
             if (kb.tKey.wasPressedThisFrame) ToggleSlot(1);

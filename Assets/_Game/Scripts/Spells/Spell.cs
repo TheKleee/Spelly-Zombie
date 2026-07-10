@@ -34,6 +34,7 @@ namespace SpellyZombie
 
         readonly List<Zone> _zones = new List<Zone>();
         SurfaceMaterialType _surface;
+        int _ownerId; // whose cast this is — their powerup buffs apply
         float _remaining;
         bool _ended;
 
@@ -62,6 +63,7 @@ namespace SpellyZombie
             host.transform.position = seal.PlaneOrigin;
             var spell = host.AddComponent<Spell>();
             spell._surface = surface;
+            spell._ownerId = seal.OwnerId;
             spell._remaining = seal.Duration;
 
             // low density + low stickiness make a Dark rune spread and deepen
@@ -330,9 +332,12 @@ namespace SpellyZombie
             if (z.EmitTimer <= 0f)
             {
                 // State conjures ONCE per activation (re-firing the seal — pose
-                // re-close — conjures the next batch); everything else pulses
+                // re-close — conjures the next batch); everything else pulses,
+                // faster if the caster stacked RAPID on this rune family
                 z.EmitTimer = ProducesMatter(z.Rune)
-                    ? float.PositiveInfinity : DrawingConfig.ZoneEmitPeriod;
+                    ? float.PositiveInfinity
+                    : DrawingConfig.ZoneEmitPeriod
+                        * Mathf.Pow(0.75f, Powerups.For(_ownerId, z.Rune).Rapid);
                 EmitParticles(z);
             }
 
@@ -363,13 +368,27 @@ namespace SpellyZombie
                 default: return;
             }
 
+            // the caster's powerups shape the burst (per rune family)
+            var buff = Powerups.For(_ownerId, z.Rune);
+            int count = Mathf.Min(12, 3 + buff.More * 2);
+            float speedMul = 1f + 0.5f * buff.Fast;
+            float potent = 1f + 0.35f * buff.Potent;
+            float bigMul = 1f + 0.3f * buff.Big;
+
             Vector3 dir = kind == ParticleKind.Push ? z.PushDir : z.Normal;
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < count; i++)
             {
                 var p = SpellParticle.Emit(kind,
                     z.Center + z.Normal * 0.12f + Random.insideUnitSphere * z.Radius * 0.18f,
                     dir, z.Intensity);
-                p.SrcSize = z.Radius; // drawn size rides the chain (demon sizing)
+                p.SrcSize = z.Radius * bigMul; // drawn size rides the chain (demon sizing)
+                p.Vel *= speedMul;
+                p.Temp *= potent;
+                p.Lum *= potent;
+                p.Density *= potent;
+                p.Stick = p.Stick * potent + 0.35f * buff.Bond;
+                p.Echo = buff.Echo;
+                if (bigMul > 1f) p.transform.localScale *= bigMul;
             }
         }
 
@@ -441,8 +460,9 @@ namespace SpellyZombie
                 if (other.Rune == RuneType.DensityUp) denser = true;
                 else if (other.Rune == RuneType.DensityDown) thinner = true;
             }
-            int count = denser ? 1 : thinner ? 6 : 3;
-            float sizeMul = denser ? 1.7f : thinner ? 0.5f : 0.9f;
+            var buff = Powerups.For(_ownerId, z.Rune);
+            int count = (denser ? 1 : thinner ? 6 : 3) + buff.More;
+            float sizeMul = (denser ? 1.7f : thinner ? 0.5f : 0.9f) * (1f + 0.25f * buff.Big);
 
             // sized by the DRAWN glyph (user: conjured pieces were way too big —
             // the old zone-radius base had a 0.9m floor → boulders from doodles)
@@ -452,8 +472,9 @@ namespace SpellyZombie
             {
                 Vector3 scatter = count == 1 ? Vector3.zero
                     : Random.insideUnitSphere * z.Radius * 0.4f;
-                Matter.Spawn(mat, solid ? MatterPhase.Solid : MatterPhase.Liquid, size,
+                var conjured = Matter.Spawn(mat, solid ? MatterPhase.Solid : MatterPhase.Liquid, size,
                     z.Center + z.Normal * size * 0.5f + scatter); // ON the surface, not inside
+                if (buff.Bond > 0) conjured.AddStickiness(0.2f * buff.Bond); // gooier conjures
             }
         }
 

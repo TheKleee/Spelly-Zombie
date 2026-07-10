@@ -20,6 +20,17 @@ namespace SpellyZombie
         public static bool RunActive =>
             Instance != null && (Instance._phase == Phase.Wave || Instance._phase == Phase.Intermission);
 
+        /// True before a run starts — the MatchLobby (pillars/ready-up) lives here.
+        public static bool InLobby => Instance != null && Instance._phase == Phase.Idle;
+
+        /// MatchLobby's start trigger (all ready, or the troll timer expired).
+        public static void ForceStart()
+        {
+            if (Instance == null || Instance._phase != Phase.Idle) return;
+            if (NetGame.Connected && !NetGame.IsHost) return; // host decides
+            Instance.StartRun();
+        }
+
         Phase _phase = Phase.Idle;
         int _round;
         int _toSpawn;          // budget left this round
@@ -47,6 +58,7 @@ namespace SpellyZombie
             Instance._kills++;
             PlayerInk.AwardAll(DrawingConfig.InkPerKill);
             SealAutopsy.OnKill(); // kill bursts near a seal trigger the replay
+            Powerups.OnKill();    // kills feed the level-up track
             if (z != null) NetSync.PushKill(z.transform.position); // clients share the ink
         }
 
@@ -110,6 +122,7 @@ namespace SpellyZombie
             Wallet.Riches = 0;
             _runStart = Time.time;
             PlayerInk.RefillAll();
+            Powerups.ResetRun(); // fresh build every run
             StartRound(1);
         }
 
