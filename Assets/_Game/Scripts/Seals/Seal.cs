@@ -24,18 +24,33 @@ namespace SpellyZombie
         public readonly List<SealDetector.LoopEntry> Boundary;
         public readonly List<Stroke> Payload = new List<Stroke>();
 
+        /// The runes read out of the payload at the moment of closing — this is
+        /// what the spell system consumes. Recognition happens HERE, never before.
+        public readonly List<RuneGlyph> Runes = new List<RuneGlyph>();
+
         readonly List<DrawNode> _loopNodes;
         readonly List<Vector2> _polygon2D;
+        float[] _restGaps; // distance between each adjacent loop-node pair at activation
 
         public Vector3 PlaneOrigin { get; private set; }
         public Vector3 PlaneNormal { get; private set; }
         Vector3 _u, _v;
+
+        /// The active effect this seal is driving (null until spell resolution runs).
+        public Spell Spell { get; private set; }
+        public void AttachSpell(Spell s) => Spell = s;
 
         public bool IsCircle { get; private set; }
         public int Edges { get; private set; }
         public float Duration { get; private set; }
         public float Remaining { get; private set; }
         public float Area { get; private set; }
+
+        /// Whoever drew on the loop LAST completed it and owns the cast — the
+        /// runes inside are read against THIS owner's grimoire. Close a zombie's
+        /// half-drawn seal yourself and it casts with YOUR cards (and vice versa:
+        /// a zombie circling your runes casts with the zombie's).
+        public int OwnerId { get; private set; }
 
         Light _glow;
         GameObject _glowGo;
@@ -44,6 +59,23 @@ namespace SpellyZombie
         {
             Boundary = boundary;
             _loopNodes = SealDetector.BuildLoopNodes(boundary);
+
+            float newest = float.MinValue;
+            foreach (var e in boundary)
+                if (e.Stroke.LastInkTime > newest) { newest = e.Stroke.LastInkTime; OwnerId = e.Stroke.OwnerId; }
+
+            // rest gaps: a seal breaks when ink is PULLED APART from how it was
+            // drawn, not against a fixed distance — so a fast-drawn stroke with
+            // wide node spacing is valid and only breaks if a gap actually grows.
+            _restGaps = new float[_loopNodes.Count];
+            for (int i = 0; i < _loopNodes.Count; i++)
+            {
+                var a = _loopNodes[i];
+                var b = _loopNodes[(i + 1) % _loopNodes.Count];
+                _restGaps[i] = (a != null && b != null)
+                    ? Vector3.Distance(a.transform.position, b.transform.position)
+                    : 0f;
+            }
 
             // ---- plane fit ----
             var worldPts = new List<Vector3>(_loopNodes.Count);
@@ -84,29 +116,82 @@ namespace SpellyZombie
                 e.Stroke.State = StrokeState.InSeal;
                 e.Stroke.SetColor(Stroke.SealColor);
             }
+            // a single-stroke seal renders as a closed ring — no floating gap
+            if (Boundary.Count == 1)
+                Boundary[0].Stroke.SetLoop(true);
         }
 
         /// Everything inside the ring at the moment of sealing participates.
+        /// This is where runes come into existence: the enclosed strokes are
+        /// clustered by pure spatial proximity, and each cluster is recognized as
+        /// one rune. Ink drawn on top of itself clusters into mush and fizzles.
         public void CapturePayload(IReadOnlyList<Stroke> allStrokes)
         {
+            // 1) gather enclosed, non-boundary ink
+            var enclosed = new List<Stroke>();
             foreach (var s in allStrokes)
             {
-                if (s.State != StrokeState.Open || !s.Alive || s.Nodes.Count < 3) continue;
-                if (!s.ChainIntact()) continue;
-                bool isBoundary = false;
-                foreach (var e in Boundary)
-                    if (e.Stroke == s) { isBoundary = true; break; }
-                if (isBoundary) continue;
-
+                if (!Eligible(s)) continue;
                 Vector2 c = GeometryUtil.ProjectPoint(s.Centroid(), PlaneOrigin, _u, _v);
                 if (!GeometryUtil.PointInPolygon(c, _polygon2D)) continue;
+                enclosed.Add(s);
+            }
 
-                Payload.Add(s);
-                s.State = StrokeState.InSeal;
-                s.SetColor(s.Rune != RuneType.None ? Stroke.RuneColor : Stroke.FizzleColor);
+            // seal size, for scaling rune power by how big the rune is drawn
+            float sealSize = Mathf.Max(0.01f, SealDiagonal());
+
+            // 2) segment the enclosed ink into runes BY RECOGNITION — stacked/nested
+            //    distinct runes stay separate, multi-line runes group as one
+            foreach (var glyph in RuneGlyph.Segment(enclosed, DrawingConfig.GlyphJoinBase, DrawingConfig.GlyphJoinSizeFactor, OwnerId))
+            {
+                // strength = match quality × size. RECOGNIZED means MEANINGFUL:
+                // match floors at 0.45 once past the gate (a readable rune is a
+                // working rune), and size SATURATES at normal proportions — a
+                // rune ~1/3 of its seal is correct drawing, not a weak spell.
+                // (The old linear formulas gave "str 0.10": runes lit up but
+                // their effects were homeopathic.)
+                float match = Mathf.Lerp(0.45f, 1f,
+                    Mathf.InverseLerp(DrawingConfig.MinRuneScore, DrawingConfig.GoodRuneScore, glyph.Score));
+                float glyphSize = glyph.WorldBounds().size.magnitude;
+                glyph.SizeRatio = Mathf.Clamp01(glyphSize / sealSize);
+                float sizePower = Mathf.Lerp(DrawingConfig.MinSizePower, 1f, Mathf.Clamp01(glyph.SizeRatio * 3f));
+                glyph.Strength = glyph.Rune != RuneType.None ? Mathf.Clamp01(match) * sizePower : 0f;
+                Runes.Add(glyph);
+
+                foreach (var member in glyph.Members)
+                {
+                    Payload.Add(member);
+                    member.State = StrokeState.InSeal;
+                    member.Rune = glyph.Rune;
+                    member.RuneScore = glyph.Score;
+                    member.SetColor(glyph.Rune != RuneType.None ? Stroke.RuneColor : Stroke.FizzleColor);
+                }
             }
 
             CreateGlow();
+
+            bool Eligible(Stroke s)
+            {
+                if (s == null || s.State != StrokeState.Open || !s.Alive || s.Nodes.Count < 3) return false;
+                if (!s.ChainIntact()) return false;
+                foreach (var e in Boundary)
+                    if (e.Stroke == s) return false;
+                return true;
+            }
+        }
+
+        /// Bounding diagonal of the boundary — the seal's characteristic size.
+        float SealDiagonal()
+        {
+            var b = new Bounds();
+            bool any = false;
+            foreach (var n in _loopNodes)
+            {
+                if (n == null) continue;
+                if (!any) { b = new Bounds(n.transform.position, Vector3.zero); any = true; }
+                else b.Encapsulate(n.transform.position);
+            }
+            return b.size.magnitude;
         }
 
         public string Describe()
@@ -114,21 +199,21 @@ namespace SpellyZombie
             var sb = new StringBuilder();
             sb.Append(IsCircle ? "circle" : $"{Edges} edges");
             sb.Append($" → {Duration:0.0}s, area {Area:0.00}m²");
-            if (Payload.Count == 0)
+            if (Runes.Count == 0)
             {
                 sb.Append(", no runes (empty seal)");
+                return sb.ToString();
             }
-            else
+
+            sb.Append(", runes: ");
+            for (int i = 0; i < Runes.Count; i++)
             {
-                sb.Append(", runes: ");
-                for (int i = 0; i < Payload.Count; i++)
-                {
-                    var s = Payload[i];
-                    if (i > 0) sb.Append(", ");
-                    sb.Append(s.Rune == RuneType.None
-                        ? $"fizzle({s.RuneScore:0.00})"
-                        : $"{s.Rune}({s.RuneScore:0.00})");
-                }
+                if (i > 0) sb.Append(", ");
+                var g = Runes[i];
+                string strokes = g.Members.Count > 1 ? $"×{g.Members.Count}" : "";
+                sb.Append(g.Rune == RuneType.None
+                    ? $"fizzle({g.Score:0.00})"
+                    : $"{g.Rune}{strokes} str {g.Strength:0.00} (match {g.Score:0.00}, size {g.SizeRatio:0.00})");
             }
             return sb.ToString();
         }
@@ -136,14 +221,17 @@ namespace SpellyZombie
         /// Advance the seal. Returns false when the seal ended this tick.
         public bool Tick(float dt)
         {
-            // integrity: the ring must stay closed — every consecutive pair
-            // (including stroke junctions and the wrap-around) within BreakDistance
+            // integrity: the ring must stay closed. A gap breaks only if it GROWS
+            // past its drawn length by more than BreakDistance — so drawing speed
+            // (wide node spacing) never falsely opens a seal, while ink being
+            // erased or pulled apart still does.
             for (int i = 0; i < _loopNodes.Count; i++)
             {
                 var a = _loopNodes[i];
                 var b = _loopNodes[(i + 1) % _loopNodes.Count];
                 if (a == null || b == null) { Break("ink destroyed"); return false; }
-                if (Vector3.Distance(a.transform.position, b.transform.position) > DrawingConfig.BreakDistance)
+                float gap = Vector3.Distance(a.transform.position, b.transform.position);
+                if (gap > _restGaps[i] + DrawingConfig.BreakDistance)
                 {
                     Break("seal opened");
                     return false;
@@ -157,8 +245,7 @@ namespace SpellyZombie
                 return false;
             }
 
-            if (_glow != null)
-                _glow.intensity = 1.6f + Mathf.Sin(Time.time * 6f) * 0.5f;
+            // (seal glow removed — see BuildGlow note)
             return true;
         }
 
@@ -177,6 +264,7 @@ namespace SpellyZombie
             if (!s.Alive) return;
             s.State = StrokeState.Open;
             s.SetColor(Stroke.InkColor);
+            s.SetLoop(false); // broken seals show their gap again
         }
 
         /// Full duration elapsed: the spell resolved. Environment ink is consumed;
@@ -232,13 +320,9 @@ namespace SpellyZombie
 
         void CreateGlow()
         {
-            _glowGo = new GameObject($"SealGlow_{Id}");
-            _glowGo.transform.position = PlaneOrigin + PlaneNormal * 0.15f;
-            _glow = _glowGo.AddComponent<Light>();
-            _glow.type = LightType.Point;
-            _glow.color = new Color(1f, 0.82f, 0.35f);
-            _glow.range = Mathf.Max(1.5f, Mathf.Sqrt(Area) * 2.5f);
-            _glow.intensity = 1.6f;
+            // NO seal light — it washed out every rune effect near it. The gold
+            // ink color IS the "active seal" indicator; only the Light rune
+            // actually produces light now.
         }
 
         void DestroyGlow()

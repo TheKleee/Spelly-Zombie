@@ -49,6 +49,7 @@ namespace SpellyZombie.EditorTools
             for (int i = 0; i < cratePos.Length; i++)
             {
                 var crate = MakeBlock($"SZ_Crate_{i}", PrimitiveType.Cube, cratePos[i], Vector3.one * 0.9f, new Color(0.72f, 0.55f, 0.34f));
+                crate.AddComponent<SurfaceMaterialTag>().Material = SurfaceMaterialType.Wood;
                 var rb = crate.AddComponent<Rigidbody>();
                 rb.mass = 5f;
                 rb.linearDamping = 1.2f;

@@ -7,6 +7,22 @@ namespace SpellyZombie
     /// plane fitting, projection, RDP corner counting, circle test, containment.
     public static class GeometryUtil
     {
+        /// True if segments p1p2 and p3p4 properly cross, with the crossing's
+        /// parameters along each (t on p1p2, u on p3p4) in (0,1).
+        public static bool SegmentsIntersect(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4,
+                                             out float t, out float u)
+        {
+            t = 0f; u = 0f;
+            Vector2 r = p2 - p1;
+            Vector2 s = p4 - p3;
+            float denom = r.x * s.y - r.y * s.x;
+            if (Mathf.Abs(denom) < 1e-9f) return false; // parallel / collinear
+            Vector2 qp = p3 - p1;
+            t = (qp.x * s.y - qp.y * s.x) / denom;
+            u = (qp.x * r.y - qp.y * r.x) / denom;
+            return t > 1e-4f && t < 1f - 1e-4f && u > 1e-4f && u < 1f - 1e-4f;
+        }
+
         /// Newell's method — robust polygon normal for a (possibly wobbly, non-planar) loop.
         public static Vector3 NewellNormal(IReadOnlyList<Vector3> pts)
         {

@@ -53,19 +53,39 @@ namespace SpellyZombie
                 var path = new List<LoopEntry> { new LoopEntry(s0, true) };
                 if (Dfs(eligible, path, used,
                         s0.First.transform.position,
-                        s0.Last.transform.position))
+                        s0.Last.transform.position, 0f))
                     return path;
             }
             return null;
         }
 
+        /// Set when a loop ALMOST closed (everything passed except one guard) —
+        /// surfaced on the HUD so "why didn't it fire?!" answers itself.
+        public static string LastNearMiss;
+
+        /// gapSum tracks the total "air" in the chain. A loop is only real when
+        /// the gaps are a small share of its perimeter — lines drawn NEAR each
+        /// other are not TOUCHING each other. This is what stopped seals from
+        /// closing "without touching".
         static bool Dfs(IReadOnlyList<Stroke> all, List<LoopEntry> path, HashSet<Stroke> used,
-                        Vector3 startPos, Vector3 exitPos)
+                        Vector3 startPos, Vector3 exitPos, float gapSum)
         {
-            if (path.Count >= 2 &&
-                Vector3.Distance(exitPos, startPos) <= DrawingConfig.CloseThreshold &&
-                LoopBigEnough(path))
-                return true;
+            float closeGap = Vector3.Distance(exitPos, startPos);
+            if (path.Count >= 2 && closeGap <= DrawingConfig.CloseThreshold)
+            {
+                if (!LoopBigEnough(path))
+                {
+                    LastNearMiss = $"loop found but too small ({path.Count} strokes)";
+                }
+                else
+                {
+                    float perimeter = 0f;
+                    foreach (var e in path) perimeter += e.Stroke.PathLength();
+                    if (gapSum + closeGap <= perimeter * DrawingConfig.MaxLoopGapFraction)
+                        return true;
+                    LastNearMiss = $"loop found but gaps too wide ({(gapSum + closeGap) * 100f:0}cm air vs {perimeter * DrawingConfig.MaxLoopGapFraction * 100f:0}cm allowed)";
+                }
+            }
 
             if (path.Count >= DrawingConfig.MaxLoopStrokes) return false;
 
@@ -76,20 +96,22 @@ namespace SpellyZombie
                 Vector3 a = t.First.transform.position;
                 Vector3 b = t.Last.transform.position;
 
-                if (Vector3.Distance(exitPos, a) <= DrawingConfig.CloseThreshold)
+                float dA = Vector3.Distance(exitPos, a);
+                if (dA <= DrawingConfig.CloseThreshold)
                 {
                     path.Add(new LoopEntry(t, true));
                     used.Add(t);
-                    if (Dfs(all, path, used, startPos, b)) return true;
+                    if (Dfs(all, path, used, startPos, b, gapSum + dA)) return true;
                     path.RemoveAt(path.Count - 1);
                     used.Remove(t);
                 }
 
-                if (Vector3.Distance(exitPos, b) <= DrawingConfig.CloseThreshold)
+                float dB = Vector3.Distance(exitPos, b);
+                if (dB <= DrawingConfig.CloseThreshold)
                 {
                     path.Add(new LoopEntry(t, false));
                     used.Add(t);
-                    if (Dfs(all, path, used, startPos, a)) return true;
+                    if (Dfs(all, path, used, startPos, a, gapSum + dB)) return true;
                     path.RemoveAt(path.Count - 1);
                     used.Remove(t);
                 }

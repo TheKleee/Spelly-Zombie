@@ -9,6 +9,9 @@ namespace SpellyZombie
     {
         public Stroke Stroke { get; private set; }
         public int Index { get; private set; }
+
+        /// Lasso split hands the tail nodes to a freshly created stroke.
+        internal void SetStroke(Stroke stroke) => Stroke = stroke;
         public Vector3 SurfaceNormal { get; private set; }
 
         /// True when the surface is a character or weapon (PersistentInkSurface in

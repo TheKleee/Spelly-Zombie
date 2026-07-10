@@ -7,6 +7,10 @@ namespace SpellyZombie
     /// DrawNodes as the aim point moves. Aiming works two ways with the same code —
     /// locked cursor (draw at the crosshair by moving the view) or precision mode
     /// (hold LeftAlt: cursor is freed and the ray follows it).
+    ///
+    /// Drawing is just drawing: ink is ink, loops are seals, runes are read by
+    /// recognition when a seal closes around them. (The draft/choose-and-stamp
+    /// system was removed — it made drawing slow and unplayable.)
     public class SurfaceDrawer : MonoBehaviour
     {
         public Camera Cam;
@@ -19,6 +23,9 @@ namespace SpellyZombie
         Vector3 _lastHitPoint;   // raw, for surface-jump detection
         Vector3 _smoothedPoint;  // jitter-filtered, nodes are placed here
         bool _suppressUntilRelease;
+        bool _erasing;           // crosshair feedback
+        PlayerInk _ink;
+        SimpleFPSController _pilot;
 
         void Update()
         {
@@ -30,19 +37,35 @@ namespace SpellyZombie
                 return;
             }
 
-            // the Pose Studio owns the mouse while open — the pen stays capped
-            if (PoseStudio.IsOpen)
+            // the Pose Studio / pause menu own the mouse while open
+            if (PoseStudio.IsOpen || GameMenu.IsOpen)
             {
                 IsPenActive = false;
                 EndStroke();
                 return;
             }
 
-            bool erasing = kb.rKey.isPressed;
-            bool penDown = mouse.leftButton.isPressed && !erasing;
-            IsPenActive = mouse.leftButton.isPressed || erasing;
+            // no doodling while bleeding out on the floor
+            if (_pilot == null) _pilot = GetComponentInParent<SimpleFPSController>();
+            if (_pilot == null) _pilot = FindAnyObjectByType<SimpleFPSController>();
+            if (_pilot != null && _pilot.IsDowned)
+            {
+                IsPenActive = false;
+                EndStroke();
+                return;
+            }
 
-            if (!mouse.leftButton.isPressed)
+            // the wand's other end: right-click (or R / left trigger) rubs ink out
+            var gp = Gamepad.current;
+            bool gpDraw = gp != null && gp.rightTrigger.ReadValue() > 0.4f;
+            bool gpErase = gp != null && gp.leftTrigger.ReadValue() > 0.4f;
+            bool penHeld = mouse.leftButton.isPressed || gpDraw;
+            bool erasing = kb.rKey.isPressed || mouse.rightButton.isPressed || gpErase;
+            _erasing = erasing;
+            bool penDown = penHeld && !erasing;
+            IsPenActive = penHeld || erasing;
+
+            if (!penHeld)
                 _suppressUntilRelease = false;
 
             if (erasing)
@@ -84,7 +107,17 @@ namespace SpellyZombie
                 return;
             }
 
-            if (_current != null && Vector3.Distance(hit.point, _lastHitPoint) > DrawingConfig.MaxStrokeJump)
+            // one stroke lives on ONE surface: crossing onto a different collider
+            // (a different body part) ends the stroke so ink stays rigid per-limb
+            // and never stretches across a joint — joints are bridged by SEPARATE
+            // strokes meeting, which the pose then opens/closes.
+            if (_current != null && _current.Surface != null && hit.collider.transform != _current.Surface)
+                EndStroke();
+
+            // jump tolerance grows with distance: a small mouse flick sweeps a lot
+            // of wall at 8m, and silent stroke splits break closing shapes
+            float allowedJump = Mathf.Max(DrawingConfig.MaxStrokeJump, hit.distance * DrawingConfig.MaxStrokeJumpPerMeter);
+            if (_current != null && Vector3.Distance(hit.point, _lastHitPoint) > allowedJump)
                 EndStroke(); // aim jumped to a distant surface — that's a new stroke
 
             if (_current == null)
@@ -92,7 +125,9 @@ namespace SpellyZombie
                 _current = new Stroke
                 {
                     BasisRight = Cam.transform.right,
-                    BasisUp = Cam.transform.up
+                    BasisUp = Cam.transform.up,
+                    Surface = hit.collider.transform,
+                    OwnerId = Grimoire.LocalPlayerId // your pen, your ink
                 };
                 DrawingWorld.Instance.Register(_current);
                 _smoothedPoint = hit.point;
@@ -109,10 +144,26 @@ namespace SpellyZombie
             }
 
             _lastHitPoint = hit.point;
+            WorldEvents.Report(WorldEventKind.Ink, _smoothedPoint, 0.5f); // eyes follow the pen — ink is a decoy
 
             var last = _current.Last;
             if (last != null && Vector3.Distance(_smoothedPoint, last.transform.position) < DrawingConfig.NodeSpacing)
                 return;
+
+            // ink economy: every centimetre of line costs; kills refill.
+            if (_ink == null) _ink = GetComponentInParent<PlayerInk>();
+            if (_ink == null && _pilot != null) _ink = _pilot.GetComponent<PlayerInk>();
+            if (_ink != null && last != null)
+            {
+                float cost = Vector3.Distance(_smoothedPoint, last.transform.position) * DrawingConfig.InkCostPerMeter;
+                if (!_ink.TrySpend(cost))
+                {
+                    DrawingWorld.Instance.LogEvent("OUT OF INK — kills refill the well");
+                    EndStroke();
+                    _suppressUntilRelease = true;
+                    return;
+                }
+            }
 
             var node = DrawNode.Create(_current, _current.Nodes.Count, _smoothedPoint, hit.normal, hit.collider.transform);
             _current.AddNode(node);
@@ -120,24 +171,66 @@ namespace SpellyZombie
             TryCloseMidDraw(node);
         }
 
-        /// Closing while drawing: the pen returns to the stroke's own starting point.
-        /// The threshold scales with stroke length so that small runes with small
-        /// gaps don't accidentally self-seal, while deliberate loops snap shut.
+        /// Closing while drawing — against ANY earlier point of the stroke, not
+        /// just its start. Returning to the start closes the whole loop; crossing
+        /// your own line closes the crossed portion (lasso rule) and the tail
+        /// before the crossing survives as its own ordinary stroke.
         void TryCloseMidDraw(DrawNode newNode)
         {
-            if (_current.Nodes.Count < DrawingConfig.MinLoopNodes) return;
-            float len = _current.PathLength();
-            if (len < DrawingConfig.MinLoopPerimeter) return;
+            var nodes = _current.Nodes;
+            int last = nodes.Count - 1;
 
-            float threshold = DrawingConfig.SelfCloseThreshold(len);
-
-            if (Vector3.Distance(newNode.transform.position, _current.First.transform.position) <= threshold)
+            int bestIndex = -1;
+            float bestDist = float.MaxValue;
+            if (nodes.Count >= DrawingConfig.MinLoopNodes)
             {
-                var stroke = _current;
-                _current = null;
-                _suppressUntilRelease = true;
-                DrawingWorld.Instance.CloseSingleStroke(stroke);
+                for (int j = 0; j <= last - DrawingConfig.MinLoopNodes; j++)
+                {
+                    float loopLen = _current.LengthBetween(j, last);
+                    if (loopLen < DrawingConfig.MinLoopPerimeter) break; // loops only shrink from here
+                    float threshold = DrawingConfig.SelfCloseThreshold(loopLen);
+                    float d = Vector3.Distance(newNode.transform.position, nodes[j].transform.position);
+                    if (d <= threshold && d < bestDist)
+                    {
+                        bestDist = d;
+                        bestIndex = j;
+                    }
+                }
             }
+            if (bestIndex < 0)
+            {
+                // not crossing ourselves — maybe crossing someone else's ink:
+                // if our start also sits on that ink, the loop closes through it
+                if (nodes.Count >= 3 && DrawingWorld.Instance.TryCloseOntoInk(_current))
+                {
+                    _current = null;
+                    _suppressUntilRelease = true;
+                }
+                return;
+            }
+
+            var stroke = _current;
+            _current = null;
+            _suppressUntilRelease = true;
+
+            if (bestIndex > 0)
+            {
+                // split off the tail drawn before the crossing point
+                var tailNodes = stroke.DetachNodesBefore(bestIndex);
+                if (tailNodes.Count > 0)
+                {
+                    var tail = new Stroke { BasisRight = stroke.BasisRight, BasisUp = stroke.BasisUp, OwnerId = stroke.OwnerId };
+                    foreach (var n in tailNodes)
+                    {
+                        n.SetStroke(tail);
+                        tail.AddNode(n);
+                    }
+                    DrawingWorld.Instance.Register(tail);
+                    DrawingWorld.Instance.CompleteStroke(tail);
+                }
+            }
+
+            DrawingWorld.Instance.CloseSingleStroke(stroke);
         }
 
         void EndStroke()
@@ -148,31 +241,42 @@ namespace SpellyZombie
             DrawingWorld.Instance.CompleteStroke(stroke);
         }
 
-        /// Draw a glyph, then press F1-F12 to save it as the template for that rune.
+        void OnGUI()
+        {
+            if (PoseStudio.IsOpen || Cam == null) return;
+            if (Cursor.lockState != CursorLockMode.Locked) return;
+
+            // crosshair dot — red and bigger while the eraser end is active
+            float dot = _erasing ? 10f : 6f;
+            GUI.color = _erasing ? new Color(1f, 0.3f, 0.25f, 0.95f) : new Color(1f, 1f, 1f, 0.9f);
+            GUI.DrawTexture(new Rect(Screen.width / 2f - dot / 2f, Screen.height / 2f - dot / 2f, dot, dot),
+                Texture2D.whiteTexture);
+            GUI.color = Color.white;
+        }
+
+        /// Draw a glyph (one or more strokes), then press F1-F12 to save the ink
+        /// cluster around your last stroke as the template for that rune — the
+        /// recognizer learns YOUR handwriting.
         void HandleTemplateKeys(Keyboard kb)
         {
-            var last = DrawingWorld.Instance.LastCompleted;
-            if (last == null || last.RawShape.Count < 6) return;
-
             for (int i = 0; i < RuneLibrary.RecordableRunes.Length; i++)
             {
                 var key = kb[(Key)((int)Key.F1 + i)];
-                if (key != null && key.wasPressedThisFrame)
-                {
-                    var rune = RuneLibrary.RecordableRunes[i];
-                    if (RuneLibrary.RecordTemplate(rune, last.RawShape))
-                        DrawingWorld.Instance.LogEvent($"Template recorded: {rune} now matches your handwriting");
-                }
-            }
-        }
+                if (key == null || !key.wasPressedThisFrame) continue;
 
-        void OnGUI()
-        {
-            if (Cursor.lockState != CursorLockMode.Locked) return;
-            // crosshair dot
-            float s = 6f;
-            GUI.color = new Color(1f, 1f, 1f, 0.9f);
-            GUI.DrawTexture(new Rect(Screen.width / 2f - s / 2f, Screen.height / 2f - s / 2f, s, s), Texture2D.whiteTexture);
+                var world = DrawingWorld.Instance;
+                var rawStrokes = world.BuildRecordingGlyph(out int strokeCount);
+                if (rawStrokes == null) return;
+
+                int points = 0;
+                foreach (var stroke in rawStrokes) points += stroke.Count;
+                if (points < 6) return;
+
+                var rune = RuneLibrary.RecordableRunes[i];
+                if (RuneLibrary.RecordTemplate(rune, rawStrokes))
+                    world.LogEvent($"Template recorded: {rune} now matches your handwriting ({strokeCount} stroke(s))");
+                return;
+            }
         }
     }
 }

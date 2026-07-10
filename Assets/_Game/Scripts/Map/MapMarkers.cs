@@ -7,7 +7,12 @@ namespace SpellyZombie
     /// the wave spawner reads ZombieEntryPoint, pickups read spawn points, the
     /// zone simulation reads ZoneVolume, and water kills ink via WaterSurface.
 
-    public enum SurfaceMaterialType { Stone, Wood, Earth, Metal, Water, Flesh }
+    // Unknown is the fallback for anything not marked. Everything after Unknown
+    // is a spell-made tier reached by transmutation (Density-up compresses a
+    // material into its stronger form: Wood→Coal→Diamond, Earth→Stone→Diamond,
+    // Metal→Gold, Flesh→Bone, Water→Slime). Appended so serialized tags keep
+    // their values.
+    public enum SurfaceMaterialType { Stone, Wood, Earth, Metal, Water, Flesh, Unknown, Coal, Diamond, Gold, Bone, Slime }
 
     /// The "ingredient" of the spell system: what this surface is made of.
     public class SurfaceMaterialTag : MonoBehaviour

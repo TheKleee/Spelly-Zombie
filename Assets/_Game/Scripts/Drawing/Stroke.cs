@@ -29,10 +29,26 @@ namespace SpellyZombie
 
         public Vector3 BasisRight; // camera right at stroke start
         public Vector3 BasisUp;    // camera up at stroke start
+        public Transform Surface;  // the collider this stroke lives on — one stroke, one surface
+
+        /// Who drew this ink (player or zombie GameObject id). A seal belongs to
+        /// the owner of the most recently drawn stroke in its loop.
+        public int OwnerId;
+
+        /// Time.time when ink last flowed into this stroke (drives seal ownership).
+        public float LastInkTime;
 
         public StrokeState State = StrokeState.Drawing;
+
+        /// Set by a seal when it captures this stroke: the rune the enclosing
+        /// cluster was recognized as (None = fizzle). Meaningless until sealed.
         public RuneType Rune = RuneType.None;
         public float RuneScore;
+
+        /// The rune this stroke IS, declared at draw time (stamped by the
+        /// player's choice or a zombie scribe). Seals trust this outright —
+        /// no recognition, no guessing. None = plain ink.
+        public RuneType DeclaredRune = RuneType.None;
 
         /// Every node sits on a character/weapon — ink survives spell resolution.
         public bool Persistent { get; private set; }
@@ -56,10 +72,50 @@ namespace SpellyZombie
         public static readonly Color FizzleColor = new Color(0.5f, 0.5f, 0.5f);
         public static readonly Color SpentColor = new Color(0.55f, 0.45f, 0.22f);
 
+        // running length along the stroke, index-aligned with Nodes;
+        // only trusted while drawing (all nodes alive, none erased yet)
+        readonly List<float> _runningLength = new List<float>();
+
         public void AddNode(DrawNode node)
         {
+            LastInkTime = Time.time;
+            if (Nodes.Count == 0)
+                _runningLength.Add(0f);
+            else
+                _runningLength.Add(_runningLength[_runningLength.Count - 1] +
+                    Vector3.Distance(Nodes[Nodes.Count - 1].transform.position, node.transform.position));
             Nodes.Add(node);
             _dirty = true;
+        }
+
+        /// Path length between two node indices (drawing-time only).
+        public float LengthBetween(int fromIndex, int toIndex)
+        {
+            if (fromIndex < 0 || toIndex >= _runningLength.Count || fromIndex > toIndex) return 0f;
+            return _runningLength[toIndex] - _runningLength[fromIndex];
+        }
+
+        /// Lasso split: remove and return the nodes before `index` (the tail drawn
+        /// before the crossing point); this stroke keeps the loop portion.
+        public List<DrawNode> DetachNodesBefore(int index)
+        {
+            var removed = Nodes.GetRange(0, index);
+            Nodes.RemoveRange(0, index);
+            _runningLength.Clear();
+            for (int i = 0; i < Nodes.Count; i++)
+            {
+                if (i == 0) _runningLength.Add(0f);
+                else _runningLength.Add(_runningLength[i - 1] +
+                    Vector3.Distance(Nodes[i - 1].transform.position, Nodes[i].transform.position));
+            }
+            _dirty = true;
+            return removed;
+        }
+
+        /// Render the line as a closed ring (used while this stroke is a whole seal).
+        public void SetLoop(bool on)
+        {
+            if (_line != null) _line.loop = on;
         }
 
         public void MarkDirty() => _dirty = true;
@@ -80,15 +136,17 @@ namespace SpellyZombie
             }
         }
 
-        /// True when every node still exists and no adjacent pair has been pulled apart.
-        /// A stroke with a hole in it is dead ink: it can never participate in a seal.
+        /// True when the ink still exists — i.e. no node has been erased/destroyed.
+        /// NOT a distance test: leftover pieces from a split, fast strokes with
+        /// wide node spacing, and ink stretched across separating surfaces are all
+        /// still valid ink that may join seals (active-seal breaking is handled
+        /// separately by the seal's rest-gap check). A hole (erased node) is the
+        /// only thing that makes ink dead; RepairErasedStrokes splits on it.
         public bool ChainIntact()
         {
             for (int i = 0; i < Nodes.Count; i++)
             {
-                if (Nodes[i] == null) return false;
-                if (i > 0 && Vector3.Distance(Nodes[i - 1].transform.position, Nodes[i].transform.position) > DrawingConfig.BreakDistance)
-                    return false;
+                if (Nodes[i] == null) return false; // erased/destroyed ink
             }
             return Nodes.Count > 0;
         }
@@ -189,12 +247,31 @@ namespace SpellyZombie
                 if (Nodes[i] != null) _line.SetPosition(p++, Nodes[i].transform.position);
         }
 
+        public bool HasDestroyedNodes()
+        {
+            foreach (var n in Nodes)
+                if (n == null) return true;
+            return false;
+        }
+
         /// Destroy all ink belonging to this stroke.
         public void Burn()
         {
             State = StrokeState.Burned;
             foreach (var n in Nodes)
                 if (n != null) Object.Destroy(n.gameObject);
+            if (_lineGo != null) Object.Destroy(_lineGo);
+            _line = null;
+            _lineGo = null;
+        }
+
+        /// Kill this stroke WITHOUT destroying its nodes — used when erasing
+        /// splits it and the surviving nodes get adopted by new strokes.
+        public void Retire()
+        {
+            State = StrokeState.Burned;
+            Nodes.Clear();
+            _runningLength.Clear();
             if (_lineGo != null) Object.Destroy(_lineGo);
             _line = null;
             _lineGo = null;

@@ -29,39 +29,59 @@ namespace SpellyZombie
         Heat, State, Luminance, Sticky, Direction, Density
     }
 
-    /// Holds one $1 template per rune. Ships with rough synthesized glyphs based on
-    /// the design sketches; each can be overwritten in play mode (draw the glyph,
+    /// Holds one $P point-cloud template per rune. Templates may be drawn in any
+    /// number of strokes, in any order and direction — an arrow recorded as
+    /// shaft + barbs matches an arrow drawn barbs-first. Ships with rough
+    /// synthesized glyphs; each can be overwritten in play mode (draw the glyph,
     /// press F1-F12) and the recording persists to disk.
     public static class RuneLibrary
     {
         class Entry
         {
             public RuneType Type;
-            public Vector2[] Normalized;
+            public Vector2[] Cloud;                 // $P point-cloud template
+            public List<byte[]> Sentences;          // chain-code direction sentences
+            public float Elongation = 1f;           // proportion — separates the bracket family
         }
 
         [Serializable]
-        class SavedTemplate { public int rune; public List<Vector2> points = new List<Vector2>(); }
+        class SavedStroke { public List<Vector2> points = new List<Vector2>(); }
 
         [Serializable]
-        class SavedTemplateSet { public List<SavedTemplate> items = new List<SavedTemplate>(); }
+        class SavedTemplate
+        {
+            public int rune;
+            public List<Vector2> points = new List<Vector2>();      // legacy single-stroke format
+            public List<SavedStroke> strokes = new List<SavedStroke>(); // current multi-stroke format
+        }
+
+        [Serializable]
+        class SavedTemplateSet
+        {
+            public int version;
+            public List<SavedTemplate> items = new List<SavedTemplate>();
+        }
+
+        /// Bump when the default glyph alphabet changes — stale recordings from
+        /// an older alphabet are discarded instead of shadowing the new shapes.
+        const int GlyphSetVersion = 6; // v6 = the ORIGINAL alphabet restored (Marko's final pick)
 
         static List<Entry> _entries;
         static string SavePath => Path.Combine(Application.persistentDataPath, "sz_rune_templates.json");
 
-        // ---- unlocks: per-run, in memory only (design: every run starts with no runes) ----
+        // ---- unlocks: per-OWNER, in memory only (design: every run starts with
+        // a single chosen card; the rest are collected — see Grimoire) ----
 
-        /// Graybox switch. The match flow sets this false and grants cards as
-        /// players find them; while true, everything is drawable for testing.
+        /// Graybox switch: when true everything is drawable by everyone (all runes
+        /// unlocked, no starting-rune picker) — ON for combo testing. Flip false
+        /// to exercise the real collect-your-runes progression loop.
         public static bool AllRunesUnlockedForTesting = true;
 
-        static readonly HashSet<RuneCardType> _unlockedCards = new HashSet<RuneCardType>();
+        /// Convenience: unlock a card for the LOCAL player (pickups use this).
+        public static void UnlockCard(RuneCardType card) => Grimoire.Unlock(Grimoire.LocalPlayerId, card);
 
-        public static void UnlockCard(RuneCardType card) => _unlockedCards.Add(card);
-        public static void ResetUnlocks() => _unlockedCards.Clear();
-
-        public static bool IsUnlocked(RuneType type) =>
-            type != RuneType.None && (AllRunesUnlockedForTesting || _unlockedCards.Contains(CardOf(type)));
+        public static bool IsUnlocked(int ownerId, RuneType type) =>
+            type != RuneType.None && (AllRunesUnlockedForTesting || Grimoire.Has(ownerId, CardOf(type)));
 
         public static RuneCardType CardOf(RuneType type)
         {
@@ -86,12 +106,136 @@ namespace SpellyZombie
         {
             switch (card)
             {
-                case RuneCardType.Heat: return "Heat — one glyph raises temperature, the mirrored glyph lowers it.";
-                case RuneCardType.State: return "State — turn matter solid, or melt it toward liquid.";
-                case RuneCardType.Luminance: return "Luminance — brighten the area, or swallow the light.";
-                case RuneCardType.Sticky: return "Sticky — make surfaces grip, or make them slick.";
-                case RuneCardType.Direction: return "Direction — arrow pushes away from the surface, Y pulls toward it.";
-                default: return "Density — thicken matter so it sinks, or thin it so it rises.";
+                case RuneCardType.Heat: return "Heat — the jagged flame heats; the flat zigzag chills.";
+                case RuneCardType.State: return "State — bracket open at the bottom = SOLID; open at the top = LIQUID.";
+                case RuneCardType.Luminance: return "Luminance — the star brightens; the collapsed star darkens.";
+                case RuneCardType.Sticky: return "Sticky — the slope-hook grips; its mirror slides.";
+                case RuneCardType.Direction: return "Direction — the arrow pushes the way you drew it; the Y pulls.";
+                default: return "Density — small bracket open-down compresses; open-up spreads.";
+            }
+        }
+
+        /// COMPOUND SIGILS (Marko's "multiple letters" idea): one continuous
+        /// scribble can BE several runes — its direction sentence is parsed
+        /// like a word: consecutive chunks that each read as a rune all fire.
+        /// Draw flame+arrow+bracket as one gibberish sigil → Heat, Direction
+        /// and Solid all cast. Returns the parts (≥2) or an empty list.
+        public static List<(RuneType type, float score)> ClassifyCompound(int ownerId,
+            IReadOnlyList<IReadOnlyList<Vector2>> rawStrokes)
+        {
+            Init();
+            var none = new List<(RuneType, float)>();
+            var readings = ChainCodeRecognizer.EncodeAll(rawStrokes);
+
+            List<(RuneType, float)> bestParts = null;
+            float bestQuality = 0f;
+
+            foreach (var reading in readings)
+            {
+                int n = reading.Length;
+                if (n < 5 || n > 24) continue; // too simple / too chaotic to be a word
+
+                // dp[i]: best way to explain the first i letters
+                var dpScore = new float[n + 1]; // length-weighted score sum
+                var dpSkips = new int[n + 1];
+                var dpParts = new List<(RuneType, float)>[n + 1];
+                for (int i = 1; i <= n; i++) dpScore[i] = -1f;
+                dpParts[0] = new List<(RuneType, float)>();
+
+                for (int i = 1; i <= n; i++)
+                {
+                    // option: this letter is junk between words (max 2 junk letters)
+                    if (dpScore[i - 1] >= 0f && dpSkips[i - 1] < 2)
+                    {
+                        dpScore[i] = dpScore[i - 1];
+                        dpSkips[i] = dpSkips[i - 1] + 1;
+                        dpParts[i] = dpParts[i - 1];
+                    }
+
+                    // option: letters j..i are one rune
+                    for (int len = 2; len <= Mathf.Min(i, 10); len++)
+                    {
+                        int j = i - len;
+                        if (dpScore[j] < 0f || dpParts[j].Count >= 4) continue;
+
+                        foreach (var e in _entries)
+                        {
+                            if (!IsUnlocked(ownerId, e.Type) || e.Sentences == null) continue;
+                            float sc = ChainCodeRecognizer.ScoreSpan(reading, j, len, e.Sentences);
+                            if (sc < 0.55f) continue;
+                            float total = dpScore[j] + sc * len;
+                            if (total > dpScore[i])
+                            {
+                                dpScore[i] = total;
+                                dpSkips[i] = dpSkips[j];
+                                var parts = new List<(RuneType, float)>(dpParts[j]) { (e.Type, sc) };
+                                dpParts[i] = parts;
+                            }
+                        }
+                    }
+                }
+
+                if (dpScore[n] < 0f || dpParts[n] == null || dpParts[n].Count < 2) continue;
+                float quality = dpScore[n] / Mathf.Max(1, n - dpSkips[n]);
+                if (quality > bestQuality)
+                {
+                    bestQuality = quality;
+                    bestParts = dpParts[n];
+                }
+            }
+
+            return bestParts ?? none;
+        }
+
+        /// The default polyline for a rune's glyph — zombies "draw" runes by
+        /// tracing this (see ZombieScribe). Returns null for unknown runes.
+        public static List<Vector2> GlyphPolyline(RuneType type)
+        {
+            return DefaultGlyphs().TryGetValue(type, out var pts) ? pts : null;
+        }
+
+        /// Similarity of a partial sketch to EVERY owned rune, best first — the
+        /// choose-and-stamp candidate list. This only SORTS the options; it
+        /// never gates anything (the player's choice is the truth).
+        public static List<(RuneType type, float score)> ScoreAll(int ownerId,
+            IReadOnlyList<IReadOnlyList<Vector2>> rawStrokes)
+        {
+            Init();
+            var results = new List<(RuneType, float)>();
+            var candidate = PointCloudRecognizer.Normalize(rawStrokes);
+            var sentences = ChainCodeRecognizer.EncodeAll(rawStrokes);
+            float elongation = ChainCodeRecognizer.Elongation(rawStrokes);
+            foreach (var e in _entries)
+            {
+                if (!IsUnlocked(ownerId, e.Type)) continue;
+                float p = candidate == null ? 0f
+                    : PointCloudRecognizer.Score(PointCloudRecognizer.CloudDistance(candidate, e.Cloud));
+                float chain = e.Sentences != null
+                    ? ChainCodeRecognizer.Match(sentences, e.Sentences)
+                      * ChainCodeRecognizer.AspectPenalty(elongation, e.Elongation) : 0f;
+                results.Add((e.Type, Mathf.Max(p, chain)));
+            }
+            results.Sort((a, b) => b.Item2.CompareTo(a.Item2));
+            return results;
+        }
+
+        public static string ShortName(RuneType r)
+        {
+            switch (r)
+            {
+                case RuneType.HeatUp: return "HEAT";
+                case RuneType.HeatDown: return "CHILL";
+                case RuneType.StateSolid: return "SOLID";
+                case RuneType.StateLiquid: return "LIQUID";
+                case RuneType.LuminanceUp: return "LIGHT";
+                case RuneType.LuminanceDown: return "DARK";
+                case RuneType.StickyUp: return "GRIP";
+                case RuneType.StickyDown: return "SLICK";
+                case RuneType.DirectionAway: return "PUSH";
+                case RuneType.DirectionToward: return "PULL";
+                case RuneType.DensityUp: return "COMPRESS";
+                case RuneType.DensityDown: return "SPREAD";
+                default: return "?";
             }
         }
 
@@ -107,49 +251,71 @@ namespace SpellyZombie
             if (_entries != null) return;
             _entries = new List<Entry>();
             foreach (var pair in DefaultGlyphs())
-                SetTemplateInternal(pair.Key, pair.Value);
+                SetTemplateInternal(pair.Key, new List<List<Vector2>> { pair.Value });
             LoadRecorded();
         }
 
-        /// Classify a raw 2D stroke against the runes the player has UNLOCKED
-        /// (design: strokes are compared to unlocked templates only). Returns the
-        /// best rune and its raw score; the caller decides if it's good enough.
-        public static (RuneType type, float score) Classify(IReadOnlyList<Vector2> rawShape)
+        /// Classify a glyph (one or more raw 2D strokes in a shared frame)
+        /// against the runes the given OWNER has unlocked — the seal's owner is
+        /// whoever completed it, so zombie-closed seals read with zombie cards.
+        public static (RuneType type, float score) Classify(int ownerId, IReadOnlyList<IReadOnlyList<Vector2>> rawStrokes)
         {
             Init();
-            var candidate = DollarRecognizer.Normalize(rawShape);
-            if (candidate == null) return (RuneType.None, 0f);
+            // ENSEMBLE: the $P point-cloud matcher AND Marko's direction-
+            // sentence matcher both score every rune; the best answer wins —
+            // two independent readings can only improve recognition.
+            var candidate = PointCloudRecognizer.Normalize(rawStrokes);
+            var sentences = ChainCodeRecognizer.EncodeAll(rawStrokes);
+            float elongation = ChainCodeRecognizer.Elongation(rawStrokes);
+            if (candidate == null && sentences.Count == 0) return (RuneType.None, 0f);
 
-            var candidates = new List<Entry>(_entries.Count);
+            RuneType bestType = RuneType.None;
+            float bestScore = 0f;
             foreach (var e in _entries)
-                if (IsUnlocked(e.Type)) candidates.Add(e);
-            if (candidates.Count == 0) return (RuneType.None, 0f);
-
-            var templates = new List<Vector2[]>(candidates.Count);
-            foreach (var e in candidates) templates.Add(e.Normalized);
-            var (index, score) = DollarRecognizer.Recognize(candidate, templates);
-            if (index < 0) return (RuneType.None, 0f);
-            return (candidates[index].Type, score);
+            {
+                if (!IsUnlocked(ownerId, e.Type)) continue;
+                float p = candidate != null
+                    ? PointCloudRecognizer.Score(PointCloudRecognizer.CloudDistance(candidate, e.Cloud)) : 0f;
+                float chain = e.Sentences != null
+                    ? ChainCodeRecognizer.Match(sentences, e.Sentences)
+                      * ChainCodeRecognizer.AspectPenalty(elongation, e.Elongation) : 0f;
+                float score = Mathf.Max(p, chain);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestType = e.Type;
+                }
+            }
+            return (bestType, bestScore);
         }
 
-        /// Replace the template for a rune with a player-recorded stroke and persist it.
-        public static bool RecordTemplate(RuneType type, IReadOnlyList<Vector2> rawShape)
+        /// Replace the template for a rune with a player-recorded glyph and persist it.
+        public static bool RecordTemplate(RuneType type, List<List<Vector2>> rawStrokes)
         {
             Init();
-            if (rawShape == null || rawShape.Count < 6) return false;
-            if (!SetTemplateInternal(type, new List<Vector2>(rawShape))) return false;
-            SaveRecorded(type, rawShape);
+            if (!SetTemplateInternal(type, rawStrokes)) return false;
+            SaveRecorded(type, rawStrokes);
             return true;
         }
 
-        static bool SetTemplateInternal(RuneType type, List<Vector2> raw)
+        static bool SetTemplateInternal(RuneType type, List<List<Vector2>> rawStrokes)
         {
-            var normalized = DollarRecognizer.Normalize(raw);
-            if (normalized == null) return false;
+            var cloud = PointCloudRecognizer.Normalize(rawStrokes);
+            if (cloud == null) return false;
+            var ro = ToReadOnly(rawStrokes);
+            var sentences = ChainCodeRecognizer.EncodeAll(ro);
+            float elongation = ChainCodeRecognizer.Elongation(ro);
             var existing = _entries.Find(e => e.Type == type);
-            if (existing != null) existing.Normalized = normalized;
-            else _entries.Add(new Entry { Type = type, Normalized = normalized });
+            if (existing != null) { existing.Cloud = cloud; existing.Sentences = sentences; existing.Elongation = elongation; }
+            else _entries.Add(new Entry { Type = type, Cloud = cloud, Sentences = sentences, Elongation = elongation });
             return true;
+        }
+
+        static List<IReadOnlyList<Vector2>> ToReadOnly(List<List<Vector2>> strokes)
+        {
+            var ro = new List<IReadOnlyList<Vector2>>(strokes.Count);
+            foreach (var s in strokes) ro.Add(s);
+            return ro;
         }
 
         // ---- persistence ----
@@ -163,9 +329,19 @@ namespace SpellyZombie
             {
                 if (!File.Exists(SavePath)) return;
                 _saved = JsonUtility.FromJson<SavedTemplateSet>(File.ReadAllText(SavePath)) ?? new SavedTemplateSet();
+                if (_saved.version != GlyphSetVersion)
+                {
+                    Debug.Log($"[RuneLibrary] Discarding recorded templates from glyph set v{_saved.version} (current v{GlyphSetVersion})");
+                    _saved = new SavedTemplateSet { version = GlyphSetVersion };
+                    return;
+                }
+                int loaded = 0;
                 foreach (var t in _saved.items)
-                    SetTemplateInternal((RuneType)t.rune, t.points);
-                Debug.Log($"[RuneLibrary] Loaded {_saved.items.Count} recorded rune templates from {SavePath}");
+                {
+                    var strokes = ToStrokeLists(t);
+                    if (strokes.Count > 0 && SetTemplateInternal((RuneType)t.rune, strokes)) loaded++;
+                }
+                Debug.Log($"[RuneLibrary] Loaded {loaded} recorded rune templates from {SavePath}");
             }
             catch (Exception e)
             {
@@ -173,7 +349,23 @@ namespace SpellyZombie
             }
         }
 
-        static void SaveRecorded(RuneType type, IReadOnlyList<Vector2> rawShape)
+        static List<List<Vector2>> ToStrokeLists(SavedTemplate t)
+        {
+            var result = new List<List<Vector2>>();
+            if (t.strokes != null && t.strokes.Count > 0)
+            {
+                foreach (var s in t.strokes)
+                    if (s != null && s.points != null && s.points.Count >= 2)
+                        result.Add(s.points);
+            }
+            else if (t.points != null && t.points.Count >= 2)
+            {
+                result.Add(t.points); // legacy single-stroke recording
+            }
+            return result;
+        }
+
+        static void SaveRecorded(RuneType type, List<List<Vector2>> rawStrokes)
         {
             try
             {
@@ -183,9 +375,17 @@ namespace SpellyZombie
                     item = new SavedTemplate { rune = (int)type };
                     _saved.items.Add(item);
                 }
-                item.points = new List<Vector2>(rawShape);
+                _saved.version = GlyphSetVersion;
+                item.points = new List<Vector2>(); // retire the legacy field
+                item.strokes = new List<SavedStroke>();
+                int pointCount = 0;
+                foreach (var s in rawStrokes)
+                {
+                    item.strokes.Add(new SavedStroke { points = new List<Vector2>(s) });
+                    pointCount += s.Count;
+                }
                 File.WriteAllText(SavePath, JsonUtility.ToJson(_saved));
-                Debug.Log($"[RuneLibrary] Recorded template for {type} ({rawShape.Count} pts) -> {SavePath}");
+                Debug.Log($"[RuneLibrary] Recorded template for {type} ({rawStrokes.Count} stroke(s), {pointCount} pts) -> {SavePath}");
             }
             catch (Exception e)
             {
@@ -199,11 +399,10 @@ namespace SpellyZombie
             _entries = null; // force re-init from defaults
         }
 
-        // ---- synthesized default glyphs (y-up, arbitrary units) ----
-        // Rough approximations of the sketch alphabet. They make recognition work out
-        // of the box, but recording real hand-drawn templates (F1-F12) will always be
-        // more accurate. Runes must stay OPEN — a big gap between start and end —
-        // or they will close into a seal instead.
+        // ---- synthesized default glyphs (y-up, arbitrary units), one stroke each ----
+        // Rough approximations of the sketch alphabet; recording real hand-drawn
+        // templates (F1-F12) is always more accurate. Runes must stay OPEN — a
+        // clear gap between start and end — or they close into a seal instead.
         static Dictionary<RuneType, List<Vector2>> DefaultGlyphs()
         {
             List<Vector2> P(params float[] xy)
@@ -213,6 +412,10 @@ namespace SpellyZombie
                 return list;
             }
 
+            // THE ORIGINAL ALPHABET (v6 — Marko's final pick, restored verbatim
+            // from v1). These are STAMP TEMPLATES: the player sketches, chooses,
+            // and this exact shape appears as perfect ink. Must stay OPEN (a
+            // closed shape would read as a seal).
             return new Dictionary<RuneType, List<Vector2>>
             {
                 // tall jagged triangle, open at the base
