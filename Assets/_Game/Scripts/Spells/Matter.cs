@@ -43,9 +43,12 @@ namespace SpellyZombie
         Rigidbody _rb;
         Renderer _rend;
         SurfaceMaterialTag _tag;
+        MaterialPropertyBlock _mpb;
         float _age, _life = 20f, _integrity = 1f, _baseSize = 0.3f, _slump;
         bool _ice, _burning;
         int _lastLook = int.MinValue;
+
+        static readonly int SquashID = Shader.PropertyToID("_Squash");
 
         public void Init(SurfaceMaterialType mat, MatterPhase phase, float baseSize)
         {
@@ -102,7 +105,7 @@ namespace SpellyZombie
                         _ice = _info.Type == SurfaceMaterialType.Water; // water → ice; heat melts it back
                         _slump = 0f;
                     }
-                    else { Slump(dt); Cohere(); }                       // liquids pool AND re-pool
+                    else Slump(dt);                                     // liquids pool where they are
                     break;
 
                 case MatterPhase.Solid:
@@ -116,6 +119,8 @@ namespace SpellyZombie
                     if (_rb) _rb.AddForce(Vector3.up * 1.4f, ForceMode.Acceleration); // rises
                     break;
             }
+
+            Cohere(); // fake joints, every phase — strength graded by phase
 
             // sustained compression jumps the material a tier: wood→coal→diamond
             if (Density >= TransmuteAt && _info.DenserForm != Material) Transmute();
@@ -146,43 +151,63 @@ namespace SpellyZombie
             if (_age > life || transform.localScale.x < 0.02f) Destroy(gameObject);
         }
 
-        /// Marko's liquid rule (SPELL_PARTICLES.md): same-material liquids hold
-        /// weak RE-FORMABLE BONDS — nearby blobs pull together (bond strength IS
-        /// Stickiness, so glue makes goo and repel makes mist), and touching
-        /// blobs MERGE into one bigger one. Splash a puddle apart and it
-        /// re-pools; freeze it and the bonds lock into one solid. Different
-        /// materials never bond — chemistry (React) decides for them.
+        /// FAKE JOINTS (Marko's rule — no Unity joints, a spring is enough):
+        /// same-material, same-phase blobs are linked by a spring toward a rest
+        /// distance. Strength is graded by phase — LIQUID strongest (bond IS
+        /// Stickiness: glue makes goo, repel makes mist), SOLID weak (rubble
+        /// loosely piles), GAS weakest (clouds barely hold). Liquids also match
+        /// velocities (soft-body: the blob cluster moves and jiggles as one)
+        /// and MERGE on contact. Splash a puddle apart and it re-pools; freeze
+        /// it and the bonds lock rigid. Different materials never bond —
+        /// chemistry (React) decides for them. Cost: a distance sweep 3×/sec
+        /// under the 90-matter cap — no physics solver, nothing on the wire.
         float _cohereTimer;
         void Cohere()
         {
             _cohereTimer -= Time.deltaTime;
             if (_cohereTimer > 0f) return;
             _cohereTimer = 0.3f;
+            if (_rb == null) return;
+
+            float k = Phase == MatterPhase.Liquid ? Stickiness * 6f
+                : Phase == MatterPhase.Solid ? 0.7f : 0.25f;
+            float reach = Phase == MatterPhase.Liquid ? 1.2f : 0.9f;
+            bool liquid = Phase == MatterPhase.Liquid;
 
             for (int i = 0; i < All.Count; i++)
             {
                 var o = All[i];
-                if (o == null || o == this || o.Phase != MatterPhase.Liquid
+                if (o == null || o == this || o.Phase != Phase
                     || o.Material != Material) continue;
                 Vector3 to = o.transform.position - transform.position;
                 float d = to.magnitude;
-                if (d > 1.2f) continue;
+                if (d > reach || d < 0.01f) continue;
 
-                bool iAbsorb = _baseSize > o._baseSize
-                    || (Mathf.Approximately(_baseSize, o._baseSize) && GetInstanceID() < o.GetInstanceID());
-                if (d < 0.22f && iAbsorb && _baseSize < 1.3f)
+                if (liquid)
                 {
-                    // the bigger blob drinks the smaller — volumes add
-                    _baseSize = Mathf.Min(1.4f, Mathf.Pow(
-                        _baseSize * _baseSize * _baseSize + o._baseSize * o._baseSize * o._baseSize, 1f / 3f));
-                    Temperature = (Temperature + o.Temperature) * 0.5f;
-                    _slump = 0f; // re-settle at the new size
-                    Destroy(o.gameObject);
-                    continue;
+                    bool iAbsorb = _baseSize > o._baseSize
+                        || (Mathf.Approximately(_baseSize, o._baseSize) && GetInstanceID() < o.GetInstanceID());
+                    if (d < 0.22f && iAbsorb && _baseSize < 1.3f)
+                    {
+                        // the bigger blob drinks the smaller — volumes add
+                        _baseSize = Mathf.Min(1.4f, Mathf.Pow(
+                            _baseSize * _baseSize * _baseSize + o._baseSize * o._baseSize * o._baseSize, 1f / 3f));
+                        Temperature = (Temperature + o.Temperature) * 0.5f;
+                        _slump = 0f; // re-settle at the new size
+                        Destroy(o.gameObject);
+                        continue;
+                    }
                 }
 
-                if (_rb != null && d > 0.01f)
-                    _rb.AddForce(to.normalized * Stickiness * 5f, ForceMode.Acceleration);
+                // the spring: pull toward rest distance, push apart when
+                // overlapping — the cluster holds SHAPE instead of collapsing
+                float rest = (_baseSize + o._baseSize) * 0.55f;
+                _rb.AddForce(to.normalized * (d - rest) * k, ForceMode.Acceleration);
+
+                // soft-body velocity matching: the blob wobbles, then settles
+                if (liquid && o._rb != null)
+                    _rb.AddForce((o._rb.linearVelocity - _rb.linearVelocity) * 0.3f,
+                        ForceMode.Acceleration);
             }
         }
 
@@ -194,6 +219,16 @@ namespace SpellyZombie
             float flat = Mathf.Lerp(1f, 0.3f, _slump);
             float wide = Mathf.Lerp(1f, 1.7f, _slump);
             transform.localScale = new Vector3(_baseSize * wide, _baseSize * flat, _baseSize * wide);
+
+            // feed the shader's soft-body squash so the surface CONFORMS as it
+            // settles (per-renderer MPB — the material itself stays shared)
+            if (_rend != null)
+            {
+                if (_mpb == null) _mpb = new MaterialPropertyBlock();
+                _rend.GetPropertyBlock(_mpb);
+                _mpb.SetFloat(SquashID, _slump * 0.35f);
+                _rend.SetPropertyBlock(_mpb);
+            }
         }
 
         void ApplyPhysics()
@@ -341,7 +376,15 @@ namespace SpellyZombie
 
             if (look == _lastLook) return; // avoid re-setting the material every frame
             _lastLook = look;
-            _rend.sharedMaterial = MatterFX.Get(c, shade);
+
+            // liquids and gas wear the soft-body shader (jelly wobble + rim);
+            // solids stay rigid — their bonds are locked, and it shows
+            if (Phase == MatterPhase.Liquid)
+                _rend.sharedMaterial = MatterFX.Particle(c, shade, 0.07f, 0.5f);
+            else if (Phase == MatterPhase.Gas)
+                _rend.sharedMaterial = MatterFX.Particle(c, shade, 0.11f, 0.7f);
+            else
+                _rend.sharedMaterial = MatterFX.Get(c, shade);
         }
     }
 }

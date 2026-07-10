@@ -745,7 +745,12 @@ namespace SpellyZombie
                 c.a = Mathf.Clamp01(0.9f + Lum * 0.55f);
                 shade = MoteShade.Transparent;
             }
-            _rend.sharedMaterial = MatterFX.Get(c, shade);
+
+            // alive, not flat: jelly wobble + rim glow (SZParticle shader)
+            float wobble = Kind == ParticleKind.Shadow ? 0.09f
+                : Kind == ParticleKind.Glue ? 0.06f : 0.04f;
+            float rim = shade == MoteShade.Additive ? 0.9f : 0.35f;
+            _rend.sharedMaterial = MatterFX.Particle(c, shade, wobble, rim);
         }
     }
 
