@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfd7999bd4c27954893e50f093b92c34, type: 3}
+  m_Name: UISkin
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.UISkin
+  PanelBrown: {fileID: 21300000, guid: 6d4139ebc9b00d5449ad8b77136a2a4e, type: 3}
+  PanelBrownDark: {fileID: 21300000, guid: 480b481cf6af90d47b5662a0b8492e27, type: 3}
+  PanelGrey: {fileID: 21300000, guid: c617c53dd17a56342b92c0db75a09b18, type: 3}
+  PanelGreyDark: {fileID: 21300000, guid: e52fc50153409a746b80070a4f2ae592, type: 3}
+  PanelBorderBrown: {fileID: 21300000, guid: 67db2385882273742800100a1f8f2492, type: 3}
+  ButtonBrown: {fileID: 21300000, guid: 92c75382f4a356142b0a625958b11054, type: 3}
+  ButtonGrey: {fileID: 21300000, guid: 11ddec9da33a781409872cd27aa58169, type: 3}
+  ButtonRed: {fileID: 21300000, guid: 079f8ac41ae341c4e820afdee57725f9, type: 3}
+  ProgressRed: {fileID: 21300000, guid: 7cf09a437aed67c4283d6ce6e606a458, type: 3}
+  ProgressBlue: {fileID: 21300000, guid: 1fe534f1cf056394395b62209c608bcc, type: 3}
+  ProgressGreen: {fileID: 21300000, guid: ec40a4b4c50513f4b9409cbbf7e0720e, type: 3}
+  ProgressWhite: {fileID: 21300000, guid: 8f9ff1a2b49876946856474c14f082ed, type: 3}
+  ProgressBack: {fileID: 21300000, guid: 04faa2df53e456a40b19a73e757f92e9, type: 3}
+  BannerHanging: {fileID: 21300000, guid: 8060d94a17db80c428cdf3b956da3389, type: 3}
+  BannerCurtain: {fileID: 21300000, guid: 522d06c7f882f104680878bf1f4130c4, type: 3}
+  RoundBrown: {fileID: 21300000, guid: 4838da84da817c94da9e50445bcab53b, type: 3}
+  RoundGrey: {fileID: 21300000, guid: c5b00962e48158c448d35a949be3d088, type: 3}
+  HexBrown: {fileID: 21300000, guid: 78707d51c094ad847af4ec8ef27cdf60, type: 3}
+  HexGrey: {fileID: 21300000, guid: f479320b93ae9e74890cfc3e78ca5b06, type: 3}
+  HexRed: {fileID: 21300000, guid: c61795dbf7d072a499bf065e4065c131, type: 3}
+  HexGreen: {fileID: 21300000, guid: 89f1b0ebb6089a74f9a13c9a86321392, type: 3}
+  TextFont: {fileID: 0}
+  UIPrefab: {fileID: 5756616081941103159, guid: 5d5e76689c4a1e647989f515c5ab9c89, type: 3}
+  SurfacePrefabs:
+  - {fileID: 8201599692752023173, guid: b8415f59eeaacb541ae4ff8aa7f5032c, type: 3}
+  - {fileID: 3248357473962764504, guid: 82ddc61e995f59343915b9e767050a38, type: 3}

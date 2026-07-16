@@ -80,6 +80,7 @@ namespace SpellyZombie
             return true;
         }
 
+
         void Update()
         {
             float dt = Time.deltaTime;
@@ -181,14 +182,33 @@ namespace SpellyZombie
             if (_iceShell != null) Destroy(_iceShell);
         }
 
-        /// Burning creatures pass fire to whatever they bump into.
+        /// Collisions do two jobs: burning creatures pass fire to whatever
+        /// they bump into, and PHYSICS HURTS (Marko: some runes deal no
+        /// damage themselves — being FLUNG is the weapon). Any collision past
+        /// the speed threshold deals impact damage: push a zombie off a roof,
+        /// slam it into a wall with a gust, drop a boulder. Falls come free
+        /// through the same door — a falling body hits the floor fast.
         void OnCollisionEnter(Collision col)
         {
-            if (!Burning) return;
-            var t = col.collider.GetComponentInParent<Thermal>();
-            if (t != null) t.AddHeat(60f);
-            var m = col.collider.GetComponent<Matter>();
-            if (m != null) m.AddHeat(60f);
+            if (Burning)
+            {
+                var t = col.collider.GetComponentInParent<Thermal>();
+                if (t != null) t.AddHeat(60f);
+                var m = col.collider.GetComponent<Matter>();
+                if (m != null) m.AddHeat(60f);
+            }
+
+            float speed = col.relativeVelocity.magnitude;
+            if (speed < DrawingConfig.ImpactDamageSpeed) return;
+            float dmg = (speed - DrawingConfig.ImpactDamageSpeed) * DrawingConfig.ImpactDamagePerSpeed;
+
+            // a flung zombie is a projectile: whoever it lands on feels it too
+            var pilot = col.collider.GetComponent<SimpleFPSController>();
+            if (pilot != null) pilot.TakeHit(col.relativeVelocity * 0.25f, dmg * 0.6f);
+
+            if (TryShatter(dmg)) return; // frozen = brittle, triple payout
+            if (_dmg != null) _dmg.TakeDamage(dmg, "impact");
+            if (dmg > 8f) Juice.Thud(transform.position);
         }
     }
 }

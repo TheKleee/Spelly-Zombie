@@ -16,7 +16,7 @@ namespace SpellyZombie
         public const float InkWidth = 0.012f;        // line renderer width
         public const float DrawSmoothingTime = 0.025f; // hand-jitter smoothing time constant, seconds (0 = raw input)
         public const float DrawLookSensitivityScale = 0.35f; // camera sensitivity multiplier while the pen is down
-        public const float EraseRadius = 0.08f;      // debug eraser size
+        public const float EraseRadius = 0.012f;     // = InkWidth: eraser exactly as wide as the pen (Marko's rule — precise corrections, no collateral); swept along the cursor path so thin ≠ skippy
 
         // ---- Seal closure / integrity ----
         // Closure requires the ink to LITERALLY touch (ink is ~1.2cm wide). Ends
@@ -47,7 +47,8 @@ namespace SpellyZombie
         // anything deliberate registers; quality scales power, only genuine
         // scribble fizzles. (score = $P match confidence 0..1)
         public const float MinRuneScore = 0.42f;      // below this the shape is unreadable → fizzle (new score scale: honest ≈ .6+, noise ≈ .2-.35)
-        public const float RuneTouchDistance = 0.03f; // strokes must PHYSICALLY TOUCH (~2.5 ink widths) to read as one rune — exactness, like WHA
+        public const float RuneAmbiguityMargin = 0.05f; // two DIFFERENT runes within this of each other = coin flip → fizzle, never misfire (Marko: the right rune or none)
+        public const float RuneTouchDistance = 0.05f; // strokes this close read as ONE drawing — matches the endpoint stitcher, so "looks connected" = "is connected" (0.03 left visually-touching arrow barbs orphaned)
         public const float GoodRuneScore = 0.75f;     // at/above this the match counts as full strength
         public const float MinSizePower = 0.30f;      // a tiny rune in a big seal still does this fraction of its effect
 
@@ -79,6 +80,20 @@ namespace SpellyZombie
         // (matter spawning is one block per State zone per activation — size and
         // behaviour live in SurfaceMaterialDB / Matter, not here)
         public const float MaxThermalObjectSize = 3f;  // don't cook colliders bigger than this unless they're dynamic (walls/ground)
+
+        // ---- Physics damage (Marko: non-damage runes kill through velocity —
+        // push a zombie off a roof, drop with a dead FLOAT, slam with a gust) ----
+        public const float SafeFallSpeed = 10f;       // ≈ a 3.5m drop at gravity 14 — free
+        public const float FallDamagePerSpeed = 5f;   // hp per m/s past safe (10m fall ≈ 33 dmg)
+        public const float ImpactDamageSpeed = 8f;    // collisions slower than this are harmless (walking, brushing)
+        public const float ImpactDamagePerSpeed = 4f; // hp per m/s past that
+
+        // ---- air tumble (Marko: airborne too long = ragdoll comedy). No jump
+        // lasts 2s — only spells, shoves and cliffs keep you up that long, so
+        // this NEVER interrupts normal jumping; it fires exactly when you got
+        // SENT. Landing gets a short flop beat, then you're a wizard again.
+        public const float AirTumbleSeconds = 2f;
+        public const float AirTumbleRecover = 0.45f;  // faster than a combat sprawl — it's a joke, not a punishment
 
         // ---- Round game (ink economy / survival loop) ----
         public const float InkMax = 100f;

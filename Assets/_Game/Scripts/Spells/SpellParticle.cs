@@ -85,10 +85,12 @@ namespace SpellyZombie
 
             // push particles FLY (they're the force carriers); everything else
             // just blooms off the ink and hangs around the seal until a force
-            // moves it (user rule: no drifting off on their own)
+            // moves it (user rule: no drifting off on their own). Scatter kept
+            // SMALL so siblings stay in each other's reach (Marko: motes kept
+            // missing each other)
             float speed = kind == ParticleKind.Push ? 9f : 0.9f;
             p.Vel = dir.normalized * speed
-                + Random.insideUnitSphere * (kind == ParticleKind.Push ? 0.4f : 0.45f);
+                + Random.insideUnitSphere * (kind == ParticleKind.Push ? 0.4f : 0.22f);
 
             if (kind == ParticleKind.Light)
             {
@@ -137,6 +139,35 @@ namespace SpellyZombie
                 // them anywhere.
                 if (Kind != ParticleKind.Lightning && Kind != ParticleKind.Shadow)
                     Vel += Vector3.down * (EffDensity() - AirDensity) * 2.5f * dt;
+
+                // MOTES SEEK EACH OTHER (Marko: "they almost always miss") —
+                // a gentle pull toward the nearest sibling makes the matter
+                // law actually happen instead of depending on a lucky graze;
+                // close enough = the law fires NOW, no trigger-roulette
+                if (Kind != ParticleKind.Push && Kind != ParticleKind.Lightning
+                    && Kind != ParticleKind.Shadow)
+                {
+                    SpellParticle near = null;
+                    float bestSqr = 0.9f * 0.9f; // seek range
+                    for (int i = 0; i < All.Count; i++)
+                    {
+                        var o = All[i];
+                        if (o == this || o == null || o._dead || o.Kind == ParticleKind.Push) continue;
+                        float d = (o.transform.position - transform.position).sqrMagnitude;
+                        if (d < bestSqr)
+                        {
+                            bestSqr = d;
+                            near = o;
+                        }
+                    }
+                    if (near != null)
+                    {
+                        Vector3 to = near.transform.position - transform.position;
+                        Vel += to.normalized * (2.2f * dt);
+                        if (bestSqr < 0.1f * 0.1f && GetInstanceID() < near.GetInstanceID())
+                            ResolveLaw(this, near);
+                    }
+                }
                 Vel *= 1f - (Kind == ParticleKind.Push ? 0.25f : 1.4f) * dt;
                 transform.position += Vel * dt;
             }
@@ -383,7 +414,9 @@ namespace SpellyZombie
                     || c.GetComponentInParent<Damageable>() != null
                     || c.GetComponent<SimpleFPSController>() != null;
                 if (!interesting) continue; // strikes THINGS, not the map itself
-                float y = c.bounds.max.y + Random.value * 0.8f; // highest, with a dice roll
+                // "highest, RANDOMLY" — a big dice roll so it doesn't just
+                // bully the tallest thing in sight (usually the player)
+                float y = c.bounds.max.y + Random.value * 2.5f;
                 if (y > bestY) { bestY = y; best = c; }
             }
             if (best == null) return;
@@ -391,9 +424,11 @@ namespace SpellyZombie
             Vector3 hit = best.bounds.center + Vector3.up * best.bounds.extents.y;
             Bolt(transform.position, hit);
             Juice.Crackle(hit);
+            var lib = FxLibrary.I;
+            if (lib != null) FxLibrary.Spawn(lib.ElectricHit, hit, null, 3f);
 
             var pl = best.GetComponent<SimpleFPSController>();
-            if (pl != null) { pl.TakeHit(Vector3.down * 2f, 16f); return; }
+            if (pl != null) { pl.TakeHit(Vector3.down * 2f, 10f); return; }
             var d = best.GetComponentInParent<Damageable>();
             if (d != null) d.TakeDamage(18f * Power, "struck by lightning");
             GiveHeat(best, 60f);
@@ -634,6 +669,8 @@ namespace SpellyZombie
             if (_dead) return;
             Vector3 pos = transform.position;
             Juice.Boom(pos, 0.8f);
+            var lib = FxLibrary.I;
+            if (lib != null) FxLibrary.Spawn(lib.Explosion, pos);
             WorldEvents.Report(WorldEventKind.Explosion, pos, 2f);
             int n = Physics.OverlapSphereNonAlloc(pos, 3f, _scan, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < n; i++)
@@ -671,6 +708,19 @@ namespace SpellyZombie
             var m = c.GetComponent<Matter>();
             if (m != null) { m.AddHeat(delta); return; }
             var go = c.attachedRigidbody ? c.attachedRigidbody.gameObject : c.gameObject;
+
+            // a CHARACTER limb is not furniture: the limb capsules carry
+            // kinematic rigidbodies on the BONES — heat must route to the
+            // BEING (a Damageable on a bone once burned a leg clean off the
+            // skeleton and the skin snapped to the world origin)
+            var pilot = c.GetComponentInParent<SimpleFPSController>();
+            if (pilot != null) go = pilot.gameObject;
+            else
+            {
+                var creature = c.GetComponentInParent<Creature>();
+                if (creature != null) go = creature.gameObject;
+            }
+
             // don't cook giant static surfaces — same guard the old zones used
             var rend = go.GetComponentInChildren<Renderer>();
             if (rend != null && c.attachedRigidbody == null

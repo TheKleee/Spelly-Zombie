@@ -166,8 +166,19 @@ namespace SpellyZombie
                 z._sealScrawl = Random.Range(9f, 15f);  // first full seal a bit later
                 Debug.Log($"[SpellyZombie] Scribbler spawned (hat, purple) carrying: {string.Join(", ", z.Cards)}");
             }
+
+            // the wardrobe: the shared character model + zombie animations,
+            // following the physics capsule (graybox continues if not wired)
+            float widthMul = kind == ZombieKind.Charger ? 1.25f
+                : kind == ZombieKind.Runner ? 0.72f : 1f;
+            z._dress = ZombieDress.DressUp(z, skin, widthMul, eyes);
             return z;
         }
+
+        ZombieDress _dress;
+
+        /// The visual follower wearing this zombie's model (null in graybox).
+        public ZombieDress Dress => _dress;
 
         static void AddHatPart(Transform body, Vector3 localPos, Vector3 localScale, float tiltZ)
         {
@@ -237,6 +248,7 @@ namespace SpellyZombie
                 if (_creature.SpeedMultiplier >= 0.5f)
                     transform.rotation = Quaternion.Slerp(transform.rotation,
                         Quaternion.LookRotation(_brain.MoveDir), Time.fixedDeltaTime * 4f);
+                TryChewObstacle(speed); // CoD rule: barricades get eaten, not respected
             }
 
             // the compulsion outranks EVERYTHING: a scribbler that sees an
@@ -458,6 +470,41 @@ namespace SpellyZombie
             }
         }
 
+        // ------------------------------------------------- barricade chewing --
+        // The CoD flow: a zombie that WANTS to walk but is bodily blocked by
+        // something breakable (fence, window insert, door, even a conjured
+        // wall) swipes it apart instead of shuffling in place. Solid walls
+        // stay walls — the patrol repick handles those.
+        float _chewTimer;
+        void TryChewObstacle(float wantedSpeed)
+        {
+            _chewTimer -= Time.fixedDeltaTime;
+            if (wantedSpeed < 0.1f) return;
+
+            // actually stuck? it wanted to walk but is barely moving
+            Vector3 v = _rb.linearVelocity;
+            v.y = 0f;
+            if (v.sqrMagnitude > wantedSpeed * wantedSpeed * 0.15f) return;
+            if (_chewTimer > 0f) return;
+
+            Vector3 dir = _brain.MoveDir.normalized;
+            int mask = Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer);
+            if (!Physics.Raycast(transform.position + Vector3.up * 0.2f, dir, out var hit, 1.3f,
+                    mask, QueryTriggerInteraction.Ignore)) return;
+
+            if (hit.collider.GetComponentInParent<Creature>() != null) return;            // brawls are elsewhere
+            if (hit.collider.GetComponentInParent<SimpleFPSController>() != null) return; // that's lunch, not lumber
+            var obstacle = hit.collider.GetComponentInParent<Damageable>();
+            if (obstacle == null) return; // real wall — go around
+
+            _chewTimer = AttackCooldown * 1.1f;
+            _dress?.Attack();
+            obstacle.TakeDamage(AttackDamage * 1.4f, $"{name} tearing through");
+            Juice.Thud(hit.point);
+            _brain.Mumble("RRAGH!!", 1.2f);
+            _brain.Eyes?.SetMood(EyeMood.Mad, 1f);
+        }
+
         // ------------------------------------------------------------ walker --
         float _attackTimer;
         void TrySwipe(Transform target, float dist)
@@ -465,6 +512,7 @@ namespace SpellyZombie
             _attackTimer -= Time.fixedDeltaTime;
             if (dist > AttackRange || _attackTimer > 0f) return;
             _attackTimer = AttackCooldown;
+            _dress?.Attack();
 
             var player = target.GetComponent<SimpleFPSController>();
             if (player != null)
@@ -493,7 +541,12 @@ namespace SpellyZombie
             transform.position += new Vector3(tremble.x, 0f, tremble.y); // shaking with intent
             if (_windup < 1f)
             {
-                if (_windup < 0.1f) { _brain.Mumble("HRRNK!!", 1.5f); _brain.Eyes?.SetMood(EyeMood.Mad, 1.5f); }
+                if (_windup < 0.1f)
+                {
+                    _brain.Mumble("HRRNK!!", 1.5f);
+                    _brain.Eyes?.SetMood(EyeMood.Mad, 1.5f);
+                    _dress?.Scream(); // the agonized windup howl
+                }
                 return;
             }
 
@@ -617,6 +670,8 @@ namespace SpellyZombie
         // ------------------------------------------------------------ damage --
         void OnDamaged(float amount, string cause)
         {
+            if (amount >= 6f) _dress?.Hit(); // burn ticks are too small to flinch
+
             // a BIG single hit ragdolls the zombie — it tumbles, flails, and
             // struggles back up (unless it doesn't get the chance)
             if (amount >= 18f && _creature != null)

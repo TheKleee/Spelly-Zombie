@@ -16,6 +16,9 @@ namespace SpellyZombie
         float _sensitivity;
         string _status = "";
 
+        RectTransform _ui, _settingsUi;
+        UnityEngine.UI.Text _statusLabel;
+
         void Awake()
         {
             _sensitivity = PlayerPrefs.GetFloat("sz_look_sens", 0.12f);
@@ -23,55 +26,135 @@ namespace SpellyZombie
             Cursor.visible = true;
         }
 
-        void OnGUI()
+        void Start() => BuildUI();
+
+        void OnDestroy()
         {
-            GUI.Label(new Rect(40, 30, 700, 110), "Spelly Zombie", Title());
-
-            float y = Screen.height * 0.42f;
-            if (Button(ref y, "Create Server"))
-            {
-                SceneManager.LoadScene("Game");
-            }
-            if (Button(ref y, "Find Server"))
-            {
-                _status = "The server browser arrives with Epic Online Services. Create Server starts a match right now.";
-            }
-            if (Button(ref y, "Settings"))
-            {
-                _settingsOpen = !_settingsOpen;
-            }
-            if (Button(ref y, "Quit Game"))
-            {
-                Quit();
-            }
-
-            if (!string.IsNullOrEmpty(_status))
-                GUI.Label(new Rect(40, y + 10, 300, 100), _status, Wrap());
-
-            if (_settingsOpen)
-                SettingsPanel();
+            // the canvas persists across scenes — the menu HIDES (never
+            // destroys: prefab-adopted UI must survive Menu→Lobby→Menu)
+            if (_ui != null) _ui.gameObject.SetActive(false);
         }
 
-        bool Button(ref float y, string label)
+        void BuildUI()
         {
-            var r = new Rect(40, y, 230, 46);
-            y += 56;
-            return GUI.Button(r, label, Btn());
+            var skin = UISkin.I;
+            _ui = UIKit.Group(UIKit.Root, "MainMenu");
+            UIKit.Stretch(_ui);
+
+            // title top-left, button column on the left — Marko's Meccha layout
+            var title = UIKit.Label(_ui, "Spelly Zombie", 58, UIKit.Parchment, TextAnchor.MiddleLeft, true);
+            UIKit.Place((RectTransform)title.transform, new Vector2(0f, 1f), new Vector2(46f, -66f), new Vector2(700f, 80f));
+            var tag = UIKit.Label(_ui, "draw fast. die funny.", 20, UIKit.Gold, TextAnchor.MiddleLeft);
+            UIKit.Place((RectTransform)tag.transform, new Vector2(0f, 1f), new Vector2(50f, -116f), new Vector2(500f, 26f));
+
+            float y = -20f;
+            void MenuButton(string label, System.Action act, Sprite sprite = null)
+            {
+                var b = UIKit.Button(_ui, label, act, sprite ?? (skin != null ? skin.ButtonBrown : null), 19);
+                UIKit.Place((RectTransform)b.transform, new Vector2(0f, 0.5f), new Vector2(46f, y), new Vector2(250f, 50f));
+                ((RectTransform)b.transform).pivot = new Vector2(0f, 0.5f);
+                y -= 60f;
+            }
+
+            // menu → LOBBY (pick team, ready up) — Marko's two modes:
+            // Create Server = host a FRIENDS lobby (code + Steam invites);
+            // Find Server = join by code / Quick Join a public lobby.
+            // No Steam running = plain offline village (LAN panel still works).
+            MenuButton("Create Server", () =>
+            {
+                if (SteamLobby.SteamReady) SteamLobby.HostFriends();
+                else SceneManager.LoadScene("Lobby");
+            });
+            MenuButton("Find Server", ToggleJoin);
+            MenuButton("Settings", ToggleSettings, skin != null ? skin.ButtonGrey : null);
+            MenuButton("Quit Game", Quit, skin != null ? skin.ButtonRed : null);
+
+            _statusLabel = UIKit.Label(_ui, _status, 15, UIKit.Parchment, TextAnchor.UpperLeft);
+            _statusLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
+            UIKit.Place((RectTransform)_statusLabel.transform, new Vector2(0f, 0.5f), new Vector2(46f, y - 40f), new Vector2(300f, 110f));
         }
 
-        void SettingsPanel()
+        void Update()
         {
-            var r = new Rect(300, Screen.height * 0.42f, 300, 120);
-            GUI.Box(r, "Settings");
-            GUI.Label(new Rect(r.x + 15, r.y + 30, 200, 24), $"Mouse sensitivity: {_sensitivity:0.00}");
-            float ns = GUI.HorizontalSlider(new Rect(r.x + 15, r.y + 58, 270, 20), _sensitivity, 0.03f, 0.30f);
-            if (!Mathf.Approximately(ns, _sensitivity))
+            // the Steam layer narrates itself (lobby code, search progress,
+            // "Steam not running") — the status corner is its mouth
+            if (_statusLabel != null && !string.IsNullOrEmpty(SteamLobby.Status))
+                _statusLabel.text = SteamLobby.Status;
+        }
+
+        RectTransform _joinUi;
+        string _code = "";
+
+        /// Marko's join flow: type a friend's CODE, or Quick Join a public
+        /// lobby (none open = you host one and randoms find you).
+        void ToggleJoin()
+        {
+            if (_joinUi != null)
             {
-                _sensitivity = ns;
+                Destroy(_joinUi.gameObject);
+                _joinUi = null;
+                return;
+            }
+            if (!SteamLobby.SteamReady)
+            {
+                _statusLabel.text = "Steam isn't running — start Steam to host or join online. (Offline: Create Server opens the village solo.)";
+                return;
+            }
+
+            var skin = UISkin.I;
+            _joinUi = UIKit.Group(_ui, "JoinPanel");
+            UIKit.Place(_joinUi, new Vector2(0f, 0.5f), new Vector2(330f, -80f), new Vector2(320f, 168f));
+            var back = UIKit.Panel(_joinUi, skin != null ? skin.PanelBrown : null,
+                skin != null ? Color.white : new Color(0.22f, 0.17f, 0.12f, 0.95f));
+            UIKit.Stretch((RectTransform)back.transform);
+
+            var label = UIKit.Label(_joinUi, "Friend's lobby code:", 16, UIKit.Ink, TextAnchor.MiddleLeft, true);
+            UIKit.Place((RectTransform)label.transform, new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(270f, 22f));
+
+            var codeField = UIKit.Input(_joinUi, _code, v => _code = v);
+            UIKit.Place((RectTransform)codeField.transform, new Vector2(0.5f, 1f), new Vector2(-40f, -52f), new Vector2(180f, 30f));
+
+            var joinBtn = UIKit.Button(_joinUi, "JOIN", () => SteamLobby.JoinByCode(_code),
+                skin != null ? skin.ButtonBrown : null, 15);
+            UIKit.Place((RectTransform)joinBtn.transform, new Vector2(0.5f, 1f), new Vector2(100f, -52f), new Vector2(76f, 30f));
+
+            var quick = UIKit.Button(_joinUi, "QUICK JOIN — public lobby", () => SteamLobby.QuickJoin(),
+                skin != null ? skin.ButtonGrey : null, 15);
+            UIKit.Place((RectTransform)quick.transform, new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(270f, 36f));
+        }
+
+        void ToggleSettings()
+        {
+            _settingsOpen = !_settingsOpen;
+            if (!_settingsOpen)
+            {
+                if (_settingsUi != null) Destroy(_settingsUi.gameObject);
+                _settingsUi = null;
+                return;
+            }
+
+            var skin = UISkin.I;
+            _settingsUi = UIKit.Group(_ui, "Settings");
+            UIKit.Place(_settingsUi, new Vector2(0f, 0.5f), new Vector2(330f, -20f), new Vector2(320f, 150f));
+            var back = UIKit.Panel(_settingsUi, skin != null ? skin.PanelBrown : null,
+                skin != null ? Color.white : new Color(0.22f, 0.17f, 0.12f, 0.95f));
+            UIKit.Stretch((RectTransform)back.transform);
+
+            var label = UIKit.Label(_settingsUi, $"Mouse sensitivity: {_sensitivity:0.00}",
+                16, UIKit.Ink, TextAnchor.MiddleLeft, true);
+            UIKit.Place((RectTransform)label.transform, new Vector2(0.5f, 1f), new Vector2(0f, -26f), new Vector2(270f, 22f));
+
+            var slider = UIKit.Slider(_settingsUi, 0.03f, 0.30f, _sensitivity, v =>
+            {
+                _sensitivity = v;
+                label.text = $"Mouse sensitivity: {_sensitivity:0.00}";
                 PlayerPrefs.SetFloat("sz_look_sens", _sensitivity);
-            }
-            if (GUI.Button(new Rect(r.x + 15, r.y + 84, 270, 26), "Close"))
-                _settingsOpen = false;
+            });
+            UIKit.Place((RectTransform)slider.transform, new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(270f, 26f));
+
+            var close = UIKit.Button(_settingsUi, "Close", ToggleSettings,
+                skin != null ? skin.ButtonGrey : null, 16);
+            UIKit.Place((RectTransform)close.transform, new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(270f, 36f));
         }
 
         static void Quit()
@@ -81,26 +164,6 @@ namespace SpellyZombie
 #else
             Application.Quit();
 #endif
-        }
-
-        static GUIStyle _title, _btn, _wrap;
-        static GUIStyle Title()
-        {
-            if (_title == null)
-                _title = new GUIStyle(GUI.skin.label) { fontSize = 54, fontStyle = FontStyle.Bold };
-            return _title;
-        }
-        static GUIStyle Btn()
-        {
-            if (_btn == null)
-                _btn = new GUIStyle(GUI.skin.button) { fontSize = 19 };
-            return _btn;
-        }
-        static GUIStyle Wrap()
-        {
-            if (_wrap == null)
-                _wrap = new GUIStyle(GUI.skin.label) { wordWrap = true };
-            return _wrap;
         }
     }
 }

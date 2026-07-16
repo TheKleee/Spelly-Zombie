@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 427375f939873dc4c86afbf3c12e4f08, type: 3}
+  m_Name: CharacterLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.CharacterLibrary
+  BodyModel: {fileID: 919132149155446097, guid: 8a3cd9f3f6432f844873d3cb01c9f4d8, type: 3}
+  AnimController: {fileID: 9100000, guid: b3a90a47cfeb7ea439ce25df9a58c48d, type: 2}
+  ZombieController: {fileID: 9100000, guid: 57866a30f4a959d46ac5a7183143ab04, type: 2}

@@ -12,7 +12,34 @@ namespace SpellyZombie
 
         /// Lasso split hands the tail nodes to a freshly created stroke.
         internal void SetStroke(Stroke stroke) => Stroke = stroke;
-        public Vector3 SurfaceNormal { get; private set; }
+
+        /// The surface normal at this node — LIVE: it turns with the surface.
+        public Vector3 SurfaceNormal => SurfaceDelta * _normalAtDraw;
+
+        /// How this ink's surface has ROTATED since the ink was drawn. Ink on
+        /// moving carriers (a tablet riding the camera, a posed body, a turned
+        /// zombie) takes its reference frame WITH it — a rune must read the
+        /// same no matter where its carrier now faces (Marko's consistency
+        /// rule: your orientation in the world never changes what a drawing
+        /// is). Static world ink: identity, exactly the old behavior.
+        public Quaternion SurfaceDelta =>
+            _hasParentRot && transform.parent != null
+                ? transform.parent.rotation * Quaternion.Inverse(_parentRotAtDraw)
+                : Quaternion.identity;
+
+        Vector3 _normalAtDraw;
+        Quaternion _parentRotAtDraw;
+        bool _hasParentRot;
+
+        /// Body paint hands shell-drawn ink to a BONE afterwards: new parent,
+        /// fresh rotation baseline (the frozen pose the ink was painted in IS
+        /// its reference frame from here on).
+        public void Rebase(Transform newParent)
+        {
+            transform.SetParent(newParent, true);
+            _parentRotAtDraw = newParent.rotation;
+            _hasParentRot = true;
+        }
 
         /// True when the surface is a character or weapon (PersistentInkSurface in
         /// the parent chain) — such ink is never consumed by spell resolution.
@@ -27,7 +54,12 @@ namespace SpellyZombie
             var node = go.AddComponent<DrawNode>();
             node.Stroke = stroke;
             node.Index = index;
-            node.SurfaceNormal = normal;
+            node._normalAtDraw = normal;
+            if (surface != null)
+            {
+                node._parentRotAtDraw = surface.rotation;
+                node._hasParentRot = true;
+            }
             node.OnPersistentSurface = surface != null && surface.GetComponentInParent<PersistentInkSurface>() != null;
             return node;
         }

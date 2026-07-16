@@ -1,0 +1,46 @@
+using UnityEngine;
+
+namespace SpellyZombie
+{
+    /// The precision-mode cursor: a clean brush circle with a center dot
+    /// (Photoshop / Meccha Chameleon style) instead of the OS arrow — you're
+    /// drawing, and the cursor should say so. Generated once at runtime,
+    /// white ring with a dark outline so it reads on any surface.
+    public static class PrecisionCursor
+    {
+        static Texture2D _tex;
+
+        public static void Apply()
+        {
+            if (_tex == null) Build();
+            Cursor.SetCursor(_tex, new Vector2(_tex.width / 2f, _tex.height / 2f), CursorMode.Auto);
+        }
+
+        public static void Clear() =>
+            Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+
+        static void Build()
+        {
+            const int size = 48;
+            const float ring = 15f;   // ring radius in px
+            const float thick = 1.6f; // ring stroke width
+            _tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var clear = new Color(0f, 0f, 0f, 0f);
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x - size / 2f + 0.5f, dy = y - size / 2f + 0.5f;
+                    float d = Mathf.Sqrt(dx * dx + dy * dy);
+                    float ringDist = Mathf.Abs(d - ring);
+
+                    Color c = clear;
+                    if (ringDist < thick) c = Color.white;                       // the circle
+                    else if (ringDist < thick + 1.2f) c = new Color(0f, 0f, 0f, 0.8f); // dark outline
+                    if (d < 1.6f) c = Color.white;                               // center dot
+                    else if (d < 2.6f && c.a == 0f) c = new Color(0f, 0f, 0f, 0.8f);
+                    _tex.SetPixel(x, y, c);
+                }
+            _tex.Apply();
+        }
+    }
+}

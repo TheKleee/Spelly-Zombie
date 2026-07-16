@@ -34,12 +34,20 @@ namespace SpellyZombie
         {
             var kb = Keyboard.current;
             if (kb == null || PoseStudio.IsOpen) return;
+            // the MAIN MENU owns its screen — no pause menu on top of it
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Menu")
+            {
+                if (IsOpen) Close();
+                return;
+            }
             if (kb.escapeKey.wasPressedThisFrame)
             {
                 if (IsOpen) Close();
                 else Open();
             }
         }
+
+        RectTransform _ui;
 
         void Open()
         {
@@ -48,6 +56,7 @@ namespace SpellyZombie
             Time.timeScale = 0f;
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+            BuildUI();
         }
 
         void Close()
@@ -57,65 +66,84 @@ namespace SpellyZombie
             PlayerPrefs.SetFloat("sz_look_sens", _sens);
             PlayerPrefs.SetFloat("sz_volume", _volume);
             PlayerPrefs.Save();
+            if (_ui != null) Destroy(_ui.gameObject);
+            _ui = null;
             // cursor re-locks on the next left-click (controller's existing rule)
         }
 
-        void OnGUI()
+        void BuildUI()
         {
-            if (!IsOpen) return;
+            UIKit.Retire(_ui); // never re-adopt the dying menu same-frame
+            var skin = UISkin.I;
+            _ui = UIKit.Group(UIKit.Root, "PauseMenu");
+            UIKit.Stretch(_ui);
 
-            // dim the world
-            GUI.color = new Color(0f, 0f, 0f, 0.6f);
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-            GUI.color = Color.white;
+            // dim the world (and swallow clicks behind the menu)
+            var dim = UIKit.Panel(_ui, null, new Color(0f, 0f, 0f, 0.62f));
+            dim.raycastTarget = true;
+            UIKit.Stretch((RectTransform)dim.transform);
 
-            float w = 300f, x = (Screen.width - w) / 2f, y = Screen.height * 0.25f;
+            var title = UIKit.Label(_ui, "SPELLY ZOMBIE", 44, UIKit.Parchment, TextAnchor.MiddleCenter, true);
+            UIKit.Place((RectTransform)title.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 230f), new Vector2(800f, 60f));
 
-            var title = new GUIStyle(GUI.skin.label)
-            { fontSize = 34, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-            GUI.Label(new Rect(0, y - 70f, Screen.width, 50f), "SPELLY ZOMBIE", title);
+            var panel = UIKit.Panel(_ui, skin != null ? skin.PanelBrown : null,
+                skin != null ? Color.white : new Color(0.22f, 0.17f, 0.12f, 0.95f));
+            var pr = (RectTransform)panel.transform;
+            UIKit.Place(pr, new Vector2(0.5f, 0.5f), new Vector2(0f, -30f), new Vector2(380f, _options ? 300f : 380f));
 
             if (_options)
             {
-                GUI.Label(new Rect(x, y, w, 22f), $"Look sensitivity: {_sens:0.00}");
-                float newSens = GUI.HorizontalSlider(new Rect(x, y + 24f, w, 20f), _sens, 0.02f, 0.4f);
-                if (!Mathf.Approximately(newSens, _sens))
+                var sensLabel = UIKit.Label(pr, $"Look sensitivity: {_sens:0.00}", 17, UIKit.Ink, TextAnchor.MiddleLeft, true);
+                UIKit.Place((RectTransform)sensLabel.transform, new Vector2(0.5f, 1f), new Vector2(0f, -34f), new Vector2(300f, 24f));
+                var sens = UIKit.Slider(pr, 0.02f, 0.4f, _sens, v =>
                 {
-                    _sens = newSens;
+                    _sens = v;
+                    sensLabel.text = $"Look sensitivity: {_sens:0.00}";
                     foreach (var p in SimpleFPSController.All)
                         if (p != null) p.LookSensitivity = _sens;
-                }
+                });
+                UIKit.Place((RectTransform)sens.transform, new Vector2(0.5f, 1f), new Vector2(0f, -68f), new Vector2(300f, 26f));
 
-                GUI.Label(new Rect(x, y + 56f, w, 22f), $"Volume: {_volume * 100f:0}%");
-                float newVol = GUI.HorizontalSlider(new Rect(x, y + 80f, w, 20f), _volume, 0f, 1f);
-                if (!Mathf.Approximately(newVol, _volume))
+                var volLabel = UIKit.Label(pr, $"Volume: {_volume * 100f:0}%", 17, UIKit.Ink, TextAnchor.MiddleLeft, true);
+                UIKit.Place((RectTransform)volLabel.transform, new Vector2(0.5f, 1f), new Vector2(0f, -116f), new Vector2(300f, 24f));
+                var vol = UIKit.Slider(pr, 0f, 1f, _volume, v =>
                 {
-                    _volume = newVol;
+                    _volume = v;
+                    volLabel.text = $"Volume: {_volume * 100f:0}%";
                     AudioListener.volume = _volume;
-                }
+                });
+                UIKit.Place((RectTransform)vol.transform, new Vector2(0.5f, 1f), new Vector2(0f, -150f), new Vector2(300f, 26f));
 
-                if (GUI.Button(new Rect(x, y + 116f, w, 34f), "Back")) _options = false;
+                var back = UIKit.Button(pr, "Back", () => { _options = false; BuildUI(); },
+                    skin != null ? skin.ButtonGrey : null);
+                UIKit.Place((RectTransform)back.transform, new Vector2(0.5f, 0f), new Vector2(0f, 30f), new Vector2(300f, 48f));
                 return;
             }
 
-            if (GUI.Button(new Rect(x, y, w, 38f), "Resume")) Close();
-            if (GUI.Button(new Rect(x, y + 46f, w, 38f), "Restart run"))
+            void MenuButton(string label, float y, System.Action act, Sprite sprite = null)
+            {
+                var b = UIKit.Button(pr, label, act, sprite ?? (skin != null ? skin.ButtonBrown : null));
+                UIKit.Place((RectTransform)b.transform, new Vector2(0.5f, 1f), new Vector2(0f, y), new Vector2(300f, 50f));
+            }
+
+            MenuButton("Resume", -36f, Close);
+            MenuButton("Restart run", -96f, () =>
             {
                 Close();
                 UnityEngine.SceneManagement.SceneManager.LoadScene(
                     UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
-            }
-            if (GUI.Button(new Rect(x, y + 92f, w, 38f), "Options")) _options = true;
-            if (GUI.Button(new Rect(x, y + 138f, w, 38f), "♥ Wishlist on Steam"))
-                Application.OpenURL(WishlistUrl);
-            if (GUI.Button(new Rect(x, y + 184f, w, 38f), "Quit"))
+            });
+            MenuButton("Options", -156f, () => { _options = true; BuildUI(); });
+            MenuButton("♥ Wishlist on Steam", -216f, () => Application.OpenURL(WishlistUrl),
+                skin != null ? skin.ButtonGrey : null);
+            MenuButton("Quit", -276f, () =>
             {
 #if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;
 #else
                 Application.Quit();
 #endif
-            }
+            }, skin != null ? skin.ButtonRed : null);
         }
     }
 }

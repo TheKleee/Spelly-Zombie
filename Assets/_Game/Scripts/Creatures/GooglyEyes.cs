@@ -25,11 +25,41 @@ namespace SpellyZombie
         Vector3 _lVel, _rVel, _lPos, _rPos;         // pupil spring state (local)
         Vector3 _lastHeadPos;
         float _moodHold, _scale = 1f, _dizzyPhase;
+        float _pupilBase = 0.45f;  // Marko's Eyes prefab keeps its own pupil size
+        float _pupilDepth = 0.4f;  // ...and its own pupil-forward offset
 
         /// Builds the rig on any transform. headHeight = local Y of eye line,
         /// scale ≈ creature size (1 = human).
         public static GooglyEyes Attach(Transform body, float headHeight, float scale)
         {
+            // MARKO'S PREFAB FIRST (Resources/Custom/Eyes): children named
+            // "Eye" — each with a child "Pupil" — get the full googly
+            // behavior; anything else in the prefab just rides the head.
+            var custom = PrefabVault.Spawn("Eyes", body);
+            if (custom != null)
+            {
+                custom.name = "GooglyEyes";
+                custom.transform.localPosition = new Vector3(0f, headHeight, 0f);
+                var e = custom.AddComponent<GooglyEyes>();
+                e._scale = scale;
+                var balls = new System.Collections.Generic.List<Transform>();
+                foreach (var t in custom.GetComponentsInChildren<Transform>(true))
+                    if (t.name == "Eye") balls.Add(t);
+                if (balls.Count >= 2)
+                {
+                    e._leftEye = balls[0];
+                    e._rightEye = balls[1];
+                    e._leftPupil = balls[0].Find("Pupil");
+                    e._rightPupil = balls[1].Find("Pupil");
+                    if (e._leftPupil != null) // keep HIS pupil proportions
+                    {
+                        e._pupilBase = e._leftPupil.localScale.x;
+                        e._pupilDepth = e._leftPupil.localPosition.z;
+                    }
+                }
+                return e;
+            }
+
             var rig = new GameObject("GooglyEyes");
             rig.transform.SetParent(body, false);
             rig.transform.localPosition = new Vector3(0f, headHeight, 0f);
@@ -75,10 +105,24 @@ namespace SpellyZombie
             foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = visible;
         }
 
+        /// First-person trick: the eyes vanish from YOUR camera but keep
+        /// casting shadows — no giant orbs in your face, no eyeless shadow.
+        public void SetShadowsOnly(bool hidden)
+        {
+            foreach (var r in GetComponentsInChildren<Renderer>())
+                r.shadowCastingMode = hidden
+                    ? UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly
+                    : UnityEngine.Rendering.ShadowCastingMode.On;
+        }
+
         void Update()
         {
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
+            // a custom Eyes prefab without the Eye/Pupil naming contract is
+            // pure decoration — it rides the head, nothing to animate
+            if (_leftEye == null || _rightEye == null
+                || _leftPupil == null || _rightPupil == null) return;
 
             // ---- auto behavior unless a brain is holding a mood ----
             if (_moodHold > 0f) _moodHold -= dt;
@@ -142,8 +186,8 @@ namespace SpellyZombie
             pos += vel * dt;
             pos = Vector3.ClampMagnitude(pos, 0.34f);
 
-            pupil.localPosition = new Vector3(pos.x, pos.y, 0.4f);
-            pupil.localScale = Vector3.one * Mathf.MoveTowards(pupil.localScale.x, 0.45f * dilate, dt * 2.5f);
+            pupil.localPosition = new Vector3(pos.x, pos.y, _pupilDepth);
+            pupil.localScale = Vector3.one * Mathf.MoveTowards(pupil.localScale.x, _pupilBase * dilate, dt * 2.5f);
         }
     }
 }

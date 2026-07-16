@@ -27,6 +27,7 @@ namespace SpellyZombie
         }
 
         bool NeedsChoice =>
+            RuneLibrary.RestrictedArena && // the pick happens IN THE GAME — the lobby is free practice
             !RuneLibrary.AllRunesUnlockedForTesting &&
             Grimoire.LocalPlayerId != 0 &&
             !Grimoire.HasAny(Grimoire.LocalPlayerId);
@@ -36,23 +37,30 @@ namespace SpellyZombie
             if (!NeedsChoice || PoseStudio.IsOpen)
             {
                 _offers = null; // fresh roll next time a choice is needed
+                if (_ui != null) { Destroy(_ui.gameObject); _ui = null; }
                 return;
             }
-            if (_offers == null) Roll();
+            if (_offers == null)
+            {
+                Roll();
+                BuildUI();
+            }
 
             var kb = Keyboard.current;
-            if (kb == null) return;
+            if (kb == null || UIKit.Typing) return;
             for (int i = 0; i < _offers.Length; i++)
             {
                 var key = kb[(Key)((int)Key.Digit1 + i)];
-                if (key != null && key.wasPressedThisFrame)
-                {
-                    Grimoire.Unlock(Grimoire.LocalPlayerId, _offers[i]);
-                    ChosenCard = _offers[i];
-                    HasChosen = true;
-                    Debug.Log($"[SpellyZombie] Primary rune chosen: {_offers[i]} — collect the rest from zombies.");
-                }
+                if (key != null && key.wasPressedThisFrame) Pick(i);
             }
+        }
+
+        void Pick(int i)
+        {
+            Grimoire.Unlock(Grimoire.LocalPlayerId, _offers[i]);
+            ChosenCard = _offers[i];
+            HasChosen = true;
+            Debug.Log($"[SpellyZombie] Primary rune chosen: {_offers[i]} — collect the rest from zombies.");
         }
 
         /// Three distinct random families out of the six.
@@ -67,15 +75,54 @@ namespace SpellyZombie
             _offers = new[] { pool[0], pool[1], pool[2] };
         }
 
-        void OnGUI()
+        RectTransform _ui;
+
+        void BuildUI()
         {
-            if (!NeedsChoice || _offers == null) return;
-            float w = 460f, h = 40f + _offers.Length * 22f;
-            var r = new Rect((Screen.width - w) / 2f, Screen.height * 0.22f, w, h);
-            GUI.Box(r, "CHOOSE YOUR PRIMARY RUNE — one of these three (press the number)");
+            if (_ui != null) Destroy(_ui.gameObject);
+            var skin = UISkin.I;
+            _ui = UIKit.Group(UIKit.Root, "RuneChooser");
+            UIKit.Place(_ui, new Vector2(0.5f, 1f), new Vector2(0f, -130f), new Vector2(880f, 200f));
+
+            var header = UIKit.Panel(_ui, skin != null ? skin.BannerCurtain : null,
+                skin != null ? Color.white : new Color(0f, 0f, 0f, 0.6f));
+            UIKit.Place((RectTransform)header.transform, new Vector2(0.5f, 1f), Vector2.zero, new Vector2(720f, 70f));
+            var headText = UIKit.Label((RectTransform)header.transform,
+                "CHOOSE YOUR PRIMARY RUNE — one of three", 18, UIKit.Ink, TextAnchor.MiddleCenter, true);
+            UIKit.Stretch((RectTransform)headText.transform);
+
+            float w = 272f, gap = 16f;
+            float x0 = -(_offers.Length - 1) * (w + gap) * 0.5f;
             for (int i = 0; i < _offers.Length; i++)
-                GUI.Label(new Rect(r.x + 14f, r.y + 26f + i * 22f, w - 28f, 20f),
-                    $"[{i + 1}] {RuneLibrary.CardDescription(_offers[i])}");
+            {
+                int pick = i;
+                var card = UIKit.Group(_ui, "Rune" + i);
+                UIKit.Place(card, new Vector2(0.5f, 0f), new Vector2(x0 + i * (w + gap), 44f), new Vector2(w, 104f));
+                var back = UIKit.Panel(card, skin != null ? skin.PanelBrown : null,
+                    skin != null ? Color.white : new Color(0.25f, 0.2f, 0.14f, 0.95f));
+                UIKit.Stretch((RectTransform)back.transform);
+
+                var cap = UIKit.Keycap(card, (i + 1).ToString(), 28f);
+                UIKit.Place(cap, new Vector2(0f, 1f), new Vector2(10f, -10f), cap.sizeDelta);
+
+                var name = UIKit.Label(card, _offers[i].ToString().ToUpper(), 18, UIKit.Ink, TextAnchor.MiddleLeft, true);
+                UIKit.Place((RectTransform)name.transform, new Vector2(0f, 1f), new Vector2(52f, -24f), new Vector2(w - 60f, 24f));
+
+                var desc = UIKit.Label(card, RuneLibrary.CardDescription(_offers[i]), 14,
+                    new Color(0.25f, 0.19f, 0.12f), TextAnchor.UpperLeft);
+                desc.horizontalOverflow = HorizontalWrapMode.Wrap;
+                UIKit.Place((RectTransform)desc.transform, new Vector2(0f, 1f), new Vector2(14f, -46f), new Vector2(w - 28f, 52f));
+
+                // clicking the card works too (Meccha rule: direct manipulation).
+                // GET-or-add: a prefab-adopted card was BAKED with its Button,
+                // and AddComponent on a duplicate returns null (NRE of 14 July)
+                var btn = card.gameObject.GetComponent<UnityEngine.UI.Button>();
+                if (btn == null) btn = card.gameObject.AddComponent<UnityEngine.UI.Button>();
+                btn.targetGraphic = back;
+                back.raycastTarget = true;
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() => Pick(pick));
+            }
         }
     }
 }

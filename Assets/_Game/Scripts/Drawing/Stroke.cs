@@ -59,8 +59,13 @@ namespace SpellyZombie
 
         LineRenderer _line;
         GameObject _lineGo;
+        readonly List<LineRenderer> _extra = new List<LineRenderer>(); // runs after visual breaks
+        bool _loop;
+        Color _color = InkColor;
         bool _dirty = true; // set when nodes are added/destroyed
         Vector3 _lastFirstPos, _lastLastPos;
+        readonly List<Vector3> _pts = new List<Vector3>();
+        readonly List<int> _runStarts = new List<int>();
 
         public DrawNode First => Nodes.Count > 0 ? Nodes[0] : null;
         public DrawNode Last => Nodes.Count > 0 ? Nodes[Nodes.Count - 1] : null;
@@ -115,7 +120,8 @@ namespace SpellyZombie
         /// Render the line as a closed ring (used while this stroke is a whole seal).
         public void SetLoop(bool on)
         {
-            if (_line != null) _line.loop = on;
+            _loop = on;
+            _dirty = true; // the ring only closes visually when nothing is stretched apart
         }
 
         public void MarkDirty() => _dirty = true;
@@ -134,6 +140,18 @@ namespace SpellyZombie
                 if (firstParent == null) firstParent = parent;
                 else if (parent != firstParent) MultiSurface = true;
             }
+        }
+
+        /// Ink on a holstered surface (weapon stowed in third person, held in an
+        /// unselected slot, ...) does NOT exist right now: it renders nothing,
+        /// joins no seals, can't be erased, and zombies can't see it. It returns
+        /// exactly as it was when the surface reactivates. MP-friendly by
+        /// construction: derived from hierarchy visibility, so once weapon stow
+        /// state replicates, ink visibility follows with zero extra messages.
+        public bool Hidden()
+        {
+            var f = First;
+            return f != null && !f.gameObject.activeInHierarchy;
         }
 
         /// True when the ink still exists — i.e. no node has been erased/destroyed.
@@ -176,16 +194,21 @@ namespace SpellyZombie
         }
 
         /// Flatten node positions into the stroke's start-of-draw view plane.
+        /// The frame rides the surface (SurfaceDelta) so ink on moving carriers
+        /// keeps the same 2D shape no matter how the carrier has turned since.
         public void ComputeRawShape()
         {
             RawShape.Clear();
             if (First == null) return;
             Vector3 origin = First.transform.position;
+            var delta = First.SurfaceDelta;
+            Vector3 right = delta * BasisRight;
+            Vector3 up = delta * BasisUp;
             foreach (var n in Nodes)
             {
                 if (n == null) continue;
                 Vector3 d = n.transform.position - origin;
-                RawShape.Add(new Vector2(Vector3.Dot(d, BasisRight), Vector3.Dot(d, BasisUp)));
+                RawShape.Add(new Vector2(Vector3.Dot(d, right), Vector3.Dot(d, up)));
             }
         }
 
@@ -205,9 +228,18 @@ namespace SpellyZombie
 
         public void SetColor(Color c)
         {
-            if (_line == null) return;
-            _line.startColor = c;
-            _line.endColor = c;
+            _color = c;
+            if (_line != null)
+            {
+                _line.startColor = c;
+                _line.endColor = c;
+            }
+            foreach (var l in _extra)
+                if (l != null)
+                {
+                    l.startColor = c;
+                    l.endColor = c;
+                }
         }
 
         /// Nodes ride moving surfaces, so the line refreshes from live positions —
@@ -216,6 +248,12 @@ namespace SpellyZombie
         public void UpdateLine()
         {
             if (_line == null) return;
+
+            // the line GO lives in world space, not under the surface — sync its
+            // visibility by hand or stowed-weapon ink floats in mid-air
+            bool hidden = Hidden();
+            if (_lineGo != null && _lineGo.activeSelf == hidden) _lineGo.SetActive(!hidden);
+            if (hidden) return;
 
             if (!_dirty && State != StrokeState.Drawing && !MultiSurface)
             {
@@ -238,13 +276,86 @@ namespace SpellyZombie
             }
             _dirty = false;
 
-            int alive = 0;
+            // ---- split the polyline into visual RUNS: a segment that has
+            // STRETCHED far past its drawn length (ink riding two separating
+            // bones) is simply not rendered. The ink IS its nodes — runes and
+            // seals compute from live positions (Marko's rule); the line is
+            // cosmetics and must never rubber-band across the body.
+            _pts.Clear();
+            _runStarts.Clear();
+            _runStarts.Add(0);
+            int lastIdx = -1;
             for (int i = 0; i < Nodes.Count; i++)
-                if (Nodes[i] != null) alive++;
-            _line.positionCount = alive;
-            int p = 0;
-            for (int i = 0; i < Nodes.Count; i++)
-                if (Nodes[i] != null) _line.SetPosition(p++, Nodes[i].transform.position);
+            {
+                if (Nodes[i] == null) continue;
+                Vector3 pos = Nodes[i].transform.position;
+                if (lastIdx >= 0)
+                {
+                    float drawn = SegmentDrawnLength(lastIdx, i);
+                    float breakLen = Mathf.Max(drawn * 2.5f, DrawingConfig.NodeSpacing * 3f);
+                    if ((pos - _pts[_pts.Count - 1]).sqrMagnitude > breakLen * breakLen)
+                        _runStarts.Add(_pts.Count); // stretched — start a new piece
+                }
+                _pts.Add(pos);
+                lastIdx = i;
+            }
+
+            int runCount = _runStarts.Count;
+            _line.loop = _loop && runCount == 1; // a torn ring doesn't close
+            for (int r = 0; r < runCount; r++)
+            {
+                int start = _runStarts[r];
+                int end = r + 1 < runCount ? _runStarts[r + 1] : _pts.Count;
+                FillRun(r == 0 ? _line : ExtraLine(r - 1), start, end);
+            }
+            for (int r = runCount - 1; r < _extra.Count; r++) // park unused pieces
+                if (r >= 0 && _extra[r] != null) _extra[r].positionCount = 0;
+        }
+
+        /// Drawing-time length of the segment between two node indices; falls
+        /// back to the standard spacing when the length table is stale.
+        float SegmentDrawnLength(int a, int b)
+        {
+            if (_runningLength.Count == Nodes.Count && a >= 0 && b < _runningLength.Count)
+                return _runningLength[b] - _runningLength[a];
+            return DrawingConfig.NodeSpacing;
+        }
+
+        void FillRun(LineRenderer lr, int start, int end)
+        {
+            int count = end - start;
+            if (count == 1)
+            {
+                // a lone node still shows as an ink DOT, never vanishes
+                Vector3 a = _pts[start];
+                lr.positionCount = 2;
+                lr.SetPosition(0, a);
+                lr.SetPosition(1, a + Vector3.up * (DrawingConfig.InkWidth * 0.35f));
+                return;
+            }
+            lr.positionCount = count;
+            for (int i = 0; i < count; i++)
+                lr.SetPosition(i, _pts[start + i]);
+        }
+
+        LineRenderer ExtraLine(int idx)
+        {
+            while (_extra.Count <= idx)
+            {
+                var go = new GameObject($"StrokeLine_{Id}_part{_extra.Count + 1}");
+                go.transform.SetParent(_lineGo.transform, false); // hides/dies with the stroke
+                var lr = go.AddComponent<LineRenderer>();
+                lr.sharedMaterial = _line.sharedMaterial;
+                lr.widthMultiplier = _line.widthMultiplier;
+                lr.useWorldSpace = true;
+                lr.numCapVertices = 2;
+                lr.numCornerVertices = 2;
+                lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                lr.startColor = _color;
+                lr.endColor = _color;
+                _extra.Add(lr);
+            }
+            return _extra[idx];
         }
 
         public bool HasDestroyedNodes()
@@ -260,9 +371,10 @@ namespace SpellyZombie
             State = StrokeState.Burned;
             foreach (var n in Nodes)
                 if (n != null) Object.Destroy(n.gameObject);
-            if (_lineGo != null) Object.Destroy(_lineGo);
+            if (_lineGo != null) Object.Destroy(_lineGo); // parts are children — they go too
             _line = null;
             _lineGo = null;
+            _extra.Clear();
         }
 
         /// Kill this stroke WITHOUT destroying its nodes — used when erasing
@@ -275,6 +387,7 @@ namespace SpellyZombie
             if (_lineGo != null) Object.Destroy(_lineGo);
             _line = null;
             _lineGo = null;
+            _extra.Clear();
         }
     }
 }

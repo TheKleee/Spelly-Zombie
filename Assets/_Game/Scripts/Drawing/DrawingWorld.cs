@@ -76,6 +76,88 @@ namespace SpellyZombie
             if (allowCloseOntoInk && TryCloseOntoInk(s)) return;
 
             LastInk = s;
+            PreviewRune(s);
+        }
+
+        /// Marko's live feedback: the moment ink changes, read the whole
+        /// CONNECTED drawing (the same touch rule the seal recognizer uses)
+        /// and float a small fading label over it. What the label says is
+        /// what a seal will fire — green = clean read, amber = will fire but
+        /// weak, ??? = fizzle. New readings replace the old label.
+        void PreviewRune(Stroke seed)
+        {
+            if (seed == null || !seed.Alive || seed.State != StrokeState.Open) return;
+            if (seed.OwnerId != Grimoire.LocalPlayerId) return; // your pen only
+            if (seed.Hidden()) return;
+
+            var members = new List<Stroke> { seed };
+            bool grew = true;
+            while (grew)
+            {
+                grew = false;
+                foreach (var s in Strokes)
+                {
+                    if (!s.Alive || s.State != StrokeState.Open || s.Hidden()
+                        || members.Contains(s)) continue;
+                    foreach (var m in members)
+                        if (RuneGlyph.InkTouches(s, m, DrawingConfig.RuneTouchDistance))
+                        {
+                            members.Add(s);
+                            grew = true;
+                            break;
+                        }
+                    if (grew) break;
+                }
+            }
+
+            var (type, score) = RuneLibrary.Classify(seed.OwnerId, RuneGlyph.RawStrokesOf(members));
+            string label;
+            Color color;
+            if (type == RuneType.None || score < DrawingConfig.MinRuneScore)
+            {
+                label = "???";
+                color = new Color(0.78f, 0.78f, 0.78f);
+            }
+            else
+            {
+                label = RuneLibrary.ShortName(type);
+                color = score >= DrawingConfig.GoodRuneScore
+                    ? new Color(0.45f, 1f, 0.6f)   // clean — fires at full strength
+                    : new Color(1f, 0.85f, 0.4f);  // readable but sloppy
+            }
+
+            Vector3 pos = Vector3.zero;
+            int count = 0;
+            foreach (var m in members)
+            {
+                pos += m.Centroid();
+                count++;
+            }
+            if (count == 0) return;
+            RunePreview.Show(pos / count + Vector3.up * 0.18f, label, color);
+        }
+
+        /// Erasing changes what the ink IS — re-read the drawing nearest the
+        /// eraser when it lifts, so the label tells the new truth.
+        public void PreviewNear(Vector3 point)
+        {
+            Stroke bestStroke = null;
+            float best = 0.09f; // within 0.3m of the eraser
+            foreach (var s in Strokes)
+            {
+                if (!s.Alive || s.State != StrokeState.Open || s.Hidden()) continue;
+                foreach (var n in s.Nodes)
+                {
+                    if (n == null) continue;
+                    float d = (n.transform.position - point).sqrMagnitude;
+                    if (d < best)
+                    {
+                        best = d;
+                        bestStroke = s;
+                    }
+                }
+            }
+            if (bestStroke != null) PreviewRune(bestStroke);
         }
 
         /// For F-key template recording: the spatial ink cluster around the most
@@ -87,7 +169,8 @@ namespace SpellyZombie
 
             var open = new List<Stroke>();
             foreach (var s in Strokes)
-                if (s.Alive && s.State == StrokeState.Open && s.Nodes.Count >= 3 && s.ChainIntact())
+                if (s.Alive && s.State == StrokeState.Open && s.Nodes.Count >= 3 && s.ChainIntact()
+                    && !s.Hidden())
                     open.Add(s);
 
             foreach (var glyph in RuneGlyph.Cluster(open, DrawingConfig.GlyphJoinBase, DrawingConfig.GlyphJoinSizeFactor))
@@ -115,7 +198,7 @@ namespace SpellyZombie
             foreach (var a in Strokes)
             {
                 if (a == b || !a.Alive || a.State != StrokeState.Open) continue;
-                if (a.Nodes.Count < 3 || !a.ChainIntact()) continue;
+                if (a.Nodes.Count < 3 || !a.ChainIntact() || a.Hidden()) continue;
 
                 int i = NearestNodeIndex(a, bLast.transform.position, DrawingConfig.CloseThreshold);
                 if (i < 0) continue;
@@ -301,6 +384,7 @@ namespace SpellyZombie
                 if (s.State != StrokeState.Open) continue;
                 if (s.Nodes.Count < 3) continue;
                 if (!s.ChainIntact()) continue;
+                if (s.Hidden()) continue; // stowed-weapon ink doesn't exist right now
                 _eligibleCache.Add(s);
             }
             if (_eligibleCache.Count == 0) return;
@@ -378,6 +462,8 @@ namespace SpellyZombie
             ActiveSeals.Add(seal);
             LogEvent($"SEAL #{seal.Id} ACTIVATED ({how}): {seal.Describe()}");
 
+            SpellLock.NotifySeal(seal); // Fable gates taste every seal
+
             // spell resolution: physics-rune zones + ComboBook announcements
             // (the sigil-table engine lost the A/B and was removed)
             var surface = ResolveSealSurface(seal);
@@ -394,7 +480,13 @@ namespace SpellyZombie
         {
             if (Physics.Raycast(seal.PlaneOrigin + seal.PlaneNormal * 0.25f, -seal.PlaneNormal,
                     out var hit, 0.6f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            {
+                // painted terrain: the material is whatever layer Marko
+                // brushed under this exact spot (stone plaza, dirt path…)
+                var painted = hit.collider.GetComponent<TerrainSurfaceMap>();
+                if (painted != null) return painted.MaterialAt(hit.point);
                 return SurfaceMaterialDB.Resolve(hit.collider);
+            }
             return SurfaceMaterialType.Unknown;
         }
 
@@ -423,6 +515,14 @@ namespace SpellyZombie
             for (int i = _spentGroups.Count - 1; i >= 0; i--)
             {
                 var g = _spentGroups[i];
+
+                // stowed weapon = its spent seals are FROZEN: no re-arming, no
+                // firing, nothing until the weapon is pulled out again
+                bool stowed = false;
+                foreach (var s in g.Strokes)
+                    if (s.Hidden()) { stowed = true; break; }
+                if (stowed) continue;
+
                 bool open = false;
 
                 foreach (var (a, b) in g.Pairs)
@@ -546,15 +646,26 @@ namespace SpellyZombie
         }
 
         /// Debug erase (and later: water, spinner zombies).
-        public void EraseAt(Vector3 point, float radius)
+        public void EraseAt(Vector3 point, float radius) => EraseAlong(point, point, radius);
+
+        /// Erase a thin TRACK along the cursor's path between frames. The
+        /// eraser is only as wide as the pen now, so a fast hand would skip
+        /// clean over nodes with point-erasing — sweeping the segment catches
+        /// everything the cursor actually passed over.
+        public void EraseAlong(Vector3 from, Vector3 to, float radius)
         {
+            Vector3 seg = to - from;
+            float len2 = seg.sqrMagnitude;
+            float r2 = radius * radius;
             foreach (var s in Strokes)
             {
-                if (!s.Alive) continue;
+                if (!s.Alive || s.Hidden()) continue; // can't rub out invisible ink
                 foreach (var n in s.Nodes)
                 {
                     if (n == null) continue;
-                    if (Vector3.Distance(n.transform.position, point) <= radius)
+                    Vector3 p = n.transform.position;
+                    float t = len2 > 1e-8f ? Mathf.Clamp01(Vector3.Dot(p - from, seg) / len2) : 0f;
+                    if ((p - (from + seg * t)).sqrMagnitude <= r2)
                         Destroy(n.gameObject);
                 }
             }
@@ -588,34 +699,9 @@ namespace SpellyZombie
                 GUI.Label(new Rect(10, 224, 560, 20), "F12 ink debug ON — dots = endpoints the detector sees");
             }
 
-            GUI.color = Color.white;
-            var box = new Rect(10, 10, 560, 210);
-            GUILayout.BeginArea(box);
-
-            int spentCount = 0;
-            foreach (var s in Strokes)
-                if (s.State == StrokeState.Spent) spentCount++;
-
-            GUILayout.Label($"<b>Strokes:</b> {Strokes.Count} (spent: {spentCount})   <b>Active seals:</b> {ActiveSeals.Count}", Rich());
-            GUILayout.Label("<i>Runes are read when a seal closes around them.</i>", Rich());
-            foreach (var seal in ActiveSeals)
-                GUILayout.Label($"  Seal #{seal.Id}: {(seal.IsCircle ? "circle" : seal.Edges + " edges")} — {seal.Remaining:0.0}s / {seal.Duration:0.0}s", Rich());
-
-            GUILayout.Space(6);
-            foreach (var e in _events)
-                GUILayout.Label(e, Rich());
-
-            GUILayout.EndArea();
-
-            // controls + template recording reference, bottom left
-            var help = new Rect(10, Screen.height - 152, 1000, 146);
-            GUI.Label(help,
-                "LMB draw ink  ·  RMB = eraser (other end of the wand)  ·  hold LeftAlt = precision cursor  ·  T / 1-9 = poses  ·  B = Pose Studio\n" +
-                "Any enclosed area = a seal (0.1s per edge, circle = 36s): endpoints meeting, a line crossing itself, OR two lines crossing. Runes go inside.\n" +
-                "Runes may be any number of strokes drawn in any order — ink lying close together reads as one rune when the seal closes. No time limit.\n" +
-                "Ink on characters/weapons is permanent: after the spell it goes SPENT (dim gold) and re-arms when the pose opens the loop. Environment ink is consumed.\n" +
-                "Record templates — draw a glyph, then press:  F1 HeatUp  F2 HeatDown  F3 StateSolid  F4 StateLiquid  F5 LumUp  F6 LumDown\n" +
-                "F7 StickyUp  F8 StickyDown  F9 DirAway  F10 DirToward  F11 DensityUp  F12 DensityDown");
+            // Marko's rule (July 12): NO instruction walls, NO debug spam on
+            // screen — events go to the console only (LogEvent → Debug.Log).
+            // The F12 overlay above is the sole exception: opt-in, off by default.
         }
 
         static GUIStyle _rich;

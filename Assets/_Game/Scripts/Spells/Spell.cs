@@ -368,11 +368,13 @@ namespace SpellyZombie
                 default: return;
             }
 
-            // the caster's powerups shape the burst (per rune family)
+            // the caster's powerups shape the burst (per rune family);
+            // the Spell perk (local player only, like Powerups) tops it up
             var buff = Powerups.For(_ownerId, z.Rune);
-            int count = Mathf.Min(12, 3 + buff.More * 2);
+            bool localCaster = _ownerId == Grimoire.LocalPlayerId;
+            int count = Mathf.Min(12, 3 + buff.More * 2 + (localCaster ? Perks.ExtraParticles : 0));
             float speedMul = 1f + 0.5f * buff.Fast;
-            float potent = 1f + 0.35f * buff.Potent;
+            float potent = (1f + 0.35f * buff.Potent) * (localCaster ? Perks.PotencyMul : 1f);
             float bigMul = 1f + 0.3f * buff.Big;
 
             Vector3 dir = kind == ParticleKind.Push ? z.PushDir : z.Normal;

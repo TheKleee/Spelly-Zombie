@@ -26,6 +26,10 @@ namespace SpellyZombie
         bool _erasing;           // crosshair feedback
         PlayerInk _ink;
         SimpleFPSController _pilot;
+        WeaponSlots _slots;
+        Vector3 _lastErasePoint;  // swept-erase track
+        bool _hasEraseTrack;
+        bool _wasErasing;         // falling edge → re-preview the edited ink
 
         void Update()
         {
@@ -55,30 +59,70 @@ namespace SpellyZombie
                 return;
             }
 
-            // the wand's other end: right-click (or R / left trigger) rubs ink out
+            // third person is for EMOTING — the pen only comes out there for
+            // body paint (R)
+            if (SimpleFPSController.ThirdPersonActive && !SelfPaint.IsActive)
+            {
+                IsPenActive = false;
+                EndStroke();
+                return;
+            }
+
+            // weapons 2/3 own the mouse buttons; the pen belongs to the wand +
+            // grimoire (slot 1) and to the two draw modes (engraving a raised
+            // weapon / painting your body)
+            if (!SelfPaint.IsActive && !HeldWeapon.DrawMode)
+            {
+                if (_slots == null) _slots = GetComponentInParent<WeaponSlots>();
+                if (_slots != null && !_slots.PenSelected)
+                {
+                    IsPenActive = false;
+                    EndStroke();
+                    return;
+                }
+            }
+
+            // the wand's other end: right-click (or left trigger) rubs ink out
+            // (R belongs to weapon-draw mode / the emote editor now)
             var gp = Gamepad.current;
             bool gpDraw = gp != null && gp.rightTrigger.ReadValue() > 0.4f;
             bool gpErase = gp != null && gp.leftTrigger.ReadValue() > 0.4f;
             bool penHeld = mouse.leftButton.isPressed || gpDraw;
-            bool erasing = kb.rKey.isPressed || mouse.rightButton.isPressed || gpErase;
+            bool erasing = mouse.rightButton.isPressed || gpErase;
+            // eraser lifted: the ink changed — re-read what's left (preview)
+            if (_wasErasing && !erasing && DrawingWorld.Instance != null)
+                DrawingWorld.Instance.PreviewNear(_lastErasePoint);
+            _wasErasing = erasing;
             _erasing = erasing;
             bool penDown = penHeld && !erasing;
             IsPenActive = penHeld || erasing;
 
             if (!penHeld)
                 _suppressUntilRelease = false;
+            if (!erasing)
+                _hasEraseTrack = false;
 
             if (erasing)
             {
                 EndStroke();
-                if (Physics.Raycast(GetAimRay(mouse), out var eraseHit, DrawingConfig.DrawRange,
-                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-                    DrawingWorld.Instance.EraseAt(eraseHit.point, DrawingConfig.EraseRadius);
+                if (AimHit(GetAimRay(mouse), out var eraseHit))
+                {
+                    // sweep from last frame's point so the pen-thin eraser never
+                    // skips nodes; a big jump means the aim leapt surfaces — restart
+                    Vector3 from = _hasEraseTrack && Vector3.Distance(_lastErasePoint, eraseHit.point) < 0.75f
+                        ? _lastErasePoint : eraseHit.point;
+                    DrawingWorld.Instance.EraseAlong(from, eraseHit.point, DrawingConfig.EraseRadius);
+                    _lastErasePoint = eraseHit.point;
+                    _hasEraseTrack = true;
+                }
+                else
+                {
+                    _hasEraseTrack = false;
+                }
             }
             else if (penDown && !_suppressUntilRelease)
             {
-                if (Physics.Raycast(GetAimRay(mouse), out var hit, DrawingConfig.DrawRange,
-                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                if (AimHit(GetAimRay(mouse), out var hit))
                     HandleDrawHit(hit);
                 else
                     EndStroke(); // pen ran off the end of the world
@@ -96,6 +140,39 @@ namespace SpellyZombie
             if (Cursor.lockState == CursorLockMode.Locked)
                 return Cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
             return Cam.ScreenPointToRay(mouse.position.ReadValue());
+        }
+
+        /// While body-painting, the pen sees ONLY the painter's body — a miss
+        /// draws nothing, so you can never ink the world behind you and set
+        /// off a spell by accident (Marko's rule). A thin ray slips through
+        /// the gaps between limb capsules mid-stroke ("skips a place"), so a
+        /// fat sphere-cast backs it up and keeps the line flowing. Normal
+        /// play raycasts as is.
+        static bool AimHit(Ray ray, out RaycastHit hit)
+        {
+            if (SelfPaint.IsActive && SelfPaint.ActiveRoot != null)
+            {
+                if (BestOnBody(Physics.RaycastAll(ray, DrawingConfig.DrawRange,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), out hit))
+                    return true;
+                return BestOnBody(Physics.SphereCastAll(ray, 0.04f, DrawingConfig.DrawRange,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), out hit);
+            }
+            return Physics.Raycast(ray, out hit, DrawingConfig.DrawRange,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        }
+
+        static bool BestOnBody(RaycastHit[] hits, out RaycastHit hit)
+        {
+            hit = default;
+            float best = float.MaxValue;
+            foreach (var h in hits)
+                if (h.distance < best && h.collider.transform.IsChildOf(SelfPaint.ActiveRoot))
+                {
+                    best = h.distance;
+                    hit = h;
+                }
+            return best < float.MaxValue;
         }
 
         void HandleDrawHit(RaycastHit hit)
@@ -132,15 +209,17 @@ namespace SpellyZombie
                 DrawingWorld.Instance.Register(_current);
                 _smoothedPoint = hit.point;
             }
-            else if (DrawingConfig.DrawSmoothingTime > 0f)
-            {
-                // frame-rate-independent exponential smoothing of hand jitter
-                float k = 1f - Mathf.Exp(-Time.deltaTime / DrawingConfig.DrawSmoothingTime);
-                _smoothedPoint = Vector3.Lerp(_smoothedPoint, hit.point, k);
-            }
             else
             {
-                _smoothedPoint = hit.point;
+                // frame-rate-independent exponential smoothing of hand jitter.
+                // The formula degrades to raw input on its own — at tau = 0,
+                // k = 1 and the point snaps straight to the hit. Reading the
+                // const into a LOCAL keeps that "0 = raw" knob real: as a
+                // compile-time const the old `> 0f` guard folded to always-
+                // true, so the separate raw branch was dead code.
+                float tau = DrawingConfig.DrawSmoothingTime;
+                float k = tau > 0f ? 1f - Mathf.Exp(-Time.deltaTime / tau) : 1f;
+                _smoothedPoint = Vector3.Lerp(_smoothedPoint, hit.point, k);
             }
 
             _lastHitPoint = hit.point;
@@ -155,7 +234,8 @@ namespace SpellyZombie
             if (_ink == null && _pilot != null) _ink = _pilot.GetComponent<PlayerInk>();
             if (_ink != null && last != null)
             {
-                float cost = Vector3.Distance(_smoothedPoint, last.transform.position) * DrawingConfig.InkCostPerMeter;
+                float cost = Vector3.Distance(_smoothedPoint, last.transform.position)
+                    * DrawingConfig.InkCostPerMeter * Perks.InkCostMul;
                 if (!_ink.TrySpend(cost))
                 {
                     DrawingWorld.Instance.LogEvent("OUT OF INK — kills refill the well");
@@ -244,6 +324,7 @@ namespace SpellyZombie
         void OnGUI()
         {
             if (PoseStudio.IsOpen || Cam == null) return;
+            if (SimpleFPSController.ThirdPersonActive) return; // no indicator on the emote stage
             if (Cursor.lockState != CursorLockMode.Locked) return;
 
             // crosshair dot — red and bigger while the eraser end is active
@@ -259,6 +340,7 @@ namespace SpellyZombie
         /// recognizer learns YOUR handwriting.
         void HandleTemplateKeys(Keyboard kb)
         {
+            // statue's face would silently replace a trained rune template
             for (int i = 0; i < RuneLibrary.RecordableRunes.Length; i++)
             {
                 var key = kb[(Key)((int)Key.F1 + i)];

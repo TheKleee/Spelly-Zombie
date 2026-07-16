@@ -24,7 +24,8 @@ namespace SpellyZombie
             if (RoundDirector.RunActive) Award(DrawingConfig.InkRegenPerSec * Time.deltaTime);
         }
 
-        public float Fraction => Ink / DrawingConfig.InkMax;
+        // the Drawing perk deepens the well (Perks.InkMax) — no perk = old value
+        public float Fraction => Ink / Perks.InkMax;
 
         /// Spend ink for drawn line length. Free when no run is active.
         public bool TrySpend(float amount)
@@ -35,7 +36,7 @@ namespace SpellyZombie
             return true;
         }
 
-        public void Award(float amount) => Ink = Mathf.Min(DrawingConfig.InkMax, Ink + amount);
+        public void Award(float amount) => Ink = Mathf.Min(Perks.InkMax, Ink + amount);
 
         public static void AwardAll(float amount)
         {
@@ -44,7 +45,7 @@ namespace SpellyZombie
 
         public static void RefillAll()
         {
-            foreach (var p in All) p.Ink = DrawingConfig.InkMax;
+            foreach (var p in All) p.Ink = Perks.InkMax;
         }
     }
 }

@@ -61,6 +61,26 @@ namespace SpellyZombie
                 else if (Temperature < DrawingConfig.FreezeThreshold)
                     _dmg.TakeDamage(DrawingConfig.FreezeDamagePerSec * dt, "freezing");
             }
+
+            // burning WOOD visibly burns (cartoon flames) — creatures have
+            // their own flame system, so they're skipped here
+            bool ablaze = Temperature > DrawingConfig.BurnThreshold;
+            if (ablaze && _flames == null && GetComponentInParent<Creature>() == null)
+            {
+                var lib = FxLibrary.I;
+                if (lib != null && lib.Fire != null)
+                {
+                    _flames = Object.Instantiate(lib.Fire, transform);
+                    _flames.transform.localPosition = Vector3.zero;
+                }
+            }
+            else if (!ablaze && _flames != null)
+            {
+                Destroy(_flames);
+                _flames = null;
+            }
         }
+
+        GameObject _flames;
     }
 }

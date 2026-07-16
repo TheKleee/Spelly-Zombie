@@ -24,7 +24,7 @@ namespace SpellyZombie
         const string PacksDir = ArtDir + "/Packs";
 
         // ------------------------------------------------------ atmosphere --
-        [MenuItem("Spelly Zombie/Art/4 — Set Atmosphere (open scene)")]
+        // menu removed (scene-modifying — Marko owns scene lighting/atmosphere)
         public static void SetAtmosphere()
         {
             // the sun: low, warm, long goofy shadows
@@ -37,36 +37,40 @@ namespace SpellyZombie
                 sun = sunGo.AddComponent<Light>();
                 sun.type = LightType.Directional;
             }
-            sun.transform.rotation = Quaternion.Euler(26f, -128f, 0f);
-            sun.color = new Color(1f, 0.76f, 0.55f);
-            sun.intensity = 1.2f;
+            sun.transform.rotation = Quaternion.Euler(48f, -32f, 0f);
+            sun.color = new Color(1f, 0.95f, 0.86f);
+            sun.intensity = 1.15f;
             sun.shadows = LightShadows.Soft;
 
-            // fog: mauve dusk — depth without hiding the horde
+            // fog: light daytime haze — depth without hiding the horde
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.014f;
-            RenderSettings.fogColor = new Color(0.72f, 0.58f, 0.60f);
+            RenderSettings.fogDensity = 0.008f;
+            RenderSettings.fogColor = new Color(0.76f, 0.83f, 0.92f);
 
-            // ambient: purple sky, warm bounce, dark ground
+            // ambient: bright day, warm bounce
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.52f, 0.47f, 0.66f);
-            RenderSettings.ambientEquatorColor = new Color(0.72f, 0.58f, 0.52f);
-            RenderSettings.ambientGroundColor = new Color(0.30f, 0.24f, 0.28f);
+            RenderSettings.ambientSkyColor = new Color(0.62f, 0.72f, 0.90f);
+            RenderSettings.ambientEquatorColor = new Color(0.76f, 0.72f, 0.64f);
+            RenderSettings.ambientGroundColor = new Color(0.38f, 0.34f, 0.31f);
 
-            // procedural sunset skybox (asset, so it survives)
+            // MARKO'S RULE (updated July 11): the skybox is PT_Skybox_mat.mat.
+            // Fall back to Sky.mat, then to a generated one, if missing.
             Directory.CreateDirectory(ArtDir);
-            string skyPath = ArtDir + "/SZ_Skybox.mat";
-            var sky = AssetDatabase.LoadAssetAtPath<Material>(skyPath);
+            var sky = AssetDatabase.LoadAssetAtPath<Material>(
+                "Assets/Polytope Studio/Lowpoly_Environments/Sources/Materials/PT_Skybox_mat.mat");
+            if (sky == null)
+                sky = AssetDatabase.LoadAssetAtPath<Material>("Assets/Polytope Studio/Sky.mat");
             if (sky == null)
             {
-                sky = new Material(Shader.Find("Skybox/Procedural"));
-                AssetDatabase.CreateAsset(sky, skyPath);
+                string skyPath = ArtDir + "/SZ_Skybox.mat";
+                sky = AssetDatabase.LoadAssetAtPath<Material>(skyPath);
+                if (sky == null)
+                {
+                    sky = new Material(Shader.Find("Skybox/Procedural"));
+                    AssetDatabase.CreateAsset(sky, skyPath);
+                }
             }
-            sky.SetColor("_SkyTint", new Color(0.55f, 0.42f, 0.55f));
-            sky.SetColor("_GroundColor", new Color(0.35f, 0.28f, 0.30f));
-            sky.SetFloat("_Exposure", 1.1f);
-            sky.SetFloat("_AtmosphereThickness", 1.15f); // reddens the low sun
             RenderSettings.skybox = sky;
             EditorUtility.SetDirty(sky);
 
@@ -101,6 +105,32 @@ namespace SpellyZombie
             AssetDatabase.SaveAssets();
             EditorSceneManager.MarkAllScenesDirty();
             Debug.Log("[SpellyZombie] Atmosphere set: storybook dusk (save the scene to keep it).");
+        }
+
+        // ------------------------------------------------------ fx library --
+        const string CFXR = "Assets/JMO Assets/Cartoon FX Remaster/CFXR Prefabs/";
+
+        [MenuItem("Spelly Zombie/Art/7 — Wire FX Library (JMO)")]
+        public static void WireFxLibrary()
+        {
+            Directory.CreateDirectory("Assets/_Game/Resources");
+            const string path = "Assets/_Game/Resources/FxLibrary.asset";
+            var lib = AssetDatabase.LoadAssetAtPath<FxLibrary>(path);
+            if (lib == null)
+            {
+                lib = ScriptableObject.CreateInstance<FxLibrary>();
+                AssetDatabase.CreateAsset(lib, path);
+            }
+            lib.Fire = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Fire/CFXR Fire.prefab");
+            lib.Explosion = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Explosions/CFXR Explosion 1.prefab");
+            lib.Poof = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Misc/CFXR Magic Poof.prefab");
+            lib.ElectricHit = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Electric/CFXR Electrified 3.prefab");
+            lib.IceHit = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Ice/CFXR3 Hit Ice B (Air).prefab");
+            lib.RunicAura = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Magic Misc/CFXR3 Magic Aura A (Runic).prefab");
+            EditorUtility.SetDirty(lib);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[SpellyZombie] FxLibrary wired: fire={(lib.Fire != null)} explosion={(lib.Explosion != null)} " +
+                      $"poof={(lib.Poof != null)} electric={(lib.ElectricHit != null)}");
         }
 
         // ---------------------------------------------------- pack import --

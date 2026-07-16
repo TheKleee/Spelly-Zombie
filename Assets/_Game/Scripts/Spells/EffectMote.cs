@@ -101,6 +101,17 @@ namespace SpellyZombie
             if (t == null)
             {
                 var go = c.attachedRigidbody ? c.attachedRigidbody.gameObject : c.gameObject;
+
+                // character limbs route heat to the BEING, never to a bone
+                // (bone rigidbodies made limbs read as burnable props)
+                var pilot = c.GetComponentInParent<SimpleFPSController>();
+                if (pilot != null) go = pilot.gameObject;
+                else
+                {
+                    var creature = c.GetComponentInParent<Creature>();
+                    if (creature != null) go = creature.gameObject;
+                }
+
                 // don't cook giant static walls — same guard the zones use
                 var rend = go.GetComponentInChildren<Renderer>();
                 if (rend == null) return;

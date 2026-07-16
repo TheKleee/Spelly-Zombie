@@ -74,7 +74,13 @@ namespace SpellyZombie
 
             // B4: only the HOST runs the round machine — clients render the
             // host's zombies (NetZombieProxy) and read round state off the wire
-            if (NetGame.Connected && !NetGame.IsHost) return;
+            if (NetGame.Connected && !NetGame.IsHost)
+            {
+                // Z on a client is not a silent dud — say who holds the keys
+                if (kb.zKey.wasPressedThisFrame)
+                    ComboBanner.Show("THE HOST STARTS THE MATCH", new Color(0.7f, 0.9f, 1f));
+                return;
+            }
 
             if (NetGame.IsHost)
             {
@@ -116,13 +122,60 @@ namespace SpellyZombie
             }
         }
 
+        const string LobbySceneName = "Lobby";
+        static string GameSceneName => MatchLobby.SelectedMap; // the host's lobby pick
+        static bool _startOnLoad;
+
+        void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
+        void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
+
+        void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            // back in the village after a wipe/victory: the old run is OVER —
+            // phase resets so no stale "WIPED — ENTER = again" haunts the
+            // lobby (and ENTER can't accidentally relaunch a match there)
+            if (scene.name == LobbySceneName
+                && (_phase == Phase.GameOver || _phase == Phase.Victory))
+            {
+                _phase = Phase.Idle;
+                _round = 0;
+            }
+
+            if (!_startOnLoad || scene.name != GameSceneName) return;
+            _startOnLoad = false;
+            StartRunNow();
+        }
+
+        /// THE LOBBY IS SAFE GROUND (Marko's rule) — no invasion spawns there.
+        /// Starting a run from the lobby loads the game map scene and begins
+        /// on arrival; until that scene exists, the lobby just says so.
         void StartRun()
+        {
+            if (SceneManager.GetActiveScene().name == "Menu") return; // menus don't fight
+            if (SceneManager.GetActiveScene().name == LobbySceneName)
+            {
+                if (Application.CanStreamedLevelBeLoaded(GameSceneName))
+                {
+                    _startOnLoad = true;
+                    SceneManager.LoadScene(GameSceneName);
+                    return;
+                }
+                ComboBanner.Show("THE LOBBY IS SAFE GROUND", new Color(0.7f, 0.9f, 1f));
+                DrawingWorld.Instance?.LogEvent(
+                    "runs happen on the game map — no 'Game' scene in Build Settings yet");
+                return;
+            }
+            StartRunNow();
+        }
+
+        void StartRunNow()
         {
             _kills = 0;
             Wallet.Riches = 0;
             _runStart = Time.time;
             PlayerInk.RefillAll();
             Powerups.ResetRun(); // fresh build every run
+            Perks.ResetRun();    // the brews wear off too
             StartRound(1);
         }
 
@@ -194,7 +247,11 @@ namespace SpellyZombie
 
         void EndRound()
         {
-            if (_round >= DrawingConfig.MaxRounds)
+            // MARKO'S WIN (maps with Fable gates): spell every gate open, then
+            // clear the round — that's the demo victory. Gateless maps keep
+            // the round-cap rule. (Full game inserts the boss here later.)
+            bool gatesCleared = SpellLock.CountInScene > 0 && SpellLock.AllOpen;
+            if (gatesCleared || _round >= DrawingConfig.MaxRounds)
             {
                 _phase = Phase.Victory;
                 ComboBanner.Show("YOU SURVIVED THE DEMO!", new Color(0.5f, 1f, 0.6f));
@@ -250,28 +307,41 @@ namespace SpellyZombie
 
         Vector3 PickSpawnPoint()
         {
+            Vector3 pos;
             var entries = FindObjectsByType<ZombieEntryPoint>(FindObjectsSortMode.None);
             if (entries.Length > 0)
-                return entries[Random.Range(0, entries.Length)].transform.position;
+            {
+                pos = entries[Random.Range(0, entries.Length)].transform.position;
+            }
+            else
+            {
+                Vector3 center = _players.Count > 0 && _players[0] != null
+                    ? _players[0].transform.position : Vector3.zero;
+                float ang = Random.value * Mathf.PI * 2f;
+                pos = center + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * 16f;
+                pos.y = center.y;
+            }
 
-            Vector3 center = _players.Count > 0 && _players[0] != null
-                ? _players[0].transform.position : Vector3.zero;
-            float ang = Random.value * Mathf.PI * 2f;
-            Vector3 pos = center + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * 16f;
-            pos.y = center.y;
+            // drop onto the ACTUAL ground — terrain maps aren't flat, and a
+            // ring spawn at the player's height 16m away can land inside a
+            // hill (zombies spawned entombed and nobody ever saw them)
+            if (Physics.Raycast(pos + Vector3.up * 30f, Vector3.down, out var hit, 80f,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                pos.y = hit.point.y;
             return pos;
         }
 
         // --------------------------------------------------------------- HUD --
-        void OnGUI()
-        {
-            var player = _players.Count > 0 ? _players[0] : null;
+        // Rendering moved to UI/HUD.cs (uGUI + Kenney skin); this just reports.
 
-            // top line: run state (clients read the HOST's round off the wire)
-            string top;
+        /// The status line for the round banner (clients read the HOST's round
+        /// off the wire).
+        public static string HudStatus()
+        {
+            if (Instance == null) return "";
             if (NetGame.Connected && !NetGame.IsHost)
             {
-                top = !NetSync.HasRound ? "co-op: waiting for the host…"
+                return !NetSync.HasRound ? "co-op: waiting for the host…"
                     : NetSync.NetPhase switch
                 {
                     1 => $"ROUND {NetSync.NetRound} — {NetSync.NetLeft} zombies left",
@@ -281,54 +351,21 @@ namespace SpellyZombie
                     _ => "host presses Z to start the run",
                 };
             }
-            else top = _phase switch
+            return Instance._phase switch
             {
-                Phase.Idle => "Z = start the run",
-                Phase.Wave => $"ROUND {_round} — {_toSpawn + Zombie.All.Count} zombies left",
-                Phase.Intermission => $"INTERMISSION — round {_round + 1} in {_phaseTimer:0}s (draw!)",
-                Phase.GameOver => $"WIPED on round {_round} — {_kills} kills, {Wallet.Riches} riches. ENTER = again",
-                _ => $"VICTORY — {_kills} kills, {(Time.time - _runStart) / 60f:0.0} min. ENTER = again",
+                Phase.Idle => SceneManager.GetActiveScene().name == "Lobby"
+                    ? "" // the MatchLobby banner owns the idle screen there
+                    : "Z = start the run",
+                Phase.Wave => $"ROUND {Instance._round} — {Instance._toSpawn + Zombie.All.Count} zombies left",
+                Phase.Intermission => $"INTERMISSION — round {Instance._round + 1} in {Instance._phaseTimer:0}s (draw!)",
+                Phase.GameOver => $"WIPED on round {Instance._round} — {Instance._kills} kills, {Wallet.Riches} riches. ENTER = again",
+                _ => $"VICTORY — {Instance._kills} kills, {(Time.time - Instance._runStart) / 60f:0.0} min. ENTER = again",
             };
-            GUI.Label(new Rect(12, Screen.height - 64, 900, 20), top);
-
-            // seal gallery: the round's spellwork on display between rounds
-            if (_phase == Phase.Intermission || _phase == Phase.GameOver || _phase == Phase.Victory)
-                SealGallery.DrawGrid(Screen.width / 2f, Screen.height * 0.68f);
-
-            // bars: health + ink
-            if (player != null)
-            {
-                DrawBar(new Rect(12, Screen.height - 44, 180, 12),
-                    player.Health / 100f, new Color(0.85f, 0.25f, 0.25f));
-                var ink = player.GetComponent<PlayerInk>();
-                if (ink != null)
-                    DrawBar(new Rect(12, Screen.height - 28, 180, 12),
-                        ink.Fraction, new Color(0.25f, 0.55f, 0.95f));
-                GUI.Label(new Rect(200, Screen.height - 46, 300, 20), "HP");
-                GUI.Label(new Rect(200, Screen.height - 30, 300, 20), $"INK   Riches: {Wallet.Riches}");
-
-                if (player.IsDowned)
-                {
-                    var style = new GUIStyle(GUI.skin.label)
-                    { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-                    style.normal.textColor = player.IsDead ? Color.red : new Color(1f, 0.5f, 0.4f);
-                    string msg = player.IsDead ? "DEAD"
-                        : player.ReviveProgress > 0f ? $"REVIVING… {player.ReviveProgress * 100f:0}%"
-                        : $"DOWNED — bleeding out {player.BleedOut:0}s (teammate: hold E)";
-                    GUI.Label(new Rect(0, Screen.height * 0.6f, Screen.width, 40), msg, style);
-                }
-            }
         }
 
-        static void DrawBar(Rect r, float t, Color c)
-        {
-            var prev = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.5f);
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-            GUI.color = c;
-            GUI.DrawTexture(new Rect(r.x + 1, r.y + 1, (r.width - 2) * Mathf.Clamp01(t), r.height - 2),
-                Texture2D.whiteTexture);
-            GUI.color = prev;
-        }
+        /// Between rounds and on end screens the seal gallery gets the stage.
+        public static bool ShowGallery =>
+            Instance != null && (Instance._phase == Phase.Intermission
+                || Instance._phase == Phase.GameOver || Instance._phase == Phase.Victory);
     }
 }

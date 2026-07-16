@@ -74,7 +74,8 @@ namespace SpellyZombie
             var mouse = Mouse.current;
             if (kb == null || mouse == null || StudioCamera == null || Target == null) return;
 
-            if (!AlwaysOpen && kb.bKey.wasPressedThisFrame)
+            // B toggles the studio (R belongs to body paint / weapon engraving)
+            if (!AlwaysOpen && kb.bKey.wasPressedThisFrame && !SelfPaint.IsActive)
             {
                 if (IsOpen) Close();
                 else Open();

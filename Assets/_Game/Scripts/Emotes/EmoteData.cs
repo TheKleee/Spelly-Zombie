@@ -33,12 +33,18 @@ namespace SpellyZombie
     {
         public List<EmoteDef> emotes = new List<EmoteDef>();
         public List<int> slots = new List<int>(); // slot (0..9) -> index into emotes, -1 = empty
+        public int rigVersion; // 0/1 = graybox bean pivots, 2 = the Mixamo skeleton
     }
 
     /// The player's pose list: poses authored in the Pose Studio, saved to disk,
     /// bound to number slots for in-game use. Joints are referenced by string id,
     /// so a pose authored on the graybox mannequin plays unchanged on any future
     /// character whose EmoteRig registers the same joint names.
+    ///
+    /// Slots resolve in two layers (Marko's spec): the player's own CUSTOM
+    /// binding sits on top of the SYSTEM DEFAULT for that slot. Defaults are
+    /// built in code, load every game, and can never be deleted — X in third
+    /// person clears the custom binding and the default shows through again.
     ///
     /// A pose emote is the somatic trigger of whatever seal the player drew
     /// across their own joints: authoring poses = choosing how you cast.
@@ -47,6 +53,7 @@ namespace SpellyZombie
         public const int SlotCount = 10;
 
         static EmoteSaveFile _data;
+        static Dictionary<int, EmoteDef> _defaults;
         static string SavePath => Path.Combine(Application.persistentDataPath, "sz_emotes.json");
 
         static void Init()
@@ -63,15 +70,27 @@ namespace SpellyZombie
             }
             if (_data == null) _data = new EmoteSaveFile();
             while (_data.slots.Count < SlotCount) _data.slots.Add(-1);
-            SeedDefaults();
+
+            // ONE-TIME MIGRATION: poses saved on the graybox bean target
+            // completely different bone axes — on the Mixamo rig they bend
+            // backwards and, being CUSTOM bindings, they override the correct
+            // baked defaults. Unbind them (the pose list itself is kept).
+            const int currentRigVersion = 2;
+            if (_data.rigVersion < currentRigVersion)
+            {
+                for (int i = 0; i < _data.slots.Count; i++) _data.slots[i] = -1;
+                _data.rigVersion = currentRigVersion;
+                Save();
+                Debug.Log("[Emotes] Bean-era pose bindings cleared — keys now play the rig-baked defaults; re-bind your own in the Pose Studio (B).");
+            }
         }
 
-        /// The game ships with default poses (bound to 1-4) so the pose list is
-        /// never empty — players learn by playing them, then make their own.
-        /// Every pose states ALL joints so switching poses never leaves a limb behind.
-        static void SeedDefaults()
+        /// The undeletable ships-with-the-game layer (slots 1-4). Every pose
+        /// states ALL joints so switching poses never leaves a limb behind.
+        static void BuildDefaults()
         {
-            if (_data.emotes.Count > 0) return;
+            if (_defaults != null) return;
+            _defaults = new Dictionary<int, EmoteDef>();
 
             void Add(int slot, string name, Vector3 shoulderL, Vector3 shoulderR, Vector3 neck)
             {
@@ -81,14 +100,49 @@ namespace SpellyZombie
                 frame.poses.Add(new JointPose { joint = "shoulder.R", euler = shoulderR });
                 frame.poses.Add(new JointPose { joint = "neck", euler = neck });
                 def.frames.Add(frame);
-                _data.emotes.Add(def);
-                _data.slots[slot] = _data.emotes.Count - 1;
+                _defaults[slot] = def;
             }
 
             Add(1, "Arm raise", new Vector3(0f, 0f, 105f), Vector3.zero, Vector3.zero);
             Add(2, "Victory", new Vector3(0f, 0f, 150f), new Vector3(0f, 0f, -150f), Vector3.zero);
             Add(3, "Arms crossed", new Vector3(0f, 0f, 100f), new Vector3(0f, 0f, -100f), Vector3.zero);
             Add(4, "Bow", new Vector3(0f, 0f, 20f), new Vector3(0f, 0f, -20f), new Vector3(45f, 0f, 0f));
+        }
+
+        public static EmoteDef DefaultForSlot(int slot)
+        {
+            BuildDefaults();
+            return _defaults.TryGetValue(slot, out var def) ? def : null;
+        }
+
+        /// The character rig OVERRIDES the built-ins at runtime with poses
+        /// baked on the REAL skeleton — hardcoded eulers only fit the graybox
+        /// bean's pivots; on Mixamo bones they bend the wrong way.
+        public static void SetDefault(int slot, string name, EmoteKeyframe frame)
+        {
+            BuildDefaults();
+            var def = new EmoteDef { name = name, loop = false };
+            def.frames.Add(frame);
+            _defaults[slot] = def;
+        }
+
+        /// Does this slot carry a player-made binding (as opposed to falling
+        /// through to the system default)?
+        public static bool HasCustom(int slot)
+        {
+            Init();
+            return slot >= 0 && slot < _data.slots.Count
+                && _data.slots[slot] >= 0 && _data.slots[slot] < _data.emotes.Count;
+        }
+
+        /// Remove the custom binding; the system default takes over. The pose
+        /// itself stays in the player's pose list.
+        public static void ClearSlot(int slot)
+        {
+            Init();
+            if (slot < 0 || slot >= _data.slots.Count) return;
+            _data.slots[slot] = -1;
+            Save();
         }
 
         public static IReadOnlyList<EmoteDef> Poses
@@ -129,9 +183,8 @@ namespace SpellyZombie
         public static EmoteDef GetSlot(int slot)
         {
             Init();
-            if (slot < 0 || slot >= _data.slots.Count) return null;
-            int idx = _data.slots[slot];
-            return idx >= 0 && idx < _data.emotes.Count ? _data.emotes[idx] : null;
+            if (HasCustom(slot)) return _data.emotes[_data.slots[slot]];
+            return DefaultForSlot(slot); // the built-in layer shows through
         }
 
         /// "[1][4]" style tag showing which keys a pose is bound to.

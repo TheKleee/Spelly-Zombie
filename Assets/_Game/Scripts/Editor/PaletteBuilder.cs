@@ -133,7 +133,7 @@ namespace SpellyZombie
             Debug.Log($"[SpellyZombie] Surface materials built in {MatDir}");
         }
 
-        [MenuItem("Spelly Zombie/Art/3 — Apply Materials To Tagged Scene")]
+        // menu removed (scene-modifying — Marko applies materials himself)
         public static void ApplyToScene()
         {
             int applied = 0;

@@ -7,16 +7,43 @@ namespace SpellyZombie
     /// Pre-match lobby (Marko's flow): four TEAM COLOR PILLARS stand in a ring
     /// at spawn — walk up and press E to wear that color. Nobody picks?
     /// Everyone is team RED (his decision). ENTER toggles ready; when EVERYONE
-    /// is ready the match starts in ≤10 seconds — and a 300-second lobby timer
-    /// force-starts it anyway, because somebody will troll. Team hues are
-    /// colorblind-safe (Okabe-Ito): vermillion / strong blue / bluish-green /
-    /// warm yellow stay distinct under deutan, protan, and tritan vision.
+    /// is ready the match starts in 10 seconds. NO auto-start timer — the
+    /// lobby waits as long as the wizards want (his call, timer removed).
+    /// The HOST picks the map with M, Among-Us style: host chooses, everyone
+    /// sees the pick on the lobby board, ready-up loads that scene. Team hues
+    /// are colorblind-safe (Okabe-Ito).
     public class MatchLobby : MonoBehaviour
     {
         public static MatchLobby Instance { get; private set; }
 
-        public const float LobbySeconds = 300f;
         public const float AllReadyStart = 10f;
+
+        /// The scene the ready-up loads — host's pick ("Game" until more maps
+        /// exist; any non-Menu/Lobby scene in Build Settings is offered).
+        public static string SelectedMap { get; private set; } = "Game";
+
+        /// The map a CLIENT should ride along to when the host starts — the
+        /// host's own pick locally, the mirrored net value when joined.
+        public static string HostMap =>
+            Instance != null && !string.IsNullOrEmpty(Instance._netMap)
+                ? Instance._netMap : SelectedMap;
+
+        static List<string> _mapCache;
+
+        static List<string> MapList()
+        {
+            if (_mapCache != null) return _mapCache;
+            _mapCache = new List<string>();
+            int n = UnityEngine.SceneManagement.SceneManager.sceneCountInBuildSettings;
+            for (int i = 0; i < n; i++)
+            {
+                string path = UnityEngine.SceneManagement.SceneUtility.GetScenePathByBuildIndex(i);
+                string sceneName = System.IO.Path.GetFileNameWithoutExtension(path);
+                if (sceneName != "Menu" && sceneName != "Lobby") _mapCache.Add(sceneName);
+            }
+            if (_mapCache.Count == 0) _mapCache.Add("Game");
+            return _mapCache;
+        }
 
         /// Local player's team (index into TeamColors). Everyone starts RED.
         public static byte LocalTeam;
@@ -30,16 +57,16 @@ namespace SpellyZombie
             new Color(0.94f, 0.89f, 0.26f), // warm yellow
         };
 
-        float _lobbyLeft = LobbySeconds;
         float _countdown = -1f; // ticks once everyone is ready
         float _pushTimer;
         bool _readyLocal, _built;
         readonly List<Transform> _pillars = new List<Transform>();
         readonly HashSet<int> _remoteReady = new HashSet<int>();
 
-        // client-side mirror of the host's lobby clocks
-        float _netCountdown = -1f, _netLobbyLeft = -1f;
+        // client-side mirror of the host's lobby state
+        float _netCountdown = -1f;
         int _netReady, _netTotal;
+        string _netMap;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -58,19 +85,21 @@ namespace SpellyZombie
             else Instance._remoteReady.Remove(id);
         }
 
-        public static void NetLobby(byte ready, byte total, float countdown, float left)
+        public static void NetLobby(byte ready, byte total, float countdown, string map)
         {
             if (Instance == null) return;
             Instance._netReady = ready;
             Instance._netTotal = total;
             Instance._netCountdown = countdown;
-            Instance._netLobbyLeft = left;
+            Instance._netMap = map;
         }
 
         // ------------------------------------------------------------ tick --
         void Update()
         {
-            if (!RoundDirector.InLobby)
+            // the match lobby lives ONLY in the Lobby scene (not menu, not game)
+            if (!RoundDirector.InLobby
+                || UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Lobby")
             {
                 if (_built) Teardown();
                 return;
@@ -81,18 +110,23 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             bool client = NetGame.Connected && !NetGame.IsHost;
 
-            if (player != null && kb != null && !GameMenu.IsOpen && !PoseStudio.IsOpen)
+            if (player != null && kb != null && !GameMenu.IsOpen && !PoseStudio.IsOpen
+                && !UIKit.Typing) // ENTER while typing an IP must not ready you up
             {
-                // E at a pillar = wear its color
-                if (kb.eKey.wasPressedThisFrame)
-                    for (int i = 0; i < _pillars.Count; i++)
-                        if (_pillars[i] != null && Vector3.Distance(
-                                player.transform.position, _pillars[i].position) < 2.2f)
+                // E at a pillar = wear its color (the pillar announces itself)
+                for (int i = 0; i < _pillars.Count; i++)
+                    if (_pillars[i] != null && Vector3.Distance(
+                            player.transform.position, _pillars[i].position) < 2.2f)
+                    {
+                        UIPrompt.Show("E", Loc.F("team.wear", TeamNames[i]));
+                        if (kb.eKey.wasPressedThisFrame)
                         {
                             LocalTeam = (byte)i;
                             Juice.Chime(player.transform.position);
                             DrawingWorld.Instance?.LogEvent($"you are TEAM {TeamNames[i]}");
                         }
+                        break;
+                    }
 
                 // ENTER = ready toggle
                 if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
@@ -100,11 +134,20 @@ namespace SpellyZombie
                     _readyLocal = !_readyLocal;
                     if (client) NetSync.SendReady(_readyLocal);
                 }
+
+                // M = the HOST cycles the map (Among Us style — host picks,
+                // everyone sees the pick on the board)
+                if (!client && kb.mKey.wasPressedThisFrame)
+                {
+                    var maps = MapList();
+                    int i = Mathf.Max(0, maps.IndexOf(SelectedMap));
+                    SelectedMap = maps[(i + 1) % maps.Count];
+                    Juice.Chime(player.transform.position);
+                    DrawingWorld.Instance?.LogEvent($"map: {SelectedMap}");
+                }
             }
 
             if (client) return; // the host owns the clocks
-
-            _lobbyLeft -= Time.deltaTime;
 
             int total = 1 + NetSync.RemoteCount;
             int ready = (_readyLocal ? 1 : 0) + _remoteReady.Count;
@@ -112,8 +155,7 @@ namespace SpellyZombie
 
             if (all)
             {
-                if (_countdown < 0f)
-                    _countdown = Mathf.Min(AllReadyStart, Mathf.Max(1f, _lobbyLeft));
+                if (_countdown < 0f) _countdown = AllReadyStart;
                 _countdown -= Time.deltaTime;
             }
             else _countdown = -1f;
@@ -124,12 +166,16 @@ namespace SpellyZombie
                 if (_pushTimer <= 0f)
                 {
                     _pushTimer = 0.5f;
-                    NetSync.PushLobby((byte)ready, (byte)total, _countdown, _lobbyLeft);
+                    NetSync.PushLobby((byte)ready, (byte)total, _countdown, SelectedMap);
                 }
             }
 
-            if (_lobbyLeft <= 0f || (all && _countdown <= 0f))
-                RoundDirector.ForceStart(); // lobby dissolves next frame (InLobby flips)
+            // no auto-start timer — the lobby waits until everyone readies up
+            if (all && _countdown <= 0f)
+            {
+                RoundDirector.ForceStart();
+                if (RoundDirector.InLobby) _countdown = -1f; // no map scene yet — retry
+            }
         }
 
         // --------------------------------------------------------- pillars --
@@ -170,36 +216,92 @@ namespace SpellyZombie
             _pillars.Clear();
             _remoteReady.Clear();
             _readyLocal = false;
-            _lobbyLeft = LobbySeconds;
             _countdown = -1f;
-            _netCountdown = _netLobbyLeft = -1f;
+            _netCountdown = -1f;
         }
 
         // -------------------------------------------------------------- HUD --
-        void OnGUI()
+        RectTransform _ui, _uiBoard;
+        UnityEngine.UI.Text _uiStatus, _uiTeam, _uiReady, _uiMap;
+
+        void LateUpdate()
         {
-            if (!RoundDirector.InLobby || GameMenu.IsOpen || PoseStudio.IsOpen) return;
+            // InLobby (phase Idle) is also true on the MENU screen — the
+            // ribbon and ready-board belong to the Lobby SCENE alone
+            bool show = RoundDirector.InLobby && !GameMenu.IsOpen && !PoseStudio.IsOpen
+                && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Lobby";
+            if (!show)
+            {
+                // HIDE, never destroy — prefab-adopted UI must survive cycles
+                if (_ui != null && _ui.gameObject.activeSelf) _ui.gameObject.SetActive(false);
+                if (_uiBoard != null && _uiBoard.gameObject.activeSelf) _uiBoard.gameObject.SetActive(false);
+                return;
+            }
+            if (_ui != null && !_ui.gameObject.activeSelf) _ui.gameObject.SetActive(true);
+            if (_uiBoard != null && !_uiBoard.gameObject.activeSelf) _uiBoard.gameObject.SetActive(true);
+            if (_ui == null) BuildLobbyUI();
 
             bool client = NetGame.Connected && !NetGame.IsHost;
             float countdown = client ? _netCountdown : _countdown;
-            float left = client ? (_netLobbyLeft >= 0f ? _netLobbyLeft : LobbySeconds) : _lobbyLeft;
             int ready = client ? _netReady : (_readyLocal ? 1 : 0) + _remoteReady.Count;
             int total = client ? Mathf.Max(1, _netTotal) : 1 + NetSync.RemoteCount;
+            string map = client && !string.IsNullOrEmpty(_netMap) ? _netMap : SelectedMap;
 
-            var r = new Rect((Screen.width - 520f) / 2f, 12f, 520f, 86f);
-            GUI.Box(r, countdown >= 0f
+            _uiStatus.text = countdown >= 0f
                 ? $"STARTING IN {Mathf.CeilToInt(Mathf.Max(0f, countdown))}…"
-                : $"LOBBY — auto-start in {Mathf.CeilToInt(Mathf.Max(0f, left))}s");
+                : "LOBBY — ready up to start";
+            _uiTeam.text = $"■ TEAM {TeamNames[LocalTeam]}";
+            _uiTeam.color = TeamColors[Mathf.Min(LocalTeam, (byte)(TeamColors.Length - 1))];
+            _uiReady.text = $"READY {ready}/{total} — ENTER to ready up"
+                + (_readyLocal ? "  (you are READY)" : "");
+            _uiMap.text = client
+                ? $"MAP: {map} (the host picks)"
+                : $"MAP: {map} — M to change";
+        }
 
-            var prev = GUI.color;
-            GUI.color = TeamColors[Mathf.Min(LocalTeam, (byte)(TeamColors.Length - 1))];
-            GUI.Label(new Rect(r.x + 16f, r.y + 24f, 240f, 20f), $"■ TEAM {TeamNames[LocalTeam]}");
-            GUI.color = prev;
+        void BuildLobbyUI()
+        {
+            var skin = UISkin.I;
+            _ui = UIKit.Group(UIKit.Root, "LobbyBanner");
+            UIKit.Place(_ui, new Vector2(0.5f, 1f), new Vector2(0f, -4f), new Vector2(560f, 190f));
 
-            GUI.Label(new Rect(r.x + 16f, r.y + 44f, r.width - 32f, 20f),
-                $"READY {ready}/{total} — ENTER to ready up" + (_readyLocal ? "  (you are READY)" : ""));
-            GUI.Label(new Rect(r.x + 16f, r.y + 62f, r.width - 32f, 20f),
-                "walk to a color pillar + E to pick a team (no pick = RED)");
+            // the curtain ribbon is a ONE-LINE title sprite — headline only,
+            // near its native proportions so the border art doesn't smear
+            var ribbon = UIKit.Group(_ui, "Ribbon");
+            UIKit.Place(ribbon, new Vector2(0.5f, 1f), Vector2.zero, new Vector2(560f, 76f));
+            var cloth = UIKit.Panel(ribbon, skin != null ? skin.BannerCurtain : null,
+                skin != null ? Color.white : new Color(0f, 0f, 0f, 0.6f));
+            UIKit.Stretch((RectTransform)cloth.transform);
+            _uiStatus = UIKit.Label(ribbon, "", 22, UIKit.Ink, TextAnchor.MiddleCenter, true);
+            var sr = (RectTransform)_uiStatus.transform;
+            UIKit.Stretch(sr);
+            sr.offsetMin = new Vector2(70f, 16f);  // keep off the tails and trim
+            sr.offsetMax = new Vector2(-70f, -14f);
+
+            // the details live on a plain panel in the BOTTOM-RIGHT corner —
+            // Marko: "on top of your head is really annoying"
+            var board = UIKit.Group(UIKit.Root, "LobbyBoard");
+            _uiBoard = board;
+            UIKit.Place(board, new Vector2(1f, 0f), new Vector2(-14f, 14f), new Vector2(470f, 128f));
+            var back = UIKit.Panel(board, skin != null ? skin.PanelBrown : null,
+                skin != null ? Color.white : new Color(0.22f, 0.17f, 0.12f, 0.92f));
+            UIKit.Stretch((RectTransform)back.transform);
+
+            _uiTeam = UIKit.Label(board, "", 16, Color.white, TextAnchor.MiddleCenter, true);
+            UIKit.Place((RectTransform)_uiTeam.transform, new Vector2(0.5f, 1f), new Vector2(0f, -20f), new Vector2(430f, 20f));
+            _uiReady = UIKit.Label(board, "", 16, UIKit.Ink, TextAnchor.MiddleCenter, true);
+            UIKit.Place((RectTransform)_uiReady.transform, new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(430f, 20f));
+            var hint = UIKit.Label(board, "walk to a color pillar + E to pick a team (no pick = RED)",
+                16, new Color(0.32f, 0.25f, 0.16f), TextAnchor.MiddleCenter);
+            UIKit.Place((RectTransform)hint.transform, new Vector2(0.5f, 1f), new Vector2(0f, -72f), new Vector2(430f, 20f));
+            _uiMap = UIKit.Label(board, "", 16, UIKit.Ink, TextAnchor.MiddleCenter, true);
+            UIKit.Place((RectTransform)_uiMap.transform, new Vector2(0.5f, 1f), new Vector2(0f, -98f), new Vector2(430f, 20f));
+        }
+
+        void OnDestroy()
+        {
+            if (_ui != null) Destroy(_ui.gameObject);
+            if (_uiBoard != null) Destroy(_uiBoard.gameObject);
         }
     }
 }

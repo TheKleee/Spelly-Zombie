@@ -53,7 +53,11 @@ namespace SpellyZombie
             float size, Transform surface, int ownerId,
             Vector3 alignTravel = default, float wobble = 0.03f)
         {
-            var poly = RuneLibrary.GlyphPolyline(rune);
+            // zombies write in MARKO'S hand once he records templates
+            // (single-stroke recordings only — a scrawl is one stroke)
+            var recorded = RuneLibrary.RecordedStrokes(rune);
+            var poly = recorded != null && recorded.Count == 1 && recorded[0].Count >= 2
+                ? recorded[0] : RuneLibrary.GlyphPolyline(rune);
             if (poly == null || poly.Count < 2 || DrawingWorld.Instance == null) return;
 
             // normalize template to [-0.5, 0.5]²
@@ -136,6 +140,7 @@ namespace SpellyZombie
                 if (!s.Alive || s.State != StrokeState.Open) continue;
                 if (s.OwnerId == selfId) continue;              // its own art is perfect already
                 if (s.Nodes.Count < 4 || !s.ChainIntact()) continue;
+                if (s.Hidden()) continue; // zombies can't covet stowed-weapon ink
                 var first = s.First;
                 if (first == null) continue;
                 if (first.transform.IsChildOf(selfBody)) continue; // can't reach its own back

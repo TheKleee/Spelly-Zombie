@@ -152,27 +152,6 @@ namespace SpellyZombie
             }
         }
 
-        /// Grid renderer for RoundDirector's OnGUI (intermission + end screen).
-        public static void DrawGrid(float centerX, float y)
-        {
-            if (Round.Count == 0) return;
-            const float tile = 104f;
-            float total = Round.Count * tile;
-            float x = centerX - total / 2f;
-
-            var style = new GUIStyle(GUI.skin.label)
-            { fontSize = 10, alignment = TextAnchor.UpperCenter };
-            style.normal.textColor = new Color(1f, 1f, 1f, 0.85f);
-
-            GUI.Label(new Rect(centerX - 200f, y - 22f, 400f, 20f),
-                "— seals this round —", style);
-            foreach (var e in Round)
-            {
-                if (e.Tex != null)
-                    GUI.DrawTexture(new Rect(x + 4f, y, 96f, 96f), e.Tex);
-                GUI.Label(new Rect(x, y + 98f, tile, 16f), e.Label, style);
-                x += tile;
-            }
-        }
+        // (grid rendering moved to UI/HUD.cs — uGUI tiles in the Kenney frames)
     }
 }

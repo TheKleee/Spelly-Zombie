@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9719e0189d17a664e87f7a7d85f22bd3, type: 3}
+  m_Name: SZ_WardrobePlayer
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SocketWardrobe
+  Slots:
+  - Socket: Hat
+    Options:
+    - {fileID: 919132149155446097, guid: 6a3fc7ef84870c449a1e00741c9df6cb, type: 3}
+  - Socket: Head
+    Options: []
+  - Socket: Cape
+    Options:
+    - {fileID: 919132149155446097, guid: 81c08fdc9318ea0479065e0ea594c69f, type: 3}
+  - Socket: Chest
+    Options: []
+  - Socket: Belt
+    Options: []
+  - Socket: ShoulderL
+    Options: []
+  - Socket: ShoulderR
+    Options: []
+  - Socket: HandL
+    Options: []
+  - Socket: HandR
+    Options: []
+  - Socket: LegL
+    Options: []
+  - Socket: LegR
+    Options: []

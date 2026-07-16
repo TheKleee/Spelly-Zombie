@@ -7,47 +7,66 @@ namespace SpellyZombie
     // Zones run, physics composes, nothing announces or nudges. Only the
     // generic banner component below survives (round announcements use it).
 
-    /// Big centered announcement that fades — used by the RoundDirector for
-    /// round starts, wipes, and victories.
+    /// Big centered announcement on the curtain banner that fades and rises —
+    /// used by the RoundDirector for round starts, wipes, and victories.
     public class ComboBanner : MonoBehaviour
     {
-        string _text;
-        Color _color;
         float _life = 2.4f, _age;
-        GUIStyle _style;
+        RectTransform _ui;
+        CanvasGroup _fade;
+
+        static ComboBanner _live;
 
         public static void Show(string text, Color color)
         {
+            // newest wins: a second banner inside the first's 2.4s used to
+            // ADOPT the live group mid-fade (stale text, shared corpse)
+            if (_live != null)
+            {
+                UIKit.Retire(_live._ui);
+                Destroy(_live.gameObject);
+            }
             var go = new GameObject("ComboBanner");
+            DontDestroyOnLoad(go); // its group lives on the persistent canvas —
+                                   // dying with the scene stranded a frozen
+                                   // banner there showing the OLD text forever
             var b = go.AddComponent<ComboBanner>();
-            b._text = text;
-            b._color = color;
+            _live = b;
+            b.BuildUI(text, color);
+        }
+
+        void BuildUI(string text, Color color)
+        {
+            var skin = UISkin.I;
+            _ui = UIKit.Group(UIKit.Root, "Announcement");
+            UIKit.Place(_ui, new Vector2(0.5f, 1f), new Vector2(0f, -170f), new Vector2(820f, 110f));
+            _fade = _ui.gameObject.AddComponent<CanvasGroup>();
+
+            var cloth = UIKit.Panel(_ui, skin != null ? skin.BannerCurtain : null,
+                skin != null ? Color.white : new Color(0f, 0f, 0f, 0.55f));
+            UIKit.Stretch((RectTransform)cloth.transform);
+
+            var label = UIKit.Label(_ui, text, 40, color, TextAnchor.MiddleCenter, true);
+            label.text = text;   // an ADOPTED prefab label keeps its authored
+            label.color = color; // words — a live banner must say ITS line
+            var lr = (RectTransform)label.transform;
+            UIKit.Stretch(lr);
+            lr.offsetMin = new Vector2(60f, 8f);
+            lr.offsetMax = new Vector2(-60f, -8f);
         }
 
         void Update()
         {
             _age += Time.deltaTime;
-            if (_age > _life) Destroy(gameObject);
-        }
-
-        void OnGUI()
-        {
-            if (_style == null)
-                _style = new GUIStyle(GUI.skin.label)
-                {
-                    fontSize = 46,
-                    fontStyle = FontStyle.Bold,
-                    alignment = TextAnchor.MiddleCenter
-                };
             float t = Mathf.Clamp01(_age / _life);
-            float alpha = 1f - t * t;
-            float rise = 20f * t;
-
-            var rect = new Rect(0, Screen.height * 0.22f - rise, Screen.width, 60);
-            _style.normal.textColor = new Color(0f, 0f, 0f, alpha * 0.6f);
-            GUI.Label(new Rect(rect.x + 3, rect.y + 3, rect.width, rect.height), _text, _style);
-            _style.normal.textColor = new Color(_color.r, _color.g, _color.b, alpha);
-            GUI.Label(rect, _text, _style);
+            if (_fade != null) _fade.alpha = 1f - t * t;
+            if (_ui != null) _ui.anchoredPosition = new Vector2(0f, -170f + 24f * t);
+            if (_age > _life)
+            {
+                UIKit.Retire(_ui);
+                if (_live == this) _live = null;
+                Destroy(gameObject);
+            }
         }
     }
 }

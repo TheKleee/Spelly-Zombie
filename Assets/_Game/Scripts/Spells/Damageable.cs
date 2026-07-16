@@ -29,6 +29,20 @@ namespace SpellyZombie
         public void TakeDamage(float amount, string cause)
         {
             if (amount <= 0f || _dead) return;
+
+            // A LIMB IS NOT FURNITURE: damage landing on a bone of a living
+            // character forwards to the BEING — a Damageable that sneaks onto
+            // a skeleton bone must never Destroy() it (a burning leg once
+            // vanished from the rig and the skin snapped to the world origin).
+            var pilot = GetComponentInParent<SimpleFPSController>();
+            Component owner = pilot != null ? (Component)pilot : GetComponentInParent<Creature>();
+            if (owner != null && owner.gameObject != gameObject)
+            {
+                var rootDmg = owner.GetComponent<Damageable>();
+                if (rootDmg != null && rootDmg != this) rootDmg.TakeDamage(amount, cause);
+                return;
+            }
+
             Health -= amount;
             OnDamaged?.Invoke(amount, cause);
             _logAccum += amount;

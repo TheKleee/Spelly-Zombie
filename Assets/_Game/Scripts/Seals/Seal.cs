@@ -52,9 +52,6 @@ namespace SpellyZombie
         /// a zombie circling your runes casts with the zombie's).
         public int OwnerId { get; private set; }
 
-        Light _glow;
-        GameObject _glowGo;
-
         public Seal(List<SealDetector.LoopEntry> boundary)
         {
             Boundary = boundary;
@@ -168,8 +165,6 @@ namespace SpellyZombie
                 }
             }
 
-            CreateGlow();
-
             bool Eligible(Stroke s)
             {
                 if (s == null || s.State != StrokeState.Open || !s.Alive || s.Nodes.Count < 3) return false;
@@ -245,7 +240,6 @@ namespace SpellyZombie
                 return false;
             }
 
-            // (seal glow removed — see BuildGlow note)
             return true;
         }
 
@@ -255,7 +249,6 @@ namespace SpellyZombie
         {
             foreach (var e in Boundary) Release(e.Stroke);
             foreach (var s in Payload) Release(s);
-            DestroyGlow();
             DrawingWorld.Instance?.OnSealEnded(this, $"Seal #{Id} broken ({reason}) with {Remaining:0.0}s left");
         }
 
@@ -289,7 +282,6 @@ namespace SpellyZombie
             int burned = 0;
             foreach (var e in Boundary) SpendOrBurn(e.Stroke, spent, ref burned);
             foreach (var s in Payload) SpendOrBurn(s, spent, ref burned);
-            DestroyGlow();
 
             if (spent.Count > 0)
                 DrawingWorld.Instance?.RegisterSpentGroup(spent, pairs);
@@ -318,18 +310,8 @@ namespace SpellyZombie
             }
         }
 
-        void CreateGlow()
-        {
-            // NO seal light — it washed out every rune effect near it. The gold
-            // ink color IS the "active seal" indicator; only the Light rune
-            // actually produces light now.
-        }
-
-        void DestroyGlow()
-        {
-            if (_glowGo != null) Object.Destroy(_glowGo);
-            _glow = null;
-            _glowGo = null;
-        }
+        // NO seal light — it washed out every rune effect near it. The gold
+        // ink color IS the "active seal" indicator; only the Light rune
+        // actually produces light now. (The glow machinery was removed.)
     }
 }

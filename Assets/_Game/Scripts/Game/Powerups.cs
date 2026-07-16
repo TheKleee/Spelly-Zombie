@@ -116,6 +116,7 @@ namespace SpellyZombie
             Instance._pending = 0;
             Instance._rerolls = 0;
             Instance._open = false;
+            Instance.DestroyChooserUI();
         }
 
         // ----------------------------------------------------------- choice --
@@ -125,6 +126,7 @@ namespace SpellyZombie
             {
                 _open = true;
                 Roll();
+                BuildChooserUI();
             }
             if (!_open) return;
 
@@ -146,6 +148,7 @@ namespace SpellyZombie
             {
                 _rerolls--;
                 Roll();
+                BuildChooserUI();
             }
         }
 
@@ -190,7 +193,8 @@ namespace SpellyZombie
             Nova(); // the escape blast — shove the crowd that gathered
 
             _open = _pending > 0;
-            if (_open) Roll();
+            if (_open) { Roll(); BuildChooserUI(); }
+            else DestroyChooserUI();
         }
 
         /// Confirming a powerup BLASTS everything nearby with push force —
@@ -203,6 +207,8 @@ namespace SpellyZombie
             Vector3 at = p.transform.position;
 
             Juice.Boom(at, 0.8f);
+            var lib = FxLibrary.I;
+            if (lib != null) FxLibrary.Spawn(lib.Poof, at + Vector3.up);
             WorldEvents.Report(WorldEventKind.Explosion, at, 2.5f);
 
             for (int i = 0; i < 10; i++)
@@ -228,42 +234,82 @@ namespace SpellyZombie
         }
 
         // -------------------------------------------------------------- HUD --
-        void OnGUI()
+        // (uGUI — the card panel is rebuilt on every roll, torn down on pick)
+
+        /// The always-on XP line by the HP/ink bars (HUD renders it).
+        public static string XpLine()
         {
-            if (!RoundDirector.RunActive && !_open) return;
+            if (Instance == null || !RoundDirector.RunActive) return "";
+            int need = 4 + Instance._level * 3;
+            return $"LVL {Instance._level} · {Instance._kills}/{need} kills"
+                + (Instance._pending > 0 ? "  ⬆ LEVEL UP!" : "");
+        }
 
-            // always-on XP pip, tucked by the HP/ink bars
-            int need = 4 + _level * 3;
-            GUI.Label(new Rect(380, Screen.height - 46, 300, 20),
-                $"LVL {_level}   {_kills}/{need} kills" + (_pending > 0 ? "   ⬆ LEVEL UP!" : ""));
+        RectTransform _ui;
 
-            if (!_open) return;
+        void BuildChooserUI()
+        {
+            DestroyChooserUI();
+            var skin = UISkin.I;
+            _ui = UIKit.Group(UIKit.Root, "PowerupChooser");
+            UIKit.Place(_ui, new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(920f, 330f));
 
-            float w = 232f, h = 128f, gap = 14f;
-            float total = _offers.Count * w + (_offers.Count - 1) * gap;
-            float x0 = (Screen.width - total) / 2f;
-            float y = Screen.height * 0.3f;
+            var header = UIKit.Panel(_ui, skin != null ? skin.BannerCurtain : null,
+                skin != null ? Color.white : new Color(0f, 0f, 0f, 0.6f));
+            UIKit.Place((RectTransform)header.transform, new Vector2(0.5f, 1f), Vector2.zero, new Vector2(760f, 76f));
+            var headText = UIKit.Label((RectTransform)header.transform,
+                "LEVEL UP — the horde is entranced by your glow… and closing in",
+                17, UIKit.Ink, TextAnchor.MiddleCenter, true);
+            UIKit.Stretch((RectTransform)headText.transform);
 
-            GUI.Box(new Rect(x0 - 16, y - 58, total + 32, h + 106),
-                "LEVEL UP — the horde is entranced by your glow… and closing in");
-
+            float w = 280f, gap = 18f;
+            float x0 = -(_offers.Count - 1) * (w + gap) * 0.5f;
             for (int i = 0; i < _offers.Count; i++)
             {
+                int pick = i; // captured
                 var o = _offers[i];
-                var r = new Rect(x0 + i * (w + gap), y, w, h);
                 var b = _buffs.TryGetValue(o.Card, out var cur) ? cur : default;
                 int stacks = o.Stat switch
                 {
                     0 => b.More, 1 => b.Fast, 2 => b.Bond, 3 => b.Potent,
                     4 => b.Big, 5 => b.Rapid, _ => b.Echo,
                 };
-                GUI.Box(r, $"[{i + 1}]  {o.Card.ToString().ToUpper()} — {StatName[o.Stat]}"
-                    + $"\n\n{StatDesc[o.Stat]}"
-                    + (stacks > 0 ? $"\n(owned ×{stacks})" : ""));
-                if (GUI.Button(new Rect(r.x, r.yMax + 4, w, 24), "take")) { Pick(i); return; }
+
+                var card = UIKit.Group(_ui, "Card" + i);
+                UIKit.Place(card, new Vector2(0.5f, 0.5f), new Vector2(x0 + i * (w + gap), -30f), new Vector2(w, 190f));
+                var back = UIKit.Panel(card, skin != null ? skin.PanelBrown : null,
+                    skin != null ? Color.white : new Color(0.25f, 0.2f, 0.14f, 0.95f));
+                UIKit.Stretch((RectTransform)back.transform);
+
+                var cap = UIKit.Keycap(card, (i + 1).ToString(), 30f);
+                UIKit.Place(cap, new Vector2(0f, 1f), new Vector2(12f, -12f), cap.sizeDelta);
+
+                var title = UIKit.Label(card, $"{o.Card.ToString().ToUpper()} — {StatName[o.Stat]}",
+                    18, UIKit.Ink, TextAnchor.MiddleLeft, true);
+                UIKit.Place((RectTransform)title.transform, new Vector2(0f, 1f), new Vector2(58f, -28f), new Vector2(w - 70f, 24f));
+
+                var desc = UIKit.Label(card, StatDesc[o.Stat]
+                    + (stacks > 0 ? $"\n(owned ×{stacks})" : ""),
+                    15, new Color(0.25f, 0.19f, 0.12f), TextAnchor.UpperLeft);
+                var dr = (RectTransform)desc.transform;
+                UIKit.Place(dr, new Vector2(0f, 1f), new Vector2(16f, -58f), new Vector2(w - 32f, 80f));
+                desc.horizontalOverflow = HorizontalWrapMode.Wrap;
+
+                var take = UIKit.Button(card, "TAKE", () => Pick(pick),
+                    skin != null ? skin.ButtonBrown : null, 17);
+                UIKit.Place((RectTransform)take.transform, new Vector2(0.5f, 0f), new Vector2(0f, 12f), new Vector2(140f, 40f));
             }
-            GUI.Label(new Rect(x0, y + h + 34, total, 22),
-                _rerolls > 0 ? $"press 1-3 to choose · R = reroll ({_rerolls} left)" : "press 1-3 to choose");
+
+            var hint = UIKit.Label(_ui,
+                _rerolls > 0 ? $"press 1-3 to choose · R = reroll ({_rerolls} left)" : "press 1-3 to choose",
+                16, UIKit.Parchment, TextAnchor.MiddleCenter);
+            UIKit.Place((RectTransform)hint.transform, new Vector2(0.5f, 0f), new Vector2(0f, -4f), new Vector2(600f, 24f));
+        }
+
+        void DestroyChooserUI()
+        {
+            UIKit.Retire(_ui); // reroll rebuilds same-frame — never adopt the corpse
+            _ui = null;
         }
     }
 }

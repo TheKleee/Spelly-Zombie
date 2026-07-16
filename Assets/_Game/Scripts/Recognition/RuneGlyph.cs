@@ -78,8 +78,12 @@ namespace SpellyZombie
 
             Vector3 origin = lead.First.transform.position;
             // "right" = the drawer's screen-right laid flat onto the surface;
-            // "up" = up the wall / away from the drawer on the floor
-            Vector3 right = Vector3.ProjectOnPlane(lead.BasisRight, normal);
+            // "up" = up the wall / away from the drawer on the floor.
+            // The frame RIDES the surface (SurfaceDelta): an engraved tablet or
+            // a posed body re-reads identically no matter where its carrier now
+            // faces — orientation in the world never changes what a drawing is.
+            Vector3 right = Vector3.ProjectOnPlane(
+                lead.First.SurfaceDelta * lead.BasisRight, normal);
             if (right.sqrMagnitude < 1e-4f) right = Vector3.ProjectOnPlane(Vector3.forward, normal);
             right.Normalize();
             Vector3 up = Vector3.Cross(right, normal).normalized;
@@ -188,6 +192,11 @@ namespace SpellyZombie
             {
                 var glyph = result[i];
                 if (glyph.Rune != RuneType.None || glyph.Members.Count == 0) continue;
+                // only true mush gets the word-parse: a glyph that ALMOST read
+                // as one rune (or fizzled as ambiguous) must never be
+                // reinterpreted as several other runes — that's an accidental
+                // cast waiting to happen
+                if (glyph.Score >= DrawingConfig.MinRuneScore) continue;
                 var parts = RuneLibrary.ClassifyCompound(ownerId, RawStrokesOf(glyph.Members));
                 if (parts.Count < 2) continue;
 
@@ -213,77 +222,49 @@ namespace SpellyZombie
             var result = new List<RuneGlyph>();
             if (n == 0) return result;
 
-            // too many strokes for bitmask enumeration — recognize each alone
-            if (n == 1 || n > 24)
+            // MARKO'S RULE (the sticky-vs-heat misfire): physically CONNECTED
+            // ink is ONE glyph — recognition reads everything that touches as
+            // a single drawing, no matter how many pen strokes built it or
+            // how old the ink is. Touching runes merging into unreadable mush
+            // and fizzling is the player's lesson (see the class doc). The
+            // old subset search would happily SPLIT touching ink into
+            // whatever combination scored best — finishing a HEAT glyph
+            // against leftover ink fired STICKY×2. Components are atomic.
+            // (A fizzled component can still decompose as a COMPOUND SIGIL —
+            // that path stays, it's the deliberate multi-letter feature.)
+            var parent = new int[n];
+            for (int i = 0; i < n; i++) parent[i] = i;
+            int Find(int x)
             {
-                for (int i = 0; i < n; i++)
-                    result.Add(Recognize(new List<Stroke> { strokes[i] }, ownerId));
-                return result;
+                while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+                return x;
             }
-
-            // TOUCH adjacency — strokes read as one rune ONLY when physically
-            // touching (a millimeter apart = separate; exactness, like WHA).
-            // The old size-scaled proximity join grouped neighbors that were
-            // merely near each other. baseDist/sizeFactor params kept for
-            // signature compatibility but no longer widen the rule.
             var bounds = new Bounds[n];
             for (int i = 0; i < n; i++) bounds[i] = StrokeBounds(strokes[i]);
-            var adjMask = new int[n];
             for (int i = 0; i < n; i++)
                 for (int j = i + 1; j < n; j++)
                 {
+                    if (Find(i) == Find(j)) continue;
                     float join = DrawingConfig.RuneTouchDistance;
-                    var bi = bounds[i]; bi.Expand(join);
+                    var bi = bounds[i];
+                    bi.Expand(join);
                     if (bi.Intersects(bounds[j]) && InkTouches(strokes[i], strokes[j], join))
-                    {
-                        adjMask[i] |= 1 << j;
-                        adjMask[j] |= 1 << i;
-                    }
+                        parent[Find(j)] = Find(i);
                 }
 
-            // enumerate connected candidate groups up to MaxGlyphStrokes, score each
-            var candidates = new List<(int mask, float score, float priority)>();
-            var seen = new HashSet<int>();
-            var queue = new Queue<int>();
-            for (int i = 0; i < n; i++) queue.Enqueue(1 << i);
-            while (queue.Count > 0 && candidates.Count < 3000)
-            {
-                int mask = queue.Dequeue();
-                if (!seen.Add(mask)) continue;
-
-                int count = CountBits(mask);
-                var (_, score) = RuneLibrary.Classify(ownerId, RawStrokesOf(Subset(strokes, mask)));
-                float priority = score + DrawingConfig.MultiStrokeBias * (count - 1);
-                candidates.Add((mask, score, priority));
-
-                if (count < DrawingConfig.MaxGlyphStrokes)
-                {
-                    int frontier = 0;
-                    for (int i = 0; i < n; i++) if ((mask & (1 << i)) != 0) frontier |= adjMask[i];
-                    frontier &= ~mask;
-                    for (int j = 0; j < n; j++)
-                        if ((frontier & (1 << j)) != 0) queue.Enqueue(mask | (1 << j));
-                }
-            }
-
-            // greedy: take the best recognized groupings that don't overlap
-            candidates.Sort((x, y) => y.priority.CompareTo(x.priority));
-            int assigned = 0;
-            int allMask = (1 << n) - 1;
-            foreach (var cand in candidates)
-            {
-                if (cand.score < DrawingConfig.MinRuneScore) continue; // recognized only
-                if ((assigned & cand.mask) != 0) continue;            // strokes already used
-                result.Add(Recognize(Subset(strokes, cand.mask), ownerId));
-                assigned |= cand.mask;
-                if ((assigned & allMask) == allMask) break;
-            }
-
-            // whatever's left is a fizzle on its own
+            var byRoot = new Dictionary<int, List<Stroke>>();
             for (int i = 0; i < n; i++)
-                if ((assigned & (1 << i)) == 0)
-                    result.Add(Recognize(new List<Stroke> { strokes[i] }, ownerId));
-
+            {
+                int root = Find(i);
+                if (!byRoot.TryGetValue(root, out var members))
+                {
+                    members = new List<Stroke>();
+                    byRoot[root] = members;
+                }
+                members.Add(strokes[i]);
+            }
+            foreach (var members in byRoot.Values)
+                result.Add(Recognize(members, ownerId));
             return result;
         }
 
@@ -295,21 +276,6 @@ namespace SpellyZombie
             glyph.Score = score;
             glyph.Rune = score >= DrawingConfig.MinRuneScore ? rune : RuneType.None;
             return glyph;
-        }
-
-        static List<Stroke> Subset(IReadOnlyList<Stroke> strokes, int mask)
-        {
-            var m = new List<Stroke>();
-            for (int i = 0; i < strokes.Count; i++)
-                if ((mask & (1 << i)) != 0) m.Add(strokes[i]);
-            return m;
-        }
-
-        static int CountBits(int v)
-        {
-            int c = 0;
-            while (v != 0) { v &= v - 1; c++; }
-            return c;
         }
 
         static Bounds StrokeBounds(Stroke s)
@@ -325,7 +291,7 @@ namespace SpellyZombie
             return b;
         }
 
-        static bool InkTouches(Stroke a, Stroke b, float maxDist)
+        public static bool InkTouches(Stroke a, Stroke b, float maxDist)
         {
             foreach (var na in a.Nodes)
             {
