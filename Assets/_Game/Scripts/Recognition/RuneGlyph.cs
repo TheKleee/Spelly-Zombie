@@ -13,6 +13,11 @@ namespace SpellyZombie
     /// simple, and the player's lesson to learn.
     public class RuneGlyph
     {
+        /// TESTING ONLY: the compound-sigil word parse casts 2+ runes from a
+        /// scribble that FAILED single-rune recognition — a direct violation of
+        /// "the right rune or none". Default OFF until Marko rules otherwise.
+        public static bool CompoundSigilsEnabled = false;
+
         public readonly List<Stroke> Members = new List<Stroke>();
         public RuneType Rune = RuneType.None;
         public float Score;      // raw $P match confidence 0..1
@@ -88,6 +93,23 @@ namespace SpellyZombie
             right.Normalize();
             Vector3 up = Vector3.Cross(right, normal).normalized;
 
+            // UNROLL THE SURFACE (Marko: "fix recognition on uneven
+            // surfaces"): every pen step — including the pen-up jumps
+            // BETWEEN strokes — is measured in a parallel-transported local
+            // tangent frame and laid flat, one CONTINUOUS unroll for the
+            // whole glyph. Ink over slopes and bumps keeps its true drawn
+            // shape; strokes that touch in 3D still touch in 2D (the
+            // stitcher's 5cm law survives terrain); on flat surfaces the sum
+            // telescopes to the old planar projection EXACTLY. Transporting
+            // the frame node-to-node (instead of re-projecting the global
+            // axis) prevents mirror-flips on high-curvature surfaces like
+            // limbs and trunks. [Fleet-verified: the first draft anchored
+            // each stroke planar-side and split multi-stroke glyphs on
+            // bumps — this version is the corrected one.]
+            Vector3 prevPos = default;
+            Vector2 pen = default;
+            Vector3 lrPrev = right;
+            bool glyphFirst = true;
             foreach (var m in members)
             {
                 if (m == null || !m.Alive) continue;
@@ -95,8 +117,28 @@ namespace SpellyZombie
                 foreach (var n in m.Nodes)
                 {
                     if (n == null) continue;
-                    Vector3 d = n.transform.position - origin;
-                    pts.Add(new Vector2(Vector3.Dot(d, right), Vector3.Dot(d, up)));
+                    Vector3 ln = n.SurfaceNormal;
+                    if (ln.sqrMagnitude < 1e-6f) ln = normal;
+                    ln.Normalize();
+                    Vector3 lr = Vector3.ProjectOnPlane(lrPrev, ln);
+                    if (lr.sqrMagnitude < 1e-6f) lr = lrPrev;
+                    lr.Normalize();
+                    Vector3 lu = Vector3.Cross(lr, ln).normalized;
+
+                    if (glyphFirst)
+                    {
+                        Vector3 d0 = n.transform.position - origin;
+                        pen = new Vector2(Vector3.Dot(d0, right), Vector3.Dot(d0, up));
+                        glyphFirst = false;
+                    }
+                    else
+                    {
+                        Vector3 step = n.transform.position - prevPos;
+                        pen += new Vector2(Vector3.Dot(step, lr), Vector3.Dot(step, lu));
+                    }
+                    prevPos = n.transform.position;
+                    lrPrev = lr;
+                    pts.Add(pen);
                 }
                 if (pts.Count >= 2) result.Add(pts);
             }
@@ -188,6 +230,9 @@ namespace SpellyZombie
             // WORD — several runes drawn as one connected scribble. Parse its
             // letter-sentence; if it decomposes into 2+ readable runes, they
             // ALL fire (sharing the scribble's location and size).
+            // DEFAULT OFF: casting spells FROM a fizzled scribble violates
+            // "the right rune or none" — any mush could fire something.
+            if (CompoundSigilsEnabled)
             for (int i = result.Count - 1; i >= 0; i--)
             {
                 var glyph = result[i];

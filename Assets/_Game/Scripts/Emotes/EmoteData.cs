@@ -85,7 +85,7 @@ namespace SpellyZombie
             }
         }
 
-        /// The undeletable ships-with-the-game layer (slots 1-4). Every pose
+        /// The undeletable ships-with-the-game layer (slots 1-3). Every pose
         /// states ALL joints so switching poses never leaves a limb behind.
         static void BuildDefaults()
         {
@@ -106,7 +106,7 @@ namespace SpellyZombie
             Add(1, "Arm raise", new Vector3(0f, 0f, 105f), Vector3.zero, Vector3.zero);
             Add(2, "Victory", new Vector3(0f, 0f, 150f), new Vector3(0f, 0f, -150f), Vector3.zero);
             Add(3, "Arms crossed", new Vector3(0f, 0f, 100f), new Vector3(0f, 0f, -100f), Vector3.zero);
-            Add(4, "Bow", new Vector3(0f, 0f, 20f), new Vector3(0f, 0f, -20f), new Vector3(45f, 0f, 0f));
+            // (slot 4 "Bow" removed by Marko's ruling — slots are his to fill)
         }
 
         public static EmoteDef DefaultForSlot(int slot)

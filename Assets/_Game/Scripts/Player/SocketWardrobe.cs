@@ -94,6 +94,7 @@ namespace SpellyZombie
                 if (roll > chance) continue;
                 var socket = set.Get(slot.Socket);
                 if (socket == null) continue;
+                if (socket.childCount > 0) continue; // a baked/worn piece already lives here
                 int pick = rng != null ? rng.Next(slot.Options.Count)
                     : Random.Range(0, slot.Options.Count);
                 Lock(slot.Options[pick], socket, pieces);

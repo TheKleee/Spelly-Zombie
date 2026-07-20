@@ -191,11 +191,17 @@ namespace SpellyZombie
                     HolsterRot, Time.deltaTime * 9f);
             }
 
-            UpdateArmed(kb, mouse);
+            // a downed/dead/sprawled wizard's trigger finger doesn't work
+            // (firing while bleeding out made you impossible to revive)
+            if (Wielder == null || !(Wielder.IsDowned || Wielder.IsSprawled || Wielder.IsAirTumbling))
+                UpdateArmed(kb, mouse);
         }
 
         /// The weapon's own mechanics — trigger, moving parts, seal nudges.
         protected abstract void UpdateArmed(Keyboard kb, Mouse mouse);
+
+        /// Whoever holds the weapon — trigger gates read their state.
+        protected SimpleFPSController Wielder { get; private set; }
 
         /// WeaponSlots hands the weapon to a player (E). With the real body,
         /// the weapon is GLUED INTO THE HAND: struck into its camera-space aim
@@ -205,6 +211,7 @@ namespace SpellyZombie
         {
             if (player == null || player.CameraPivot == null) return;
             Held = true;
+            Wielder = player;
             foreach (var col in GetComponentsInChildren<Collider>())
                 if (col.isTrigger) col.enabled = false; // pickup bubble sleeps; plates stay drawable
 
@@ -228,6 +235,7 @@ namespace SpellyZombie
         public virtual void Drop(Vector3 at)
         {
             Held = false;
+            Wielder = null;
             DrawMode = false;
             transform.SetParent(null, true);
             transform.position = at;

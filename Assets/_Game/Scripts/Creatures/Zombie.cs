@@ -192,11 +192,14 @@ namespace SpellyZombie
             part.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(HatColor, MoteShade.Opaque);
         }
 
+        Damageable _dmg2;
+
         void Awake()
         {
             _rb = GetComponent<Rigidbody>();
             _creature = GetComponent<Creature>();
             _brain = GetComponent<ZombieBrain>();
+            _dmg2 = GetComponent<Damageable>();
             All.Add(this);
         }
 
@@ -226,6 +229,16 @@ namespace SpellyZombie
         void FixedUpdate()
         {
             if (_creature == null || _brain == null) return;
+
+            // THE VOID RULE (Marko): a zombie below the world floor DIES where
+            // it fell — no teleports home, no arrow-yeet exploit stacking
+            // bodies at the map middle. It dies the honest way (drops, kill
+            // credit), and its loot falls with it: your yeet, your problem.
+            if (transform.position.y < FallCatcher.KillY)
+            {
+                _dmg2?.TakeDamage(99999f, "the void");
+                return;
+            }
 
             if (_charging) { TickCharge(); return; }
             if (!_creature.CanMove) return;
@@ -489,8 +502,12 @@ namespace SpellyZombie
 
             Vector3 dir = _brain.MoveDir.normalized;
             int mask = Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer);
-            if (!Physics.Raycast(transform.position + Vector3.up * 0.2f, dir, out var hit, 1.3f,
-                    mask, QueryTriggerInteraction.Ignore)) return;
+            // SPHERECAST from the belly, not a ray from +0.2 above the ROOT —
+            // the root is the capsule CENTER (~1.1m up), so the old ray sailed
+            // clean over every fence and zombies pushed against them forever
+            // (Marko: "zombies do not destroy anything")
+            if (!Physics.SphereCast(transform.position + Vector3.down * 0.35f, 0.4f,
+                    dir, out var hit, 1.6f, mask, QueryTriggerInteraction.Ignore)) return;
 
             if (hit.collider.GetComponentInParent<Creature>() != null) return;            // brawls are elsewhere
             if (hit.collider.GetComponentInParent<SimpleFPSController>() != null) return; // that's lunch, not lumber

@@ -128,12 +128,20 @@ namespace SpellyZombie
 
         void Update()
         {
-            if (_marker == null || PoseStudio.IsOpen || GameMenu.IsOpen) return;
-            if (SimpleFPSController.ThirdPersonActive || SelfPaint.IsActive) return;
+            if (_marker == null) return;
 
             var player = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             if (player == null || player.IsDowned) return;
             if ((player.transform.position - transform.position).sqrMagnitude > Reach * Reach) return;
+
+            // the cauldron is the INK WELL (Marko's ship rule): standing at
+            // the pot refills the wand fast — the anchor you keep returning
+            // to, in any camera mode, prompt or no prompt
+            var ink = player.GetComponent<PlayerInk>();
+            if (ink != null) ink.Award(DrawingConfig.CauldronInkPerSec * Time.deltaTime);
+
+            if (PoseStudio.IsOpen || GameMenu.IsOpen) return;
+            if (SimpleFPSController.ThirdPersonActive || SelfPaint.IsActive) return;
 
             // one quiet CoD-style purchase prompt — only while standing at the pot
             UIPrompt.Show("E", Perks.Has(_marker.Type)

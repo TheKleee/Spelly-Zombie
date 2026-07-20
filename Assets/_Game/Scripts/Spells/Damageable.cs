@@ -29,6 +29,7 @@ namespace SpellyZombie
         public void TakeDamage(float amount, string cause)
         {
             if (amount <= 0f || _dead) return;
+            if (Barrier.Protects(this)) return; // two-way isolation holds for EVERYTHING
 
             // A LIMB IS NOT FURNITURE: damage landing on a bone of a living
             // character forwards to the BEING — a Damageable that sneaks onto

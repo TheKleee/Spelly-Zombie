@@ -25,9 +25,20 @@ namespace SpellyZombie
         {
             public List<Stroke> Strokes;
             public List<(DrawNode a, DrawNode b)> Pairs;
+            public List<SealDetector.LoopEntry> Boundary; // ring order, kept so the seal can re-fire itself
+            public bool Armed;                            // the loop has OPENED and is waiting to re-close
+            public HashSet<Transform> BaselineInside;     // capsules resting inside (the body's OWN fat torso/neighbour
+                                                          // capsules, or a limb already crossed at spend-time) — never intruders
+            public int BaselineTicks;                     // settle counter: fold resting capsules into the baseline for a
+                                                          // few ticks before the "a NEW limb entered" trigger arms
         }
 
+        const int SealBaselineSettleTicks = 3; // ~0.36s at DetectInterval — a limb must arrive AFTER this to count
+
         readonly List<SpentGroup> _spentGroups = new List<SpentGroup>();
+        static readonly Collider[] _limbHits = new Collider[64];          // limb-intrusion overlap buffer
+        static readonly HashSet<Transform> _ownBones = new HashSet<Transform>();  // the loop's own carrier bones
+        static readonly HashSet<Transform> _insideNow = new HashSet<Transform>(); // capsules inside the loop this tick
         readonly List<string> _events = new List<string>();
         float _detectTimer;
         readonly List<Stroke> _eligibleCache = new List<Stroke>();
@@ -72,8 +83,9 @@ namespace SpellyZombie
 
             // pen lifted with both ends on the same existing line? that's a
             // closure — but rune-draft strokes never close (they're becoming a
-            // rune, not a seal)
-            if (allowCloseOntoInk && TryCloseOntoInk(s)) return;
+            // rune, not a seal). SELF first: a circle whose ends also graze a
+            // Y must seal on ITSELF, not through the Y (glyph-splitting).
+            if (allowCloseOntoInk && (TryCloseOntoSelf(s) || TryCloseOntoInk(s))) return;
 
             LastInk = s;
             PreviewRune(s);
@@ -173,7 +185,10 @@ namespace SpellyZombie
                     && !s.Hidden())
                     open.Add(s);
 
-            foreach (var glyph in RuneGlyph.Cluster(open, DrawingConfig.GlyphJoinBase, DrawingConfig.GlyphJoinSizeFactor))
+            // SAME grouping rule as live recognition (RuneTouchDistance union-
+            // find) — recording with a looser join than reading meant templates
+            // captured neighbour ink the reader would never include
+            foreach (var glyph in RuneGlyph.Cluster(open, DrawingConfig.RuneTouchDistance, 0f))
             {
                 if (!glyph.Members.Contains(LastInk)) continue;
                 strokeCount = glyph.Members.Count;
@@ -222,7 +237,7 @@ namespace SpellyZombie
                              + Vector3.Distance(bFirst.transform.position, a.Nodes[k].transform.position);
                 if (gapSum > loopLength * DrawingConfig.MaxLoopGapFraction)
                 {
-                    LogEvent($"almost closed onto ink — {gapSum * 100f:0}cm of air vs {loopLength * DrawingConfig.MaxLoopGapFraction * 100f:0}cm allowed");
+                    LogEvent($"almost closed onto ink — {gapSum * 100f:0.0}cm of air vs {loopLength * DrawingConfig.MaxLoopGapFraction * 100f:0.0}cm allowed ({loopLength * 100f:0}cm candidate loop)");
                     continue;
                 }
 
@@ -235,9 +250,13 @@ namespace SpellyZombie
                 if (bulge < DrawingConfig.MinLoopBulge) continue;
 
                 // split A at the junctions; the outer pieces stay as ordinary ink
+                // (visible, seal-able later — but never rune content: they're
+                // amputated fragments of the closing gesture)
                 var beforePiece = lo > 0 ? AdoptPiece(a, 0, lo - 1, allowTiny: false) : null;
                 var midPiece = AdoptPiece(a, lo, hi, allowTiny: true);
                 var afterPiece = hi < a.Nodes.Count - 1 ? AdoptPiece(a, hi + 1, a.Nodes.Count - 1, allowTiny: false) : null;
+                if (beforePiece != null) beforePiece.SealResidue = true;
+                if (afterPiece != null) afterPiece.SealResidue = true;
                 a.Retire();
                 if (midPiece == null) return false; // defensive; loop guards make this impossible
 
@@ -269,6 +288,48 @@ namespace SpellyZombie
                 if (d < bestD) { bestD = d; best = idx; }
             }
             return best;
+        }
+
+        /// Pen-up SELF-closure: the stroke's END REGION (the last 12cm — the
+        /// hook) touched its OWN earlier ink. Plain 3D node distance under the
+        /// EXISTING SelfCloseThreshold (2-6cm clamp) — tolerant of cobblestone
+        /// height offsets, unlike the crossing finder's exact plan-view
+        /// intersection test. Pen-up ONLY: mid-draw stays gated to the stroke's
+        /// first 12cm so stars are never truncated mid-glyph again. This is the
+        /// path that was MISSING — TryCloseOntoInk skips a==b, the endpoint
+        /// detector only tests tip-to-tip, and a curled hook tip sits farther
+        /// than 6cm from the start even when the hook LINE lies on the ink.
+        bool TryCloseOntoSelf(Stroke b)
+        {
+            var nodes = b.Nodes;
+            int last = nodes.Count - 1;
+            if (last + 1 < DrawingConfig.MinLoopNodes) return false;
+            for (int i = last; i >= 0 && b.LengthBetween(i, last) <= DrawingConfig.MidDrawCloseStartRegion; i--)
+            {
+                if (nodes[i] == null) continue;
+                for (int j = 0; j < i; j++)   // j ascending = LARGEST loop first (Marko: big boundary wins)
+                {
+                    if (nodes[j] == null) continue;
+                    float loopLen = b.LengthBetween(j, i);
+                    if (loopLen < DrawingConfig.MinLoopPerimeter) break; // only shrinks as j grows
+                    if (i - j + 1 < DrawingConfig.MinLoopNodes) break;
+                    float d = Vector3.Distance(nodes[i].transform.position, nodes[j].transform.position);
+                    if (d > DrawingConfig.SelfCloseThreshold(loopLen)) continue;
+                    Vector3 ja = nodes[j].transform.position, jb = nodes[i].transform.position;
+                    if (MaxBulge(nodes, j, i, ja, jb) < DrawingConfig.MinLoopBulge) continue; // must enclose something
+                    Stroke leadIn = j > 0 ? AdoptPiece(b, 0, j - 1, allowTiny: false) : null;
+                    var loop = AdoptPiece(b, j, i, allowTiny: true);
+                    Stroke hookTail = i < last ? AdoptPiece(b, i + 1, last, allowTiny: false) : null;
+                    if (leadIn != null) leadIn.SealResidue = true;     // stays ink, never rune content
+                    if (hookTail != null) hookTail.SealResidue = true;
+                    b.Retire();
+                    if (loop == null) return false;
+                    CreateSeal(new List<SealDetector.LoopEntry> { new SealDetector.LoopEntry(loop, true) },
+                        "end touched own ink");
+                    return true;
+                }
+            }
+            return false;
         }
 
         static float MaxBulge(List<DrawNode> nodes, int from, int to, Vector3 ja, Vector3 jb)
@@ -389,24 +450,35 @@ namespace SpellyZombie
             }
             if (_eligibleCache.Count == 0) return;
 
+            // BOTH detectors always run and the LARGEST seal wins (Marko's
+            // rule): endpoint-chained loops AND ink-crossing loops are compared,
+            // so a small sub-loop can never steal the big intended boundary and
+            // multi-stroke boundaries close whether their strokes meet at ends
+            // or cross in the middle.
             SealDetector.LastNearMiss = null;
             var loop = SealDetector.FindLoop(_eligibleCache);
-            if (loop != null)
+            float loopPerim = loop != null ? SealDetector.LoopPerimeter(loop) : -1f;
+
+            var cross = CrossingFinder.Find(_eligibleCache);
+            float crossPerim = cross.Valid ? cross.Perimeter : -1f;
+
+            if (loop != null && loopPerim >= crossPerim)
             {
                 CreateSeal(loop, loop.Count == 1 ? "endpoints met" : $"{loop.Count} strokes linked");
                 return;
             }
+            if (cross.Valid)
+            {
+                ApplyCrossingLoop(cross);
+                return;
+            }
+
             // surface why an ALMOST-loop was refused (once per changed reason)
             if (SealDetector.LastNearMiss != null && SealDetector.LastNearMiss != _lastNearMissShown)
             {
                 _lastNearMissShown = SealDetector.LastNearMiss;
                 LogEvent(SealDetector.LastNearMiss);
             }
-
-            // no endpoint-based loop — look for ink crossing ink (enclosed region)
-            var cross = CrossingFinder.Find(_eligibleCache);
-            if (cross.Valid)
-                ApplyCrossingLoop(cross);
         }
 
         /// Turn a detected crossing cycle into a seal: split every crossed stroke
@@ -436,18 +508,33 @@ namespace SpellyZombie
                 foreach (var ai in arcIndices)
                 {
                     var arc = r.Cycle[ai];
-                    if (arc.Lo > cursor) AdoptPiece(stroke, cursor, arc.Lo - 1, allowTiny: false); // leftover ink
+                    if (arc.Lo > cursor)
+                    {
+                        var left = AdoptPiece(stroke, cursor, arc.Lo - 1, allowTiny: false); // leftover ink, never rune content
+                        if (left != null) left.SealResidue = true;
+                    }
                     pieceForArc[ai] = AdoptPiece(stroke, arc.Lo, arc.Hi, allowTiny: true, reverse: arc.Reversed);
                     cursor = arc.Hi + 1;
                 }
-                if (cursor <= end) AdoptPiece(stroke, cursor, end, allowTiny: false);
+                if (cursor <= end)
+                {
+                    var tail = AdoptPiece(stroke, cursor, end, allowTiny: false);
+                    if (tail != null) tail.SealResidue = true;
+                }
                 stroke.Retire();
             }
 
             var boundary = new List<SealDetector.LoopEntry>();
             for (int k = 0; k < r.Cycle.Count; k++)
             {
-                if (pieceForArc[k] == null) return; // a boundary arc failed to adopt — abort
+                if (pieceForArc[k] == null)
+                {
+                    // should be unreachable (eligibility guarantees intact chains) —
+                    // but the sources are already split/retired by now, so if this
+                    // ever fires the drawing was consumed with NO seal: shout.
+                    LogEvent("crossing seal ABORTED mid-adopt — report this drawing");
+                    return;
+                }
                 boundary.Add(new SealDetector.LoopEntry(pieceForArc[k], true));
             }
             if (boundary.Count == 0) return;
@@ -498,7 +585,8 @@ namespace SpellyZombie
 
         // ---- spent ink (characters & weapons) ----
 
-        public void RegisterSpentGroup(List<Stroke> strokes, List<(DrawNode a, DrawNode b)> pairs)
+        public void RegisterSpentGroup(List<Stroke> strokes, List<(DrawNode a, DrawNode b)> pairs,
+            List<SealDetector.LoopEntry> boundary)
         {
             // no surviving junctions means the loop can never close again
             // (its other half burned) — hand the ink straight back
@@ -507,9 +595,41 @@ namespace SpellyZombie
                 ReleaseSpent(strokes);
                 return;
             }
-            _spentGroups.Add(new SpentGroup { Strokes = strokes, Pairs = pairs });
+
+            // a MIXED boundary (body ink chained with environment ink) loses its
+            // environment strokes to the burn at expire — the ring can never
+            // re-close, so tracking it would strand the body ink Spent forever.
+            // Hand it straight back instead.
+            foreach (var e in boundary)
+                if (e.Stroke == null || !e.Stroke.Alive || !e.Stroke.Persistent)
+                {
+                    ReleaseSpent(strokes);
+                    return;
+                }
+
+            // one owner per stroke: a re-armed group whose ink was re-sealed and
+            // re-spent would otherwise linger and later fire an empty duplicate —
+            // the NEWEST group owns the ink, stale trackers drop silently
+            _spentGroups.RemoveAll(old =>
+            {
+                foreach (var s in old.Strokes)
+                    if (strokes.Contains(s)) return true;
+                return false;
+            });
+
+            _spentGroups.Add(new SpentGroup { Strokes = strokes, Pairs = pairs, Boundary = boundary });
         }
 
+        /// Spent seals re-cast two ways, both mode-independent:
+        ///  · A LIMB ENTERS the enclosed loop (Marko's rule — "get my hands near
+        ///    it"): edge-triggered, so crossing an arm into a chest seal fires it,
+        ///    and it re-arms when the limb leaves. This is the ONLY re-cast a loop
+        ///    living on a single rigid body part can get — its own ends never part.
+        ///  · The loop physically OPENS past ReArmDistance then RE-CLOSES within
+        ///    ReCloseDistance (a Schmitt trigger). This carries joint-spanning
+        ///    seals — pose the joint open, then closed, and it fires. Routing
+        ///    re-closure through Detect()'s tight fresh-draw threshold (3.5cm)
+        ///    never fired for hand-posing, which can't reproduce a pose exactly.
         void TickSpentGroups()
         {
             for (int i = _spentGroups.Count - 1; i >= 0; i--)
@@ -523,31 +643,174 @@ namespace SpellyZombie
                     if (s.Hidden()) { stowed = true; break; }
                 if (stowed) continue;
 
-                bool open = false;
-
-                foreach (var (a, b) in g.Pairs)
-                {
-                    if (a == null || b == null ||
-                        Vector3.Distance(a.transform.position, b.transform.position) > DrawingConfig.ReArmDistance)
-                    {
-                        open = true;
-                        break;
-                    }
-                }
-
-                // damaged ink can't seal anyway — don't hold it hostage
-                if (!open)
-                {
-                    foreach (var s in g.Strokes)
-                        if (!s.Alive || !s.ChainIntact()) { open = true; break; }
-                }
-
-                if (open)
+                // damaged ink can't seal anyway — don't hold it hostage (checked
+                // every tick, or an armed group whose stroke burns would leak)
+                bool damaged = false;
+                foreach (var s in g.Strokes)
+                    if (!s.Alive || !s.ChainIntact()) { damaged = true; break; }
+                if (damaged)
                 {
                     ReleaseSpent(g.Strokes);
                     _spentGroups.RemoveAt(i);
-                    LogEvent("Spent seal re-armed — the loop opened");
+                    continue;
                 }
+
+                // ---- TRIGGER 1: a limb crosses INTO the still-closed loop ----
+                // The body's OWN fat torso capsules (hips/head) rest permanently
+                // inside a chest loop, so a plain "is anything inside" test would
+                // be stuck true and never fire. Instead we snapshot what's inside
+                // at spend-time as the BASELINE and only fire on a capsule that was
+                // NOT already there — a limb the player deliberately moved in.
+                CollectLimbsInLoop(g, _insideNow);
+                if (g.BaselineInside == null) g.BaselineInside = new HashSet<Transform>();
+                if (g.BaselineTicks < SealBaselineSettleTicks)
+                {
+                    // SETTLE: for the first few ticks fold whatever is resting on the
+                    // body (torso capsules, a limb already crossed when the seal
+                    // spent) into the baseline, so only a limb that ARRIVES after
+                    // this reads as a deliberate intruder — no spurious self-recast.
+                    g.BaselineInside.UnionWith(_insideNow);
+                    g.BaselineTicks++;
+                }
+                else if (!g.Armed)
+                {
+                    // a limb that LEAVES the loop drops out of the baseline, so
+                    // leaving and coming back fires again (the torso capsules
+                    // never leave, so they stay whitelisted forever)
+                    g.BaselineInside.IntersectWith(_insideNow);
+
+                    bool fresh = false;
+                    foreach (var t in _insideNow)
+                        if (!g.BaselineInside.Contains(t)) { fresh = true; break; }
+                    if (fresh)
+                    {
+                        _spentGroups.RemoveAt(i);
+                        if (BoundaryReady(g))
+                        {
+                            ReleaseSpent(g.Strokes); // re-open the enclosed runes so the re-cast re-reads them
+                            CreateSeal(new List<SealDetector.LoopEntry>(g.Boundary), "a limb entered the seal");
+                        }
+                        else
+                        {
+                            ReleaseSpent(g.Strokes); // never strand ink Spent with no tracker
+                        }
+                        continue;
+                    }
+                }
+
+                // ---- TRIGGER 2: the loop opens, then re-closes (posed joints) ----
+                float widest = 0f;
+                foreach (var (a, b) in g.Pairs)
+                {
+                    if (a == null || b == null) { widest = float.MaxValue; break; }
+                    widest = Mathf.Max(widest, Vector3.Distance(a.transform.position, b.transform.position));
+                }
+
+                if (!g.Armed)
+                {
+                    // re-arm once the loop breaks open. The strokes go back to Open
+                    // so they read/erase/chain normally while broken, but the GROUP
+                    // is kept so it can re-fire itself on re-close.
+                    if (widest > DrawingConfig.ReArmDistance)
+                    {
+                        ReleaseSpent(g.Strokes);
+                        g.Armed = true;
+                        LogEvent("Spent seal re-armed — the loop opened");
+                    }
+                }
+                else if (widest <= DrawingConfig.ReCloseDistance)
+                {
+                    // the pose closed the loop again: re-fire it DIRECTLY from the
+                    // kept boundary (skip only if Detect already re-used the ink).
+                    _spentGroups.RemoveAt(i);
+                    if (BoundaryReady(g))
+                        CreateSeal(new List<SealDetector.LoopEntry>(g.Boundary), "body seal re-closed by posing");
+                }
+            }
+        }
+
+        /// A spent loop's boundary is castable again only while every stroke is
+        /// live, whole, present, and not already re-used by another seal.
+        static bool BoundaryReady(SpentGroup g)
+        {
+            foreach (var e in g.Boundary)
+            {
+                var s = e.Stroke;
+                if (s == null || !s.Alive || !s.ChainIntact() || s.Hidden()
+                    || s.State == StrokeState.InSeal) return false;
+            }
+            return true;
+        }
+
+        /// Collect every capsule (of the SAME body, excluding the loop's own
+        /// carrier bones) whose nearest point falls inside the enclosed loop —
+        /// the "bring a hand to the seal" test. The loop's plane, centre and
+        /// radius are read live from its boundary nodes (they ride the posed
+        /// bones). Fills `into` with the intruding bone transforms; the caller
+        /// diffs this against the spend-time baseline so the body's own fat
+        /// torso capsules (always inside) never count as a fresh intruder.
+        void CollectLimbsInLoop(SpentGroup g, HashSet<Transform> into)
+        {
+            into.Clear();
+            if (g.Boundary == null) return;
+            var nodes = SealDetector.BuildLoopNodes(g.Boundary);
+            if (nodes.Count < 3) return;
+
+            Vector3 c = Vector3.zero;
+            int cnt = 0;
+            Transform ownRoot = null;
+            _ownBones.Clear();
+            foreach (var nd in nodes)
+            {
+                if (nd == null) continue;
+                c += nd.transform.position;
+                cnt++;
+                if (ownRoot == null) ownRoot = nd.transform.root;
+                if (nd.transform.parent != null) _ownBones.Add(nd.transform.parent);
+            }
+            if (cnt < 3 || ownRoot == null) return;
+            c /= cnt;
+
+            // average radius + best-fit plane normal (Newell's method — robust to
+            // a non-planar, body-draped loop)
+            Vector3 normal = Vector3.zero;
+            float radius = 0f;
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                var a = nodes[i];
+                if (a == null) continue;
+                radius += Vector3.Distance(a.transform.position, c);
+                var b = nodes[(i + 1) % nodes.Count];
+                if (b == null) continue;
+                Vector3 p = a.transform.position, q = b.transform.position;
+                normal.x += (p.y - q.y) * (p.z + q.z);
+                normal.y += (p.z - q.z) * (p.x + q.x);
+                normal.z += (p.x - q.x) * (p.y + q.y);
+            }
+            radius /= cnt;
+            if (radius < 1e-3f) return;
+            bool haveN = normal.sqrMagnitude > 1e-10f;
+            if (haveN) normal.Normalize();
+
+            // thin DISC, not a ball: reach grows a little with big loops but is
+            // hard-capped, so a hand passing well in FRONT of a chest seal (or a
+            // walk-cycle arm swing) never reads as "inside"
+            float reach = Mathf.Clamp(radius * 0.5f, DrawingConfig.SealLimbReach, 0.2f);
+            int hits = Physics.OverlapSphereNonAlloc(c, radius + reach, _limbHits,
+                Physics.AllLayers, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hits; i++)
+            {
+                var col = _limbHits[i];
+                if (col == null || !(col is CapsuleCollider)) continue; // limb segments are capsules
+                var t = col.transform;
+                if (t == ownRoot || t.root != ownRoot) continue;        // only YOUR body, not the fat controller
+                if (_ownBones.Contains(t)) continue;                    // never the loop's own carrier bones
+
+                Vector3 d = col.ClosestPoint(c) - c;
+                float planeDist = haveN ? Mathf.Abs(Vector3.Dot(d, normal)) : 0f;
+                float radial = haveN ? Vector3.ProjectOnPlane(d, normal).magnitude : d.magnitude;
+                if (planeDist <= reach && radial <= radius * 1.25f)
+                    into.Add(t);
             }
         }
 

@@ -168,6 +168,7 @@ namespace SpellyZombie
             bool Eligible(Stroke s)
             {
                 if (s == null || s.State != StrokeState.Open || !s.Alive || s.Nodes.Count < 3) return false;
+                if (s.SealResidue) return false; // closing-gesture leftovers are not rune content
                 if (!s.ChainIntact()) return false;
                 foreach (var e in Boundary)
                     if (e.Stroke == s) return false;
@@ -284,7 +285,7 @@ namespace SpellyZombie
             foreach (var s in Payload) SpendOrBurn(s, spent, ref burned);
 
             if (spent.Count > 0)
-                DrawingWorld.Instance?.RegisterSpentGroup(spent, pairs);
+                DrawingWorld.Instance?.RegisterSpentGroup(spent, pairs, new List<SealDetector.LoopEntry>(Boundary));
 
             string fate = spent.Count > 0
                 ? burned > 0

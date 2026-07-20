@@ -49,6 +49,9 @@ namespace SpellyZombie
 
         public static float WallW => _wallW;
         public static float WallH => _wallH;
+        /// The kit's measured wall-axis correction — external builders must
+        /// compose it into wall yaws exactly like House() does.
+        public static float WallYawAuto => _wallYawAuto;
 
         /// Point the placement toolkit at a root and measure the kit — the
         /// GameMapBuilder shares all of this (Place/House/lights/materials).
@@ -404,8 +407,8 @@ namespace SpellyZombie
 
         /// Exact-pivot placement for kit pieces that slot into other pieces
         /// (window inserts, door leaves) — no bounds-dropping, the author's
-        /// pivots line up by design.
-        static GameObject PlacePivot(string model, Vector3 pivotPos, Quaternion rotation, SurfaceMaterialType tag)
+        /// pivots line up by design. (Public: WorkshopBuilder slots inserts too.)
+        public static GameObject PlacePivot(string model, Vector3 pivotPos, Quaternion rotation, SurfaceMaterialType tag)
         {
             var prefab = Load(model);
             if (prefab == null) return null;
@@ -417,7 +420,7 @@ namespace SpellyZombie
             return inst;
         }
 
-        static void Roof(Vector3 center, float facingDeg, float footW, float footD, float topY)
+        public static void Roof(Vector3 center, float facingDeg, float footW, float footD, float topY)
         {
             // OBJ ground truth: "Roof_RoundTiles_AxB" covers EXACTLY A×B meters
             // (plus ~0.78m eaves all around), pivot centered, base 0.52 BELOW

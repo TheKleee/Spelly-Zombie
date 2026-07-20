@@ -28,9 +28,14 @@ namespace SpellyZombie
             }
         }
 
-        /// Returns the first valid loop found among the eligible strokes, or null.
+        /// Returns the LARGEST valid loop among the eligible strokes, or null.
+        /// Marko's rule: seals take priority and the BIGGEST enclosing loop
+        /// wins — a small sub-loop must never steal the intended boundary.
         public static List<LoopEntry> FindLoop(IReadOnlyList<Stroke> eligible)
         {
+            _best = null;
+            _bestPerim = -1f;
+
             // 1) single-stroke self closure. The threshold scales with the stroke's
             //    own size so a small rune's deliberate gap never counts as closed.
             foreach (var s in eligible)
@@ -39,24 +44,44 @@ namespace SpellyZombie
                 if (s.Nodes.Count < DrawingConfig.MinLoopNodes) continue;
                 float perimeter = s.PathLength();
                 if (perimeter < DrawingConfig.MinLoopPerimeter) continue;
-                if (Vector3.Distance(s.First.transform.position, s.Last.transform.position)
-                    <= DrawingConfig.SelfCloseThreshold(perimeter))
-                    return new List<LoopEntry> { new LoopEntry(s, true) };
+                float gap = Vector3.Distance(s.First.transform.position, s.Last.transform.position);
+                float thr = DrawingConfig.SelfCloseThreshold(perimeter);
+                if (gap <= thr)
+                    Consider(new List<LoopEntry> { new LoopEntry(s, true) }, perimeter);
+                else if (gap <= thr * 3f) // this path failed SILENTLY for months — never again
+                    LastNearMiss = $"loop ends {gap * 100f:0.0}cm apart — {thr * 100f:0.0}cm allowed";
             }
 
-            // 2) multi-stroke chains
+            // 2) multi-stroke chains — explore ALL, keep the biggest
             var used = new HashSet<Stroke>();
             foreach (var s0 in eligible)
             {
                 used.Clear();
                 used.Add(s0);
                 var path = new List<LoopEntry> { new LoopEntry(s0, true) };
-                if (Dfs(eligible, path, used,
-                        s0.First.transform.position,
-                        s0.Last.transform.position, 0f))
-                    return path;
+                Dfs(eligible, path, used,
+                    s0.First.transform.position,
+                    s0.Last.transform.position, 0f);
             }
-            return null;
+            return _best;
+        }
+
+        static List<LoopEntry> _best;
+        static float _bestPerim;
+
+        static void Consider(List<LoopEntry> path, float perimeter)
+        {
+            if (perimeter <= _bestPerim) return;
+            _bestPerim = perimeter;
+            _best = new List<LoopEntry>(path); // snapshot — the DFS reuses its list
+        }
+
+        /// PathLength returns approximate perimeter of a candidate loop.
+        public static float LoopPerimeter(List<LoopEntry> path)
+        {
+            float p = 0f;
+            foreach (var e in path) p += e.Stroke.PathLength();
+            return p;
         }
 
         /// Set when a loop ALMOST closed (everything passed except one guard) —
@@ -67,7 +92,10 @@ namespace SpellyZombie
         /// the gaps are a small share of its perimeter — lines drawn NEAR each
         /// other are not TOUCHING each other. This is what stopped seals from
         /// closing "without touching".
-        static bool Dfs(IReadOnlyList<Stroke> all, List<LoopEntry> path, HashSet<Stroke> used,
+        /// Explores every chain and records the LARGEST valid loop (does not
+        /// short-circuit on the first — a small loop must not win over the big
+        /// intended boundary).
+        static void Dfs(IReadOnlyList<Stroke> all, List<LoopEntry> path, HashSet<Stroke> used,
                         Vector3 startPos, Vector3 exitPos, float gapSum)
         {
             float closeGap = Vector3.Distance(exitPos, startPos);
@@ -79,15 +107,15 @@ namespace SpellyZombie
                 }
                 else
                 {
-                    float perimeter = 0f;
-                    foreach (var e in path) perimeter += e.Stroke.PathLength();
+                    float perimeter = LoopPerimeter(path);
                     if (gapSum + closeGap <= perimeter * DrawingConfig.MaxLoopGapFraction)
-                        return true;
-                    LastNearMiss = $"loop found but gaps too wide ({(gapSum + closeGap) * 100f:0}cm air vs {perimeter * DrawingConfig.MaxLoopGapFraction * 100f:0}cm allowed)";
+                        Consider(path, perimeter); // keep exploring for a bigger one
+                    else
+                        LastNearMiss = $"loop found but gaps too wide ({(gapSum + closeGap) * 100f:0.0}cm air vs {perimeter * DrawingConfig.MaxLoopGapFraction * 100f:0.0}cm allowed)";
                 }
             }
 
-            if (path.Count >= DrawingConfig.MaxLoopStrokes) return false;
+            if (path.Count >= DrawingConfig.MaxLoopStrokes) return;
 
             foreach (var t in all)
             {
@@ -101,7 +129,7 @@ namespace SpellyZombie
                 {
                     path.Add(new LoopEntry(t, true));
                     used.Add(t);
-                    if (Dfs(all, path, used, startPos, b, gapSum + dA)) return true;
+                    Dfs(all, path, used, startPos, b, gapSum + dA);
                     path.RemoveAt(path.Count - 1);
                     used.Remove(t);
                 }
@@ -111,12 +139,11 @@ namespace SpellyZombie
                 {
                     path.Add(new LoopEntry(t, false));
                     used.Add(t);
-                    if (Dfs(all, path, used, startPos, a, gapSum + dB)) return true;
+                    Dfs(all, path, used, startPos, a, gapSum + dB);
                     path.RemoveAt(path.Count - 1);
                     used.Remove(t);
                 }
             }
-            return false;
         }
 
         static bool LoopBigEnough(List<LoopEntry> path)

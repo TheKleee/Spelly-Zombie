@@ -43,6 +43,11 @@ namespace SpellyZombie
             public List<byte[]> Sentences;          // chain-code direction sentences
             public float Elongation = 1f;           // proportion — separates the bracket family
             public ShapeFeel Feel;                  // fingerprint — vetoes impostors of a different KIND
+            // MULTI-TEMPLATE (Marko's studio walls): every drawing on a rune's
+            // wall is a variant of HIS hand — the ensemble scores against all
+            // of them and keeps the best. More samples = recognition converges
+            // on how he actually draws, not one lucky snapshot.
+            public readonly List<Entry> Variants = new List<Entry>();
         }
 
         /// Cheap shape fingerprint. The matchers measure "how much does it
@@ -231,11 +236,19 @@ namespace SpellyZombie
         class SavedStroke { public List<Vector2> points = new List<Vector2>(); }
 
         [Serializable]
+        class SavedSample { public List<SavedStroke> strokes = new List<SavedStroke>(); }
+
+        [Serializable]
         class SavedTemplate
         {
             public int rune;
             public List<Vector2> points = new List<Vector2>();      // legacy single-stroke format
-            public List<SavedStroke> strokes = new List<SavedStroke>(); // current multi-stroke format
+            public List<SavedStroke> strokes = new List<SavedStroke>(); // NEWEST sample (multi-stroke)
+            // OLDER samples, oldest first (Marko's multi-sample recording:
+            // F-key APPENDS, never overwrites; capped at MaxSamples total).
+            // Current matchers read only the newest; the multi-template
+            // matcher will read the whole pool.
+            public List<SavedSample> older = new List<SavedSample>();
         }
 
         [Serializable]
@@ -355,8 +368,12 @@ namespace SpellyZombie
 
                         foreach (var e in _entries)
                         {
-                            if (!IsUnlocked(ownerId, e.Type) || e.Sentences == null) continue;
-                            float sc = ChainCodeRecognizer.ScoreSpan(reading, j, len, e.Sentences);
+                            if (!IsUnlocked(ownerId, e.Type)) continue;
+                            float sc = e.Sentences != null
+                                ? ChainCodeRecognizer.ScoreSpan(reading, j, len, e.Sentences) : 0f;
+                            foreach (var v in e.Variants)
+                                if (v.Sentences != null)
+                                    sc = Mathf.Max(sc, ChainCodeRecognizer.ScoreSpan(reading, j, len, v.Sentences));
                             if (sc < 0.7f) continue; // letters must be CLEAN — spans have no fingerprint guard
                             float total = dpScore[j] + sc * len;
                             if (total > dpScore[i])
@@ -433,12 +450,10 @@ namespace SpellyZombie
             foreach (var e in _entries)
             {
                 if (!IsUnlocked(ownerId, e.Type)) continue;
-                float p = candidate == null ? 0f
-                    : PointCloudRecognizer.Score(PointCloudRecognizer.CloudDistance(candidate, e.Cloud));
-                float chain = e.Sentences != null
-                    ? ChainCodeRecognizer.Match(sentences, e.Sentences)
-                      * ChainCodeRecognizer.AspectPenalty(elongation, e.Elongation) : 0f;
-                results.Add((e.Type, Mathf.Max(p, chain) * FeelPenalty(feel, e.Feel)));
+                float score = VariantScore(e, candidate, sentences, elongation, feel);
+                foreach (var v in e.Variants)
+                    score = Mathf.Max(score, VariantScore(v, candidate, sentences, elongation, feel));
+                results.Add((e.Type, score));
             }
             results.Sort((a, b) => b.Item2.CompareTo(a.Item2));
             return results;
@@ -485,22 +500,37 @@ namespace SpellyZombie
         /// against the runes the given OWNER has unlocked — the seal's owner is
         /// whoever completed it, so zombie-closed seals read with zombie cards.
         ///
-        /// AMBIGUITY GUARD (Marko: the right rune fires or none): when two
-        /// DIFFERENT runes score within RuneAmbiguityMargin of each other and
-        /// both are readable, picking either is a coin flip — the glyph fizzles
-        /// instead of misfiring. Pairs whose TEMPLATES are inherently alike
-        /// (see AuditTemplates) are exempt, or they'd become uncastable.
+        /// REVERTED to the $P + direction-sentence ensemble (Marko's ruling
+        /// Jul 20: his line-scan design measured 76% with the star pair at
+        /// ~12%, below his bar — "then we revert back to what used to work").
+        /// The chamfer matcher stays in the project (InkChamfer), benched.
+        /// AMBIGUITY GUARD kept: two different runes scoring within
+        /// RuneAmbiguityMargin = coin flip → fizzle, never misfire.
+        /// Every call logs what it received and concluded, and dumps the raw
+        /// input for offline replay — the silent-fizzle hunt stays armed.
         public static (RuneType type, float score) Classify(int ownerId, IReadOnlyList<IReadOnlyList<Vector2>> rawStrokes)
         {
             Init();
             var (t1, s1, t2, s2) = Top2(ownerId, rawStrokes);
-            if (t1 == RuneType.None) return (RuneType.None, 0f);
-            if (t2 != RuneType.None && t2 != t1
+            bool ambiguous = t1 != RuneType.None && t2 != RuneType.None && t2 != t1
                 && s1 - s2 < DrawingConfig.RuneAmbiguityMargin
                 && s2 >= DrawingConfig.MinRuneScore
-                && (_confusable == null || !_confusable.Contains(PairKey(t1, t2))))
-                return (RuneType.None, s1); // too close to call — no accidental casts
-            return (t1, s1);
+                && (_confusable == null || !_confusable.Contains(PairKey(t1, t2)));
+
+            RuneType rune = t1 == RuneType.None || ambiguous ? RuneType.None : t1;
+            float score = t1 == RuneType.None ? 0f : s1;
+            bool hit = rune != RuneType.None && score >= DrawingConfig.MinRuneScore;
+
+            int nStrokes = 0, nPts = 0;
+            foreach (var s in rawStrokes) { nStrokes++; nPts += s.Count; }
+            Debug.Log($"[SpellyZombie] CLASSIFY {(hit ? "HIT" : "fizzle")} ($P ensemble) — " +
+                $"input {nStrokes} strokes/{nPts} pts, top {ShortName(t1)} {s1:0.00}, " +
+                $"next {ShortName(t2)} {s2:0.00}{(ambiguous ? " AMBIGUOUS" : "")} " +
+                $"(floor {DrawingConfig.MinRuneScore:0.00})");
+            InkChamfer.DumpClassify(rawStrokes,
+                $"{ShortName(t1)} {s1:0.00} / {ShortName(t2)} {s2:0.00}", hit);
+
+            return (rune, score);
         }
 
         /// ENSEMBLE scoring: the $P point-cloud matcher AND the direction-
@@ -524,12 +554,11 @@ namespace SpellyZombie
             foreach (var e in _entries)
             {
                 if (ownerId.HasValue && !IsUnlocked(ownerId.Value, e.Type)) continue;
-                float p = candidate != null
-                    ? PointCloudRecognizer.Score(PointCloudRecognizer.CloudDistance(candidate, e.Cloud)) : 0f;
-                float chain = e.Sentences != null
-                    ? ChainCodeRecognizer.Match(sentences, e.Sentences)
-                      * ChainCodeRecognizer.AspectPenalty(elongation, e.Elongation) : 0f;
-                float score = Mathf.Max(p, chain) * FeelPenalty(feel, e.Feel);
+                // nearest-of-many: the drawing matches whichever of this
+                // rune's samples it most resembles
+                float score = VariantScore(e, candidate, sentences, elongation, feel);
+                foreach (var v in e.Variants)
+                    score = Mathf.Max(score, VariantScore(v, candidate, sentences, elongation, feel));
                 if (score > bestScore)
                 {
                     secondType = bestType; secondScore = bestScore;
@@ -541,6 +570,17 @@ namespace SpellyZombie
                 }
             }
             return (bestType, bestScore, secondType, secondScore);
+        }
+
+        static float VariantScore(Entry v, Vector2[] candidate,
+            List<byte[]> sentences, float elongation, ShapeFeel feel)
+        {
+            float p = candidate != null && v.Cloud != null
+                ? PointCloudRecognizer.Score(PointCloudRecognizer.CloudDistance(candidate, v.Cloud)) : 0f;
+            float chain = v.Sentences != null
+                ? ChainCodeRecognizer.Match(sentences, v.Sentences)
+                  * ChainCodeRecognizer.AspectPenalty(elongation, v.Elongation) : 0f;
+            return Mathf.Max(p, chain) * FeelPenalty(feel, v.Feel);
         }
 
         // ---- template health: is the alphabet YOURS, and is it unambiguous? --
@@ -603,25 +643,159 @@ namespace SpellyZombie
                     _confusable.Add(PairKey(e.Type, t2));
                 }
             }
+
+            // POOL-AWARE CONFUSABILITY (the multi-template era): every saved
+            // wall drawing is read back as if freshly drawn. When a drawing
+            // of rune A reads as B — or nearly ties with B — those two are
+            // genuinely entangled IN MARKO'S HAND, and the coin-flip guard
+            // would eat every valid cast between them (PULL 0.80/PUSH 0.79
+            // fizzled his correct Ys). Entangled pairs are exempt: the top
+            // score wins. The console names them so cleaning up a wall stays
+            // his informed choice.
+            var entangled = new List<string>();
+            foreach (var e in _entries)
+            {
+                foreach (var sample in AllSamples(e.Type))
+                {
+                    var (t1, s1, t2, s2) = Top2(null, ToReadOnly(sample));
+                    if (t1 == RuneType.None) continue;
+                    int key;
+                    if (t1 != e.Type) key = PairKey(e.Type, t1);
+                    else if (t2 != RuneType.None
+                        && s1 - s2 < DrawingConfig.RuneAmbiguityMargin + 0.03f)
+                        key = PairKey(e.Type, t2);
+                    else continue;
+                    if (_confusable.Add(key))
+                        entangled.Add($"{ShortName(e.Type)}~{ShortName(t1 != e.Type ? t1 : t2)}");
+                }
+            }
+            if (entangled.Count > 0)
+                Debug.Log($"[RuneLibrary] AUDIT: pairs entangled in your handwriting (top score decides between them): {string.Join(", ", entangled)}");
         }
 
-        /// Replace the template for a rune with a player-recorded glyph and persist it.
-        public static bool RecordTemplate(RuneType type, List<List<Vector2>> rawStrokes)
+        /// Marko's rule: EVERYTHING drawn on a wall is saved — no practical
+        /// cap (this bound only guards against a runaway file).
+        const int MaxSamples = 200;
+
+        /// ALL saved samples for a rune, oldest first (each sample = the
+        /// strokes of one drawing). The Rune Studio walls repaint from this.
+        public static List<List<List<Vector2>>> AllSamples(RuneType type)
         {
             Init();
-            if (PointCount(rawStrokes) < MinTemplatePoints)
-            {
-                Debug.LogWarning($"[RuneLibrary] {ShortName(type)} NOT recorded — only {PointCount(rawStrokes)} points. Draw LARGER and SLOWER (12+ points), then press the F-key again.");
-                DrawingWorld.Instance?.LogEvent($"{ShortName(type)} not recorded — draw larger/slower and try again");
-                return false;
-            }
-            if (!SetTemplateInternal(type, rawStrokes)) return false;
-            SaveRecorded(type, rawStrokes);
-            AuditTemplates(); // the alphabet changed — re-check it for look-alikes
-            return true;
+            var result = new List<List<List<Vector2>>>();
+            var item = _saved?.items?.Find(i => i.rune == (int)type);
+            if (item == null) return result;
+            if (item.older != null)
+                foreach (var s in item.older)
+                {
+                    var strokes = SampleStrokes(s?.strokes);
+                    if (strokes.Count > 0) result.Add(strokes);
+                }
+            var newest = ToStrokeLists(item);
+            if (newest.Count > 0) result.Add(newest);
+            return result;
         }
 
-        static bool SetTemplateInternal(RuneType type, List<List<Vector2>> rawStrokes)
+        static List<List<Vector2>> SampleStrokes(List<SavedStroke> src)
+        {
+            var outp = new List<List<Vector2>>();
+            if (src == null) return outp;
+            foreach (var s in src)
+                if (s != null && s.points != null && s.points.Count >= 2)
+                    outp.Add(s.points);
+            return outp;
+        }
+
+        /// THE RUNE STUDIO SAVE (Marko's design): a wall's ink IS the rune's
+        /// sample pool — this replaces the whole pool with the wall snapshot.
+        /// Too-sparse drawings are skipped (logged); an empty wall clears the
+        /// rune back to its synthetic seed shape. Returns how many were kept.
+        public static int ReplaceSamples(RuneType type, List<List<List<Vector2>>> samples)
+        {
+            Init();
+            var kept = new List<List<List<Vector2>>>();
+            foreach (var s in samples)
+            {
+                if (s == null || s.Count == 0) continue;
+                if (PointCount(s) < MinTemplatePoints)
+                {
+                    Debug.LogWarning($"[RuneLibrary] {ShortName(type)}: a wall drawing has only {PointCount(s)} points — skipped (draw larger/slower).");
+                    continue;
+                }
+                kept.Add(s);
+                if (kept.Count == MaxSamples) break;
+            }
+
+            var item = _saved.items.Find(i => i.rune == (int)type);
+            if (kept.Count == 0)
+            {
+                if (item != null) _saved.items.Remove(item);
+            }
+            else
+            {
+                if (item == null)
+                {
+                    item = new SavedTemplate { rune = (int)type };
+                    _saved.items.Add(item);
+                }
+                item.points = new List<Vector2>(); // legacy field stays retired
+                item.older = new List<SavedSample>();
+                for (int i = 0; i < kept.Count - 1; i++)
+                    item.older.Add(new SavedSample { strokes = ToSavedStrokes(kept[i]) });
+                item.strokes = ToSavedStrokes(kept[kept.Count - 1]);
+            }
+            _saved.version = GlyphSetVersion;
+            try { File.WriteAllText(SavePath, JsonUtility.ToJson(_saved)); }
+            catch (Exception e) { Debug.LogWarning($"[RuneLibrary] Failed to save samples: {e.Message}"); }
+
+            // IN-PLACE matcher update (Marko: the full reload + audit on every
+            // save lagged the studio): only THIS rune's variants rebuild; the
+            // template audit stays a session-start affair.
+            if (_entries != null)
+            {
+                if (kept.Count == 0)
+                {
+                    var poly = GlyphPolyline(type);
+                    if (poly != null)
+                        SetTemplateInternal(type, new List<List<Vector2>> { poly });
+                }
+                else
+                {
+                    bool first = true;
+                    foreach (var sample in kept)
+                    {
+                        SetTemplateInternal(type, sample, append: !first);
+                        first = false;
+                    }
+                }
+
+                // refresh THIS rune's entanglements immediately — the studio
+                // test loop must judge by the wall as it is NOW
+                if (_confusable != null)
+                    foreach (var sample in kept)
+                    {
+                        var (t1, s1, t2, s2) = Top2(null, ToReadOnly(sample));
+                        if (t1 == RuneType.None) continue;
+                        if (t1 != type) _confusable.Add(PairKey(type, t1));
+                        else if (t2 != RuneType.None
+                            && s1 - s2 < DrawingConfig.RuneAmbiguityMargin + 0.03f)
+                            _confusable.Add(PairKey(type, t2));
+                    }
+            }
+            InkChamfer.Invalidate();
+            Debug.Log($"[RuneLibrary] {ShortName(type)}: sample pool = {kept.Count} drawing(s)" +
+                (kept.Count == 0 ? " (synthetic seed shape takes over)" : ""));
+            return kept.Count;
+        }
+
+        static List<SavedStroke> ToSavedStrokes(List<List<Vector2>> strokes)
+        {
+            var outp = new List<SavedStroke>(strokes.Count);
+            foreach (var s in strokes) outp.Add(new SavedStroke { points = new List<Vector2>(s) });
+            return outp;
+        }
+
+        static bool SetTemplateInternal(RuneType type, List<List<Vector2>> rawStrokes, bool append = false)
         {
             var cloud = PointCloudRecognizer.Normalize(rawStrokes);
             if (cloud == null) return false;
@@ -631,12 +805,24 @@ namespace SpellyZombie
             float elongation = ChainCodeRecognizer.Elongation(stitched);
             var feel = Fingerprint(stitched);
             var existing = _entries.Find(e => e.Type == type);
+            if (append && existing != null)
+            {
+                // one more sample of his hand joins the pool
+                if (existing.Variants.Count < MaxSamples - 1)
+                    existing.Variants.Add(new Entry
+                    {
+                        Type = type, Cloud = cloud, Sentences = sentences,
+                        Elongation = elongation, Feel = feel
+                    });
+                return true;
+            }
             if (existing != null)
             {
                 existing.Cloud = cloud;
                 existing.Sentences = sentences;
                 existing.Elongation = elongation;
                 existing.Feel = feel;
+                existing.Variants.Clear(); // fresh identity: the pool restates itself
             }
             else _entries.Add(new Entry
             {
@@ -670,19 +856,38 @@ namespace SpellyZombie
                     _saved = new SavedTemplateSet { version = GlyphSetVersion };
                     return;
                 }
-                int loaded = 0;
+                int loaded = 0, totalSamples = 0;
                 foreach (var t in _saved.items)
                 {
-                    var strokes = ToStrokeLists(t);
-                    if (strokes.Count == 0) continue;
-                    if (PointCount(strokes) < MinTemplatePoints)
+                    // EVERY wall drawing becomes a matcher variant (Marko's
+                    // studio): oldest first, first usable one replaces the
+                    // seed shape, the rest append to the pool
+                    var all = new List<List<List<Vector2>>>();
+                    if (t.older != null)
+                        foreach (var s in t.older)
+                        {
+                            var st = SampleStrokes(s?.strokes);
+                            if (st.Count > 0) all.Add(st);
+                        }
+                    var newest = ToStrokeLists(t);
+                    if (newest.Count > 0) all.Add(newest);
+
+                    bool first = true;
+                    int used = 0;
+                    foreach (var sample in all)
                     {
-                        Debug.LogWarning($"[RuneLibrary] {ShortName((RuneType)t.rune)} recording is only {PointCount(strokes)} points — IGNORED (default shape recognizes instead). Re-record it: draw LARGER and SLOWER, then press its F-key.");
-                        continue;
+                        if (PointCount(sample) < MinTemplatePoints) continue;
+                        if (SetTemplateInternal((RuneType)t.rune, sample, append: !first))
+                        {
+                            first = false;
+                            used++;
+                        }
                     }
-                    if (SetTemplateInternal((RuneType)t.rune, strokes)) loaded++;
+                    if (used > 0) { loaded++; totalSamples += used; }
+                    else if (all.Count > 0)
+                        Debug.LogWarning($"[RuneLibrary] {ShortName((RuneType)t.rune)}: all {all.Count} saved drawing(s) too sparse — seed shape recognizes instead. Draw larger/slower on its wall.");
                 }
-                Debug.Log($"[RuneLibrary] Loaded {loaded} recorded rune templates from {SavePath}");
+                Debug.Log($"[RuneLibrary] Loaded {loaded} rune(s), {totalSamples} handwriting sample(s) from {SavePath}");
             }
             catch (Exception e)
             {
@@ -706,33 +911,8 @@ namespace SpellyZombie
             return result;
         }
 
-        static void SaveRecorded(RuneType type, List<List<Vector2>> rawStrokes)
-        {
-            try
-            {
-                var item = _saved.items.Find(i => i.rune == (int)type);
-                if (item == null)
-                {
-                    item = new SavedTemplate { rune = (int)type };
-                    _saved.items.Add(item);
-                }
-                _saved.version = GlyphSetVersion;
-                item.points = new List<Vector2>(); // retire the legacy field
-                item.strokes = new List<SavedStroke>();
-                int pointCount = 0;
-                foreach (var s in rawStrokes)
-                {
-                    item.strokes.Add(new SavedStroke { points = new List<Vector2>(s) });
-                    pointCount += s.Count;
-                }
-                File.WriteAllText(SavePath, JsonUtility.ToJson(_saved));
-                Debug.Log($"[RuneLibrary] Recorded template for {type} ({rawStrokes.Count} stroke(s), {pointCount} pts) -> {SavePath}");
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[RuneLibrary] Failed to save template: {e.Message}");
-            }
-        }
+        // (per-press template saving removed with the F-keys — ReplaceSamples
+        // above is the one write path, driven by the Rune Studio walls)
 
         public static void DeleteRecordings()
         {

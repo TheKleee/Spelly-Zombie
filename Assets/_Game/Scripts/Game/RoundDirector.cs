@@ -23,6 +23,10 @@ namespace SpellyZombie
         /// True before a run starts — the MatchLobby (pillars/ready-up) lives here.
         public static bool InLobby => Instance != null && Instance._phase == Phase.Idle;
 
+        /// True only while a wave is actually running — the music director
+        /// crossfades chill ↔ action on this.
+        public static bool WaveActive => Instance != null && Instance._phase == Phase.Wave;
+
         /// MatchLobby's start trigger (all ready, or the troll timer expired).
         public static void ForceStart()
         {
@@ -75,12 +79,7 @@ namespace SpellyZombie
             // B4: only the HOST runs the round machine — clients render the
             // host's zombies (NetZombieProxy) and read round state off the wire
             if (NetGame.Connected && !NetGame.IsHost)
-            {
-                // Z on a client is not a silent dud — say who holds the keys
-                if (kb.zKey.wasPressedThisFrame)
-                    ComboBanner.Show("THE HOST STARTS THE MATCH", new Color(0.7f, 0.9f, 1f));
-                return;
-            }
+                return; // clients render the host's rounds — nothing to press
 
             if (NetGame.IsHost)
             {
@@ -89,15 +88,17 @@ namespace SpellyZombie
                 {
                     _netPush = 0.5f;
                     NetSync.PushRoundState((byte)_phase, _round,
-                        _toSpawn + Zombie.All.Count, _phaseTimer, _kills);
+                        _toSpawn + CountableZombies(), _phaseTimer, _kills);
                 }
             }
 
             switch (_phase)
             {
                 case Phase.Idle:
-                    if (kb.zKey.wasPressedThisFrame
-                        || (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame))
+                    // Z-to-start REMOVED (Marko's ruling): runs begin from the
+                    // lobby ready-up (RoundDirector.ForceStart) — the gamepad
+                    // start button remains as the couch equivalent
+                    if (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame)
                         StartRun();
                     break;
 
@@ -192,9 +193,20 @@ namespace SpellyZombie
             DrawingWorld.Instance?.LogEvent($"ROUND {round} — {_toSpawn} incoming");
         }
 
+        /// Zombies that count toward ending a round — DEMONS don't: a grand
+        /// demon is unkillable for 42s and was holding the round hostage
+        /// (and being announced as a "zombie left").
+        static int CountableZombies()
+        {
+            int n = 0;
+            foreach (var z in Zombie.All)
+                if (z != null && z.GetComponent<Demon>() == null) n++;
+            return n;
+        }
+
         void TickWave()
         {
-            int alive = Zombie.All.Count;
+            int alive = CountableZombies();
 
             if (_toSpawn <= 0)
             {
@@ -348,15 +360,13 @@ namespace SpellyZombie
                     2 => $"INTERMISSION — round {NetSync.NetRound + 1} in {NetSync.NetTimer:0}s (draw!)",
                     3 => $"WIPED on round {NetSync.NetRound} — {NetSync.NetKills} kills. Host restarts",
                     4 => $"VICTORY — {NetSync.NetKills} kills!",
-                    _ => "host presses Z to start the run",
+                    _ => "the host starts the run from the lobby",
                 };
             }
             return Instance._phase switch
             {
-                Phase.Idle => SceneManager.GetActiveScene().name == "Lobby"
-                    ? "" // the MatchLobby banner owns the idle screen there
-                    : "Z = start the run",
-                Phase.Wave => $"ROUND {Instance._round} — {Instance._toSpawn + Zombie.All.Count} zombies left",
+                Phase.Idle => "", // runs start from the lobby ready-up; idle scenes stay quiet
+                Phase.Wave => $"ROUND {Instance._round} — {Instance._toSpawn + CountableZombies()} zombies left",
                 Phase.Intermission => $"INTERMISSION — round {Instance._round + 1} in {Instance._phaseTimer:0}s (draw!)",
                 Phase.GameOver => $"WIPED on round {Instance._round} — {Instance._kills} kills, {Wallet.Riches} riches. ENTER = again",
                 _ => $"VICTORY — {Instance._kills} kills, {(Time.time - Instance._runStart) / 60f:0.0} min. ENTER = again",

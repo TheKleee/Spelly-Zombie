@@ -135,8 +135,21 @@ namespace SpellyZombie
             if (Frozen) { _burnLeft = 0f; return; } // ice beats fire
 
             _burnLeft -= dt;
-            if (_thermal != null) // the fire feeds itself
-                _thermal.Temperature = Mathf.Max(_thermal.Temperature, DrawingConfig.BurnThreshold + 40f);
+            if (_thermal != null)
+            {
+                // the fire feeds itself — but as a PUSH, not a pin: sustained
+                // cold (frost hits, a snow field) can WIN the tug-of-war and
+                // put you out (Marko's rule: an opposing area FREES you)
+                _thermal.Temperature += 30f * dt;
+                if (_thermal.Temperature < DrawingConfig.BurnThreshold - 15f)
+                {
+                    _burnLeft = 0f; // quenched
+                    GrammarFX.PuffBurst(transform.position + Vector3.up * 0.8f,
+                        new Color(0.92f, 0.94f, 0.97f, 0.5f), 5); // steam hiss
+                    GetComponent<ZombieBrain>()?.Mumble("...phew", 1.5f);
+                    return;
+                }
+            }
             if (_dmg != null) _dmg.TakeDamage(15f * dt, "on fire");
 
             // FLAMES — the part that was missing. Orange blobs boil off the body.

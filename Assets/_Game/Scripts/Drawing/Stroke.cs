@@ -57,6 +57,12 @@ namespace SpellyZombie
         /// endpoints stand still — its line must refresh every frame.
         public bool MultiSurface { get; private set; }
 
+        /// Leftover piece of a closing gesture (lead-in before the loop, hook
+        /// tail after it, outer pieces of split ink). Still visible ink, but
+        /// NEVER read as rune content inside a seal — a closing hook is not a
+        /// glyph stroke, and reading it caused phantom-rune misfires.
+        public bool SealResidue;
+
         LineRenderer _line;
         GameObject _lineGo;
         readonly List<LineRenderer> _extra = new List<LineRenderer>(); // runs after visual breaks
@@ -71,7 +77,10 @@ namespace SpellyZombie
         public DrawNode Last => Nodes.Count > 0 ? Nodes[Nodes.Count - 1] : null;
         public bool Alive => State != StrokeState.Burned;
 
-        public static readonly Color InkColor = new Color(0.08f, 0.08f, 0.10f);
+        // deep luminous navy — reads near-black in lit scenes, but the unlit
+        // line material lets it GLOW faintly in a pitch-dark cave, so ink
+        // path-marks on walls work as wayfinding (Marko's ruling, Jul 20)
+        public static readonly Color InkColor = new Color(0.16f, 0.19f, 0.33f);
         public static readonly Color SealColor = new Color(1f, 0.80f, 0.25f);
         public static readonly Color RuneColor = new Color(0.30f, 0.90f, 1f);
         public static readonly Color FizzleColor = new Color(0.5f, 0.5f, 0.5f);

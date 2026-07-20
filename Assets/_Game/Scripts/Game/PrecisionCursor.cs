@@ -17,7 +17,7 @@ namespace SpellyZombie
         }
 
         public static void Clear() =>
-            Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
+            InkCursor.Apply(); // hand back to the quill, never the OS arrow
 
         static void Build()
         {

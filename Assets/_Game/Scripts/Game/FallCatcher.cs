@@ -62,9 +62,21 @@ namespace SpellyZombie
                 return;
             }
 
-            // zombies, matter, particles, escaped crates: cleaned up quietly
+            // creatures die PROPERLY in the void (drops + kill credit fire —
+            // the silent Destroy used to eat the death, so a shoved zombie
+            // dropped nothing and made no sound). Matter and junk still just
+            // vanish quietly.
             if (other.attachedRigidbody != null)
+            {
+                var creature = other.attachedRigidbody.GetComponentInParent<Creature>();
+                var victim = creature != null ? creature.GetComponent<Damageable>() : null;
+                if (victim != null)
+                {
+                    victim.TakeDamage(99999f, "the void");
+                    return;
+                }
                 Destroy(other.attachedRigidbody.gameObject);
+            }
         }
     }
 

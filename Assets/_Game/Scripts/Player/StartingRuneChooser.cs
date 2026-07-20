@@ -73,6 +73,16 @@ namespace SpellyZombie
                 (pool[i], pool[j]) = (pool[j], pool[i]);
             }
             _offers = new[] { pool[0], pool[1], pool[2] };
+
+            // at least one offer must be able to FIGHT alone (ship test:
+            // a hand of pure utility families vs a boarding party = "does
+            // nothing"). Heat burns, Direction shoves, Luminance smites.
+            var teeth = new[] { RuneCardType.Heat, RuneCardType.Direction, RuneCardType.Luminance };
+            bool hasTeeth = System.Array.IndexOf(teeth, _offers[0]) >= 0
+                || System.Array.IndexOf(teeth, _offers[1]) >= 0
+                || System.Array.IndexOf(teeth, _offers[2]) >= 0;
+            if (!hasTeeth)
+                _offers[Random.Range(0, _offers.Length)] = teeth[Random.Range(0, teeth.Length)];
         }
 
         RectTransform _ui;
@@ -110,6 +120,13 @@ namespace SpellyZombie
 
                 var desc = UIKit.Label(card, RuneLibrary.CardDescription(_offers[i]), 14,
                     new Color(0.25f, 0.19f, 0.12f), TextAnchor.UpperLeft);
+
+                // LIVE DATA overrides adopted prefab text: cards baked into
+                // SZ_UI keep their words verbatim, so this run's ACTUAL offers
+                // must be written explicitly (Marko: "I'm getting wrong runes
+                // on selection" — he was reading last bake's labels)
+                name.text = _offers[i].ToString().ToUpper();
+                desc.text = RuneLibrary.CardDescription(_offers[i]);
                 desc.horizontalOverflow = HorizontalWrapMode.Wrap;
                 UIKit.Place((RectTransform)desc.transform, new Vector2(0f, 1f), new Vector2(14f, -46f), new Vector2(w - 28f, 52f));
 

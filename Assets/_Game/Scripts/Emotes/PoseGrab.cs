@@ -187,9 +187,14 @@ namespace SpellyZombie
                 var ray = _cam.ScreenPointToRay(mouse.position.ReadValue());
                 // the limbs live on Ignore Raycast — include it explicitly
                 int mask = Physics.DefaultRaycastLayers | (1 << 2);
+                // SHIFT = fine control (elbow/knee); no shift = move the whole
+                // arm/leg from the shoulder/hip (Marko's rule — hinges only
+                // bend when you ask for them)
+                var kb = Keyboard.current;
+                bool fine = kb != null && kb.leftShiftKey.isPressed;
                 if (Physics.Raycast(ray, out var hit, 30f, mask, QueryTriggerInteraction.Ignore))
                 {
-                    var joint = FindJointFor(hit.transform);
+                    var joint = FindJointFor(hit.transform, fine);
                     if (joint != null)
                     {
                         _grabbed = joint;
@@ -212,8 +217,11 @@ namespace SpellyZombie
                 Vector3 cur = _grabbed.T.TransformDirection(_grabLocalDir);
                 Vector3 want = cursor - _grabbed.T.position;
                 if (want.sqrMagnitude > 1e-6f)
+                {
                     _grabbed.T.rotation =
                         Quaternion.FromToRotation(cur, want.normalized) * _grabbed.T.rotation;
+                    EmoteRig.Constrain(_grabbed); // hinges: elbows/knees only bend their way
+                }
             }
 
             float twist = mouse.scroll.ReadValue().y;
@@ -222,17 +230,21 @@ namespace SpellyZombie
                 Vector3 axis = _grabbed.T.TransformDirection(_grabLocalDir);
                 _grabbed.T.rotation =
                     Quaternion.AngleAxis(Mathf.Sign(twist) * 10f, axis) * _grabbed.T.rotation;
+                EmoteRig.Constrain(_grabbed); // a hinged joint can't twist free
             }
         }
 
         /// Walk up from the clicked collider to the joint that owns that limb.
-        EmoteRig.JointEntry FindJointFor(Transform hitTransform)
+        /// fine=false SKIPS the hinge joints (elbows/knees) and keeps walking to
+        /// the whole-limb joint (shoulder/hip), so a plain click swings the
+        /// arm/leg; fine=true (Shift) grabs the hinge under the cursor.
+        EmoteRig.JointEntry FindJointFor(Transform hitTransform, bool fine)
         {
             var t = hitTransform;
             while (t != null)
             {
                 foreach (var j in _rig.Joints)
-                    if (j.T == t) return j;
+                    if (j.T == t && (fine || !j.Limited)) return j;
                 if (t == transform) break;
                 t = t.parent;
             }

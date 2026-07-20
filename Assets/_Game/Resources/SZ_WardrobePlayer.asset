@@ -19,8 +19,7 @@ MonoBehaviour:
   - Socket: Head
     Options: []
   - Socket: Cape
-    Options:
-    - {fileID: 919132149155446097, guid: 81c08fdc9318ea0479065e0ea594c69f, type: 3}
+    Options: []
   - Socket: Chest
     Options: []
   - Socket: Belt

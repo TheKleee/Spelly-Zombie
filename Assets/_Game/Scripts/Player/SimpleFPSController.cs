@@ -86,6 +86,19 @@ namespace SpellyZombie
 
         public float Health = 100f;
 
+        /// Real motion this frame (the CC's own measurement) — liquids read it
+        /// to apply viscous drag against the direction you're actually moving.
+        public Vector3 Velocity => _cc != null ? _cc.velocity : Vector3.zero;
+
+        /// Raw ground contact — the animation rig smooths its own airborne
+        /// signal from this (slope flicker is the caller's problem).
+        public bool IsGrounded => _cc != null && _cc.isGrounded;
+
+        /// Shift is held and we're actually moving — the ANIMATION rule
+        /// (Marko): no shift = walk look, shift = run look, regardless of
+        /// how fast the controller really covers ground.
+        public bool IsSprinting { get; private set; }
+
         // ---- ragdoll-feel knockdown: hit hard enough and you SPRAWL — camera
         // keels over, control cuts out, momentum slides you, then you stagger
         // back up. Funny, brief, and never while properly downed.
@@ -108,8 +121,34 @@ namespace SpellyZombie
         /// Physical hits shove the player and chip health. During a run, 0 HP
         /// means DOWNED — crawl, no drawing, bleed out unless a teammate holds E.
         /// Outside runs (sandbox) the old demo mercy applies.
-        public void TakeHit(Vector3 impulse, float damage)
+        // EVERY hit has a NAME (Marko: "non-stop dying from unknown sources").
+        // Small chips don't shake the camera, but they all land in a rolled-up
+        // console line every couple of seconds: "hurt: standing in fire −6.2"
+        static readonly System.Collections.Generic.Dictionary<string, float> _dmgLog =
+            new System.Collections.Generic.Dictionary<string, float>();
+        static float _dmgFlushAt;
+
+        static void NoteDamage(string cause, float amount)
         {
+            _dmgLog.TryGetValue(cause, out float sum);
+            _dmgLog[cause] = sum + amount;
+            if (Time.time < _dmgFlushAt) return;
+            _dmgFlushAt = Time.time + 2f;
+            var parts = new System.Text.StringBuilder("hurt: ");
+            bool first = true;
+            foreach (var kv in _dmgLog)
+            {
+                if (!first) parts.Append(" · ");
+                parts.Append($"{kv.Key} −{kv.Value:0.0}");
+                first = false;
+            }
+            _dmgLog.Clear();
+            DrawingWorld.Instance?.LogEvent(parts.ToString());
+        }
+
+        public void TakeHit(Vector3 impulse, float damage, string cause = null)
+        {
+            if (Barrier.Protects(this)) return; // isolated — NOTHING gets in
             if (IsDowned)
             {
                 _bleedOut -= 1.5f; // kicking someone who's down. rude. effective.
@@ -118,10 +157,21 @@ namespace SpellyZombie
             _shove += impulse;
             Health -= damage;
             _lastHurt = Time.time;
-            Juice.Thud(transform.position);
-            Juice.Shake(0.35f, 0.25f);
+            if (damage > 0f) NoteDamage(cause ?? "hit", damage);
+            // FEEL belongs to REAL hits. Damage-over-time ticks (steam clouds,
+            // ember auras, a stalking spark grazing you) arrive every fraction
+            // of a second — shaking on each one meant permanent earthquake and
+            // "drawing way too difficult" (Marko). Small ticks show on the
+            // hurt vignette only; the camera reacts to blows, on a cooldown,
+            // and gentler while the pen is down.
+            if (damage >= 5f && Time.time - _lastFeelShake > 0.6f)
+            {
+                _lastFeelShake = Time.time;
+                Juice.Thud(transform.position);
+                Juice.Shake(SurfaceDrawer.IsPenActive ? 0.18f : 0.35f, 0.25f);
+                Debug.Log($"[SpellyZombie] Player hit! {Mathf.Max(0, Health):0} hp");
+            }
             if (damage >= 15f) KnockDown(1.1f); // big hits floor you
-            Debug.Log($"[SpellyZombie] Player hit! {Mathf.Max(0, Health):0} hp");
             if (Health <= 0f)
             {
                 if (RoundDirector.RunActive) GoDown();
@@ -133,6 +183,7 @@ namespace SpellyZombie
             }
         }
         float _lastHurt;
+        float _lastFeelShake; // camera-shake cooldown — DoT ticks must not machine-gun the view
 
         /// The void's price (FallCatcher): floored on arrival — revivable,
         /// bleeding out, and fair game for the horde. Never kills outright.
@@ -178,12 +229,21 @@ namespace SpellyZombie
             Health = 50f;
             ReviveProgress = 0f;
             _lastHurt = Time.time;
+            // while the corpse lay somewhere the capsule couldn't ground itself
+            // (ledge, table, pressed to a wall) gravity kept integrating into
+            // _verticalVelocity the whole bleed-out — wipe it, or the first Move
+            // after standing slams the fresh revive straight back to 1 hp
+            CancelMomentum();
             Debug.Log("[SpellyZombie] Player revived!");
         }
 
         void Awake()
         {
             _cc = GetComponent<CharacterController>();
+            // liquid Matter lives on the Water layer (4): the capsule never
+            // collides with it — you WADE through puddles, never bump them
+            // (the LiquidVolume shell applies the slow/current instead)
+            _cc.excludeLayers |= 1 << 4;
             _standHeight = _cc.height;
             _standCenter = _cc.center;
             _camStandY = CameraPivot != null ? CameraPivot.localPosition.y : 1.6f;
@@ -495,6 +555,7 @@ namespace SpellyZombie
             if (drawingMode) mv = Vector2.zero;
 
             bool sprint = kb.leftShiftKey.isPressed || (gp != null && gp.leftStickButton.isPressed);
+            IsSprinting = sprint && !IsDowned && !IsCrouched && mv.sqrMagnitude > 0.01f;
             float speed = IsDead ? 0f
                 : IsDowned ? MoveSpeed * 0.25f // crawl
                 : IsSprawled ? 0f              // flat on your face — momentum owns you
@@ -595,9 +656,19 @@ namespace SpellyZombie
                 if (IsDowned && planar.sqrMagnitude > 0.01f)
                     _ragdollFollow.AddForce(planar * 6f, ForceMode.Acceleration);
                 Vector3 gap = _ragdollFollow.worldCenterOfMass - (transform.position + _cc.center);
-                // per-SECOND ceiling (a per-frame clamp let the doll outrun
-                // the capsule to the leash on low-fps machines)
-                _cc.Move(Vector3.ClampMagnitude(gap * 12f, 120f) * Time.deltaTime);
+                // The doll is PARENTED to this capsule, so Moving to "catch" it
+                // also drags it: a prone corpse's hips centre-of-mass sits low and
+                // offset, leaving a gap our own Move never closes — capsule AND
+                // body then skate forever (a transform teleport, which friction,
+                // damping and the velocity settle can't fight). So chase only a
+                // doll that is genuinely TRAVELLING — crawling (planar input) or
+                // still in motion (a tumble/knockback arc). A settled body — a
+                // corpse, a friend waiting for revive — we leave where it lies.
+                // per-SECOND ceiling (a per-frame clamp let the doll outrun the
+                // capsule to the leash on low-fps machines)
+                if (planar.sqrMagnitude > 0.01f
+                    || _ragdollFollow.linearVelocity.sqrMagnitude > 0.04f)
+                    _cc.Move(Vector3.ClampMagnitude(gap * 12f, 120f) * Time.deltaTime);
             }
             else
             {

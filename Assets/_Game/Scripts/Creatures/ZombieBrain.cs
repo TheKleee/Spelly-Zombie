@@ -112,12 +112,17 @@ namespace SpellyZombie
         /// Visibility is the particle's effective luminance — darkness hides
         /// danger (the invisible-flame trap), a blinded zombie fears nothing,
         /// and something behind it goes unnoticed. Called by SpellParticle.
+        /// Set on demons: nothing scares them — they ARE the scary thing.
+        /// (A grand demon's own calamities were writing Danger memories at its
+        /// own feet, and Decide()'s flee-first priority froze the boss solid.)
+        public bool Fearless;
+
         public static void ScareVisible(Vector3 pos, float radius, float luminance)
         {
             if (luminance < 0.15f) return; // too dim to register on a googly eye
             foreach (var b in AllBrains)
             {
-                if (b == null) continue;
+                if (b == null || b.Fearless) continue;
                 Vector3 to = pos - b.transform.position;
                 if (to.sqrMagnitude > radius * radius) continue;
                 if (b._creature != null && b._creature.Blinded) continue;
@@ -229,6 +234,16 @@ namespace SpellyZombie
                 {
                     Remember(MemKind.Stare, MemEvent.BigSpectacle, evt.Pos);
                     Eyes?.SetMood(EyeMood.Wowed, 2.5f);
+                }
+                else if (evt.Intensity >= 1.2f && evt.Intensity < 2f && dist < SightRange)
+                {
+                    // a gentle glow below the fear line is a LURE (sticky light):
+                    // stare — and shuffle over to look. moths, all of them.
+                    Remember(MemKind.Stare, MemEvent.BigSpectacle, evt.Pos);
+                    Eyes?.SetMood(EyeMood.Wowed, 2f);
+                    for (int i = 0; i < Memories.Count; i++)
+                        if (Memories[i].Kind == MemKind.Stare)
+                        { var m = Memories[i]; m.Approach = true; Memories[i] = m; }
                 }
             }
 

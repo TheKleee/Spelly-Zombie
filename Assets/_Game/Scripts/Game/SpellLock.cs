@@ -64,11 +64,14 @@ namespace SpellyZombie
                 var tex = Wardrobe.RuneIcon(Demands[i], new Color(1f, 0.45f, 0.15f, 0.95f));
                 if (tex == null) continue;
                 var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                quad.name = "LockSigil";
+                quad.name = "LockSigil_" + name;
                 Destroy(quad.GetComponent<Collider>()); // never catches the pen
-                quad.transform.SetParent(transform, true);
-                quad.transform.position = center + Vector3.up * 0.2f
-                    + Vector3.right * 0f; // laid out in Bob() facing the viewer
+                // UNPARENTED on purpose: gates built from kit pieces carry
+                // ~x121 import scale fixes — a local 0.34 under that parent
+                // made 40-meter sky glyphs over the workshop, and the parent's
+                // non-uniform stretch would skew the billboard. Update() owns
+                // their world pose every frame; Open() destroys them by hand.
+                quad.transform.position = center + Vector3.up * 0.2f;
                 quad.transform.localScale = Vector3.one * 0.34f;
                 var shader = Shader.Find("Sprites/Default");
                 if (shader != null)

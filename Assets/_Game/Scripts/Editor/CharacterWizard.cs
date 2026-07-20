@@ -32,12 +32,25 @@ namespace SpellyZombie
             var importer = AssetImporter.GetAtPath(fbxPath) as ModelImporter;
             if (importer != null)
             {
-                bool dirty = false;
+                // THE BODY'S RIG BELONGS TO MARKO (his ruling after the wizard
+                // "ruined the character again"): force-converting to Humanoid
+                // let Unity's AUTOMATIC bone-mapping + T-pose enforcement
+                // reconfigure his edited skeleton — that automatic mangling
+                // was the ruin. The wizard now NEVER touches rig settings.
+                // Not Humanoid yet? Stop and say exactly what to do by hand,
+                // where he can SEE the mapping.
                 if (importer.animationType != ModelImporterAnimationType.Human)
                 {
-                    importer.animationType = ModelImporterAnimationType.Human;
-                    dirty = true;
+                    Debug.LogError(
+                        "[SpellyZombie] SZ_Body is not set up as Humanoid — and the wizard will NOT " +
+                        "convert it (automatic conversion is what kept ruining the character). " +
+                        "One-time manual setup: select SZ_Body.fbx → Inspector → Rig tab → " +
+                        "Animation Type: Humanoid → Apply. Then click Configure… and CHECK the bone " +
+                        "mapping (especially the shoulders you edited) before pressing Done. " +
+                        "Re-run Build Character Rig afterwards — it only READS the rig from now on.");
+                    return;
                 }
+                bool dirty = false;
                 if (importer.importCameras || importer.importLights)
                 {
                     importer.importCameras = false;
@@ -47,7 +60,8 @@ namespace SpellyZombie
                 if (!importer.isReadable)
                 {
                     // body paint bakes the skinned mesh into a collider shell —
-                    // BakeMesh needs CPU-readable vertices or it throws
+                    // BakeMesh needs CPU-readable vertices or it throws.
+                    // (Mesh-access flag only; the rig is never modified.)
                     importer.isReadable = true;
                     dirty = true;
                 }
@@ -81,6 +95,12 @@ namespace SpellyZombie
                     else if (file.Contains("back")) Consider("crouchBack", path);
                     else if (file.Contains("idle")) Consider("crouchIdle", path);
                     else Consider("crouch", path);
+                }
+                else if (file.Contains("jump"))
+                {
+                    // ORDER MATTERS: "JumpRun" also contains "run" — without
+                    // this early branch it would eat the run LOCOMOTION slot
+                    Consider(file.Contains("run") ? "jumpRun" : "jump", path);
                 }
                 else if (file.Contains("strafe"))
                 {
@@ -345,20 +365,28 @@ namespace SpellyZombie
                 if (clip != null) t.AddChild(clip, new Vector2(x, z));
             }
 
+            // RINGS MATCH CLIP CONTENT, not controller speeds (the glide fix):
+            // an in-place walk cycle covers ~1.4 m/s of ground, so it belongs
+            // at the SLOW ring; normal MoveSpeed (4.5) must land on the RUN
+            // clip whose natural pace nearly matches it. With walk parked at
+            // 4.5 the legs strolled while the world flew past at 3× —
+            // "gliding". Sprint (7) clamps to the run ring; stride-sync in
+            // CharacterRig speeds the cycle the rest of the way.
             var loco = Directional("Locomotion");
             Child(loco, C("idle"), 0f, 0f);
-            Child(loco, C("walk"), 0f, 4.5f);
-            Child(loco, C("walkBack"), 0f, -4.5f);
-            Child(loco, C("strafeWalkL"), -4.5f, 0f);
-            Child(loco, C("strafeWalkR"), 4.5f, 0f);
-            Child(loco, C("run"), 0f, 7f);
-            Child(loco, C("runBack"), 0f, -7f);
-            Child(loco, C("strafeRunL"), -7f, 0f);
-            Child(loco, C("strafeRunR"), 7f, 0f);
+            Child(loco, C("walk"), 0f, 2f);
+            Child(loco, C("walkBack"), 0f, -2f);
+            Child(loco, C("strafeWalkL"), -2f, 0f);
+            Child(loco, C("strafeWalkR"), 2f, 0f);
+            Child(loco, C("run"), 0f, 4.5f);
+            Child(loco, C("runBack"), 0f, -4.5f);
+            Child(loco, C("strafeRunL"), -4.5f, 0f);
+            Child(loco, C("strafeRunR"), 4.5f, 0f);
             var stand = sm.AddState("Locomotion");
             stand.motion = loco;
             sm.defaultState = stand;
 
+            AnimatorState duck = null;
             if (C("crouch") != null)
             {
                 var duckTree = Directional("CrouchMove");
@@ -368,7 +396,7 @@ namespace SpellyZombie
                 Child(duckTree, C("crouchBack"), 0f, -2.25f);
                 Child(duckTree, C("crouchL"), -2.25f, 0f);
                 Child(duckTree, C("crouchR"), 2.25f, 0f);
-                var duck = sm.AddState("Crouch");
+                duck = sm.AddState("Crouch");
                 duck.motion = duckTree;
                 var down = stand.AddTransition(duck);
                 down.hasExitTime = false;
@@ -378,6 +406,55 @@ namespace SpellyZombie
                 up.hasExitTime = false;
                 up.duration = 0.15f;
                 up.AddCondition(AnimatorConditionMode.IfNot, 0f, "Crouched");
+            }
+
+            // ---- airborne (Marko's new clips): "Jumping" in place at rest,
+            // "JumpRun" the leap once there's real ground speed ----
+            var jumpClip = C("jump");
+            var jumpRunClip = C("jumpRun");
+            if (jumpClip != null || jumpRunClip != null)
+            {
+                ctrl.AddParameter("Airborne", AnimatorControllerParameterType.Bool);
+                ctrl.AddParameter("AirSpeed", AnimatorControllerParameterType.Float);
+
+                Motion airMotion;
+                if (jumpClip != null && jumpRunClip != null)
+                {
+                    var airTree = new BlendTree
+                    {
+                        name = "Air",
+                        blendParameter = "AirSpeed",
+                        blendType = BlendTreeType.Simple1D,
+                        useAutomaticThresholds = false,
+                        hideFlags = HideFlags.HideInHierarchy
+                    };
+                    AssetDatabase.AddObjectToAsset(airTree, ctrl);
+                    airTree.AddChild(jumpClip, 0f);
+                    airTree.AddChild(jumpRunClip, 3f); // by jog speed the leap owns the air
+                    airMotion = airTree;
+                }
+                else airMotion = jumpClip != null ? (Motion)jumpClip : jumpRunClip;
+
+                var air = sm.AddState("Air");
+                air.motion = airMotion;
+
+                var launch = stand.AddTransition(air);
+                launch.hasExitTime = false;
+                launch.duration = 0.06f; // leaving the ground is INSTANT news
+                launch.AddCondition(AnimatorConditionMode.If, 0f, "Airborne");
+                var land = air.AddTransition(stand);
+                land.hasExitTime = false;
+                land.duration = 0.16f; // landing eases back into the legs
+                land.AddCondition(AnimatorConditionMode.IfNot, 0f, "Airborne");
+                if (duck != null)
+                {
+                    var duckLaunch = duck.AddTransition(air);
+                    duckLaunch.hasExitTime = false;
+                    duckLaunch.duration = 0.06f;
+                    duckLaunch.AddCondition(AnimatorConditionMode.If, 0f, "Airborne");
+                    // landing always goes through Locomotion; if still crouched
+                    // the Crouched bool re-enters Crouch one blend later
+                }
             }
             return ctrl;
         }

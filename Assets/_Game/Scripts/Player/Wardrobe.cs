@@ -3,67 +3,6 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// STANDARD BONE SOCKETS — the costume mount points every dressed body
-    /// (player, remote avatar, zombie) gets. Socket names are the contract:
-    ///   Hat · Head · Cape · Chest · Belt · ShoulderL · ShoulderR ·
-    ///   HandL · HandR · LegL · LegR
-    /// Sockets sit at their bone but are rotated into PLAIN CHARACTER SPACE
-    /// (+Z = the way the body faces, +Y = up), so Marko authors costume
-    /// prefabs in normal orientation — no wrestling with Mixamo bone axes.
-    /// MUST be built after the body faces forward (players: first LateUpdate
-    /// after the animator's first frame; zombies: dress's first LateUpdate).
-    public class SocketSet : MonoBehaviour
-    {
-        readonly Dictionary<string, Transform> _sockets = new Dictionary<string, Transform>();
-
-        public Transform Get(string socketName) =>
-            _sockets.TryGetValue(socketName, out var t) ? t : null;
-
-        public static SocketSet Build(GameObject body, Transform facing)
-        {
-            var set = body.GetComponent<SocketSet>();
-            if (set != null) return set;
-            set = body.AddComponent<SocketSet>();
-
-            var bones = body.GetComponentsInChildren<Transform>(true);
-            Transform Find(string boneName)
-            {
-                foreach (var t in bones) if (t.name == "mixamorig:" + boneName) return t;
-                foreach (var t in bones) if (t.name.EndsWith(boneName)) return t;
-                foreach (var t in bones) if (t.name.Contains(boneName)) return t;
-                return null;
-            }
-
-            Vector3 fwd = facing.forward;
-            fwd.y = 0f;
-            if (fwd.sqrMagnitude < 1e-6f) fwd = Vector3.forward;
-            var upright = Quaternion.LookRotation(fwd.normalized, Vector3.up);
-
-            void Sock(string socketName, Transform bone)
-            {
-                if (bone == null) return;
-                var s = new GameObject("Socket." + socketName).transform;
-                s.SetParent(bone, false);
-                s.position = bone.position;
-                s.rotation = upright; // costume prefabs live in plain space
-                set._sockets[socketName] = s;
-            }
-
-            Sock("Hat", Find("HeadTop") != null ? Find("HeadTop") : Find("Head"));
-            Sock("Head", Find("Head"));
-            Sock("Cape", Find("Spine2") != null ? Find("Spine2") : Find("Spine1"));
-            Sock("Chest", Find("Spine1"));
-            Sock("Belt", Find("Hips"));
-            Sock("ShoulderL", Find("LeftArm"));
-            Sock("ShoulderR", Find("RightArm"));
-            Sock("HandL", Find("LeftHand"));
-            Sock("HandR", Find("RightHand"));
-            Sock("LegL", Find("LeftUpLeg"));
-            Sock("LegR", Find("RightUpLeg"));
-            return set;
-        }
-    }
-
     // (CostumeLibrary moved to its own file — Unity refuses to bind
     //  ScriptableObject assets whose class hides in a mismatched filename.
     //  It serves WEAPON SKINS only now; costumes live in the three
@@ -89,8 +28,14 @@ namespace SpellyZombie
                 outfitCode != null ? SocketManager.ChooserFromCode(outfitCode)
                                    : SocketManager.GetChoice);
 
+            // THE CATALOG IS LAW (Marko's control rule): once SZ_WardrobePlayer
+            // exists, an EMPTY slot means "he wants nothing there" — no
+            // placeholder sneaks in behind his back. Delete the WizardCape
+            // option from the Cape slot and the cape is gone, permanently.
+            bool catalogRules = SocketManager.Player != null;
+
             var hatSocket = set.Get("Hat");
-            if (hatSocket != null && hatSocket.childCount == 0)
+            if (!catalogRules && hatSocket != null && hatSocket.childCount == 0)
             {
                 var hat = Attach(set, "Hat", zombiePool: false);
                 if (hat == null) hat = PlaceholderHat(hatSocket);
@@ -100,16 +45,23 @@ namespace SpellyZombie
             var capeSocket = set.Get("Cape");
             GameObject cape = capeSocket != null && capeSocket.childCount > 0
                 ? capeSocket.GetChild(0).gameObject : null;
-            if (cape == null)
+            if (cape == null && !catalogRules)
             {
                 cape = Attach(set, "Cape", zombiePool: false);
                 if (cape == null) cape = PlaceholderCloak(capeSocket);
                 if (cape != null) pieces.Add(cape);
             }
-            if (cape != null) MakeCloth(cape, clothColliders); // real cloth — sways, never clips
+            // CLOTH RETIRED (Marko, after three rounds of Unity Cloth
+            // misbehaving: stiff board → fell off → wrapped the neck).
+            // Capes are RIGID pieces that inherit the body's clumsy wobble
+            // through the spine socket — life without simulation.
 
             Retint(pieces, team);
             if (cape != null && capeIcon.HasValue) StampRune(cape.transform, capeIcon.Value);
+
+            // any worn piece with "Wiggle"-named children comes alive (the
+            // scarf-tail contract — see ScarfWiggle)
+            ScarfWiggle.AttachAll(set.gameObject);
             return pieces;
         }
 
@@ -124,6 +76,7 @@ namespace SpellyZombie
             var smr = capePiece.GetComponentInChildren<SkinnedMeshRenderer>();
             GameObject target;
             Mesh mesh;
+            var mf = smr == null ? capePiece.GetComponentInChildren<MeshFilter>() : null;
             if (smr != null)
             {
                 target = smr.gameObject;
@@ -131,18 +84,14 @@ namespace SpellyZombie
             }
             else
             {
-                var mf = capePiece.GetComponentInChildren<MeshFilter>();
                 if (mf == null || mf.sharedMesh == null) return;
                 mesh = mf.sharedMesh;
                 target = mf.gameObject;
-                var mr = target.GetComponent<MeshRenderer>();
-                var mat = mr != null ? mr.sharedMaterial : null;
-                Object.Destroy(mf);
-                if (mr != null) Object.Destroy(mr);
-                smr = target.AddComponent<SkinnedMeshRenderer>();
-                smr.sharedMesh = mesh;
-                smr.sharedMaterial = mat;
             }
+
+            // DISQUALIFY BEFORE CONVERTING — a cape that stays rigid must
+            // keep its original renderer (the old order converted first and
+            // could leave the cape rendererless → invisible cape).
             if (mesh == null || mesh.vertexCount < 12) return;
             if (!mesh.isReadable)
             {
@@ -155,22 +104,56 @@ namespace SpellyZombie
             }
             if (target.GetComponent<Cloth>() != null) return;
 
+            if (smr == null)
+            {
+                // ONE RENDERER PER GAMEOBJECT (old ship lesson): the deferred
+                // Destroy left the MeshRenderer alive this frame, the
+                // SkinnedMeshRenderer add silently failed, and Marko's cape
+                // vanished. Immediate removal makes the swap legal.
+                var mr = target.GetComponent<MeshRenderer>();
+                var mat = mr != null ? mr.sharedMaterial : null;
+                Object.DestroyImmediate(mf);
+                if (mr != null) Object.DestroyImmediate(mr);
+                smr = target.AddComponent<SkinnedMeshRenderer>();
+                if (smr == null) return; // never strand a rendererless cape
+                smr.sharedMesh = mesh;
+                smr.sharedMaterial = mat;
+            }
+
             var cloth = target.AddComponent<Cloth>();
             var verts = mesh.vertices;
-            float top = float.MinValue, bottom = float.MaxValue;
-            foreach (var v in verts)
-            {
-                top = Mathf.Max(top, v.y);
-                bottom = Mathf.Min(bottom, v.y);
-            }
-            // pin the whole upper band and keep every vertex on a SHORT leash —
-            // a loose leash let the cape flip over the shoulder like a toga
-            float pinBand = (top - bottom) * 0.15f;
-            var coeffs = new ClothSkinningCoefficient[verts.Length];
+
+            // PIN BY THE PIVOT, not by "highest local Y": the convention is
+            // pivot-at-the-attach-edge, and Marko's meshes ship with baked
+            // import rotations that make local Y mean anything. Y-top pinning
+            // grabbed the wrong edge of his cape — gravity then peeled the
+            // whole thing off the shoulders ("the cape falls off the player").
+            // Vertices nearest the pivot = the attach edge, every time.
+            float minD = float.MaxValue, maxD = 0f;
             for (int i = 0; i < verts.Length; i++)
             {
-                bool pinned = verts[i].y >= top - pinBand;
-                coeffs[i].maxDistance = pinned ? 0f : 0.18f;
+                float d = verts[i].magnitude;
+                if (d < minD) minD = d;
+                if (d > maxD) maxD = d;
+            }
+            float pinDist = minD + Mathf.Max((maxD - minD) * 0.15f, 0.04f);
+
+            // every free vertex gets a leash equal to its natural PENDULUM
+            // ARC (distance from the pinned band): any authored angle drapes
+            // fully to vertical, but the hem can never travel past its own
+            // swing radius (no toga-flip over the shoulder).
+            var coeffs = new ClothSkinningCoefficient[verts.Length];
+            var pinCenter = Vector3.zero;
+            int pinCount = 0;
+            for (int i = 0; i < verts.Length; i++)
+                if (verts[i].magnitude <= pinDist) { pinCenter += verts[i]; pinCount++; }
+            if (pinCount == 0 || pinCount == verts.Length) return; // degenerate mesh — leave rigid
+            pinCenter /= pinCount;
+            for (int i = 0; i < verts.Length; i++)
+            {
+                bool pinned = verts[i].magnitude <= pinDist;
+                float arc = (verts[i] - pinCenter).magnitude;
+                coeffs[i].maxDistance = pinned ? 0f : Mathf.Max(0.05f, arc * 1.25f);
                 coeffs[i].collisionSphereDistance = 0f;
             }
             cloth.coefficients = coeffs;
@@ -195,15 +178,19 @@ namespace SpellyZombie
             SocketManager.DressRandom(set, SocketManager.Zombie, chance, seed);
 
             var lib = CostumeLibrary.I;
-            if (lib == null) return;
-            foreach (var socketName in new[]
-                { "Hat", "Head", "Cape", "Chest", "Belt", "ShoulderL", "ShoulderR", "LegL", "LegR" })
-            {
-                var s = set.Get(socketName);
-                if (s == null || s.childCount > 0) continue; // catalog dressed it
-                if (Random.value > chance) continue;
-                Attach(set, socketName, zombiePool: true);
-            }
+            if (lib != null)
+                foreach (var socketName in new[]
+                    { "Hat", "Head", "Cape", "Chest", "Belt", "ShoulderL", "ShoulderR", "LegL", "LegR" })
+                {
+                    var s = set.Get(socketName);
+                    if (s == null || s.childCount > 0) continue; // catalog dressed it
+                    if (Random.value > chance) continue;
+                    Attach(set, socketName, zombiePool: true);
+                }
+
+            // zombie accessories wiggle too (a dangling chain, a droopy hood
+            // tip — same "Wiggle" naming contract as the player scarf)
+            ScarfWiggle.AttachAll(set.gameObject);
         }
 
         /// The demon (summoned from the darkness — zombie moves, darker look):
@@ -213,8 +200,14 @@ namespace SpellyZombie
             => SocketManager.DressRandom(set, SocketManager.Demon, 1f, seed);
 
         /// A weapon's Blender-made look, or null while primitives stand in.
+        /// THE OVERRIDE SHELF WINS (one rule everywhere): a prefab named
+        /// after the weapon in Resources/Custom beats the costume catalog, so
+        /// weapons need no wizard run and no "Weapon_" prefix — drag, done.
         public static GameObject WeaponSkin(string key)
         {
+            var shelf = PrefabVault.Get(key);
+            if (shelf != null) return shelf;
+
             var lib = CostumeLibrary.I;
             if (lib == null) return null;
             string wanted = "Weapon_" + key;

@@ -139,8 +139,11 @@ namespace SpellyZombie
             {
                 float f = Mathf.Clamp01(player.Health / Perks.MaxHealth);
                 float a = (1f - f) * (1f - f) * 0.85f;
-                if (f < 0.35f && !player.IsDowned)
-                    a += (Mathf.Sin(Time.time * 6f) * 0.5f + 0.5f) * 0.18f;
+                // the PANIC pulse is for genuinely dying, not "took some hits"
+                // (Marko: "we shouldn't always be in panic mode just because
+                // we're damaged") — it joins only under 20%, and gentler
+                if (f < 0.2f && !player.IsDowned)
+                    a += (Mathf.Sin(Time.time * 6f) * 0.5f + 0.5f) * 0.12f;
                 _vignette.color = new Color(0.55f, 0f, 0f, Mathf.Clamp01(a));
             }
             _riches.text = $"Riches: {Wallet.Riches}";

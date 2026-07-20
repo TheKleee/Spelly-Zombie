@@ -132,7 +132,6 @@ namespace SpellyZombie
                 EndStroke();
             }
 
-            HandleTemplateKeys(kb);
         }
 
         Ray GetAimRay(Mouse mouse)
@@ -195,7 +194,14 @@ namespace SpellyZombie
             // of wall at 8m, and silent stroke splits break closing shapes
             float allowedJump = Mathf.Max(DrawingConfig.MaxStrokeJump, hit.distance * DrawingConfig.MaxStrokeJumpPerMeter);
             if (_current != null && Vector3.Distance(hit.point, _lastHitPoint) > allowedJump)
+            {
+                // diagnostic: silent splits turn self-crossings into unbridgeable
+                // cross-stroke gaps — if this fires during honest circles, the
+                // pen-continuity weld gets built next
+                DrawingWorld.Instance.LogEvent(
+                    $"stroke split mid-draw — aim jumped {Vector3.Distance(hit.point, _lastHitPoint) * 100f:0}cm (limit {allowedJump * 100f:0}cm)");
                 EndStroke(); // aim jumped to a distant surface — that's a new stroke
+            }
 
             if (_current == null)
             {
@@ -266,6 +272,15 @@ namespace SpellyZombie
             {
                 for (int j = 0; j <= last - DrawingConfig.MinLoopNodes; j++)
                 {
+                    // mid-draw closure = RETURNING TO THE START (the circle
+                    // gesture). Crossing your own line deeper into the stroke
+                    // no longer truncates the drawing on the spot — a five-
+                    // point star crosses itself five times and used to get
+                    // cut mid-glyph (slow stars died here, fast ones later at
+                    // the detect tick; Marko: "most were not recognized").
+                    // Deeper crossings resolve at pen-up, where the crossing
+                    // finder's star-guard tells lassos from glyphs.
+                    if (_current.LengthBetween(0, j) > DrawingConfig.MidDrawCloseStartRegion) break;
                     float loopLen = _current.LengthBetween(j, last);
                     if (loopLen < DrawingConfig.MinLoopPerimeter) break; // loops only shrink from here
                     float threshold = DrawingConfig.SelfCloseThreshold(loopLen);
@@ -335,30 +350,7 @@ namespace SpellyZombie
             GUI.color = Color.white;
         }
 
-        /// Draw a glyph (one or more strokes), then press F1-F12 to save the ink
-        /// cluster around your last stroke as the template for that rune — the
-        /// recognizer learns YOUR handwriting.
-        void HandleTemplateKeys(Keyboard kb)
-        {
-            // statue's face would silently replace a trained rune template
-            for (int i = 0; i < RuneLibrary.RecordableRunes.Length; i++)
-            {
-                var key = kb[(Key)((int)Key.F1 + i)];
-                if (key == null || !key.wasPressedThisFrame) continue;
-
-                var world = DrawingWorld.Instance;
-                var rawStrokes = world.BuildRecordingGlyph(out int strokeCount);
-                if (rawStrokes == null) return;
-
-                int points = 0;
-                foreach (var stroke in rawStrokes) points += stroke.Count;
-                if (points < 6) return;
-
-                var rune = RuneLibrary.RecordableRunes[i];
-                if (RuneLibrary.RecordTemplate(rune, rawStrokes))
-                    world.LogEvent($"Template recorded: {rune} now matches your handwriting ({strokeCount} stroke(s))");
-                return;
-            }
-        }
+        // (F-key template recording REMOVED by Marko's ruling — the Rune
+        // Studio walls are the one and only recording surface now.)
     }
 }

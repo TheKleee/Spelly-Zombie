@@ -38,10 +38,17 @@ namespace SpellyZombie
         public static float HeadFollowPitch = 0.55f;
         public static float SpineFollowPitch = 0.25f;
         public static float FollowPitchCap = 60f;
+        /// Hinge direction for the limited joints — flip a sign if a test bend
+        /// folds the wrong way on the real rig (one-knob tradition).
+        public static float ElbowHingeSign = -1f; // forearms swing FORWARD/up
+        public static float KneeHingeSign = 1f;   // shins fold BACKWARD
         // ---------------------------------------------------------------------
 
-        public Transform HatSocket { get; private set; }
-        public Transform CapeSocket { get; private set; }
+        // forwarded to the ONE socket system (SocketSet) — the rig used to
+        // build its own Socket.Hat/Socket.Cape too, and the duplicate empties
+        // confused Marko's hierarchy ("Socket.Cape twice")
+        public Transform HatSocket => _sockets != null ? _sockets.Get("Hat") : null;
+        public Transform CapeSocket => _sockets != null ? _sockets.Get("Cape") : null;
         /// Weapons glue themselves into this (the standard HandR socket —
         /// plain character space, so Marko's grip-pivot weapons drop in).
         public Transform GripSocketR => _sockets != null ? _sockets.Get("HandR") : null;
@@ -50,16 +57,56 @@ namespace SpellyZombie
         /// invisible controller capsule and paints the limbs directly).
         public bool HasBody => _smr != null;
 
+        /// The worn body model (the CharacterBaker clones this).
+        public GameObject ModelGO => _model;
+
         /// The hips/chest capsules are deliberately fat (they sit just OUTSIDE
         /// the mesh) — SelfPaint's fallback must not slim them under the skin.
         public bool IsTorsoBone(Transform t) => t == _hips || t == _spine1;
 
         static readonly Color SkinColor = new Color(0.93f, 0.87f, 0.72f); // temp — Marko restyles materials
 
+        [Header("Natural stride (Marko's root-motion experiment)")]
+        [Tooltip("ON: damped blending + cycle playback synced to actual ground speed (the in-place-clip substitute for root motion). OFF: the old raw feel — flip live to compare.")]
+        public bool NaturalStride = true;
+        [Tooltip("Ground speed (m/s) the WALK cycle naturally covers. If feet slide at no-shift speed, LOWER this (faster playback). ~2.4 grips a 4.5 m/s stroll.")]
+        public float WalkClipSpeed = 2.4f;
+        [Tooltip("Ground speed (m/s) the RUN cycle naturally covers. If feet slide at sprint speed, nudge this one. (4.5 = Marko's tuned value.)")]
+        public float RunClipSpeed = 4.5f;
+        [Tooltip("Mixamo crouch clips sneak at an angle baked into the pose — this yaw (degrees) turns the crouched body back to face its travel. Dial live while crouch-walking until he faces forward; 0 = off.")]
+        public float CrouchYawFix = 38f;
+
+        [Tooltip("While posing, the shoulder (clavicle) bone carries this share of the upper arm's travel — a real shoulder girdle instead of a dead one. 0 = old behavior.")]
+        public float ClavicleFollow = 0.3f;
+
         SimpleFPSController _pilot;
         WeaponSlots _slots;
         EmotePlayer _emotes;
         Animator _anim;
+        Transform _clavL, _clavR;
+        Quaternion _clavLRest, _clavRRest, _armLRest, _armRRest;
+        Quaternion _armLWritten, _armRWritten; // what WE last wrote — held poses must not re-redistribute
+        float _crouchYawW; // crouch yaw-fix blend weight (0 standing → 1 crouched)
+
+        /// Redistribute the arm's pose rotation: the clavicle takes
+        /// ClavicleFollow of it, the arm keeps the remainder — the TOTAL
+        /// reach stays what the pose asked for, but the girdle participates.
+        /// Only acts when something NEW wrote the arm (a held pose that nobody
+        /// rewrites must not be re-eaten frame after frame).
+        void FollowClavicle(Transform clav, Quaternion clavRest, Transform arm,
+            Quaternion armRest, ref Quaternion lastWritten)
+        {
+            if (clav == null || arm == null) return;
+            Quaternion full = arm.localRotation;
+            if (Quaternion.Angle(full, lastWritten) < 0.05f) return;
+            Quaternion delta = full * Quaternion.Inverse(armRest);
+            clav.localRotation = clavRest
+                * Quaternion.Slerp(Quaternion.identity, delta, ClavicleFollow);
+            arm.localRotation = Quaternion.Slerp(armRest, full, 1f - ClavicleFollow);
+            lastWritten = arm.localRotation;
+        }
+        float _airTime;    // seconds of continuous no-ground (slope-flicker filter)
+        bool _airChecked, _hasAirParams, _hasCrouch; // which params the controller actually has
         SkinnedMeshRenderer _smr;
         Transform _hips, _spine1, _head;
         Transform _armL, _armR, _foreL, _foreR, _handL, _handR;
@@ -70,6 +117,7 @@ namespace SpellyZombie
             new List<(Transform, Vector3, Quaternion)>();
         Quaternion _bindSpine1, _bindHead;
         bool _ragdolling;
+        bool _customBody;
         float _bob;
         float _pitchShown; // eased head-follows-aim pitch (relaxes in 3rd person)
         Vector3 _lastPos;
@@ -78,11 +126,21 @@ namespace SpellyZombie
         {
             _pilot = GetComponent<SimpleFPSController>();
             _slots = GetComponent<WeaponSlots>();
-            var prefab = CharacterLibrary.Model;
+            // MARKO'S PLAYER, HIS WAY: a prefab at Resources/Custom/PlayerBody
+            // replaces the wired model — his mesh, his materials (the code
+            // skin tint stands down). Same Mixamo skeleton = everything works.
+            var custom = PrefabVault.Get("PlayerBody");
+            _customBody = custom != null;
+            var prefab = _customBody ? custom : CharacterLibrary.Model;
             if (prefab == null || _pilot == null) return; // bean life continues
 
             RemovePlaceholder();
             BuildBody(prefab);
+
+            // Marko's play-mode edits to props/sockets/eyes/IK anchors
+            // re-apply here on every build (see CharacterFix — the runtime
+            // player can never be prefabbed; this is his control instead)
+            if (GetComponent<CharacterFix>() == null) gameObject.AddComponent<CharacterFix>();
         }
 
         /// Only the KNOWN graybox parts — anything Marko added by hand survives.
@@ -111,7 +169,8 @@ namespace SpellyZombie
             _smr = model.GetComponentInChildren<SkinnedMeshRenderer>();
             if (_smr != null)
             {
-                _smr.sharedMaterial = MatterFX.Get(SkinColor, MoteShade.Opaque);
+                if (!_customBody) // his PlayerBody prefab keeps HIS materials
+                    _smr.sharedMaterial = MatterFX.Get(SkinColor, MoteShade.Opaque);
                 _smr.updateWhenOffscreen = true; // bones move it; bounds lie
             }
 
@@ -171,6 +230,18 @@ namespace SpellyZombie
             LowerArm(_armL, _handL, 0.75f);
             LowerArm(_armR, _handR, 0.75f);
 
+            // the clavicles — the REAL shoulder bones (Marko: "we do not even
+            // grab the shoulder") — follow the arms while posing; remember
+            // their rest alongside the arms' rest
+            _clavL = Bone("LeftShoulder");
+            _clavR = Bone("RightShoulder");
+            if (_clavL != null) _clavLRest = _clavL.localRotation;
+            if (_clavR != null) _clavRRest = _clavR.localRotation;
+            _armLRest = _armL.localRotation;
+            _armRRest = _armR.localRotation;
+            _armLWritten = _armLRest;
+            _armRWritten = _armRRest;
+
             // ---- the emote rig moves onto real bones (same ids = old poses work) ----
             var rig = GetComponent<EmoteRig>();
             if (rig == null) rig = gameObject.AddComponent<EmoteRig>();
@@ -190,6 +261,28 @@ namespace SpellyZombie
             Joint("spine", spine2 != null ? spine2 : _spine1, spine2);
             Joint("leg.L", upLegL, footL);
             Joint("leg.R", upLegR, footR);
+
+            // elbows and knees: HINGE-LIMITED (Marko's rule — constrained
+            // joints make body-seal placement a puzzle: an inner-elbow seal
+            // fires on a curl, an outer-knee one only mid-squat). The hinge
+            // axis is the bind pose's side axis expressed in each joint's own
+            // rest frame; flip the sign consts if a test bend goes backwards.
+            void Hinge(string id, Transform bone, Transform hint, float sign, float maxFlex)
+            {
+                if (bone == null) return;
+                Vector3 sideWorld = Vector3.Cross(Vector3.up, transform.forward);
+                rig.Joints.Add(new EmoteRig.JointEntry
+                {
+                    Id = id, T = bone, GrabHint = hint != null ? hint : bone,
+                    Rest = bone.localRotation, Limited = true,
+                    HingeAxis = (Quaternion.Inverse(bone.rotation) * (sideWorld * sign)).normalized,
+                    MinDeg = -5f, MaxDeg = maxFlex,
+                });
+            }
+            Hinge("elbow.L", _foreL, _handL, ElbowHingeSign, 140f);
+            Hinge("elbow.R", _foreR, _handR, ElbowHingeSign, 140f);
+            Hinge("knee.L", legL, footL, KneeHingeSign, 135f);
+            Hinge("knee.R", legR, footR, KneeHingeSign, 135f);
             if (GetComponent<EmotePlayer>() == null) gameObject.AddComponent<EmotePlayer>();
 
             // the bake runs on the raw BIND pose — the animator only turns the
@@ -243,22 +336,23 @@ namespace SpellyZombie
             foreach (var t in _hips.GetComponentsInChildren<Transform>(true))
                 if (t != _hips) _boneHome.Add((t, t.localPosition));
 
-            // ---- the face and the wardrobe: Marko's hand-tuned eye fit, in
-            // HEAD-LOCAL space so it's immune to whatever the body rotation is
-            var eyes = GooglyEyes.Attach(_head, 0f, EyeScale);
-            eyes.transform.localPosition = EyeLocalPos; // ← the knobs up top
-            eyes.transform.localRotation = Quaternion.identity;
-            eyes.transform.localScale = Vector3.one * EyeRigScale;
+            // ---- the face and the wardrobe: a BAKED body brings its own
+            // eyes (Marko's edit is law); otherwise build them at his
+            // hand-tuned fit, in HEAD-LOCAL space
+            var eyes = model.GetComponentInChildren<GooglyEyes>(true);
+            if (eyes == null)
+            {
+                eyes = GooglyEyes.Attach(_head, 0f, EyeScale);
+                eyes.transform.localPosition = EyeLocalPos; // ← the knobs up top
+                eyes.transform.localRotation = Quaternion.identity;
+                eyes.transform.localScale = Vector3.one * EyeRigScale;
+            }
             _pilot.ReplaceEyes(eyes);
 
-            HatSocket = new GameObject("Socket.Hat").transform;
-            HatSocket.SetParent(_head, false);
-            if (headTop != null) HatSocket.position = headTop.position;
-            CapeSocket = new GameObject("Socket.Cape").transform;
-            CapeSocket.SetParent(spine2 != null ? spine2 : _spine1, false);
-            // (sockets + pen props are built in the first LateUpdate — the
-            // bind pose faces backwards until the animator's first frame, and
-            // building before that puts everything in the wrong hands)
+            // (sockets — hat/cape included — and pen props are built in the
+            // first LateUpdate by SocketSet: the bind pose faces backwards
+            // until the animator's first frame, and building before that puts
+            // everything in the wrong hands)
 
             // ---- locomotion animations (the wizard builds the controller) ----
             _anim = model.GetComponent<Animator>();
@@ -307,11 +401,32 @@ namespace SpellyZombie
             var palmL = _sockets != null ? _sockets.Get("HandL") : null;
             if (gripR == null || palmL == null) return;
 
+            // a BAKED body may already hold its wand and/or grimoire (Marko
+            // edited them on the prefab) — adopt EACH independently; anything
+            // his prefab lacks gets the normal build below
+            var bakedWand = gripR.Find("Wand");
+            var bakedBook = palmL.Find("Grimoire");
+            if (bakedWand != null)
+            {
+                _wand = bakedWand.gameObject;
+                if (_wand.GetComponent<WandInk>() == null) _wand.AddComponent<WandInk>();
+            }
+            if (bakedBook != null)
+            {
+                _book = bakedBook.gameObject;
+                if (_book.GetComponent<GrimoirePages>() == null) _book.AddComponent<GrimoirePages>();
+            }
+            if (_wand != null && _book != null) return;
+
             // Marko's prefab first (Resources/Custom/Wand), then the weapon
             // skin library, then the primitive placeholder
-            var wandSkin = PrefabVault.Get("Wand");
-            if (wandSkin == null) wandSkin = Wardrobe.WeaponSkin("Wand");
-            if (wandSkin != null)
+            var wandSkin = _wand != null ? null : PrefabVault.Get("Wand");
+            if (wandSkin == null && _wand == null) wandSkin = Wardrobe.WeaponSkin("Wand");
+            if (_wand != null)
+            {
+                // adopted from the baked body above — nothing to build
+            }
+            else if (wandSkin != null)
             {
                 _wand = Instantiate(wandSkin, gripR, false);
                 _wand.name = "Wand";
@@ -333,9 +448,13 @@ namespace SpellyZombie
                     MatterFX.Get(new Color(0.32f, 0.2f, 0.12f), MoteShade.Opaque);
             }
 
-            var bookSkin = PrefabVault.Get("Grimoire");
-            if (bookSkin == null) bookSkin = Wardrobe.WeaponSkin("Grimoire");
-            if (bookSkin != null)
+            var bookSkin = _book != null ? null : PrefabVault.Get("Grimoire");
+            if (bookSkin == null && _book == null) bookSkin = Wardrobe.WeaponSkin("Grimoire");
+            if (_book != null)
+            {
+                // adopted from the baked body above — nothing to build
+            }
+            else if (bookSkin != null)
             {
                 _book = Instantiate(bookSkin, palmL, false);
                 _book.name = "Grimoire";
@@ -370,8 +489,10 @@ namespace SpellyZombie
             foreach (var t in _book.GetComponentsInChildren<Transform>(true))
                 t.gameObject.layer = 2;
 
-            _book.AddComponent<GrimoirePages>(); // seal lesson + rune spreads; G opens, , . turn
-            _wand.AddComponent<WandInk>();       // the wand IS the mana bar (Ink child drains)
+            // seal lesson + rune spreads (G opens, , . turn) / the wand IS the
+            // mana bar — guarded: adopted pieces may already carry them
+            if (_book.GetComponent<GrimoirePages>() == null) _book.AddComponent<GrimoirePages>();
+            if (_wand.GetComponent<WandInk>() == null) _wand.AddComponent<WandInk>();
         }
 
         // ------------------------------------------------------- body paint --
@@ -647,12 +768,25 @@ namespace SpellyZombie
 
         /// A kinematic capsule along the bone toward its child: pen target,
         /// ragdoll segment, and zombie-facing body all in one.
+        static PhysicsMaterial _limbGrip;
+
         Rigidbody Limb(Transform bone, Transform child, float radius, float mass, Rigidbody parent)
         {
             if (bone == null) return null;
             var rb = bone.gameObject.AddComponent<Rigidbody>();
             rb.isKinematic = true;
             rb.mass = mass;
+            // grippy limbs: a downed doll STOPS where it lands instead of
+            // ice-skating away from its rescuer (spell forces still move it —
+            // friction only fights sliding, not pushes)
+            if (_limbGrip == null)
+                _limbGrip = new PhysicsMaterial("SZ_LimbGrip")
+                {
+                    staticFriction = 0.85f,
+                    dynamicFriction = 0.8f,
+                    frictionCombine = PhysicsMaterialCombine.Maximum,
+                    bounceCombine = PhysicsMaterialCombine.Minimum,
+                };
             // big falls fired ragdoll bones straight through the floor
             // (discrete checks skip thin geometry at speed) — the body then
             // "vanished" under the map. Speculative sweeps stop that.
@@ -667,6 +801,7 @@ namespace SpellyZombie
             col.height = len + radius;
             col.center = local * 0.5f;
             col.direction = DominantAxis(local);
+            col.material = _limbGrip;
 
             if (parent != null)
             {
@@ -757,6 +892,28 @@ namespace SpellyZombie
             if (_anim != null) _anim.enabled = !doll && !_ragdolling;
             if (_ragdolling)
             {
+                // first person rides the DOLL'S face — the camera used to sit
+                // at capsule height inside your own collapsed torso (Marko's
+                // beige-screen downed bug); anchored to the head bone you see
+                // the world from the floor, not your own insides
+                if (firstPerson && _head != null && _camCalibrated)
+                    _pilot.SetEyeAnchor(_head.TransformPoint(_camHeadLocal));
+
+                // downed = keep settling: without this a shoved doll slides
+                // across the courtyard and nobody can hold E on it
+                if (_pilot.IsDowned)
+                    foreach (var rb in _ragdoll)
+                        if (rb != null && !rb.isKinematic)
+                        {
+                            // re-assert the heavy downed drag: if we ragdolled from
+                            // an air-tumble (light 0.12 flight drag) and THEN got
+                            // downed, SetRagdoll never re-ran, so the corpse kept
+                            // gliding — SetRagdoll only fires on the on/off edge
+                            if (rb.linearDamping < 2.2f) rb.linearDamping = 2.2f;
+                            rb.linearVelocity = Vector3.MoveTowards(
+                                rb.linearVelocity, Vector3.zero, 6f * Time.deltaTime);
+                        }
+
                 // THE DOLL MUST NEVER BE LOST: a bone blown across the map or
                 // through the floor (joint explosion, tunneling) snaps the
                 // whole doll home onto the capsule and lets physics retry.
@@ -802,12 +959,104 @@ namespace SpellyZombie
             }
 
             // locomotion: the 2D blend reads LOCAL velocity — forward, back
-            // and strafes each get their own clip; crouch is its own state
+            // and strafes each get their own clip; crouch is its own state.
+            //
+            // NATURAL STRIDE (Marko's root-motion experiment): the clips are
+            // in-place, so true root motion has nothing to pull from — this
+            // is the standard substitute. (1) The blend values are DAMPED so
+            // direction changes glide instead of snapping ("intentional low
+            // fps" reads = raw per-frame jumps). (2) The cycle's PLAYBACK
+            // SPEED follows the actual ground speed, so the feet cover the
+            // ground they pass — no treadmill slide, movement looks OWNED by
+            // the legs. Toggle off to compare with the old feel live.
             if (animated)
             {
-                _anim.SetFloat("MoveX", lv.x);
-                _anim.SetFloat("MoveZ", lv.z);
-                _anim.SetBool("Crouched", _pilot.IsCrouched);
+                // the Animator's own "Apply Root Motion" checkbox is a trap on
+                // this rig (in-place clips with root wiggle → the body turns
+                // sideways and folds on crouch) — Marko hit it hunting for
+                // Natural Stride, so it now heals itself instead of biting
+                if (_anim.applyRootMotion) _anim.applyRootMotion = false;
+
+                float speed2d = new Vector2(lv.x, lv.z).magnitude;
+
+                // AIRBORNE, smoothed: a jump reads instantly (upward speed),
+                // but stepping off a stair needs 0.12s of real air before the
+                // legs leave the run cycle — no slope flicker
+                bool rawAir = !_pilot.IsGrounded;
+                _airTime = rawAir ? _airTime + Time.deltaTime : 0f;
+                bool airborne = rawAir && (_pilot.Velocity.y > 1.2f || _airTime > 0.12f);
+
+                // SHIFT DECIDES THE LOOK (Marko: no shift must never show the
+                // run cycle): the animator doesn't see true m/s — it sees
+                // speed SHAPED onto the ring the sprint state owns. Walking
+                // at full no-shift speed sits exactly on the walk ring; shift
+                // glides the same input up to the run ring.
+                float ring = _pilot.IsCrouched ? 2.25f : _pilot.IsSprinting ? 4.5f : 2f;
+                float fullSpeed = _pilot.IsSprinting ? _pilot.SprintSpeed : _pilot.MoveSpeed;
+                if (_pilot.IsCrouched) fullSpeed *= 0.5f;
+                float shape = speed2d < 0.05f ? 0f
+                    : ring * Mathf.Clamp01(speed2d / Mathf.Max(0.1f, fullSpeed)) / speed2d;
+                float ax = lv.x * shape, az = lv.z * shape;
+
+                if (NaturalStride)
+                {
+                    _anim.SetFloat("MoveX", ax, 0.12f, Time.deltaTime);
+                    _anim.SetFloat("MoveZ", az, 0.12f, Time.deltaTime);
+                    // stride reference = the pace of the cycle the SHIFT state
+                    // chose; playback closes the gap between feet and ground.
+                    // In the AIR there's no ground to grip: authored speed.
+                    float refSpeed = _pilot.IsSprinting ? RunClipSpeed : WalkClipSpeed;
+                    float target = airborne || speed2d < 0.15f ? 1f
+                        : Mathf.Clamp(speed2d / Mathf.Max(0.3f, refSpeed), 0.7f, 2.2f);
+                    _anim.speed = Mathf.Lerp(_anim.speed, target, 8f * Time.deltaTime);
+                }
+                else
+                {
+                    _anim.SetFloat("MoveX", ax);
+                    _anim.SetFloat("MoveZ", az);
+                    _anim.speed = 1f;
+                }
+                // params exist only when the controller was built with the
+                // matching clips — probe once so mismatched/older controller
+                // assets stay silent instead of spamming warnings
+                if (!_airChecked)
+                {
+                    _airChecked = true;
+                    foreach (var p in _anim.parameters)
+                    {
+                        if (p.name == "Airborne") _hasAirParams = true;
+                        else if (p.name == "Crouched") _hasCrouch = true;
+                    }
+                }
+                if (_hasCrouch) _anim.SetBool("Crouched", _pilot.IsCrouched);
+                if (_hasAirParams)
+                {
+                    _anim.SetBool("Airborne", airborne);
+                    _anim.SetFloat("AirSpeed", speed2d, 0.1f, Time.deltaTime);
+                }
+
+                // the crouch clip's baked lean: counter-rotate the MODEL (not
+                // the controller) by CrouchYawFix, faded with the crouch state
+                // so standing locomotion is untouched
+                _crouchYawW = Mathf.MoveTowards(_crouchYawW,
+                    _pilot.IsCrouched ? 1f : 0f, Time.deltaTime * 5f);
+                _anim.transform.localRotation =
+                    Quaternion.Euler(0f, CrouchYawFix * _crouchYawW, 0f);
+            }
+
+            // ---- THE SHOULDER FOLLOWS THE ARM (Marko's diagnosis: "we do
+            // not even grab the shoulder and that's why the arm looks so
+            // ridiculous and shoulders so low"): whenever a pose system owns
+            // the arms, the clavicle takes a share of the upper arm's travel
+            // and the arm keeps the rest — a shoulder girdle that lifts with
+            // the arm instead of hanging dead. Off during plain animation
+            // (the clips animate clavicles themselves).
+            bool posing = PoseGrab.IsOpen || PoseStudio.IsOpen
+                || (_emotes != null && _emotes.IsPosing);
+            if (posing && ClavicleFollow > 0.001f)
+            {
+                FollowClavicle(_clavL, _clavLRest, _armL, _armLRest, ref _armLWritten);
+                FollowClavicle(_clavR, _clavRRest, _armR, _armRRest, ref _armRWritten);
             }
 
             // ---- clumsy life on bones the emotes DON'T own (Spine1 + Head):
@@ -820,7 +1069,17 @@ namespace SpellyZombie
             _bob += Time.deltaTime * (2f + vel.magnitude * 1.1f);
             float lean = Mathf.Clamp(lv.z * 3.4f, -16f, 16f);
             float roll = Mathf.Clamp(-lv.x * 2.8f, -13f, 13f);
-            float bob = Mathf.Sin(_bob * 2f) * 2.8f;
+            // SHAKE BUDGET (Marko: "shaking a bit is fine — funny moments —
+            // but this is too much, many people wouldn't be able to draw").
+            // The camera rides the head bone, so the head's idle bob WAS the
+            // nonstop view shake: now idle keeps a gentle breath, the full
+            // drunk-noodle returns with real movement, and drawing steadies
+            // the head down to a tremble (never fully still — comedy law).
+            float movement = Mathf.Clamp01(vel.magnitude / 2f);
+            float calm = Mathf.Lerp(0.3f, 1f, movement);
+            if (HeldWeapon.DrawMode || SelfPaint.IsActive)
+                calm *= SurfaceDrawer.IsPenActive ? 0.25f : 0.5f;
+            float bob = Mathf.Sin(_bob * 2f) * 2.8f * calm;
             // side-to-side waggle only while moving — the drunk-noodle walk
             float sway = Mathf.Sin(_bob * 1.3f) * Mathf.Min(vel.magnitude * 1.4f, 7f);
             var spineWobble = Quaternion.Euler(lean + bob * 0.5f, sway, roll);
@@ -862,17 +1121,31 @@ namespace SpellyZombie
             // ---- weapon holding without an animator: procedural reach.
             // (With the animator, HandIK does this properly through the IK pass
             // — upper body grips while the legs keep running.)
-            if (!animated && firstPerson && _slots != null)
+            if (!animated && _slots != null)
             {
-                var weapon = _slots.CurrentWeapon;
-                if (weapon != null && weapon.gameObject.activeInHierarchy)
+                // carrying overrides everything: both bean-arms hug the load
+                var beanCarried = InkRuneStone.Carried;
+                if (beanCarried != null)
                 {
-                    Vector3 grip = weapon.transform.TransformPoint(new Vector3(0.02f, -0.08f, -0.1f));
-                    Vector3 support = weapon.transform.TransformPoint(new Vector3(-0.12f, 0f, 0.05f));
-                    Reach(_armR, _handR, grip);
-                    Reach(_foreR, _handR, grip);
-                    Reach(_armL, _handL, support);
-                    Reach(_foreL, _handL, support);
+                    Vector3 c = beanCarried.transform.position;
+                    Vector3 side = transform.right * 0.16f;
+                    Reach(_armR, _handR, c + side);
+                    Reach(_foreR, _handR, c + side);
+                    Reach(_armL, _handL, c - side);
+                    Reach(_foreL, _handL, c - side);
+                }
+                else if (firstPerson)
+                {
+                    var weapon = _slots.CurrentWeapon;
+                    if (weapon != null && weapon.gameObject.activeInHierarchy)
+                    {
+                        Vector3 grip = weapon.transform.TransformPoint(new Vector3(0.02f, -0.08f, -0.1f));
+                        Vector3 support = weapon.transform.TransformPoint(new Vector3(-0.12f, 0f, 0.05f));
+                        Reach(_armR, _handR, grip);
+                        Reach(_foreR, _handR, grip);
+                        Reach(_armL, _handL, support);
+                        Reach(_foreL, _handL, support);
+                    }
                 }
             }
         }
@@ -897,11 +1170,16 @@ namespace SpellyZombie
                 if (_anim != null) _anim.enabled = false; // physics owns the doll now
                 GetComponent<EmotePlayer>()?.Interrupt();
                 Vector3 vel = (transform.position - _lastPos) / Mathf.Max(Time.deltaTime, 1e-4f);
+                // downed dolls settle fast (rescuers must be able to CATCH
+                // you); flying tumbles keep low drag so arcs stay ballistic
+                float drag = _pilot != null && _pilot.IsDowned ? 2.2f : 0.12f;
                 foreach (var rb in _ragdoll)
                 {
                     if (rb == null) continue;
                     rb.isKinematic = false;
                     rb.linearVelocity = vel;
+                    rb.linearDamping = drag;
+                    rb.angularDamping = 2f;
                 }
                 // the capsule (and camera) now CHASES the doll — you watch
                 // your own body sail off and land, instead of losing it
@@ -936,14 +1214,32 @@ namespace SpellyZombie
         Vector3 _grip, _support; // last targets, for the ease-out
 
         // pen stance blends between READING (book up, you consult it) and
-        // CASTING (wand hand thrusts at the surface, book tucks away)
-        Vector3 _penGrip = ReadGrip, _penSupport = ReadSupport;
-        static readonly Vector3 ReadGrip = new Vector3(0.17f, -0.25f, 0.38f);
-        static readonly Vector3 ReadSupport = new Vector3(-0.11f, -0.17f, 0.44f); // book low-left: readable, never hogging the view
-        static readonly Vector3 CastGrip = new Vector3(0.14f, -0.16f, 0.56f);
-        static readonly Vector3 CastSupport = new Vector3(-0.25f, -0.36f, 0.28f);
+        // CASTING (wand hand thrusts at the surface, book tucks away).
+        // The stances live in IKAnchor_* child transforms under the camera
+        // pivot — MARKO MOVES THEM in play mode and saves via Character Fix
+        // ("the grimoire is way too low": raise IKAnchor_ReadSupport).
+        Vector3 _penGrip, _penSupport;
+        static readonly Vector3 ReadGripDefault = new Vector3(0.17f, -0.25f, 0.38f);
+        static readonly Vector3 ReadSupportDefault = new Vector3(-0.11f, -0.07f, 0.46f); // raised: the open book must be SEEN
+        static readonly Vector3 CastGripDefault = new Vector3(0.14f, -0.16f, 0.56f);
+        static readonly Vector3 CastSupportDefault = new Vector3(-0.25f, -0.36f, 0.28f);
+        Transform _aReadGrip, _aReadSupport, _aCastGrip, _aCastSupport;
 
         void Awake() => _anim = GetComponent<Animator>();
+
+        Transform Anchor(ref Transform cache, string anchorName, Vector3 def)
+        {
+            if (cache != null || Pivot == null) return cache;
+            var t = Pivot.Find(anchorName);
+            if (t == null)
+            {
+                t = new GameObject(anchorName).transform;
+                t.SetParent(Pivot, false);
+                t.localPosition = def;
+            }
+            cache = t;
+            return cache;
+        }
 
         void OnAnimatorIK(int layerIndex)
         {
@@ -968,19 +1264,40 @@ namespace SpellyZombie
             {
                 // ink flowing = the wand hand lunges forward and the book gets
                 // out of the way; otherwise an OPEN grimoire is held up to
-                // READ (G raised it) — closed, the book hand hangs free and
-                // the book rides low in the palm (Marko's G toggle)
+                // READ (G raised it) — closed, the book hand hangs free.
+                // Stances read from the IKAnchor transforms (Marko's knobs).
                 bool casting = SurfaceDrawer.IsPenActive;
-                _penGrip = Vector3.Lerp(_penGrip, casting ? CastGrip : ReadGrip,
-                    Time.deltaTime * 7f);
-                _penSupport = Vector3.Lerp(_penSupport, casting ? CastSupport : ReadSupport,
-                    Time.deltaTime * 7f);
+                var readGrip = Anchor(ref _aReadGrip, "IKAnchor_ReadGrip", ReadGripDefault);
+                var readSupport = Anchor(ref _aReadSupport, "IKAnchor_ReadSupport", ReadSupportDefault);
+                var castGrip = Anchor(ref _aCastGrip, "IKAnchor_CastGrip", CastGripDefault);
+                var castSupport = Anchor(ref _aCastSupport, "IKAnchor_CastSupport", CastSupportDefault);
+                Vector3 gripTarget = casting
+                    ? (castGrip != null ? castGrip.localPosition : CastGripDefault)
+                    : (readGrip != null ? readGrip.localPosition : ReadGripDefault);
+                Vector3 supportTarget = casting
+                    ? (castSupport != null ? castSupport.localPosition : CastSupportDefault)
+                    : (readSupport != null ? readSupport.localPosition : ReadSupportDefault);
+                if (_penGrip == Vector3.zero) { _penGrip = gripTarget; _penSupport = supportTarget; }
+                _penGrip = Vector3.Lerp(_penGrip, gripTarget, Time.deltaTime * 7f);
+                _penSupport = Vector3.Lerp(_penSupport, supportTarget, Time.deltaTime * 7f);
                 _grip = Pivot.TransformPoint(_penGrip);
                 _support = Pivot.TransformPoint(_penSupport);
             }
 
-            bool bookUp = weaponHold || (penHold && GrimoirePages.BookOpen);
-            _weight = Mathf.MoveTowards(_weight, weaponHold || penHold ? 1f : 0f,
+            // CARRYING (Marko's rule: "arms should be in front of us") — both
+            // hands reach the carried load, overriding pen/weapon stances
+            var carried = InkRuneStone.Carried;
+            bool carryHold = carried != null;
+            if (carryHold)
+            {
+                Vector3 c = carried.transform.position;
+                Vector3 side = _anim.transform.right * 0.18f;
+                _grip = c + side;
+                _support = c - side;
+            }
+
+            bool bookUp = weaponHold || carryHold || (penHold && GrimoirePages.BookOpen);
+            _weight = Mathf.MoveTowards(_weight, weaponHold || penHold || carryHold ? 1f : 0f,
                 Time.deltaTime * 5f);
             _supportWeight = Mathf.MoveTowards(_supportWeight, bookUp ? 1f : 0f,
                 Time.deltaTime * 5f);

@@ -22,13 +22,23 @@ namespace SpellyZombie
         bool _wasGettingUp, _socketed;
         float _fidgetIn = 6f;
 
+        /// The instantiated body model (the CharacterBaker clones this).
+        public GameObject BodyGO => _body;
+
         /// Returns null when the model or zombie controller isn't wired —
         /// the graybox capsule look continues unchanged.
         public static ZombieDress DressUp(Zombie z, Color skin, float widthMul, GooglyEyes eyes)
         {
-            var prefab = CharacterLibrary.Model;
+            // MARKO'S ZOMBIE, HIS WAY: a prefab at Resources/Custom/ZombieBody
+            // replaces the shared model entirely — his mesh, his materials,
+            // untouched by code (no tint, no placeholder mouth). Rig it on the
+            // same Mixamo skeleton (or copy SZ_Body's avatar on import) and
+            // the zombie animation set plays on it as-is.
+            var custom = PrefabVault.Get("ZombieBody");
+            var prefab = custom != null ? custom : CharacterLibrary.Model;
             var ctrl = CharacterLibrary.ZombieAnim;
             if (prefab == null || ctrl == null || z == null) return null;
+            bool customBody = custom != null;
 
             var go = new GameObject(z.name + "_Dress");
             var d = go.AddComponent<ZombieDress>();
@@ -62,7 +72,8 @@ namespace SpellyZombie
             var smr = body.GetComponentInChildren<SkinnedMeshRenderer>();
             if (smr != null)
             {
-                smr.sharedMaterial = MatterFX.Get(skin, MoteShade.Opaque);
+                if (!customBody) // his prefab keeps HIS materials, always
+                    smr.sharedMaterial = MatterFX.Get(skin, MoteShade.Opaque);
                 smr.updateWhenOffscreen = true;
             }
 
@@ -72,6 +83,12 @@ namespace SpellyZombie
                 d._anim.runtimeAnimatorController = ctrl;
                 d._anim.applyRootMotion = false;
             }
+
+            // the zombie-ness: seeded posture/variation over the body. With
+            // Marko's custom body the LOOK layers (tint, placeholder mouth)
+            // stand down — only motion variety remains.
+            body.AddComponent<ZombieFlavor>().Init(z.Kind, z.gameObject.GetInstanceID(),
+                d._anim, skin, smr, body, customBody);
 
             // hide the graybox: capsule + head cube renderers off (colliders,
             // rigidbody, ink surface all stay exactly as they were)
@@ -84,10 +101,22 @@ namespace SpellyZombie
                 if (hr != null) hr.enabled = false;
             }
 
+            // a BAKED body brings its own googly eyes (Marko edited them on
+            // the prefab) — the spawn-built pair bows out and the brain's
+            // mood system re-points at his
+            var bakedEyes = body.GetComponentInChildren<GooglyEyes>(true);
+            if (bakedEyes != null && eyes != null && bakedEyes != eyes)
+            {
+                Object.Destroy(eyes.gameObject);
+                eyes = bakedEyes;
+                var brain = z.GetComponent<ZombieBrain>();
+                if (brain != null) brain.Eyes = bakedEyes;
+            }
+
             if (head != null)
             {
                 // the googly soul moves onto the animated head (Marko's fit)
-                if (eyes != null)
+                if (eyes != null && eyes != bakedEyes)
                 {
                     eyes.transform.SetParent(head, false);
                     eyes.transform.localPosition = CharacterRig.EyeLocalPos; // one knob for all eyes

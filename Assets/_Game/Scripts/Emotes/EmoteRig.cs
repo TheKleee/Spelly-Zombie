@@ -20,9 +20,37 @@ namespace SpellyZombie
             /// of the arm). Falls back to the joint pivot when unset.
             public Transform GrabHint;
             [NonSerialized] public Quaternion Rest;
+
+            /// HINGE limit (elbows/knees — Marko's rule: constrained joints make
+            /// body-seal PLACEMENT a puzzle). Axis lives in the joint's rest
+            /// frame; the allowed pose is Rest rotated [MinDeg..MaxDeg] around
+            /// it, nothing else. Unlimited joints leave Limited false.
+            public bool Limited;
+            public Vector3 HingeAxis;
+            public float MinDeg, MaxDeg;
         }
 
         public List<JointEntry> Joints = new List<JointEntry>();
+
+        /// Enforce a limited joint's hinge: whatever was just written to the
+        /// bone is reduced to its component around the hinge axis, clamped to
+        /// the range. Runs at EVERY write site (grab, pose playback) so saved
+        /// files with illegal angles obey the same anatomy as live posing.
+        public static void Constrain(JointEntry j)
+        {
+            if (j == null || !j.Limited || j.T == null) return;
+            Quaternion delta = Quaternion.Inverse(j.Rest) * j.T.localRotation;
+            delta.ToAngleAxis(out float angle, out Vector3 axis);
+            if (float.IsNaN(angle) || axis.sqrMagnitude < 1e-8f)
+            {
+                j.T.localRotation = j.Rest;
+                return;
+            }
+            if (angle > 180f) angle -= 360f;
+            float around = angle * Vector3.Dot(axis.normalized, j.HingeAxis.normalized);
+            around = Mathf.Clamp(around, j.MinDeg, j.MaxDeg);
+            j.T.localRotation = j.Rest * Quaternion.AngleAxis(around, j.HingeAxis);
+        }
 
         void Awake()
         {

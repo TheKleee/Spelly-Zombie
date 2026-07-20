@@ -196,6 +196,7 @@ namespace SpellyZombie
                     var j = _rig.Find(p.joint);
                     if (j?.T == null || !_blendFrom.TryGetValue(p.joint, out var from)) continue;
                     j.T.localRotation = Quaternion.Slerp(from, Quaternion.Euler(p.euler), a);
+                    EmoteRig.Constrain(j); // saved files obey the hinges too
                 }
                 return;
             }

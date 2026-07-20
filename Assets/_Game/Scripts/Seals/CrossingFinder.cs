@@ -11,7 +11,8 @@ namespace SpellyZombie
     /// consecutive crossings become edges. Any cycle in that graph encloses a
     /// region — so a heptagon drawn as seven overshooting segments, a scribble
     /// that loops once, or two arcs meeting in a lens all resolve the same way.
-    /// The tightest enclosing cycle wins. The caller splits the crossed strokes
+    /// The LARGEST enclosing cycle wins (Marko's rule — a small sub-loop must
+    /// never steal the intended boundary). The caller splits the crossed strokes
     /// at the crossings; the enclosed arcs become boundary, the tails stay ink.
     public static class CrossingFinder
     {
@@ -28,6 +29,7 @@ namespace SpellyZombie
         {
             public List<Arc> Cycle;
             public bool Valid;
+            public float Perimeter; // for "largest seal wins" comparison
         }
 
         class Xing
@@ -109,8 +111,26 @@ namespace SpellyZombie
             }
             if (edges.Count == 0) return default;
 
-            // 4) tightest enclosing cycle
-            return FindShortestCycle(edges);
+            // a stroke that crosses ITSELF two or more times is a complex
+            // GLYPH being drawn (a five-point star self-crosses five times),
+            // not a lasso — its internal cells must never self-seal and eat
+            // the drawing (Marko's star: "Seal resolved — ink consumed" left
+            // a grey star inside an empty gold circle). ONE self-crossing
+            // stays a seal: that's the overshoot-closed circle, the most
+            // common seal in the game.
+            var selfXings = new Dictionary<Stroke, int>();
+            foreach (var x in xings)
+                if (x.SA == x.SB)
+                {
+                    var s = eligible[x.SA];
+                    selfXings[s] = selfXings.TryGetValue(s, out var cnt) ? cnt + 1 : 1;
+                }
+            var glyphish = new HashSet<Stroke>();
+            foreach (var kv in selfXings)
+                if (kv.Value >= 2) glyphish.Add(kv.Key);
+
+            // 4) largest enclosing cycle
+            return FindLargestCycle(edges, glyphish);
         }
 
         // ---- crossings between stroke i and stroke j (i==j => self) ----
@@ -166,7 +186,7 @@ namespace SpellyZombie
         // 3-edge 0.3s blip, and CONSUME the shared ink, breaking the intended
         // big loop. When ink crossings enclose several regions, the big one is
         // the intent; the overshoot slivers are drawing debris. ----
-        static Result FindShortestCycle(List<Edge> edges)
+        static Result FindLargestCycle(List<Edge> edges, HashSet<Stroke> glyphish)
         {
             var adj = new Dictionary<int, List<int>>();
             void AddAdj(int vert, int e)
@@ -202,6 +222,7 @@ namespace SpellyZombie
                 float perim = 0f;
                 foreach (var ei in cycle) perim += edges[ei].Length;
                 if (perim <= bestPerim) continue;
+                if (AllFromOneGlyph(edges, cycle, glyphish)) continue; // stars stay drawings
                 if (!Encloses(edges, cycle)) continue;
                 bestPerim = perim;
                 best = cycle;
@@ -209,6 +230,36 @@ namespace SpellyZombie
 
             if (best == null) return default;
             return BuildResult(edges, best);
+        }
+
+        /// True when every arc of the cycle belongs to a single multi-self-
+        /// crossing stroke — the cells inside a star/pentagram-style glyph.
+        /// Mixed-stroke cycles (a lasso over other ink, a polygon of separate
+        /// segments) are never suppressed.
+        /// True only for a SMALL cell entirely inside one self-crossing stroke
+        /// — a star's inner point, not a seal. Marko's rule: ANY real-sized
+        /// loop closes no matter how many times it crosses itself, so we
+        /// suppress only cells below rune scale; a big wobbly loop always seals.
+        static bool AllFromOneGlyph(List<Edge> edges, List<int> cycle, HashSet<Stroke> glyphish)
+        {
+            if (cycle == null || cycle.Count == 0 || glyphish.Count == 0) return false;
+            var first = edges[cycle[0]].Stroke;
+            if (!glyphish.Contains(first)) return false;
+            foreach (var ei in cycle)
+                if (edges[ei].Stroke != first) return false;
+
+            // size gate: only a small cell is a glyph-part; a large loop seals
+            float minx = float.MaxValue, maxx = -float.MaxValue, miny = float.MaxValue, maxy = -float.MaxValue,
+                  minz = float.MaxValue, maxz = -float.MaxValue;
+            foreach (var ei in cycle)
+                foreach (var p in edges[ei].Pts)
+                {
+                    minx = Mathf.Min(minx, p.x); maxx = Mathf.Max(maxx, p.x);
+                    miny = Mathf.Min(miny, p.y); maxy = Mathf.Max(maxy, p.y);
+                    minz = Mathf.Min(minz, p.z); maxz = Mathf.Max(maxz, p.z);
+                }
+            float diag = new Vector3(maxx - minx, maxy - miny, maxz - minz).magnitude;
+            return diag < DrawingConfig.GlyphCellMax; // small = star cell; large = a seal
         }
 
         static List<int> ShortestPath(List<Edge> edges, Dictionary<int, List<int>> adj,
@@ -327,7 +378,9 @@ namespace SpellyZombie
                 arcs.Add(new Arc { Stroke = ed.Stroke, Lo = ed.Lo, Hi = ed.Hi, Reversed = reversed });
                 current = reversed ? ed.U : ed.V;
             }
-            return new Result { Cycle = arcs, Valid = arcs.Count > 0 };
+            float perim = 0f;
+            foreach (var ei in cycle) perim += edges[ei].Length;
+            return new Result { Cycle = arcs, Valid = arcs.Count > 0, Perimeter = perim };
         }
 
         // ---- small helpers ----

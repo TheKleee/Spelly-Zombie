@@ -291,6 +291,10 @@ namespace SpellyZombie
                 var desc = UIKit.Label(card, StatDesc[o.Stat]
                     + (stacks > 0 ? $"\n(owned ×{stacks})" : ""),
                     15, new Color(0.25f, 0.19f, 0.12f), TextAnchor.UpperLeft);
+                // live data beats adopted prefab text (same stale-label class
+                // as the rune chooser — the offers change every level-up)
+                title.text = $"{o.Card.ToString().ToUpper()} — {StatName[o.Stat]}";
+                desc.text = StatDesc[o.Stat] + (stacks > 0 ? $"\n(owned ×{stacks})" : "");
                 var dr = (RectTransform)desc.transform;
                 UIKit.Place(dr, new Vector2(0f, 1f), new Vector2(16f, -58f), new Vector2(w - 32f, 80f));
                 desc.horizontalOverflow = HorizontalWrapMode.Wrap;

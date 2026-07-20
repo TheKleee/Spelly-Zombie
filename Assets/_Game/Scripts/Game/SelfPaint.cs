@@ -29,6 +29,8 @@ namespace SpellyZombie
 
         SimpleFPSController _pilot;
         WeaponSlots _slots;
+        EmotePlayer _emotes;
+        float _rebakeIn = -1f; // >0 while a just-loaded pose settles before the shell re-bakes
         Camera _cam;
         Vector3 _camLocalPos;
         Quaternion _camLocalRot;
@@ -66,7 +68,53 @@ namespace SpellyZombie
             if (IsActive && kb.escapeKey.wasPressedThisFrame) { Exit(); return; }
             if (!IsActive) return;
 
+            PosePicker(kb);
             Orbit();
+        }
+
+        /// While painting the body: 1-9 drop into a SAVED POSE so you can draw
+        /// seals in the shape they'll fire in; F relaxes back to idle. The
+        /// skin-paint shell re-bakes once the pose settles so ink lands on the
+        /// posed body; ink already drawn rides the bones into the new pose.
+        void PosePicker(Keyboard kb)
+        {
+            if (_emotes == null) _emotes = GetComponent<EmotePlayer>();
+            if (_emotes == null) return;
+
+            for (int slot = 1; slot <= 9; slot++)
+            {
+                var key = kb[(Key)((int)Key.Digit1 + (slot - 1))];
+                if (key != null && key.wasPressedThisFrame) { LoadPose(slot); return; }
+            }
+            if (kb.fKey.wasPressedThisFrame && _emotes.IsPosing)
+            {
+                _emotes.StopToRest();
+                _rebakeIn = PoseSettle;
+            }
+
+            if (_rebakeIn > 0f)
+            {
+                _rebakeIn -= Time.deltaTime;
+                if (_rebakeIn <= 0f) RebakeShell();
+            }
+        }
+
+        const float PoseSettle = 0.4f; // let the emote blend land before re-baking
+
+        void LoadPose(int slot)
+        {
+            _emotes.ToggleSlot(slot); // load (or toggle off) that saved pose
+            _rebakeIn = PoseSettle;
+        }
+
+        /// Move ink drawn in the old pose onto the bones (rides the new pose),
+        /// then re-bake the paint shell against the body's current shape.
+        void RebakeShell()
+        {
+            var body = GetComponent<CharacterRig>();
+            if (body == null || !body.HasBody) return;
+            body.EndBodyPaint();  // rebase existing ink to bones
+            body.BeginBodyPaint(); // fresh shell for the settled pose
         }
 
         /// FIRST person + the wand slot only: with a weapon selected R engraves

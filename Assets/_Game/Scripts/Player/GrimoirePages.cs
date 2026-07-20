@@ -6,9 +6,19 @@ namespace SpellyZombie
 {
     /// The open grimoire teaches. PAGE ONE is the seal lesson — how casting
     /// works (seal drawn AROUND a rune; more detailed boundary = spell lasts
-    /// longer). The pages after it show your rune sets (each card = the
-    /// up/down pair) drawn in your own recorded handwriting. Comma and period
-    /// flip back / forward (CS style). Rebuilds itself when you learn a card.
+    /// longer). Then ONE PAGE PER FAMILY, always all six (Marko's rule: the
+    /// book never hides chapters) — the family you own in working ink, the
+    /// rest faded like unlearned chapters. Left page = the up rune, right
+    /// page = the down rune, in your recorded handwriting. Comma and period
+    /// flip back / forward. Rebuilds itself when you learn a card.
+    ///
+    /// MARKO'S PAGE-ART CONTRACT (design the pages yourself, no code):
+    ///   Resources/Custom/GrimoirePage_&lt;Family&gt;       — your art UNDER the glyphs
+    ///   Resources/Custom/GrimoirePage_&lt;Family&gt;_Full  — your COMPLETE spread,
+    ///                                                  code adds nothing on top
+    ///   Resources/Custom/GrimoirePage_Lesson(_Full)  — same for page one
+    /// (Family = Heat/State/Luminance/Sticky/Direction/Density. Textures:
+    /// Read/Write not needed, any import. Unowned _Full pages render faded.)
     ///
     /// MARKO'S BLENDER BOOK CONTRACT: name the prefab Weapon_Grimoire with
     /// the shared grip pivot. Put a child named "PageAnchor" on the open
@@ -94,8 +104,7 @@ namespace SpellyZombie
             }
             UIPrompt.Show("G", Loc.T("grimoire.close"));
 
-            var cards = ShownCards(out bool owned);
-            int pages = 1 + Mathf.Max(1, Mathf.CeilToInt(cards.Count / 2f)); // +1: the seal lesson
+            int pages = 1 + Families.Length; // seal lesson + one page per family
 
             int step = 0;
             if (kb.periodKey.wasPressedThisFrame) step = 1;
@@ -114,7 +123,7 @@ namespace SpellyZombie
                 }
                 else
                 {
-                    Rebuild(cards, owned); // placeholder book: instant
+                    Rebuild(OwnedMask()); // placeholder book: instant
                 }
                 Juice.Chime(transform.position); // the page-turn flourish
                 DrawingWorld.Instance?.LogEvent($"Grimoire page {_page + 1}/{pages}");
@@ -127,18 +136,17 @@ namespace SpellyZombie
                 {
                     _pendingFlip = false;
                     _revealed = false;
-                    var c = ShownCards(out bool o);
-                    Rebuild(c, o);
+                    Rebuild(OwnedMask());
                 }
                 return; // the stamp check below would double-rebuild mid-flip
             }
 
-            int stamp = owned ? cards.Count : -cards.Count; // sign marks the mode
+            int stamp = OwnedMask();
             if (stamp != _cardsShown)
             {
                 _cardsShown = stamp;
                 _page = Mathf.Min(_page, pages - 1);
-                Rebuild(cards, owned);
+                Rebuild(stamp);
             }
         }
 
@@ -191,22 +199,19 @@ namespace SpellyZombie
             return true;
         }
 
-        /// In the game: owned cards in dark ink; before you own ANY, the whole
-        /// alphabet shows faded — a table of contents, never a blank book.
-        /// In FREE PRACTICE grounds (lobby/menu/sandboxes) every rune is
-        /// castable, so the book shows the full alphabet in working ink.
-        List<RuneCardType> ShownCards(out bool owned)
+        static readonly RuneCardType[] Families =
+            (RuneCardType[])System.Enum.GetValues(typeof(RuneCardType));
+
+        /// Bit per family: which chapters are in working ink. Free-practice
+        /// grounds (lobby/menu/sandboxes) own everything; in the arena the
+        /// book still shows ALL chapters — unowned ones just render faded.
+        int OwnedMask()
         {
-            if (!RuneLibrary.RestrictedArena)
-            {
-                owned = true;
-                return new List<RuneCardType>((RuneCardType[])System.Enum.GetValues(typeof(RuneCardType)));
-            }
-            var cards = new List<RuneCardType>(Grimoire.CardsOf(Grimoire.LocalPlayerId));
-            owned = cards.Count > 0;
-            if (!owned)
-                cards.AddRange((RuneCardType[])System.Enum.GetValues(typeof(RuneCardType)));
-            return cards;
+            if (!RuneLibrary.RestrictedArena) return (1 << Families.Length) - 1;
+            int mask = 0;
+            foreach (var c in Grimoire.CardsOf(Grimoire.LocalPlayerId))
+                mask |= 1 << (int)c;
+            return mask;
         }
 
         void ClearContent()
@@ -216,25 +221,58 @@ namespace SpellyZombie
             _content.Clear();
         }
 
-        void Rebuild(List<RuneCardType> cards, bool owned)
+        void Rebuild(int mask)
         {
             ClearContent();
 
             if (_page == 0)
             {
-                BuildSealLesson(cards);
+                BuildSealLesson(mask);
                 return;
             }
 
-            for (int half = 0; half < 2; half++) // left page, right page
+            // ONE FAMILY PER SPREAD: left page the up rune, right the down —
+            // never two chapters crammed onto one spread (Marko: "it combined
+            // the page for light with the page for solid")
+            var family = Families[_page - 1];
+            bool owned = (mask & (1 << (int)family)) != 0;
+            Pair(family, out var up, out var down);
+
+            if (CustomPage($"GrimoirePage_{family}", owned)) return;
+
+            Label(family.ToString().ToUpper(), new Vector3(0f, 0.001f, 0.094f),
+                0.003f, owned ? Ink : Locked);
+            Glyph(up, new Vector3(-0.042f, 0f, 0.022f), owned);
+            Glyph(down, new Vector3(0.042f, 0f, 0.022f), owned);
+        }
+
+        /// Marko's hand-designed page art. "<name>_Full" = his complete
+        /// spread, nothing drawn over it (faded when unowned); "<name>" =
+        /// his background, glyphs still stamp on top. True = page handled.
+        bool CustomPage(string pageName, bool owned)
+        {
+            var full = Resources.Load<Texture2D>($"Custom/{pageName}_Full");
+            if (full != null)
             {
-                int idx = (_page - 1) * 2 + half;
-                if (idx >= cards.Count) break;
-                Pair(cards[idx], out var up, out var down);
-                float x = half == 0 ? -0.042f : 0.042f;
-                Glyph(up, new Vector3(x, 0f, 0.055f), owned);
-                Glyph(down, new Vector3(x, 0f, -0.032f), owned);
+                ArtQuad(full, owned ? Color.white : new Color(1f, 1f, 1f, 0.45f));
+                return true;
             }
+            var bg = Resources.Load<Texture2D>($"Custom/{pageName}");
+            if (bg != null) ArtQuad(bg, owned ? Color.white : new Color(1f, 1f, 1f, 0.55f));
+            return false;
+        }
+
+        void ArtQuad(Texture2D tex, Color tint)
+        {
+            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            quad.name = "PageArtFull";
+            Destroy(quad.GetComponent<Collider>());
+            Place(quad.transform, new Vector3(0f, -0.0004f, 0f));
+            quad.transform.localScale = new Vector3(0.19f, 0.21f, 1f); // the whole spread
+            var shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+                quad.GetComponent<Renderer>().material =
+                    new Material(shader) { mainTexture = tex, color = tint };
         }
 
         // ------------------------------------------------- page one: seals --
@@ -242,14 +280,17 @@ namespace SpellyZombie
         /// The lesson, drawn not written: the same rune sealed in a triangle
         /// (3 strokes of effort — a quick spark) and in a circle (more pen,
         /// more power), each with a duration bar you can compare at a glance.
-        void BuildSealLesson(List<RuneCardType> cards)
+        void BuildSealLesson(int mask)
         {
+            if (CustomPage("GrimoirePage_Lesson", true)) return;
+
             Label("SEAL OVER RUNE", new Vector3(0f, 0.001f, 0.096f), 0.0032f, Ink);
 
-            // demo rune: the first card you own (heat until you own one) —
+            // demo rune: the first family you own (heat until you own one) —
             // shown in YOUR handwriting, the shape you'll actually draw
             RuneType rune = RuneType.HeatUp;
-            if (cards.Count > 0) Pair(cards[0], out rune, out _);
+            for (int i = 0; i < Families.Length; i++)
+                if ((mask & (1 << i)) != 0) { Pair(Families[i], out rune, out _); break; }
 
             SealDemo(-0.042f, rune, Triangle(), "TRIANGLE = QUICK", 0.020f);
             SealDemo(0.042f, rune, Circle(), "CIRCLE = LONG", 0.058f);
@@ -346,7 +387,9 @@ namespace SpellyZombie
                 go.GetComponent<MeshRenderer>().material = tm.font.material;
         }
 
-        static void Pair(RuneCardType card, out RuneType up, out RuneType down)
+        /// The family's polarity pair — public: dropped spell pages stamp the
+        /// same runes so page-in-book and page-on-ground match (Marko's rule).
+        public static void Pair(RuneCardType card, out RuneType up, out RuneType down)
         {
             switch (card)
             {

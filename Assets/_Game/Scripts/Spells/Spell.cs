@@ -30,6 +30,9 @@ namespace SpellyZombie
             public float GlyphSize;   // UNCLAMPED drawn half-extent — matter sizing
                                       // uses this, not Radius (whose 0.9 floor is
                                       // for effect areas and made boulder spam)
+            public Object Tracked;    // SUSTAIN LAW: what this rune's particle currently
+                                      // IS (walked through combinations) — no re-emit
+                                      // until it is fully gone (Marko's Jul 20 ruling)
         }
 
         readonly List<Zone> _zones = new List<Zone>();
@@ -117,11 +120,33 @@ namespace SpellyZombie
             return spell;
         }
 
+        // ONE METRONOME PER SEAL (Marko: "things inside the same seal should
+        // fire at the same time") — zones don't own clocks anymore; the SPELL
+        // pulses and every zone that's allowed to emit does so on the pulse.
+        // Sustain-law zones whose product died mid-cycle wait for the next
+        // shared beat instead of rebursting on a private timer.
+        float _pulseTimer;   // starts 0 → the first pulse is the first tick
+        bool _pulseFire;
+
         void Update()
         {
             if (_ended) return;
             float dt = Time.deltaTime;
             _remaining -= dt;
+
+            _pulseFire = false;
+            _pulseTimer -= dt;
+            if (_pulseTimer <= 0f)
+            {
+                _pulseFire = true;
+                // the fastest Rapid stack in the seal drives everyone's beat —
+                // simultaneity outranks per-rune tempo (Marko's law)
+                float mul = 1f;
+                foreach (var z in _zones)
+                    mul = Mathf.Min(mul, Mathf.Pow(0.75f, Powerups.For(_ownerId, z.Rune).Rapid));
+                _pulseTimer = DrawingConfig.ZoneEmitPeriod * mul;
+            }
+
             for (int i = 0; i < _zones.Count; i++) TickZone(_zones[i], dt);
             if (_gasIntensity > 0.01f && !_exploded) TickPressure(dt);
             if (_remaining <= 0f) End();
@@ -325,20 +350,36 @@ namespace SpellyZombie
             if (z.Light != null && z.Rune == RuneType.HeatUp) // faint ember flicker
                 z.Light.intensity = (0.2f + Mathf.PerlinNoise(Time.time * 9f, z.Phase) * 0.3f) * z.Intensity;
 
-            // THE EMITTER RULE (Marko's particle system): every rune PRODUCES.
-            // Bursts of 3 on a cadence for as long as the seal lives — a circle
-            // seal is 36 seconds of periodic mayhem.
-            z.EmitTimer -= dt;
-            if (z.EmitTimer <= 0f)
+            // THE EMITTER RULE (Marko's particle system): every rune PRODUCES —
+            // ONE particle per pulse (law 10: the drawing is the recipe, "if
+            // you want 3, draw 3 runes") for as long as the seal lives; a
+            // circle seal is 36 seconds of periodic mayhem.
+            // emissions happen ONLY on the seal's shared pulse — every rune of
+            // one drawing fires the same frame, always (Marko's law)
+            if (_pulseFire)
             {
-                // State conjures ONCE per activation (re-firing the seal — pose
-                // re-close — conjures the next batch); everything else pulses,
-                // faster if the caster stacked RAPID on this rune family
-                z.EmitTimer = ProducesMatter(z.Rune)
-                    ? float.PositiveInfinity
-                    : DrawingConfig.ZoneEmitPeriod
-                        * Mathf.Pow(0.75f, Powerups.For(_ownerId, z.Rune).Rapid);
-                EmitParticles(z);
+                if (ProducesMatter(z.Rune))
+                {
+                    // State conjures ONCE per activation (re-firing the seal —
+                    // pose re-close — conjures the next batch)
+                    if (z.EmitTimer != float.PositiveInfinity)
+                    {
+                        z.EmitTimer = float.PositiveInfinity;
+                        EmitParticles(z);
+                    }
+                }
+                else if (TrackerAlive(ref z.Tracked))
+                {
+                    // SUSTAIN LAW (Marko): this rune's magic is still OUT THERE
+                    // — as itself, or inside whatever it combined into. One
+                    // light rune makes ONE light, forever; it re-emits only
+                    // when the final product of its chain has disappeared —
+                    // and then only on the next shared pulse.
+                }
+                else
+                {
+                    EmitParticles(z);
+                }
             }
 
             // what remains of the FIELD: the player flight channel, a weak
@@ -372,7 +413,9 @@ namespace SpellyZombie
             // the Spell perk (local player only, like Powerups) tops it up
             var buff = Powerups.For(_ownerId, z.Rune);
             bool localCaster = _ownerId == Grimoire.LocalPlayerId;
-            int count = Mathf.Min(12, 3 + buff.More * 2 + (localCaster ? Perks.ExtraParticles : 0));
+            // ONE particle per rune (Marko's ruling: "if you want 3, draw 3
+            // runes") — the DRAWING is the recipe; powerups still add extras
+            int count = Mathf.Min(12, 1 + buff.More + (localCaster ? Perks.ExtraParticles : 0));
             float speedMul = 1f + 0.5f * buff.Fast;
             float potent = (1f + 0.35f * buff.Potent) * (localCaster ? Perks.PotencyMul : 1f);
             float bigMul = 1f + 0.3f * buff.Big;
@@ -384,6 +427,11 @@ namespace SpellyZombie
                     z.Center + z.Normal * 0.12f + Random.insideUnitSphere * z.Radius * 0.18f,
                     dir, z.Intensity);
                 p.SrcSize = z.Radius * bigMul; // drawn size rides the chain (demon sizing)
+                p.Lineage = RuneGrammar.Bit(z.Rune); // GRAMMAR v4: ancestry starts here —
+                                                     // all 12 in one chain = THE DEMON
+                p.SealId = GetHashCode();            // siblings of one DRAWING pair up first
+                if (i == 0) z.Tracked = p;           // sustain law: the rune WATCHES this one
+                                                     // (powerup extras are untracked bonuses)
                 p.Vel *= speedMul;
                 p.Temp *= potent;
                 p.Lum *= potent;
@@ -396,6 +444,23 @@ namespace SpellyZombie
 
         // ONLY State runes spawn matter (once, at activation) — everything else modifies it.
         static bool ProducesMatter(RuneType r) => r == RuneType.StateSolid || r == RuneType.StateLiquid;
+
+        /// SUSTAIN LAW bookkeeping: walk the became-chain to whatever the
+        /// rune's particle currently is. Alive = a living particle, a running
+        /// field, an existing matter blob, or a demon still digesting it.
+        /// The walked end is written back so chains stay one hop long.
+        static bool TrackerAlive(ref Object tracked)
+        {
+            int hops = 0;
+            while (tracked is SpellParticle p && p.Dead)
+            {
+                tracked = p.BecameObj; // follow what it turned into
+                if (++hops > 16) break;
+            }
+            if (tracked == null) return false; // Unity-null covers destroyed things
+            if (tracked is SpellParticle alive) return !alive.Dead;
+            return true; // fields, matter, demons — Component null-check above rules
+        }
 
         /// The slim field remainder. All the real work moved into the emitted
         /// particles — the zone keeps only what MUST be a field: the player
@@ -432,14 +497,27 @@ namespace SpellyZombie
             {
                 case RuneType.DirectionAway:
                 case RuneType.DirectionToward:
+                    // barely a breeze (Marko's ruling: arrows do NOTHING on their
+                    // own — the PUSH PARTICLES are the movers; player flight above
+                    // stays, it's the feet-seal mechanic)
                     var rb = c.attachedRigidbody;
-                    if (rb) rb.AddForce(z.PushDir * DrawingConfig.DirectionForce * 0.25f * z.Intensity,
+                    if (rb) rb.AddForce(z.PushDir * DrawingConfig.DirectionForce * 0.08f * z.Intensity,
                         ForceMode.Acceleration);
                     break;
 
                 case RuneType.LuminanceDown: // darkness BLINDS — they can't find you inside it
                     var dark = c.GetComponentInParent<Creature>();
                     if (dark != null) dark.ApplyBlind(DrawingConfig.BlindSeconds);
+                    break;
+
+                case RuneType.LuminanceUp: // HOLY LIGHT sears the undead in its
+                    // glow (Marko's veto of the v17 nerf: "light on its own is
+                    // completely useless" — modest solo damage restored; the
+                    // lightning/laser ladder stays the big-damage path)
+                    var seared = c.GetComponentInParent<Creature>();
+                    if (seared != null)
+                        seared.GetComponent<Damageable>()?.TakeDamage(
+                            DrawingConfig.HolyLightPerSec * z.Intensity * dt, "holy light");
                     break;
             }
         }
@@ -449,6 +527,10 @@ namespace SpellyZombie
         /// form (Stone→Lava, Flesh→Blood, Coal→Oil, default Water).
         /// DENSITY IS THE COUNT DIAL (the user's rule): plain State = a FEW
         /// pieces; + Density-up = ONE big one; + Density-down = MANY small ones.
+        /// GRAMMAR v4 P2 — the FORM RECIPE RESOLVER. The seal is the recipe
+        /// card: every sibling rune enclosed with a State rune changes what it
+        /// conjures (SPELL_PARTICLES.md cross matrix). Identity rides along as
+        /// LINEAGE, so matter chains toward the Demon like particles do.
         void SpawnMatter(Zone z)
         {
             bool solid = z.Rune == RuneType.StateSolid;
@@ -456,27 +538,100 @@ namespace SpellyZombie
             if (mat == SurfaceMaterialType.Unknown)
                 mat = solid ? SurfaceMaterialType.Stone : SurfaceMaterialType.Water;
 
-            bool denser = false, thinner = false;
+            // ONE recipe per drawing (verified bug: each State zone resolved the
+            // whole seal independently — three Solid runes opened THREE
+            // avalanches). The first zone of each State rune does the work.
+            if (_zones.Find(o => o.Rune == z.Rune) != z) return;
+
+            // ---- read the recipe: every rune enclosed in this seal ----
+            bool denser = false, thinner = false, heatUp = false, heatDown = false,
+                lightUp = false, lightDown = false, glue = false, slick = false,
+                otherForm = false;
+            int sameForm = 0;
+            ulong lineage = 0;
             foreach (var other in _zones)
             {
-                if (other.Rune == RuneType.DensityUp) denser = true;
-                else if (other.Rune == RuneType.DensityDown) thinner = true;
+                lineage |= RuneGrammar.Bit(other.Rune);
+                switch (other.Rune)
+                {
+                    case RuneType.DensityUp: denser = true; break;
+                    case RuneType.DensityDown: thinner = true; break;
+                    case RuneType.HeatUp: heatUp = true; break;
+                    case RuneType.HeatDown: heatDown = true; break;
+                    case RuneType.LuminanceUp: lightUp = true; break;
+                    case RuneType.LuminanceDown: lightDown = true; break;
+                    case RuneType.StickyUp: glue = true; break;
+                    case RuneType.StickyDown: slick = true; break;
+                }
+                if (other.Rune == z.Rune) sameForm++;
+                else if (other.Rune == RuneType.StateSolid || other.Rune == RuneType.StateLiquid)
+                    otherForm = true;
             }
-            var buff = Powerups.For(_ownerId, z.Rune);
-            int count = (denser ? 1 : thinner ? 6 : 3) + buff.More;
-            float sizeMul = (denser ? 1.7f : thinner ? 0.5f : 0.9f) * (1f + 0.25f * buff.Big);
+            RuneGrammar.TryDemon(lineage, z.Center, z.Radius); // a full drawing IS a chain
 
-            // sized by the DRAWN glyph (user: conjured pieces were way too big —
-            // the old zone-radius base had a 0.9m floor → boulders from doodles)
+            var buff = Powerups.For(_ownerId, z.Rune);
             float size = Mathf.Clamp(z.GlyphSize * 0.5f, 0.08f, 0.45f)
-                * Mathf.Lerp(0.75f, 1.15f, z.Intensity) * sizeMul;
+                * Mathf.Lerp(0.75f, 1.15f, z.Intensity)
+                * (denser ? 1.7f : thinner ? 0.5f : 0.9f) * (1f + 0.25f * buff.Big);
+
+            // ---- FORM LEVELING: draw the State rune twice = lvl2 (grows /
+            // spreads), three times = the AREA ultimate ----
+            if (sameForm >= 3)
+            {
+                if (solid) SolidAvalancheField.Open(z.Center, mat, z.Intensity, lineage);
+                else LiquidAreaField.Open(z.Center, mat, z.Intensity, lineage);
+                return;
+            }
+            int formLevel = Mathf.Min(2, sameForm);
+            if (!solid && (thinner || lightDown)) formLevel = 2; // Liquid+Spread spreads — and DARK liquid spreads like darkness
+
+            // ---- HEAT × FORM — the showpieces ----
+            if (solid && heatUp) { FormConjures.Meteorite(z.Center, z.Normal, mat, size, 1 + buff.More, lineage); return; }
+            if (solid && heatDown) { FormConjures.IceSpikes(z.Center, z.Normal, mat, size, lineage); return; }
+            if (!solid && heatDown) { FormConjures.Glacier(z.Center, mat, z.Intensity, lineage); return; }
+            if (!solid && heatUp) { FormConjures.HotLiquid(z.Center, z.Normal, mat, size, z.Intensity, lineage); return; }
+
+            // ---- Liquid + Dense = PRESSURE JET along the seal's normal ----
+            if (!solid && denser) { FormConjures.PressureJet(z.Center, z.Normal, mat, size, z.Intensity, lineage); return; }
+
+            // ---- LIQUID OF THE SOLID (both forms in one seal): the liquid
+            // zone pours a HEAVY ambient liquid of the solid's material —
+            // liquid rock that hurts by sheer weight, and still counts as
+            // solid's material for chemistry ----
+            bool heavyLiquid = !solid && otherForm;
+
+            int count = (denser ? 1 : thinner ? 6 : 3) + buff.More;
             for (int i = 0; i < count; i++)
             {
                 Vector3 scatter = count == 1 ? Vector3.zero
                     : Random.insideUnitSphere * z.Radius * 0.4f;
+                // SOLID materializes overhead and DROPS — the anvil rune.
+                // Liquids stay surface-born (they slump into puddles in place).
+                float lift = solid ? DrawingConfig.SolidDropHeight : size * 0.5f;
                 var conjured = Matter.Spawn(mat, solid ? MatterPhase.Solid : MatterPhase.Liquid, size,
-                    z.Center + z.Normal * size * 0.5f + scatter); // ON the surface, not inside
+                    z.Center + z.Normal * lift + scatter);
+                conjured.Lineage = lineage;
+                conjured.FormLevel = formLevel;
+                if (heavyLiquid)
+                {
+                    // 1.2 (total 2.2) — NOT 2+: Matter solidifies liquids at
+                    // density 2.5, which snap-froze the whole recipe (verified)
+                    conjured.AddDensity(1.2f);        // liquid rock: the weight IS the damage
+                    conjured.Temperature = 18f;       // not lava — cold heavy pour
+                }
                 if (buff.Bond > 0) conjured.AddStickiness(0.2f * buff.Bond); // gooier conjures
+
+                // ---- STICKY / SLICK / LIGHT / DARK forms (identity preserved) ----
+                if (glue) conjured.AddStickiness(0.65f);   // sticky solid: carry things stuck to it
+                if (slick) conjured.AddStickiness(-1f);    // slick solid: the frictionless plow
+                if (lightUp) // solid/liquid LIGHT — carriable lantern
+                {
+                    var l = new GameObject("FormGlow").AddComponent<Light>();
+                    l.transform.SetParent(conjured.transform, false);
+                    l.type = LightType.Point; l.range = 6f; l.intensity = 3.2f;
+                    l.color = new Color(1f, 0.95f, 0.75f);
+                }
+                if (lightDown) conjured.DarkAura = true;   // solid/liquid DARKNESS — blinds on touch
             }
         }
 
