@@ -21,8 +21,14 @@ namespace SpellyZombie
 
         public bool GettingUp => _getUpLeft > 0f;
         public bool CanMove => !Frozen && !Stuck;
+        /// NEGATIVE while a Y owns this body (Marko: "per animation negative")
+        /// — the walk plays forward, the zombie slides BACKWARD. Moonwalk.
         public float SpeedMultiplier =>
-            Frozen || Stuck || GettingUp ? 0f : Slipping ? 0.15f : Burning ? 1.8f : 1f;
+            (Frozen || Stuck || GettingUp ? 0f : Slipping ? 0.15f : Burning ? 1.8f : 1f)
+            * (Board != null ? Board.SpeedMul * Board.InputSign : 1f);
+
+        BodyState _board;
+        BodyState Board => _board != null ? _board : _board = GetComponent<BodyState>();
 
         float _stuckLeft, _slipLeft, _burnLeft, _flameTimer, _getUpLeft;
         Rigidbody _rb;

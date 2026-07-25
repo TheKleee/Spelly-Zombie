@@ -12,7 +12,7 @@ namespace SpellyZombie
     ///    drifting together)
     ///  - BREAKS immediately if the ring opens: any node destroyed, or any adjacent
     ///    pair pulled beyond BreakDistance. Broken ink survives and can re-close.
-    ///  - EXPIRES when duration (0.1s per edge, circle = 360 edges) runs out.
+    ///  - EXPIRES when duration (1s per side, cap 10s — circle counts as 10) runs out.
     ///    Environment ink is consumed; ink on characters/weapons survives as
     ///    "spent" and re-arms once the loop physically opens — a body seal fires
     ///    again every time the emote/pose closes it.
@@ -104,7 +104,8 @@ namespace SpellyZombie
             int corners = GeometryUtil.ClosedLoopCorners(_polygon2D);
             IsCircle = radialCv <= DrawingConfig.CircleMaxVariance && corners >= DrawingConfig.CircleMinCorners;
             Edges = IsCircle ? DrawingConfig.CircleEdges : corners;
-            Duration = Edges * DrawingConfig.DurationPerEdge;
+            Duration = Mathf.Min(DrawingConfig.SealMaxSeconds,
+                Edges * DrawingConfig.DurationPerEdge);
             Remaining = Duration;
             Area = GeometryUtil.PolygonArea(_polygon2D);
 

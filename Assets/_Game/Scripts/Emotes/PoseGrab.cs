@@ -3,12 +3,14 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// POSE MODE (Marko's spec): in THIRD person press R — the camera becomes
-    /// an orbiting easel around your frozen wizard and the cursor frees up:
+    /// POSE MODE (Marko's spec, reworked Jul 22): in THIRD person press R —
+    /// the camera becomes an orbiting easel around your frozen wizard:
     ///
-    ///   LMB-grab a limb and drag it where you want · scroll twists it
-    ///   WASD / MMB-drag move the camera · mouse wheel zooms
-    ///   1-9 load a pose to start from · Ctrl+1-9 SAVE · F relax · R done
+    ///   LMB-drag a limb — the WHOLE extremity follows your cursor from
+    ///     wherever you grabbed it (two-bone reach, elbows/knees obey hinges)
+    ///   SHIFT+LMB — grab the INDIVIDUAL bone under the cursor and rotate it
+    ///   scroll twists what you hold · WASD / MMB-drag orbit · wheel zooms
+    ///   1-9 load a pose to start from · hold/Ctrl+1-9 SAVE · F relax · R done
     ///
     /// (Body DRAWING stays on R in first person with the wand — this is the
     /// posing counterpart, same camera language.)
@@ -27,8 +29,12 @@ namespace SpellyZombie
         float _yaw, _pitch, _dist;
         Vector3 _pan;
 
-        // grab state
-        EmoteRig.JointEntry _grabbed;
+        // grab state — SHIFT rotates one bone; plain drag reaches a whole limb
+        EmoteRig.JointEntry _grabbed;          // shift mode: the bone being rotated
+        bool _rotateMode;                      // true = shift bone-rotate
+        EmoteRig.JointEntry _ikRoot, _ikMid;   // limb mode: shoulder/hip + elbow/knee
+        Transform _ikEnd;                      // the limb tip that chases the cursor
+        Vector3 _ikOffset;                     // tip − click point (no snap on grab)
         Vector3 _grabLocalDir, _grabPlanePoint;
 
         // hold-a-number-to-save state
@@ -138,6 +144,7 @@ namespace SpellyZombie
         {
             IsOpen = false;
             _grabbed = null;
+            _ikRoot = null; _ikMid = null; _ikEnd = null;
             if (_cam != null)
             {
                 _cam.transform.localPosition = _camLocalPos;
@@ -156,8 +163,8 @@ namespace SpellyZombie
                 _pitch = Mathf.Clamp(_pitch - d.y * 0.3f, -85f, 85f);
             }
             float zoom = mouse.scroll.ReadValue().y;
-            // wheel zooms ONLY when nothing is grabbed (grabbed = twist)
-            if (_grabbed == null && Mathf.Abs(zoom) > 0.01f)
+            // wheel zooms ONLY when nothing is held (held = twist)
+            if (_grabbed == null && _ikRoot == null && Mathf.Abs(zoom) > 0.01f)
                 _dist = Mathf.Clamp(_dist * (1f - Mathf.Sign(zoom) * 0.12f), 1.0f, 4.5f);
 
             var rot = Quaternion.Euler(_pitch, _yaw, 0f);
@@ -187,28 +194,47 @@ namespace SpellyZombie
                 var ray = _cam.ScreenPointToRay(mouse.position.ReadValue());
                 // the limbs live on Ignore Raycast — include it explicitly
                 int mask = Physics.DefaultRaycastLayers | (1 << 2);
-                // SHIFT = fine control (elbow/knee); no shift = move the whole
-                // arm/leg from the shoulder/hip (Marko's rule — hinges only
-                // bend when you ask for them)
+                // SHIFT = grab the exact BONE under the cursor and rotate it;
+                // plain click = grab the whole EXTREMITY and drag it around
+                // (Marko's rework: moving a limb should just work)
                 var kb = Keyboard.current;
-                bool fine = kb != null && kb.leftShiftKey.isPressed;
+                bool fine = kb != null && (kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed);
                 if (Physics.Raycast(ray, out var hit, 30f, mask, QueryTriggerInteraction.Ignore))
                 {
-                    var joint = FindJointFor(hit.transform, fine);
-                    if (joint != null)
+                    if (fine)
                     {
-                        _grabbed = joint;
+                        var joint = NearestJointUp(hit.transform);
+                        if (joint != null)
+                        {
+                            _rotateMode = true;
+                            _grabbed = joint;
+                            _grabPlanePoint = hit.point;
+                            _grabLocalDir = joint.T.InverseTransformDirection(
+                                (hit.point - joint.T.position).normalized);
+                            _emotes?.Interrupt();
+                        }
+                    }
+                    else if (ResolveLimb(hit.transform, out _ikRoot, out _ikMid, out _ikEnd))
+                    {
+                        _rotateMode = false;
+                        _grabbed = null;
                         _grabPlanePoint = hit.point;
-                        _grabLocalDir = joint.T.InverseTransformDirection(
-                            (hit.point - joint.T.position).normalized);
+                        _ikOffset = _ikEnd.position - hit.point; // grab ANYWHERE, no snap
                         _emotes?.Interrupt();
                     }
                 }
             }
-            if (!mouse.leftButton.isPressed) _grabbed = null;
-            if (_grabbed?.T == null) return;
+            if (!mouse.leftButton.isPressed) { _grabbed = null; _ikRoot = null; _ikMid = null; _ikEnd = null; }
 
-            // drag across a camera-facing plane; the limb follows the cursor
+            if (_rotateMode) DragRotate(mouse);
+            else DragLimb(mouse);
+        }
+
+        /// SHIFT drag: the one grabbed bone rotates so the clicked spot chases
+        /// the cursor; scroll twists it. Hinges still obey their axis.
+        void DragRotate(Mouse mouse)
+        {
+            if (_grabbed?.T == null) return;
             var dragRay = _cam.ScreenPointToRay(mouse.position.ReadValue());
             var plane = new Plane(-_cam.transform.forward, _grabPlanePoint);
             if (plane.Raycast(dragRay, out float d))
@@ -220,7 +246,7 @@ namespace SpellyZombie
                 {
                     _grabbed.T.rotation =
                         Quaternion.FromToRotation(cur, want.normalized) * _grabbed.T.rotation;
-                    EmoteRig.Constrain(_grabbed); // hinges: elbows/knees only bend their way
+                    EmoteRig.Constrain(_grabbed); // hinges only bend their way
                 }
             }
 
@@ -234,21 +260,98 @@ namespace SpellyZombie
             }
         }
 
-        /// Walk up from the clicked collider to the joint that owns that limb.
-        /// fine=false SKIPS the hinge joints (elbows/knees) and keeps walking to
-        /// the whole-limb joint (shoulder/hip), so a plain click swings the
-        /// arm/leg; fine=true (Shift) grabs the hinge under the cursor.
-        EmoteRig.JointEntry FindJointFor(Transform hitTransform, bool fine)
+        /// Plain drag: the whole limb REACHES — the tip chases the cursor
+        /// (offset by where you grabbed, so nothing snaps) and a short CCD
+        /// pass swings shoulder+elbow (hip+knee) to get it there. Constrain
+        /// runs inside the loop, so anatomy holds while the limb finds a way.
+        void DragLimb(Mouse mouse)
+        {
+            if (_ikRoot?.T == null || _ikEnd == null) return;
+            var dragRay = _cam.ScreenPointToRay(mouse.position.ReadValue());
+            var plane = new Plane(-_cam.transform.forward, _grabPlanePoint);
+            if (plane.Raycast(dragRay, out float d))
+            {
+                Vector3 target = dragRay.GetPoint(d) + _ikOffset;
+                for (int i = 0; i < 3; i++) // tiny CCD — converges in a blink
+                {
+                    if (_ikMid?.T != null)
+                    {
+                        Vector3 toEnd = _ikEnd.position - _ikMid.T.position;
+                        Vector3 toTarget = target - _ikMid.T.position;
+                        if (toEnd.sqrMagnitude > 1e-6f && toTarget.sqrMagnitude > 1e-6f)
+                        {
+                            _ikMid.T.rotation = Quaternion.FromToRotation(toEnd, toTarget) * _ikMid.T.rotation;
+                            EmoteRig.Constrain(_ikMid);
+                        }
+                    }
+                    {
+                        Vector3 toEnd = _ikEnd.position - _ikRoot.T.position;
+                        Vector3 toTarget = target - _ikRoot.T.position;
+                        if (toEnd.sqrMagnitude > 1e-6f && toTarget.sqrMagnitude > 1e-6f)
+                        {
+                            _ikRoot.T.rotation = Quaternion.FromToRotation(toEnd, toTarget) * _ikRoot.T.rotation;
+                            EmoteRig.Constrain(_ikRoot);
+                        }
+                    }
+                }
+            }
+
+            float twist = mouse.scroll.ReadValue().y;
+            if (Mathf.Abs(twist) > 0.01f)
+            {
+                Vector3 axis = _ikEnd.position - _ikRoot.T.position;
+                if (axis.sqrMagnitude > 1e-6f)
+                {
+                    _ikRoot.T.rotation =
+                        Quaternion.AngleAxis(Mathf.Sign(twist) * 10f, axis.normalized) * _ikRoot.T.rotation;
+                    EmoteRig.Constrain(_ikRoot);
+                }
+            }
+        }
+
+        /// SHIFT: the FIRST joint at or above the clicked collider — the exact
+        /// bone you pointed at, hinge or not.
+        EmoteRig.JointEntry NearestJointUp(Transform hitTransform)
         {
             var t = hitTransform;
             while (t != null)
             {
                 foreach (var j in _rig.Joints)
-                    if (j.T == t && (fine || !j.Limited)) return j;
+                    if (j.T == t) return j;
                 if (t == transform) break;
                 t = t.parent;
             }
             return null;
+        }
+
+        /// Plain click: resolve the whole extremity — walk up remembering any
+        /// hinge passed (elbow/knee = mid) until the un-hinged limb joint
+        /// (shoulder/hip = root). The tip is the joint's GrabHint (the hand or
+        /// foot marker) when set, else the deepest thing you actually clicked.
+        bool ResolveLimb(Transform hitTransform, out EmoteRig.JointEntry root,
+            out EmoteRig.JointEntry mid, out Transform end)
+        {
+            root = null; mid = null; end = null;
+            var t = hitTransform;
+            while (t != null)
+            {
+                foreach (var j in _rig.Joints)
+                {
+                    if (j.T != t) continue;
+                    if (j.Limited) { if (mid == null) mid = j; }
+                    else { root = j; }
+                    break;
+                }
+                if (root != null || t == transform) break;
+                t = t.parent;
+            }
+            if (root == null) return false;
+            end = root.GrabHint != null ? root.GrabHint
+                : mid?.T != null && mid.T.childCount > 0 ? mid.T.GetChild(0)
+                : mid?.T != null ? mid.T
+                : root.T.childCount > 0 ? root.T.GetChild(0)
+                : root.T;
+            return true;
         }
     }
 }

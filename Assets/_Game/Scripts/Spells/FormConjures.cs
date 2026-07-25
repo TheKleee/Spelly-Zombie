@@ -83,7 +83,13 @@ namespace SpellyZombie
             var info = SurfaceMaterialDB.Info(mat);
             if (mat == SurfaceMaterialType.Water)
             {
-                SteamCloud.Open(at + normal * 0.5f, power, big: true);
+                // hot water = the same GAS SUBSTANCE as the heat+chill paradox
+                // (Marko's rule: one substance, one behavior — no ambiguity)
+                var steam = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas, 0.9f,
+                    at + normal * 0.5f);
+                steam.Temperature = 130f;
+                steam.Density = 0.3f;
+                steam.Lineage = lineage;
                 return;
             }
             if (info.Meltable)

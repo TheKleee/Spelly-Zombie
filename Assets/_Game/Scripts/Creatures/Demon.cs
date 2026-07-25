@@ -38,6 +38,13 @@ namespace SpellyZombie
             d.transform.localScale = Vector3.one * 2.8f; // LARGE — reads across the map
             if (d._rb != null) { d._baseMass = 70f * 8f; d._rb.mass = d._baseMass; }
 
+            var lib = FxLibrary.I; // the arrival is an EVENT (Marko's JMO layer)
+            if (lib != null)
+            {
+                FxLibrary.Spawn(lib.DemonBoom, pos);
+                FxLibrary.Spawn(lib.SkullHead, pos + Vector3.up * 3.2f, d.transform, 7f);
+            }
+
             // UNKILLABLE from frame ZERO: it spawns into the epicentre of an
             // all-12 chain — a meteor landing on it in the one frame before
             // Update's refresh permanently killed the apocalypse (verified)

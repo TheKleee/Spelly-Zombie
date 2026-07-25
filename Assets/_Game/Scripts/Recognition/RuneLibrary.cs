@@ -496,6 +496,25 @@ namespace SpellyZombie
             AuditTemplates();
         }
 
+        /// Pay the whole recognition bill at SCENE LOAD, never on the first
+        /// rune (Marko: the map hitched when the first drawing classified).
+        /// Loads every recorded sample, audits the pools, then pushes one
+        /// throwaway glyph through the full scoring path — ownerId null scores
+        /// the ENTIRE library — so code and buffers are hot before anyone draws.
+        public static void Warm()
+        {
+            Init();
+            var poke = new List<IReadOnlyList<Vector2>>
+            {
+                new List<Vector2>
+                {
+                    new Vector2(0f, 0f), new Vector2(0.3f, 0.5f),
+                    new Vector2(0.6f, 0f), new Vector2(0.9f, 0.5f)
+                }
+            };
+            Top2(null, poke);
+        }
+
         /// Classify a glyph (one or more raw 2D strokes in a shared frame)
         /// against the runes the given OWNER has unlocked — the seal's owner is
         /// whoever completed it, so zombie-closed seals read with zombie cards.
@@ -512,7 +531,13 @@ namespace SpellyZombie
         {
             Init();
             var (t1, s1, t2, s2) = Top2(ownerId, rawStrokes);
+            // A STRONG top is trusted outright (Marko's Jul 22 bug: the big
+            // wall pools raised every rune's runner-up score, so honest CHILL
+            // and COMPRESS draws sat 0.03 above some unrelated rune and the
+            // guard ate them). The coin-flip fizzle now referees only WEAK
+            // tops, where a near-tie genuinely is a scribble.
             bool ambiguous = t1 != RuneType.None && t2 != RuneType.None && t2 != t1
+                && s1 < DrawingConfig.RuneTrustScore
                 && s1 - s2 < DrawingConfig.RuneAmbiguityMargin
                 && s2 >= DrawingConfig.MinRuneScore
                 && (_confusable == null || !_confusable.Contains(PairKey(t1, t2)));
@@ -551,6 +576,7 @@ namespace SpellyZombie
 
             RuneType bestType = RuneType.None, secondType = RuneType.None;
             float bestScore = 0f, secondScore = 0f;
+            Entry bestEntry = null, secondEntry = null;
             foreach (var e in _entries)
             {
                 if (ownerId.HasValue && !IsUnlocked(ownerId.Value, e.Type)) continue;
@@ -561,15 +587,62 @@ namespace SpellyZombie
                     score = Mathf.Max(score, VariantScore(v, candidate, sentences, elongation, feel));
                 if (score > bestScore)
                 {
-                    secondType = bestType; secondScore = bestScore;
-                    bestType = e.Type; bestScore = score;
+                    secondType = bestType; secondScore = bestScore; secondEntry = bestEntry;
+                    bestType = e.Type; bestScore = score; bestEntry = e;
                 }
                 else if (score > secondScore)
                 {
-                    secondType = e.Type; secondScore = score;
+                    secondType = e.Type; secondScore = score; secondEntry = e;
                 }
             }
+
+            // SECOND STAGE — THE FOOT-LINE JUDGE (Marko's Solid-vs-Compress
+            // catch: glyphs that differ by one small feature score near-equal
+            // on $P, which shrugs at a missing foot). When the top two are
+            // close, re-rank by mutual COVERAGE: a drawing with a second foot
+            // leaves a one-footed sample's corner uncovered, and pays for it.
+            if (candidate != null && bestEntry != null && secondEntry != null
+                && bestScore - secondScore < 0.18f)
+            {
+                float c1 = BestCoverage(bestEntry, candidate);
+                float c2 = BestCoverage(secondEntry, candidate);
+                float r1 = bestScore * Mathf.Lerp(0.7f, 1f, c1);
+                float r2 = secondScore * Mathf.Lerp(0.7f, 1f, c2);
+                if (r2 > r1)
+                {
+                    (bestType, secondType) = (secondType, bestType);
+                    (bestScore, secondScore) = (r2, r1);
+                }
+                else { bestScore = r1; secondScore = r2; }
+            }
             return (bestType, bestScore, secondType, secondScore);
+        }
+
+        /// Best mutual-coverage between the drawing and any sample of this
+        /// rune: the fraction of each cloud that finds a neighbour in the
+        /// other. Missing features (an absent foot, an extra tick) live
+        /// exactly in the uncovered remainder.
+        static float BestCoverage(Entry e, Vector2[] candidate)
+        {
+            float best = Coverage(candidate, e.Cloud);
+            foreach (var v in e.Variants)
+                best = Mathf.Max(best, Coverage(candidate, v.Cloud));
+            return best;
+        }
+
+        static float Coverage(Vector2[] a, Vector2[] b)
+        {
+            if (a == null || b == null || a.Length == 0 || b.Length == 0) return 1f;
+            const float eps2 = 0.09f * 0.09f;
+            int hitA = 0;
+            for (int i = 0; i < a.Length; i++)
+                for (int j = 0; j < b.Length; j++)
+                    if ((a[i] - b[j]).sqrMagnitude <= eps2) { hitA++; break; }
+            int hitB = 0;
+            for (int j = 0; j < b.Length; j++)
+                for (int i = 0; i < a.Length; i++)
+                    if ((a[i] - b[j]).sqrMagnitude <= eps2) { hitB++; break; }
+            return 0.5f * (hitA / (float)a.Length + hitB / (float)b.Length);
         }
 
         static float VariantScore(Entry v, Vector2[] candidate,

@@ -393,21 +393,13 @@ namespace SpellyZombie
         {
             if (ProducesMatter(z.Rune)) { SpawnMatter(z); return; }
 
-            ParticleKind kind;
-            switch (z.Rune)
-            {
-                case RuneType.HeatUp: kind = ParticleKind.Spark; break;
-                case RuneType.HeatDown: kind = ParticleKind.Frost; break;
-                case RuneType.LuminanceUp: kind = ParticleKind.Light; break;
-                case RuneType.LuminanceDown: kind = ParticleKind.Dark; break;
-                case RuneType.StickyUp: kind = ParticleKind.Glue; break;
-                case RuneType.StickyDown: kind = ParticleKind.Repel; break;
-                case RuneType.DensityUp: kind = ParticleKind.Dense; break;
-                case RuneType.DensityDown: kind = ParticleKind.Spread; break;
-                case RuneType.DirectionAway:
-                case RuneType.DirectionToward: kind = ParticleKind.Push; break;
-                default: return;
-            }
+            // rune → particle now reads the ONE registry (RuneDef.Emits) instead
+            // of a duplicate switch (moddability audit Jul 25: the switch was a
+            // second source of truth that a new/modded rune had to be added to).
+            // State runes never reach here — ProducesMatter caught them above.
+            var def = RuneGrammar.Def(z.Rune);
+            if (def == null) return;
+            ParticleKind kind = def.Emits;
 
             // the caster's powerups shape the burst (per rune family);
             // the Spell perk (local player only, like Powerups) tops it up
@@ -458,7 +450,9 @@ namespace SpellyZombie
                 if (++hops > 16) break;
             }
             if (tracked == null) return false; // Unity-null covers destroyed things
-            if (tracked is SpellParticle alive) return !alive.Dead;
+            // claimed = harvested: it left the magic world, so the rune
+            // re-emits — an active seal is a factory (Marko's sustain law)
+            if (tracked is SpellParticle alive) return !alive.Dead && !alive.Claimed;
             return true; // fields, matter, demons — Component null-check above rules
         }
 
@@ -481,7 +475,12 @@ namespace SpellyZombie
                 {
                     case RuneType.DirectionAway:
                     case RuneType.DirectionToward:
-                        pilot.AddSpellForce(z.PushDir * DrawingConfig.DirectionForce * z.Intensity, dt);
+                        // FEET-SEAL FLIGHT ONLY (body ink). A ground arrow seal
+                        // no longer pushes whoever stands in it — the PARTICLES
+                        // are the movers (Marko: "make particles do the effects
+                        // themselves")
+                        if (_surface == SurfaceMaterialType.Flesh)
+                            pilot.AddSpellForce(z.PushDir * DrawingConfig.DirectionForce * z.Intensity, dt);
                         break;
                     case RuneType.DensityDown:
                         pilot.AddSpellForce(Vector3.up * DrawingConfig.ForceAccel * z.Intensity, dt);
@@ -489,21 +488,24 @@ namespace SpellyZombie
                     case RuneType.DensityUp:
                         pilot.AddSpellForce(Vector3.down * DrawingConfig.ForceAccel * z.Intensity, dt);
                         break;
+                    // draw LIGHT around a blinded friend and the darkness
+                    // washes off them faster (Marko's cure channel) — dark
+                    // seals do the opposite, symmetrically
+                    case RuneType.LuminanceUp:
+                        BodyState.Of(pilot)?.PushLum(1.1f * z.Intensity * dt);
+                        break;
+                    case RuneType.LuminanceDown:
+                        BodyState.Of(pilot)?.PushLum(-0.9f * z.Intensity * dt);
+                        break;
                 }
                 return;
             }
 
             switch (z.Rune)
             {
-                case RuneType.DirectionAway:
-                case RuneType.DirectionToward:
-                    // barely a breeze (Marko's ruling: arrows do NOTHING on their
-                    // own — the PUSH PARTICLES are the movers; player flight above
-                    // stays, it's the feet-seal mechanic)
-                    var rb = c.attachedRigidbody;
-                    if (rb) rb.AddForce(z.PushDir * DrawingConfig.DirectionForce * 0.08f * z.Intensity,
-                        ForceMode.Acceleration);
-                    break;
+                // (Direction case REMOVED — Marko Jul 22: "there is still a
+                // passive pull/push effect from the old build. Make particles
+                // do the effects themselves." Even the breeze is gone.)
 
                 case RuneType.LuminanceDown: // darkness BLINDS — they can't find you inside it
                     var dark = c.GetComponentInParent<Creature>();
@@ -545,8 +547,7 @@ namespace SpellyZombie
 
             // ---- read the recipe: every rune enclosed in this seal ----
             bool denser = false, thinner = false, heatUp = false, heatDown = false,
-                lightUp = false, lightDown = false, glue = false, slick = false,
-                otherForm = false;
+                lightUp = false, lightDown = false, glue = false, slick = false;
             int sameForm = 0;
             ulong lineage = 0;
             foreach (var other in _zones)
@@ -564,8 +565,6 @@ namespace SpellyZombie
                     case RuneType.StickyDown: slick = true; break;
                 }
                 if (other.Rune == z.Rune) sameForm++;
-                else if (other.Rune == RuneType.StateSolid || other.Rune == RuneType.StateLiquid)
-                    otherForm = true;
             }
             RuneGrammar.TryDemon(lineage, z.Center, z.Radius); // a full drawing IS a chain
 
@@ -594,31 +593,21 @@ namespace SpellyZombie
             // ---- Liquid + Dense = PRESSURE JET along the seal's normal ----
             if (!solid && denser) { FormConjures.PressureJet(z.Center, z.Normal, mat, size, z.Intensity, lineage); return; }
 
-            // ---- LIQUID OF THE SOLID (both forms in one seal): the liquid
-            // zone pours a HEAVY ambient liquid of the solid's material —
-            // liquid rock that hurts by sheer weight, and still counts as
-            // solid's material for chemistry ----
-            bool heavyLiquid = !solid && otherForm;
+            // (NO cross-form seal recipe — Marko: "why are you making
+            // exceptions?" Solid and Liquid each emit their OWN blob and the
+            // blobs COMBINE on contact like any other particles → MUD.)
 
-            int count = (denser ? 1 : thinner ? 6 : 3) + buff.More;
-            for (int i = 0; i < count; i++)
+            // ONE conjure per cast (Marko Jul 22: "spells only create 1
+            // particle as per usual, not 3 like our old solid/liquid") —
+            // density buffs change the SIZE, never the count
             {
-                Vector3 scatter = count == 1 ? Vector3.zero
-                    : Random.insideUnitSphere * z.Radius * 0.4f;
                 // SOLID materializes overhead and DROPS — the anvil rune.
                 // Liquids stay surface-born (they slump into puddles in place).
                 float lift = solid ? DrawingConfig.SolidDropHeight : size * 0.5f;
                 var conjured = Matter.Spawn(mat, solid ? MatterPhase.Solid : MatterPhase.Liquid, size,
-                    z.Center + z.Normal * lift + scatter);
+                    z.Center + z.Normal * lift); // Matter.Spawn attaches the soft-body skin itself
                 conjured.Lineage = lineage;
                 conjured.FormLevel = formLevel;
-                if (heavyLiquid)
-                {
-                    // 1.2 (total 2.2) — NOT 2+: Matter solidifies liquids at
-                    // density 2.5, which snap-froze the whole recipe (verified)
-                    conjured.AddDensity(1.2f);        // liquid rock: the weight IS the damage
-                    conjured.Temperature = 18f;       // not lava — cold heavy pour
-                }
                 if (buff.Bond > 0) conjured.AddStickiness(0.2f * buff.Bond); // gooier conjures
 
                 // ---- STICKY / SLICK / LIGHT / DARK forms (identity preserved) ----

@@ -38,6 +38,14 @@ namespace SpellyZombie
 
         void Update()
         {
+            // FIRST PERSON NEVER HOLDS A POSE (Marko): posing exists to sculpt
+            // in third person and to reach skin in the draw modes. The moment
+            // you're back in plain first person, regular animations resume.
+            // (Open draw modes keep their pose — that's what it was for.)
+            if (IsPosing && !SimpleFPSController.ThirdPersonActive
+                && !SelfPaint.IsActive && !HeldWeapon.DrawMode)
+                StopToRest();
+
             if (ListenToHotkeys) ReadHotkeys();
             Animate();      // the doll animates even if UI code throws —
             ShowPoseHint(); // the hint is cosmetic, it goes last

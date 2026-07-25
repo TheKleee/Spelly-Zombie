@@ -22,6 +22,10 @@ namespace SpellyZombie
     {
         public SurfaceMaterialType Material = SurfaceMaterialType.Unknown;
         public MatterPhase Phase = MatterPhase.Solid;
+        /// TOUCH = WORLD (Marko's master law): once a wizard has held it, it
+        /// is an OBJECT — no spell lifetime, and only SOLID objects can be
+        /// grabbed again (particles of any state grab freely before that).
+        public bool Touched;
         public float Temperature = 18f;
         public float Density = 1f;
         public float Stickiness = 0.35f;
@@ -37,6 +41,8 @@ namespace SpellyZombie
         const int MaxAlive = 90;               // world matter cap (multiplayer grief-proofing)
 
         static readonly System.Collections.Generic.List<Matter> All = new System.Collections.Generic.List<Matter>();
+        /// Spell motes hunt blobs through this (ALL spells look to combine).
+        public static System.Collections.Generic.IReadOnlyList<Matter> Living => All;
 
         /// Treasure worth when collected (0 = not treasure).
         public int TreasureValue =>
@@ -160,6 +166,42 @@ namespace SpellyZombie
             _age += dt;
             Temperature = Mathf.MoveTowards(Temperature, 18f, DrawingConfig.AmbientDriftPerSec * 0.4f * dt);
 
+            // gravity belongs to things with WEIGHT — gas has none
+            if (_rb != null) _rb.useGravity = Phase != MatterPhase.Gas;
+
+            // spell-phase blobs SEEK each other (the particle kin law kept
+            // for matter — Marko: they combine like any other particles, so
+            // the meeting must actually HAPPEN)
+            if (!Touched && Phase != MatterPhase.Gas)
+            {
+                _kinTick -= dt;
+                if (_kinTick <= 0f)
+                {
+                    _kinTick = 0.3f;
+                    Matter near = null;
+                    float best = 2.6f * 2.6f;
+                    foreach (var m2 in All)
+                    {
+                        if (m2 == null || m2 == this || m2.Touched || m2.Phase == MatterPhase.Gas) continue;
+                        float d2 = (m2.transform.position - transform.position).sqrMagnitude;
+                        if (d2 < best) { best = d2; near = m2; }
+                    }
+                    if (near != null && _rb != null)
+                    {
+                        // CLOSE ENOUGH = THE LAW FIRES NOW (liquid cores are
+                        // walk-through triggers, so collision events can't be
+                        // trusted to announce the meeting — proximity is)
+                        float reach = (transform.localScale.x + near.transform.localScale.x) * 0.55f;
+                        if (best < reach * reach && GetInstanceID() < near.GetInstanceID()
+                            && Temperature < 300f && near.Temperature < 300f)
+                            CombineWith(near);
+                        else
+                            _rb.AddForce((near.transform.position - transform.position).normalized * 1.6f,
+                                ForceMode.VelocityChange);
+                    }
+                }
+            }
+
             switch (Phase)
             {
                 case MatterPhase.Liquid:
@@ -184,9 +226,29 @@ namespace SpellyZombie
                     break;
 
                 case MatterPhase.Gas:
-                    if (_rb) _rb.AddForce(Vector3.up * 1.4f, ForceMode.Acceleration); // rises
+                    // LOW DENSITY = UP — but a LAZY drift (Marko: "way too
+                    // fast... it'll not affect anyone"): the cloud must hang
+                    // around long enough to be walked through
+                    if (_rb)
+                    {
+                        _rb.AddForce(Vector3.up * Mathf.Max(0.12f, (2.6f - Density) * 0.2f),
+                            ForceMode.Acceleration);
+                        if (_rb.linearVelocity.y > 0.5f) // terminal drift, not a rocket
+                        {
+                            var v = _rb.linearVelocity; v.y = 0.5f; _rb.linearVelocity = v;
+                        }
+                    }
+                    // and it SPREADS OUT as it lives
+                    transform.localScale = Vector3.one *
+                        Mathf.Min(transform.localScale.x * (1f + 0.28f * dt), _baseSize * 3.2f);
                     break;
             }
+
+            // flammable material boiled into GAS wears the green warning cloud
+            // (Marko's mapping: the colour reads "don't ignite")
+            if (Phase != _lastPhase && Phase == MatterPhase.Gas && _info.Flammable && FxLibrary.I != null)
+                FxLibrary.Spawn(FxLibrary.I.GasCloud, transform.position, transform, 3f);
+            _lastPhase = Phase;
 
             SyncPhaseCollision(); // phase flips flip walk-through-ness with them
 
@@ -244,10 +306,16 @@ namespace SpellyZombie
             ApplyPhysics();
             Refresh();
 
-            float life = Phase == MatterPhase.Gas ? 2.5f : _life;
-            if (_age > life - 1.5f) // matter fades out by shrinking at end of life
-                transform.localScale = transform.localScale * Mathf.Max(0.01f, 1f - dt / 1.5f);
-            if (_age > life || transform.localScale.x < 0.02f) Destroy(gameObject);
+            // touched = EVERLASTING (Marko's law: everlasting is an
+            // equilibrium, not a flag — but a held thing left the spell world
+            // for good). Gas still disperses: low density is a one-way exit.
+            if (!Touched || Phase == MatterPhase.Gas)
+            {
+                float life = Phase == MatterPhase.Gas ? 2.5f : _life;
+                if (_age > life - 1.5f) // matter fades out by shrinking at end of life
+                    transform.localScale = transform.localScale * Mathf.Max(0.01f, 1f - dt / 1.5f);
+                if (_age > life || transform.localScale.x < 0.02f) Destroy(gameObject);
+            }
         }
 
         /// FAKE JOINTS (Marko's rule — no Unity joints, a spring is enough):
@@ -396,10 +464,52 @@ namespace SpellyZombie
             if (_reactCooldown <= 0f) { _reactCooldown = 0.5f; React(col, false); }
         }
         float _reactCooldown;
+        float _kinTick; // spell-phase blob attraction beat
+        MatterPhase _lastPhase = MatterPhase.Solid; // gas-cloud FX fires on the flip
 
         void React(Collision col, bool impact)
         {
+            // a liquid blob LANDING throws a real splash (Marko's JMO layer)
+            if (impact && Phase == MatterPhase.Liquid && col.contactCount > 0 && FxLibrary.I != null)
+                FxLibrary.Spawn(FxLibrary.I.Splash, col.GetContact(0).point);
+
+            // WEIGHT × SPEED on a wizard (Marko's momentum law): a flying
+            // block bills by its momentum, nothing below the threshold
+            if (impact && _rb != null)
+            {
+                var hitPl = col.collider.GetComponentInParent<SimpleFPSController>();
+                if (hitPl != null)
+                {
+                    float momentum = _rb.mass * col.relativeVelocity.magnitude;
+                    float dmg = Mathf.Max(0f, momentum - 14f) * 0.6f;
+                    if (dmg > 0.5f)
+                    {
+                        hitPl.TakeHit(-col.relativeVelocity * 0.4f, dmg, "hit by flying matter");
+                        // HEAVY THINGS BOWL YOU OVER (Marko: "a heavy stone
+                        // onto my head should knock me down") — MOMENTUM
+                        // decides the ragdoll, not the damage math
+                        if (momentum > 22f)
+                            hitPl.KnockDown(Mathf.Min(2f, 0.6f + momentum * 0.03f));
+                        if (FxLibrary.I != null) // getting beaned READS (Marko's juice)
+                            FxLibrary.Spawn(FxLibrary.I.TextPow,
+                                hitPl.transform.position + Vector3.up * 1.9f);
+                    }
+                }
+            }
             var other = col.collider.GetComponent<Matter>();
+
+            // FORMS COMBINE LIKE ANY OTHER PARTICLES (Marko: no exceptions —
+            // he never stated one). Spell-phase blobs MERGE on contact:
+            // same+same grows a level, SOLID meets LIQUID and they knead into
+            // MUD. Molten pairs stay with the chemistry below.
+            if (other != null && !Touched && !other.Touched
+                && Phase != MatterPhase.Gas && other.Phase != MatterPhase.Gas
+                && Temperature < 300f && other.Temperature < 300f
+                && GetInstanceID() < other.GetInstanceID())
+            {
+                CombineWith(other);
+                return;
+            }
 
             // LAVA + WATER → stone + steam, the classic
             if (other != null && Phase == MatterPhase.Liquid && Temperature > 300f
@@ -448,7 +558,10 @@ namespace SpellyZombie
                 {
                     var joint = rider.gameObject.AddComponent<FixedJoint>();
                     joint.connectedBody = _rb;
-                    joint.breakForce = 420f;
+                    // the stickiness law decides how hard the ride holds on —
+                    // at full Sticky3 the bond is unbreakable (strongest in game)
+                    joint.breakForce = StickyBonds.BreakForce(Stickiness);
+                    joint.breakTorque = joint.breakForce;
                 }
             }
 
@@ -467,8 +580,51 @@ namespace SpellyZombie
                         var d = col.collider.GetComponentInParent<Damageable>();
                         if (d != null) d.TakeDamage(dmg, $"crushed by {Material}");
                     }
+                    // the CRUNCH shows (Marko's juice pass): thud at the point
+                    // of impact, comic _WHAM_ when something really got flattened
+                    if (FxLibrary.I != null && col.contactCount > 0)
+                    {
+                        Vector3 hitAt = col.GetContact(0).point;
+                        FxLibrary.Spawn(FxLibrary.I.HitThud, hitAt);
+                        if (dmg > 25f)
+                            FxLibrary.Spawn(FxLibrary.I.TextWham, hitAt + Vector3.up * 0.7f);
+                    }
                 }
             }
+        }
+
+        /// Two spell-phase form blobs merge into ONE — the particle law kept
+        /// for matter. Same+same grows; opposite forms make the MUD boundary.
+        void CombineWith(Matter o)
+        {
+            bool mud = Phase != o.Phase;
+            float merged = Mathf.Pow(
+                Mathf.Pow(transform.localScale.x, 3f) + Mathf.Pow(o.transform.localScale.x, 3f), 1f / 3f);
+            Lineage |= o.Lineage;
+            if (mud)
+            {
+                Phase = MatterPhase.Liquid;
+                Density = Mathf.Max(Density, 2.2f); // thick, heavy sludge
+                var blob = GetComponent<StateBlob>();
+                if (blob != null) blob.Muddy = true;
+                DrawingWorld.Instance?.LogEvent("solid and liquid KNEAD together — MUD");
+            }
+            else
+            {
+                FormLevel = Mathf.Min(2, Mathf.Max(FormLevel, o.FormLevel) + 1); // same+same grows
+            }
+            _baseSize = merged;
+            transform.localScale = Vector3.one * merged;
+            _age = 0f; // a fresh thing
+            var lib = FxLibrary.I; // the juice rule: both halves SHOW at the meeting
+            if (lib != null)
+            {
+                FxLibrary.Spawn(lib.Poof, transform.position);
+                FxLibrary.Spawn(mud || Phase == MatterPhase.Liquid ? lib.Splash : lib.HitThud,
+                    o.transform.position);
+            }
+            RuneGrammar.TryDemon(Lineage, transform.position, merged);
+            Destroy(o.gameObject);
         }
 
         public static Matter Spawn(SurfaceMaterialType mat, MatterPhase phase, float size, Vector3 pos)
@@ -480,6 +636,10 @@ namespace SpellyZombie
             go.AddComponent<Rigidbody>();
             var m = go.AddComponent<Matter>();
             m.Init(mat, phase, size);
+            // EVERY matter wears the soft body (Marko: frozen liquid was
+            // "cubes instead of the spherical ice ball" — shed blobs, frozen
+            // pieces and fragments all get the ONE-skin look, no exceptions)
+            go.AddComponent<StateBlob>();
             return m;
         }
 
@@ -558,6 +718,26 @@ namespace SpellyZombie
             var pilot = other.GetComponentInParent<SimpleFPSController>();
             if (pilot != null)
             {
+                // GAS never slows a wader (Marko's state rule) — but its
+                // TEMPERATURE still finds you, and the cloud SHOWS you it's
+                // working (his juice rule: no invisible effects)
+                if (Owner.Phase == MatterPhase.Gas)
+                {
+                    if (Mathf.Abs(Owner.BlobTemperature - 18f) > 40f && Tick(0.5f))
+                    {
+                        BodyState.Of(pilot)?.PushTemp((Owner.BlobTemperature - 18f) * 0.06f);
+                        var lib = FxLibrary.I;
+                        if (lib != null)
+                        {
+                            var at = pilot.transform.position + Vector3.up * 1.3f
+                                + Random.insideUnitSphere * 0.25f;
+                            var fx = FxLibrary.Spawn(
+                                Owner.BlobTemperature > 18f ? lib.HitSpark : lib.IceHit, at);
+                            if (fx != null) fx.transform.localScale *= 0.55f;
+                        }
+                    }
+                    return;
+                }
                 // viscosity: drag against your own motion; current: the stream
                 // carries you with it (Marko: "pull you downstream")
                 Vector3 v = pilot.Velocity; v.y *= 0.3f;

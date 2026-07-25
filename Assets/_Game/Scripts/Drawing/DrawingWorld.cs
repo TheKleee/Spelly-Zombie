@@ -51,6 +51,7 @@ namespace SpellyZombie
             var shader = Shader.Find("Sprites/Default");
             if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
             LineMaterial = new Material(shader);
+            RuneLibrary.Warm(); // recognition loads NOW, not on the first rune
         }
 
         void OnDestroy()

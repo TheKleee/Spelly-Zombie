@@ -1044,20 +1044,39 @@ namespace SpellyZombie
                 return;
             }
 
-            if (Carried == null
-                && (player.transform.position - transform.position).sqrMagnitude < 2.2f * 2.2f)
+            // AIM, NOT PROXIMITY (Marko's rule): you take the ore you're
+            // LOOKING at. Standing in a pile no longer grabs a random one —
+            // every stone scores how centred it is and the winner is resolved
+            // in LateUpdate, after all of them have had their say.
+            if (Carried == null)
             {
-                UIPrompt.Show("E", Spent ? "take the dead ore" : "take the ore",
-                    new Color(0.95f, 0.95f, 0.8f));
-                if (kb.eKey.wasPressedThisFrame && _actionFrame != Time.frameCount)
+                float aim = player.AimScore(transform.position, 2.2f, 0.9f, transform);
+                if (aim > 0f)
                 {
-                    _actionFrame = Time.frameCount;
-                    Carried = this;
-                    if (_col != null) _col.enabled = false;
-                    var rb = GetComponent<Rigidbody>();
-                    if (rb != null) rb.isKinematic = true;
+                    if (_bidFrame != Time.frameCount) { _bidFrame = Time.frameCount; _bidScore = 0f; _bidWinner = null; }
+                    if (aim > _bidScore) { _bidScore = aim; _bidWinner = this; }
                 }
             }
+        }
+
+        static int _bidFrame;
+        static float _bidScore;
+        static InkRuneStone _bidWinner;
+
+        void LateUpdate()
+        {
+            if (_bidWinner != this || _bidFrame != Time.frameCount) return;
+            UIPrompt.Show("E", Spent ? "take the dead ore" : "take the ore",
+                new Color(0.95f, 0.95f, 0.8f));
+
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            if (kb == null || !kb.eKey.wasPressedThisFrame) return;
+            if (_actionFrame == Time.frameCount) return;
+            _actionFrame = Time.frameCount;
+            Carried = this;
+            if (_col != null) _col.enabled = false;
+            var rb = GetComponent<Rigidbody>();
+            if (rb != null) rb.isKinematic = true;
         }
 
         void Drop(Vector3 forward)

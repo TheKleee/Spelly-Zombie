@@ -130,6 +130,8 @@ namespace SpellyZombie
                 b.Remember(MemKind.Danger, MemEvent.HeardDanger, pos);
                 b.Eyes?.SetMood(EyeMood.Scared, 1.5f);
                 if (Random.value < 0.25f) b.Mumble("BLEH! BLEH!", 1.2f);
+                else if (Random.value < 0.12f && FxLibrary.I != null) // comic beat (Marko's texts)
+                    FxLibrary.Spawn(FxLibrary.I.TextWow, b.transform.position + Vector3.up * 1.7f, null, 2.5f);
             }
         }
 

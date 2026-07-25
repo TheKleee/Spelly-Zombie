@@ -40,6 +40,7 @@ namespace SpellyZombie
         /// wizard frozen mid-stare at his feet ruins every emote clip.
         public float LookPitch => ThirdPersonActive ? 0f : _pitch;
 
+        BodyState _body;          // the slider board — speed/jump/gravity all read it
         Rigidbody _ragdollFollow; // CharacterRig hands us the hips while ragdolling
 
         /// While ragdolling, the CAPSULE chases the doll — not the other way
@@ -81,7 +82,9 @@ namespace SpellyZombie
         public void AddSpellForce(Vector3 accel, float dt)
         {
             _spellVel += accel * dt;
-            _spellVel = Vector3.ClampMagnitude(_spellVel, 16f); // terminal broom velocity
+            // terminal velocity raised for the mayhem pass (Marko: white hole
+            // should YEET) — big fields now actually express their strength
+            _spellVel = Vector3.ClampMagnitude(_spellVel, 34f);
         }
 
         public float Health = 100f;
@@ -93,6 +96,34 @@ namespace SpellyZombie
         /// Raw ground contact — the animation rig smooths its own airborne
         /// signal from this (slope flicker is the caller's problem).
         public bool IsGrounded => _cc != null && _cc.isGrounded;
+
+        /// THE AIM GATE (Marko's rule): E takes what you are LOOKING AT within
+        /// reach — never whichever thing happens to be nearest. Returns how
+        /// CENTRED the point is (1 = dead centre, used to pick between several
+        /// candidates), or -1 when it's out of range, outside the cone, or
+        /// behind something. Every E interaction should ask this.
+        public float AimScore(Vector3 point, float range, float cone = 0.78f, Transform self = null)
+        {
+            Vector3 eye = CameraPivot != null ? CameraPivot.position : transform.position + Vector3.up * 1.4f;
+            Vector3 look = CameraPivot != null ? CameraPivot.forward : transform.forward;
+
+            Vector3 to = point - eye;
+            float dist = to.magnitude;
+            if (dist > range || dist < 1e-3f) return -1f;
+
+            float aim = Vector3.Dot(look, to / dist);
+            if (aim < cone) return -1f;
+
+            // no reaching through walls
+            if (Physics.Raycast(eye, to / dist, out var hit, dist,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            {
+                if (self == null) return -1f;
+                if (hit.transform != self && !hit.transform.IsChildOf(self)
+                    && !self.IsChildOf(hit.transform)) return -1f;
+            }
+            return aim;
+        }
 
         /// Shift is held and we're actually moving — the ANIMATION rule
         /// (Marko): no shift = walk look, shift = run look, regardless of
@@ -111,12 +142,31 @@ namespace SpellyZombie
             _knockLeft = Mathf.Max(_knockLeft, seconds);
         }
 
+        // ---- glued boots (Marko's stickiness law): the lvl2 grip and the
+        // time zone hold you where you STAND — no walking, no jumping, until
+        // the glue lets go. Re-applied on a beat while you remain in it.
+        float _feetStuckUntil;
+        public bool FeetStuck => Time.time < _feetStuckUntil;
+        public void StickFeet(float seconds) =>
+            _feetStuckUntil = Mathf.Max(_feetStuckUntil, Time.time + seconds);
+
         // ---- downed / revive (the co-op moment) ----
         public bool IsDowned { get; private set; }
         public bool IsDead => IsDowned && _bleedOut <= 0f;
         public float BleedOut => _bleedOut;
         public float ReviveProgress { get; private set; }
         float _bleedOut;
+        GameObject _heartFx; // broken heart over the downed body (ally-dying gap)
+        bool _soulFled;      // Souls Escape fired once for this death
+
+        void OnDeathCrossed()
+        {
+            if (_soulFled || !IsDead) return;
+            _soulFled = true;
+            if (_heartFx != null) { Destroy(_heartFx); _heartFx = null; }
+            if (FxLibrary.I != null) // the soul leaves the body (Marko's JMO layer)
+                FxLibrary.Spawn(FxLibrary.I.SoulsOut, transform.position + Vector3.up * 1.2f);
+        }
 
         /// Physical hits shove the player and chip health. During a run, 0 HP
         /// means DOWNED — crawl, no drawing, bleed out unless a teammate holds E.
@@ -152,6 +202,7 @@ namespace SpellyZombie
             if (IsDowned)
             {
                 _bleedOut -= 1.5f; // kicking someone who's down. rude. effective.
+                OnDeathCrossed();
                 return;
             }
             _shove += impulse;
@@ -212,6 +263,11 @@ namespace SpellyZombie
             Juice.Sting(transform.position);
             Juice.Shake(0.8f, 0.5f);
             Juice.HitStop(0.2f, 0.25f);
+            // the JMO layer answers the ally-dying gap: a broken heart floats
+            // over the crawling body — readable across a courtyard, no HUD
+            _soulFled = false;
+            if (_heartFx == null && FxLibrary.I != null)
+                _heartFx = FxLibrary.Spawn(FxLibrary.I.BrokenHeart, transform.position + Vector3.up * 2.1f, transform);
             Debug.Log("[SpellyZombie] Player DOWNED — teammate hold E to revive");
         }
 
@@ -228,6 +284,8 @@ namespace SpellyZombie
             IsDowned = false;
             Health = 50f;
             ReviveProgress = 0f;
+            _soulFled = false;
+            if (_heartFx != null) { Destroy(_heartFx); _heartFx = null; } // mended
             _lastHurt = Time.time;
             // while the corpse lay somewhere the capsule couldn't ground itself
             // (ledge, table, pressed to a wall) gravity kept integrating into
@@ -273,6 +331,9 @@ namespace SpellyZombie
             _slots = GetComponent<WeaponSlots>();
             if (_slots == null) _slots = gameObject.AddComponent<WeaponSlots>();
             if (GetComponent<SelfPaint>() == null) gameObject.AddComponent<SelfPaint>();
+            if (GetComponent<HandGrab>() == null) gameObject.AddComponent<HandGrab>();
+            _body = GetComponent<BodyState>();
+            if (_body == null) _body = gameObject.AddComponent<BodyState>(); // the slider board
             if (GetComponent<CharacterRig>() == null) gameObject.AddComponent<CharacterRig>();
             if (GetComponent<PoseGrab>() == null) gameObject.AddComponent<PoseGrab>();
 
@@ -474,6 +535,7 @@ namespace SpellyZombie
                 {
                     _bleedOut -= Time.deltaTime;
                     ReviveProgress = Mathf.Max(0f, ReviveProgress - Time.deltaTime * 0.15f); // rescuer let go
+                    OnDeathCrossed(); // fires exactly once, the frame the bleed-out runs dry
                 }
                 // camera keels over — the world from the floor
                 if (CameraPivot != null)
@@ -553,15 +615,25 @@ namespace SpellyZombie
             if (mv.sqrMagnitude > 1f) mv.Normalize();
             // in draw modes WASD belongs to the view (orbit), not to walking
             if (drawingMode) mv = Vector2.zero;
+            // a Y owns you: inputs walk you the OTHER way (Marko's move slider)
+            if (_body != null) mv *= _body.InputSign;
 
             bool sprint = kb.leftShiftKey.isPressed || (gp != null && gp.leftStickButton.isPressed);
+            if (_body != null && !_body.CanSprint) sprint = false; // too heavy to run
             IsSprinting = sprint && !IsDowned && !IsCrouched && mv.sqrMagnitude > 0.01f;
             float speed = IsDead ? 0f
                 : IsDowned ? MoveSpeed * 0.25f // crawl
                 : IsSprawled ? 0f              // flat on your face — momentum owns you
                 : IsAirTumbling ? 0f           // ragdolls don't steer — the launch owns you
+                : FeetStuck ? 0f               // glued boots — the grip won't let go
                 : sprint ? SprintSpeed : MoveSpeed;
             if (IsCrouched) speed *= 0.5f;
+            if (_body != null)
+            {
+                speed *= _body.SpeedMul; // grip, frost, arrows and Ys all live here
+                if (_body.CrawlOnly && !IsCrouched)
+                    speed = Mathf.Min(speed, MoveSpeed * 0.5f); // too heavy: crouch pace is all you have
+            }
             Vector3 planar = (transform.right * mv.x + transform.forward * mv.y) * speed;
 
             if (_cc.isGrounded)
@@ -575,7 +647,8 @@ namespace SpellyZombie
                 float landing = -_verticalVelocity;
                 if (justLanded && landing > DrawingConfig.SafeFallSpeed && !IsDowned)
                 {
-                    float dmg = (landing - DrawingConfig.SafeFallSpeed) * DrawingConfig.FallDamagePerSpeed;
+                    float dmg = (landing - DrawingConfig.SafeFallSpeed) * DrawingConfig.FallDamagePerSpeed
+                        * (_body != null ? _body.TotalWeight : 1f); // WEIGHT × SPEED — carried rocks count too
                     dmg = Mathf.Min(dmg, Mathf.Max(0f, Health - 1f));
                     if (dmg > 0f) TakeHit(Vector3.zero, dmg);
                     else KnockDown(1.1f); // already scraping 1 hp: just the pratfall
@@ -599,13 +672,19 @@ namespace SpellyZombie
                 _verticalVelocity = -1f;
                 bool jump = kb.spaceKey.wasPressedThisFrame
                     || (gp != null && gp.buttonSouth.wasPressedThisFrame);
-                if (jump && !IsDowned && !IsSprawled && !IsAirTumbling && !drawingMode)
-                    _verticalVelocity = IsCrouched ? JumpSpeed * 1.15f : JumpSpeed; // window-sill spring
+                if (jump && !IsDowned && !IsSprawled && !IsAirTumbling && !drawingMode && !FeetStuck)
+                    _verticalVelocity = (IsCrouched ? JumpSpeed * 1.15f : JumpSpeed)
+                        * (_body != null ? _body.JumpMul : 1f); // light wizards spring higher
             }
             else
             {
                 _wasGrounded = false;
-                _verticalVelocity += Gravity * Time.deltaTime;
+                // light bodies fall soft (Marko: gradual — jump higher, fall
+                // slower, and only the REALLY light float outright)
+                float gscale = _body != null ? _body.GravityMul : 1f;
+                _verticalVelocity += Gravity * gscale * Time.deltaTime;
+                if (_body != null && _body.Floating)
+                    _verticalVelocity = Mathf.MoveTowards(_verticalVelocity, 0f, 30f * Time.deltaTime);
 
                 // AIRBORNE TOO LONG = you were SENT (Marko's comedy rule):
                 // no jump lasts this long — only launches and cliffs. SPELL

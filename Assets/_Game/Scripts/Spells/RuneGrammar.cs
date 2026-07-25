@@ -82,12 +82,15 @@ namespace SpellyZombie
 
             // THE EXOTICS TABLE — Marko's cross matrix, complete (P3 built):
             RegisterExotic(ParticleKind.Frost, ParticleKind.Light, ExoticKind.Healing);      // cold light = MERCY
-            RegisterExotic(ParticleKind.Spark, ParticleKind.Light, ExoticKind.SunStrike);    // hot light = JUDGMENT
+            RegisterExotic(ParticleKind.Spark, ParticleKind.Light, ExoticKind.LightStrike);  // hot light = JUDGMENT
             RegisterExotic(ParticleKind.Spark, ParticleKind.Dark, ExoticKind.DarkFlames);    // hungry fire
             RegisterExotic(ParticleKind.Spark, ParticleKind.Glue, ExoticKind.StickyLava);
             RegisterExotic(ParticleKind.Spark, ParticleKind.Repel, ExoticKind.FireBolts);
             RegisterExotic(ParticleKind.Frost, ParticleKind.Repel, ExoticKind.IceBolts);
-            RegisterExotic(ParticleKind.Frost, ParticleKind.Glue, ExoticKind.ObsidianBlade); // the black glass edge
+            // (Obsidian blade removed Jul 22 — "beats the purpose of drawing".)
+            // Its slot refilled the same day: chill and heat share one logic
+            // on glue — the burn patch has a freeze twin.
+            RegisterExotic(ParticleKind.Frost, ParticleKind.Glue, ExoticKind.FrostGlue); // glue that freezes
             RegisterExotic(ParticleKind.Frost, ParticleKind.Dark, ExoticKind.AbsoluteZero);
             RegisterExotic(ParticleKind.Dark, ParticleKind.Dense, ExoticKind.DarkMatter);
             RegisterExotic(ParticleKind.Light, ParticleKind.Glue, ExoticKind.StickyLight);   // the moth lure
@@ -101,15 +104,15 @@ namespace SpellyZombie
 
         // ------------------------------------------------------------ exotics --
         /// The EXOTICS TABLE (SPELL_PARTICLES.md): sparse, data-registered
-        /// overrides for specific cross-family pairs — Sun Strike, Healing,
+        /// overrides for specific cross-family pairs — Light Strike, Healing,
         /// Teleport… The grammar computes the default; an entry here WINS.
         /// This is data, not code branches: a new rune's exotics are one
         /// RegisterExotic call each.
         public enum ExoticKind
         {
             None, Healing,
-            SunStrike, DarkFlames, StickyLava, FireBolts,     // HeatUp crosses
-            IceBolts, ObsidianBlade, AbsoluteZero,            // HeatDown crosses
+            LightStrike, DarkFlames, StickyLava, FireBolts,   // HeatUp crosses
+            IceBolts, FrostGlue, AbsoluteZero,                // HeatDown crosses
             DarkMatter, StickyLight, SlickLight,              // luminance crosses
             Multiplication, TeleportPair                      // the carrier exotics
         }

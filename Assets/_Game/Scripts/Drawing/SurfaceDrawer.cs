@@ -68,6 +68,23 @@ namespace SpellyZombie
                 return;
             }
 
+            // a held grab occupies the hand — no drawing until you let go
+            if (HandGrab.LocalHolding)
+            {
+                IsPenActive = false;
+                EndStroke();
+                return;
+            }
+
+            // THE WAND TETHER: no ink in hand = no wand = no drawing. Refill at
+            // a cauldron. (Defaults open, so the lobby/studio still draw free.)
+            if (!WandState.LocalCanDraw)
+            {
+                IsPenActive = false;
+                EndStroke();
+                return;
+            }
+
             // weapons 2/3 own the mouse buttons; the pen belongs to the wand +
             // grimoire (slot 1) and to the two draw modes (engraving a raised
             // weapon / painting your body)

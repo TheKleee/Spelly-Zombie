@@ -15,6 +15,7 @@ namespace SpellyZombie
     {
         public const int MaxSlots = 3;
         const float PickupRange = 2.6f;
+        const float AimCosine = 0.78f; // ~39° cone — forgiving enough for small items in motion
 
         readonly HeldWeapon[] _held = new HeldWeapon[MaxSlots + 1]; // 1-based; [1] stays null (wand is innate)
         public int Current { get; private set; } = 1;
@@ -47,7 +48,9 @@ namespace SpellyZombie
             }
 
             // the ground offers: a takeable weapon in reach announces itself
-            var offer = FindPickup();
+            // a grabbed particle occupies the hand (Marko's law) — E belongs
+            // to the THROW until it's released, so no weapon offers meanwhile
+            var offer = HandGrab.LocalHolding ? null : FindPickup();
             if (offer != null)
             {
                 if (_held[2] != null && _held[3] != null)
@@ -56,7 +59,7 @@ namespace SpellyZombie
                     UIPrompt.Show("E", Loc.T("pickup.weapon"));
             }
 
-            if (kb.eKey.wasPressedThisFrame) TryPickup();
+            if (kb.eKey.wasPressedThisFrame && !HandGrab.LocalHolding) TryPickup();
             if (kb.fKey.wasPressedThisFrame) DropCurrent();
         }
 
@@ -75,16 +78,24 @@ namespace SpellyZombie
                 : $"Weapon slot {slot}");
         }
 
+        /// AIM, NOT PROXIMITY (Marko's rule): E takes the thing you are
+        /// LOOKING AT within reach — never whichever item happens to be
+        /// closest. Candidates must sit inside the aim cone with clear line of
+        /// sight, and the most CENTRED one wins, so standing in a pile of loot
+        /// still lets you pick the exact piece you meant.
         HeldWeapon FindPickup()
         {
+            if (_pilot == null) _pilot = GetComponent<SimpleFPSController>();
+            if (_pilot == null) return null;
+
             HeldWeapon best = null;
             float reach = PickupRange * Perks.PickupRangeMul; // Quick Hands stretches
-            float bestSqr = reach * reach;
+            float bestAim = 0f;
             foreach (var w in HeldWeapon.All)
             {
                 if (w == null || w.Held) continue;
-                float d = (w.transform.position - transform.position).sqrMagnitude;
-                if (d < bestSqr) { bestSqr = d; best = w; }
+                float aim = _pilot.AimScore(w.transform.position, reach, AimCosine, w.transform);
+                if (aim > bestAim) { bestAim = aim; best = w; } // most CENTRED wins
             }
             return best;
         }

@@ -17,12 +17,12 @@ namespace SpellyZombie
             switch (kind)
             {
                 case RuneGrammar.ExoticKind.Healing: return HealingField.Open(at, power);
-                case RuneGrammar.ExoticKind.SunStrike: return SunStrike.Open(at, power);
+                case RuneGrammar.ExoticKind.LightStrike: return LightStrike.Open(at, power);
                 case RuneGrammar.ExoticKind.DarkFlames: return DarkFlame.Open(at, power);
                 case RuneGrammar.ExoticKind.StickyLava: return StickyLavaField.Open(at, power);
                 case RuneGrammar.ExoticKind.FireBolts: return ElementBolt.Volley(at, power, hot: true);
                 case RuneGrammar.ExoticKind.IceBolts: return ElementBolt.Volley(at, power, hot: false);
-                case RuneGrammar.ExoticKind.ObsidianBlade: return ObsidianBlade.Conjure(at);
+                case RuneGrammar.ExoticKind.FrostGlue: return FrostGlueField.Open(at, power);
                 case RuneGrammar.ExoticKind.AbsoluteZero: return AbsoluteZeroField.Open(at, power);
                 case RuneGrammar.ExoticKind.DarkMatter: return DarkMatterMote.Open(at, power);
                 case RuneGrammar.ExoticKind.StickyLight: return StickyLightMote.Open(at, power);
@@ -44,10 +44,10 @@ namespace SpellyZombie
         }
     }
 
-    /// HeatUp + Light — SUN STRIKE: a telegraphed ring, a heartbeat to dodge,
-    /// then the sky's judgment on that exact spot (Marko: "can be dodged by
-    /// walking and is channeling").
-    public class SunStrike : MonoBehaviour
+    /// HeatUp + Light — LIGHT STRIKE (renamed Jul 22, Marko: Valve owns
+    /// "Sun Strike" territory and we ship on Steam): a telegraphed ring, a
+    /// heartbeat to dodge, then the sky's judgment on that exact spot.
+    public class LightStrike : MonoBehaviour
     {
         public float Power = 1f;
         const float ChannelSeconds = 1.7f;
@@ -56,15 +56,15 @@ namespace SpellyZombie
         Light _glow;
         Transform _ring;
 
-        public static SunStrike Open(Vector3 at, float power)
+        public static LightStrike Open(Vector3 at, float power)
         {
             if (Physics.Raycast(at + Vector3.up * 2f, Vector3.down, out var hit, 30f))
                 at = hit.point;
-            var go = new GameObject("SunStrike");
+            var go = new GameObject("LightStrike");
             go.transform.position = at;
-            var s = go.AddComponent<SunStrike>();
+            var s = go.AddComponent<LightStrike>();
             s.Power = power;
-            DrawingWorld.Instance?.LogEvent("the sun takes AIM — move!");
+            DrawingWorld.Instance?.LogEvent("the light takes AIM — move!");
             return s;
         }
 
@@ -95,9 +95,9 @@ namespace SpellyZombie
                 var c = GrammarFX.ScanBuffer[i];
                 if (c == null) continue;
                 var pl = c.GetComponent<SimpleFPSController>();
-                if (pl != null) { pl.TakeHit(Vector3.up * 3f, 35f * Power, "sun strike"); continue; }
+                if (pl != null) { pl.TakeHit(Vector3.up * 6f, 90f * Power, "light strike"); continue; }
                 var d = c.GetComponentInParent<Damageable>();
-                if (d != null) d.TakeDamage(85f * Power, "sun-struck");
+                if (d != null) d.TakeDamage(220f * Power, "light-struck"); // JUDGMENT judges now
                 SpellParticle.GiveHeatTo(c, 160f * Power);
             }
             var flash = Exotics.Glow(transform.position + Vector3.up * 1f, BlastRadius * 2f,
@@ -175,9 +175,9 @@ namespace SpellyZombie
             transform.position += to.normalized * 3.6f * dt;
             if (to.sqrMagnitude < 0.45f)
             {
-                SpellParticle.GiveHeatTo(_prey.GetComponentInChildren<Collider>(), 95f * Power);
+                SpellParticle.GiveHeatTo(_prey.GetComponentInChildren<Collider>(), 220f * Power);
                 var pl = _prey.GetComponent<SimpleFPSController>();
-                if (pl != null) pl.TakeHit(Vector3.zero, 9f * Power, "dark flames");
+                if (pl != null) pl.TakeHit(Vector3.zero, 24f * Power, "dark flames");
                 Destroy(gameObject);
             }
         }
@@ -202,13 +202,44 @@ namespace SpellyZombie
             var pl = c.GetComponent<SimpleFPSController>();
             if (pl != null)
             {
-                Vector3 v = pl.Velocity; v.y = 0f;
-                pl.AddSpellForce(-v * 2.5f, dt);       // wading through tar
-                pl.TakeHit(Vector3.zero, 1.2f * Power, "sticky lava"); // that is on fire
+                var board = BodyState.Of(pl);
+                board?.PushGrip(0.85f * Power); // the tar GRIPS — grip does the slowing
+                board?.PushTemp(9f * Power);    // and it burns, via the band
                 return;
             }
             var cr = c.GetComponentInParent<Creature>();
-            if (cr != null) { cr.ApplyStuck(0.6f); SpellParticle.GiveHeatTo(c, 30f * Power); }
+            if (cr != null) { cr.ApplyStuck(1.2f); SpellParticle.GiveHeatTo(c, 75f * Power); }
+        }
+    }
+
+    /// HeatDown + Sticky — FROST GLUE (Marko Jul 22, the blade's replacement:
+    /// "a glue that freezes... sticky lava is just a glue that burns — chill
+    /// and heat can have the same logic"): a patch that grips and CHILLS.
+    /// Whatever stays stuck is freezing toward the ice-block.
+    public class FrostGlueField : GrammarField
+    {
+        public static FrostGlueField Open(Vector3 at, float power)
+        {
+            var f = Spawn<FrostGlueField>(at, power, 2.1f, 9f,
+                new Color(0.55f, 0.78f, 1f, 0.5f), MoteShade.Additive);
+            DrawingWorld.Instance?.LogEvent("the frost CLINGS");
+            return f;
+        }
+
+        protected override float TickPeriod => 0.3f;
+
+        protected override void Affect(Collider c, float dt)
+        {
+            var pl = c.GetComponent<SimpleFPSController>();
+            if (pl != null)
+            {
+                var board = BodyState.Of(pl);
+                board?.PushGrip(0.85f * Power); // the frost GRIPS — grip does the slowing
+                board?.PushTemp(-9f * Power);   // and it bites cold, via the band
+                return;
+            }
+            var cr = c.GetComponentInParent<Creature>();
+            if (cr != null) { cr.ApplyStuck(1.2f); SpellParticle.GiveHeatTo(c, -75f * Power); }
         }
     }
 
@@ -250,8 +281,9 @@ namespace SpellyZombie
                 _vel.normalized, out var hit, _vel.magnitude * dt + 0.3f,
                 ~0, QueryTriggerInteraction.Ignore))
             {
-                var pl = hit.collider.GetComponent<SimpleFPSController>();
-                if (pl != null) pl.TakeHit(_vel.normalized * 2f, (Hot ? 6f : 3f) * Power,
+                // a bolt in the SHIN still counts (limb capsules lead in 3rd person)
+                var pl = hit.collider.GetComponentInParent<SimpleFPSController>();
+                if (pl != null) pl.TakeHit(_vel.normalized * 4f, (Hot ? 16f : 9f) * Power,
                     Hot ? "fire bolt" : "ice bolt");
                 else
                 {
@@ -264,199 +296,6 @@ namespace SpellyZombie
         }
     }
 
-    /// HeatDown + Sticky — THE OBSIDIAN BLADE (Marko's matrix): frozen grip
-    /// hardens into a black glass edge you can PICK UP and swing (E takes it,
-    /// LMB swings). It crumbles when the magic runs out.
-    public class ObsidianBlade : HeldWeapon
-    {
-        static readonly Quaternion RestRot = Quaternion.Euler(-42f, 0f, 0f); // held UP and ready
-        static readonly Quaternion ChopRot = Quaternion.Euler(82f, 0f, 0f);  // rotated FORWARD
-
-        Transform _pivot;
-        float _swing;   // 0 = raised · 1 = fully chopped
-        bool _chopping;
-
-        /// The edge reads this: a chop cuts DEEP, a mere touch still cuts.
-        public bool Swinging => _chopping || _swing > 0.25f;
-
-        public static ObsidianBlade Conjure(Vector3 at)
-        {
-            var root = new GameObject("ObsidianBlade");
-            root.transform.position = at + Vector3.up * 0.75f;
-
-            // everything hangs off a PIVOT so the chop is one localRotation
-            var pivot = new GameObject("Pivot").transform;
-            pivot.SetParent(root.transform, false);
-            pivot.localRotation = RestRot;
-
-            var edge = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            edge.name = "Edge";
-            edge.transform.SetParent(pivot, false);
-            edge.transform.localPosition = new Vector3(0f, 0.28f, 0f);
-            edge.transform.localScale = new Vector3(0.045f, 0.62f, 0.11f);
-            var m = new Material(Shader.Find("Universal Render Pipeline/Lit"))
-            { color = new Color(0.06f, 0.05f, 0.08f) };
-            m.SetFloat("_Smoothness", 0.85f); // black GLASS
-            edge.GetComponent<Renderer>().sharedMaterial = m;
-
-            // SHARP BY NATURE (Marko's rule): the edge itself cuts whatever
-            // touches it — trigger box + kinematic body so contact events fire
-            // while the blade sweeps
-            var edgeCol = edge.GetComponent<BoxCollider>();
-            edgeCol.isTrigger = true;
-            edgeCol.size = new Vector3(1.5f, 1.05f, 1.5f); // a little proud of the glass
-            var edgeRb = edge.AddComponent<Rigidbody>();
-            edgeRb.isKinematic = true;
-            edge.AddComponent<BladeEdge>();
-
-            var grip = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            grip.name = "Grip";
-            grip.transform.SetParent(pivot, false);
-            grip.transform.localPosition = new Vector3(0f, -0.12f, 0f);
-            grip.transform.localScale = new Vector3(0.05f, 0.09f, 0.05f);
-            grip.GetComponent<Renderer>().sharedMaterial =
-                MatterFX.Get(new Color(0.3f, 0.22f, 0.14f), MoteShade.Opaque);
-            Object.Destroy(grip.GetComponent<Collider>()); // only the EDGE is sharp
-
-            var bubble = root.AddComponent<SphereCollider>();
-            bubble.isTrigger = true;
-            bubble.radius = 0.9f;
-
-            Juice.Crackle(at);
-            DrawingWorld.Instance?.LogEvent("cold grips the fire's glass — OBSIDIAN BLADE (E to take)");
-            root.AddComponent<BladeLifetime>(); // sidecar: HeldWeapon owns Update, so
-                                                // the crumble clock lives beside it
-            var blade = root.AddComponent<ObsidianBlade>();
-            blade._pivot = pivot;
-            return blade;
-        }
-
-        void Awake()
-        {
-            if (_pivot == null) _pivot = transform.Find("Pivot"); // prefab copies recover it
-        }
-
-        /// The edge reads these: who is holding it (never cut them) and
-        /// whether it's held at all (a LOOSE blade never cuts players — you
-        /// can't see an invisible hitbox bobbing in the dark).
-        public SimpleFPSController Holder => Wielder;
-        public bool IsHeld => Wielder != null;
-
-        /// Base EquipTo puts every trigger to sleep (the pickup bubble) — but
-        /// the EDGE must stay live: a held blade that can't cut isn't a blade.
-        public override void EquipTo(SimpleFPSController player)
-        {
-            base.EquipTo(player);
-            var edge = transform.Find("Pivot/Edge");
-            if (edge != null)
-            {
-                var ec = edge.GetComponent<Collider>();
-                if (ec != null) ec.enabled = true;
-            }
-        }
-
-        protected override string SkinName => "ObsidianBlade"; // Marko's skin slot
-
-        protected override void OnSkinApplied(Transform skin)
-        {
-            var pivot = FindPart("Pivot"); // his model's pivot takes over the chop
-            if (pivot != null) _pivot = pivot;
-        }
-
-        protected override void UpdateArmed(Keyboard kb, Mouse mouse)
-        {
-            float dt = Time.deltaTime;
-
-            // PRESS: the blade rotates FORWARD (the chop); it springs back UP
-            // on its own — ready, strike, recover (Marko's animation ruling).
-            // In engrave mode LMB is the PEN — no swinging while drawing.
-            if (!DrawMode && mouse != null && mouse.leftButton.wasPressedThisFrame && !_chopping && _swing < 0.15f)
-            {
-                _chopping = true;
-                Juice.Whoosh(transform.position);
-            }
-            _swing = Mathf.MoveTowards(_swing, _chopping ? 1f : 0f, dt * (_chopping ? 7f : 3.2f));
-            if (_chopping && _swing >= 1f) _chopping = false;
-
-            if (_pivot != null)
-                _pivot.localRotation = Quaternion.Slerp(RestRot, ChopRot,
-                    Mathf.SmoothStep(0f, 1f, _swing));
-        }
-    }
-
-    /// The blade's cutting surface: SHARPNESS IS AUTOMATIC — anything touching
-    /// the edge is cut (per-victim cooldown so contact isn't a blender). A
-    /// deliberate chop cuts far deeper than a graze. It never cuts whoever is
-    /// holding it — grip discipline is assumed.
-    public class BladeEdge : MonoBehaviour
-    {
-        readonly System.Collections.Generic.Dictionary<Component, float> _lastCut =
-            new System.Collections.Generic.Dictionary<Component, float>();
-        ObsidianBlade _blade;
-
-        void Awake() => _blade = GetComponentInParent<ObsidianBlade>();
-
-        void OnTriggerStay(Collider other)
-        {
-            if (other.isTrigger || _blade == null) return;
-
-            var touchedPilot = other.GetComponentInParent<SimpleFPSController>();
-
-            // NEVER the wielder — the authoritative holder, not a parent guess
-            // (this is what was cutting Marko while he swung his own blade)
-            if (touchedPilot != null && touchedPilot == _blade.Holder) return;
-            // a LOOSE blade never cuts players: nobody can see a bobbing
-            // invisible hitbox in a dark cave. Zombies still step on it. Ha.
-            if (touchedPilot != null && !_blade.IsHeld) return;
-
-            Component victim = (Component)other.GetComponentInParent<Creature>()
-                ?? (Component)touchedPilot
-                ?? other.GetComponentInParent<Damageable>();
-            if (victim == null) return;
-
-            _lastCut.TryGetValue(victim, out float last);
-            if (Time.time - last < 0.4f) return;
-            _lastCut[victim] = Time.time;
-
-            bool deep = _blade.Swinging;
-            float dmg = deep ? 32f : 11f;
-
-            if (victim is SimpleFPSController pl)
-            {
-                // yes, you can cut a FRIEND. friendly fire is a personality.
-                pl.TakeHit((other.transform.position - transform.position).normalized * 2f,
-                    dmg * 0.6f, "a friend's obsidian blade");
-                return;
-            }
-            var d = victim.GetComponent<Damageable>();
-            if (d == null) d = other.GetComponentInParent<Damageable>();
-            if (d != null) d.TakeDamage(dmg, deep ? "obsidian chop" : "obsidian edge");
-            if (deep && victim is Creature cr && Random.value < 0.35f) cr.KnockDown(0.6f);
-        }
-    }
-
-    /// The obsidian blade's crumble clock — separate from HeldWeapon because
-    /// the base class owns Update() (shadowing it would kill E-pickup).
-    public class BladeLifetime : MonoBehaviour
-    {
-        float _dieAt; // absolute deadline — holstering must not pause the crumble
-
-        void Awake() => _dieAt = Time.time + 30f; // "spell active + 5s" — greybox seal-length
-
-        void OnEnable() { if (_dieAt > 0f && Time.time >= _dieAt) Crumble(); }
-
-        void Update()
-        {
-            if (Time.time >= _dieAt) Crumble();
-        }
-
-        void Crumble()
-        {
-            GrammarFX.PuffBurst(transform.position, new Color(0.1f, 0.08f, 0.12f, 0.7f), 5);
-            DrawingWorld.Instance?.LogEvent("the obsidian blade crumbles");
-            Destroy(gameObject);
-        }
-    }
 
     /// HeatDown + Darkness — ABSOLUTE ZERO: everything inside freezes. Now.
     public class AbsoluteZeroField : GrammarField
@@ -474,7 +313,13 @@ namespace SpellyZombie
         protected override void Affect(Collider c, float dt)
         {
             var pl = c.GetComponent<SimpleFPSController>();
-            if (pl != null) { pl.TakeHit(Vector3.zero, 2.5f * Power, "absolute zero"); return; }
+            if (pl != null)
+            {
+                var board = BodyState.Of(pl);
+                board?.PushTemp(-20f * Power); // races toward frozen-solid — the band and the ice do the rest
+                board?.PushLum(-0.6f);         // the dark of deep cold
+                return;
+            }
             SpellParticle.GiveHeatTo(c, -260f * Power); // instant freeze territory
         }
     }
@@ -540,8 +385,8 @@ namespace SpellyZombie
             if (_prey != null && (_prey.position + Vector3.up * 0.7f - transform.position).sqrMagnitude < 0.5f)
             {
                 var pl = _prey.GetComponent<SimpleFPSController>();
-                if (pl != null) pl.TakeHit(Vector3.up * 2f, 25f * Power);
-                else _prey.GetComponentInParent<Damageable>()?.TakeDamage(70f * Power, "dark matter");
+                if (pl != null) pl.TakeHit(Vector3.up * 4f, 60f * Power);
+                else _prey.GetComponentInParent<Damageable>()?.TakeDamage(170f * Power, "dark matter");
                 Juice.Boom(transform.position, 0.6f);
                 Destroy(gameObject);
             }
@@ -618,10 +463,10 @@ namespace SpellyZombie
             if (Physics.SphereCast(transform.position, 0.25f, _vel.normalized, out var hit,
                 _vel.magnitude * dt + 0.25f, ~0, QueryTriggerInteraction.Ignore))
             {
-                var pl = hit.collider.GetComponent<SimpleFPSController>();
-                if (pl != null) pl.KnockDown(0.8f);
+                var pl = hit.collider.GetComponentInParent<SimpleFPSController>();
+                if (pl != null) pl.KnockDown(1.3f); // clipping a LIMB still bowls you
                 var cr = hit.collider.GetComponentInParent<Creature>();
-                if (cr != null) { cr.ApplyBlind(2.2f); cr.KnockDown(0.7f); }
+                if (cr != null) { cr.ApplyBlind(4f); cr.KnockDown(1.2f); }
                 _vel = Vector3.Reflect(_vel, hit.normal); // cannot be caught
                 transform.position = hit.point + hit.normal * 0.3f;
             }

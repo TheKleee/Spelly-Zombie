@@ -74,6 +74,7 @@ namespace SpellyZombie
         {
             float r = DrawingConfig.UltimateRadius;
             Juice.Boom(at, 0.7f);
+            if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.FireBurst, at); // the JMO bloom
             WorldEvents.Report(WorldEventKind.Explosion, at, 2f);
             DrawingWorld.Instance?.LogEvent("FLAME BURST");
             int n = Physics.OverlapSphereNonAlloc(at, r, _hits, ~0, QueryTriggerInteraction.Ignore);
@@ -82,10 +83,10 @@ namespace SpellyZombie
                 var c = _hits[i];
                 if (c == null) continue;
                 var pl = c.GetComponent<SimpleFPSController>();
-                if (pl != null) { pl.TakeHit((pl.transform.position - at).normalized * 4f, 10f * power); continue; }
-                SpellParticle.GiveHeatTo(c, 70f * power);
+                if (pl != null) { pl.TakeHit((pl.transform.position - at).normalized * 9f, 28f * power); continue; }
+                SpellParticle.GiveHeatTo(c, 200f * power); // combinations hit MANY times harder (Marko)
                 var rb = c.attachedRigidbody;
-                if (rb != null) rb.AddForce((rb.worldCenterOfMass - at).normalized * 4f, ForceMode.VelocityChange);
+                if (rb != null) rb.AddForce((rb.worldCenterOfMass - at).normalized * 9f, ForceMode.VelocityChange);
             }
             for (int i = 0; i < 10; i++) // the visible bloom
             {
@@ -150,6 +151,13 @@ namespace SpellyZombie
                 var dome = f.Ball.GetComponent<Renderer>();
                 if (dome != null) dome.enabled = false;
             }
+            else if (FxLibrary.I != null)
+            {
+                // the JMO layer (Marko's mapping, Jul 22) rides the field for
+                // its whole life — his FX_<FieldClass> override still wins
+                var jmo = FxLibrary.I.FieldFor(typeof(T).Name);
+                if (jmo != null) FxLibrary.Spawn(jmo, at, go.transform, seconds + 0.5f);
+            }
             return f;
         }
 
@@ -205,16 +213,36 @@ namespace SpellyZombie
     /// slow, and staying too long freezes you solid for a moment.
     public class SnowField : GrammarField
     {
+        float _burstTick;
+
         public static SnowField Open(Vector3 at, float power) =>
             Spawn<SnowField>(at, power, DrawingConfig.UltimateRadius, DrawingConfig.UltimateSeconds * 1.3f,
                 new Color(0.85f, 0.93f, 1f, 0.35f), MoteShade.Transparent);
 
+        protected override void Grow(float dt)
+        {
+            // ice bursts flurry across the area (Marko's JMO mapping)
+            _burstTick -= dt;
+            if (_burstTick > 0f || FxLibrary.I == null) return;
+            _burstTick = 0.9f;
+            Vector2 r = Random.insideUnitCircle * Radius * 0.8f;
+            FxLibrary.Spawn(FxLibrary.I.IceHit, transform.position + new Vector3(r.x, 0.4f, r.y));
+        }
+
         protected override void Affect(Collider c, float dt)
         {
             var pl = c.GetComponent<SimpleFPSController>();
-            if (pl != null) { pl.TakeHit(Vector3.zero, 1.2f * Power, "snow"); return; }
+            // snow only COOLS (Marko's derived law) — being cold does the rest
+            if (pl != null) { BodyState.Of(pl)?.PushTemp(-8f * Power); return; }
             var cr = c.GetComponentInParent<Creature>();
-            if (cr != null) { cr.ApplyStuck(0.5f); SpellParticle.GiveHeatTo(c, -20f * Power); return; }
+            if (cr != null)
+            {
+                cr.ApplyStuck(0.5f);
+                SpellParticle.GiveHeatTo(c, -60f * Power);
+                if (Random.value < 0.05f && FxLibrary.I != null) // comic beat
+                    FxLibrary.Spawn(FxLibrary.I.TextFrozen, cr.transform.position + Vector3.up * 1.6f);
+                return;
+            }
             SpellParticle.GiveHeatTo(c, -12f * Power);
         }
     }
@@ -247,9 +275,13 @@ namespace SpellyZombie
             var pl = c.GetComponent<SimpleFPSController>();
             if (pl != null)
             {
+                var board = BodyState.Of(pl);
+                board?.PushLum(1f); // it IS a sun — the world whites out near it
                 if (d < Radius * 1.6f)
-                    pl.TakeHit((pl.transform.position - transform.position).normalized * 6f,
-                        30f * Power, "the sun");
+                {
+                    board?.PushTemp(50f * Power); // touching it is still a catastrophe
+                    pl.TakeHit((pl.transform.position - transform.position).normalized * 6f, 0f);
+                }
                 return;
             }
             var cr = c.GetComponentInParent<Creature>();
@@ -257,7 +289,7 @@ namespace SpellyZombie
             if (d < Radius * 1.6f)
             {
                 var dmg = c.GetComponentInParent<Damageable>();
-                if (dmg != null) dmg.TakeDamage(45f * Power, "touched the sun");
+                if (dmg != null) dmg.TakeDamage(120f * Power, "touched the sun");
             }
             SpellParticle.GiveHeatTo(c, 30f * Power); // it radiates
         }
@@ -282,6 +314,15 @@ namespace SpellyZombie
                 DrawingConfig.UltimateSeconds * (growing ? 1.4f : 0.9f),
                 new Color(0.02f, 0.01f, 0.05f, 0.93f), MoteShade.Transparent);
             f.Growing = growing;
+            // a black hole you can SEE (Marko: "currently invisible") — an
+            // OPAQUE void core riding the Ball, so it grows with the hunger;
+            // the transparent shell becomes its haze
+            var core = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            core.name = "VoidCore";
+            Object.Destroy(core.GetComponent<Collider>());
+            core.transform.SetParent(f.Ball, false);
+            core.transform.localScale = Vector3.one * 0.42f;
+            core.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(Color.black, MoteShade.Opaque);
             DrawingWorld.Instance?.LogEvent(growing ? "the BLACK HOLE grows hungry" : "the dark collapses — BLACK HOLE");
             return f;
         }
@@ -298,15 +339,15 @@ namespace SpellyZombie
             var pl = c.GetComponent<SimpleFPSController>();
             if (pl != null) // players get DRAGGED, never swallowed
             {
-                pl.AddSpellForce((transform.position - c.transform.position).normalized * 7f * Power, dt);
+                pl.AddSpellForce((transform.position - c.transform.position).normalized * 20f * Power, dt);
                 return;
             }
             var p = c.GetComponent<SpellParticle>();
-            if (p != null) { p.Pull(transform.position, dt); return; }
+            if (p != null) { p.Pull(transform.position, dt * 2f); return; }
             var rb = c.attachedRigidbody;
             if (rb == null) return;
             Vector3 to = transform.position - rb.worldCenterOfMass;
-            rb.AddForce(to.normalized * Mathf.Lerp(15f, 3f, to.magnitude / Radius), ForceMode.Acceleration);
+            rb.AddForce(to.normalized * Mathf.Lerp(40f, 10f, to.magnitude / Radius), ForceMode.Acceleration);
             if (to.magnitude < 0.9f && _swallowed < (Growing ? 14 : 5))
             {
                 bool edible = rb.GetComponentInParent<Zombie>() != null || rb.GetComponent<Matter>() != null;
@@ -322,6 +363,26 @@ namespace SpellyZombie
         {
             var f = Spawn<WhiteHoleField>(at + Vector3.up * 0.8f, power, 4f, DrawingConfig.UltimateSeconds * 0.9f,
                 new Color(1f, 1f, 0.97f, 0.75f), MoteShade.Additive);
+            if (FxLibrary.I != null) // ignition flash; the stars ride the field
+                FxLibrary.Spawn(FxLibrary.I.Flash, at + Vector3.up * 0.8f);
+            // THE OPENING YEET (Marko: "it should yeet everything in all
+            // directions around it") — one detonation the moment it ignites
+            int n = Physics.OverlapSphereNonAlloc(at, f.Radius * 1.6f, GrammarFX.ScanBuffer,
+                ~0, QueryTriggerInteraction.Collide);
+            for (int i = 0; i < n; i++)
+            {
+                var c = GrammarFX.ScanBuffer[i];
+                if (c == null) continue;
+                Vector3 away = (c.bounds.center - at); away.y = 0f;
+                away = away.sqrMagnitude > 0.01f ? away.normalized : Random.insideUnitSphere.normalized;
+                var pl = c.GetComponent<SimpleFPSController>();
+                if (pl != null) { pl.TakeHit(away * 13f + Vector3.up * 3.5f, 0f); continue; }
+                var cr = c.GetComponentInParent<Creature>();
+                if (cr != null) cr.KnockDown(1.2f);
+                var rb = c.attachedRigidbody;
+                if (rb != null && !rb.isKinematic)
+                    rb.AddForce(away * 15f + Vector3.up * 4f, ForceMode.VelocityChange);
+            }
             DrawingWorld.Instance?.LogEvent("light and dark REFUSE each other — WHITE HOLE");
             return f;
         }
@@ -332,11 +393,11 @@ namespace SpellyZombie
         {
             Vector3 away = (c.bounds.center - transform.position).normalized;
             var pl = c.GetComponent<SimpleFPSController>();
-            if (pl != null) { pl.AddSpellForce(away * 7f * Power, dt); return; }
+            if (pl != null) { pl.AddSpellForce(away * 24f * Power, dt); return; }
             var p = c.GetComponent<SpellParticle>();
-            if (p != null) { p.Pull(transform.position + away * 30f, dt); return; }
+            if (p != null) { p.Pull(transform.position + away * 30f, dt * 2f); return; }
             var rb = c.attachedRigidbody;
-            if (rb != null) rb.AddForce(away * 12f, ForceMode.Acceleration);
+            if (rb != null) rb.AddForce(away * 34f, ForceMode.Acceleration);
         }
     }
 
@@ -356,9 +417,10 @@ namespace SpellyZombie
         protected override void Affect(Collider c, float dt)
         {
             var pl = c.GetComponent<SimpleFPSController>();
-            if (pl != null) { pl.TakeHit(Vector3.zero, 0.8f * Power, "steam"); return; }
+            // scalding fog only HEATS — the band does the billing
+            if (pl != null) { BodyState.Of(pl)?.PushTemp(7f * Power); return; }
             var cr = c.GetComponentInParent<Creature>();
-            if (cr != null) { cr.ApplyStuck(0.4f); SpellParticle.GiveHeatTo(c, 12f * Power); }
+            if (cr != null) { cr.ApplyStuck(0.4f); SpellParticle.GiveHeatTo(c, 35f * Power); }
         }
     }
 
@@ -377,13 +439,16 @@ namespace SpellyZombie
 
         protected override void Affect(Collider c, float dt)
         {
+            // it stops ANYTHING nearby (Marko) — wizards obey time too
+            var pl = c.GetComponent<SimpleFPSController>();
+            if (pl != null) { pl.StickFeet(0.7f); return; }
             var cr = c.GetComponentInParent<Creature>();
-            if (cr != null) cr.ApplyStuck(0.6f);
+            if (cr != null) cr.ApplyStuck(1.2f);
             var rb = c.attachedRigidbody;
             if (rb != null && !rb.isKinematic)
             {
-                rb.linearVelocity = Vector3.MoveTowards(rb.linearVelocity, Vector3.zero, 40f * dt);
-                rb.angularVelocity = Vector3.MoveTowards(rb.angularVelocity, Vector3.zero, 40f * dt);
+                rb.linearVelocity = Vector3.MoveTowards(rb.linearVelocity, Vector3.zero, 100f * dt);
+                rb.angularVelocity = Vector3.MoveTowards(rb.angularVelocity, Vector3.zero, 100f * dt);
             }
             var p = c.GetComponent<SpellParticle>();
             if (p != null) p.Vel = Vector3.zero; // even magic stands still
@@ -408,14 +473,14 @@ namespace SpellyZombie
             Vector3 shove = Random.insideUnitSphere;
             shove.y = Mathf.Abs(shove.y) * 0.3f;
             var pl = c.GetComponent<SimpleFPSController>();
-            if (pl != null) { pl.AddSpellForce(shove.normalized * 5f * Power, dt * 3f); return; }
+            if (pl != null) { pl.AddSpellForce(shove.normalized * 14f * Power, dt * 3f); return; }
             var cr = c.GetComponentInParent<Creature>();
-            if (cr != null) cr.ApplySlip(0.8f);
+            if (cr != null) cr.ApplySlip(1.5f);
             var rb = c.attachedRigidbody;
             if (rb != null && !rb.isKinematic)
             {
                 rb.linearDamping = 0f;
-                rb.AddForce(shove.normalized * 3f * Power, ForceMode.VelocityChange);
+                rb.AddForce(shove.normalized * 8f * Power, ForceMode.VelocityChange);
             }
         }
     }
@@ -439,7 +504,28 @@ namespace SpellyZombie
                 MoteShade.Transparent);
             f._down = down;
             f.FieldLineage = lineage;
+            // the storm WEARS its vectors (Marko: "visual arrows going around
+            // it") — parented to the Ball, they ride its spin for free
+            var vecMat = MatterFX.Get(down ? new Color(0.7f, 0.35f, 0.95f) : new Color(0.92f, 0.9f, 0.6f),
+                MoteShade.Additive); // pull wears PURPLE (Marko), push stays gold
+            for (int i = 0; i < 3; i++)
+            {
+                var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                g.name = "StormVector";
+                Object.Destroy(g.GetComponent<Collider>());
+                g.transform.SetParent(f.Ball, false);
+                float ang = i * 120f * Mathf.Deg2Rad;
+                g.transform.localPosition = new Vector3(Mathf.Cos(ang) * 0.42f, (i - 1) * 0.16f, Mathf.Sin(ang) * 0.42f);
+                g.transform.localRotation = Quaternion.LookRotation(
+                    new Vector3(-Mathf.Sin(ang), 0f, Mathf.Cos(ang)) * (down ? -1f : 1f));
+                g.transform.localScale = new Vector3(0.03f, 0.03f, 0.22f);
+                g.GetComponent<Renderer>().sharedMaterial = vecMat;
+            }
             Juice.Whoosh(at);
+            var lib = FxLibrary.I; // wind wears trails, water wears rings (Marko's mapping)
+            if (lib != null)
+                FxLibrary.Spawn(down ? lib.Ripples : lib.WindTrails, f.transform.position, f.transform,
+                    DrawingConfig.UltimateSeconds * 1.2f + 0.5f);
             DrawingWorld.Instance?.LogEvent(down ? "the pulls entwine — WHIRLPOOL" : "the winds entwine — TORNADO");
             return f;
         }
@@ -467,7 +553,7 @@ namespace SpellyZombie
             // pull has its own specific direction — not the same spin re-used)
             Vector3 tangent = Vector3.Cross(_down ? Vector3.down : Vector3.up, rel).normalized;
             Vector3 vertical = _down ? Vector3.down : Vector3.up;
-            Vector3 swirl = tangent * 6f + vertical * 3f - rel.normalized * 2f;
+            Vector3 swirl = tangent * 11f + vertical * 6.5f - rel.normalized * 3f; // REAL winds (Marko: mayhem)
 
             var p = c.GetComponent<SpellParticle>();
             if (p != null)
@@ -487,13 +573,24 @@ namespace SpellyZombie
             }
 
             var pl = c.GetComponent<SimpleFPSController>();
-            if (pl != null) { pl.AddSpellForce(swirl * 1.5f * Power, dt); return; }
+            if (pl != null)
+            {
+                pl.AddSpellForce(swirl * 3.2f * Power, dt);
+                var board = BodyState.Of(pl);
+                board?.PushMove((_down ? -0.5f : 0.5f) * dt); // ride it out buffed — or Y-owned
+                if (_down) // the Y-storm EATS your direction vector (Marko)
+                {
+                    Vector3 pv = pl.Velocity; pv.y = 0f;
+                    pl.AddSpellForce(-pv * 1.8f, dt);
+                }
+                return;
+            }
 
             var cr = c.GetComponentInParent<Creature>();
-            if (cr != null && Random.value < 0.06f) cr.KnockDown(1f); // tumble-dried
+            if (cr != null && Random.value < 0.12f) cr.KnockDown(1f); // tumble-dried
             var rb = c.attachedRigidbody;
             if (rb != null && !rb.isKinematic)
-                rb.AddForce(swirl * 4f * Power, ForceMode.Acceleration);
+                rb.AddForce(swirl * 9f * Power, ForceMode.Acceleration);
         }
 
         /// The storm dies the way Marko wrote it: it TOSSES everything out.
@@ -510,7 +607,7 @@ namespace SpellyZombie
                 fling.y = 0f;
                 fling = fling.normalized * 7f + Vector3.up * 4f;
                 var pl = c.GetComponent<SimpleFPSController>();
-                if (pl != null) { pl.AddSpellForce(fling * 1.2f, 0.5f); continue; }
+                if (pl != null) { pl.AddSpellForce(fling * 2.6f, 0.5f); continue; }
                 var p = c.GetComponent<SpellParticle>();
                 if (p != null) { p.Vel = fling; continue; }
                 var rb = c.attachedRigidbody;
@@ -531,6 +628,9 @@ namespace SpellyZombie
                 new Color(0.85f, 1f, 0.8f, 0.4f), MoteShade.Additive);
             DrawingWorld.Instance?.LogEvent("cold light is MERCY — a healing ground");
             Juice.Chime(at);
+            if (FxLibrary.I != null) // the mercy ring — a runic circle on the ground
+                FxLibrary.Spawn(FxLibrary.I.RunicAura, at + Vector3.up * 0.1f, f.transform,
+                    DrawingConfig.UltimateSeconds * 1.4f + 0.5f);
             return f;
         }
 
@@ -540,7 +640,7 @@ namespace SpellyZombie
         {
             var pl = c.GetComponent<SimpleFPSController>();
             if (pl == null || pl.IsDowned) return; // the downed need a friend, not a fountain
-            pl.Health = Mathf.Min(Perks.MaxHealth, pl.Health + 10f * Power * dt);
+            pl.Health = Mathf.Min(Perks.MaxHealth, pl.Health + 25f * Power * dt); // mercy scaled with the mayhem
         }
     }
 
@@ -568,6 +668,8 @@ namespace SpellyZombie
                 b._shell = GrammarFX.FieldBall(root.position, r,
                     new Color(0.6f, 0.9f, 1f, 0.3f), MoteShade.Transparent);
                 b._shell.SetParent(root, true);
+                if (FxLibrary.I != null) // the JMO shield loop rides the shell
+                    FxLibrary.Spawn(FxLibrary.I.Shield, root.position, b._shell, 0f);
                 DrawingWorld.Instance?.LogEvent("BARRIER — isolated (protected, and harmless)");
             }
             b._left = DrawingConfig.BarrierSeconds;

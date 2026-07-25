@@ -1170,8 +1170,11 @@ namespace SpellyZombie
                 if (_anim != null) _anim.enabled = false; // physics owns the doll now
                 GetComponent<EmotePlayer>()?.Interrupt();
                 Vector3 vel = (transform.position - _lastPos) / Mathf.Max(Time.deltaTime, 1e-4f);
-                // downed dolls settle fast (rescuers must be able to CATCH
-                // you); flying tumbles keep low drag so arcs stay ballistic
+                // MOMENTUM-TRUE (Marko's final ruling: "simply take your
+                // current momentum — standing falls in place, running falls
+                // WHILE running"): full velocity inheritance, no artificial
+                // topple, no cut. Downed dolls alone settle fast, so rescuers
+                // can catch you.
                 float drag = _pilot != null && _pilot.IsDowned ? 2.2f : 0.12f;
                 foreach (var rb in _ragdoll)
                 {
@@ -1179,7 +1182,7 @@ namespace SpellyZombie
                     rb.isKinematic = false;
                     rb.linearVelocity = vel;
                     rb.linearDamping = drag;
-                    rb.angularDamping = 2f;
+                    rb.angularDamping = 3f; // calmer spin — less flail, same slide
                 }
                 // the capsule (and camera) now CHASES the doll — you watch
                 // your own body sail off and land, instead of losing it
@@ -1285,13 +1288,26 @@ namespace SpellyZombie
             }
 
             // CARRYING (Marko's rule: "arms should be in front of us") — both
-            // hands reach the carried load, overriding pen/weapon stances
+            // hands reach the carried load, overriding pen/weapon stances.
+            // The sticky hand's cargo counts too: rocks, blobs, held spells —
+            // the wizard VISIBLY grips what he carries.
             var carried = InkRuneStone.Carried;
-            bool carryHold = carried != null;
+            var grabbed = HandGrab.LocalHeldBody;
+            var grabbedMote = HandGrab.LocalHeldMote;
+            bool carryHold = carried != null || grabbed != null || grabbedMote != null;
             if (carryHold)
             {
-                Vector3 c = carried.transform.position;
-                Vector3 side = _anim.transform.right * 0.18f;
+                Vector3 c = carried != null ? carried.transform.position
+                    : grabbed != null ? grabbed.worldCenterOfMass
+                    : grabbedMote.transform.position;
+                float half = 0.18f;
+                if (grabbed != null)
+                {
+                    var cargoCol = grabbed.GetComponent<Collider>();
+                    if (cargoCol != null)
+                        half = Mathf.Clamp(cargoCol.bounds.extents.magnitude * 0.55f, 0.14f, 0.5f);
+                }
+                Vector3 side = _anim.transform.right * half;
                 _grip = c + side;
                 _support = c - side;
             }

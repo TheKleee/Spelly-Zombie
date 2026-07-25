@@ -127,10 +127,42 @@ namespace SpellyZombie
             lib.ElectricHit = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Electric/CFXR Electrified 3.prefab");
             lib.IceHit = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Ice/CFXR3 Hit Ice B (Air).prefab");
             lib.RunicAura = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Magic Misc/CFXR3 Magic Aura A (Runic).prefab");
+            // the full mapping (Marko approved Jul 22)
+            lib.Sun = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Fire/CFXR4 Sun.prefab");
+            lib.FireBurst = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Explosions/CFXR3 Fire Explosion B.prefab");
+            lib.HealShine = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Misc/CFXR2 Shiny Item (Loop).prefab");
+            lib.SoulsOut = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Eerie/CFXR2 Souls Escape.prefab");
+            lib.Flash = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Misc/CFXR Flash.prefab");
+            lib.Stars = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Magic Misc/CFXR4 Falling Stars.prefab");
+            lib.TimeDome = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Misc/CFXR3 Ambient Glows.prefab");
+            lib.Scuffle = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Misc/CFXR2 Cartoon Fight (Loop).prefab");
+            lib.WindTrails = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Nature/CFXR4 Wind Trails.prefab");
+            lib.Ripples = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Liquids/CFXR Water Ripples.prefab");
+            lib.Splash = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Liquids/CFXR Water Splash (Smaller).prefab");
+            lib.Smoke = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Misc/CFXR Smoke Source 3D.prefab");
+            lib.GasCloud = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Misc/CFXR2 Poison Cloud.prefab");
+            lib.Shield = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Nature/CFXR3 Shield Leaves A (Lit).prefab");
+            lib.DemonBoom = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Eerie/CFXR2 WW Enemy Explosion.prefab");
+            lib.SkullHead = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Eerie/CFXR2 Skull Head Alt.prefab");
+            lib.BrokenHeart = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Misc/CFXR2 Broken Heart.prefab");
+            lib.GroundHit = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Impacts/CFXR2 Ground Hit.prefab");
+            lib.TextBoom = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Texts/CFXR _BOOM_.prefab");
+            lib.TextBoing = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Texts/CFXR _BOING_.prefab");
+            lib.TextWow = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Texts/CFXR3 _WOW_.prefab");
+            lib.TextFrozen = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Texts/CFXR4 _FROZEN_.prefab");
+            lib.TextPow = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Texts/CFXR _POW_.prefab");
+            lib.TextWham = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Texts/CFXR2 _WHAM_ 3.prefab");
+            lib.HitSpark = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Fire/CFXR3 Hit Fire B (Air).prefab");
+            lib.HitLight = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Light/CFXR3 Hit Light B (Air).prefab");
+            lib.HitVector = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Impacts/CFXR Hit D 3D (Yellow).prefab");
+            lib.HitThud = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Impacts/CFXR2 Ground Hit.prefab");
+            lib.Blood = AssetDatabase.LoadAssetAtPath<GameObject>(CFXR + "Liquids/CFXR2 Blood Shape Splash.prefab");
             EditorUtility.SetDirty(lib);
             AssetDatabase.SaveAssets();
-            Debug.Log($"[SpellyZombie] FxLibrary wired: fire={(lib.Fire != null)} explosion={(lib.Explosion != null)} " +
-                      $"poof={(lib.Poof != null)} electric={(lib.ElectricHit != null)}");
+            int missing = 0;
+            foreach (var f in typeof(FxLibrary).GetFields())
+                if (f.FieldType == typeof(GameObject) && f.GetValue(lib) == null) { missing++; Debug.LogWarning($"[SpellyZombie] FxLibrary: '{f.Name}' prefab not found"); }
+            Debug.Log($"[SpellyZombie] FxLibrary wired — {(missing == 0 ? "every role found its prefab" : missing + " role(s) missing")}");
         }
 
         // ---------------------------------------------------- pack import --
