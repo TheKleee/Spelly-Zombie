@@ -1,15 +1,9 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// The survival HUD, dressed in the Kenney Adventure skin. NO health or
-    /// ink bars (Marko's CoD-Zombies call): damage bleeds RED at the screen
-    /// edges and heals away, and ink is read off the WAND's reservoir
-    /// (WandInk). What remains: riches + perk badges bottom-left, the round
-    /// banner top center, the level/XP line, the downed overlay, and the
-    /// between-rounds seal gallery.
+    /// The survival HUD: NO health/ink bars (Marko's CoD-Zombies call) — red screen edges + the wand's reservoir; perk badges, round banner, downed overlay.
     public class HUD : MonoBehaviour
     {
         static HUD _i;
@@ -39,11 +33,7 @@ namespace SpellyZombie
             UIKit.Stretch(_group);
             _group.SetAsFirstSibling(); // everything else draws over the HUD
 
-            // ---- fullscreen: the hurt vignette. No HP bar (CoD Zombies
-            // style) — the screen edges bleed red as health drops.
-            // Stale baked copies die first: the runtime sprite can't
-            // serialize into the prefab, so a baked vignette is a dead Image
-            // that only piles up (one more per re-bake).
+            // hurt vignette (no HP bar); stale baked copies die first — the runtime sprite can't serialize into the prefab
             for (int i = _group.childCount - 1; i >= 0; i--)
             {
                 var stale = _group.GetChild(i);
@@ -58,13 +48,9 @@ namespace SpellyZombie
             _vignette.color = new Color(0.55f, 0f, 0f, 0f);
             _vignette.transform.SetAsFirstSibling(); // under everything in the HUD
 
-            // ---- bottom-left: riches + XP + perks (the bars are GONE — ink
-            // lives on the wand, health on the screen edges)
+            // bottom-left: perk badges only — no riches, no XP line (Marko: "no UI indicators of any bar on the screen")
             var corner = UIKit.Group(_group, "Vitals");
             UIKit.Place(corner, new Vector2(0f, 0f), new Vector2(18f, 18f), new Vector2(320f, 96f));
-
-            // (no riches, no XP line — Marko: "this game is simple... it has
-            // no UI indicators of any bar on the screen")
 
             _badgeRow = UIKit.Group(corner, "Perks");
             UIKit.Place(_badgeRow, new Vector2(0f, 1f), new Vector2(0f, -58f), new Vector2(260f, 30f));
@@ -124,22 +110,19 @@ namespace SpellyZombie
         {
             if (_group == null) return;
 
-            bool menuScene = SceneManager.GetActiveScene().name == "Menu";
+            bool menuScene = ActiveScene.Name == "Menu"; // cached — no per-frame string alloc
             if (_group.gameObject.activeSelf == menuScene)
                 _group.gameObject.SetActive(!menuScene); // the menu owns its screen
             if (menuScene) return;
 
             var player = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
 
-            // vitals: hurt = red edges, creeping in as health drops; a pulse
-            // joins near death so "get out NOW" reads without any numbers
+            // hurt = red edges creeping in as health drops
             if (player != null && _vignette != null)
             {
                 float f = Mathf.Clamp01(player.Health / Perks.MaxHealth);
                 float a = (1f - f) * (1f - f) * 0.85f;
-                // the PANIC pulse is for genuinely dying, not "took some hits"
-                // (Marko: "we shouldn't always be in panic mode just because
-                // we're damaged") — it joins only under 20%, and gentler
+                // panic pulse only under 20% (Marko: "we shouldn't always be in panic mode just because we're damaged")
                 if (f < 0.2f && !player.IsDowned)
                     a += (Mathf.Sin(Time.time * 6f) * 0.5f + 0.5f) * 0.12f;
                 _vignette.color = new Color(0.55f, 0f, 0f, Mathf.Clamp01(a));
@@ -168,10 +151,8 @@ namespace SpellyZombie
                 }
             }
 
-            // round banner — the GAME's voice only; the lobby has its own
-            // ribbon and stale wipe/round text there just confuses (Marko)
-            string status = SceneManager.GetActiveScene().name == "Lobby"
-                ? "" : RoundDirector.HudStatus();
+            // round banner — the GAME's voice only; stale wipe/round text in the lobby just confuses (Marko)
+            string status = ActiveScene.Name == "Lobby" ? "" : RoundDirector.HudStatus();
             if (_banner.gameObject.activeSelf != !string.IsNullOrEmpty(status))
                 _banner.gameObject.SetActive(!string.IsNullOrEmpty(status));
             _bannerText.text = status;
@@ -190,8 +171,7 @@ namespace SpellyZombie
                     : player.BleedOut / DrawingConfig.BleedOutSeconds);
             }
 
-            // (the between-rounds seal gallery was CUT — Marko's call: it was
-            // never asked for and cluttered the screen)
+            // between-rounds seal gallery CUT (Marko's call: never asked for, cluttered the screen)
         }
     }
 }

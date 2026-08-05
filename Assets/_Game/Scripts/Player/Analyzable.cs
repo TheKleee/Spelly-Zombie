@@ -158,6 +158,10 @@ namespace SpellyZombie
         bool _inkSeal;          // the SEAL page lets this drawing be traced
         bool _fizzledInSight;   // an unreadable drawing is aimed — teach the flow
         float _inkScan;
+        RuneType _promptRune = RuneType.None; // prompt caches — the strings were
+        string _declarePrompt;                // rebuilt EVERY frame in reach
+        Analyzable _promptTarget;
+        string _absorbPrompt;
         int _lastHash;          // aimed-drawing identity — classify ONLY on change
         RuneType _lastReadAs;
         float _lastReadScore;
@@ -195,8 +199,12 @@ namespace SpellyZombie
                 Highlight(DeclareInReach ? _inkMembers : null);
                 if (declRune)
                 {
-                    UIPrompt.Show("F", $"this is {RuneLibrary.ShortName(_inkRune)} — declare it",
-                        new Color(0.85f, 0.8f, 1f));
+                    if (_promptRune != _inkRune || _declarePrompt == null)
+                    {
+                        _promptRune = _inkRune;
+                        _declarePrompt = $"this is {RuneLibrary.Icon(_inkRune)} — declare it";
+                    }
+                    UIPrompt.Show("F", _declarePrompt, new Color(0.85f, 0.8f, 1f));
                     if (kb.fKey.wasPressedThisFrame) DeclareInk();
                 }
                 else if (declSeal)
@@ -228,8 +236,12 @@ namespace SpellyZombie
             Highlight(null); // an absorbable thing took the key — drop the ink highlight
 
             // ABSORB WINS THE KEY when both are possible (his priority rule)
-            UIPrompt.Show("F", $"absorb — learn {RuneLibrary.ShortName(target.Teaches)}",
-                new Color(0.85f, 0.8f, 1f));
+            if (!ReferenceEquals(target, _promptTarget) || _absorbPrompt == null)
+            {
+                _promptTarget = target;
+                _absorbPrompt = $"absorb — learn {RuneLibrary.Icon(target.Teaches)}";
+            }
+            UIPrompt.Show("F", _absorbPrompt, new Color(0.85f, 0.8f, 1f));
             Hints.Offer(Hints.Id.Absorb);
             if (kb.fKey.wasPressedThisFrame)
             {
@@ -252,6 +264,12 @@ namespace SpellyZombie
         {
             if (Time.time < _inkScan) return;
             _inkScan = Time.time + 0.25f;
+            // the recognizer SLEEPS while the pen is down (Marko: "should not
+            // fire all the time — only after you release the mouse")
+            var w0 = DrawingWorld.Instance;
+            if (w0 != null)
+                for (int i = 0; i < w0.Strokes.Count; i++)
+                    if (w0.Strokes[i].State == StrokeState.Drawing) return;
             _inkRune = RuneType.None;
             _inkSeal = false;
             _fizzledInSight = false;
@@ -411,8 +429,8 @@ namespace SpellyZombie
             if (hash != _lastHash)
             {
                 _lastHash = hash;
-                (_lastReadAs, _lastReadScore) = RuneLibrary.Classify(
-                    Grimoire.LocalPlayerId, RuneGlyph.RawStrokesOf(_inkMembers));
+                (_lastReadAs, _lastReadScore) = RuneGlyph.ReadVerdict(
+                    _inkMembers, Grimoire.LocalPlayerId); // guarded: never re-reads foreign ink (netcode §1)
             }
             bool readsFine = _lastReadAs != RuneType.None
                 && _lastReadScore >= DrawingConfig.MinRuneScore;
@@ -463,6 +481,17 @@ namespace SpellyZombie
             var world = DrawingWorld.Instance;
             if (world == null) return;
             Highlight(null); // put the real colours back before the seal repaints them
+            if (!NetGame.IsAuthority)
+            {
+                // world seals are HOST business — ship the intent, keep the UX (netcode §2)
+                NetSync.SendDeclareSealIntent(_inkMembers);
+                _inkMembers.Clear();
+                _inkSeal = false;
+                DeclareInReach = false;
+                _lastHash = 0;
+                _inkScan = 0f;
+                return;
+            }
             if (world.TryDeclareSeal(new List<Stroke>(_inkMembers)))
             {
                 Juice.Chime(_pilot.transform.position);
@@ -492,6 +521,7 @@ namespace SpellyZombie
                 m.MarkDirty();
             }
             bool learned = RuneLibrary.AddSample(_inkRune, raw);
+            NetSync.PushDeclare(_inkMembers, _inkRune); // every machine stamps the same ink (netcode §1)
             // a correction is real practice — the writing bar takes a full step
             Grimoire.BumpWriting(Grimoire.LocalPlayerId, _inkRune, DrawingConfig.WritingPerDeclare);
             Vector3 at = Vector3.zero;
@@ -500,8 +530,8 @@ namespace SpellyZombie
             if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, at);
             Juice.Chime(at);
             DrawingWorld.Instance?.LogEvent(learned
-                ? $"declared: this is {RuneLibrary.ShortName(_inkRune)} — the book learns your hand"
-                : $"declared: this is {RuneLibrary.ShortName(_inkRune)}");
+                ? $"declared: this is {RuneLibrary.Icon(_inkRune)} — the book learns your hand"
+                : $"declared: this is {RuneLibrary.Icon(_inkRune)}");
             _inkMembers.Clear();
             _inkRune = RuneType.None;
             DeclareInReach = false;

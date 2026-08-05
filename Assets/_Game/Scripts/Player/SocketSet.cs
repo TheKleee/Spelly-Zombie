@@ -25,6 +25,17 @@ namespace SpellyZombie
         public Transform Get(string socketName) =>
             _sockets.TryGetValue(socketName, out var t) ? t : null;
 
+        /// THE three-pass mixamorig bone search (exact → EndsWith → Contains;
+        /// HeadTop exports as HeadTop_End) — shared by CharacterRig and every
+        /// dresser, so player and zombie bodies resolve bones identically.
+        public static Transform FindBone(Transform[] bones, string boneName)
+        {
+            foreach (var t in bones) if (t.name == "mixamorig:" + boneName) return t;
+            foreach (var t in bones) if (t.name.EndsWith(boneName)) return t;
+            foreach (var t in bones) if (t.name.Contains(boneName)) return t;
+            return null;
+        }
+
         public static SocketSet Build(GameObject body, Transform facing)
         {
             var set = body.GetComponent<SocketSet>();
@@ -32,13 +43,7 @@ namespace SpellyZombie
             set = body.AddComponent<SocketSet>();
 
             var bones = body.GetComponentsInChildren<Transform>(true);
-            Transform Find(string boneName)
-            {
-                foreach (var t in bones) if (t.name == "mixamorig:" + boneName) return t;
-                foreach (var t in bones) if (t.name.EndsWith(boneName)) return t;
-                foreach (var t in bones) if (t.name.Contains(boneName)) return t;
-                return null;
-            }
+            Transform Find(string boneName) => FindBone(bones, boneName);
 
             Vector3 fwd = facing.forward;
             fwd.y = 0f;

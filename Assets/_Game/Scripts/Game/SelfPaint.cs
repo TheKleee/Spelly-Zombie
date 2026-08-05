@@ -273,39 +273,15 @@ namespace SpellyZombie
             var mouse = Mouse.current;
             if (mouse == null || _cam == null) return;
 
-            // MMB-drag rotates; WASD MOVES the camera (screen-space slide,
-            // Marko's spec) — W/S up/down, A/D left/right
-            if (mouse.middleButton.isPressed)
-            {
-                Vector2 d = mouse.delta.ReadValue();
-                _yaw += d.x * 0.3f;
-                _pitch = Mathf.Clamp(_pitch - d.y * 0.3f, -85f, 85f);
-            }
-            float zoom = mouse.scroll.ReadValue().y;
-            if (Mathf.Abs(zoom) > 0.01f)
-                _dist = Mathf.Clamp(_dist * (1f - Mathf.Sign(zoom) * 0.12f), 0.9f, 4.5f);
-
-            var rot = Quaternion.Euler(_pitch, _yaw, 0f);
-
-            var kb = Keyboard.current;
-            if (kb != null)
-            {
-                float panX = (kb.dKey.isPressed ? 1f : 0f) - (kb.aKey.isPressed ? 1f : 0f);
-                float panY = (kb.wKey.isPressed ? 1f : 0f) - (kb.sKey.isPressed ? 1f : 0f);
-                if (panX != 0f || panY != 0f)
-                {
-                    // slide in the current view plane, a bit faster zoomed out
-                    float speed = 0.6f * _dist;
-                    _pan += (rot * new Vector3(panX, panY, 0f)) * speed * Time.deltaTime;
-                    _pan = Vector3.ClampMagnitude(_pan, 2.2f); // never lose the body
-                }
-            }
+            // MMB-drag rotates; WASD MOVES the camera (Marko's spec) — the ONE
+            // shared easel language (EaselOrbit, same as pose mode)
+            var rot = EaselOrbit.Tick(Keyboard.current, mouse,
+                ref _yaw, ref _pitch, ref _dist, ref _pan,
+                allowZoom: true, zoomMin: 0.9f);
 
             // player root sits mid-body (the CC is centered on it) — orbiting
             // this point keeps head AND feet reachable
-            Vector3 focus = transform.position + _pan;
-            _cam.transform.position = focus + rot * new Vector3(0f, 0f, -_dist);
-            _cam.transform.rotation = rot;
+            EaselOrbit.Apply(_cam, transform.position + _pan, rot, _dist);
         }
     }
 }

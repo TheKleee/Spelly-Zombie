@@ -40,8 +40,6 @@ namespace SpellyZombie
             Play(Clip("sting", SynthSting), at, 0.7f, 1f);
         public static void Drum(Vector3 at) =>
             Play(Clip("drum", SynthDrum), at, 0.65f, 1f);
-        public static void Zap(Vector3 at) =>
-            Play(Clip("zap", SynthZap), at, 0.5f, Random.Range(0.9f, 1.15f));
 
         // ------------------------------------------------------- internals --
         const int Rate = 44100;
@@ -190,18 +188,6 @@ namespace SpellyZombie
             return d;
         }
 
-        static float[] SynthZap()
-        {
-            var d = Buf(0.18f);
-            float phase = 0f;
-            for (int i = 0; i < d.Length; i++)
-            {
-                float t = i / (float)d.Length;
-                phase += 2f * Mathf.PI * Mathf.Lerp(1400f, 180f, t * t) / Rate;
-                d[i] = Mathf.Sign(Mathf.Sin(phase)) * 0.35f * Env(i, d.Length, 0.002f); // square = crunchy
-            }
-            return d;
-        }
     }
 
     /// Positional camera shake — offsets the camera's LOCAL position with

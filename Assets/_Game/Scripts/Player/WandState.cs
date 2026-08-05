@@ -46,7 +46,7 @@ namespace SpellyZombie
         {
             if (_ink == null) return;
             float dt = Time.deltaTime;
-            bool local = IsLocal();
+            bool local = _pilot != null && _pilot.IsLocalViewer; // cached — no per-frame camera scan
 
             // drawing wears the wand (use it → lose it) — local pen only
             if (local && HasWand && SurfaceDrawer.IsPenActive)
@@ -74,13 +74,6 @@ namespace SpellyZombie
             }
 
             if (local) LocalCanDraw = HasWand && _ink.Ink > 0.5f;
-        }
-
-        bool IsLocal()
-        {
-            var piv = _pilot != null ? _pilot.CameraPivot : null;
-            var cam = piv != null ? piv.GetComponentInChildren<Camera>() : null;
-            return cam != null && cam.isActiveAndEnabled;
         }
 
         // NO UI BAR (Marko: "we don't need any UI — the ink is always visibly

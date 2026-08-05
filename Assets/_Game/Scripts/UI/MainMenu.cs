@@ -67,7 +67,7 @@ namespace SpellyZombie
             });
             MenuButton("Find Server", ToggleJoin);
             MenuButton("Settings", ToggleSettings, skin != null ? skin.ButtonGrey : null);
-            MenuButton("Quit Game", Quit, skin != null ? skin.ButtonRed : null);
+            MenuButton("Quit Game", GameMenu.QuitGame, skin != null ? skin.ButtonRed : null);
 
             _statusLabel = UIKit.Label(_ui, _status, 15, UIKit.Parchment, TextAnchor.UpperLeft);
             _statusLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
@@ -157,13 +157,5 @@ namespace SpellyZombie
             UIKit.Place((RectTransform)close.transform, new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(270f, 36f));
         }
 
-        static void Quit()
-        {
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-        }
     }
 }

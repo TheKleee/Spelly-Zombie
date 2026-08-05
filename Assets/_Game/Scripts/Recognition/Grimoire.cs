@@ -30,9 +30,12 @@ namespace SpellyZombie
                 _byOwner[owner] = set = new HashSet<RuneCardType>();
             set.Add(card);
             if (owner == LocalPlayerId)
+            {
                 foreach (RuneType r in System.Enum.GetValues(typeof(RuneType)))
                     if (r != RuneType.None && RuneLibrary.CardOf(r) == card)
                         SeedWriting(owner, r);
+                NetSync.PushUnlock(owner, (int)card, -1); // host answers IsUnlocked truthfully (netcode §1)
+            }
         }
 
         /// Unlock ONE rune. Its family is recorded too, so anything that asks
@@ -43,6 +46,52 @@ namespace SpellyZombie
                 _runesByOwner[owner] = set = new HashSet<RuneType>();
             set.Add(rune);
             Unlock(owner, RuneLibrary.CardOf(rune));
+            if (owner == LocalPlayerId)
+                NetSync.PushUnlock(owner, -1, (int)rune);
+        }
+
+        /// A remote machine's unlock arriving over the wire (netcode §1).
+        public static void UnlockRemote(int owner, int card, int rune)
+        {
+            if (rune >= 0)
+            {
+                if (!_runesByOwner.TryGetValue(owner, out var set))
+                    _runesByOwner[owner] = set = new HashSet<RuneType>();
+                set.Add((RuneType)rune);
+            }
+            if (card >= 0)
+            {
+                if (!_byOwner.TryGetValue(owner, out var cards))
+                    _byOwner[owner] = cards = new HashSet<RuneCardType>();
+                cards.Add((RuneCardType)card);
+            }
+        }
+
+        /// Connecting swaps the machine-local instance id for the stable FishNet
+        /// ClientId — carry everything already learned across (netcode §0).
+        public static void Rekey(int oldId, int newId)
+        {
+            if (oldId == newId) return;
+            if (_byOwner.TryGetValue(oldId, out var cards))
+            {
+                _byOwner.Remove(oldId);
+                _byOwner[newId] = cards;
+            }
+            if (_runesByOwner.TryGetValue(oldId, out var runes))
+            {
+                _runesByOwner.Remove(oldId);
+                _runesByOwner[newId] = runes;
+            }
+            _dropScratch.Clear();
+            foreach (var key in _writing.Keys)
+                if (key.owner == oldId) _dropScratch.Add(key);
+            foreach (var key in _dropScratch)
+            {
+                float v = _writing[key];
+                _writing.Remove(key);
+                _writing[(newId, key.rune)] = v;
+            }
+            _dropScratch.Clear();
         }
 
         // ---- WRITING LEVEL — Marko's three laws, verified with him:

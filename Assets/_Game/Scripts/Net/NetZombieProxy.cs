@@ -2,17 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// B4: a client-side stand-in for a HOST-simulated zombie. Looks like the
-    /// real thing (bean + head + googly eyes, kind colors/silhouettes) but has
-    /// no brain and no local physics — it lerps to snapshot positions. It IS a
-    /// valid spell target: particles heat it (Thermal), burn/impact damage
-    /// lands on its Damageable, and every point of damage is RELAYED to the
-    /// host, which applies it to the real zombie. The proxy never dies locally
-    /// — it vanishes when the host's snapshots stop listing it.
+    /// B4: client-side stand-in for a HOST-simulated zombie — no brain, lerps to snapshots, valid spell target, damage RELAYED to the host; vanishes when snapshots stop listing it.
     public class NetZombieProxy : MonoBehaviour
     {
-        public int NetId;
-
         Vector3 _targetPos;
         float _targetYaw;
 
@@ -21,17 +13,8 @@ namespace SpellyZombie
             var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             go.name = "NetZombie_" + kind;
             go.transform.position = pos;
-            go.transform.localScale =
-                kind == ZombieKind.Charger ? new Vector3(0.9f, 0.95f, 0.9f)
-                : kind == ZombieKind.Runner ? new Vector3(0.5f, 1.05f, 0.5f)
-                : kind == ZombieKind.Swarm ? new Vector3(0.42f, 0.5f, 0.42f)
-                : new Vector3(0.7f, 1f, 0.7f);
-            Color skin =
-                kind == ZombieKind.Charger ? new Color(0.6f, 0.45f, 0.3f)
-                : kind == ZombieKind.Scribbler ? new Color(0.5f, 0.35f, 0.72f)
-                : kind == ZombieKind.Runner ? new Color(0.72f, 0.68f, 0.35f)
-                : kind == ZombieKind.Swarm ? new Color(0.3f, 0.45f, 0.25f)
-                : new Color(0.45f, 0.62f, 0.35f);
+            go.transform.localScale = Zombie.KindScale(kind); // shared table — host/client looks can't drift
+            Color skin = Zombie.KindSkin(kind);
             go.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(skin, MoteShade.Opaque);
 
             var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -57,7 +40,6 @@ namespace SpellyZombie
             dmg.Destructible = false;  // never dies locally — snapshots decide
 
             var proxy = go.AddComponent<NetZombieProxy>();
-            proxy.NetId = id;
             proxy._targetPos = pos;
             dmg.OnDamaged += (amount, cause) => NetSync.SendZombieHit(id, amount);
             return proxy;

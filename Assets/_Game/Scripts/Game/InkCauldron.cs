@@ -3,15 +3,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE CAULDRON — the heart of the locked loop (Marko Jul 23/25): the pot
-    /// is your ink. Feed it white ores and they're DESTROYED into ink; the
-    /// fill is a visible white pool, and anyone standing close refills their
-    /// wand from it while it lasts. HEATING CUT (Jul 25): the pot always
-    /// accepts ore — put ore in, get ink, one rule.
-    ///
-    /// (Extracted from the retired cave generator Jul 28 — the cave is gone,
-    /// the economy is the game. Class name kept so every reference survives;
-    /// rename to InkCauldron in a calm moment, it touches saved scenes.)
+    /// THE CAULDRON (Marko Jul 23/25): ores are DESTROYED into ink, the pool is the meter, standing close refills the wand; HEATING CUT Jul 25 — put ore in, get ink, one rule.
+    /// (Class name kept — rename to InkCauldron in a calm moment, it touches saved scenes.)
     public class CaveCauldron : MonoBehaviour
     {
         public static readonly List<CaveCauldron> All = new List<CaveCauldron>();
@@ -87,11 +80,7 @@ namespace SpellyZombie
         {
             float dt = Time.deltaTime;
 
-            // THE LOBBY WELL NEVER RUNS DRY (Marko: "the central cauldron
-            // should have liquid ink ore in it and be automatically refilled
-            // in the lobby — there's ultimately infinite of it"). Everything
-            // else about the Lobby plays by the real rules; only the SOURCE
-            // is bottomless, so you can test without hunting for ore.
+            // THE LOBBY WELL NEVER RUNS DRY (Marko: "the central cauldron… automatically refilled in the lobby") — only the SOURCE is bottomless
             if (!RoundDirector.RunActive) Fill = Capacity;
 
             // the fire under the pot is pure flavour since the heating cut
@@ -124,10 +113,7 @@ namespace SpellyZombie
                 }
         }
 
-        /// A carried ore meets the pot: the ore DIES, the ink LIVES.
-        /// HEATING CUT (Marko Jul 25): the pot no longer has to be lit — that
-        /// was a fourth job on an object that already had three, and nothing
-        /// about it was clear from the get-go. ONE rule now: put ore in, get ink.
+        /// A carried ore meets the pot: the ore DIES, the ink LIVES. HEATING CUT (Marko Jul 25) — one rule: put ore in, get ink.
         public void FeedOre(InkRuneStone ore)
         {
             if (ore == null) return;
@@ -138,9 +124,7 @@ namespace SpellyZombie
         }
     }
 
-    /// A fuel stone: WHITE and glowing until it's fed to the cauldron, then
-    /// BLACK and dark (Marko's economy). PICKABLE (Marko's ruling): E takes
-    /// it, E drops it. A carried ore is a walking torch.
+    /// A fuel stone: WHITE and glowing until fed to the cauldron, then BLACK (Marko's economy); PICKABLE (Marko's ruling): E takes, E drops.
     public class InkRuneStone : MonoBehaviour
     {
         public bool Spent { get; private set; }
@@ -148,6 +132,11 @@ namespace SpellyZombie
         /// The ore the local player is holding (one pair of hands, one ore) —
         /// the cauldron feed will read this and call Blacken().
         public static InkRuneStone Carried { get; private set; }
+
+        /// Live registry — one manager scan replaces N per-stone Update pollers (WeaponSlots.FindPickup pattern).
+        public static readonly List<InkRuneStone> All = new List<InkRuneStone>();
+        void OnEnable() => All.Add(this);
+        void OnDisable() => All.Remove(this);
 
         Light _glow;
         Collider _col;
@@ -169,80 +158,66 @@ namespace SpellyZombie
             }
         }
 
-        void Update()
+        /// One scan for the whole pile (InkOreManager calls this once per frame).
+        public static void Tick()
         {
-            var kb = UnityEngine.InputSystem.Keyboard.current;
-            if (kb == null) return;
+            if (UnityEngine.InputSystem.Keyboard.current == null) return;
             var player = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             if (player == null) return;
 
-            if (Carried == this)
+            if (Carried != null) { Carried.TickCarried(UnityEngine.InputSystem.Keyboard.current, player); return; }
+
+            // AIM, NOT PROXIMITY (Marko's rule): you take the ore you're LOOKING at — most centred wins
+            InkRuneStone best = null;
+            float bestAim = 0f;
+            foreach (var s in All)
             {
-                // ride in front of the chest — visible in first and third person
-                var t = player.transform;
-                transform.position = t.position + t.forward * 0.65f + Vector3.up * 0.35f;
+                if (s == null) continue;
+                float aim = player.AimScore(s.transform.position, 2.2f, 0.9f, s.transform);
+                if (aim > bestAim) { bestAim = aim; best = s; }
+            }
+            if (best == null) return;
 
-                // near ANY cauldron, E means FEED, not drop (heating cut Jul 25 —
-                // the pot always accepts ore; put ore in, get ink)
-                CaveCauldron pot = null;
-                foreach (var c in CaveCauldron.All)
-                    if (c != null
-                        && (c.transform.position - t.position).sqrMagnitude < 2.6f * 2.6f)
-                    { pot = c; break; }
+            UIPrompt.Show("E", best.Spent ? "take the dead ore" : "take the ore",
+                new Color(0.95f, 0.95f, 0.8f));
+            if (!UnityEngine.InputSystem.Keyboard.current.eKey.wasPressedThisFrame || _actionFrame == Time.frameCount) return;
+            _actionFrame = Time.frameCount;
+            Carried = best;
+            if (best._col != null) best._col.enabled = false;
+            var rb = best.GetComponent<Rigidbody>();
+            if (rb != null) rb.isKinematic = true;
+        }
 
-                if (pot != null && !Spent)
-                {
-                    UIPrompt.Show("E", "feed the ore to the cauldron", new Color(1f, 0.85f, 0.4f));
-                    if (kb.eKey.wasPressedThisFrame && _actionFrame != Time.frameCount)
-                    {
-                        _actionFrame = Time.frameCount;
-                        pot.FeedOre(this);
-                        Drop(t.forward * 0.3f); // the blackened husk tumbles by the pot
-                    }
-                    return;
-                }
+        void TickCarried(UnityEngine.InputSystem.Keyboard kb, SimpleFPSController player)
+        {
+            // ride in front of the chest — visible in first and third person
+            var t = player.transform;
+            transform.position = t.position + t.forward * 0.65f + Vector3.up * 0.35f;
 
+            // near ANY cauldron, E means FEED, not drop (heating cut Jul 25)
+            CaveCauldron pot = null;
+            foreach (var c in CaveCauldron.All)
+                if (c != null
+                    && (c.transform.position - t.position).sqrMagnitude < 2.6f * 2.6f)
+                { pot = c; break; }
+
+            if (pot != null && !Spent)
+            {
+                UIPrompt.Show("E", "feed the ore to the cauldron", new Color(1f, 0.85f, 0.4f));
                 if (kb.eKey.wasPressedThisFrame && _actionFrame != Time.frameCount)
                 {
                     _actionFrame = Time.frameCount;
-                    Drop(t.forward);
+                    pot.FeedOre(this);
+                    Drop(t.forward * 0.3f); // the blackened husk tumbles by the pot
                 }
                 return;
             }
 
-            // AIM, NOT PROXIMITY (Marko's rule): you take the ore you're
-            // LOOKING at. Standing in a pile no longer grabs a random one —
-            // every stone scores how centred it is and the winner is resolved
-            // in LateUpdate, after all of them have had their say.
-            if (Carried == null)
+            if (kb.eKey.wasPressedThisFrame && _actionFrame != Time.frameCount)
             {
-                float aim = player.AimScore(transform.position, 2.2f, 0.9f, transform);
-                if (aim > 0f)
-                {
-                    if (_bidFrame != Time.frameCount) { _bidFrame = Time.frameCount; _bidScore = 0f; _bidWinner = null; }
-                    if (aim > _bidScore) { _bidScore = aim; _bidWinner = this; }
-                }
+                _actionFrame = Time.frameCount;
+                Drop(t.forward);
             }
-        }
-
-        static int _bidFrame;
-        static float _bidScore;
-        static InkRuneStone _bidWinner;
-
-        void LateUpdate()
-        {
-            if (_bidWinner != this || _bidFrame != Time.frameCount) return;
-            UIPrompt.Show("E", Spent ? "take the dead ore" : "take the ore",
-                new Color(0.95f, 0.95f, 0.8f));
-
-            var kb = UnityEngine.InputSystem.Keyboard.current;
-            if (kb == null || !kb.eKey.wasPressedThisFrame) return;
-            if (_actionFrame == Time.frameCount) return;
-            _actionFrame = Time.frameCount;
-            Carried = this;
-            if (_col != null) _col.enabled = false;
-            var rb = GetComponent<Rigidbody>();
-            if (rb != null) rb.isKinematic = true;
         }
 
         void Drop(Vector3 forward)
@@ -273,5 +248,19 @@ namespace SpellyZombie
             var r = GetComponentInChildren<Renderer>();
             if (r != null) r.sharedMaterial = MatterFX.Get(new Color(0.05f, 0.05f, 0.06f), MoteShade.Opaque);
         }
+    }
+
+    /// Ticks the single ore scan (self-bootstrapped like RoundDirector/HUD).
+    public class InkOreManager : MonoBehaviour
+    {
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void Bootstrap()
+        {
+            var go = new GameObject("InkOreManager");
+            DontDestroyOnLoad(go);
+            go.AddComponent<InkOreManager>();
+        }
+
+        void Update() => InkRuneStone.Tick();
     }
 }

@@ -95,6 +95,7 @@ namespace SpellyZombie
             z.transform.localScale = Vector3.one * scale;
 
             var demon = z.gameObject.AddComponent<Demon>();
+            z.IsDemon = true; // RoundDirector's countable-zombie flag
             demon._life = 20f + 8f * scale; // big demons rampage longer
             demon._rb = z.GetComponent<Rigidbody>();
             if (demon._rb != null)

@@ -48,14 +48,7 @@ namespace SpellyZombie
             root.AddComponent<SurfaceMaterialTag>().Material = SurfaceMaterialType.Metal;
             root.AddComponent<PersistentInkSurface>(); // engraved ink is forever
 
-            var grip = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            grip.name = "Grip";
-            grip.transform.SetParent(root.transform, false);
-            grip.transform.localPosition = new Vector3(0f, -0.09f, -0.12f);
-            grip.transform.localRotation = Quaternion.Euler(65f, 0f, 0f);
-            grip.transform.localScale = new Vector3(0.05f, 0.1f, 0.05f);
-            grip.GetComponent<Renderer>().sharedMaterial =
-                MatterFX.Get(new Color(0.3f, 0.2f, 0.14f), MoteShade.Opaque);
+            BuildGripAndBubble(root, new Color(0.3f, 0.2f, 0.14f));
 
             // the magazine strip: one long drawable plate, four slots along it
             var strip = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -97,10 +90,6 @@ namespace SpellyZombie
             bridge.GetComponent<Renderer>().sharedMaterial =
                 MatterFX.Get(new Color(0.85f, 0.5f, 0.25f), MoteShade.Opaque); // copper — THE moving bit
             bridge.AddComponent<PersistentInkSurface>();
-
-            var bubble = root.AddComponent<SphereCollider>();
-            bubble.isTrigger = true;
-            bubble.radius = 0.9f;
 
             var weapon = root.AddComponent<RuneChamberWeapon>();
             weapon._strip = strip.transform;

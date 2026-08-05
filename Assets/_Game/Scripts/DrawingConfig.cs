@@ -13,7 +13,7 @@ namespace SpellyZombie
     ///   {Application.persistentDataPath}/sz_tuning.json
     /// with no recompile — ship a balance file, tweak the demo live, or let a
     /// Steam Workshop tuning mod reach these. Format (only list what you change):
-    ///   {"entries":[{"key":"InkMax","value":120},{"key":"HeatPerSecond","value":90}]}
+    ///   {"entries":[{"key":"InkMax","value":120},{"key":"ParticleLife","value":6}]}
     /// Keys are the field names below. Fields are `static readonly` (not `const`)
     /// so the overlay can reach them AND Harmony can patch them.
     public static class DrawingConfig
@@ -101,31 +101,17 @@ namespace SpellyZombie
         /// that one is in HAND units (two pen tips aimed at the same spot), not
         /// ink units, and it is measured node-to-node by construction.
         public static readonly float InkTouchDistance = O(nameof(InkTouchDistance), 0.014f);
-        // RETIRED Aug 1, same ruling that killed MaxLoopGapFraction: self-closure
-        // used to be a FRACTION of the loop's own length, clamped to [2cm, 6cm].
-        // Kept as fields only so an existing sz_tuning.json doesn't break — see
-        // SelfCloseThreshold at the bottom of this file for what replaced them.
-        public static readonly float SelfCloseFraction = O(nameof(SelfCloseFraction), 0.05f);// UNUSED
-        public static readonly float SelfCloseMin = O(nameof(SelfCloseMin), 0.02f);  // UNUSED
-        public static readonly float SelfCloseMax = O(nameof(SelfCloseMax), 0.06f);  // UNUSED
+        // SelfCloseFraction/Min/Max DELETED — retired Aug 1 (fraction-of-loop
+        // closure made SIZE matter, forbidden); SelfCloseThreshold below
+        // replaced them. LoadOverlay ignores stale sz_tuning.json keys.
         public static readonly float BreakDistance = O(nameof(BreakDistance), 0.12f); // an ACTIVE seal opens when a gap grows this far past its drawn length
         public static readonly int MinLoopNodes = Oi(nameof(MinLoopNodes), 8);
         public static readonly float MinLoopPerimeter = O(nameof(MinLoopPerimeter), 0.18f); // palm-sized seals are legal (~6cm triangle)
         public static readonly float MinLoopBulge = O(nameof(MinLoopBulge), 0.06f);  // a loop must enclose something — rejects paper-thin slivers
         public static readonly float GlyphCellMax = O(nameof(GlyphCellMax), 0.13f);  // a self-crossing CELL smaller than this is a rune's inner point (star), not a seal — bigger loops always close
-        // MaxLoopGapFraction is RETIRED (Aug 1). It was a SECOND, RELATIVE gap
-        // test stacked on top of the per-junction CloseThreshold, and being
-        // relative it made SIZE and PEN-LIFT COUNT decide whether a shape is a
-        // seal — both of which Marko's standing rules forbid ("a seal drawn in 5
-        // strokes must behave exactly like the same seal drawn in one sweep",
-        // "size must never matter for shape decisions"). Worked example of the
-        // bug: perimeter × 0.15 ÷ junctions, so a 30cm square allowed 1.1cm per
-        // corner at 4 strokes but only 0.56cm at 8 strokes — under one ink width,
-        // i.e. an honest touch was refused for having been drawn carefully. Every
-        // junction is ALREADY capped at CloseThreshold, which is the absolute,
-        // ink-width-sized law; that cap is the whole test now.
-        // Kept as a field so an existing sz_tuning.json entry doesn't break.
-        public static readonly float MaxLoopGapFraction = O(nameof(MaxLoopGapFraction), 0.15f); // UNUSED — see above
+        // MaxLoopGapFraction DELETED — retired Aug 1: a relative gap test let
+        // SIZE and PEN-LIFT COUNT decide seal-ness (both forbidden by Marko's
+        // standing rules); the per-junction CloseThreshold is the whole law.
         public static readonly int MaxLoopStrokes = Oi(nameof(MaxLoopStrokes), 12);  // DFS depth cap when chaining strokes into one seal — BODY loops split per limb (a circle over crossed arms is 6-8 pieces), so 6 silently refused honest body seals
 
         // ---- Seal shape -> duration (Marko Jul 22: "1 second per side with a
@@ -181,22 +167,13 @@ namespace SpellyZombie
         // segment math and visually-touching barbs orphan again.
         public static readonly float RuneTouchDistance = O(nameof(RuneTouchDistance), 0.014f); // = InkTouchDistance: strokes whose INK MEETS read as ONE drawing. Same law as seals — his rule is one rule.
         public static readonly float BodyCastThrowSpeed = O(nameof(BodyCastThrowSpeed), 7f); // body/weapon seals THROW their particles outward at this speed (Marko: on-skin births activated instantly — thrown, siblings fly together and combine mid-air)
-        // ---- the soft body's nerves (Marko Jul 29: "they are extremely
-        // active... too bouncy, deforming everything left and right", and
-        // "the bones should be repelled a bit by each other, not passing
-        // through, just like jelly") ----
-        public static readonly float BlobWobble = O(nameof(BlobWobble), 0.018f);      // how far the idle breath pushes a bone (fraction of its reach) — barely there
-        public static readonly float BlobWobbleSpeed = O(nameof(BlobWobbleSpeed), 0.18f); // how FAST that breath runs — low is calm
-        public static readonly float BlobFollow = O(nameof(BlobFollow), 2.2f);        // how eagerly a bone chases its target (low = heavy, syrupy)
-        public static readonly float BlobBoneRepel = O(nameof(BlobBoneRepel), 0.8f);  // bones hold this fraction of their rest spacing — the jelly that stops the mesh folding into itself
-        public static readonly float BlobContainerFit = O(nameof(BlobContainerFit), 1f); // 0 = ignore walls, 1 = bones stay inside the world (a blob poured in a pot takes its shape)
-
-        // ---- liquid: pools on the floor, wobbles in your hands (Marko Jul 29:
-        // "while on the floor it should slowly become disk-like but when
-        // grabbed it should deform") ----
-        public static readonly float LiquidPoolSeconds = O(nameof(LiquidPoolSeconds), 2.5f); // how SLOWLY a resting puddle flattens out
-        public static readonly float LiquidPoolSag = O(nameof(LiquidPoolSag), 0.45f);        // how far it settles (0 = keeps its ball, 0.5 = nearly flat)
-        public static readonly float LiquidPoolSpread = O(nameof(LiquidPoolSpread), 0.6f);   // how much it widens as it sinks
+        // (old zone-field Blob*/LiquidPool* knobs DELETED; overlay ignores stale keys.)
+        // ---- soft body jiggle bones (Marko: "bones drive the shape and have their
+        // own colliders to keep the distance from each other and the ground") ----
+        public static readonly float BlobBoneSpring = O(nameof(BlobBoneSpring), 220f);  // accel per meter off rest — shape stiffness
+        public static readonly float BlobBoneStray = O(nameof(BlobBoneStray), 0.9f);    // leash: a bone may stray at most this ×its own reach from rest — stops bones crossing and locking ("they entangle when dropped")
+        public static readonly float BlobBoneDamping = O(nameof(BlobBoneDamping), 9f);  // wobble kill — lower = jigglier
+        public static readonly float BlobBoneRadius = O(nameof(BlobBoneRadius), 0.08f); // bone collider size in blob units — their distance-keeping
         // ---- gas: a CLOUD that covers ground, not a balloon (Marko Jul 29) ----
         public static readonly float GasRiseSpeed = O(nameof(GasRiseSpeed), 0.15f);     // terminal climb — barely lifts, so it hangs where you made it
         public static readonly float GasSpreadMax = O(nameof(GasSpreadMax), 5f);        // final cloud size, in multiples of its birth size. Was 2.6 — Marko Aug 4: the vapor is "in too small of an area to ever hit anyone... much larger, and it should grow in time". 7 once read as "ridiculous", but that was a fast balloon-pop; at the slow bloom below, 5× is a hazard that CREEPS over a room.
@@ -208,14 +185,12 @@ namespace SpellyZombie
         public static readonly float GoodRuneScore = O(nameof(GoodRuneScore), 0.85f); // at/above this the match counts as full strength. Also moved with the band (Aug 1): every honest read measured 0.89 or better, so full strength is the normal outcome and the sloppy-is-weaker gradient only bites between here and MinRuneScore
         public static readonly float MinSizePower = O(nameof(MinSizePower), 0.30f);  // a tiny rune in a big seal still does this fraction of its effect
 
-        // Legacy glyph-join knobs still referenced by Seal.Cast's Segment call;
-        // actual grouping is RuneTouchDistance union-find everywhere now.
-        public static readonly float GlyphJoinBase = O(nameof(GlyphJoinBase), 0.10f);
-        public static readonly float GlyphJoinSizeFactor = O(nameof(GlyphJoinSizeFactor), 0.55f);
+        // GlyphJoinBase/GlyphJoinSizeFactor DELETED — retired with
+        // RuneGlyph.Segment's dead parameters; grouping is the RuneTouchDistance
+        // union-find everywhere now. LoadOverlay ignores stale sz_tuning.json keys.
 
         // ---- Spell effects (rune zones) ----
         public static readonly float ZoneRadiusScale = O(nameof(ZoneRadiusScale), 1.6f); // rune zone radius = drawn rune size × this
-        public static readonly float HeatPerSecond = O(nameof(HeatPerSecond), 150f);   // °C/s of heat a full-strength Heat rune delivers
         public static readonly float BurnThreshold = O(nameof(BurnThreshold), 70f);    // above this °C an object takes burn damage
         // freeze point MIRRORS the burn point around ambient 18° (Marko: "it's
         // just a game") — freezing something costs the same number of frost
@@ -283,10 +258,8 @@ namespace SpellyZombie
         public static readonly float ReviveSeconds = O(nameof(ReviveSeconds), 3f);
         public static readonly float ReviveRange = O(nameof(ReviveRange), 2.5f);
 
-        // ---- Sticky (real strength) ----
-        public static readonly float StickyGripDamping = O(nameof(StickyGripDamping), 16f); // linear damping a Sticky-up zone slams on
-        public static readonly float StickyPressForce = O(nameof(StickyPressForce), 12f);   // force pressing objects onto the surface (clinging)
-        public static readonly float SlickGravityBoost = O(nameof(SlickGravityBoost), 0.4f); // Sticky-down adds this × gravity — things SLIP faster
+        // (StickyGripDamping/StickyPressForce/SlickGravityBoost DELETED — the
+        // retired sticky zone fields; StickyBonds owns the live ladder.)
 
         // ---- Luminance ----
         // plain light no longer damages — light's damage is EARNED through the
@@ -311,14 +284,13 @@ namespace SpellyZombie
         public static readonly float ZoneEmitPeriod = O(nameof(ZoneEmitPeriod), 3.5f); // seconds between a zone's emissions (ONE particle per rune — law 10)
                                                                                        // (State conjures ONCE per activation instead)
         public static readonly int ParticleCap = Oi(nameof(ParticleCap), 120);        // world particle budget — oldest dies first
-        public static readonly float ParticleLife = O(nameof(ParticleLife), 4.5f);    // seconds a particle lives (shadows get double)
+        public static readonly float ParticleLife = O(nameof(ParticleLife), 4.5f);    // seconds a particle lives (flames 2.5×, lvl2+ 1.5×)
 
         // ---- Pressure & explosion (density confined by rigid walls) ----
         public static readonly float PressureBuildRate = O(nameof(PressureBuildRate), 0.55f); // pressure/sec per unit gas intensity when fully contained
         public static readonly float ExplodeThreshold = O(nameof(ExplodeThreshold), 1f);      // contained pressure that triggers the burst
         public static readonly float ContainRange = O(nameof(ContainRange), 1.7f);            // a rigid surface within this counts as containing a side
         public static readonly float HeatPressureFactor = O(nameof(HeatPressureFactor), 0.6f); // Heat adds to the gas that pressurizes with Density
-        public static readonly float ExplodeImpulse = O(nameof(ExplodeImpulse), 11f);         // burst impulse on nearby bodies
         public static readonly float ExplodeRadius = O(nameof(ExplodeRadius), 3.8f);
         public static readonly int ExplodeParticles = Oi(nameof(ExplodeParticles), 48);
 

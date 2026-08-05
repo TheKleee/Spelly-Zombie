@@ -6,8 +6,7 @@ namespace SpellyZombie
     public enum MemKind { Player, Danger, MadAt, Strategy, Stare }
     public enum StrategyKind { Surround, Conga, Brave, Oops }
 
-    /// THE LIST OF MEMORABLE EVENTS — the only things that can enter a zombie
-    /// head — with how long each sticks (rolled per zombie, per event).
+    /// The only events that can enter a zombie head; duration rolled per zombie.
     public enum MemEvent
     {
         SawPlayer,      // 4–10s  spotted you with its own googly eyes
@@ -20,22 +19,7 @@ namespace SpellyZombie
         Grudge,         // 5–12s  got knocked over / hit — personal now
     }
 
-    /// A zombie's whole mind: a handful of memory slots with random forget-
-    /// timers. New memories evict the oldest (FIFO). CAPACITY IS INTELLIGENCE:
-    ///   Charger   → 1 slot  (whatever happened last IS its whole world —
-    ///               any new memorable event overrides the current one)
-    ///   Walker    → 3 slots
-    ///   Scribbler → 5 slots (the horde's intellectual)
-    /// Everything it does is a reading of what's currently in those slots —
-    /// so behavior is legible, dumb, and hilarious:
-    ///   sees you        → Player slot (chase) … until it forgets mid-chase
-    ///   loud bang near  → Danger slot (flee!) … returns when it forgets why
-    ///   big bang far    → Stare slot (stops to watch, wowed)
-    ///   bumps a buddy   → gossip: pass a memory on, or invent a "strategy"
-    ///   hit hard by one → MadAt slot (zombie brawl)
-    /// Mumbles are the tell: each state has a call players learn to read.
-    /// Perception goes THROUGH the googly eyes — while staring at something
-    /// shiny (fresh ink!) it does not notice you. Drawing is a decoy.
+    /// FIFO memory slots with random forget-timers; capacity IS intelligence (Charger 1 / Walker 3 / Scribbler 5); perception goes through the googly eyes, fresh ink is a decoy.
     public class ZombieBrain : MonoBehaviour
     {
         public struct Memory
@@ -45,7 +29,6 @@ namespace SpellyZombie
             public Transform Who;
             public StrategyKind Strategy;
             public float Until;
-            public float Born;
             public bool Approach; // curious stares: shuffle TOWARD it (ink bait!)
         }
 
@@ -78,12 +61,8 @@ namespace SpellyZombie
         public Vector3 MoveDir;
         public float SpeedScale;       // 0 = stand
         public Transform AttackTarget; // player or a zombie it's mad at
-        public bool WantsGossip;
 
-        /// Ink is flowing ON (or right next to) this zombie: total bliss. It
-        /// stops completely — like a dog getting scratched. This is what makes
-        /// drawing runes on zombies possible, and pinning one by doodling on it
-        /// a legitimate tactic.
+        /// Ink flowing on/next to this zombie = bliss, full stop — drawing on zombies is a legit pinning tactic.
         public bool Tranced =>
             WorldEvents.InkIsFresh &&
             Vector3.Distance(transform.position, WorldEvents.LatestInkPos) < 1.9f;
@@ -108,13 +87,7 @@ namespace SpellyZombie
 
         void OnDestroy() => AllBrains.Remove(this);
 
-        /// Marko's rule: zombies fear dangerous particles THEY CAN SEE.
-        /// Visibility is the particle's effective luminance — darkness hides
-        /// danger (the invisible-flame trap), a blinded zombie fears nothing,
-        /// and something behind it goes unnoticed. Called by SpellParticle.
-        /// Set on demons: nothing scares them — they ARE the scary thing.
-        /// (A grand demon's own calamities were writing Danger memories at its
-        /// own feet, and Decide()'s flee-first priority froze the boss solid.)
+        /// Demons: nothing scares them (their own calamities froze the boss solid otherwise).
         public bool Fearless;
 
         public static void ScareVisible(Vector3 pos, float radius, float luminance)
@@ -161,7 +134,7 @@ namespace SpellyZombie
             Memories.Add(new Memory
             {
                 Kind = kind, Where = where, Who = who, Strategy = strat,
-                Until = Time.time + Random.Range(minDur, maxDur), Born = Time.time
+                Until = Time.time + Random.Range(minDur, maxDur)
             });
         }
 
@@ -410,9 +383,7 @@ namespace SpellyZombie
                     Quaternion.LookRotation(to.normalized), Time.deltaTime * 3f);
         }
 
-        /// Roam waypoint-to-waypoint. Walls don't end the walk: hitting one (or
-        /// making no progress) immediately picks a new destination, and arriving
-        /// earns a short dazed pause before the next leg.
+        /// Roam waypoint-to-waypoint; walls/no-progress pick a new destination, arrival earns a dazed pause.
         void Patrol()
         {
             float dt = Time.deltaTime;
@@ -472,8 +443,7 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------------------ social --
-        /// Something (a charger, a hard bump, a spell) gave this zombie a reason
-        /// to hate someone. Zombies hold grudges badly but sincerely.
+        /// Zombies hold grudges badly but sincerely.
         public void GetMadAt(Transform offender)
         {
             if (offender == null) return;
@@ -505,9 +475,7 @@ namespace SpellyZombie
             _mumble.text = "";
         }
 
-        /// Hard zombie-on-zombie contact can spark a brawl (both roll for rage);
-        /// bumping a WALL while patrolling immediately picks a new destination
-        /// (floor contacts — mostly-vertical normals — don't count).
+        /// Hard zombie-on-zombie contact can spark a brawl; wall bumps re-plan patrol (floor normals don't count).
         void OnCollisionEnter(Collision col)
         {
             var other = col.collider.GetComponentInParent<ZombieBrain>();

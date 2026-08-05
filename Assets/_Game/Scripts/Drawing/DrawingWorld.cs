@@ -39,7 +39,8 @@ namespace SpellyZombie
         static readonly Collider[] _limbHits = new Collider[64];          // limb-intrusion overlap buffer
         static readonly HashSet<Transform> _ownBones = new HashSet<Transform>();  // the loop's own carrier bones
         static readonly HashSet<Transform> _insideNow = new HashSet<Transform>(); // capsules inside the loop this tick
-        readonly List<string> _events = new List<string>();
+        static readonly List<DrawNode> _loopNodesBuf = new List<DrawNode>();      // spent-loop census buffer (8 Hz — no per-tick lists)
+        static readonly List<Vector3> _loopPts = new List<Vector3>();             // spent-loop point buffer
         float _detectTimer;
         float _evapTimer;
         readonly List<Stroke> _eligibleCache = new List<Stroke>();
@@ -70,13 +71,9 @@ namespace SpellyZombie
             Strokes.Add(stroke);
         }
 
-        /// Pen lifted: the stroke is just ink now. No grouping, no classification,
-        /// no timers — runes are read when a seal closes around them.
-        /// `silent` = this ink is being REPAINTED, not drawn by a player.
-        /// The Rune Studio walls repaint every saved sample at load, and each
-        /// one was running a full-library recognition sweep, a network send and
-        /// an ink claim — hundreds of them, measured at ~150ms EACH. None of it
-        /// means anything for a picture on a wall.
+        /// Pen lifted: the stroke is just ink now — runes are read when a seal
+        /// closes around them. `silent` = repainted wall ink: skip recognition,
+        /// net-send and claim (each cost ~150ms per Rune Studio sample at load).
         public void CompleteStroke(Stroke s, bool allowCloseOntoInk = true, bool silent = false)
         {
             if (s.Nodes.Count < DrawingConfig.MinStrokeNodes)
@@ -110,7 +107,10 @@ namespace SpellyZombie
             // closure — but rune-draft strokes never close (they're becoming a
             // rune, not a seal). SELF first: a circle whose ends also graze a
             // Y must seal on ITSELF, not through the Y (glyph-splitting).
-            if (allowCloseOntoInk && (TryCloseOntoSelf(s) || TryCloseOntoInk(s))) return;
+            // CLIENTS close only BODY loops — the host performs the identical
+            // world closure when it replays the replicated stroke (netcode §2).
+            if (allowCloseOntoInk && (NetGame.IsAuthority || s.Persistent)
+                && (TryCloseOntoSelf(s) || TryCloseOntoInk(s))) return;
 
             LastInk = s;
             PreviewRune(s);
@@ -127,27 +127,13 @@ namespace SpellyZombie
             if (seed.OwnerId != Grimoire.LocalPlayerId) return; // your pen only
             if (seed.Hidden()) return;
 
+            // the SHARED flood (seal-truth filters) — the old inline copy read
+            // SealResidue ink a real seal never reads, so the label could lie
             var members = new List<Stroke> { seed };
-            bool grew = true;
-            while (grew)
-            {
-                grew = false;
-                foreach (var s in Strokes)
-                {
-                    if (!s.Alive || s.State != StrokeState.Open || s.Hidden()
-                        || members.Contains(s)) continue;
-                    foreach (var m in members)
-                        if (RuneGlyph.InkTouches(s, m, DrawingConfig.RuneTouchDistance))
-                        {
-                            members.Add(s);
-                            grew = true;
-                            break;
-                        }
-                    if (grew) break;
-                }
-            }
+            RuneGlyph.GrowTouchingCluster(members, Strokes);
 
-            var (type, score) = RuneLibrary.Classify(seed.OwnerId, RuneGlyph.RawStrokesOf(members));
+            // guarded read (cache + foreign-ink fizzle) — same verdict a seal gets (netcode §1)
+            var (type, score) = RuneGlyph.ReadVerdict(members, seed.OwnerId);
             string label;
             Color color;
             if (type == RuneType.None || score < DrawingConfig.MinRuneScore)
@@ -157,7 +143,7 @@ namespace SpellyZombie
             }
             else
             {
-                label = RuneLibrary.ShortName(type);
+                label = RuneLibrary.Icon(type); // emoji, never words (Marko)
                 color = score >= DrawingConfig.GoodRuneScore
                     ? new Color(0.45f, 1f, 0.6f)   // clean — fires at full strength
                     : new Color(1f, 0.85f, 0.4f);  // readable but sloppy
@@ -197,30 +183,8 @@ namespace SpellyZombie
             if (bestStroke != null) PreviewRune(bestStroke);
         }
 
-        /// For F-key template recording: the spatial ink cluster around the most
-        /// recently drawn stroke, flattened for the recognizer.
-        public List<List<Vector2>> BuildRecordingGlyph(out int strokeCount)
-        {
-            strokeCount = 0;
-            if (LastInk == null || !LastInk.Alive || LastInk.State != StrokeState.Open) return null;
-
-            var open = new List<Stroke>();
-            foreach (var s in Strokes)
-                if (s.Alive && s.State == StrokeState.Open && s.Nodes.Count >= 3 && s.ChainIntact()
-                    && !s.Hidden())
-                    open.Add(s);
-
-            // SAME grouping rule as live recognition (RuneTouchDistance union-
-            // find) — recording with a looser join than reading meant templates
-            // captured neighbour ink the reader would never include
-            foreach (var glyph in RuneGlyph.Cluster(open, DrawingConfig.RuneTouchDistance, 0f))
-            {
-                if (!glyph.Members.Contains(LastInk)) continue;
-                strokeCount = glyph.Members.Count;
-                return glyph.BuildRawStrokes();
-            }
-            return null;
-        }
+        // (BuildRecordingGlyph DELETED — it fed the F-key recording, which was
+        // REMOVED by ruling; RuneWall.Snapshot clusters directly.)
 
         /// The design rule "nodes detect proximity to nodes": a stroke whose BOTH
         /// ends land on the same piece of existing ink closes a loop THROUGH it —
@@ -238,6 +202,8 @@ namespace SpellyZombie
             foreach (var a in Strokes)
             {
                 if (a == b || !a.Alive || a.State != StrokeState.Open) continue;
+                // clients close BODY loops only — never split a world stroke the host owns (netcode §2)
+                if (!NetGame.IsAuthority && !a.Persistent) continue;
                 if (a.Nodes.Count < 3 || !a.ChainIntact() || a.Hidden()) continue;
 
                 int i = NearestNodeIndex(a, bLast.transform.position, DrawingConfig.CloseThreshold);
@@ -254,12 +220,8 @@ namespace SpellyZombie
                 int loopNodes = (hi - lo + 1) + b.Nodes.Count;
                 if (loopNodes < DrawingConfig.MinLoopNodes || loopLength < DrawingConfig.MinLoopPerimeter) continue;
 
-                // (The relative gap budget that used to sit here is DELETED, same
-                // reasoning as SealDetector.Dfs: both junctions are ALREADY
-                // capped at CloseThreshold by the NearestNodeIndex calls above,
-                // and stacking a perimeter-relative test on top made the SIZE of
-                // the drawing decide whether a touch counts. His law is absolute
-                // — touching is about ink width, not about how big you drew it.)
+                // (relative gap budget DELETED — size must never decide a touch,
+                // same ruling as SealDetector.Dfs; CloseThreshold above is the law)
 
                 // the loop must enclose something — retracing along a line is not a seal
                 Vector3 junctionA = a.Nodes[k].transform.position;
@@ -376,7 +338,7 @@ namespace SpellyZombie
         /// other way still forms a continuous ring.
         Stroke AdoptPiece(Stroke src, int from, int to, bool allowTiny, bool reverse = false)
         {
-            var piece = new Stroke { BasisRight = src.BasisRight, BasisUp = src.BasisUp, OwnerId = src.OwnerId };
+            var piece = new Stroke { BasisRight = src.BasisRight, BasisUp = src.BasisUp, OwnerId = src.OwnerId, NetId = src.NetId };
             if (reverse)
             {
                 for (int idx = Mathf.Min(to, src.Nodes.Count - 1); idx >= from; idx--)
@@ -397,6 +359,25 @@ namespace SpellyZombie
                     piece.AddNode(n);
                 }
             }
+            return FinishPiece(piece, allowTiny);
+        }
+
+        /// Same adoption from an explicit node list (erase-repair fragments,
+        /// the mid-draw tail split) — ONE adoption path, not three copies.
+        public Stroke AdoptPiece(Stroke src, List<DrawNode> nodes, bool allowTiny)
+        {
+            var piece = new Stroke { BasisRight = src.BasisRight, BasisUp = src.BasisUp, OwnerId = src.OwnerId, NetId = src.NetId };
+            foreach (var n in nodes)
+            {
+                if (n == null) continue;
+                n.SetStroke(piece);
+                piece.AddNode(n);
+            }
+            return FinishPiece(piece, allowTiny);
+        }
+
+        Stroke FinishPiece(Stroke piece, bool allowTiny)
+        {
             if (piece.Nodes.Count == 0) return null;
             if (!allowTiny && piece.Nodes.Count < DrawingConfig.MinStrokeNodes)
             {
@@ -419,6 +400,8 @@ namespace SpellyZombie
             s.CachePersistence();
             s.ComputeRawShape(); // kept for debugging/inspection, not classified
             NetSync.OnLocalStrokeFinished(s); // friends' worlds close this loop too
+            // client world loop: the HOST closes it from the replicated stroke (netcode §2)
+            if (!NetGame.IsAuthority && !s.Persistent) return;
             CreateSeal(new List<SealDetector.LoopEntry> { new SealDetector.LoopEntry(s, true) }, "closed while drawing");
         }
 
@@ -432,15 +415,8 @@ namespace SpellyZombie
             foreach (var s in Strokes)
                 if (s.Alive) s.UpdateLine();
 
-            // OLD INK EVAPORATES (Marko, Aug 5: "the longer the game lasts
-            // the more it lags — old ink that's standing there unused should
-            // evaporate after 1 minute"). Every living stroke costs the
-            // detector, the touch tests and a renderer forever, so a session
-            // slowly drowned in its own scribbles. World ink that just lies
-            // there thins out and vanishes after InkEvaporateSeconds.
-            // EXEMPT: body/weapon ink (Persistent), ink being drawn, and ink
-            // that is part of a seal (active or spent-awaiting-rearm) — only
-            // State == Open strokes are loose ink.
+            // OLD INK EVAPORATES after a minute (Marko Aug 5: unused ink lags the game).
+            // EXEMPT: Persistent body/weapon ink, ink being drawn, seal ink — only Open strokes are loose.
             _evapTimer -= Time.deltaTime;
             if (_evapTimer <= 0f)
             {
@@ -463,10 +439,8 @@ namespace SpellyZombie
                 if (!ActiveSeals[i].Tick(Time.deltaTime))
                     ActiveSeals.RemoveAt(i);
 
-            // (the handwriting flush timer lived here; RuneLibrary.FlushSaves
-            // was dead — nothing ever marked the save dirty, and quiet in-game
-            // learning is round-only by ruling, so there was never anything to
-            // defer. Rune Studio writes on the spot.)
+            // (the handwriting flush timer is gone — quiet learning is round-only
+            // by ruling; Rune Studio writes on the spot)
 
             // periodic scans — loop detection, spent re-arming, erase repair, ink budget
             _detectTimer -= Time.deltaTime;
@@ -498,6 +472,7 @@ namespace SpellyZombie
                 if (s.Nodes.Count < 3) continue;
                 if (!s.ChainIntact()) continue;
                 if (s.Hidden()) continue; // stowed-weapon ink doesn't exist right now
+                if (!NetGame.IsAuthority && !s.Persistent) continue; // clients scan BODY ink only (netcode §2)
                 _eligibleCache.Add(s);
             }
             if (_eligibleCache.Count == 0) return;
@@ -543,7 +518,7 @@ namespace SpellyZombie
         /// strokes. The book never conjures a loop that isn't there — it only
         /// looks again, at exactly the ink you pointed at. True = a seal
         /// formed and ACTIVATED through the normal casting path.
-        public bool TryDeclareSeal(List<Stroke> cluster)
+        public bool TryDeclareSeal(List<Stroke> cluster, bool allowMirror = true)
         {
             if (cluster == null) return false;
             var eligible = new List<Stroke>();
@@ -572,28 +547,27 @@ namespace SpellyZombie
                 return true;
             }
 
-            // THE BOOK MUST TRY EVERYTHING THE PEN TRIES, FIRST. CompleteStroke
-            // runs TryCloseOntoSelf / TryCloseOntoInk at pen-up; this path ran
-            // only FindLoop + CrossingFinder, so a drawing the pen itself would
-            // have closed fell straight through to the mirror — which then
-            // duplicated the whole drawing instead of closing it.
+            // the book tries everything the pen tries FIRST — else a pen-closable
+            // drawing fell through to the mirror and got duplicated, not closed
             foreach (var s in eligible)
             {
                 if (!s.Alive || s.State != StrokeState.Open) continue;
                 if (TryCloseOntoSelf(s) || TryCloseOntoInk(s)) return true;
             }
 
+            // a remote intent stops here: the mirror costs the DRAWER's ink,
+            // which the host can't spend for them (netcode §2)
+            if (!allowMirror)
+            {
+                LogEvent(SealDetector.LastNearMiss ?? CrossingFinder.LastNearMiss
+                    ?? "no closed path — the line must come back around");
+                return false;
+            }
+
             // THE BOOK COMPLETES THE LOOP (Marko: "force launch a seal that
-            // redraws it flipped to the other side making a complete seal"):
-            // an OPEN shape gets its mirror image drawn across the line
-            // between its two farthest endpoints — original and reflection
-            // kiss at both ends, and the detector runs again on a drawing
-            // that is now genuinely closed.
-            //
-            // NEVER ON A BODY (his ruling: "completing a seal on the body
-            // should not be allowed — it's not good at it"): a flat mirror
-            // can't follow limbs, so it copied runes and floated off the
-            // skin. Body seals close naturally instead (breathing junctions).
+            // redraws it flipped to the other side making a complete seal") —
+            // but NEVER ON A BODY (his ruling: "completing a seal on the body
+            // should not be allowed"; a flat mirror can't follow limbs).
             foreach (var s in eligible)
                 if (s.Persistent)
                 {
@@ -601,16 +575,9 @@ namespace SpellyZombie
                     return false;
                 }
 
-            // THE COMPLETION COSTS INK (his rule: "same ink cost as drawing
-            // the half of the seal — you can't do it if you don't have
-            // enough, it should fizzle"): the reflection is as long as what
-            // you drew, and it's paid for exactly like drawing it.
-            // A RUNE IS CONTENT, NEVER A MOUTH TO BE MIRRORED. Mirroring the
-            // whole cluster copied his runes as well as the boundary, and worse:
-            // the mirror AXIS is "the two farthest endpoints", so a rune's
-            // endpoint could define the line to reflect across — throwing the
-            // reflection somewhere that closes nothing, charging him ink for the
-            // duplicate, and leaving mirrored nodes to erase by hand.
+            // completion costs ink (his rule: "same ink cost as drawing the half
+            // of the seal… it should fizzle"), and only BOUNDARY is mirrored —
+            // a rune is content, never a mouth (mirroring runes misplaced the axis)
             var mouth = BoundaryCandidates(eligible);
 
             float mirrorLen = 0f;
@@ -624,11 +591,7 @@ namespace SpellyZombie
                 return false;
             }
             var made = MirrorComplete(mouth);
-            // NOTHING WAS DRAWN, SO NOTHING IS OWED. MirrorComplete walks away
-            // empty when the mouth has fewer than two endpoints or is under 2cm
-            // wide, and the ink had already been deducted — he paid full price
-            // for a reflection that never appeared, and the only feedback was
-            // "no closed path". Pay for ink or get the ink back.
+            // nothing drawn = nothing owed: refund when the mirror produced no ink
             if (made.Count == 0 && payerInk != null) payerInk.Award(mirrorCost);
             if (made.Count > 0)
             {
@@ -673,7 +636,8 @@ namespace SpellyZombie
             {
                 if (s.DeclaredRune != RuneType.None) continue; // he already said what this is
                 one[0] = s;
-                var (type, score) = RuneLibrary.Classify(s.OwnerId, RuneGlyph.RawStrokesOf(one));
+                // guarded read: cached verdicts + foreign-ink fizzle (netcode §1)
+                var (type, score) = RuneGlyph.ReadVerdict(one, s.OwnerId);
                 if (type != RuneType.None && score >= DrawingConfig.MinRuneScore) continue;
                 mouth.Add(s);
             }
@@ -803,10 +767,27 @@ namespace SpellyZombie
 
         void CreateSeal(List<SealDetector.LoopEntry> loop, string how)
         {
+            // CLIENT: only BODY seals live here — body ink never replicates, so
+            // detection stays owner-side and the CAST ships to the host (netcode §2)
+            if (!NetGame.IsAuthority)
+                foreach (var e in loop)
+                    if (e.Stroke == null || !e.Stroke.Persistent)
+                    {
+                        LogEvent("world seals close on the host — the ink stays ink here");
+                        return;
+                    }
+
             var seal = new Seal(loop);
             seal.CapturePayload(Strokes);
             ActiveSeals.Add(seal);
             LogEvent($"SEAL #{seal.Id} ACTIVATED ({how}): {seal.Describe()}");
+
+            if (!NetGame.IsAuthority)
+            {
+                NetSync.SendBodySealFire(seal); // the host builds the spell (netcode §2)
+                SealGallery.Capture(seal, null);
+                return;
+            }
 
             SpellLock.NotifySeal(seal); // Fable gates taste every seal
 
@@ -815,6 +796,8 @@ namespace SpellyZombie
             var surface = ResolveSealSurface(seal);
             var spell = Spell.Create(seal, surface);
             if (spell != null) seal.AttachSpell(spell);
+
+            NetSync.PushSeal(seal); // clients see the gold ring (netcode §2)
 
             // end-of-round gallery snapshot (ink positions are live right now)
             SealGallery.Capture(seal, null); // no combo names — mayhem is unlabeled
@@ -836,9 +819,10 @@ namespace SpellyZombie
             return SurfaceMaterialType.Unknown;
         }
 
-        public void OnSealEnded(Seal seal, string message)
+        public void OnSealEnded(Seal seal, string message, bool resolved)
         {
             seal.Spell?.End(); // spell cancels the instant the seal breaks or expires
+            NetSync.PushSealEnd(seal, resolved); // clients drop the ring, burn matching ink (netcode §2)
             LogEvent(message);
         }
 
@@ -1012,16 +996,19 @@ namespace SpellyZombie
         {
             into.Clear();
             if (g.Boundary == null) return;
-            var nodes = SealDetector.BuildLoopNodes(g.Boundary);
+            SealDetector.BuildLoopNodes(g.Boundary, _loopNodesBuf); // pooled — this runs per spent group per 0.12s tick
+            var nodes = _loopNodesBuf;
             if (nodes.Count < 3) return;
 
             Vector3 c = Vector3.zero;
             int cnt = 0;
             Transform ownRoot = null;
             _ownBones.Clear();
+            _loopPts.Clear();
             foreach (var nd in nodes)
             {
                 if (nd == null) continue;
+                _loopPts.Add(nd.transform.position);
                 c += nd.transform.position;
                 cnt++;
                 if (ownRoot == null) ownRoot = nd.transform.root;
@@ -1030,22 +1017,11 @@ namespace SpellyZombie
             if (cnt < 3 || ownRoot == null) return;
             c /= cnt;
 
-            // average radius + best-fit plane normal (Newell's method — robust to
-            // a non-planar, body-draped loop)
-            Vector3 normal = Vector3.zero;
+            // average radius + best-fit plane normal (the hand-inlined Newell
+            // copy is gone — GeometryUtil.NewellNormal is the one implementation)
+            Vector3 normal = GeometryUtil.NewellNormal(_loopPts);
             float radius = 0f;
-            for (int i = 0; i < nodes.Count; i++)
-            {
-                var a = nodes[i];
-                if (a == null) continue;
-                radius += Vector3.Distance(a.transform.position, c);
-                var b = nodes[(i + 1) % nodes.Count];
-                if (b == null) continue;
-                Vector3 p = a.transform.position, q = b.transform.position;
-                normal.x += (p.y - q.y) * (p.z + q.z);
-                normal.y += (p.z - q.z) * (p.x + q.x);
-                normal.z += (p.x - q.x) * (p.y + q.y);
-            }
+            foreach (var p in _loopPts) radius += Vector3.Distance(p, c);
             radius /= cnt;
             if (radius < 1e-3f) return;
             bool haveN = normal.sqrMagnitude > 1e-10f;
@@ -1137,22 +1113,8 @@ namespace SpellyZombie
 
                 foreach (var fragment in runs)
                 {
-                    if (fragment.Count < DrawingConfig.MinStrokeNodes)
-                    {
-                        foreach (var n in fragment) Destroy(n.gameObject);
-                        continue;
-                    }
-                    var piece = new Stroke { BasisRight = s.BasisRight, BasisUp = s.BasisUp, OwnerId = s.OwnerId };
-                    foreach (var n in fragment)
-                    {
-                        n.SetStroke(piece);
-                        piece.AddNode(n);
-                    }
-                    Register(piece);
-                    piece.State = StrokeState.Open;
-                    piece.CachePersistence();
-                    piece.ComputeRawShape();
-                    if (wasLastInk) LastInk = piece; // keep template-recording anchor alive
+                    var piece = AdoptPiece(s, fragment, allowTiny: false); // specks below MinStrokeNodes vanish
+                    if (piece != null && wasLastInk) LastInk = piece; // keep the recording anchor alive
                 }
 
                 s.Retire(); // nodes now belong to the pieces
@@ -1180,6 +1142,7 @@ namespace SpellyZombie
         /// (zombie soap gets nothing).
         public void EraseAlong(Vector3 from, Vector3 to, float radius, PlayerInk scoopInto = null)
         {
+            NetSync.OnLocalErase(from, to, radius); // ink graphs must not drift (netcode §2)
             Vector3 seg = to - from;
             float len2 = seg.sqrMagnitude;
             float r2 = radius * radius;
@@ -1200,12 +1163,9 @@ namespace SpellyZombie
             }
         }
 
-        public void LogEvent(string msg)
-        {
-            Debug.Log($"[SpellyZombie] {msg}");
-            _events.Insert(0, msg);
-            if (_events.Count > 6) _events.RemoveAt(_events.Count - 1);
-        }
+        // (the _events ring buffer is DELETED — write-only since the on-screen
+        // HUD fell to Marko's July-12 no-debug-on-screen rule)
+        public void LogEvent(string msg) => Debug.Log($"[SpellyZombie] {msg}");
 
         void OnGUI()
         {
@@ -1231,14 +1191,6 @@ namespace SpellyZombie
             // Marko's rule (July 12): NO instruction walls, NO debug spam on
             // screen — events go to the console only (LogEvent → Debug.Log).
             // The F12 overlay above is the sole exception: opt-in, off by default.
-        }
-
-        static GUIStyle _rich;
-        static GUIStyle Rich()
-        {
-            if (_rich == null)
-                _rich = new GUIStyle(GUI.skin.label) { richText = true };
-            return _rich;
         }
     }
 }

@@ -112,35 +112,9 @@ namespace SpellyZombie
                 walk.AddRange(stroke);
         }
 
-        /// RETIRED Jul 31 — kept only so nothing that still calls it breaks.
-        /// DO NOT RE-WIRE THIS INTO THE MATCHER. The bounding box is
-        /// WORLD-AXIS-ALIGNED, so a rune drawn tilted has a different
-        /// elongation than the same rune drawn upright, and this penalty then
-        /// punishes it for the tilt. That violates Marko's law directly
-        /// ("measure in the rune's own frame, never the world's"), which is why
-        /// the segment-graph matcher takes proportion from RuneGraph.StemFrac
-        /// and the limb ratios instead — both measured against the rune's own
-        /// stem, both rotation-proof.
-        ///
-        /// Proportion of the shape: long side / short side of its bounding box.
-        /// Direction sentences are proportion-BLIND, and the alphabet's bracket
-        /// family differs ONLY by proportion (wide State vs square Density) —
-        /// so matches must also agree on elongation.
-        public static float Elongation(IReadOnlyList<IReadOnlyList<Vector2>> strokes)
-        {
-            var pts = Flatten(strokes);
-            if (pts.Count < 2) return 1f;
-            Vector2 min = pts[0], max = pts[0];
-            foreach (var p in pts) { min = Vector2.Min(min, p); max = Vector2.Max(max, p); }
-            float w = Mathf.Max(max.x - min.x, 1e-4f);
-            float h = Mathf.Max(max.y - min.y, 1e-4f);
-            return Mathf.Clamp(Mathf.Max(w, h) / Mathf.Min(w, h), 1f, 6f);
-        }
-
-        /// 1 when proportions agree, sliding toward 0 as they diverge — a square
-        /// bracket scores poorly against a wide bracket's template.
-        public static float AspectPenalty(float a, float b) =>
-            Mathf.Clamp01(1f - 0.6f * Mathf.Abs(Mathf.Log(a / b)));
+        // (Elongation + AspectPenalty DELETED — retired Jul 31: world-frame
+        // elongation violates Marko's own-frame law; never re-wire a
+        // world-axis bounding-box measure into the matcher.)
 
         /// Score a SPAN of a sentence against a template's readings — the
         /// building block of compound parsing ("multiple letters per word").
@@ -158,19 +132,8 @@ namespace SpellyZombie
             return best;
         }
 
-        /// Best fuzzy match between any reading of the candidate and any
-        /// reading of the template. 1 = identical sentence, ~0.8 = one blemish.
-        public static float Match(List<byte[]> candidate, List<byte[]> template)
-        {
-            float best = 0f;
-            foreach (var c in candidate)
-                foreach (var t in template)
-                {
-                    float s = SentenceScore(c, t);
-                    if (s > best) best = s;
-                }
-            return best;
-        }
+        // (Match DELETED — the single-glyph chain-code vote was removed Aug 1;
+        // only EncodeAll + ScoreSpan are wired, via RuneLibrary's compound path.)
 
         // -------------------------------------------------------- internals --
         static List<Vector2> Flatten(IReadOnlyList<IReadOnlyList<Vector2>> strokes)

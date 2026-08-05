@@ -4,16 +4,7 @@ namespace SpellyZombie
 {
     public enum EyeMood { Neutral, Scared, Wowed, Mad, Dizzy }
 
-    /// Googly eyes: two white spheres with black pupils that physically lag
-    /// behind head motion on a spring (the wobble IS the joke). Pupils track a
-    /// look target, and the mood changes what they do:
-    ///   Scared → pinprick pupils + trembling      (danger close)
-    ///   Wowed  → dilated saucers                  (big things far away)
-    ///   Mad    → small fast-locked pupils         (zombie beef)
-    ///   Dizzy  → pupils orbit in circles          (charger ate a wall)
-    /// Left alone, they auto-watch the world: fresh ink, spells, explosions —
-    /// which means you can DISTRACT things by drawing. Brains can override the
-    /// look target and mood; overrides decay back to auto.
+    /// Googly eyes on a spring (the wobble IS the joke); moods restyle pupils, auto-watch makes drawing a distraction; brain overrides decay back to auto.
     public class GooglyEyes : MonoBehaviour
     {
         public EyeMood Mood { get; private set; }
@@ -42,14 +33,7 @@ namespace SpellyZombie
         /// scale ≈ creature size (1 = human).
         public static GooglyEyes Attach(Transform body, float headHeight, float scale)
         {
-            // MARKO'S PREFAB FIRST (Resources/Custom/Eyes): children named
-            // "Eye" — each with a child "Pupil" — get the full googly
-            // behavior; anything else in the prefab just rides the head.
-            // AXIOM (Marko Jul 25): his Resources/Custom/GooglyEyes.prefab had
-            // NEVER loaded — the hook only asked for "Eyes". Both names work
-            // now, his prefab's own GooglyEyes component is ADOPTED (adding a
-            // second made a dead copy that SetMood then drove), and his
-            // authored offset/scale are composed with, not overwritten.
+            // Marko's prefab first, both names, component ADOPTED, offset/scale composed (Marko Jul 25 axiom)
             var custom = PrefabVault.Spawn("Eyes", body) ?? PrefabVault.Spawn("GooglyEyes", body);
             if (custom != null)
             {
@@ -61,10 +45,7 @@ namespace SpellyZombie
                 e._scale = scale;
                 if (e.WireEyeballs(out var pupil))
                 {
-                    // pupil DEPTH is styling (his); pupil RATIO is behavior —
-                    // dilation animates it every frame, and prefabs that came
-                    // from bakes carry a frozen mid-dilation scale that made
-                    // eyes permanently saucer-sized. Neutral ratio for all.
+                    // pupil DEPTH is his styling; RATIO is behavior — bakes froze mid-dilation saucers
                     e._pupilDepth = pupil.localPosition.z;
                 }
                 else
@@ -105,11 +86,7 @@ namespace SpellyZombie
             return eye.transform;
         }
 
-        /// A BAKED body carries this component with its private wiring LOST
-        /// (Marko's bug: "eyes always too large instead of reacting") — the
-        /// pupils sat frozen at whatever dilation the bake caught. Re-find the
-        /// pair so they live again. Baked pupil scale is a frozen animation
-        /// instant, NOT authoring — it returns to the neutral ratio.
+        /// Baked bodies lose the private wiring (Marko's "eyes always too large" bug) — re-wire; baked pupil scale resets to neutral ratio.
         void Awake()
         {
             if (_leftEye != null && _leftPupil != null) return; // Attach wired us
@@ -162,16 +139,6 @@ namespace SpellyZombie
         public void SetVisible(bool visible)
         {
             foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = visible;
-        }
-
-        /// First-person trick: the eyes vanish from YOUR camera but keep
-        /// casting shadows — no giant orbs in your face, no eyeless shadow.
-        public void SetShadowsOnly(bool hidden)
-        {
-            foreach (var r in GetComponentsInChildren<Renderer>())
-                r.shadowCastingMode = hidden
-                    ? UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly
-                    : UnityEngine.Rendering.ShadowCastingMode.On;
         }
 
         void Update()

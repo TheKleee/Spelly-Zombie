@@ -36,7 +36,10 @@ namespace SpellyZombie
         // immortal. A prop with a Rigidbody now takes damage from any hard
         // enough impact, and the damage scales with how hard it hit.
         static readonly float ImpactFloor = DrawingConfig.Overlay("ImpactDamageFloor", 4f);
-        static readonly float ImpactScale = DrawingConfig.Overlay("ImpactDamagePerSpeed", 2.2f);
+        // OWN key (dedupe audit Aug 5): "ImpactDamagePerSpeed" is DrawingConfig's
+        // CREATURE knob (default 4, Creature.cs) — one JSON key silently drove
+        // both systems while the code defaults disagreed. Props keep their 2.2.
+        static readonly float ImpactScale = DrawingConfig.Overlay("PropImpactDamagePerSpeed", 2.2f);
 
         void OnCollisionEnter(Collision col)
         {

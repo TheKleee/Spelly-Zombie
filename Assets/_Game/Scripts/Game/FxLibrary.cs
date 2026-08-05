@@ -58,7 +58,6 @@ namespace SpellyZombie
                 case "PlasmaField": return Sun;
                 case "BlackHoleField": return SoulsOut;
                 case "WhiteHoleField": return Stars;
-                case "SteamCloud": return Smoke;
                 case "TimeFreezeField": return TimeDome;
                 case "InertiaField": return Scuffle;
                 case "HealingField": return HealShine;
@@ -89,22 +88,12 @@ namespace SpellyZombie
             }
         }
 
-        // THE FX BUDGET (Marko: "chain effects overly pop up and lag the
-        // game") — chain reactions can request dozens of one-shots in a single
-        // frame; past this cap the extras are dropped. Nobody can count 8
-        // simultaneous poofs anyway, but everyone can feel the hitch.
+        // THE FX BUDGET (Marko: "chain effects overly pop up and lag the game") — past 8/frame the extras drop
         static int _frame, _spawnedThisFrame;
         const int MaxPerFrame = 8;
 
         // ===================================================== THE POOL ====
-        // ROOT CAUSE OF THE FX LAG (Marko: "our effects lag the game even
-        // though many other games have thousands more than we do"). This used
-        // to Instantiate a fresh prefab for EVERY effect and Destroy it after.
-        // Instantiate allocates a whole object graph and the FIRST one of each
-        // kind also compiles its shader variants — that's the visible hitch —
-        // and Destroy then feeds the garbage collector. Games with thousands
-        // of effects don't create them, they REUSE them. So do we now: each
-        // effect is built once, then switched off and on forever after.
+        // FX LAG root cause (Marko: "our effects lag the game…"): Instantiate/Destroy per effect — pooled instead, built once and reused
         static readonly Dictionary<GameObject, Stack<GameObject>> _pool
             = new Dictionary<GameObject, Stack<GameObject>>();
         static readonly Dictionary<GameObject, GameObject> _origin
@@ -121,14 +110,16 @@ namespace SpellyZombie
                 _pool[prefab] = stack = new Stack<GameObject>();
 
             GameObject fx = null;
+            FxReturn keeper;
             while (stack.Count > 0 && fx == null) fx = stack.Pop(); // skip any destroyed
             if (fx == null)
             {
                 fx = Instantiate(prefab, pos, Quaternion.identity, parent);
                 _origin[fx] = prefab;
-                // a pooled effect must NOT delete itself, or the pool hands
-                // out corpses — we own its lifetime now
-                foreach (var ps in fx.GetComponentsInChildren<ParticleSystem>(true))
+                keeper = fx.AddComponent<FxReturn>();
+                keeper.Systems = fx.GetComponentsInChildren<ParticleSystem>(true); // cached ONCE — reuse spawns stay alloc-free
+                // a pooled effect must NOT delete itself, or the pool hands out corpses
+                foreach (var ps in keeper.Systems)
                 {
                     var main = ps.main;
                     main.stopAction = ParticleSystemStopAction.None;
@@ -141,15 +132,18 @@ namespace SpellyZombie
                 fx.transform.rotation = Quaternion.identity;
                 fx.transform.localScale = prefab.transform.localScale; // callers rescale
                 fx.SetActive(true);
-                foreach (var ps in fx.GetComponentsInChildren<ParticleSystem>(true))
+                keeper = fx.GetComponent<FxReturn>();
+                if (keeper == null) keeper = fx.AddComponent<FxReturn>();
+                if (keeper.Systems == null)
+                    keeper.Systems = fx.GetComponentsInChildren<ParticleSystem>(true);
+                foreach (var ps in keeper.Systems)
                 {
+                    if (ps == null) continue;
                     ps.Clear(true);
                     ps.Play(true);
                 }
             }
 
-            var keeper = fx.GetComponent<FxReturn>();
-            if (keeper == null) keeper = fx.AddComponent<FxReturn>();
             keeper.Arm(life > 0f ? life : 3f);   // everything comes home
             return fx;
         }
@@ -166,10 +160,7 @@ namespace SpellyZombie
             if (stack.Count < 12) stack.Push(fx); else Destroy(fx);
         }
 
-        /// BUILD THEM BEFORE THEY'RE NEEDED. The first spawn of any effect
-        /// compiles its shader variants — doing that mid-fight is the hitch
-        /// you can feel. Called once at load, it moves that cost to the
-        /// loading screen where nobody notices it.
+        /// Build effects at load — first spawn compiles shader variants, and mid-fight that's the hitch you can feel.
         public void Prewarm(int each = 2)
         {
             foreach (var f in typeof(FxLibrary).GetFields())
@@ -189,6 +180,9 @@ namespace SpellyZombie
     /// Hands a pooled effect back when its time is up (no Destroy, no garbage).
     public class FxReturn : MonoBehaviour
     {
+        /// The instance's particle systems, cached at build (spares a GetComponentsInChildren per pooled spawn).
+        public ParticleSystem[] Systems;
+
         float _due;
         public void Arm(float life) { _due = Time.time + life; enabled = true; }
         void Update()

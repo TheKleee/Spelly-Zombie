@@ -3,9 +3,21 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// ESC = pause. Freezes time, frees the cursor, offers Resume / Restart /
-    /// Options (sensitivity + volume, persisted) / Wishlist / Quit. The demo's
-    /// entire menu system — deliberately OnGUI so it needs zero scene setup.
+    /// Cached active-scene name — SceneManager.GetActiveScene().name allocates a fresh string EVERY access (was hit per frame in HUD/MatchLobby/NetGame/GameMenu).
+    public static class ActiveScene
+    {
+        public static string Name { get; private set; } = "";
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void Hook()
+        {
+            Name = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            UnityEngine.SceneManagement.SceneManager.activeSceneChanged +=
+                (_, next) => Name = next.name;
+        }
+    }
+
+    /// ESC = pause: Resume / Restart / Options (persisted) / Wishlist / Quit — zero scene setup needed.
     public class GameMenu : MonoBehaviour
     {
         public static bool IsOpen { get; private set; }
@@ -35,7 +47,7 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             if (kb == null || PoseStudio.IsOpen) return;
             // the MAIN MENU owns its screen — no pause menu on top of it
-            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Menu")
+            if (ActiveScene.Name == "Menu")
             {
                 if (IsOpen) Close();
                 return;
@@ -136,14 +148,17 @@ namespace SpellyZombie
             MenuButton("Options", -156f, () => { _options = true; BuildUI(); });
             MenuButton("♥ Wishlist on Steam", -216f, () => Application.OpenURL(WishlistUrl),
                 skin != null ? skin.ButtonGrey : null);
-            MenuButton("Quit", -276f, () =>
-            {
+            MenuButton("Quit", -276f, QuitGame, skin != null ? skin.ButtonRed : null);
+        }
+
+        /// Editor-aware quit — the one copy (MainMenu's Quit button calls it too).
+        public static void QuitGame()
+        {
 #if UNITY_EDITOR
-                UnityEditor.EditorApplication.isPlaying = false;
+            UnityEditor.EditorApplication.isPlaying = false;
 #else
-                Application.Quit();
+            Application.Quit();
 #endif
-            }, skin != null ? skin.ButtonRed : null);
         }
     }
 }

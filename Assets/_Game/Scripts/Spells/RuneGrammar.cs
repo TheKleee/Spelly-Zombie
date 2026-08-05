@@ -43,6 +43,10 @@ namespace SpellyZombie
     public static class RuneGrammar
     {
         static readonly Dictionary<RuneType, RuneDef> _defs = new Dictionary<RuneType, RuneDef>();
+        // paradox pairs precomputed at registration, keyed by particle FAMILY —
+        // ParadoxOf used to O(defs)-scan the registry on every particle collision
+        static readonly Dictionary<(ParticleKind, ParticleKind), ParadoxKind> _paradoxes =
+            new Dictionary<(ParticleKind, ParticleKind), ParadoxKind>();
         static int _nextBit;
 
         /// All core runes' lineage bits — a chain carrying every one becomes THE DEMON.
@@ -54,6 +58,12 @@ namespace SpellyZombie
             def.Bit = 1UL << _nextBit++;
             _defs[def.Rune] = def;
             if (def.Core) CoreMask |= def.Bit;
+            if (def.Paradox != ParadoxKind.None && def.Role != RuneRole.Vector
+                && _defs.TryGetValue(def.Opposite, out var opp))
+            {
+                var a = Family(def.Emits); var b = Family(opp.Emits);
+                if (a != b) _paradoxes[(int)a <= (int)b ? (a, b) : (b, a)] = def.Paradox;
+            }
         }
 
         static RuneGrammar()
@@ -151,27 +161,14 @@ namespace SpellyZombie
             }
         }
 
-        /// Opposite PARTICLE kinds (derived from the rune registry, kind-level).
-        public static bool OppositeKinds(ParticleKind a, ParticleKind b)
-        {
-            var fa = Family(a); var fb = Family(b);
-            foreach (var d in _defs.Values)
-            {
-                if (d.Emits != fa || d.Role == RuneRole.Vector) continue;
-                var opp = Def(d.Opposite);
-                if (opp != null && opp.Emits == fb && fb != fa) return true;
-            }
-            return false;
-        }
-
         /// What an opposite pair synthesizes (None = fall back to the substrate).
+        /// A registration-time lookup — the answer is fixed the moment a pair
+        /// registers, exactly like _exotics.
         public static ParadoxKind ParadoxOf(ParticleKind a, ParticleKind b)
         {
-            if (!OppositeKinds(a, b)) return ParadoxKind.None;
-            var fa = Family(a);
-            foreach (var d in _defs.Values)
-                if (d.Emits == fa && d.Role != RuneRole.Vector) return d.Paradox;
-            return ParadoxKind.None;
+            var fa = Family(a); var fb = Family(b);
+            var key = (int)fa <= (int)fb ? (fa, fb) : (fb, fa);
+            return _paradoxes.TryGetValue(key, out var p) ? p : ParadoxKind.None;
         }
 
         // ------------------------------------------------------------- demon --

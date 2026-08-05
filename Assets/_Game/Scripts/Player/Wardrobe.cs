@@ -19,10 +19,9 @@ namespace SpellyZombie
         /// local player wears their saved choices, remote avatars wear the
         /// outfitCode that arrived over the wire; hat/cape placeholders only
         /// fill sockets the catalog left bare. Returns the pieces so callers
-        /// can retint when the team changes. clothColliders (chest/hips
-        /// capsules) keep the simulated cape off the body.
+        /// can retint when the team changes.
         public static List<GameObject> DressPlayer(SocketSet set, Color team, RuneCardType? capeIcon,
-            CapsuleCollider[] clothColliders = null, string outfitCode = null)
+            string outfitCode = null)
         {
             var pieces = SocketManager.Dress(set, SocketManager.Player,
                 outfitCode != null ? SocketManager.ChooserFromCode(outfitCode)
@@ -65,108 +64,8 @@ namespace SpellyZombie
             return pieces;
         }
 
-        /// REAL cloth simulation on a cape piece: works on Marko's Blender
-        /// planes (subdivided, pivot at the top per the convention — a
-        /// MeshFilter is converted in place) and on the placeholder. The top
-        /// 8% of vertices pin to the shoulders; the rest hang, sway with
-        /// movement, and collide with the given body capsules. Rigid capes
-        /// (fewer than 12 verts) are left alone.
-        public static void MakeCloth(GameObject capePiece, CapsuleCollider[] colliders)
-        {
-            var smr = capePiece.GetComponentInChildren<SkinnedMeshRenderer>();
-            GameObject target;
-            Mesh mesh;
-            var mf = smr == null ? capePiece.GetComponentInChildren<MeshFilter>() : null;
-            if (smr != null)
-            {
-                target = smr.gameObject;
-                mesh = smr.sharedMesh;
-            }
-            else
-            {
-                if (mf == null || mf.sharedMesh == null) return;
-                mesh = mf.sharedMesh;
-                target = mf.gameObject;
-            }
-
-            // DISQUALIFY BEFORE CONVERTING — a cape that stays rigid must
-            // keep its original renderer (the old order converted first and
-            // could leave the cape rendererless → invisible cape).
-            if (mesh == null || mesh.vertexCount < 12) return;
-            if (!mesh.isReadable)
-            {
-                // cloth pins by reading vertices — a mesh imported without
-                // Read/Write would throw mid-dressing. Stay stiff, say why.
-                Debug.LogWarning($"[SpellyZombie] Cape mesh '{mesh.name}' has no Read/Write — the cape stays STIFF. " +
-                    "Fix: select the piece and re-run Spelly Zombie → Wardrobe → Add Selection (it enables it now), " +
-                    "or tick Read/Write in the model's Import Settings.");
-                return;
-            }
-            if (target.GetComponent<Cloth>() != null) return;
-
-            if (smr == null)
-            {
-                // ONE RENDERER PER GAMEOBJECT (old ship lesson): the deferred
-                // Destroy left the MeshRenderer alive this frame, the
-                // SkinnedMeshRenderer add silently failed, and Marko's cape
-                // vanished. Immediate removal makes the swap legal.
-                var mr = target.GetComponent<MeshRenderer>();
-                var mat = mr != null ? mr.sharedMaterial : null;
-                Object.DestroyImmediate(mf);
-                if (mr != null) Object.DestroyImmediate(mr);
-                smr = target.AddComponent<SkinnedMeshRenderer>();
-                if (smr == null) return; // never strand a rendererless cape
-                smr.sharedMesh = mesh;
-                smr.sharedMaterial = mat;
-            }
-
-            var cloth = target.AddComponent<Cloth>();
-            var verts = mesh.vertices;
-
-            // PIN BY THE PIVOT, not by "highest local Y": the convention is
-            // pivot-at-the-attach-edge, and Marko's meshes ship with baked
-            // import rotations that make local Y mean anything. Y-top pinning
-            // grabbed the wrong edge of his cape — gravity then peeled the
-            // whole thing off the shoulders ("the cape falls off the player").
-            // Vertices nearest the pivot = the attach edge, every time.
-            float minD = float.MaxValue, maxD = 0f;
-            for (int i = 0; i < verts.Length; i++)
-            {
-                float d = verts[i].magnitude;
-                if (d < minD) minD = d;
-                if (d > maxD) maxD = d;
-            }
-            float pinDist = minD + Mathf.Max((maxD - minD) * 0.15f, 0.04f);
-
-            // every free vertex gets a leash equal to its natural PENDULUM
-            // ARC (distance from the pinned band): any authored angle drapes
-            // fully to vertical, but the hem can never travel past its own
-            // swing radius (no toga-flip over the shoulder).
-            var coeffs = new ClothSkinningCoefficient[verts.Length];
-            var pinCenter = Vector3.zero;
-            int pinCount = 0;
-            for (int i = 0; i < verts.Length; i++)
-                if (verts[i].magnitude <= pinDist) { pinCenter += verts[i]; pinCount++; }
-            if (pinCount == 0 || pinCount == verts.Length) return; // degenerate mesh — leave rigid
-            pinCenter /= pinCount;
-            for (int i = 0; i < verts.Length; i++)
-            {
-                bool pinned = verts[i].magnitude <= pinDist;
-                float arc = (verts[i] - pinCenter).magnitude;
-                coeffs[i].maxDistance = pinned ? 0f : Mathf.Max(0.05f, arc * 1.25f);
-                coeffs[i].collisionSphereDistance = 0f;
-            }
-            cloth.coefficients = coeffs;
-            cloth.damping = 0.5f;
-            cloth.worldVelocityScale = 0.35f;     // running streams the cape
-            cloth.worldAccelerationScale = 0.5f;
-            if (colliders != null)
-            {
-                var valid = new List<CapsuleCollider>();
-                foreach (var c in colliders) if (c != null) valid.Add(c);
-                cloth.capsuleColliders = valid.ToArray();
-            }
-        }
+        // (MakeCloth DELETED with the cloth retirement — see the CLOTH RETIRED
+        //  ruling above; capes are rigid pieces now, nothing converts them.)
 
         /// Zombies: Marko's zombie catalog rolls RANDOM pieces per socket (a
         /// non-zero seed makes the roll deterministic — host and clients dress
@@ -301,8 +200,9 @@ namespace SpellyZombie
             return hat;
         }
 
-        /// A subdivided plane hanging from the shoulder line — MakeCloth turns
-        /// it into simulated fabric (exactly what Marko's Blender capes will be).
+        /// A subdivided plane hanging from the shoulder line — RIGID, like all
+        /// capes since the CLOTH RETIRED ruling (it wobbles with the body
+        /// through the spine socket; his art replaces it wholesale).
         static GameObject PlaceholderCloak(Transform socket)
         {
             if (socket == null) return null;
@@ -340,10 +240,9 @@ namespace SpellyZombie
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
 
-            var smr = sheet.AddComponent<SkinnedMeshRenderer>();
-            smr.sharedMesh = mesh;
-            smr.sharedMaterial = MatterFX.Get(Color.white, MoteShade.Opaque);
-            smr.updateWhenOffscreen = true;
+            sheet.AddComponent<MeshFilter>().sharedMesh = mesh;
+            sheet.AddComponent<MeshRenderer>().sharedMaterial =
+                MatterFX.Get(Color.white, MoteShade.Opaque);
 
             foreach (var t in cloak.GetComponentsInChildren<Transform>(true))
                 t.gameObject.layer = socket.gameObject.layer;

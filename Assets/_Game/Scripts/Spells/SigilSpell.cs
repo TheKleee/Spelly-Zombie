@@ -4,25 +4,8 @@ namespace SpellyZombie
 {
     // NOTE: the sigil×sign combo-TABLE engine that lived here was removed after
     // the A/B verdict (July 2026): it read as random; the physics-rune engine
-    // won, and named combinations now live in ComboBook. What remains below are
-    // the reusable pieces: the projectile shell (used by Fireball/Frost Lance
-    // combos) and the Chicken (parked — future Summon combo).
-
-    /// Projectile shell: flies until it hits something, then hands the impact
-    /// point back to whoever launched it.
-    public class OrbPayload : MonoBehaviour
-    {
-        public System.Action<Vector3> OnImpact;
-        bool _done;
-
-        void OnCollisionEnter(Collision col)
-        {
-            if (_done) return;
-            _done = true;
-            OnImpact?.Invoke(col.contactCount > 0 ? col.GetContact(0).point : transform.position);
-            Destroy(gameObject);
-        }
-    }
+    // won, and named combinations now live in ComboBook. What remains is the
+    // Chicken (parked BY RULING — future Summon combo).
 
     /// A tiny white bean with googly eyes that seeks the nearest zombie and
     /// pecks it. Not currently spawned by anything — waiting for its combo.

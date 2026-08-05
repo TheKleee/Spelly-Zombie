@@ -5,11 +5,7 @@ using UnityEngine.SceneManagement;
 
 namespace SpellyZombie
 {
-    /// The game: round-based survival. Z starts a run. Each round spends a
-    /// spawn budget of escalating zombie mixes; clear it to earn a 20s
-    /// intermission (ink trickles back); all players down = wipe; survive
-    /// round 10 (demo cap) = victory. Kills feed the shared ink economy.
-    /// Self-bootstraps into any scene; also owns the survival HUD.
+    /// Round-based survival: spawn budget per round, intermission between, wipe/victory; kills feed the shared ink economy. Self-bootstraps into any scene.
     public class RoundDirector : MonoBehaviour
     {
         enum Phase { Idle, Wave, Intermission, GameOver, Victory }
@@ -23,8 +19,7 @@ namespace SpellyZombie
         /// True before a run starts — the MatchLobby (pillars/ready-up) lives here.
         public static bool InLobby => Instance != null && Instance._phase == Phase.Idle;
 
-        /// True only while a wave is actually running — the music director
-        /// crossfades chill ↔ action on this.
+        /// True only while a wave runs — the music director crossfades on this.
         public static bool WaveActive => Instance != null && Instance._phase == Phase.Wave;
 
         /// MatchLobby's start trigger (all ready, or the troll timer expired).
@@ -76,10 +71,9 @@ namespace SpellyZombie
 
             RefreshPlayers();
 
-            // B4: only the HOST runs the round machine — clients render the
-            // host's zombies (NetZombieProxy) and read round state off the wire
+            // B4: only the HOST runs the round machine — clients read round state off the wire
             if (NetGame.Connected && !NetGame.IsHost)
-                return; // clients render the host's rounds — nothing to press
+                return;
 
             if (NetGame.IsHost)
             {
@@ -95,9 +89,7 @@ namespace SpellyZombie
             switch (_phase)
             {
                 case Phase.Idle:
-                    // Z-to-start REMOVED (Marko's ruling): runs begin from the
-                    // lobby ready-up (RoundDirector.ForceStart) — the gamepad
-                    // start button remains as the couch equivalent
+                    // Z-to-start REMOVED (Marko's ruling) — gamepad start stays as the couch equivalent
                     if (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame)
                         StartRun();
                     break;
@@ -132,9 +124,7 @@ namespace SpellyZombie
 
         void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            // back in the village after a wipe/victory: the old run is OVER —
-            // phase resets so no stale "WIPED — ENTER = again" haunts the
-            // lobby (and ENTER can't accidentally relaunch a match there)
+            // back in the lobby after a wipe/victory: reset phase so no stale end screen haunts it
             if (scene.name == LobbySceneName
                 && (_phase == Phase.GameOver || _phase == Phase.Victory))
             {
@@ -147,9 +137,7 @@ namespace SpellyZombie
             StartRunNow();
         }
 
-        /// THE LOBBY IS SAFE GROUND (Marko's rule) — no invasion spawns there.
-        /// Starting a run from the lobby loads the game map scene and begins
-        /// on arrival; until that scene exists, the lobby just says so.
+        /// THE LOBBY IS SAFE GROUND (Marko's rule) — runs load the game map and begin on arrival.
         void StartRun()
         {
             if (SceneManager.GetActiveScene().name == "Menu") return; // menus don't fight
@@ -192,14 +180,12 @@ namespace SpellyZombie
             DrawingWorld.Instance?.LogEvent($"ROUND {round} — {_toSpawn} incoming");
         }
 
-        /// Zombies that count toward ending a round — DEMONS don't: a grand
-        /// demon is unkillable for 42s and was holding the round hostage
-        /// (and being announced as a "zombie left").
+        /// Zombies that count toward ending a round — DEMONS don't (an unkillable grand demon held the round hostage).
         static int CountableZombies()
         {
             int n = 0;
             foreach (var z in Zombie.All)
-                if (z != null && z.GetComponent<Demon>() == null) n++;
+                if (z != null && !z.IsDemon) n++;
             return n;
         }
 
@@ -258,21 +244,16 @@ namespace SpellyZombie
 
         void EndRound()
         {
-            // THE ROUND'S HANDWRITING IS FORGOTTEN (Marko: what the game
-            // memorises about how you draw "should only be in memory for that
-            // round and not all the rounds"). Whatever it picked up while
-            // playing is dropped; your Rune Studio recordings are untouched.
+            // THE ROUND'S HANDWRITING IS FORGOTTEN (Marko: in memory "for that round and not all the rounds"); Rune Studio recordings untouched
             RuneLibrary.ForgetRoundLearning();
 
-            // MARKO'S WIN (maps with Fable gates): spell every gate open, then
-            // clear the round — that's the demo victory. Gateless maps keep
-            // the round-cap rule. (Full game inserts the boss here later.)
+            // MARKO'S WIN: all gates open + round clear = demo victory; gateless maps keep the round cap
             bool gatesCleared = SpellLock.CountInScene > 0 && SpellLock.AllOpen;
             if (gatesCleared || _round >= DrawingConfig.MaxRounds)
             {
                 _phase = Phase.Victory;
                 ComboBanner.Show("YOU SURVIVED THE DEMO!", new Color(0.5f, 1f, 0.6f));
-                RunStats.Log("victory", _round, _kills, 0, Time.time - _runStart);
+                RunStats.Log("victory", _round, _kills, Time.time - _runStart);
                 return;
             }
             _phase = Phase.Intermission;
@@ -292,7 +273,7 @@ namespace SpellyZombie
             var pw = _players.Count > 0 && _players[0] != null ? _players[0].transform.position : Vector3.zero;
             Juice.Sting(pw);
             SealAutopsy.OnWipe();
-            RunStats.Log("wipe", _round, _kills, 0, Time.time - _runStart);
+            RunStats.Log("wipe", _round, _kills, Time.time - _runStart);
         }
 
         void Restart()
@@ -325,10 +306,10 @@ namespace SpellyZombie
         Vector3 PickSpawnPoint()
         {
             Vector3 pos;
-            var entries = FindObjectsByType<ZombieEntryPoint>(FindObjectsSortMode.None);
-            if (entries.Length > 0)
+            var entries = ZombieEntryPoint.All; // live registry — no per-spawn scene scan
+            if (entries.Count > 0)
             {
-                pos = entries[Random.Range(0, entries.Length)].transform.position;
+                pos = entries[Random.Range(0, entries.Count)].transform.position;
             }
             else
             {
@@ -339,9 +320,7 @@ namespace SpellyZombie
                 pos.y = center.y;
             }
 
-            // drop onto the ACTUAL ground — terrain maps aren't flat, and a
-            // ring spawn at the player's height 16m away can land inside a
-            // hill (zombies spawned entombed and nobody ever saw them)
+            // drop onto the ACTUAL ground — ring spawns at player height entombed zombies inside hills
             if (Physics.Raycast(pos + Vector3.up * 30f, Vector3.down, out var hit, 80f,
                     Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
                 pos.y = hit.point.y;
@@ -351,36 +330,48 @@ namespace SpellyZombie
         // --------------------------------------------------------------- HUD --
         // Rendering moved to UI/HUD.cs (uGUI + Kenney skin); this just reports.
 
-        /// The status line for the round banner (clients read the HOST's round
-        /// off the wire).
+        /// The status line for the round banner (clients read the HOST's round off the wire).
+        /// Cached — the HUD polls per frame, rebuild only when a displayed value changes.
+        static string _hud = "";
+        static (int, int, int, int, int) _hudKey = (int.MinValue, 0, 0, 0, 0);
+
         public static string HudStatus()
         {
             if (Instance == null) return "";
-            if (NetGame.Connected && !NetGame.IsHost)
-            {
-                return !NetSync.HasRound ? "co-op: waiting for the host…"
-                    : NetSync.NetPhase switch
-                {
-                    1 => $"ROUND {NetSync.NetRound} — {NetSync.NetLeft} zombies left",
-                    2 => $"INTERMISSION — round {NetSync.NetRound + 1} in {NetSync.NetTimer:0}s (draw!)",
-                    3 => $"WIPED on round {NetSync.NetRound} — {NetSync.NetKills} kills. Host restarts",
-                    4 => $"VICTORY — {NetSync.NetKills} kills!",
-                    _ => "the host starts the run from the lobby",
-                };
-            }
-            return Instance._phase switch
-            {
-                Phase.Idle => "", // runs start from the lobby ready-up; idle scenes stay quiet
-                Phase.Wave => $"ROUND {Instance._round} — {Instance._toSpawn + CountableZombies()} zombies left",
-                Phase.Intermission => $"INTERMISSION — round {Instance._round + 1} in {Instance._phaseTimer:0}s (draw!)",
-                Phase.GameOver => $"WIPED on round {Instance._round} — {Instance._kills} kills. ENTER = again",
-                _ => $"VICTORY — {Instance._kills} kills, {(Time.time - Instance._runStart) / 60f:0.0} min. ENTER = again",
-            };
+            bool remote = NetGame.Connected && !NetGame.IsHost;
+            (int, int, int, int, int) key = remote
+                ? (NetSync.HasRound ? NetSync.NetPhase : -1, NetSync.NetRound,
+                    NetSync.NetLeft, Mathf.RoundToInt(NetSync.NetTimer), NetSync.NetKills)
+                : (100 + (int)Instance._phase, Instance._round,
+                    Instance._phase == Phase.Wave ? Instance._toSpawn + CountableZombies() : 0,
+                    Instance._phase == Phase.Intermission ? Mathf.RoundToInt(Instance._phaseTimer)
+                        : Instance._phase == Phase.Victory
+                            ? Mathf.RoundToInt((Time.time - Instance._runStart) / 6f) : 0,
+                    Instance._kills);
+            if (key == _hudKey) return _hud;
+            _hudKey = key;
+            _hud = remote ? RemoteStatus() : LocalStatus();
+            return _hud;
         }
 
-        /// Between rounds and on end screens the seal gallery gets the stage.
-        public static bool ShowGallery =>
-            Instance != null && (Instance._phase == Phase.Intermission
-                || Instance._phase == Phase.GameOver || Instance._phase == Phase.Victory);
+        static string RemoteStatus() =>
+            !NetSync.HasRound ? "co-op: waiting for the host…"
+                : NetSync.NetPhase switch
+            {
+                1 => $"ROUND {NetSync.NetRound} — {NetSync.NetLeft} zombies left",
+                2 => $"INTERMISSION — round {NetSync.NetRound + 1} in {NetSync.NetTimer:0}s (draw!)",
+                3 => $"WIPED on round {NetSync.NetRound} — {NetSync.NetKills} kills. Host restarts",
+                4 => $"VICTORY — {NetSync.NetKills} kills!",
+                _ => "the host starts the run from the lobby",
+            };
+
+        static string LocalStatus() => Instance._phase switch
+        {
+            Phase.Idle => "", // runs start from the lobby ready-up; idle scenes stay quiet
+            Phase.Wave => $"ROUND {Instance._round} — {Instance._toSpawn + CountableZombies()} zombies left",
+            Phase.Intermission => $"INTERMISSION — round {Instance._round + 1} in {Instance._phaseTimer:0}s (draw!)",
+            Phase.GameOver => $"WIPED on round {Instance._round} — {Instance._kills} kills. ENTER = again",
+            _ => $"VICTORY — {Instance._kills} kills, {(Time.time - Instance._runStart) / 60f:0.0} min. ENTER = again",
+        };
     }
 }

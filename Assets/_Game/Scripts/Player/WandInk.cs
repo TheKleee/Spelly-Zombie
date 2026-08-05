@@ -32,8 +32,14 @@ namespace SpellyZombie
 
         void Start()
         {
+            // ONE scan for both contract children — "Ink" and "WandFX" (the
+            // per-LateUpdate WandFX search was an array alloc every frame)
             foreach (var t in GetComponentsInChildren<Transform>(true))
-                if (t != transform && t.name == "Ink") { _ink = t; break; }
+            {
+                if (t == transform) continue;
+                if (_ink == null && t.name == "Ink") _ink = t;
+                else if (_fx == null && t.name == "WandFX") _fx = t.gameObject;
+            }
             if (_ink == null) BuildVial();
             if (_ink != null) _fullScale = _ink.localScale;
             _wandScale0 = transform.localScale; // his authored size is 100%
@@ -89,13 +95,8 @@ namespace SpellyZombie
             transform.localScale = _wandScale0 * Mathf.Max(0.001f, _factor);
 
             // NO SPAWNED FLAKES (Marko: "remove this laggy particle from wand
-            // degradation" — he's authoring the shrink/grow effect himself as
-            // ONE always-present object, not a spawn-and-despawn burst).
-            // The hook for his version: a child named "WandFX" is switched on
-            // while the size is really moving, off when it settles.
-            if (_fx == null)
-                foreach (var t in GetComponentsInChildren<Transform>(true))
-                    if (t != transform && t.name == "WandFX") { _fx = t.gameObject; break; }
+            // degradation") — his hook: a "WandFX" child (found once in Start)
+            // is on while the size is really moving, off when it settles.
             if (_fx != null)
             {
                 bool changing = Mathf.Abs(_factor - target) > 0.0005f;

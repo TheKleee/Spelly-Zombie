@@ -47,12 +47,37 @@ namespace SpellyZombie
             /// through, so this field IS the descriptor cache; nothing
             /// re-derives it per match.
             public RuneGraph Graph;
-            /// COMPOUND SIGILS ONLY. Chain-code direction sentences are how one
-            /// long scribble is parsed into SEVERAL runes (ClassifyCompound).
-            /// They get no vote on which rune a single glyph is — see the note
-            /// above Top2Descriptor for the measurement that retired them from
-            /// that job.
-            public List<byte[]> Sentences;
+
+            List<List<Vector2>> _stitched; // held only until the sentences build
+            List<byte[]> _sentences;
+
+            /// The stitched paths this template was built from — Sentences
+            /// encode from these on first demand.
+            public void SetSource(List<List<Vector2>> stitched)
+            {
+                _stitched = stitched;
+                _sentences = null;
+            }
+
+            /// COMPOUND SIGILS ONLY (see ClassifyCompound). Built LAZILY on the
+            /// first compound parse: EncodeAll used to run for EVERY template on
+            /// every load/save purely to feed a path that is unreachable while
+            /// CompoundSigilsEnabled stays false — feature preserved, load-time
+            /// cost gone. They get no vote on which rune a single glyph is — see
+            /// the note above Top2Descriptor.
+            public List<byte[]> Sentences
+            {
+                get
+                {
+                    if (_sentences == null && _stitched != null)
+                    {
+                        _sentences = ChainCodeRecognizer.EncodeAll(_stitched);
+                        _stitched = null;
+                    }
+                    return _sentences;
+                }
+            }
+
             // MULTI-TEMPLATE (Marko's studio walls): every drawing on a rune's
             // wall is a variant of HIS hand — the ensemble scores against all
             // of them and keeps the best. More samples = recognition converges
@@ -80,25 +105,9 @@ namespace SpellyZombie
             if (paths.Count == 0) return paths;
 
             // SIZE MUST NOT MATTER (Marko: "the overall length of the runes
-            // shouldn't matter, only their shape"). This threshold used to be
-            // a fixed 5cm, so whether your separate lines joined into one
-            // shape depended on HOW BIG YOU DREW — a large rune's endpoints
-            // sat further apart than 5cm and silently stayed separate paths,
-            // which then failed every topology check.
-            //
-            // It then kept a Clamp(…, 0.01f, 0.09f) around the relative
-            // version, which is the same bug wearing a hat: outside a
-            // drawing-size band of roughly 17cm–1.5m the clamp pinned it and
-            // absolute metres decided the reading again. A rune drawn 3m across
-            // with 12cm pen-lift gaps — 4% of the drawing, well inside the 6%
-            // this rule allows — pinned at 9cm and never stitched, so the graph
-            // saw disconnected limbs and the wrong topology. Gone: 6% of the
-            // drawing, full stop, at every size.
-            //
-            // The size itself is RuneGraph.Extent — the point-set diameter, not
-            // a bounding-box diagonal. A box is world-axis-aligned, so its
-            // diagonal (and therefore this threshold, and Denoise's tolerance
-            // below) used to swing ~23% with how the rune happened to be tilted.
+            // shouldn't matter, only their shape"): stitch at 6% of the drawing's
+            // own Extent (point-set diameter, never a world-axis box) — every
+            // fixed-metre or clamped version of this quietly let size decide.
             float stitchDist = RuneGraph.Extent(paths) * 0.06f;
             bool merged = true;
             while (merged && paths.Count > 1)
@@ -151,18 +160,9 @@ namespace SpellyZombie
         {
             if (paths.Count == 0) return paths;
 
-            // NO STROKE IS EVER DELETED. A "throw away short strokes" pass
-            // lived here and it was a disaster: an ARROWHEAD'S BARBS are short
-            // strokes, and so are LIGHT'S RAYS. PUSH was stripped to a bare
-            // shaft (so every straight line read as PUSH, and anything with
-            // structure fell through to PULL) and LIGHT became undrawable.
-            // Short limbs are the whole POINT of these glyphs — only wobble
-            // WITHIN a line is noise, never a line itself.
-
-            // straighten: deviation below this is a shaky hand, not a corner.
-            // ONE straightening rule in the project — RuneGraph owns the
-            // Douglas-Peucker implementation because it is also the segment
-            // extractor the matcher is built on.
+            // NO STROKE IS EVER DELETED (Marko's law: never delete a stroke for
+            // being short — barbs and LIGHT rays ARE short strokes); only wobble
+            // WITHIN a line is noise. One straightening rule: RuneGraph owns RDP.
             float eps = scale * 0.10f;
             var outp = new List<List<Vector2>>(paths.Count);
             foreach (var p in paths)
@@ -434,6 +434,28 @@ namespace SpellyZombie
         // zero callers and duplicated Top2's scoring loop verbatim — a second
         // copy of the matcher wiring that nothing exercised and that would
         // silently rot. Top2 is the one scoring loop.
+
+        /// Player-facing name = EMOJI (Marko: memeable, zero translation).
+        /// ShortName's English words stay for dev console logs only.
+        public static string Icon(RuneType r)
+        {
+            switch (r)
+            {
+                case RuneType.HeatUp: return "🔥";
+                case RuneType.HeatDown: return "❄️";
+                case RuneType.StateSolid: return "🗿";
+                case RuneType.StateLiquid: return "💦";
+                case RuneType.LuminanceUp: return "🌞";
+                case RuneType.LuminanceDown: return "🌚";
+                case RuneType.StickyUp: return "🍯";
+                case RuneType.StickyDown: return "🍌";
+                case RuneType.DirectionAway: return "🚀";
+                case RuneType.DirectionToward: return "🧲";
+                case RuneType.DensityUp: return "🤏";
+                case RuneType.DensityDown: return "💨";
+                default: return "?";
+            }
+        }
 
         public static string ShortName(RuneType r)
         {
@@ -1089,29 +1111,31 @@ namespace SpellyZombie
                 Debug.LogWarning($"[RuneLibrary] {ShortName(type)}: a wall drawing straightens out to a bare line (no corners) — it cannot match anything, so it is kept on the wall but not taught to the matcher. Redraw that one with its corners clearly bent.");
                 return false;
             }
-            var sentences = ChainCodeRecognizer.EncodeAll(stitched);
             var existing = _entries.Find(e => e.Type == type);
             PoolGeneration++; // the matcher's view of this rune just changed
             if (append && existing != null)
             {
                 // one more sample of his hand joins the pool
                 if (existing.Variants.Count < MaxSamples - 1)
-                    existing.Variants.Add(new Entry
-                    {
-                        Type = type, Graph = graph, Sentences = sentences
-                    });
+                {
+                    var variant = new Entry { Type = type, Graph = graph };
+                    variant.SetSource(stitched); // sentences build lazily (compound path)
+                    existing.Variants.Add(variant);
+                }
                 return true;
             }
             if (existing != null)
             {
                 existing.Graph = graph;
-                existing.Sentences = sentences;
+                existing.SetSource(stitched);
                 existing.Variants.Clear(); // fresh identity: the pool restates itself
             }
-            else _entries.Add(new Entry
+            else
             {
-                Type = type, Graph = graph, Sentences = sentences
-            });
+                var entry = new Entry { Type = type, Graph = graph };
+                entry.SetSource(stitched);
+                _entries.Add(entry);
+            }
             return true;
         }
 
@@ -1195,13 +1219,10 @@ namespace SpellyZombie
         }
 
         // (per-press template saving removed with the F-keys — ReplaceSamples
-        // above is the one write path, driven by the Rune Studio walls)
-
-        public static void DeleteRecordings()
-        {
-            try { if (File.Exists(SavePath)) File.Delete(SavePath); } catch { }
-            _entries = null; // force re-init from defaults
-        }
+        // above is the one write path, driven by the Rune Studio walls.
+        // DeleteRecordings is DELETED too: zero callers, and dead code that
+        // hard-deletes Marko's recordings file is a loaded gun — same reasoning
+        // that removed RuneWall's AlignToFirst.)
 
         // ---- synthesized default glyphs (y-up, arbitrary units), one stroke each ----
         // Rough approximations of the sketch alphabet; recording real hand-drawn

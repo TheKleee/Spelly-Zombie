@@ -47,7 +47,9 @@ namespace SpellyZombie
 
         static readonly System.Collections.Generic.List<Matter> All = new System.Collections.Generic.List<Matter>();
         /// Spell motes hunt blobs through this (ALL spells look to combine).
-        public static System.Collections.Generic.IReadOnlyList<Matter> Living => All;
+        /// A List, not IReadOnlyList — foreach over the interface boxed the
+        /// enumerator every frame for every live push/essence particle.
+        public static System.Collections.Generic.List<Matter> Living => All;
 
         MaterialInfo _info;
         Rigidbody _rb;
@@ -61,9 +63,12 @@ namespace SpellyZombie
         bool _ice, _burning;
         int _lastLook = int.MinValue;
 
-        public float BlobTemperature => Temperature;
         public Collider Core => _core;
         public Rigidbody Body => _rb;
+
+        /// Wire look byte for client proxies: 1 burning · 2 molten-glow · 4 ice · 8 dark (netcode §3).
+        public byte NetLook => (byte)((_burning ? 1 : 0) | (Temperature > 300f ? 2 : 0)
+            | (_ice ? 4 : 0) | (DarkAura ? 8 : 0));
 
         static readonly int SquashID = Shader.PropertyToID("_Squash");
 
@@ -233,10 +238,7 @@ namespace SpellyZombie
                     break;
 
                 case MatterPhase.Gas:
-                    // A CLOUD, NOT A BALLOON (Marko: "make the gas not be
-                    // lifted up so quickly and make it spread way more... so
-                    // it can cover the area"): it barely rises, and what it
-                    // really does is GROW — a gas fills the room it's in.
+                    // A CLOUD, NOT A BALLOON (Marko): barely rises, mostly GROWS
                     if (_rb)
                     {
                         _rb.AddForce(Vector3.up * Mathf.Max(0.04f, (2.6f - Density) * 0.06f),
@@ -249,18 +251,8 @@ namespace SpellyZombie
                         v.z *= 1f - Mathf.Clamp01(0.9f * dt);
                         _rb.linearVelocity = v;
                     }
-                    // and it SPREADS — up to a cloud many times the size it
-                    // was born. THE BLOOM EASES IN (Marko, Aug 4: the smoke
-                    // "goes in on itself and expands later... should not turn
-                    // into a mush"): growth used to run at full rate from
-                    // frame one, fighting the birth pose. A short soft start
-                    // lets the cloud BE a cloud first, then swell at his
-                    // tuned GasSpreadPerSec. SHORT matters: a conjured
-                    // cloud's whole growable window is its first second (the
-                    // 2.5s gas life starts shrink-fading at 1.0s), so a 1.2s
-                    // ramp quietly ate the swell — the cloud peaked at ~+18%
-                    // of birth size instead of ~+45%. 0.4s keeps most of the
-                    // window and still kills the frame-one pop.
+                    // the SPREAD eases in over 0.4s — no frame-one pop, and short
+                    // enough to keep the growable window (Marko Aug 4 bloom ruling)
                     float bloom = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(_age / 0.4f));
                     // same law as the liquid: the spread stops when the fade
                     // begins, so the cloud dies cleanly instead of fighting it
@@ -344,30 +336,19 @@ namespace SpellyZombie
             // for good). Gas still disperses: low density is a one-way exit.
             if (!Touched || Phase == MatterPhase.Gas)
             {
-                // A CLOUD LIVES LONG ENOUGH TO MATTER (Marko, Aug 4: "the hot
-                // vapor it creates is just in too small of an area to ever hit
-                // anyone — it should be much larger and it should grow in
-                // time"). Gas used to die at a flat 2.5s, shrink-fading from
-                // 1.0s — the cloud was gone before its slow spread went
-                // anywhere. Now it grows for most of its life and fades at
-                // the end, an area you actually have to walk around.
+                // a cloud grows for most of its life, then fades (Marko Aug 4 area ruling)
                 float life = Phase == MatterPhase.Gas ? DrawingConfig.GasLifeSeconds : _life;
                 if (Phase == MatterPhase.Gas)
                 {
-                    // the cloud dispersing at the end is the one fade he has
-                    // seen and approved ("the heat cloud looks nice now")
+                    // the end-of-life disperse is the one fade he approved
                     if (_age > life - 1.5f)
                         transform.localScale = transform.localScale * Mathf.Max(0.01f, 1f - dt / 1.5f);
                     if (_age > life || transform.localScale.x < 0.02f) Destroy(gameObject);
                 }
                 else if (_age > life)
                 {
-                    // A BLOB NEVER CHANGES SIZE (Marko, Aug 5: "liquid is the
-                    // same as solid — it remains the same size and is just
-                    // wobbly, never should it ever drop or change behavior").
-                    // The end-of-life SHRINK that used to live here was never
-                    // his. When its time is up it is simply GONE — a liquid
-                    // leaves the splash he approved, nothing else.
+                    // A BLOB NEVER CHANGES SIZE (Marko Aug 5) — no shrink, just
+                    // gone; a liquid leaves the splash he approved
                     if (Phase == MatterPhase.Liquid && FxLibrary.I != null)
                         FxLibrary.Spawn(FxLibrary.I.Splash, transform.position);
                     Destroy(gameObject);
@@ -810,14 +791,8 @@ namespace SpellyZombie
             var m = Adopt.Component<Matter>(go);
             m.Init(mat, phase, size);
             m.Edges = edges;
-            // GRABBABLE FROM BIRTH (Marko's law on Touched, above: "particles
-            // of any state grab freely" before a touch claims them — and his
-            // Aug 4 repro: aiming E at a liquid ball must grab the BALL).
-            // Conjured matter never carried an InkMark, so even a dead-centre
-            // hit refused with "your ink 0 — draw more on it" and the grab
-            // fell through to whatever stood behind the blob. FreeForAll is
-            // the ink-ore pattern: anyone lifts it bare-handed, and extra ink
-            // drawn on it still buffs a tug-of-war.
+            // GRABBABLE FROM BIRTH — FreeForAll InkMark, the ink-ore pattern
+            // (Marko Aug 4 repro: aiming E at a liquid ball must grab the BALL)
             Adopt.Component<InkMark>(go).FreeForAll = true;
             if (authored && go.GetComponent<Collider>() == null)
                 go.AddComponent<BoxCollider>();      // only if he authored none
@@ -878,16 +853,26 @@ namespace SpellyZombie
 
         readonly System.Collections.Generic.List<Collider> _ignored =
             new System.Collections.Generic.List<Collider>();
+        // collider → its pilot/creature root, resolved ONCE (the walk used to
+        // run per limb collider per physics step — a wader is ~a dozen limbs)
+        readonly System.Collections.Generic.Dictionary<Collider, Component> _roots =
+            new System.Collections.Generic.Dictionary<Collider, Component>();
         float _coatTick;
 
-        static bool IsWader(Collider c) =>
-            c.GetComponentInParent<SimpleFPSController>() != null
-            || c.GetComponentInParent<Creature>() != null;
+        Component RootOf(Collider c)
+        {
+            if (_roots.TryGetValue(c, out var root))
+                return root == null ? null : root; // Unity-null guard for dead roots
+            root = (Component)c.GetComponentInParent<SimpleFPSController>()
+                ?? c.GetComponentInParent<Creature>();
+            _roots[c] = root;
+            return root;
+        }
 
         void OnTriggerEnter(Collider other)
         {
             if (Owner == null || Owner.Core == null || other.isTrigger) return;
-            if (!IsWader(other)) return;
+            if (RootOf(other) == null) return; // only waders get the pair-ignore
             Physics.IgnoreCollision(Owner.Core, other, true);
             _ignored.Add(other);
         }
@@ -900,7 +885,8 @@ namespace SpellyZombie
             var flow = Owner.Body != null ? Owner.Body.linearVelocity : Vector3.zero;
             bool flowing = flow.sqrMagnitude > 0.2f;
 
-            var pilot = other.GetComponentInParent<SimpleFPSController>();
+            var root = RootOf(other);
+            var pilot = root as SimpleFPSController;
             if (pilot != null)
             {
                 // GAS never slows a wader (Marko's state rule) — but its
@@ -908,16 +894,16 @@ namespace SpellyZombie
                 // working (his juice rule: no invisible effects)
                 if (Owner.Phase == MatterPhase.Gas)
                 {
-                    if (Mathf.Abs(Owner.BlobTemperature - 18f) > 40f && Tick(0.5f))
+                    if (Mathf.Abs(Owner.Temperature - 18f) > 40f && Tick(0.5f))
                     {
-                        BodyState.Of(pilot)?.PushTemp((Owner.BlobTemperature - 18f) * 0.06f);
+                        BodyState.Of(pilot)?.PushTemp((Owner.Temperature - 18f) * 0.06f);
                         var lib = FxLibrary.I;
                         if (lib != null)
                         {
                             var at = pilot.transform.position + Vector3.up * 1.3f
                                 + Random.insideUnitSphere * 0.25f;
                             var fx = FxLibrary.Spawn(
-                                Owner.BlobTemperature > 18f ? lib.HitSpark : lib.IceHit, at);
+                                Owner.Temperature > 18f ? lib.HitSpark : lib.IceHit, at);
                             if (fx != null) fx.transform.localScale *= 0.55f;
                         }
                     }
@@ -935,22 +921,22 @@ namespace SpellyZombie
                 // burn gate was 150° and steam is born at 130°, so the
                 // scalding cloud literally could not scald). Anything past
                 // boiling bites; lava just bites harder.
-                if (Owner.BlobTemperature > 100f && Tick(0.5f))
-                    pilot.TakeHit(Vector3.zero, Owner.BlobTemperature > 150f ? 6f : 3f);
-                else if (Owner.BlobTemperature < -20f && Tick(0.5f))
-                    SpellParticle.GiveHeatTo(other, Owner.BlobTemperature * 0.15f); // icy water CHILLS waders
+                if (Owner.Temperature > 100f && Tick(0.5f))
+                    pilot.TakeHit(Vector3.zero, Owner.Temperature > 150f ? 6f : 3f);
+                else if (Owner.Temperature < -20f && Tick(0.5f))
+                    SpellParticle.GiveHeatTo(other, Owner.Temperature * 0.15f); // icy water CHILLS waders
                 return;
             }
 
-            var creature = other.GetComponentInParent<Creature>();
+            var creature = root as Creature;
             if (creature != null)
             {
                 if (Tick(0.4f))
                 {
                     // cold liquid chills waders (mirror of lava — pair-ignores
                     // mean collision chemistry never fires for them)
-                    if (Owner.BlobTemperature < -20f)
-                        SpellParticle.GiveHeatTo(other, Owner.BlobTemperature * 0.15f);
+                    if (Owner.Temperature < -20f)
+                        SpellParticle.GiveHeatTo(other, Owner.Temperature * 0.15f);
 
                     // DARK liquid blinds whoever wades it (identity preserved —
                     // it's still darkness, just wet)
@@ -969,8 +955,8 @@ namespace SpellyZombie
 
                     // the coating rules that used to live on collision — the
                     // pair-ignore means collision never fires for waders now
-                    if (Owner.BlobTemperature > 100f) // past boiling = it burns (steam included)
-                        SpellParticle.GiveHeatTo(other, Owner.BlobTemperature * 0.15f);
+                    if (Owner.Temperature > 100f) // past boiling = it burns (steam included)
+                        SpellParticle.GiveHeatTo(other, Owner.Temperature * 0.15f);
                     else if (Owner.Material == SurfaceMaterialType.Coal) creature.ApplySlip(2f);   // oil
                     else if (Owner.Material == SurfaceMaterialType.Slime) creature.ApplyStuck(2.5f);
                     else if (Owner.Material == SurfaceMaterialType.Wood) creature.ApplyStuck(1.5f); // sap

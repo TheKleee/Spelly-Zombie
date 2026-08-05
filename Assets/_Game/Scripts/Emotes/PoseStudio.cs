@@ -200,7 +200,7 @@ namespace SpellyZombie
                     var rig = hit.collider.GetComponentInParent<EmoteRig>();
                     if (rig == Target)
                     {
-                        var joint = FindJointFor(hit.transform);
+                        var joint = Target.JointAtOrAbove(hit.transform);
                         // too close to the pivot to give a stable direction -> treat as body
                         if (joint != null && Vector3.Distance(hit.point, joint.T.position) < 0.08f)
                             joint = null;
@@ -262,20 +262,6 @@ namespace SpellyZombie
             float dx = mouse.delta.ReadValue().x;
             if (Mathf.Abs(dx) > 0.01f)
                 Target.transform.Rotate(0f, -dx * RotateCharacterSpeed, 0f, Space.World);
-        }
-
-        /// Walk up from the clicked collider to the joint that owns that limb.
-        EmoteRig.JointEntry FindJointFor(Transform hitTransform)
-        {
-            var t = hitTransform;
-            while (t != null)
-            {
-                foreach (var j in Target.Joints)
-                    if (j.T == t) return j;
-                if (t == Target.transform) break;
-                t = t.parent;
-            }
-            return null;
         }
 
         void HandleKeys(Keyboard kb)

@@ -3,10 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Connection front door (Phase B1). Uses whatever transport the scene's
-    /// NetworkManager has active — Tugboat for localhost/LAN testing now,
-    /// FishySteamworks once we flip to Steam lobbies. Pure OnGUI, zero scene
-    /// dependencies beyond the NetworkManager the user already created.
+    /// Connection front door (B1): whatever transport the scene's NetworkManager has active — Tugboat for LAN now, FishySteamworks later.
     public class NetGame : MonoBehaviour
     {
         public static bool Connected =>
@@ -15,6 +12,9 @@ namespace SpellyZombie
 
         public static bool IsHost =>
             InstanceFinder.NetworkManager != null && InstanceFinder.ServerManager.Started;
+
+        /// Host-authoritative law: solo and the host simulate; clients ship intents (netcode §0).
+        public static bool IsAuthority => !Connected || IsHost;
 
         string _address = "127.0.0.1";
 
@@ -32,13 +32,17 @@ namespace SpellyZombie
         UnityEngine.UI.Text _status;
         UnityEngine.UI.InputField _addrField;
 
+        // status-line cache — rebuild the string only when a shown value changes, not per frame
+        int _shownPlayers = -1;
+        bool _shownHost;
+        string _shownCode;
+
         void LateUpdate()
         {
             bool show = InstanceFinder.NetworkManager != null
                 && !GameMenu.IsOpen && !PoseStudio.IsOpen
-                // the MAIN MENU has its own Create/Find Server buttons — the
-                // keyboard panel belongs to the lobby and the game
-                && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Menu";
+                // the MAIN MENU has its own Create/Find Server buttons — this panel belongs to lobby + game
+                && ActiveScene.Name != "Menu";
             if (!show)
             {
                 // hide, never destroy — prefab-adopted UI survives cycles
@@ -48,8 +52,16 @@ namespace SpellyZombie
             if (_ui == null || _uiConnected != Connected) BuildUI();
             else if (!_ui.gameObject.activeSelf) _ui.gameObject.SetActive(true);
             if (Connected && _status != null)
-                _status.text = $"● {(IsHost ? "HOSTING" : "CONNECTED")} — {NetSync.RemoteCount + 1} player(s)"
-                    + (string.IsNullOrEmpty(SteamLobby.CurrentCode) ? "" : $" · CODE {SteamLobby.CurrentCode}");
+            {
+                int players = NetSync.RemoteCount + 1;
+                string code = SteamLobby.CurrentCode;
+                if (players != _shownPlayers || IsHost != _shownHost || code != _shownCode)
+                {
+                    _shownPlayers = players; _shownHost = IsHost; _shownCode = code;
+                    _status.text = $"● {(IsHost ? "HOSTING" : "CONNECTED")} — {players} player(s)"
+                        + (string.IsNullOrEmpty(code) ? "" : $" · CODE {code}");
+                }
+            }
 
             // the cursor is locked in first person, so the panel is KEYBOARD
             // FIRST: H hosts, J joins, I edits the address (Enter commits)
@@ -77,6 +89,7 @@ namespace SpellyZombie
         {
             UIKit.Retire(_ui); // rebuild is same-frame — never adopt the corpse
             _uiConnected = Connected;
+            _shownPlayers = -1; // fresh status label — invalidate the cache
             var skin = UISkin.I;
             _ui = UIKit.Group(UIKit.Root, "NetPanel");
 

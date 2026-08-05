@@ -171,36 +171,16 @@ namespace SpellyZombie
 
         void Orbit(Keyboard kb, Mouse mouse)
         {
-            if (mouse.middleButton.isPressed)
-            {
-                Vector2 d = mouse.delta.ReadValue();
-                _yaw += d.x * 0.3f;
-                _pitch = Mathf.Clamp(_pitch - d.y * 0.3f, -85f, 85f);
-            }
-            float zoom = mouse.scroll.ReadValue().y;
             // wheel zooms ONLY when nothing is held (held = twist)
-            if (_grabbed == null && _ikRoot == null && Mathf.Abs(zoom) > 0.01f)
-                _dist = Mathf.Clamp(_dist * (1f - Mathf.Sign(zoom) * 0.12f), 1.0f, 4.5f);
-
-            var rot = Quaternion.Euler(_pitch, _yaw, 0f);
-            float panX = (kb.dKey.isPressed ? 1f : 0f) - (kb.aKey.isPressed ? 1f : 0f);
-            float panY = (kb.wKey.isPressed ? 1f : 0f) - (kb.sKey.isPressed ? 1f : 0f);
-            if (panX != 0f || panY != 0f)
-            {
-                _pan += (rot * new Vector3(panX, panY, 0f)) * (0.6f * _dist) * Time.deltaTime;
-                _pan = Vector3.ClampMagnitude(_pan, 2.2f);
-            }
+            var rot = EaselOrbit.Tick(kb, mouse, ref _yaw, ref _pitch, ref _dist, ref _pan,
+                allowZoom: _grabbed == null && _ikRoot == null, zoomMin: 1.0f);
             ApplyOrbit(rot);
         }
 
         void ApplyOrbit() => ApplyOrbit(Quaternion.Euler(_pitch, _yaw, 0f));
 
         void ApplyOrbit(Quaternion rot)
-        {
-            Vector3 focus = transform.position + _pan;
-            _cam.transform.position = focus + rot * new Vector3(0f, 0f, -_dist);
-            _cam.transform.rotation = rot;
-        }
+            => EaselOrbit.Apply(_cam, transform.position + _pan, rot, _dist);
 
         void HandleGrab(Mouse mouse)
         {
@@ -220,7 +200,7 @@ namespace SpellyZombie
                     // be selecting the bone"): the one you clicked, or the one
                     // whose pivot is nearest the cursor — within a tight
                     // radius, so a far click never grabs something surprising.
-                    var joint = hitBody ? NearestJointUp(hit.transform) : null;
+                    var joint = hitBody ? _rig.JointAtOrAbove(hit.transform) : null;
                     if (joint == null) joint = NearestJointScreen(mp, 60f);
                     if (joint != null)
                     {
@@ -370,21 +350,6 @@ namespace SpellyZombie
             }
         }
 
-        /// SHIFT: the FIRST joint at or above the clicked collider — the exact
-        /// bone you pointed at, hinge or not.
-        EmoteRig.JointEntry NearestJointUp(Transform hitTransform)
-        {
-            var t = hitTransform;
-            while (t != null)
-            {
-                foreach (var j in _rig.Joints)
-                    if (j.T == t) return j;
-                if (t == transform) break;
-                t = t.parent;
-            }
-            return null;
-        }
-
         /// Where a joint's visible "handle" sits — the hand/foot marker when
         /// one exists, else the bone's child, else the pivot itself.
         Vector3 HandleTip(EmoteRig.JointEntry j)
@@ -466,6 +431,47 @@ namespace SpellyZombie
                 : root.T.childCount > 0 ? root.T.GetChild(0)
                 : root.T;
             return true;
+        }
+    }
+
+    /// THE easel orbit — MMB rotates, WASD pans (clamped 2.2 so the body is
+    /// never lost), scroll zooms. PoseGrab and SelfPaint share this one
+    /// camera language (it was implemented twice, drifting apart).
+    public static class EaselOrbit
+    {
+        public static Quaternion Tick(Keyboard kb, Mouse mouse, ref float yaw,
+            ref float pitch, ref float dist, ref Vector3 pan,
+            bool allowZoom, float zoomMin, float zoomMax = 4.5f)
+        {
+            if (mouse.middleButton.isPressed)
+            {
+                Vector2 d = mouse.delta.ReadValue();
+                yaw += d.x * 0.3f;
+                pitch = Mathf.Clamp(pitch - d.y * 0.3f, -85f, 85f);
+            }
+            float zoom = mouse.scroll.ReadValue().y;
+            if (allowZoom && Mathf.Abs(zoom) > 0.01f)
+                dist = Mathf.Clamp(dist * (1f - Mathf.Sign(zoom) * 0.12f), zoomMin, zoomMax);
+
+            var rot = Quaternion.Euler(pitch, yaw, 0f);
+            if (kb != null)
+            {
+                float panX = (kb.dKey.isPressed ? 1f : 0f) - (kb.aKey.isPressed ? 1f : 0f);
+                float panY = (kb.wKey.isPressed ? 1f : 0f) - (kb.sKey.isPressed ? 1f : 0f);
+                if (panX != 0f || panY != 0f)
+                {
+                    // slide in the current view plane, a bit faster zoomed out
+                    pan += (rot * new Vector3(panX, panY, 0f)) * (0.6f * dist) * Time.deltaTime;
+                    pan = Vector3.ClampMagnitude(pan, 2.2f);
+                }
+            }
+            return rot;
+        }
+
+        public static void Apply(Camera cam, Vector3 focus, Quaternion rot, float dist)
+        {
+            cam.transform.position = focus + rot * new Vector3(0f, 0f, -dist);
+            cam.transform.rotation = rot;
         }
     }
 }

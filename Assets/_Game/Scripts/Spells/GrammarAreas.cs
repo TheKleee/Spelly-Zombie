@@ -69,6 +69,36 @@ namespace SpellyZombie
             }
         }
 
+        /// ONE fire mote (dedupe: Spell.SpawnBurst, FlameBurst and MeteorTrail
+        /// each hand-rolled this sphere — SpawnBurst even leaked a Material per
+        /// mote via `new Material`; MatterFX.Get caches).
+        public static GameObject FireMote(Vector3 at, float scale, float life)
+        {
+            var f = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            f.name = "Fire";
+            Object.Destroy(f.GetComponent<Collider>());
+            f.transform.position = at;
+            f.transform.localScale = Vector3.one * scale;
+            f.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(
+                Color.Lerp(new Color(1f, 0.75f, 0.15f), new Color(1f, 0.25f, 0.05f), Random.value),
+                MoteShade.Additive);
+            Object.Destroy(f, life);
+            return f;
+        }
+
+        /// A gravity-free fling of fire motes — the shared bloom look.
+        public static void FireBloom(Vector3 at, int count, float speed, float upKick)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                var f = FireMote(at + Random.insideUnitSphere * 0.4f,
+                    Random.Range(0.15f, 0.3f), Random.Range(0.4f, 0.9f));
+                var rb = f.AddComponent<Rigidbody>();
+                rb.useGravity = false;
+                rb.linearVelocity = Random.onUnitSphere * speed + Vector3.up * upKick;
+            }
+        }
+
         /// Spark lvl3 — FLAME BURST: flames burst across the area, once.
         public static void FlameBurst(Vector3 at, float power)
         {
@@ -88,21 +118,7 @@ namespace SpellyZombie
                 var rb = c.attachedRigidbody;
                 if (rb != null) rb.AddForce((rb.worldCenterOfMass - at).normalized * 9f, ForceMode.VelocityChange);
             }
-            for (int i = 0; i < 10; i++) // the visible bloom
-            {
-                var f = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                f.name = "Fire";
-                Object.Destroy(f.GetComponent<Collider>());
-                f.transform.position = at + Random.insideUnitSphere * 0.4f;
-                f.transform.localScale = Vector3.one * Random.Range(0.15f, 0.3f);
-                f.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(
-                    Color.Lerp(new Color(1f, 0.75f, 0.15f), new Color(1f, 0.25f, 0.05f), Random.value),
-                    MoteShade.Additive);
-                var frb = f.AddComponent<Rigidbody>();
-                frb.useGravity = false;
-                frb.linearVelocity = Random.onUnitSphere * 4f + Vector3.up * 2f;
-                Object.Destroy(f, Random.Range(0.4f, 0.9f));
-            }
+            FireBloom(at, 10, 4f, 2f); // the visible bloom
         }
     }
 
@@ -414,29 +430,6 @@ namespace SpellyZombie
             if (p != null) { p.Pull(transform.position + away * 30f, dt * 2f); return; }
             var rb = c.attachedRigidbody;
             if (rb != null) rb.AddForce(away * 34f, ForceMode.Acceleration);
-        }
-    }
-
-    /// Spark+Frost paradox — BURNING STEAM: slows and scalds inside.
-    /// Levels feed its size: two lvl2s make the big HOT STEAM AREA.
-    public class SteamCloud : GrammarField
-    {
-        public static SteamCloud Open(Vector3 at, float power, bool big)
-        {
-            var f = Spawn<SteamCloud>(at, power, big ? DrawingConfig.UltimateRadius : 1.4f,
-                DrawingConfig.UltimateSeconds * (big ? 1.2f : 0.7f),
-                new Color(0.93f, 0.95f, 0.97f, 0.45f), MoteShade.Transparent);
-            GrammarFX.PuffBurst(at, new Color(0.92f, 0.94f, 0.97f, 0.5f), 6);
-            return f;
-        }
-
-        protected override void Affect(Collider c, float dt)
-        {
-            var pl = c.GetComponent<SimpleFPSController>();
-            // scalding fog only HEATS — the band does the billing
-            if (pl != null) { BodyState.Of(pl)?.PushTemp(7f * Power); return; }
-            var cr = c.GetComponentInParent<Creature>();
-            if (cr != null) { cr.ApplyStuck(0.4f); SpellParticle.GiveHeatTo(c, 35f * Power); }
         }
     }
 

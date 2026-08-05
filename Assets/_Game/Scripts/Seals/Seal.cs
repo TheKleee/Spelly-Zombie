@@ -29,6 +29,8 @@ namespace SpellyZombie
         public readonly List<RuneGlyph> Runes = new List<RuneGlyph>();
 
         readonly List<DrawNode> _loopNodes;
+        /// Ring-ordered boundary nodes — NetSync ships their positions to clients (netcode §2).
+        public IReadOnlyList<DrawNode> LoopNodes => _loopNodes;
         readonly List<Vector2> _polygon2D;
         float[] _restGaps; // distance between each adjacent loop-node pair at activation
 
@@ -142,7 +144,7 @@ namespace SpellyZombie
 
             // 2) segment the enclosed ink into runes BY RECOGNITION — stacked/nested
             //    distinct runes stay separate, multi-line runes group as one
-            foreach (var glyph in RuneGlyph.Segment(enclosed, DrawingConfig.GlyphJoinBase, DrawingConfig.GlyphJoinSizeFactor, OwnerId))
+            foreach (var glyph in RuneGlyph.Segment(enclosed, OwnerId))
             {
                 // strength = match quality × size. RECOGNIZED means MEANINGFUL:
                 // match floors at 0.45 once past the gate (a readable rune is a
@@ -185,8 +187,6 @@ namespace SpellyZombie
                 {
                     Payload.Add(member);
                     member.State = StrokeState.InSeal;
-                    member.Rune = glyph.Rune;
-                    member.RuneScore = glyph.Score;
                     // BODY INK IS MARKED FOREVER (Marko: "first effect should
                     // be final — drawings on body are permanent thus special,
                     // runes are already marked as to what they will be"): the
@@ -284,7 +284,7 @@ namespace SpellyZombie
         {
             foreach (var e in Boundary) Release(e.Stroke);
             foreach (var s in Payload) Release(s);
-            DrawingWorld.Instance?.OnSealEnded(this, $"Seal #{Id} broken ({reason}) with {Remaining:0.0}s left");
+            DrawingWorld.Instance?.OnSealEnded(this, $"Seal #{Id} broken ({reason}) with {Remaining:0.0}s left", false);
         }
 
         static void Release(Stroke s)
@@ -326,7 +326,7 @@ namespace SpellyZombie
                     ? $"{spent.Count} stroke(s) spent (open the loop to re-arm), {burned} consumed"
                     : $"{spent.Count} stroke(s) spent — open the loop to re-arm"
                 : "ink consumed";
-            DrawingWorld.Instance?.OnSealEnded(this, $"Seal #{Id} resolved after {Duration:0.0}s — {fate}");
+            DrawingWorld.Instance?.OnSealEnded(this, $"Seal #{Id} resolved after {Duration:0.0}s — {fate}", true);
         }
 
         static void SpendOrBurn(Stroke s, List<Stroke> spent, ref int burned)

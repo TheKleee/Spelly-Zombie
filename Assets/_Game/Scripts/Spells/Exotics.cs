@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
@@ -141,22 +140,9 @@ namespace SpellyZombie
             if (_retarget <= 0f)
             {
                 _retarget = 0.6f;
-                _prey = null;
                 float best = 14f * 14f;
-                foreach (var z in Zombie.All) // moving zombies
-                {
-                    if (z == null) continue;
-                    var rb = z.GetComponent<Rigidbody>();
-                    if (rb != null && rb.linearVelocity.sqrMagnitude < 0.4f) continue;
-                    float d = (z.transform.position - transform.position).sqrMagnitude;
-                    if (d < best) { best = d; _prey = z.transform; }
-                }
-                foreach (var p in SimpleFPSController.All) // moving wizards
-                {
-                    if (p == null || p.Velocity.sqrMagnitude < 0.4f) continue;
-                    float d = (p.transform.position - transform.position).sqrMagnitude;
-                    if (d < best) { best = d; _prey = p.transform; }
-                }
+                _prey = Targets.Nearest(transform.position, ref best,
+                    includePlayers: true, movingOnly: true); // moving zombies + wizards
                 // "anything that moves — EVEN AN OBJECT" (Marko): rolling
                 // crates, thrown ores, tumbling matter — all legitimate prey
                 int n = Physics.OverlapSphereNonAlloc(transform.position, 14f,
@@ -352,20 +338,8 @@ namespace SpellyZombie
             if (_tick <= 0f)
             {
                 _tick = 0.4f;
-                _prey = null;
                 float best = 20f * 20f;
-                foreach (var z in Zombie.All)
-                {
-                    if (z == null) continue;
-                    float d = (z.transform.position - transform.position).sqrMagnitude;
-                    if (d < best) { best = d; _prey = z.transform; }
-                }
-                foreach (var p in SimpleFPSController.All)
-                {
-                    if (p == null) continue;
-                    float d = (p.transform.position - transform.position).sqrMagnitude;
-                    if (d < best) { best = d; _prey = p.transform; }
-                }
+                _prey = Targets.Nearest(transform.position, ref best, includePlayers: true);
 
                 // it EATS magic: any particle it overlaps is simply unmade
                 int n = Physics.OverlapSphereNonAlloc(transform.position, 1.1f,

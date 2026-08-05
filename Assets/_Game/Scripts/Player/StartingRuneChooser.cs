@@ -17,6 +17,7 @@ namespace SpellyZombie
         public static bool HasChosen { get; private set; }
 
         RuneCardType[] _offers;
+        float _pollAt; // idle poll gate — this bootstrap lives in EVERY scene forever
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -34,6 +35,15 @@ namespace SpellyZombie
 
         void Update()
         {
+            // while the UI is DOWN, poll NeedsChoice (Grimoire lookups) at
+            // 2 Hz instead of every frame in every scene; a shown chooser
+            // still runs per-frame so keys and teardown stay instant
+            if (_offers == null)
+            {
+                if (Time.unscaledTime < _pollAt) return;
+                _pollAt = Time.unscaledTime + 0.5f;
+            }
+
             if (!NeedsChoice || PoseStudio.IsOpen)
             {
                 _offers = null; // fresh roll next time a choice is needed

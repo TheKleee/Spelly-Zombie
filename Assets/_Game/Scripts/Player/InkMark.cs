@@ -65,9 +65,35 @@ namespace SpellyZombie
         public static float AuthorityIn(Transform root, int ownerId)
         {
             if (root == null) return 0f;
+            return AuthorityIn(root.GetComponentsInChildren<InkMark>(true), ownerId);
+        }
+
+        /// Same law over a pre-fetched ledger set — HandGrab caches the held
+        /// subtree once at grab time (no per-frame GetComponentsInChildren).
+        /// LIVE INK ONLY (Marko, Aug 5: "you can only lift based on how much
+        /// of your ink it has THE MOMENT you try to lift it"). The ledger
+        /// remembered every stroke ever drawn, so ERASED ink kept granting
+        /// lift. Authority is now counted from the strokes actually alive on
+        /// the object right now; the ledger only carries ownership flags.
+        public static float AuthorityIn(InkMark[] marks, int ownerId)
+        {
+            if (marks == null) return 0f;
             float total = 0f;
-            foreach (var m in root.GetComponentsInChildren<InkMark>(true))
-                total += m.Authority(ownerId);
+            var world = DrawingWorld.Instance;
+            foreach (var m in marks)
+            {
+                if (m == null) continue;
+                if (m.FreeForAll || m.BornOf == ownerId) total += Perks.InkMax;
+                if (world == null) continue;
+                var host = m.transform;
+                for (int i = 0; i < world.Strokes.Count; i++)
+                {
+                    var s = world.Strokes[i];
+                    if (s == null || !s.Alive || s.OwnerId != ownerId || s.Surface == null) continue;
+                    if (s.Surface != host && !s.Surface.IsChildOf(host)) continue;
+                    total += s.PathLength() * DrawingConfig.InkCostPerMeter * Perks.InkCostMul;
+                }
+            }
             return total;
         }
 

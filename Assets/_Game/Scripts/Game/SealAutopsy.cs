@@ -5,11 +5,7 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// The clip generator: after a spectacular moment (3+ kills within seconds
-    /// of a seal, or a team wipe), a 5-second overlay REPLAYS the seal being
-    /// drawn — animated ink, then the verdict. Press P to save it as a PNG
-    /// (persistentDataPath/autopsies). This manufactures the shareable moment
-    /// instead of hoping a streamer clips it.
+    /// The clip generator: after a kill burst near a seal (or a wipe), a 5s overlay replays the seal being drawn; P saves a PNG — manufactures the shareable moment.
     public class SealAutopsy : MonoBehaviour
     {
         const int Size = 256;
@@ -33,7 +29,8 @@ namespace SpellyZombie
         {
             float now = Time.time;
             _recentKills.Add(now);
-            _recentKills.RemoveAll(t => now - t > 4f);
+            for (int i = _recentKills.Count - 1; i >= 0; i--) // no closure alloc per kill
+                if (now - _recentKills[i] > 4f) _recentKills.RemoveAt(i);
             if (_recentKills.Count < 3 || _active != null) return;
 
             var seal = LastRecentSeal(6f);

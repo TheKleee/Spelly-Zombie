@@ -236,15 +236,6 @@ namespace SpellyZombie
         // -------------------------------------------------------------- HUD --
         // (uGUI — the card panel is rebuilt on every roll, torn down on pick)
 
-        /// The always-on XP line by the HP/ink bars (HUD renders it).
-        public static string XpLine()
-        {
-            if (Instance == null || !RoundDirector.RunActive) return "";
-            int need = 4 + Instance._level * 3;
-            return $"LVL {Instance._level} · {Instance._kills}/{need} kills"
-                + (Instance._pending > 0 ? "  ⬆ LEVEL UP!" : "");
-        }
-
         RectTransform _ui;
 
         void BuildChooserUI()

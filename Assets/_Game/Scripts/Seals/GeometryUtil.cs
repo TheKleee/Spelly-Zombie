@@ -51,12 +51,21 @@ namespace SpellyZombie
         public static List<Vector2> ProjectToPlane(IReadOnlyList<Vector3> pts, Vector3 origin, Vector3 u, Vector3 v)
         {
             var result = new List<Vector2>(pts.Count);
+            ProjectToPlane(pts, origin, u, v, result);
+            return result;
+        }
+
+        /// Allocation-free variant: projects into a caller-owned buffer
+        /// (CrossingFinder's 8 Hz scan — the no-per-frame-alloc law).
+        public static void ProjectToPlane(IReadOnlyList<Vector3> pts, Vector3 origin, Vector3 u, Vector3 v,
+            List<Vector2> into)
+        {
+            into.Clear();
             foreach (var p in pts)
             {
                 Vector3 d = p - origin;
-                result.Add(new Vector2(Vector3.Dot(d, u), Vector3.Dot(d, v)));
+                into.Add(new Vector2(Vector3.Dot(d, u), Vector3.Dot(d, v)));
             }
-            return result;
         }
 
         public static Vector2 ProjectPoint(Vector3 p, Vector3 origin, Vector3 u, Vector3 v)
@@ -65,13 +74,8 @@ namespace SpellyZombie
             return new Vector2(Vector3.Dot(d, u), Vector3.Dot(d, v));
         }
 
-        public static float Perimeter(IReadOnlyList<Vector2> pts, bool closed)
-        {
-            float len = 0f;
-            for (int i = 1; i < pts.Count; i++) len += Vector2.Distance(pts[i - 1], pts[i]);
-            if (closed && pts.Count > 2) len += Vector2.Distance(pts[pts.Count - 1], pts[0]);
-            return len;
-        }
+        // (Perimeter DELETED — zero callers; SealDetector.LoopPerimeter and
+        // CrossingFinder.PolyLength are the live length measures.)
 
         /// Shoelace formula, absolute area of the projected loop.
         public static float PolygonArea(IReadOnlyList<Vector2> pts)
@@ -120,35 +124,11 @@ namespace SpellyZombie
             return Mathf.Sqrt(var / pts.Count) / mean;
         }
 
-        static float PerpDistance(Vector2 p, Vector2 a, Vector2 b)
-        {
-            Vector2 ab = b - a;
-            float len = ab.magnitude;
-            if (len < 1e-6f) return Vector2.Distance(p, a);
-            float cross = Mathf.Abs(ab.x * (p.y - a.y) - ab.y * (p.x - a.x));
-            return cross / len;
-        }
-
-        static void Rdp(IReadOnlyList<Vector2> pts, int i0, int i1, float eps, List<int> keep)
-        {
-            float maxD = -1f;
-            int idx = -1;
-            for (int i = i0 + 1; i < i1; i++)
-            {
-                float d = PerpDistance(pts[i], pts[i0], pts[i1]);
-                if (d > maxD) { maxD = d; idx = i; }
-            }
-            if (idx >= 0 && maxD > eps)
-            {
-                Rdp(pts, i0, idx, eps, keep);
-                keep.Add(idx);
-                Rdp(pts, idx, i1, eps, keep);
-            }
-        }
-
         /// Corner count of a closed loop: split the ring at the point farthest from
-        /// the start, simplify both halves with Ramer-Douglas-Peucker, then drop
-        /// "corners" whose direction change is too shallow to count as a real edge.
+        /// the start, simplify both halves with the project's ONE simplifier
+        /// (RuneGraph.SimplifyIndices — the second recursive RDP that lived here
+        /// is deleted), then drop "corners" whose direction change is too shallow
+        /// to count as a real edge.
         public static int ClosedLoopCorners(IReadOnlyList<Vector2> pts)
         {
             int n = pts.Count;
@@ -166,20 +146,21 @@ namespace SpellyZombie
             }
             if (m == 0 || m == n - 1) m = n / 2;
 
-            var cornerIdx = new List<int> { 0 };
-            Rdp(pts, 0, m, eps, cornerIdx);
-            cornerIdx.Add(m);
-            var second = new List<int>();
-            // second half wraps back to index 0; run RDP on a stitched copy
-            var half = new List<Vector2>();
+            // first half: indices 0..m as their own polyline (index-preserving)
+            var half = new List<Vector2>(m + 1);
+            for (int i = 0; i <= m; i++) half.Add(pts[i]);
+            var keep = new List<int>();
+            RuneGraph.SimplifyIndices(half, eps, keep);
+            var cornerIdx = new List<int>(keep); // half indices map 1:1 onto pts
+
+            // second half wraps back to index 0; simplify a stitched copy
+            half.Clear();
             var map = new List<int>();
             for (int i = m; i < n; i++) { half.Add(pts[i]); map.Add(i); }
             half.Add(pts[0]);
             map.Add(0);
-            var keep = new List<int>();
-            Rdp(half, 0, half.Count - 1, eps, keep);
-            foreach (var k in keep) second.Add(map[k]);
-            cornerIdx.AddRange(second);
+            RuneGraph.SimplifyIndices(half, eps, keep);
+            foreach (var k in keep) cornerIdx.Add(map[k]);
 
             cornerIdx.Sort();
             // dedupe

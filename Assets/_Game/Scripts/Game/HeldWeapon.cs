@@ -81,6 +81,22 @@ namespace SpellyZombie
             OnSkinApplied(skin);
         }
 
+        /// Shared primitive grip + pickup trigger bubble for the code-built pickups (temp look — Marko restyles later).
+        protected static void BuildGripAndBubble(GameObject root, Color gripColor)
+        {
+            var grip = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            grip.name = "Grip";
+            grip.transform.SetParent(root.transform, false);
+            grip.transform.localPosition = new Vector3(0f, -0.09f, -0.12f);
+            grip.transform.localRotation = Quaternion.Euler(65f, 0f, 0f);
+            grip.transform.localScale = new Vector3(0.05f, 0.1f, 0.05f);
+            grip.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(gripColor, MoteShade.Opaque);
+
+            var bubble = root.AddComponent<SphereCollider>();
+            bubble.isTrigger = true;
+            bubble.radius = 0.9f;
+        }
+
         /// Deep search — parts may live at the root or inside the skin.
         protected Transform FindPart(string partName)
         {

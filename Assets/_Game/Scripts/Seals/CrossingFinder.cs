@@ -69,11 +69,81 @@ namespace SpellyZombie
             public Stroke Stroke;
             public int Lo, Hi; // inclusive node range between the two crossings
             public float Length;
-            public List<Vector3> Pts; // world positions Lo..Hi (for area guards)
+            public readonly List<Vector3> Pts = new List<Vector3>(); // world positions Lo..Hi (for area guards)
         }
 
         const int MaxCrossings = 400;
         const int MaxNearMisses = 256;
+
+        // ---- pooled scratch (Find runs at 8 Hz on the main thread, never
+        // reentrant — it was the biggest single allocator in the seal path;
+        // nothing pooled here ever escapes: Result carries only Arc structs) ----
+        static List<Vector3>[] _pts = new List<Vector3>[16];
+        static Vector3[] _norms = new Vector3[16];
+        static float[][] _arc = new float[16][];
+        static Bounds[] _bounds = new Bounds[16];
+        static List<Appearance>[] _appear = new List<Appearance>[16];
+        static readonly List<Xing> _xings = new List<Xing>();
+        static readonly List<Xing> _xingPool = new List<Xing>();
+        static int _xingUsed;
+        static readonly List<Edge> _edges = new List<Edge>();
+        static readonly List<Edge> _edgePool = new List<Edge>();
+        static int _edgeUsed;
+        static readonly List<Vector3> _projAll = new List<Vector3>();
+        static readonly List<Vector2> _projA = new List<Vector2>();
+        static readonly List<Vector2> _projB = new List<Vector2>();
+        static readonly Dictionary<int, float> _spDist = new Dictionary<int, float>();
+        static readonly Dictionary<int, int> _spPrev = new Dictionary<int, int>();
+        static readonly HashSet<int> _spVisited = new HashSet<int>();
+        static readonly List<int> _spFrontier = new List<int>();
+
+        static void EnsureScratch(int n)
+        {
+            if (_pts.Length < n)
+            {
+                int cap = Mathf.NextPowerOfTwo(n);
+                System.Array.Resize(ref _pts, cap);
+                System.Array.Resize(ref _norms, cap);
+                System.Array.Resize(ref _arc, cap);
+                System.Array.Resize(ref _bounds, cap);
+                System.Array.Resize(ref _appear, cap);
+            }
+            for (int i = 0; i < n; i++)
+            {
+                if (_pts[i] == null) _pts[i] = new List<Vector3>();
+                if (_appear[i] == null) _appear[i] = new List<Appearance>();
+                _appear[i].Clear();
+            }
+        }
+
+        /// Drop last scan's stroke references and reset the object pools.
+        static void ReleaseScratch()
+        {
+            foreach (var e in _edges) { e.Stroke = null; e.Pts.Clear(); }
+            _edges.Clear();
+            _edgeUsed = 0;
+            _xings.Clear();
+            _xingUsed = 0;
+        }
+
+        static Xing TakeXing()
+        {
+            Xing x;
+            if (_xingUsed < _xingPool.Count) x = _xingPool[_xingUsed];
+            else { x = new Xing(); _xingPool.Add(x); }
+            _xingUsed++;
+            return x;
+        }
+
+        static Edge TakeEdge()
+        {
+            Edge e;
+            if (_edgeUsed < _edgePool.Count) e = _edgePool[_edgeUsed];
+            else { e = new Edge(); _edgePool.Add(e); }
+            _edgeUsed++;
+            e.Pts.Clear();
+            return e;
+        }
 
         /// Every endpoint that came close to ink without touching it, WITH the
         /// two strokes involved — the strokes matter, see SelectNearMiss.
@@ -96,6 +166,7 @@ namespace SpellyZombie
             _nearMisses.Clear();
 
             var result = FindCycle(eligible);
+            ReleaseScratch(); // nothing pooled escapes via Result (Arc structs only)
             if (result.Valid) return result;
 
             // NEVER SILENTLY REFUSE (his standing rule). One message, and only
@@ -115,14 +186,15 @@ namespace SpellyZombie
             int n = eligible.Count;
             if (n == 0) return default;
 
-            var pts = new List<Vector3>[n];
-            var norms = new Vector3[n];   // averaged surface normal — the plane-fit fallback
-            var arc = new float[n][];     // running length, for the self-touch loop-size gate
-            var bounds = new Bounds[n];
+            EnsureScratch(n);
+            var pts = _pts;          // pooled per-stroke world points
+            var norms = _norms;      // averaged surface normal — the plane-fit fallback
+            var arc = _arc;          // running length, for the self-touch loop-size gate
+            var bounds = _bounds;
             for (int i = 0; i < n; i++)
             {
-                pts[i] = WorldPoints(eligible[i], out norms[i]);
-                arc[i] = ArcLengths(pts[i]);
+                WorldPoints(eligible[i], pts[i], out norms[i]);
+                arc[i] = ArcLengths(pts[i], arc[i]);
                 bounds[i] = BoundsOf(pts[i]);
                 // Bounds.Expand grows the SIZE by the amount, i.e. each face by
                 // half of it — so this pushes each face out by one full
@@ -136,7 +208,7 @@ namespace SpellyZombie
 
             // 1) every junction: ink CROSSING ink AND ink ENDING ON ink (pairwise
             //    + self). Both are "the ink meets" — his one law, one graph.
-            var xings = new List<Xing>();
+            var xings = _xings; // pooled, released after Find
             for (int i = 0; i < n && xings.Count < MaxCrossings; i++)
             {
                 CollectCrossings(pts, norms, i, i, xings);
@@ -162,9 +234,8 @@ namespace SpellyZombie
             //    empty, and the ring never forms.
             WeldVertices(xings);
 
-            // 3) per-stroke sorted vertex appearances
-            var appear = new List<Appearance>[n];
-            for (int i = 0; i < n; i++) appear[i] = new List<Appearance>();
+            // 3) per-stroke sorted vertex appearances (pooled, cleared in EnsureScratch)
+            var appear = _appear;
             foreach (var x in xings)
             {
                 appear[x.SA].Add(new Appearance { XingId = x.Id, Pos = x.PosA });
@@ -173,7 +244,7 @@ namespace SpellyZombie
             for (int i = 0; i < n; i++) appear[i].Sort((a, b) => a.Pos.CompareTo(b.Pos));
 
             // 4) edges: the arc of ink between consecutive vertices on a stroke
-            var edges = new List<Edge>();
+            var edges = _edges; // pooled, released after Find
             for (int i = 0; i < n; i++)
             {
                 var ap = appear[i];
@@ -182,14 +253,12 @@ namespace SpellyZombie
                     int lo = Mathf.FloorToInt(ap[k].Pos) + 1;
                     int hi = Mathf.FloorToInt(ap[k + 1].Pos);
                     if (hi < lo) continue; // both crossings on one segment: no arc between
-                    var arcPts = new List<Vector3>();
-                    for (int p = lo; p <= hi && p < pts[i].Count; p++) arcPts.Add(pts[i][p]);
-                    edges.Add(new Edge
-                    {
-                        U = ap[k].XingId, V = ap[k + 1].XingId,
-                        Stroke = eligible[i], Lo = lo, Hi = hi,
-                        Length = PolyLength(arcPts), Pts = arcPts
-                    });
+                    var ed = TakeEdge();
+                    ed.U = ap[k].XingId; ed.V = ap[k + 1].XingId;
+                    ed.Stroke = eligible[i]; ed.Lo = lo; ed.Hi = hi;
+                    for (int p = lo; p <= hi && p < pts[i].Count; p++) ed.Pts.Add(pts[i][p]);
+                    ed.Length = PolyLength(ed.Pts);
+                    edges.Add(ed);
                 }
             }
             if (edges.Count == 0) return default;
@@ -330,13 +399,13 @@ namespace SpellyZombie
                         // is. Both points are already here, so this is free.
                         if ((pA - pB).sqrMagnitude > maxSep2) continue;
 
-                        xings.Add(new Xing
-                        {
-                            SA = i, PosA = s + ts,
-                            SB = j, PosB = t + tt,
-                            P = (pA + pB) * 0.5f,
-                            Crossing = true
-                        });
+                        var x = TakeXing();
+                        x.Id = 0;
+                        x.SA = i; x.PosA = s + ts;
+                        x.SB = j; x.PosB = t + tt;
+                        x.P = (pA + pB) * 0.5f;
+                        x.Crossing = true;
+                        xings.Add(x);
                         if (xings.Count >= MaxCrossings) return;
                     }
                 }
@@ -409,19 +478,21 @@ namespace SpellyZombie
                 return;
             }
 
-            xings.Add(new Xing
-            {
-                SA = si, PosA = endIdx,
-                SB = sj, PosB = bestPos,
-                P = (p + bestPt) * 0.5f,
-                Crossing = false   // an END landing ON ink: a touch, never a self-crossing
-            });
+            var x = TakeXing();
+            x.Id = 0;
+            x.SA = si; x.PosA = endIdx;
+            x.SB = sj; x.PosB = bestPos;
+            x.P = (p + bestPt) * 0.5f;
+            x.Crossing = false;   // an END landing ON ink: a touch, never a self-crossing
+            xings.Add(x);
         }
 
         static void Project(List<Vector3> a, List<Vector3> b, bool self, Vector3 surfaceNormal,
                             out List<Vector2> pa, out List<Vector2> pb)
         {
-            var all = new List<Vector3>(a);
+            var all = _projAll; // pooled — this ran per candidate pair per scan
+            all.Clear();
+            all.AddRange(a);
             if (!self) all.AddRange(b);
             Vector3 origin = Vector3.zero;
             foreach (var p in all) origin += p;
@@ -439,8 +510,14 @@ namespace SpellyZombie
             normal.Normalize();
             GeometryUtil.PlaneBasis(normal, out var u, out var v);
 
-            pa = GeometryUtil.ProjectToPlane(a, origin, u, v);
-            pb = self ? pa : GeometryUtil.ProjectToPlane(b, origin, u, v);
+            GeometryUtil.ProjectToPlane(a, origin, u, v, _projA);
+            pa = _projA;
+            if (self) pb = _projA;
+            else
+            {
+                GeometryUtil.ProjectToPlane(b, origin, u, v, _projB);
+                pb = _projB;
+            }
         }
 
         // ---- LARGEST (by perimeter) valid cycle. Was shortest — which let the
@@ -554,20 +631,24 @@ namespace SpellyZombie
         static List<int> ShortestPath(List<Edge> edges, Dictionary<int, List<int>> adj,
                                       int start, int goal, int excludeEdge)
         {
-            var dist = new Dictionary<int, float> { [start] = 0f };
-            var prevEdge = new Dictionary<int, int>();
-            var visited = new HashSet<int>();
-            var frontier = new List<int> { start };
+            // pooled scratch — this ran per seed edge per 8 Hz scan and its
+            // three fresh Dictionaries + frontier were steady garbage
+            _spDist.Clear();
+            _spPrev.Clear();
+            _spVisited.Clear();
+            _spFrontier.Clear();
+            _spDist[start] = 0f;
+            _spFrontier.Add(start);
 
-            while (frontier.Count > 0)
+            while (_spFrontier.Count > 0)
             {
                 // pop nearest
                 int bi = 0;
-                for (int k = 1; k < frontier.Count; k++)
-                    if (dist[frontier[k]] < dist[frontier[bi]]) bi = k;
-                int cur = frontier[bi];
-                frontier.RemoveAt(bi);
-                if (!visited.Add(cur)) continue;
+                for (int k = 1; k < _spFrontier.Count; k++)
+                    if (_spDist[_spFrontier[k]] < _spDist[_spFrontier[bi]]) bi = k;
+                int cur = _spFrontier[bi];
+                _spFrontier.RemoveAt(bi);
+                if (!_spVisited.Add(cur)) continue;
                 if (cur == goal) break;
 
                 if (!adj.TryGetValue(cur, out var incident)) continue;
@@ -576,24 +657,24 @@ namespace SpellyZombie
                     if (e == excludeEdge) continue;
                     var ed = edges[e];
                     int other = ed.U == cur ? ed.V : ed.U;
-                    if (visited.Contains(other)) continue;
-                    float nd = dist[cur] + ed.Length;
-                    if (!dist.TryGetValue(other, out var od) || nd < od)
+                    if (_spVisited.Contains(other)) continue;
+                    float nd = _spDist[cur] + ed.Length;
+                    if (!_spDist.TryGetValue(other, out var od) || nd < od)
                     {
-                        dist[other] = nd;
-                        prevEdge[other] = e;
-                        frontier.Add(other);
+                        _spDist[other] = nd;
+                        _spPrev[other] = e;
+                        _spFrontier.Add(other);
                     }
                 }
             }
 
-            if (!prevEdge.ContainsKey(goal)) return null;
+            if (!_spPrev.ContainsKey(goal)) return null;
             var path = new List<int>();
             int node = goal;
             int guard = 0;
             while (node != start && guard++ < edges.Count + 2)
             {
-                int e = prevEdge[node];
+                int e = _spPrev[node];
                 path.Add(e);
                 var ed = edges[e];
                 node = ed.U == node ? ed.V : ed.U;
@@ -729,30 +810,32 @@ namespace SpellyZombie
         }
 
         // ---- small helpers ----
-        /// World positions AND the ink's averaged surface normal. The normal used
-        /// to be thrown away here, which is why the plane fit had nothing to fall
-        /// back on but Vector3.up.
-        static List<Vector3> WorldPoints(Stroke s, out Vector3 surfaceNormal)
+        /// World positions AND the ink's averaged surface normal, into a pooled
+        /// buffer. The normal used to be thrown away here, which is why the
+        /// plane fit had nothing to fall back on but Vector3.up.
+        static void WorldPoints(Stroke s, List<Vector3> into, out Vector3 surfaceNormal)
         {
-            var pts = new List<Vector3>(s.Nodes.Count);
+            into.Clear();
             surfaceNormal = Vector3.zero;
             foreach (var n in s.Nodes)
                 if (n != null)
                 {
-                    pts.Add(n.transform.position);
+                    into.Add(n.transform.position);
                     surfaceNormal += n.SurfaceNormal;
                 }
             if (surfaceNormal.sqrMagnitude > 1e-8f) surfaceNormal.Normalize();
-            return pts;
         }
 
-        /// Running length along a polyline, index-aligned with its points.
-        static float[] ArcLengths(List<Vector3> pts)
+        /// Running length along a polyline, index-aligned with its points —
+        /// reuses the caller's buffer when it is big enough.
+        static float[] ArcLengths(List<Vector3> pts, float[] buf)
         {
-            var len = new float[Mathf.Max(pts.Count, 1)];
+            int need = Mathf.Max(pts.Count, 1);
+            if (buf == null || buf.Length < need) buf = new float[Mathf.Max(need, 32)];
+            buf[0] = 0f;
             for (int i = 1; i < pts.Count; i++)
-                len[i] = len[i - 1] + Vector3.Distance(pts[i - 1], pts[i]);
-            return len;
+                buf[i] = buf[i - 1] + Vector3.Distance(pts[i - 1], pts[i]);
+            return buf;
         }
 
         static Bounds BoundsOf(List<Vector3> pts)

@@ -65,17 +65,19 @@ namespace SpellyZombie
             return null;
         }
 
-        public JointEntry NearestJoint(Vector3 worldPos, float maxDistance)
+        /// The first registered joint at or above a clicked transform (walk up,
+        /// stop at the rig root) — the ONE limb-resolve both PoseStudio and
+        /// PoseGrab use.
+        public JointEntry JointAtOrAbove(Transform t)
         {
-            JointEntry best = null;
-            float bestD = maxDistance;
-            foreach (var j in Joints)
+            while (t != null)
             {
-                if (j.T == null) continue;
-                float d = Vector3.Distance(j.T.position, worldPos);
-                if (d < bestD) { bestD = d; best = j; }
+                foreach (var j in Joints)
+                    if (j.T == t) return j;
+                if (t == transform) break;
+                t = t.parent;
             }
-            return best;
+            return null;
         }
 
         /// Snapshot every joint's current local rotation as one keyframe.

@@ -30,14 +30,7 @@ namespace SpellyZombie
             root.AddComponent<SurfaceMaterialTag>().Material = SurfaceMaterialType.Metal;
             root.AddComponent<PersistentInkSurface>(); // engraved ink is forever
 
-            var grip = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            grip.name = "Grip";
-            grip.transform.SetParent(root.transform, false);
-            grip.transform.localPosition = new Vector3(0f, -0.09f, -0.12f);
-            grip.transform.localRotation = Quaternion.Euler(65f, 0f, 0f);
-            grip.transform.localScale = new Vector3(0.05f, 0.1f, 0.05f);
-            grip.GetComponent<Renderer>().sharedMaterial =
-                MatterFX.Get(new Color(0.35f, 0.24f, 0.15f), MoteShade.Opaque);
+            BuildGripAndBubble(root, new Color(0.35f, 0.24f, 0.15f));
 
             var plate = GameObject.CreatePrimitive(PrimitiveType.Cube);
             plate.name = "Plate";
@@ -56,10 +49,6 @@ namespace SpellyZombie
             slide.GetComponent<Renderer>().sharedMaterial =
                 MatterFX.Get(new Color(0.78f, 0.62f, 0.28f), MoteShade.Opaque); // brass — reads as "the moving bit"
             slide.AddComponent<PersistentInkSurface>();
-
-            var bubble = root.AddComponent<SphereCollider>();
-            bubble.isTrigger = true;
-            bubble.radius = 0.9f;
 
             var weapon = root.AddComponent<SealWeapon>();
             weapon._slide = slide.transform;

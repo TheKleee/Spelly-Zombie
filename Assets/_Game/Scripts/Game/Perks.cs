@@ -49,9 +49,9 @@ namespace SpellyZombie
                 DrawingWorld.Instance?.LogEvent($"{NameOf(t)} is already in your blood");
                 return false;
             }
-            // (riches REMOVED from the game — Marko: "idk why are they here";
-            // the brews are simply taken, no currency gate)
+            // riches REMOVED (Marko: "idk why are they here") — brews are simply taken, no currency gate
             _owned.Add(t);
+            RebuildHudTag();
             if (t == CauldronType.Survival && buyer != null)
                 buyer.Health = Mathf.Min(MaxHealth, buyer.Health + 60f); // the first gulp
             if (buyer != null) Juice.Chime(buyer.transform.position);
@@ -70,18 +70,23 @@ namespace SpellyZombie
             }
         }
 
-        /// A one-letter badge per owned perk for the HUD.
-        public static string HudTag()
+        /// A one-letter badge per owned perk for the HUD (cached — the HUD polls per frame; rebuilt on buy/reset).
+        static string _hudTag = "";
+        public static string HudTag() => _hudTag;
+
+        static void RebuildHudTag()
         {
-            if (_owned.Count == 0) return "";
-            string tag = "";
+            _hudTag = "";
             foreach (CauldronType t in System.Enum.GetValues(typeof(CauldronType)))
-                if (Has(t)) tag += NameOf(t)[0];
-            return tag;
+                if (Has(t)) _hudTag += NameOf(t)[0];
         }
 
         /// Wipe or victory — the brews wear off with the run.
-        public static void ResetRun() => _owned.Clear();
+        public static void ResetRun()
+        {
+            _owned.Clear();
+            _hudTag = "";
+        }
     }
 
     /// Attached automatically to every CauldronMarker when a scene loads —

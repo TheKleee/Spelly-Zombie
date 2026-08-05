@@ -36,32 +36,43 @@ namespace SpellyZombie
         Material _mat;
         float _stateT = 1f;    // 1 solid · 0.5 liquid · ~0.1 gas (continuous)
 
-        public float StateT => _stateT;
-
         // HIS FX_StateBlob skin — instantiated AND DRIVEN (the committed
         // version instantiated and returned, so his State Matter material
         // never received _StateT and "the liquid is not the old liquid")
         GameObject _custom;
+        Renderer[] _customRends; // cached once — fetching per melt frame allocated an array
         Animator _customAnim;
         Quaternion _customRot = Quaternion.identity;
         bool _animHasStateT, _animHasMuddy, _customMat, _customMsg, _fitted;
         float _lastPushed = float.NaN;
         MaterialPropertyBlock _mpb;
         SphereCollider _sphere; float _sphereR0; Vector3 _sphereC0; float _lastFluid = -1f;
+        float _spawnR; // collider radius at birth — the honest fallback when import bounds lie
+
+        // ---- HIS jiggle rig (Marko: "bones drive the shape and have their own
+        // colliders to keep the distance from each other and the ground") ----
+        Transform _boneRoot;   // SMR root bone — rest-pose anchor
+        Transform[] _bones;    // the D_ bones he weighted in Blender
+        Rigidbody[] _boneRbs;
+        Collider[] _boneCols;
+        Vector3[] _boneRest;   // root-local rest positions
+        int _boneLayer = -1;   // forces first layer/shell sync
 
         /// collider fits HIS mesh (a smaller export floated on the default
         /// 0.5 sphere), then breathes with the state so puddles rest low
         void FitColliderToSkin()
         {
-            _fitted = true;
-            if (_custom == null || _sphere == null) return;
-            var rends = _custom.GetComponentsInChildren<Renderer>(true);
-            if (rends.Length == 0) return;
+            if (_custom == null || _sphere == null) { _fitted = true; return; }
+            var rends = _customRends;
+            if (rends == null || rends.Length == 0) { _fitted = true; return; }
             var b = rends[0].bounds;
             for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
             float scale = Mathf.Max(1e-4f, Mathf.Abs(transform.lossyScale.x));
             float r = Mathf.Max(b.extents.x, Mathf.Max(b.extents.y, b.extents.z)) / scale;
-            if (r < 1e-3f) return;
+            // his rig imports 0.005 bounds — keep the SPAWN size over a broken read,
+            // retry until updateWhenOffscreen skinning reports honest bounds
+            if (r < Mathf.Max(1e-3f, _spawnR * 0.25f)) return;
+            _fitted = true;
             _sphereR0 = r;
             _sphereC0 = transform.InverseTransformPoint(b.center);
             _sphere.radius = r;
@@ -86,7 +97,7 @@ namespace SpellyZombie
         {
             _matter = GetComponent<Matter>();
             _sphere = GetComponent<SphereCollider>();
-            if (_sphere != null) { _sphereR0 = _sphere.radius; _sphereC0 = _sphere.center; }
+            if (_sphere != null) { _sphereR0 = _sphere.radius; _sphereC0 = _sphere.center; _spawnR = _sphereR0; }
 
             // the old look retires — the SKIN is the body now
             foreach (var r in GetComponentsInChildren<Renderer>())
@@ -100,6 +111,7 @@ namespace SpellyZombie
             if (skinPrefab != null)
             {
                 _custom = Instantiate(skinPrefab, transform, false);
+                _customRends = _custom.GetComponentsInChildren<Renderer>(true); // once, here only
                 _customRot = _custom.transform.localRotation;
                 _customAnim = _custom.GetComponentInChildren<Animator>();
                 if (_customAnim != null)
@@ -108,9 +120,10 @@ namespace SpellyZombie
                         if (p.type == AnimatorControllerParameterType.Float && p.name == "StateT") _animHasStateT = true;
                         else if (p.type == AnimatorControllerParameterType.Bool && p.name == "Muddy") _animHasMuddy = true;
                 }
-                foreach (var r in _custom.GetComponentsInChildren<Renderer>(true))
+                foreach (var r in _customRends)
                     if (r.sharedMaterial != null && r.sharedMaterial.HasProperty("_StateT")) { _customMat = true; break; }
                 _customMsg = _custom.GetComponentInChildren<MonoBehaviour>() != null;
+                SetupJiggleBones();
                 // born in its own phase — conjured steam must not melt its way down
                 _stateT = Muddy ? 0.7f
                     : _matter == null || _matter.Phase == MatterPhase.Solid ? 1f
@@ -170,6 +183,87 @@ namespace SpellyZombie
             skin.GetComponent<Renderer>().sharedMaterial = _mat;
         }
 
+        /// HIS soft body (Marko: "bones drive the shape and have their own
+        /// colliders to keep the distance from each other and the ground"):
+        /// each D_ bone gets a small SphereCollider + Rigidbody, springs home,
+        /// and the weighted skin follows by skinning — zero choreography.
+        void SetupJiggleBones()
+        {
+            var smr = _custom.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            if (smr == null) return;
+            smr.updateWhenOffscreen = true; // import bounds are 0.005 — culling ate the blob (rig trap)
+            var root = smr.rootBone;
+            if (root == null) return;
+            int n = 0;
+            for (int i = 0; i < root.childCount; i++)
+                if (root.GetChild(i).name.StartsWith("D_")) n++;
+            if (n == 0) return;
+            _boneRoot = root;
+            _bones = new Transform[n];
+            _boneRbs = new Rigidbody[n];
+            _boneCols = new Collider[n];
+            _boneRest = new Vector3[n];
+            var core = GetComponent<Collider>();
+            float blobScale = Mathf.Max(1e-4f, Mathf.Abs(transform.lossyScale.x));
+            n = 0;
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var bone = root.GetChild(i);
+                if (!bone.name.StartsWith("D_")) continue;
+                _bones[n] = bone;
+                _boneRest[n] = root.InverseTransformPoint(bone.position); // rest = his authored pose
+                var sc = bone.gameObject.AddComponent<SphereCollider>();
+                // radius meant in BLOB units, whatever the rig's import scale
+                sc.radius = DrawingConfig.BlobBoneRadius * blobScale / Mathf.Max(1e-4f, Mathf.Abs(bone.lossyScale.x));
+                var rb = bone.gameObject.AddComponent<Rigidbody>();
+                rb.interpolation = RigidbodyInterpolation.Interpolate;
+                rb.freezeRotation = true; // position jiggle only — rolling bones would swirl the skin
+                if (core != null) Physics.IgnoreCollision(sc, core); // never fights its own body
+                _boneCols[n] = sc;
+                _boneRbs[n] = rb;
+                n++;
+            }
+        }
+
+        /// Spring each bone to its rest spot relative to Root; gravity, the
+        /// ground and bone-vs-bone collisions do everything else. No states,
+        /// no choreography (his ruling) — the skin just follows the bones.
+        void FixedUpdate()
+        {
+            if (_boneRbs == null) return;
+            int blobLayer = gameObject.layer; // bones wear the blob's layer — liquids stay walk-through
+            if (_boneLayer != blobLayer)
+            {
+                _boneLayer = blobLayer;
+                var shell = transform.Find("LiquidShell"); // born on the same phase flip that moved the layer
+                var shellCol = shell != null ? shell.GetComponent<Collider>() : null;
+                for (int i = 0; i < _bones.Length; i++)
+                {
+                    _bones[i].gameObject.layer = blobLayer;
+                    if (shellCol != null) Physics.IgnoreCollision(_boneCols[i], shellCol); // no self-wading
+                }
+            }
+            float k = DrawingConfig.BlobBoneSpring, d = DrawingConfig.BlobBoneDamping;
+            for (int i = 0; i < _boneRbs.Length; i++)
+            {
+                var rb = _boneRbs[i];
+                Vector3 home = _boneRoot.TransformPoint(_boneRest[i]);
+                Vector3 off = rb.position - home;
+                // LEASH: a hard drop can slingshot a bone past its siblings and
+                // lock them crossed — "they entangle when dropped". A bone may
+                // never stray further from its rest spot than its own reach.
+                float reach = (home - _boneRoot.position).magnitude
+                    * DrawingConfig.BlobBoneStray;
+                if (off.sqrMagnitude > reach * reach && reach > 1e-4f)
+                {
+                    rb.position = home + off.normalized * reach;
+                    rb.linearVelocity *= 0.5f;
+                    off = rb.position - home;
+                }
+                rb.AddForce(-off * k - rb.linearVelocity * d, ForceMode.Acceleration);
+            }
+        }
+
         void Update()
         {
             if (_matter == null) return;
@@ -198,7 +292,7 @@ namespace SpellyZombie
                         var tint = SurfaceMaterialDB.Info(
                             _matter != null ? _matter.Material : SurfaceMaterialType.Stone).SolidColor;
                         if (_mpb == null) _mpb = new MaterialPropertyBlock();
-                        foreach (var r in _custom.GetComponentsInChildren<Renderer>(true))
+                        foreach (var r in _customRends) // cached — the per-frame fetch was the melt's GC spike
                         {
                             r.GetPropertyBlock(_mpb);
                             _mpb.SetFloat("_StateT", _stateT);

@@ -21,7 +21,6 @@ namespace SpellyZombie
         public int Current { get; private set; } = 1;
 
         public bool PenSelected => Current == 1;
-        public bool IsSelected(HeldWeapon w) => w != null && _held[Current] == w;
 
         /// The weapon in the selected slot (null for slot 1 — the wand is innate).
         public HeldWeapon CurrentWeapon => _held[Current];
@@ -82,11 +81,7 @@ namespace SpellyZombie
                 : $"Weapon slot {slot}");
         }
 
-        /// AIM, NOT PROXIMITY (Marko's rule): E takes the thing you are
-        /// LOOKING AT within reach — never whichever item happens to be
-        /// closest. Candidates must sit inside the aim cone with clear line of
-        /// sight, and the most CENTRED one wins, so standing in a pile of loot
-        /// still lets you pick the exact piece you meant.
+        /// AIM, NOT PROXIMITY (Marko's rule): E takes what you're LOOKING AT within reach — most centred in the cone wins.
         HeldWeapon FindPickup()
         {
             if (_pilot == null) _pilot = GetComponent<SimpleFPSController>();

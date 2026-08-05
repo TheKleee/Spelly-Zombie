@@ -15,9 +15,6 @@ namespace SpellyZombie
     [RequireComponent(typeof(EmoteRig))]
     public class EmotePlayer : MonoBehaviour
     {
-        /// Graybox: this instance reacts to T / 1-9 directly.
-        public bool ListenToHotkeys = true;
-
         public int ActiveSlot { get; private set; } = -1;
 
         /// A pose is being held (rig frozen; the character still moves freely).
@@ -46,16 +43,23 @@ namespace SpellyZombie
                 && !SelfPaint.IsActive && !HeldWeapon.DrawMode)
                 StopToRest();
 
-            if (ListenToHotkeys) ReadHotkeys();
-            Animate();      // the doll animates even if UI code throws —
+            ReadHotkeys();
             ShowPoseHint(); // the hint is cosmetic, it goes last
         }
+
+        /// THE POSE IS STAMPED AFTER THE ANIMATOR, EVERY FRAME. It used to
+        /// run in Update and only write during a frame's transition — so a
+        /// held pose was just RESIDUE that survived because the animator had
+        /// been switched off. That killed locomotion (and left the hips, the
+        /// one bone no emote owns, frozen by omission). Now the animator
+        /// keeps running and the pose overwrites its own joints here.
+        void LateUpdate() => Animate();
 
         /// Third person always tells you where poses are MADE — Marko: "while
         /// in the poses there should be an option to set them".
         void ShowPoseHint()
         {
-            if (!ListenToHotkeys || !SimpleFPSController.ThirdPersonActive) return;
+            if (!SimpleFPSController.ThirdPersonActive) return;
             if (PoseStudio.IsOpen || SelfPaint.IsActive || Powerups.IsChoosing || GameMenu.IsOpen) return;
             UIPrompt.Show("R", PoseGrab.IsOpen
                 ? Loc.T("pose.grab")
@@ -209,6 +213,17 @@ namespace SpellyZombie
                     EmoteRig.Constrain(j); // saved files obey the hinges too
                 }
                 return;
+            }
+
+            // TRANSITION DONE — KEEP STAMPING IT. Returning here is what made
+            // a held pose depend on the animator being dead: nothing wrote
+            // the bones, so the pose was only the last transition's leftovers.
+            foreach (var p in frame.poses)
+            {
+                var j = _rig.Find(p.joint);
+                if (j?.T == null) continue;
+                j.T.localRotation = Quaternion.Euler(p.euler);
+                EmoteRig.Constrain(j);
             }
 
             // frame reached — hold, then advance / loop / stay on the pose

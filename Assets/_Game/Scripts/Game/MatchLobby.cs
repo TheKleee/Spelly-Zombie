@@ -4,16 +4,8 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Pre-match lobby. PURE CO-OP, NO TEAMS, NO PILLARS (Marko: "remove the
-    /// team pillars from code, we don't need them anymore"): your color is
-    /// your JOIN ORDER — host RED, then BLUE, GREEN, YELLOW. Nothing to pick,
-    /// nothing to learn. ENTER toggles ready; when EVERYONE is ready the
-    /// match starts in 10 seconds. NO auto-start timer — the lobby waits as
-    /// long as the wizards want (his call). The HOST picks the map with M,
-    /// Among-Us style: host chooses, everyone sees the pick on the board,
-    /// ready-up loads that scene. Hues are colorblind-safe (Okabe-Ito).
-    /// (TeamNames/TeamColors/LocalTeam keep their names — they're the
-    /// player-COLOR api and wire byte now, renaming would churn net + saves.)
+    /// Pre-match lobby: PURE CO-OP, NO PILLARS (Marko: "remove the team pillars from code"); color = join order, ENTER readies, NO auto-start (his call), host picks the map with M.
+    /// (TeamNames/TeamColors/LocalTeam keep their names — they're the player-COLOR api and wire byte now, renaming would churn net + saves.)
     public class MatchLobby : MonoBehaviour
     {
         public static MatchLobby Instance { get; private set; }
@@ -101,8 +93,7 @@ namespace SpellyZombie
         void Update()
         {
             // the match lobby lives ONLY in the Lobby scene (not menu, not game)
-            if (!RoundDirector.InLobby
-                || UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Lobby")
+            if (!RoundDirector.InLobby || ActiveScene.Name != "Lobby")
             {
                 if (_built) Teardown();
                 return;
@@ -193,12 +184,18 @@ namespace SpellyZombie
         RectTransform _ui, _uiBoard;
         UnityEngine.UI.Text _uiStatus, _uiTeam, _uiReady, _uiMap;
 
+        // label caches — rebuild the strings only when a shown value changes, not per frame
+        int _shownCountdown = int.MinValue, _shownReady = -1, _shownTotal = -1;
+        byte _shownTeam = 255;
+        bool _shownReadyLocal, _shownClient;
+        string _shownMap;
+
         void LateUpdate()
         {
             // InLobby (phase Idle) is also true on the MENU screen — the
             // ribbon and ready-board belong to the Lobby SCENE alone
             bool show = RoundDirector.InLobby && !GameMenu.IsOpen && !PoseStudio.IsOpen
-                && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Lobby";
+                && ActiveScene.Name == "Lobby";
             if (!show)
             {
                 // HIDE, never destroy — prefab-adopted UI must survive cycles
@@ -216,16 +213,31 @@ namespace SpellyZombie
             int total = client ? Mathf.Max(1, _netTotal) : 1 + NetSync.RemoteCount;
             string map = client && !string.IsNullOrEmpty(_netMap) ? _netMap : SelectedMap;
 
-            _uiStatus.text = countdown >= 0f
-                ? $"STARTING IN {Mathf.CeilToInt(Mathf.Max(0f, countdown))}…"
-                : "LOBBY — ready up to start";
-            _uiTeam.text = $"■ {TeamNames[LocalTeam]}"; // your color, not a team
-            _uiTeam.color = TeamColors[Mathf.Min(LocalTeam, (byte)(TeamColors.Length - 1))];
-            _uiReady.text = $"READY {ready}/{total} — ENTER to ready up"
-                + (_readyLocal ? "  (you are READY)" : "");
-            _uiMap.text = client
-                ? $"MAP: {map} (the host picks)"
-                : $"MAP: {map} — M to change";
+            int cd = countdown >= 0f ? Mathf.CeilToInt(Mathf.Max(0f, countdown)) : -1;
+            if (cd != _shownCountdown)
+            {
+                _shownCountdown = cd;
+                _uiStatus.text = cd >= 0 ? $"STARTING IN {cd}…" : "LOBBY — ready up to start";
+            }
+            if (LocalTeam != _shownTeam)
+            {
+                _shownTeam = LocalTeam;
+                _uiTeam.text = $"■ {TeamNames[LocalTeam]}"; // your color, not a team
+                _uiTeam.color = TeamColors[Mathf.Min(LocalTeam, (byte)(TeamColors.Length - 1))];
+            }
+            if (ready != _shownReady || total != _shownTotal || _readyLocal != _shownReadyLocal)
+            {
+                _shownReady = ready; _shownTotal = total; _shownReadyLocal = _readyLocal;
+                _uiReady.text = $"READY {ready}/{total} — ENTER to ready up"
+                    + (_readyLocal ? "  (you are READY)" : "");
+            }
+            if (map != _shownMap || client != _shownClient)
+            {
+                _shownMap = map; _shownClient = client;
+                _uiMap.text = client
+                    ? $"MAP: {map} (the host picks)"
+                    : $"MAP: {map} — M to change";
+            }
         }
 
         void BuildLobbyUI()
@@ -262,6 +274,10 @@ namespace SpellyZombie
             UIKit.Place((RectTransform)_uiReady.transform, new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(430f, 20f));
             _uiMap = UIKit.Label(board, "", 16, UIKit.Ink, TextAnchor.MiddleCenter, true);
             UIKit.Place((RectTransform)_uiMap.transform, new Vector2(0.5f, 1f), new Vector2(0f, -72f), new Vector2(430f, 20f));
+
+            // fresh labels start empty — invalidate the caches so they repopulate
+            _shownCountdown = int.MinValue; _shownTeam = 255;
+            _shownReady = -1; _shownTotal = -1; _shownMap = null;
         }
 
         void OnDestroy()

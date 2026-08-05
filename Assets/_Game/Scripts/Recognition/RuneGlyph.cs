@@ -155,21 +155,18 @@ namespace SpellyZombie
             return result;
         }
 
-        /// Group strokes into glyphs by spatial proximity. The join distance for
-        /// a pair scales with the smaller stroke's size, so a big multi-line rune
-        /// groups (its lines are large and near each other) while small distinct
-        /// runes placed apart stay separate.
-        public static List<RuneGlyph> Cluster(IReadOnlyList<Stroke> strokes, float baseDist, float sizeFactor)
+        /// Group strokes into glyphs by spatial proximity — touching-only law
+        /// (Marko Jul 31). (The size-scaled join is gone: every caller passed a
+        /// sizeFactor of 0, so join is always `baseDist`.)
+        public static List<RuneGlyph> Cluster(IReadOnlyList<Stroke> strokes, float baseDist)
         {
             int n = strokes.Count;
             var parent = new int[n];
-            var sizes = new float[n];
             var bounds = new Bounds[n];
             for (int i = 0; i < n; i++)
             {
                 parent[i] = i;
                 bounds[i] = StrokeBounds(strokes[i]);
-                sizes[i] = bounds[i].size.magnitude;
             }
 
             int Find(int x)
@@ -183,15 +180,12 @@ namespace SpellyZombie
                 for (int j = i + 1; j < n; j++)
                 {
                     if (Find(i) == Find(j)) continue;
-                    float join = baseDist + sizeFactor * Mathf.Min(sizes[i], sizes[j]);
-                    // Bounds.Expand grows the SIZE by the amount — each face
-                    // moves out by HALF of it. Passing `join` therefore culled
-                    // pairs whose boxes were more than join/2 apart, while
-                    // InkTouches below accepts up to join: strokes 0.8-1.4cm
-                    // apart, INSIDE his touch law, never even got tested.
-                    var bi = bounds[i]; bi.Expand(join * 2f);
+                    // Bounds.Expand grows the SIZE (each face moves half), so
+                    // × 2 keeps every pair InkTouches could accept (culling at
+                    // `baseDist` refused touching ink inside his touch law)
+                    var bi = bounds[i]; bi.Expand(baseDist * 2f);
                     if (!bi.Intersects(bounds[j])) continue;
-                    if (InkTouches(strokes[i], strokes[j], join))
+                    if (InkTouches(strokes[i], strokes[j], baseDist))
                         parent[Find(j)] = Find(i);
                 }
             }
@@ -217,7 +211,7 @@ namespace SpellyZombie
         /// everything hand-drawn goes through RECOGNITION — draw your runes,
         /// circle them, they're read when the seal closes. No stamping, no
         /// choosing, no timers.
-        public static List<RuneGlyph> Segment(IReadOnlyList<Stroke> strokes, float baseDist, float sizeFactor, int ownerId)
+        public static List<RuneGlyph> Segment(IReadOnlyList<Stroke> strokes, int ownerId)
         {
             var result = new List<RuneGlyph>();
             var handDrawn = new List<Stroke>();
@@ -267,7 +261,7 @@ namespace SpellyZombie
                 }
                 result.Add(glyph);
             }
-            result.AddRange(SegmentByRecognition(handDrawn, baseDist, sizeFactor, ownerId));
+            result.AddRange(SegmentByRecognition(handDrawn, ownerId));
 
             // COMPOUND SIGILS: a glyph that fizzled as a single rune might be a
             // WORD — several runes drawn as one connected scribble. Parse its
@@ -304,59 +298,15 @@ namespace SpellyZombie
             return result;
         }
 
-        static List<RuneGlyph> SegmentByRecognition(IReadOnlyList<Stroke> strokes, float baseDist, float sizeFactor, int ownerId)
+        // MARKO'S RULE (the sticky-vs-heat misfire): physically CONNECTED ink
+        // is ONE glyph, components are atomic — Cluster IS that grouping, so
+        // this is just Cluster + one recognition per component.
+        static List<RuneGlyph> SegmentByRecognition(IReadOnlyList<Stroke> strokes, int ownerId)
         {
-            int n = strokes.Count;
             var result = new List<RuneGlyph>();
-            if (n == 0) return result;
-
-            // MARKO'S RULE (the sticky-vs-heat misfire): physically CONNECTED
-            // ink is ONE glyph — recognition reads everything that touches as
-            // a single drawing, no matter how many pen strokes built it or
-            // how old the ink is. Touching runes merging into unreadable mush
-            // and fizzling is the player's lesson (see the class doc). The
-            // old subset search would happily SPLIT touching ink into
-            // whatever combination scored best — finishing a HEAT glyph
-            // against leftover ink fired STICKY×2. Components are atomic.
-            // (A fizzled component can still decompose as a COMPOUND SIGIL —
-            // that path stays, it's the deliberate multi-letter feature.)
-            var parent = new int[n];
-            for (int i = 0; i < n; i++) parent[i] = i;
-            int Find(int x)
-            {
-                while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; }
-                return x;
-            }
-            var bounds = new Bounds[n];
-            for (int i = 0; i < n; i++) bounds[i] = StrokeBounds(strokes[i]);
-            for (int i = 0; i < n; i++)
-                for (int j = i + 1; j < n; j++)
-                {
-                    if (Find(i) == Find(j)) continue;
-                    float join = DrawingConfig.RuneTouchDistance;
-                    var bi = bounds[i];
-                    // × 2: Expand grows SIZE, so each face only moves out by half
-                    // the amount. At `join` this cull threw away touching ink
-                    // before InkTouches could see it — the "connected ink is one
-                    // drawing" law failing on the measurement, not the geometry.
-                    bi.Expand(join * 2f);
-                    if (bi.Intersects(bounds[j]) && InkTouches(strokes[i], strokes[j], join))
-                        parent[Find(j)] = Find(i);
-                }
-
-            var byRoot = new Dictionary<int, List<Stroke>>();
-            for (int i = 0; i < n; i++)
-            {
-                int root = Find(i);
-                if (!byRoot.TryGetValue(root, out var members))
-                {
-                    members = new List<Stroke>();
-                    byRoot[root] = members;
-                }
-                members.Add(strokes[i]);
-            }
-            foreach (var members in byRoot.Values)
-                result.Add(Recognize(members, ownerId));
+            if (strokes.Count == 0) return result;
+            foreach (var glyph in Cluster(strokes, DrawingConfig.RuneTouchDistance))
+                result.Add(Recognize(glyph.Members, ownerId));
             return result;
         }
 
@@ -389,7 +339,52 @@ namespace SpellyZombie
         public static void Precognize(Stroke seed, IReadOnlyList<Stroke> all)
         {
             if (seed == null || !seed.Alive || seed.DeclaredRune != RuneType.None) return;
+            // remote ink is read by ITS owner and the verdict shipped — never here (netcode §1)
+            if (NetGame.Connected && seed.OwnerId != Grimoire.LocalPlayerId) return;
             var members = new List<Stroke> { seed };
+            GrowTouchingCluster(members, all);
+            Recognize(members, seed.OwnerId);
+        }
+
+        /// Owner's pen-up verdict, straight from the cache — what ships on the wire (netcode §1).
+        public static bool CachedVerdict(List<Stroke> members, int ownerId, out RuneType rune, out float score)
+        {
+            rune = RuneType.None;
+            score = 0f;
+            if (_cacheGen != RuneLibrary.PoolGeneration) return false;
+            if (!_recogCache.TryGetValue(CacheKey(members, ownerId), out var r)) return false;
+            rune = r.rune;
+            score = r.score;
+            return true;
+        }
+
+        /// Host-side: adopt the OWNER's shipped verdict for its cluster — recognition
+        /// is never recomputed for foreign ink (netcode §1).
+        public static void Prime(List<Stroke> members, int ownerId, RuneType rune, float score)
+        {
+            if (_cacheGen != RuneLibrary.PoolGeneration)
+            {
+                _recogCache.Clear();
+                _cacheGen = RuneLibrary.PoolGeneration;
+            }
+            if (_recogCache.Count > 128) _recogCache.Clear();
+            _recogCache[CacheKey(members, ownerId)] = (rune, score);
+        }
+
+        /// Guarded read for one-off classify sites (book boundary picks) — cache +
+        /// foreign-ink fizzle, same law as Recognize (netcode §1).
+        public static (RuneType rune, float score) ReadVerdict(List<Stroke> members, int ownerId)
+        {
+            var g = Recognize(members, ownerId);
+            return (g.Rune, g.Score);
+        }
+
+        /// THE one touching-cluster flood (touching-only law, Marko Jul 31):
+        /// grow `members` with every open stroke whose ink touches the cluster,
+        /// using the SEAL-TRUTH filter set — residue, declared, hidden and dead
+        /// ink never join, so the preview label and the seal read the same ink.
+        public static void GrowTouchingCluster(List<Stroke> members, IReadOnlyList<Stroke> all)
+        {
             bool grew = true;
             while (grew)
             {
@@ -397,13 +392,12 @@ namespace SpellyZombie
                 foreach (var s in all)
                 {
                     if (s == null || !s.Alive || s.State != StrokeState.Open || s.SealResidue) continue;
-                    if (s.DeclaredRune != RuneType.None || members.Contains(s)) continue;
+                    if (s.DeclaredRune != RuneType.None || s.Hidden() || members.Contains(s)) continue;
                     foreach (var m in members)
                         if (InkTouches(s, m, DrawingConfig.RuneTouchDistance))
                         { members.Add(s); grew = true; break; }
                 }
             }
-            Recognize(members, seed.OwnerId);
         }
 
         static RuneGlyph Recognize(List<Stroke> members, int ownerId)
@@ -418,7 +412,13 @@ namespace SpellyZombie
             long key = CacheKey(members, ownerId);
             if (!_recogCache.TryGetValue(key, out var r))
             {
-                r = RuneLibrary.Classify(ownerId, RawStrokesOf(members));
+                // foreign ink never re-reads — the owner's shipped verdict or fizzle (netcode §1)
+                bool foreign = false;
+                if (NetGame.Connected)
+                    foreach (var m in members)
+                        if (m != null && m.OwnerId != Grimoire.LocalPlayerId) { foreign = true; break; }
+                r = foreign ? (RuneType.None, 0f)
+                    : RuneLibrary.Classify(ownerId, RawStrokesOf(members));
                 if (_recogCache.Count > 128) _recogCache.Clear(); // tiny, self-pruning
                 _recogCache[key] = r;
             }
@@ -440,23 +440,10 @@ namespace SpellyZombie
             return b;
         }
 
-        /// TOUCHING MEANS THE INK MEETS THE INK — measured node-to-LINE, never
-        /// node-to-node. Marko's law: "only when lines are touching is the main
-        /// rule for everything: seals or runes… everything must touch exactly."
-        ///
-        /// The old test compared sampled NODE against sampled NODE, so a barb
-        /// landing squarely ON the middle of a shaft measured its distance to the
-        /// nearest sample rather than to the line it is sitting on — up to half a
-        /// node spacing of pure measurement error. That error is why this
-        /// threshold had to be inflated to 5cm, and 5cm is a gap you can SEE:
-        /// it merged runes into seals that never touched them (his Aug 1 report).
-        ///
-        /// Point-to-segment has no sampling error, so the threshold can be the
-        /// honest one — and BOTH halves of his law hold at once: ink that touches
-        /// always joins, ink that doesn't never does.
-        ///
-        /// Run both ways round: whichever stroke has the coarser samples, one of
-        /// the two passes measures its node against the other's LINE.
+        /// TOUCHING MEANS THE INK MEETS THE INK — node-to-LINE, never node-to-node
+        /// (Marko's law: "everything must touch exactly"; node-to-node sampling
+        /// error forced a visible 5cm threshold, his Aug 1 report). Run both ways
+        /// round so the coarser-sampled stroke is measured against the other's LINE.
         public static bool InkTouches(Stroke a, Stroke b, float maxDist)
         {
             if (a == null || b == null) return false;

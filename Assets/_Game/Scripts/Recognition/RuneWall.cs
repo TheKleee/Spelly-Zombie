@@ -183,7 +183,7 @@ namespace SpellyZombie
             }
 
             var samples = new List<List<List<Vector2>>>();
-            foreach (var glyph in RuneGlyph.Cluster(mine, DrawingConfig.RuneTouchDistance, 0f))
+            foreach (var glyph in RuneGlyph.Cluster(mine, DrawingConfig.RuneTouchDistance))
             {
                 var raw = glyph.BuildRawStrokes();
                 if (raw != null && raw.Count > 0) samples.Add(raw);
@@ -393,7 +393,7 @@ namespace SpellyZombie
         void RefreshLabel(int count)
         {
             if (_label != null)
-                _label.text = $"{RuneLibrary.ShortName(Rune)}\n{count} drawing(s) — auto-saves";
+                _label.text = $"{RuneLibrary.Icon(Rune)}\n{count} drawing(s) — auto-saves";
         }
     }
 }

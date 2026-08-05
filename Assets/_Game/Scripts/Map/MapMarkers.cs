@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SpellyZombie
@@ -31,6 +32,10 @@ namespace SpellyZombie
     /// Where zombie waves come from (windows, alley gaps, cave mouths).
     public class ZombieEntryPoint : MonoBehaviour
     {
+        /// Live registry — spares the spawner a FindObjectsByType per spawn tick (Zombie.All pattern).
+        public static readonly List<ZombieEntryPoint> All = new List<ZombieEntryPoint>();
+        void OnEnable() => All.Add(this);
+        void OnDisable() => All.Remove(this);
     }
 
     /// Where a rune card can appear this run. Rare spots live in the dungeon.

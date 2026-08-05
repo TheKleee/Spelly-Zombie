@@ -31,6 +31,9 @@ namespace SpellyZombie
         bool _hasEraseTrack;
         PlayerInk _inkPool;       // scoop target — erased ink refills the wand
         bool _wasErasing;         // falling edge → re-preview the edited ink
+        float _pilotRetry;        // controller lookup throttle — the old every-frame
+                                  // FindAnyObjectByType was a whole-scene scan per
+                                  // frame, forever, in scenes with no controller
 
         void Update()
         {
@@ -50,9 +53,14 @@ namespace SpellyZombie
                 return;
             }
 
-            // no doodling while bleeding out on the floor
-            if (_pilot == null) _pilot = GetComponentInParent<SimpleFPSController>();
-            if (_pilot == null) _pilot = FindAnyObjectByType<SimpleFPSController>();
+            // no doodling while bleeding out on the floor (lookup throttled to
+            // 1s so a late-spawning controller is still found, cheaply)
+            if (_pilot == null && (_pilotRetry -= Time.deltaTime) <= 0f)
+            {
+                _pilotRetry = 1f;
+                _pilot = GetComponentInParent<SimpleFPSController>();
+                if (_pilot == null) _pilot = FindAnyObjectByType<SimpleFPSController>();
+            }
             if (_pilot != null && _pilot.IsDowned)
             {
                 IsPenActive = false;
@@ -105,7 +113,8 @@ namespace SpellyZombie
             var gp = Gamepad.current;
             bool gpDraw = gp != null && gp.rightTrigger.ReadValue() > 0.4f;
             bool gpErase = gp != null && gp.leftTrigger.ReadValue() > 0.4f;
-            bool penHeld = mouse.leftButton.isPressed || gpDraw;
+            // no wand (or dry) = no drawing — the melted wand was still writing
+            bool penHeld = (mouse.leftButton.isPressed || gpDraw) && WandState.LocalCanDraw;
             bool erasing = mouse.rightButton.isPressed || gpErase;
             // eraser lifted: the ink changed — re-read what's left (preview)
             if (_wasErasing && !erasing && DrawingWorld.Instance != null)
@@ -163,36 +172,39 @@ namespace SpellyZombie
             return Cam.ScreenPointToRay(mouse.position.ReadValue());
         }
 
-        /// While body-painting, the pen sees ONLY the painter's body — a miss
-        /// draws nothing, so you can never ink the world behind you and set
-        /// off a spell by accident (Marko's rule). A thin ray slips through
-        /// the gaps between limb capsules mid-stroke ("skips a place"), so a
-        /// fat sphere-cast backs it up and keeps the line flowing. Normal
-        /// play raycasts as is.
+        /// Body-painting: the pen sees ONLY the painter's body (Marko's rule —
+        /// never ink the world behind you by accident); a fat sphere-cast backs
+        /// up the thin ray so limb-capsule gaps don't break the line.
+        static readonly RaycastHit[] _aimHits = new RaycastHit[32]; // NonAlloc buffer — RaycastAll here allocated EVERY frame while body-painting
+
         static bool AimHit(Ray ray, out RaycastHit hit)
         {
             if (SelfPaint.IsActive && SelfPaint.ActiveRoot != null)
             {
-                if (BestOnBody(Physics.RaycastAll(ray, DrawingConfig.DrawRange,
-                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), out hit))
-                    return true;
-                return BestOnBody(Physics.SphereCastAll(ray, 0.04f, DrawingConfig.DrawRange,
-                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore), out hit);
+                int n = Physics.RaycastNonAlloc(ray, _aimHits, DrawingConfig.DrawRange,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                if (BestOnBody(_aimHits, n, out hit)) return true;
+                n = Physics.SphereCastNonAlloc(ray, 0.04f, _aimHits, DrawingConfig.DrawRange,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                return BestOnBody(_aimHits, n, out hit);
             }
             return Physics.Raycast(ray, out hit, DrawingConfig.DrawRange,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         }
 
-        static bool BestOnBody(RaycastHit[] hits, out RaycastHit hit)
+        static bool BestOnBody(RaycastHit[] hits, int count, out RaycastHit hit)
         {
             hit = default;
             float best = float.MaxValue;
-            foreach (var h in hits)
+            for (int i = 0; i < count; i++)
+            {
+                var h = hits[i];
                 if (h.distance < best && h.collider.transform.IsChildOf(SelfPaint.ActiveRoot))
                 {
                     best = h.distance;
                     hit = h;
                 }
+            }
             return best < float.MaxValue;
         }
 
@@ -205,12 +217,9 @@ namespace SpellyZombie
                 return;
             }
 
-            // BODY INK RIDES BONES FROM BIRTH (Marko: "the drawing is
-            // floating in air... not linked with the arms"): the paint SHELL
-            // is only the canvas the ray lands on — the ink itself parents
-            // to the nearest LIMB, so it moves with the body the moment you
-            // pose. No end-of-session rebase, nothing floats, and every
-            // stroke knows exactly which body part it belongs to.
+            // BODY INK RIDES BONES FROM BIRTH (Marko: "the drawing is floating
+            // in air... not linked with the arms") — the shell is just the
+            // canvas; the ink parents to the nearest LIMB.
             Transform surface = hit.collider.transform;
             if (surface.name == "PaintShell" && SelfPaint.ActiveRoot != null)
             {
@@ -219,14 +228,9 @@ namespace SpellyZombie
                 if (limb != null) surface = limb;
             }
 
-            // one stroke lives on ONE surface: crossing onto a different limb
-            // ends the stroke so ink stays rigid per-limb and never stretches
-            // across a joint. SEAM WELD (Marko: "the nodes should be created
-            // at the point of separation so that it doesn't look broken"):
-            // the old stroke gets one last node AT the crossing point, riding
-            // its own limb — and the new stroke starts exactly there too, so
-            // the two sides of the joint stay kissing in every pose (touching
-            // = they chain into seals and cluster into one drawing).
+            // one stroke, ONE surface — crossing a joint ends it; SEAM WELD
+            // (Marko: "nodes should be created at the point of separation") puts
+            // one last node AT the crossing so both sides keep kissing in every pose
             if (_current != null && _current.Surface != null && surface != _current.Surface)
             {
                 var weld = DrawNode.Create(_current, _current.Nodes.Count,
@@ -262,12 +266,7 @@ namespace SpellyZombie
             }
             else
             {
-                // frame-rate-independent exponential smoothing of hand jitter.
-                // The formula degrades to raw input on its own — at tau = 0,
-                // k = 1 and the point snaps straight to the hit. Reading the
-                // const into a LOCAL keeps that "0 = raw" knob real: as a
-                // compile-time const the old `> 0f` guard folded to always-
-                // true, so the separate raw branch was dead code.
+                // frame-rate-independent jitter smoothing (tau = 0 degrades to raw input)
                 float tau = DrawingConfig.DrawSmoothingTime;
                 float k = tau > 0f ? 1f - Mathf.Exp(-Time.deltaTime / tau) : 1f;
                 _smoothedPoint = Vector3.Lerp(_smoothedPoint, hit.point, k);
@@ -355,18 +354,13 @@ namespace SpellyZombie
 
             if (bestIndex > 0)
             {
-                // split off the tail drawn before the crossing point
+                // split off the tail drawn before the crossing point — the one
+                // shared adoption path (tiny tails still Burn in CompleteStroke)
                 var tailNodes = stroke.DetachNodesBefore(bestIndex);
                 if (tailNodes.Count > 0)
                 {
-                    var tail = new Stroke { BasisRight = stroke.BasisRight, BasisUp = stroke.BasisUp, OwnerId = stroke.OwnerId };
-                    foreach (var n in tailNodes)
-                    {
-                        n.SetStroke(tail);
-                        tail.AddNode(n);
-                    }
-                    DrawingWorld.Instance.Register(tail);
-                    DrawingWorld.Instance.CompleteStroke(tail);
+                    var tail = DrawingWorld.Instance.AdoptPiece(stroke, tailNodes, allowTiny: true);
+                    if (tail != null) DrawingWorld.Instance.CompleteStroke(tail);
                 }
             }
 

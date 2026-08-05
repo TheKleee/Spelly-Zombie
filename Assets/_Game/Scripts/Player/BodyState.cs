@@ -379,45 +379,8 @@ namespace SpellyZombie
             // darkness is the cure (the sliders already do it)
             int wisps = DarknessSeverity > 0.55f ? 2 : DarknessSeverity > 0.18f ? 1 : 0;
             int glares = BloomSeverity > 0.55f ? 2 : BloomSeverity > 0.18f ? 1 : 0;
-            for (int i = 0; i < _eyeWisps.Length; i++)
-            {
-                bool on = i < wisps && _eyeS.Count > 0 && _eyeS[0] != null;
-                if (on && _eyeWisps[i] == null && lib.Smoke != null)
-                {
-                    // two authored eye sockets = one per eye; one = split around it
-                    var anchor = _eyeS[Mathf.Min(i, _eyeS.Count - 1)];
-                    var fx = Fit(Instantiate(lib.Smoke, anchor), 0.08f);
-                    fx.name = "EyeDark";
-                    fx.transform.position = _eyeS.Count > 1 ? anchor.position
-                        : anchor.position + transform.right * (i == 0 ? 0.05f : -0.05f);
-                    fx.transform.rotation = Quaternion.identity; // head-bone axes lie
-                    _eyeWisps[i] = fx;
-                }
-                else if (!on && _eyeWisps[i] != null)
-                {
-                    Destroy(_eyeWisps[i]);
-                    _eyeWisps[i] = null;
-                }
-            }
-            for (int i = 0; i < _eyeGlares.Length; i++)
-            {
-                bool on = i < glares && _eyeS.Count > 0 && _eyeS[0] != null;
-                if (on && _eyeGlares[i] == null && lib.HealShine != null)
-                {
-                    var anchor = _eyeS[Mathf.Min(i, _eyeS.Count - 1)];
-                    var fx = Fit(Instantiate(lib.HealShine, anchor), 0.09f);
-                    fx.name = "EyeGlare";
-                    fx.transform.position = _eyeS.Count > 1 ? anchor.position
-                        : anchor.position + transform.right * (i == 0 ? 0.05f : -0.05f);
-                    fx.transform.rotation = Quaternion.identity;
-                    _eyeGlares[i] = fx;
-                }
-                else if (!on && _eyeGlares[i] != null)
-                {
-                    Destroy(_eyeGlares[i]);
-                    _eyeGlares[i] = null;
-                }
-            }
+            EyeFx(_eyeWisps, wisps, lib.Smoke, 0.08f, "EyeDark");
+            EyeFx(_eyeGlares, glares, lib.HealShine, 0.09f, "EyeGlare");
 
             // BLEEDING = the HP readout (Marko: "the more you have over your
             // body the less hp you have") — wounds drip on a beat, more and
@@ -459,14 +422,38 @@ namespace SpellyZombie
             }
         }
 
+        /// One eye-status loop for wisps AND glares (they were the same loop
+        /// twice — only prefab, scale and name differed).
+        void EyeFx(GameObject[] cache, int want, GameObject prefab, float scale, string fxName)
+        {
+            for (int i = 0; i < cache.Length; i++)
+            {
+                bool on = i < want && _eyeS.Count > 0 && _eyeS[0] != null;
+                if (on && cache[i] == null && prefab != null)
+                {
+                    // two authored eye sockets = one per eye; one = split around it
+                    var anchor = _eyeS[Mathf.Min(i, _eyeS.Count - 1)];
+                    var fx = Fit(Instantiate(prefab, anchor), scale);
+                    fx.name = fxName;
+                    fx.transform.position = _eyeS.Count > 1 ? anchor.position
+                        : anchor.position + transform.right * (i == 0 ? 0.05f : -0.05f);
+                    fx.transform.rotation = Quaternion.identity; // head-bone axes lie
+                    cache[i] = fx;
+                }
+                else if (!on && cache[i] != null)
+                {
+                    Destroy(cache[i]);
+                    cache[i] = null;
+                }
+            }
+        }
+
         // ---- the screen IS the readout (Marko: no bars; darkness genuinely
         // steals vision; frost/heat creep at the edges) — local player only ----
         static Texture2D _white;
         void OnGUI()
         {
-            if (_pilot == null || _pilot.CameraPivot == null) return;
-            var cam = _pilot.CameraPivot.GetComponentInChildren<Camera>();
-            if (cam == null || !cam.isActiveAndEnabled) return; // not the local viewer
+            if (_pilot == null || !_pilot.IsLocalViewer) return; // cached — no per-event camera scan
             if (_white == null)
             {
                 _white = new Texture2D(1, 1);

@@ -33,7 +33,7 @@ namespace SpellyZombie
     ///                         Spread, Push, Flame, Lightning, Laser, Shadow,
     ///                         BlackHole, BarrierMote.
     ///   FX_&lt;FieldClass&gt;    — SnowField, PlasmaField, BlackHoleField,
-    ///                         WhiteHoleField, SteamCloud, TimeFreezeField,
+    ///                         WhiteHoleField, TimeFreezeField,
     ///                         InertiaField, TornadoField, HealingField,
     ///                         SolidAvalancheField, LiquidAreaField,
     ///                         StickyLavaField, FrostGlueField, AbsoluteZeroField.

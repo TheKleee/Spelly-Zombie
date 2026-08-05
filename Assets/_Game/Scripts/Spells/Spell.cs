@@ -26,7 +26,7 @@ namespace SpellyZombie
             public float Phase;
             public RuneGlyph Glyph;   // live ink anchor — the zone RIDES its glyph
             public GameObject Visual; // zone root (light/arrow), follows the ink
-            public float EmitTimer;   // countdown to the next particle burst (0 = fire now)
+            public bool Conjured;     // State runes conjure ONCE per activation
             public float GlyphSize;   // UNCLAMPED drawn half-extent — matter sizing
                                       // uses this, not Radius (whose 0.9 floor is
                                       // for effect areas and made boulder spam)
@@ -41,6 +41,8 @@ namespace SpellyZombie
         int _edges = 10; // the seal's side count — THE SHAPE the solid takes
         float _remaining;
         bool _ended;
+        bool _bodyThrow;      // remote body seal: no live glyph, but it's still a body cast (netcode §2)
+        Transform _netCaster; // the remote caster's avatar — throws spare it briefly
 
         // pressure (density confined by rigid walls builds until it bursts)
         float _gasIntensity;
@@ -50,8 +52,6 @@ namespace SpellyZombie
 
         // dark deepens & spreads when combined with low density / low stickiness
         float _darkSpread;
-
-        static readonly Collider[] _hits = new Collider[48];
 
         static readonly Vector3[] ConfineDirs =
         {
@@ -114,13 +114,68 @@ namespace SpellyZombie
                 else if (z.Rune == RuneType.HeatUp) spell._gasIntensity += z.Intensity * DrawingConfig.HeatPressureFactor;
             }
 
-            // every zone's EmitTimer starts at 0, so the first particle burst
-            // (and the first State conjuring) happens on the very first tick
-
             WorldEvents.Report(WorldEventKind.Spell, seal.PlaneOrigin, 1.5f); // eyes turn, zombies notice
 
             return spell;
         }
+
+        /// A client's BODY seal fired: its ink never replicated, so the HOST builds
+        /// the spell from the shipped payload — no seal, no glyphs, no re-reading
+        /// (netcode §2). Surface is Flesh by definition (body ink).
+        public static Spell CreateRemote(int ownerId, Vector3 origin, Vector3 normal, int edges,
+            float duration, int[] runes, float[] strengths, Vector3[] centers, Vector3[] pushDirs,
+            float[] sizes, Transform caster)
+        {
+            var host = new GameObject("Spell_net");
+            host.transform.position = origin;
+            var spell = host.AddComponent<Spell>();
+            spell._surface = SurfaceMaterialType.Flesh;
+            spell._ownerId = ownerId;
+            spell._remaining = duration;
+            spell._edges = edges;
+            spell._bodyThrow = true;
+            spell._netCaster = caster;
+
+            int n = Mathf.Min(runes.Length, 12); // rate/size cap, like ZombieHit
+            for (int i = 0; i < n; i++)
+            {
+                var rune = (RuneType)runes[i];
+                float strength = Mathf.Clamp01(strengths[i]);
+                if (rune == RuneType.None || strength <= 0.02f) continue;
+                if (rune == RuneType.DensityDown || rune == RuneType.StickyDown)
+                    spell._darkSpread += strength * 0.6f;
+                float glyphHalf = Mathf.Clamp(sizes[i], 0.01f, 3f);
+                var z = new Zone
+                {
+                    Rune = rune,
+                    Center = centers[i] + normal * 0.06f,
+                    Normal = normal,
+                    Radius = Mathf.Clamp(glyphHalf * DrawingConfig.ZoneRadiusScale, 0.9f, 3.5f),
+                    GlyphSize = glyphHalf,
+                    Intensity = strength,
+                    Phase = Random.value * 6.28f,
+                    PushDir = pushDirs[i].sqrMagnitude > 0.01f ? pushDirs[i].normalized : normal
+                };
+                spell.BuildVisual(z);
+                spell._zones.Add(z);
+            }
+            spell._darkSpread = Mathf.Clamp(spell._darkSpread, 0f, 1.5f);
+            if (spell._zones.Count == 0) { Destroy(host); return null; }
+
+            spell._pressureCenter = origin + normal * 0.1f;
+            foreach (var z in spell._zones)
+            {
+                if (z.Rune == RuneType.DensityUp) spell._gasIntensity += z.Intensity;
+                else if (z.Rune == RuneType.HeatUp) spell._gasIntensity += z.Intensity * DrawingConfig.HeatPressureFactor;
+            }
+            WorldEvents.Report(WorldEventKind.Spell, origin, 1.5f);
+            return spell;
+        }
+
+        /// The arrow/Y pointing rule, readable from outside — clients ship the
+        /// direction with their body-seal payload (netcode §2).
+        public static Vector3 ArrowDirFor(RuneGlyph g, Vector3 normal, RuneType rune)
+            => ArrowDirection(g, normal, rune);
 
         // ONE METRONOME PER SEAL (Marko: "things inside the same seal should
         // fire at the same time") — zones don't own clocks anymore; the SPELL
@@ -211,10 +266,11 @@ namespace SpellyZombie
             // fling nearby bodies out the vent + radially (VelocityChange so a
             // 70kg zombie flies as spectacularly as a 1kg rock)
             float kick = Mathf.Min(power, 1.5f) * 7f;
-            int n = Physics.OverlapSphereNonAlloc(_pressureCenter, DrawingConfig.ExplodeRadius, _hits, ~0, QueryTriggerInteraction.Ignore);
+            var hits = GrammarFX.ScanBuffer; // shared scratch (consumed before return)
+            int n = Physics.OverlapSphereNonAlloc(_pressureCenter, DrawingConfig.ExplodeRadius, hits, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < n; i++)
             {
-                var pilot = _hits[i] ? _hits[i].GetComponent<SimpleFPSController>() : null;
+                var pilot = hits[i] ? hits[i].GetComponent<SimpleFPSController>() : null;
                 if (pilot != null)
                 {
                     Vector3 away2 = (pilot.transform.position - _pressureCenter).normalized;
@@ -222,9 +278,9 @@ namespace SpellyZombie
                     pilot.KnockDown(1.2f); // blast off your feet
                     continue;
                 }
-                var blasted = _hits[i] ? _hits[i].GetComponentInParent<Creature>() : null;
+                var blasted = hits[i] ? hits[i].GetComponentInParent<Creature>() : null;
                 if (blasted != null) blasted.KnockDown(2f); // horde bowling
-                var rb = _hits[i] ? _hits[i].attachedRigidbody : null;
+                var rb = hits[i] ? hits[i].attachedRigidbody : null;
                 if (rb == null) continue;
                 Vector3 away = (rb.worldCenterOfMass - _pressureCenter);
                 Vector3 push = (dir * 2f + away.normalized).normalized;
@@ -240,21 +296,13 @@ namespace SpellyZombie
         {
             for (int i = 0; i < count; i++)
             {
-                var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                go.name = "Burst";
-                go.transform.position = origin;
-                go.transform.localScale = Vector3.one * Random.Range(0.05f, 0.13f);
-                var col = go.GetComponent<Collider>();
-                if (col) col.isTrigger = true;
-                var shader = Shader.Find("Universal Render Pipeline/Unlit");
-                if (shader != null)
-                    go.GetComponent<Renderer>().sharedMaterial = new Material(shader)
-                        { color = Color.Lerp(new Color(1f, 0.85f, 0.2f), new Color(1f, 0.15f, 0.05f), Random.value) };
+                // shared fire mote (the old per-mote `new Material` leaked one
+                // Material per sphere — MatterFX.Get caches)
+                var go = GrammarFX.FireMote(origin, Random.Range(0.05f, 0.13f), Random.Range(0.8f, 1.6f));
                 var body = go.AddComponent<Rigidbody>();
                 body.mass = 0.08f;
-                Vector3 v = (dir + Random.insideUnitSphere * 0.55f).normalized * speed * Random.Range(0.6f, 1.2f);
-                body.linearVelocity = v;
-                Destroy(go, Random.Range(0.8f, 1.6f));
+                body.linearVelocity = (dir + Random.insideUnitSphere * 0.55f).normalized
+                    * speed * Random.Range(0.6f, 1.2f);
             }
         }
 
@@ -364,9 +412,9 @@ namespace SpellyZombie
                 {
                     // State conjures ONCE per activation (re-firing the seal —
                     // pose re-close — conjures the next batch)
-                    if (z.EmitTimer != float.PositiveInfinity)
+                    if (!z.Conjured)
                     {
-                        z.EmitTimer = float.PositiveInfinity;
+                        z.Conjured = true;
                         EmitParticles(z);
                     }
                 }
@@ -387,8 +435,8 @@ namespace SpellyZombie
             // what remains of the FIELD: the player flight channel, a weak
             // direction push, and darkness blinding — everything else moved
             // into the particles
-            int n = Physics.OverlapSphereNonAlloc(z.Center, z.Radius, _hits, ~0, QueryTriggerInteraction.Ignore);
-            for (int i = 0; i < n; i++) Apply(z, _hits[i], dt);
+            int n = Physics.OverlapSphereNonAlloc(z.Center, z.Radius, GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++) Apply(z, GrammarFX.ScanBuffer[i], dt);
         }
 
         void EmitParticles(Zone z)
@@ -423,8 +471,8 @@ namespace SpellyZombie
             // along the seal's outward normal, sparing the caster briefly.
             // Siblings of one drawing leave together, seek each other in
             // flight, and combine mid-air — the bolt.
-            bool bodyCast = false;
-            Transform caster = null;
+            bool bodyCast = _bodyThrow; // remote body seals throw too (netcode §2)
+            Transform caster = _netCaster;
             var m0 = z.Glyph != null && z.Glyph.Members.Count > 0 ? z.Glyph.Members[0] : null;
             if (m0 != null && m0.Persistent && m0.First != null)
             {
@@ -564,7 +612,9 @@ namespace SpellyZombie
             // ONE recipe per drawing (verified bug: each State zone resolved the
             // whole seal independently — three Solid runes opened THREE
             // avalanches). The first zone of each State rune does the work.
-            if (_zones.Find(o => o.Rune == z.Rune) != z) return;
+            // (plain loop — Find's lambda allocated a closure per activation)
+            foreach (var o in _zones)
+                if (o.Rune == z.Rune) { if (o != z) return; break; }
 
             // ---- read the recipe: every rune enclosed in this seal ----
             bool denser = false, thinner = false, heatUp = false, heatDown = false,
@@ -682,10 +732,8 @@ namespace SpellyZombie
                 sphere.transform.localScale = Vector3.one * z.Radius * (1.1f + _darkSpread) * z.Intensity;
                 var sc = sphere.GetComponent<Collider>();
                 if (sc) Destroy(sc);
-                var sh = Shader.Find("Universal Render Pipeline/Unlit");
-                if (sh != null)
-                    sphere.GetComponent<Renderer>().sharedMaterial =
-                        MatterFX.Get(new Color(0.02f, 0.02f, 0.05f, Mathf.Clamp01(0.35f + _darkSpread * 0.4f)), MoteShade.Transparent);
+                sphere.GetComponent<Renderer>().sharedMaterial =
+                    MatterFX.Get(new Color(0.02f, 0.02f, 0.05f, Mathf.Clamp01(0.35f + _darkSpread * 0.4f)), MoteShade.Transparent);
                 return;
             }
 

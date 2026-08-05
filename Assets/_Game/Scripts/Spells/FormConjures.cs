@@ -10,6 +10,18 @@ namespace SpellyZombie
     /// Demon exactly like particles do.
     public static class FormConjures
     {
+        /// STEAM IS BORN HERE AND ONLY HERE (Marko: "one substance, one
+        /// behavior — no ambiguity"): the heat+chill paradox and hot water
+        /// both call this, so the scalding numbers can never drift apart.
+        public static Matter SpawnSteam(Vector3 at, float size, ulong lineage)
+        {
+            var steam = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas, size, at);
+            steam.Temperature = 130f; // scalding — hot gas bites waders
+            steam.Density = 0.3f;
+            steam.Lineage = lineage;
+            return steam;
+        }
+
         // ---------------------------------------------------- HeatUp + Solid --
         /// METEORITE: the block materializes HIGH overhead, born glowing hot,
         /// and falls — crush is momentum (existing law), the burning trail
@@ -83,13 +95,9 @@ namespace SpellyZombie
             var info = SurfaceMaterialDB.Info(mat);
             if (mat == SurfaceMaterialType.Water)
             {
-                // hot water = the same GAS SUBSTANCE as the heat+chill paradox
-                // (Marko's rule: one substance, one behavior — no ambiguity)
-                var steam = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas, 1.6f,
-                    at + normal * 0.5f); // born big — the hazard must reach people (Marko, Aug 4)
-                steam.Temperature = 130f;
-                steam.Density = 0.3f;
-                steam.Lineage = lineage;
+                // hot water = the same GAS SUBSTANCE as the heat+chill paradox;
+                // born big — the hazard must reach people (Marko, Aug 4)
+                SpawnSteam(at + normal * 0.5f, 1.6f, lineage);
                 return;
             }
             if (info.Meltable)
@@ -141,15 +149,8 @@ namespace SpellyZombie
             _tick -= Time.deltaTime;
             if (_tick > 0f) return;
             _tick = 0.06f;
-            var f = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            f.name = "MeteorEmber";
-            Destroy(f.GetComponent<Collider>());
-            f.transform.position = transform.position + Random.insideUnitSphere * 0.2f;
-            f.transform.localScale = Vector3.one * Random.Range(0.08f, 0.18f);
-            f.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(
-                Color.Lerp(new Color(1f, 0.7f, 0.2f), new Color(1f, 0.3f, 0.05f), Random.value),
-                MoteShade.Additive);
-            Destroy(f, 0.5f);
+            GrammarFX.FireMote(transform.position + Random.insideUnitSphere * 0.2f,
+                Random.Range(0.08f, 0.18f), 0.5f);
 
             // landed (or nearly stopped): one hot stamp on arrival, then done
             if (TryGetComponent<Rigidbody>(out var rb) && rb.linearVelocity.sqrMagnitude < 1f)

@@ -201,11 +201,5 @@ namespace SpellyZombie
             try { File.WriteAllText(SavePath, JsonUtility.ToJson(_data)); }
             catch (Exception e) { Debug.LogWarning($"[Emotes] Failed to save poses: {e.Message}"); }
         }
-
-        public static void DeleteSave()
-        {
-            try { if (File.Exists(SavePath)) File.Delete(SavePath); } catch { }
-            _data = null; // re-seed defaults on next access
-        }
     }
 }

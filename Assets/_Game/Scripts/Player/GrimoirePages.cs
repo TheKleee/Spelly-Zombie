@@ -270,7 +270,7 @@ namespace SpellyZombie
             if (CustomPage($"GrimoirePage_{rune}", owned)) return;
             if (CustomPage($"GrimoirePage_{family}", owned)) return;
 
-            Label(RuneLibrary.ShortName(rune), new Vector3(0f, 0.001f, 0.094f),
+            Label(RuneLibrary.Icon(rune), new Vector3(0f, 0.001f, 0.094f),
                 0.003f, owned ? Ink : Locked);
             var tex = Wardrobe.RuneIcon(rune, owned ? Ink : Locked);
             if (tex != null) Quad(tex, new Vector3(0f, 0f, 0.012f), 0.092f);
@@ -410,17 +410,6 @@ namespace SpellyZombie
                 pts.Add(new Vector2(Mathf.Cos(a), Mathf.Sin(a)));
             }
             return pts;
-        }
-
-        // --------------------------------------------------- rune spreads --
-
-        void Glyph(RuneType rune, Vector3 pagePos, bool owned)
-        {
-            var tex = Wardrobe.RuneIcon(rune, owned ? Ink : Locked);
-            if (tex != null) Quad(tex, pagePos, 0.062f);
-            // the rune's NAME under the glyph — the book teaches, it doesn't quiz
-            Label(RuneLibrary.ShortName(rune), pagePos + new Vector3(0f, 0.001f, -0.036f),
-                0.0022f, owned ? Ink : Locked);
         }
 
         // ------------------------------------------------------- builders --

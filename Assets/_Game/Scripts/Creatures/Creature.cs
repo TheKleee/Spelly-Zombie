@@ -2,16 +2,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Status-effect carrier for anything alive (zombies now, players when
-    /// multiplayer lands). All states are physical consequences of the matter
-    /// system — nothing here is a "spell effect", it's chemistry meeting biology:
-    ///   cold past FreezeThreshold → FROZEN solid in an ice shell (brittle:
-    ///     impacts shatter for bonus damage; heat melts you free)
-    ///   heat past BurnThreshold   → BURNING (panic sprint, spreads on touch)
-    ///   slime / sap contact       → STUCK (rooted, can still turn)
-    ///   oil contact               → SLIPPING (no traction — rigidbody creatures
-    ///     topple over, which is the funniest thing physics does for free)
-    /// Movers read CanMove/SpeedMultiplier instead of implementing states.
+    /// Status-effect carrier for anything alive — every state is chemistry meeting biology (frozen/burning/stuck/slipping); movers read CanMove/SpeedMultiplier.
     public class Creature : MonoBehaviour
     {
         public bool Frozen { get; private set; }
@@ -41,8 +32,12 @@ namespace SpellyZombie
         {
             _rb = GetComponent<Rigidbody>();
             _dmg = GetComponent<Damageable>();
+            _thermal = GetComponent<Thermal>(); // late-added Thermals bind themselves (BindThermal)
             if (_rb != null) _normalConstraints = _rb.constraints;
         }
+
+        /// Thermal is added on demand — it hands itself over in its Awake, so Update needn't poll GetComponent every frame.
+        public void BindThermal(Thermal t) => _thermal = t;
 
         public void ApplyStuck(float seconds) { if (!Frozen) _stuckLeft = Mathf.Max(_stuckLeft, seconds); }
 
@@ -117,13 +112,9 @@ namespace SpellyZombie
 
             TickFire(dt);
 
-            if (_thermal == null) _thermal = GetComponent<Thermal>();
             if (_thermal == null) return;
 
-            // IGNITION IS STICKY: crossing the threshold sets you on fire for a
-            // real duration — leaving the heat zone does not save you. This is
-            // what makes fire read as fire instead of "zombie walked through
-            // something warm and shrugged".
+            // IGNITION IS STICKY: crossing the threshold burns for a real duration — leaving the heat zone does not save you
             if (!Frozen && _thermal.Temperature > DrawingConfig.BurnThreshold && _burnLeft <= 0f)
             {
                 _burnLeft = 5f;
@@ -201,12 +192,7 @@ namespace SpellyZombie
             if (_iceShell != null) Destroy(_iceShell);
         }
 
-        /// Collisions do two jobs: burning creatures pass fire to whatever
-        /// they bump into, and PHYSICS HURTS (Marko: some runes deal no
-        /// damage themselves — being FLUNG is the weapon). Any collision past
-        /// the speed threshold deals impact damage: push a zombie off a roof,
-        /// slam it into a wall with a gust, drop a boulder. Falls come free
-        /// through the same door — a falling body hits the floor fast.
+        /// Burning creatures pass fire on contact, and PHYSICS HURTS (Marko: being FLUNG is the weapon) — fast collisions deal impact damage, falls included.
         void OnCollisionEnter(Collision col)
         {
             if (Burning)

@@ -10,6 +10,10 @@ namespace SpellyZombie
     public class SimpleFPSController : MonoBehaviour
     {
         public Transform CameraPivot;
+        /// Third-person framing anchor. Put an empty on the ROOT at chest
+        /// height — NEVER on a bone, or a held pose drags it and the camera
+        /// floats off the body again. Empty = falls back to root + 1.15m.
+        public Transform CameraTarget;
         public float MoveSpeed = 4.5f;
         public float SprintSpeed = 7f;
         public float JumpSpeed = 4.6f;
@@ -70,6 +74,8 @@ namespace SpellyZombie
         public static bool ThirdPersonActive { get; private set; }
         Camera _cam;
         Vector3 _camDefaultLocal;
+        int _revivePctShown = int.MinValue; // revive prompt cache — no per-frame string build
+        string _revivePrompt;
         GooglyEyes _eyes;
         WeaponSlots _slots;
         EmotePlayer _emotes;
@@ -309,8 +315,11 @@ namespace SpellyZombie
             LookSensitivity = PlayerPrefs.GetFloat("sz_look_sens", LookSensitivity);
             LockCursor();
 
-            // every caster has an identity; seals are owned by whoever completes them
-            Grimoire.LocalPlayerId = gameObject.GetInstanceID();
+            // every caster has an identity; seals are owned by whoever completes them.
+            // Connected, the stable ClientId-derived owner id IS the identity —
+            // machine-local instance ids meant nothing on other machines (netcode §0).
+            Grimoire.LocalPlayerId = NetGame.Connected && NetSync.LocalOwnerId >= 0
+                ? NetSync.LocalOwnerId : gameObject.GetInstanceID();
 
             // BODY INK IS FOREVER, ON EVERY BODY IN EVERY SCENE (Marko:
             // drawings on the body "should never expire completely"). Only
@@ -367,6 +376,11 @@ namespace SpellyZombie
         /// Where the static first-person eye point sits right now (world) —
         /// CharacterRig calibrates its head-bone camera anchor against this.
         public Vector3 EyeCenterWorld => transform.TransformPoint(new Vector3(0f, _camY, 0f));
+
+        /// THIS body is the local viewer (its camera is live). Cached _cam —
+        /// replaces the per-frame GetComponentInChildren&lt;Camera&gt; probes that
+        /// WandState and BodyState each ran on their own.
+        public bool IsLocalViewer => _cam != null && _cam.isActiveAndEnabled;
 
         /// CharacterRig feeds the eye point RIDING THE HEAD BONE every frame:
         /// sprint leans, bob and wobble move the camera WITH the face, so the
@@ -454,8 +468,14 @@ namespace SpellyZombie
                     // Meccha framing: boom up and back off the pivot, camera
                     // LOOKS AT the bean — pitch orbits vertically, yaw spins
                     // around, the whole body stays in frame
-                    _cam.transform.localPosition = Vector3.Lerp(_cam.transform.localPosition,
-                        new Vector3(0f, 1.15f, -3.6f), Time.deltaTime * 8f);
+                    // boom in ROOT space, never pivot space (Marko: pressing
+                    // 1-9 made the camera "float outside the body" — the
+                    // pivot rides the HEAD bone, and a held pose drags the
+                    // head, so a pivot-local boom sailed off with it)
+                    Vector3 boom = transform.position + Vector3.up * 1.15f
+                        - Quaternion.Euler(0f, transform.eulerAngles.y, 0f) * Vector3.forward * 3.6f;
+                    _cam.transform.position = Vector3.Lerp(_cam.transform.position,
+                        boom, Time.deltaTime * 8f);
                     var look = Quaternion.LookRotation(
                         transform.position + Vector3.up * 0.35f - _cam.transform.position,
                         Vector3.up);
@@ -590,10 +610,17 @@ namespace SpellyZombie
                 }
                 if (fallen != null)
                 {
-                    UIPrompt.Show("E", fallen.ReviveProgress > 0f
-                        ? Loc.F("revive.pct", Mathf.RoundToInt(fallen.ReviveProgress * 100f))
-                        : Loc.T("revive.friend"),
-                        new Color(0.55f, 1f, 0.6f));
+                    // rebuild the prompt string only when the percent CHANGES
+                    // (it was allocated every frame while standing by a friend)
+                    int pct = fallen.ReviveProgress > 0f
+                        ? Mathf.RoundToInt(fallen.ReviveProgress * 100f) : -1;
+                    if (pct != _revivePctShown || _revivePrompt == null)
+                    {
+                        _revivePctShown = pct;
+                        _revivePrompt = pct >= 0
+                            ? Loc.F("revive.pct", pct) : Loc.T("revive.friend");
+                    }
+                    UIPrompt.Show("E", _revivePrompt, new Color(0.55f, 1f, 0.6f));
                     if (kb.eKey.isPressed || (gp != null && gp.buttonWest.isPressed))
                         fallen.AddRevive(Time.deltaTime);
                 }

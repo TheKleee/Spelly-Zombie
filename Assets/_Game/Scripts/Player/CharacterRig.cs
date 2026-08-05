@@ -44,11 +44,8 @@ namespace SpellyZombie
         public static float KneeHingeSign = 1f;   // shins fold BACKWARD
         // ---------------------------------------------------------------------
 
-        // forwarded to the ONE socket system (SocketSet) — the rig used to
-        // build its own Socket.Hat/Socket.Cape too, and the duplicate empties
-        // confused Marko's hierarchy ("Socket.Cape twice")
-        public Transform HatSocket => _sockets != null ? _sockets.Get("Hat") : null;
-        public Transform CapeSocket => _sockets != null ? _sockets.Get("Cape") : null;
+        // sockets live in the ONE socket system (SocketSet) — duplicate rig
+        // empties confused Marko's hierarchy ("Socket.Cape twice")
         /// Weapons glue themselves into this (the standard HandR socket —
         /// plain character space, so Marko's grip-pivot weapons drop in).
         public Transform GripSocketR => _sockets != null ? _sockets.Get("HandR") : null;
@@ -181,16 +178,7 @@ namespace SpellyZombie
             }
 
             var allBones = model.GetComponentsInChildren<Transform>(true);
-            Transform Bone(string boneName)
-            {
-                foreach (var t in allBones)
-                    if (t.name == "mixamorig:" + boneName) return t;
-                foreach (var t in allBones)
-                    if (t.name.EndsWith(boneName)) return t;
-                foreach (var t in allBones) // HeadTop is exported as HeadTop_End
-                    if (t.name.Contains(boneName)) return t;
-                return null;
-            }
+            Transform Bone(string boneName) => SocketSet.FindBone(allBones, boneName);
 
             _hips = Bone("Hips");
             _spine1 = Bone("Spine1");
@@ -399,6 +387,7 @@ namespace SpellyZombie
 
         // ---------------------------------------------------- pen & grimoire --
         GameObject _wand, _book;
+        readonly List<Renderer> _bookRenderers = new List<Renderer>(); // reused buffer (no-alloc law)
         bool _propsBuilt;
 
         // ------------------------------------------------------- wardrobe --
@@ -710,22 +699,9 @@ namespace SpellyZombie
             if (_paintShell == null) return;
             foreach (var node in _paintShell.GetComponentsInChildren<DrawNode>(true))
             {
-                // nearest LIMB SURFACE, not nearest bone origin — chest ink
-                // near a shoulder is closer to the arm's PIVOT than to the
-                // spine's, and parenting it to the arm made it orbit the
-                // shoulder with every swing
-                Transform best = null;
-                float bestSqr = float.MaxValue;
-                foreach (var rb in _ragdoll)
-                {
-                    if (rb == null) continue;
-                    var limbCol = rb.GetComponent<Collider>();
-                    Vector3 at = limbCol != null
-                        ? limbCol.ClosestPoint(node.transform.position)
-                        : rb.transform.position;
-                    float d = (at - node.transform.position).sqrMagnitude;
-                    if (d < bestSqr) { bestSqr = d; best = rb.transform; }
-                }
+                // nearest LIMB SURFACE, not nearest bone origin (see
+                // NearestLimbSurface — chest ink must not orbit a shoulder)
+                Transform best = NearestLimbSurface(node.transform.position);
                 if (best != null) node.Rebase(best);
             }
             var shellCol = _paintShell.GetComponent<MeshCollider>();
@@ -841,7 +817,7 @@ namespace SpellyZombie
             // only moves 50×/s while the game renders faster — the camera
             // rides the head bone, so the whole view stepped with it.
             // HandGrab already does this for held objects; the doll gets it too.
-            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.interpolation = RigidbodyInterpolation.None; // kinematic bones ride the parent — SetRagdoll turns smoothing on when physics takes over
 
             Vector3 local = child != null
                 ? bone.InverseTransformPoint(child.position)
@@ -898,15 +874,10 @@ namespace SpellyZombie
                     BuildPenProps();                               // the props live in them
                     _teamShown = MatchLobby.LocalTeam;
                     _capeStamped = StartingRuneChooser.HasChosen;
-                    // the chest + hips capsules keep the cloth cape off the body
-                    var clothCols = new[]
-                    {
-                        _spine1 != null ? _spine1.GetComponent<CapsuleCollider>() : null,
-                        _hips != null ? _hips.GetComponent<CapsuleCollider>() : null,
-                    };
+                    // CLOTH RETIRED (Marko) — capes are rigid pieces, no
+                    // collider bundle to hand the dresser any more
                     _costume = Wardrobe.DressPlayer(_sockets, TeamColor(_teamShown),
-                        _capeStamped ? StartingRuneChooser.ChosenCard : (RuneCardType?)null,
-                        clothCols);
+                        _capeStamped ? StartingRuneChooser.ChosenCard : (RuneCardType?)null);
                 }
             }
 
@@ -957,9 +928,15 @@ namespace SpellyZombie
                 if (_book != null)
                 {
                     if (_book.activeSelf != bookAlive) _book.SetActive(bookAlive);
+                    // reused buffer, not a fresh array per frame — page content
+                    // spawns at runtime (GrimoirePages rebuilds, page-flip fx),
+                    // so a one-time renderer cache would go stale
                     if (bookAlive)
-                        foreach (var r in _book.GetComponentsInChildren<Renderer>(true))
+                    {
+                        _book.GetComponentsInChildren(true, _bookRenderers);
+                        foreach (var r in _bookRenderers)
                             if (r.enabled != showPen) r.enabled = showPen;
+                    }
                 }
             }
 
@@ -1314,6 +1291,9 @@ namespace SpellyZombie
                     rb.linearVelocity = v;
                     rb.linearDamping = drag;
                     rb.angularDamping = 3f; // calmer spin — less flail, same slide
+                    // smoothing belongs to PHYSICS-driven bones only (see the
+                    // matching None below) — this is where it's earned
+                    rb.interpolation = RigidbodyInterpolation.Interpolate;
                 }
                 // the capsule (and camera) now CHASES the doll — you watch
                 // your own body sail off and land, instead of losing it
@@ -1329,8 +1309,18 @@ namespace SpellyZombie
                 if (t != null) _recoverFrom.Add((t, t.localRotation));
             _recoverHipsFrom = _hips != null ? _hips.localPosition : Vector3.zero;
             _recoverT = 0f;
+            // INTERPOLATION OFF THE MOMENT PHYSICS LETS GO. An interpolated
+            // KINEMATIC bone is smoothed toward its own last physics pose in
+            // WORLD space — so when the CharacterController walks the root
+            // away, the bones lag and fight it, and the body reads as pinned
+            // to the spot (Marko: "I do want the body to follow the
+            // CharacterController"). Parent-following needs no smoothing.
             foreach (var rb in _ragdoll)
-                if (rb != null) rb.isKinematic = true;
+                if (rb != null)
+                {
+                    rb.isKinematic = true;
+                    rb.interpolation = RigidbodyInterpolation.None;
+                }
             foreach (var (t, pos, rot) in _bind) // positions snap home (structural);
             {                                    // ROTATIONS blend in over RecoverBlend
                 if (t == null) continue;

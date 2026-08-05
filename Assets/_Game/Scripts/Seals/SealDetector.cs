@@ -41,9 +41,13 @@ namespace SpellyZombie
         /// Returns the LARGEST valid loop among the eligible strokes, or null.
         /// Marko's rule: seals take priority and the BIGGEST enclosing loop
         /// wins — a small sub-loop must never steal the intended boundary.
+        /// The returned list is a FRESH copy (Seal keeps it for its lifetime);
+        /// everything else here runs on pooled scratch — this scans at 8 Hz
+        /// whenever open ink exists, and it was the steadiest garbage source
+        /// in the quadrant.
         public static List<LoopEntry> FindLoop(IReadOnlyList<Stroke> eligible)
         {
-            _best = null;
+            _best = false;
             _bestPerim = -1f;
             _nearestOpen = float.MaxValue;
             _nearestChain = 0;
@@ -65,19 +69,23 @@ namespace SpellyZombie
                 float gap = Vector3.Distance(s.First.transform.position, s.Last.transform.position);
                 float thr = DrawingConfig.SelfCloseThreshold(perimeter);
                 if (gap <= thr)
-                    Consider(new List<LoopEntry> { new LoopEntry(s, true) }, perimeter);
+                {
+                    _single.Clear();
+                    _single.Add(new LoopEntry(s, true));
+                    Consider(_single, perimeter);
+                }
                 else if (gap <= thr * 3f) // this path failed SILENTLY for months — never again
                     LastNearMiss = $"loop ends {gap * 100f:0.0}cm apart — {thr * 100f:0.0}cm allowed";
             }
 
             // 2) multi-stroke chains — explore ALL, keep the biggest
-            var used = new HashSet<Stroke>();
             foreach (var s0 in eligible)
             {
-                used.Clear();
-                used.Add(s0);
-                var path = new List<LoopEntry> { new LoopEntry(s0, true) };
-                Dfs(eligible, path, used,
+                _used.Clear();
+                _used.Add(s0);
+                _path.Clear();
+                _path.Add(new LoopEntry(s0, true));
+                Dfs(eligible, _path, _used,
                     s0.First.transform.position,
                     s0.Last.transform.position);
             }
@@ -87,15 +95,21 @@ namespace SpellyZombie
             // failed a size guard — a chain that never linked at all said
             // nothing, which is the exact case he hits and the exact reason it
             // felt random. Say which gap was the nearest to being a join.
-            if (_best == null && LastNearMiss == null && _nearestOpen < float.MaxValue)
+            if (!_best && LastNearMiss == null && _nearestOpen < float.MaxValue)
                 LastNearMiss = (_nearestChain > 0
                         ? $"a {_nearestChain}-stroke chain didn't come back around"
                         : "two line ends nearly meet")
                     + $" — {_nearestOpen * 100f:0.0}cm apart, and they must touch ({DrawingConfig.CloseThreshold * 100f:0.0}cm)";
-            return _best;
+            // the winner is copied out ONCE, at the end — the search itself
+            // snapshots into a reused buffer instead of allocating per improvement
+            return _best ? new List<LoopEntry>(_bestBuf) : null;
         }
 
-        static List<LoopEntry> _best;
+        static bool _best;            // a valid loop was found this scan (in _bestBuf)
+        static readonly List<LoopEntry> _bestBuf = new List<LoopEntry>(); // best loop so far (pooled)
+        static readonly List<LoopEntry> _path = new List<LoopEntry>();   // DFS working path (pooled)
+        static readonly List<LoopEntry> _single = new List<LoopEntry>(); // single-stroke candidate (pooled)
+        static readonly HashSet<Stroke> _used = new HashSet<Stroke>();   // DFS visited set (pooled)
         static float _bestPerim;
         static float _nearestOpen;    // smallest gap that ALMOST linked this scan
         static int _nearestChain;     // 0 = two loose ends; >0 = a chain that didn't come back around
@@ -117,7 +131,9 @@ namespace SpellyZombie
         {
             if (perimeter <= _bestPerim) return;
             _bestPerim = perimeter;
-            _best = new List<LoopEntry>(path); // snapshot — the DFS reuses its list
+            _bestBuf.Clear();           // snapshot into the pooled buffer —
+            _bestBuf.AddRange(path);    // the DFS reuses its list
+            _best = true;
         }
 
         /// PathLength returns approximate perimeter of a candidate loop.
@@ -174,11 +190,6 @@ namespace SpellyZombie
 
             if (path.Count >= DrawingConfig.MaxLoopStrokes) return;
 
-            // BODY JUNCTIONS BREATHE (Marko's crossed-arms loop: "how is this
-            // not a seal?"): two PERSISTENT strokes joining on a body get the
-            // forgiving re-close distance — poses can't hold a joint to the
-            // millimetre. World ink keeps the strict touch law.
-            var prev = path[path.Count - 1].Stroke;
             foreach (var t in all)
             {
                 if (used.Contains(t)) continue;
@@ -227,20 +238,28 @@ namespace SpellyZombie
         public static List<DrawNode> BuildLoopNodes(List<LoopEntry> loop)
         {
             var nodes = new List<DrawNode>();
+            BuildLoopNodes(loop, nodes);
+            return nodes;
+        }
+
+        /// Pooled variant for the 8 Hz spent-group tick (DrawingWorld) —
+        /// fills a caller-owned buffer instead of allocating per tick.
+        public static void BuildLoopNodes(List<LoopEntry> loop, List<DrawNode> into)
+        {
+            into.Clear();
             foreach (var e in loop)
             {
                 if (e.Forward)
                 {
                     foreach (var n in e.Stroke.Nodes)
-                        if (n != null) nodes.Add(n);
+                        if (n != null) into.Add(n);
                 }
                 else
                 {
                     for (int i = e.Stroke.Nodes.Count - 1; i >= 0; i--)
-                        if (e.Stroke.Nodes[i] != null) nodes.Add(e.Stroke.Nodes[i]);
+                        if (e.Stroke.Nodes[i] != null) into.Add(e.Stroke.Nodes[i]);
                 }
             }
-            return nodes;
         }
     }
 }

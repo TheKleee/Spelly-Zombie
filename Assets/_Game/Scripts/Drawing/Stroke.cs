@@ -40,15 +40,17 @@ namespace SpellyZombie
 
         public StrokeState State = StrokeState.Drawing;
 
-        /// Set by a seal when it captures this stroke: the rune the enclosing
-        /// cluster was recognized as (None = fizzle). Meaningless until sealed.
-        public RuneType Rune = RuneType.None;
-        public float RuneScore;
+        // (the seal-stamped Rune/RuneScore fields are DELETED — write-only;
+        // seals read glyphs, stroke logic reads DeclaredRune)
 
         /// The rune this stroke IS, declared at draw time (stamped by the
         /// player's choice or a zombie scribe). Seals trust this outright —
         /// no recognition, no guessing. None = plain ink.
         public RuneType DeclaredRune = RuneType.None;
+
+        /// Cross-machine stroke identity: (OwnerId, NetId) names the same ink on
+        /// every machine; 0 = never replicated. Split pieces inherit it (netcode §0).
+        public int NetId;
 
         /// Every node sits on a character/weapon — ink survives spell resolution.
         public bool Persistent { get; private set; }
@@ -394,11 +396,12 @@ namespace SpellyZombie
         /// gone). Purely visual — Burn() does the actual removal.
         public void SetEvaporation(float k)
         {
+            // _line + _extra already hold every renderer — no hierarchy walk
+            // (no-GetComponentsInChildren law; this ran once/sec per fading stroke)
             float w = DrawingConfig.InkWidth * Mathf.Clamp01(k);
             if (_line != null) _line.widthMultiplier = w;
-            if (_lineGo != null)
-                foreach (var lr in _lineGo.GetComponentsInChildren<LineRenderer>())
-                    lr.widthMultiplier = w;
+            foreach (var lr in _extra)
+                if (lr != null) lr.widthMultiplier = w;
         }
 
         /// Destroy all ink belonging to this stroke.

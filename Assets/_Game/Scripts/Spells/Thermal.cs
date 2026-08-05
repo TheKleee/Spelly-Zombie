@@ -20,11 +20,12 @@ namespace SpellyZombie
         Renderer _rend;
         MaterialPropertyBlock _mpb;
         Color _baseColor;
-        bool _canTint;
+        bool _canTint, _dmgSearched, _creatureLimb;
         Damageable _dmg;
 
         void Awake()
         {
+            GetComponent<Creature>()?.BindThermal(this); // kills Creature's per-frame GetComponent poll
             _rend = GetComponentInChildren<Renderer>();
             _mpb = new MaterialPropertyBlock();
             if (_rend != null && _rend.sharedMaterial != null && _rend.sharedMaterial.HasProperty(BaseColorID))
@@ -33,6 +34,8 @@ namespace SpellyZombie
                 _canTint = true;
             }
             _dmg = GetComponent<Damageable>();
+            // cached once (cache-once law) — creatures wear their own flames
+            _creatureLimb = GetComponentInParent<Creature>() != null;
         }
 
         /// delta is raw heat energy; heavy/high-capacity materials change slower.
@@ -53,7 +56,14 @@ namespace SpellyZombie
                 _rend.SetPropertyBlock(_mpb);
             }
 
-            if (_dmg == null) _dmg = GetComponent<Damageable>();
+            // one late look — GiveHeat adds the Damageable right AFTER this
+            // Thermal, so Awake missed it; re-probing every frame violated the
+            // cache-once law (the null was never remembered)
+            if (_dmg == null && !_dmgSearched)
+            {
+                _dmgSearched = true;
+                _dmg = GetComponent<Damageable>();
+            }
             if (_dmg != null)
             {
                 if (Temperature > DrawingConfig.BurnThreshold)
@@ -65,7 +75,7 @@ namespace SpellyZombie
             // burning WOOD visibly burns (cartoon flames) — creatures have
             // their own flame system, so they're skipped here
             bool ablaze = Temperature > DrawingConfig.BurnThreshold;
-            if (ablaze && _flames == null && GetComponentInParent<Creature>() == null)
+            if (ablaze && _flames == null && !_creatureLimb)
             {
                 var lib = FxLibrary.I;
                 if (lib != null && lib.Fire != null)

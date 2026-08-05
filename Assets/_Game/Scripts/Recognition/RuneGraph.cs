@@ -190,8 +190,7 @@ namespace SpellyZombie
         /// instead.
         public Seg[] Segs = NoSegs;
 
-        /// Corners in that line. The coarse identity, and the bare-line test.
-        public int Corners => Segs.Length > 0 ? Segs.Length - 1 : 0;
+        // (corner count = Segs.Length - 1; the coarse identity — see class header)
 
         /// Straight segments in the graph — the coarse topology fingerprint.
         public int Edges;
@@ -1151,6 +1150,28 @@ namespace SpellyZombie
                 for (int i = 0; i < pts.Count; i++) outp.Add(pts[i]);
                 return;
             }
+            MarkKeep(pts, eps);
+            for (int i = 0; i < pts.Count; i++) if (_keep[i]) outp.Add(pts[i]);
+        }
+
+        /// Same simplification, but reports the kept point INDICES (endpoints
+        /// included) — GeometryUtil.ClosedLoopCorners needs corner indices, and
+        /// this keeps "exactly one simplifier in this project" true.
+        public static void SimplifyIndices(IReadOnlyList<Vector2> pts, float eps, List<int> keepIdx)
+        {
+            keepIdx.Clear();
+            if (pts == null || pts.Count == 0) return;
+            if (pts.Count < 3 || eps <= 0f)
+            {
+                for (int i = 0; i < pts.Count; i++) keepIdx.Add(i);
+                return;
+            }
+            MarkKeep(pts, eps);
+            for (int i = 0; i < pts.Count; i++) if (_keep[i]) keepIdx.Add(i);
+        }
+
+        static void MarkKeep(IReadOnlyList<Vector2> pts, float eps)
+        {
             int n = pts.Count;
             if (_keep == null || _keep.Length < n) _keep = new bool[Mathf.Max(256, n)];
             System.Array.Clear(_keep, 0, n);
@@ -1182,7 +1203,6 @@ namespace SpellyZombie
                     _dpStack.Push(worstAt); _dpStack.Push(b);
                 }
             }
-            for (int i = 0; i < n; i++) if (_keep[i]) outp.Add(pts[i]);
         }
     }
 }

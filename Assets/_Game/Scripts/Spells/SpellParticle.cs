@@ -15,24 +15,16 @@ namespace SpellyZombie
         BarrierMote                   // GRAMMAR v4: Dense+Spread paradox — isolates what it touches
     }
 
-    /// THE LAW (Marko's matter-level rule, SPELL_PARTICLES.md): every particle
-    /// has a matter level and carries attributes (temperature, luminance,
-    /// density, stickiness, velocity). On collision the lower (more ethereal)
-    /// particle DISSOLVES into the higher one, donating its attributes; equal
-    /// levels annihilate if opposite, merge if same kind, otherwise just
-    /// bounce. Transformations are ATTRIBUTE THRESHOLDS, not recipes:
-    /// luminous + dense → LIGHTNING → LASER; dark + dense → SHADOW → VOID
-    /// RIFT; hot + dense → fireball; cold + dense → ice shard. Density is
-    /// WEIGHT: below air density a particle floats. Zombies fear dangerous
-    /// particles they can SEE — darkness makes flames invisible to them.
+    /// THE LAW (Marko's matter-level rule, SPELL_PARTICLES.md): particles carry
+    /// attributes; on collision the lower level dissolves into the higher, and
+    /// GRAMMAR v4 (leveling / paradox / exotics) resolves the rest in ResolveLaw.
     public class SpellParticle : MonoBehaviour
     {
         public ParticleKind Kind;
         public float Power = 1f;
         public Vector3 Vel;
-        public float SrcSize = 1f; // zone radius of the rune that emitted it —
-                                   // rides the chain so a rift knows how big a
-                                   // demon the original DRAWING deserves
+        public float SrcSize = 1f; // zone radius of the emitting rune — rides the
+                                   // chain so the Demon is sized by the DRAWING
         public int Echo;           // ECHO powerup stacks: landing may re-emit
 
         // ---- GRAMMAR v4 (SPELL_PARTICLES.md): same+same levels up, opposites
@@ -69,7 +61,6 @@ namespace SpellyZombie
             Holder = holder;
             _settled = false;
             _lure = null;
-            _prey = null;
             Vel = Vector3.zero;
         }
 
@@ -129,7 +120,7 @@ namespace SpellyZombie
                 FxLibrary.Spawn(lib.HitVector, at);
             else if (fam == ParticleKind.Light || Kind == ParticleKind.Lightning)
                 FxLibrary.Spawn(lib.HitLight, at);
-            else if (fam == ParticleKind.Dark || Kind == ParticleKind.Shadow)
+            else if (fam == ParticleKind.Dark)
                 FxLibrary.Spawn(lib.Poof, at);
             else if (Kind == ParticleKind.Dense || Kind == ParticleKind.Spread)
                 FxLibrary.Spawn(lib.HitThud, at);
@@ -180,19 +171,15 @@ namespace SpellyZombie
         public float Temp, Lum, Density, Stick;
 
         const float AirDensity = 0.55f;      // effective density below this → rises
-        const float VisibilityFloor = 0.15f; // dimmer than this = zombies can't see the danger
         const float PlasmaDensity = 1.0f;    // + luminance/darkness/heat → transformation
-        const float RiftDensity = 2.2f;      // lightning→laser, shadow→void rift
-        const float FireballTemp = 50f;
 
         static readonly List<SpellParticle> All = new List<SpellParticle>();
 
         /// Every live particle — the sticky hand scans this for grab targets.
         public static IReadOnlyList<SpellParticle> Living => All;
-        static readonly Collider[] _scan = new Collider[32];
 
         Renderer _rend;
-        float _age, _fearTick, _strikeTick, _retarget;
+        float _age, _fearTick, _strikeTick;
         float _chaosLeft;      // ChaosGrip paradox: random impulses, uncontrollable
         float _isolatedUntil;  // barrier-moted: refuses ALL chemistry until this
         float _auraTick;       // lvl2 particles radiate their effect around them
@@ -201,9 +188,8 @@ namespace SpellyZombie
         float _appetite;       // 0..1 personality: how much this mote stalks LIVING things
         float _lureRetarget;
         Transform _lure;       // the thing this mote is currently stalking
-        Transform _prey;
         int _generation;
-        bool _dead, _settled, _explosive;
+        bool _dead, _settled;
 
         // ---- THE FREEZER (Marko: "prepare the particles in advance and
         // freeze them and call them from the pool" — building a sphere, a
@@ -238,14 +224,12 @@ namespace SpellyZombie
             _dead = false;
             _age = 0f;
             _settled = false;
-            _explosive = false;
             _chaosLeft = 0f;
             _isolatedUntil = 0f;
             _auraTick = _donateTick = _patchTick = 0f;
-            _fearTick = _strikeTick = _retarget = _lureRetarget = 0f;
+            _fearTick = _strikeTick = _lureRetarget = 0f;
             _impactFxAt = 0f;
             _lure = null;
-            _prey = null;
             GrammarLevel = 1;
             Lineage = 0;
             SealId = 0;
@@ -398,7 +382,6 @@ namespace SpellyZombie
             }
 
             if (Kind == ParticleKind.Lightning) TickLightning(dt);
-            else if (Kind == ParticleKind.Shadow) TickShadow(dt);
             else if (Kind == ParticleKind.BlackHole) TickBlackHole(dt);
 
             // GRAMMAR v4: lvl2 particles radiate; flames burn where they sit;
@@ -413,20 +396,13 @@ namespace SpellyZombie
 
             if (!_settled)
             {
-                // DENSITY IS WEIGHT (Marko's rule): heavy falls, thinned floats
-                // — gently. Strong drag keeps particles hovering near their
-                // seal; only real forces (push hits, rifts, explosions) fling
-                // them anywhere.
-                if (Kind != ParticleKind.Lightning && Kind != ParticleKind.Shadow
-                    && Kind != ParticleKind.BlackHole)
+                // DENSITY IS WEIGHT (Marko's rule): heavy falls, thinned floats — gently
+                if (Kind != ParticleKind.Lightning && Kind != ParticleKind.BlackHole)
                     Vel += Vector3.down * (EffDensity() - AirDensity) * 2.5f * dt;
 
-                // MOTES SEEK EACH OTHER (Marko: "they almost always miss") —
-                // a gentle pull toward the nearest sibling makes the matter
-                // law actually happen instead of depending on a lucky graze;
-                // close enough = the law fires NOW, no trigger-roulette
-                if (Kind != ParticleKind.Lightning && Kind != ParticleKind.Shadow
-                    && Kind != ParticleKind.BlackHole && Kind != ParticleKind.BarrierMote)
+                // MOTES SEEK EACH OTHER (Marko: "they almost always miss")
+                if (Kind != ParticleKind.Lightning && Kind != ParticleKind.BlackHole
+                    && Kind != ParticleKind.BarrierMote)
                 {
                     // SEAL KIN FIRST (Marko's rule): particles born of the SAME
                     // DRAWING want each other above all — the runes you enclosed
@@ -500,15 +476,13 @@ namespace SpellyZombie
                         if (d < bestSqr) { bestSqr = d; near = o; nearIsKin = kin; }
                     }
 
-                    // WIND MOVES MATTER TOO (Marko: "push should work on all
-                    // objects, even those that are not grabbable — pull as
-                    // well"): conjured rocks, blobs, fireballs-turned-object —
-                    // anything with a body catches the vector's draft
+                    // WIND MOVES MATTER TOO (Marko: "push should work on all objects")
                     if (iAmPush)
-                        foreach (var mm in Matter.Living)
+                        for (int mi = 0; mi < Matter.Living.Count; mi++) // indexed — foreach boxed the enumerator every frame
                         {
+                            var mm = Matter.Living[mi];
                             if (mm == null) continue;
-                            var mrb = mm.GetComponent<Rigidbody>();
+                            var mrb = mm.Body;
                             if (mrb == null || mrb.isKinematic) continue;
                             float reach = DrawingConfig.ParticleKinRange
                                 + (transform.localScale.x + mm.transform.localScale.x) * 0.5f;
@@ -543,13 +517,13 @@ namespace SpellyZombie
                     }
                     else if (!iAmPush)
                     {
-                        // no particle nearby — a spell still hunts MATTER
-                        // blobs (Marko: ALL spells look to combine while
-                        // magical, vectors excepted); the touch exchanges
+                        // no particle nearby — a spell still hunts MATTER blobs
+                        // (Marko: ALL spells look to combine, vectors excepted)
                         Matter mNear = null;
                         float mBest = baseRange;
-                        foreach (var mm in Matter.Living)
+                        for (int mi = 0; mi < Matter.Living.Count; mi++) // indexed — foreach boxed the enumerator every frame
                         {
+                            var mm = Matter.Living[mi];
                             if (mm == null || mm.Touched) continue;
                             float md = (mm.transform.position - transform.position).sqrMagnitude;
                             if (md < mBest) { mBest = md; mNear = mm; }
@@ -560,11 +534,9 @@ namespace SpellyZombie
                         else TickLure(dt); // nothing magical around — stalk something ALIVE
                     }
                 }
-                // condensed movers (lightning, shadow, black hole) integrate
-                // their own motion in Tick* — moving them here too ran them at
-                // DOUBLE speed with doubled drag (verified)
-                if (Kind != ParticleKind.Lightning && Kind != ParticleKind.Shadow
-                    && Kind != ParticleKind.BlackHole)
+                // condensed movers integrate their own motion in Tick* — moving
+                // them here too ran them at DOUBLE speed (verified)
+                if (Kind != ParticleKind.Lightning && Kind != ParticleKind.BlackHole)
                 {
                     Vel *= Mathf.Max(0f, 1f - (Kind == ParticleKind.Push ? 0.25f : 1.4f) * dt);
                     transform.position += Vel * dt;
@@ -599,8 +571,7 @@ namespace SpellyZombie
             }
 
             float life = DrawingConfig.ParticleLife
-                * (Kind == ParticleKind.Shadow ? 2f
-                 : Kind == ParticleKind.Flame ? 2.5f     // a flame is a fixture, not a spark
+                * (Kind == ParticleKind.Flame ? 2.5f     // a flame is a fixture, not a spark
                  : Kind == ParticleKind.BlackHole ? 1.5f
                  : GrammarLevel >= 2 ? 1.5f : 1f);       // leveled particles earn their time
             if (_age > life - 0.8f)
@@ -608,12 +579,8 @@ namespace SpellyZombie
             if (_age > life || transform.localScale.x < 0.015f) Die();
         }
 
-        /// PARTICLES FEEL ALIVE (Marko's rule): a mote with no kin nearby
-        /// stalks the nearest living thing — a spark drawn on a zombie FOLLOWS
-        /// it when it walks away; the hungriest quarter will even stalk a
-        /// wizard (friendly fire is a personality trait now). A settled ember
-        /// WAKES when prey wanders close. Gentle accel: it's a stalk, not a
-        /// homing missile — you can outrun your mistakes.
+        /// PARTICLES FEEL ALIVE (Marko's rule): a kinless mote stalks the
+        /// nearest living thing; only the hungriest quarter stalks wizards.
         void TickLure(float dt)
         {
             if (_appetite < 0.35f) return; // the lazy third just sits there — variety reads as life
@@ -622,21 +589,8 @@ namespace SpellyZombie
             if (_lureRetarget <= 0f)
             {
                 _lureRetarget = 0.5f;
-                _lure = null;
                 float best = DrawingConfig.ParticleChaseRange * DrawingConfig.ParticleChaseRange;
-                foreach (var z in Zombie.All) // zombies are the favourite prey
-                {
-                    if (z == null) continue;
-                    float d = (z.transform.position - transform.position).sqrMagnitude;
-                    if (d < best) { best = d; _lure = z.transform; }
-                }
-                if (_appetite > 0.75f) // only the hungriest stalk wizards
-                    foreach (var pl in SimpleFPSController.All)
-                    {
-                        if (pl == null) continue;
-                        float d = (pl.transform.position - transform.position).sqrMagnitude;
-                        if (d < best) { best = d; _lure = pl.transform; }
-                    }
+                _lure = Targets.Nearest(transform.position, ref best, _appetite > 0.75f);
             }
             if (_lure == null) return;
 
@@ -663,8 +617,8 @@ namespace SpellyZombie
         }
 
         bool Dangerous() =>
-            Mathf.Abs(Temp) >= 20f || _explosive
-            || Kind == ParticleKind.Lightning || Kind == ParticleKind.Laser
+            Mathf.Abs(Temp) >= 20f
+            || Kind == ParticleKind.Lightning
             || Kind == ParticleKind.Flame; // (the black hole is invisible — never feared, always fatal)
 
         /// How visible this particle is to a googly eye. Base glow by kind,
@@ -677,8 +631,6 @@ namespace SpellyZombie
                 case ParticleKind.Spark: glow = 0.6f; break;
                 case ParticleKind.Frost: glow = 0.35f; break;
                 case ParticleKind.Lightning: glow = 2.5f; break;
-                case ParticleKind.Laser: glow = 6f; break;
-                case ParticleKind.Shadow: glow = -1f; break; // never seen coming
                 case ParticleKind.Flame: glow = 0.9f; break; // a flame is SEEN — unless darkness dims it
                 case ParticleKind.BlackHole: glow = -1f; break; // light doesn't leave it
                 default: glow = 0.3f; break;
@@ -704,17 +656,19 @@ namespace SpellyZombie
             Touch(other);
         }
 
-        /// Persistent particles (flames, lvl2 grip/slip) deliver on a BEAT to
-        /// whatever STAYS in them — Enter alone fired once and the beat never
-        /// repeated (verified: standing in fire was free after the first lick).
+        /// Persistent = delivers on a beat and STAYS: flames, lvl2 grip/slip,
+        /// and settled Glue/Repel ground patches (one predicate, two callers).
+        bool Persistent => Kind == ParticleKind.Flame
+            || (GrammarLevel >= 2 && (Kind == ParticleKind.Glue || Kind == ParticleKind.Repel))
+            || (_settled && (Kind == ParticleKind.Glue || Kind == ParticleKind.Repel));
+
+        /// Persistent particles deliver to whatever STAYS in them — Enter alone
+        /// fired once (verified: standing in fire was free after the first lick).
         void OnTriggerStay(Collider other)
         {
             if (_dead || other.isTrigger) return;
             if (other.GetComponent<SpellParticle>() != null) return;
-            bool persistent = Kind == ParticleKind.Flame
-                || (GrammarLevel >= 2 && (Kind == ParticleKind.Glue || Kind == ParticleKind.Repel))
-                || (_settled && (Kind == ParticleKind.Glue || Kind == ParticleKind.Repel)); // ground patches keep working
-            if (persistent) Touch(other);
+            if (Persistent) Touch(other);
         }
 
         static int Level(ParticleKind k)
@@ -947,18 +901,10 @@ namespace SpellyZombie
             {
                 case ParadoxKind.Steam:
                 {
-                    // heat + chill = a GAS SUBSTANCE (Marko: "as we defined,
-                    // not the gas bubbles") — real steam matter, billowing
-                    // soft-body skin, rises and disperses by the state law
-                    // BORN BIG (Marko, Aug 4: the scalding vapor was "in too
-                    // small of an area to ever hit anyone — it should be much
-                    // larger and grow in time") — the growth is the gas law's,
-                    // this is the head start
-                    var steam = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas,
-                        big ? 1.6f : 0.9f, at + Vector3.up * 0.3f);
-                    steam.Temperature = 130f; // scalding — hot gas bites waders
-                    steam.Density = 0.3f;
-                    steam.Lineage = lineage;
+                    // heat + chill = the ONE gas substance (Marko: one substance,
+                    // one behavior) — born big per his Aug 4 area ruling
+                    var steam = FormConjures.SpawnSteam(at + Vector3.up * 0.3f,
+                        big ? 1.6f : 0.9f, lineage);
                     DrawingWorld.Instance?.LogEvent("fire and frost REFUSE each other — SCALDING STEAM");
                     a.BecameObj = steam; b.BecameObj = steam; // sustain law: runes wait on the cloud
                     a.Die(); b.Die();
@@ -1098,10 +1044,10 @@ namespace SpellyZombie
         {
             transform.position += Vel * dt;
             Vel *= 1f - 1.2f * dt;
-            int n = Physics.OverlapSphereNonAlloc(transform.position, 3.5f, _scan, ~0, QueryTriggerInteraction.Collide);
+            int n = Physics.OverlapSphereNonAlloc(transform.position, 3.5f, GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Collide);
             for (int i = 0; i < n; i++)
             {
-                var c = _scan[i];
+                var c = GrammarFX.ScanBuffer[i];
                 if (c == null) continue;
                 var pl = c.GetComponent<SimpleFPSController>();
                 if (pl != null)
@@ -1125,10 +1071,10 @@ namespace SpellyZombie
             if (_auraTick > 0f) return;
             _auraTick = DrawingConfig.Lvl2AuraPeriod;
             int n = Physics.OverlapSphereNonAlloc(transform.position, DrawingConfig.Lvl2AuraRadius,
-                _scan, ~0, QueryTriggerInteraction.Ignore);
+                GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < n; i++)
             {
-                var c = _scan[i];
+                var c = GrammarFX.ScanBuffer[i];
                 if (c == null || c.GetComponent<SpellParticle>() != null) continue;
                 var pl = c.GetComponentInParent<SimpleFPSController>();
                 if (pl != null)
@@ -1194,12 +1140,12 @@ namespace SpellyZombie
         /// Lightning strikes the HIGHEST thing nearby, randomly (Marko's rule).
         void Strike()
         {
-            int n = Physics.OverlapSphereNonAlloc(transform.position, 8f, _scan, ~0, QueryTriggerInteraction.Ignore);
+            int n = Physics.OverlapSphereNonAlloc(transform.position, 8f, GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
             Collider best = null;
             float bestY = float.MinValue;
             for (int i = 0; i < n; i++)
             {
-                var c = _scan[i];
+                var c = GrammarFX.ScanBuffer[i];
                 if (c == null || c.GetComponent<SpellParticle>() != null) continue;
                 bool interesting = c.attachedRigidbody != null
                     || c.GetComponentInParent<Damageable>() != null
@@ -1240,107 +1186,6 @@ namespace SpellyZombie
             lr.SetPosition(3, b);
             lr.sharedMaterial = MatterFX.Get(new Color(0.8f, 0.92f, 1f, 0.95f), MoteShade.Additive);
             Destroy(go, 0.12f);
-        }
-
-        /// The most powerful thing in the game. Goes through EVERYTHING.
-        /// Everyone who sees it — bosses included — runs. Hits players too.
-        void BecomeLaser()
-        {
-            Vector3 pos = transform.position;
-            Vector3 dir = Vel.sqrMagnitude > 0.1f ? Vel.normalized : Random.onUnitSphere;
-
-            Transform prey = null;
-            float best = 35f * 35f;
-            foreach (var z in Zombie.All)
-            {
-                if (z == null) continue;
-                float d = (z.transform.position - pos).sqrMagnitude;
-                if (d < best) { best = d; prey = z.transform; }
-            }
-            foreach (var p in SimpleFPSController.All)
-            {
-                if (p == null) continue;
-                float d = (p.transform.position - pos).sqrMagnitude;
-                if (d < best) { best = d; prey = p.transform; }
-            }
-            if (prey != null) dir = (prey.position + Vector3.up * 0.7f - pos).normalized;
-
-            var hits = Physics.RaycastAll(pos, dir, 60f, ~0, QueryTriggerInteraction.Ignore);
-            foreach (var h in hits)
-            {
-                var pl = h.collider.GetComponent<SimpleFPSController>();
-                if (pl != null) { pl.TakeHit(dir * 9f, 55f); continue; }
-                var d = h.collider.GetComponentInParent<Damageable>();
-                if (d != null) d.TakeDamage(140f * Power, "lasered");
-                var mm = h.collider.GetComponent<Matter>();
-                if (mm != null) mm.AddHeat(900f); // the beam MELTS what it can't kill
-            }
-
-            var go = new GameObject("Laser");
-            var lr = go.AddComponent<LineRenderer>();
-            lr.useWorldSpace = true;
-            lr.widthMultiplier = 0.11f;
-            lr.positionCount = 2;
-            lr.SetPosition(0, pos);
-            lr.SetPosition(1, pos + dir * 60f);
-            lr.sharedMaterial = MatterFX.Get(new Color(1f, 0.4f, 0.9f, 1f), MoteShade.Additive);
-            var flash = go.AddComponent<Light>();
-            flash.type = LightType.Point; flash.range = 10f; flash.intensity = 8f;
-            flash.color = new Color(1f, 0.5f, 0.9f);
-            Destroy(go, 0.3f);
-
-            ZombieBrain.ScareVisible(pos, 35f, 6f); // universal terror
-            Juice.Boom(pos, 0.9f);
-            DrawingWorld.Instance?.LogEvent("L A S E R .");
-            Die();
-        }
-
-        void BecomeShadow()
-        {
-            Kind = ParticleKind.Shadow;
-            Lum = Mathf.Min(Lum, -1.5f); // no zombie ever sees it coming
-            _settled = false;
-            transform.localScale = Vector3.one * 0.5f;
-            var l = GetComponent<Light>();
-            if (l != null) Destroy(l);
-            DrawingWorld.Instance?.LogEvent("the dark CONDENSES — a shadow creeps");
-            RefreshLook();
-        }
-
-        void TickShadow(float dt)
-        {
-            _retarget -= dt;
-            if (_retarget <= 0f)
-            {
-                _retarget = 0.7f;
-                _prey = null;
-                float best = 144f;
-                foreach (var z in Zombie.All)
-                {
-                    if (z == null) continue;
-                    float d = (z.transform.position - transform.position).sqrMagnitude;
-                    if (d < best) { best = d; _prey = z.transform; }
-                }
-                foreach (var p in SimpleFPSController.All)
-                {
-                    if (p == null) continue;
-                    float d = (p.transform.position - transform.position).sqrMagnitude;
-                    if (d < best) { best = d; _prey = p.transform; }
-                }
-            }
-            if (_prey != null)
-                Vel = (_prey.position + Vector3.up * 0.8f - transform.position).normalized * 1.3f;
-            transform.position += Vel * dt;
-        }
-
-        void BecomeIceShard()
-        {
-            var m = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Solid,
-                0.24f * Mathf.Max(1f, Power), transform.position);
-            m.Temperature = -40f;
-            if (m.TryGetComponent<Rigidbody>(out var rb))
-                rb.linearVelocity = Vel + Vector3.down * 2f; // a thrown chunk of ice
-            Die();
         }
 
         // ------------------------------------------------- touching the world --
@@ -1389,9 +1234,6 @@ namespace SpellyZombie
             var demon = c.GetComponentInParent<Demon>();
             if (demon != null) { demon.AbsorbParticle(this); BecameObj = demon; Die(); return; }
 
-            if (_explosive) { Explode(); return; }
-            if (Kind == ParticleKind.Laser) return;
-
             var m = c.GetComponent<Matter>();
             var creature = c.GetComponentInParent<Creature>();
             var rb = c.attachedRigidbody;
@@ -1430,13 +1272,8 @@ namespace SpellyZombie
                 return;
             }
 
-            // PERSISTENT particles deliver on a beat and STAY: a flame keeps
-            // burning what stands in it, lvl2 grip keeps holding, lvl2 slip
-            // keeps slipping — they expire by lifetime, not by first contact
-            bool persistent = Kind == ParticleKind.Flame
-                || (GrammarLevel >= 2 && (Kind == ParticleKind.Glue || Kind == ParticleKind.Repel))
-                || (_settled && (Kind == ParticleKind.Glue || Kind == ParticleKind.Repel)); // ground patches keep working
-            if (persistent)
+            // PERSISTENT particles expire by lifetime, not by first contact
+            if (Persistent)
             {
                 _donateTick -= Time.deltaTime;
                 if (_donateTick > 0f) return;
@@ -1537,11 +1374,10 @@ namespace SpellyZombie
                 Die();
                 return;
             }
-            if (_explosive) { Explode(); return; }
             // friendly fire stays ON — your own magic bills you (exactness!)
-            if (Kind == ParticleKind.Shadow || Kind == ParticleKind.Dark)
+            if (Kind == ParticleKind.Dark)
             {
-                board?.PushLum(Kind == ParticleKind.Shadow ? -0.7f : -0.45f); // darkness steals sight
+                board?.PushLum(-0.45f); // darkness steals sight
                 board?.PushTemp(-4f); // and chills (Marko: dark moves the heat slider down)
                 Die(); return;
             }
@@ -1648,49 +1484,6 @@ namespace SpellyZombie
             }
         }
 
-        void Explode()
-        {
-            if (_dead) return;
-            Vector3 pos = transform.position;
-            Juice.Boom(pos, 0.8f);
-            var lib = FxLibrary.I;
-            if (lib != null)
-            {
-                FxLibrary.Spawn(lib.Explosion, pos);
-                FxLibrary.Spawn(lib.TextBoom, pos + Vector3.up * 0.8f); // comic beat
-            }
-            WorldEvents.Report(WorldEventKind.Explosion, pos, 2f);
-            int n = Physics.OverlapSphereNonAlloc(pos, 3f, _scan, ~0, QueryTriggerInteraction.Ignore);
-            for (int i = 0; i < n; i++)
-            {
-                if (_scan[i] == null) continue;
-                var pl = _scan[i].GetComponent<SimpleFPSController>();
-                if (pl != null) { pl.TakeHit((pl.transform.position - pos).normalized * 6f, 14f); continue; }
-                var cr = _scan[i].GetComponentInParent<Creature>();
-                if (cr != null) cr.KnockDown(1.4f);
-                GiveHeat(_scan[i], 90f);
-                var rb = _scan[i].attachedRigidbody;
-                if (rb != null)
-                    rb.AddForce((rb.worldCenterOfMass - pos).normalized * 5f, ForceMode.VelocityChange);
-            }
-            for (int i = 0; i < 8; i++)
-            {
-                var f = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                f.name = "Fire";
-                Destroy(f.GetComponent<Collider>());
-                f.transform.position = pos + Random.insideUnitSphere * 0.3f;
-                f.transform.localScale = Vector3.one * Random.Range(0.12f, 0.24f);
-                f.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(
-                    Color.Lerp(new Color(1f, 0.75f, 0.15f), new Color(1f, 0.25f, 0.05f), Random.value),
-                    MoteShade.Additive);
-                var frb = f.AddComponent<Rigidbody>();
-                frb.useGravity = false;
-                frb.linearVelocity = Random.onUnitSphere * 3f + Vector3.up * 1.5f;
-                Destroy(f, Random.Range(0.4f, 0.8f));
-            }
-            Die();
-        }
-
         /// Public doorway for the grammar's area fields (GrammarAreas.cs).
         public static void GiveHeatTo(Collider c, float delta) => GiveHeat(c, delta);
 
@@ -1764,7 +1557,7 @@ namespace SpellyZombie
             _gluedAt = Time.time;
         }
 
-        /// The void rift can drag settled particles back into the air.
+        /// Fields (black hole, tornado…) drag settled particles back into the air.
         public void Pull(Vector3 to, float dt)
         {
             if (_dead) return;
@@ -1839,7 +1632,7 @@ namespace SpellyZombie
             MoteShade shade = MoteShade.Additive;
             switch (Kind)
             {
-                case ParticleKind.Spark: c = _explosive ? new Color(1f, 0.25f, 0.05f) : new Color(1f, 0.55f, 0.12f); break;
+                case ParticleKind.Spark: c = new Color(1f, 0.55f, 0.12f); break;
                 case ParticleKind.Frost: c = new Color(0.6f, 0.85f, 1f); break;
                 case ParticleKind.Light: c = new Color(1f, 0.97f, 0.8f); break;
                 case ParticleKind.Dark: c = new Color(0.2f, 0.1f, 0.3f); shade = MoteShade.Transparent; break;
@@ -1849,7 +1642,6 @@ namespace SpellyZombie
                 case ParticleKind.Spread: c = new Color(0.7f, 1f, 0.8f); break;
                 case ParticleKind.Push: c = new Color(1f, 0.95f, 0.4f); break;
                 case ParticleKind.Lightning: c = new Color(0.75f, 0.9f, 1f); break;
-                case ParticleKind.Shadow: c = new Color(0.05f, 0.02f, 0.1f); shade = MoteShade.Transparent; break;
                 case ParticleKind.Flame: c = new Color(1f, 0.45f, 0.08f); break;
                 case ParticleKind.BlackHole: c = new Color(0.03f, 0.01f, 0.06f); shade = MoteShade.Transparent; break;
                 case ParticleKind.BarrierMote: c = new Color(0.6f, 0.9f, 1f, 0.7f); shade = MoteShade.Transparent; break;
@@ -1857,158 +1649,52 @@ namespace SpellyZombie
             }
             // carried darkness dims ANY particle — the invisible flame is also
             // hard for PLAYERS to see, which is only fair
-            if (Lum < -0.2f && Kind != ParticleKind.Dark && Kind != ParticleKind.Shadow)
+            if (Lum < -0.2f && Kind != ParticleKind.Dark)
             {
                 c.a = Mathf.Clamp01(0.9f + Lum * 0.55f);
                 shade = MoteShade.Transparent;
             }
 
             // alive, not flat: jelly wobble + rim glow (SZParticle shader)
-            float wobble = Kind == ParticleKind.Shadow ? 0.09f
-                : Kind == ParticleKind.Glue ? 0.06f : 0.04f;
+            float wobble = Kind == ParticleKind.Glue ? 0.06f : 0.04f;
             float rim = shade == MoteShade.Additive ? 0.9f : 0.35f;
             _rend.sharedMaterial = MatterFX.Particle(c, shade, wobble, rim);
         }
     }
 
-    /// Deep darkness + density tears a hole in the world (dark = antimatter =
-    /// the summoning school): the rift INHALES for a few seconds, then spits
-    /// out something from the other side — a shadow zombie that hates everyone
-    /// equally, plus whatever it swallowed, transmuted.
-    public class VoidRift : MonoBehaviour
+    /// ONE nearest-prey scan for every stalker (dedupe: TickLure, DarkFlame,
+    /// DarkMatterMote pasted this loop verbatim). bestSqr rides by ref so a
+    /// caller can keep competing against its own extra candidates.
+    public static class Targets
     {
-        public static bool Active { get; private set; }
-
-        const float InhaleSeconds = 4.5f;
-        const float PullRadius = 6.5f;
-        static readonly Collider[] _pull = new Collider[48];
-
-        float _age, _fearTick, _size = 1f;
-        int _swallowed;
-        Transform _rim;
-
-        public static void Open(Vector3 pos, float srcSize = 1f)
+        public static Transform Nearest(Vector3 pos, ref float bestSqr,
+            bool includePlayers, bool movingOnly = false)
         {
-            if (Active) return; // one hole in reality at a time
-            Active = true;
-            var go = new GameObject("VoidRift");
-            go.transform.position = pos + Vector3.up * 0.8f;
-            go.AddComponent<VoidRift>()._size = srcSize;
-        }
-
-        void Start()
-        {
-            var core = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            core.name = "Core";
-            Destroy(core.GetComponent<Collider>());
-            core.transform.SetParent(transform, false);
-            core.transform.localScale = Vector3.one * 1.5f;
-            core.GetComponent<Renderer>().sharedMaterial =
-                MatterFX.Get(new Color(0.02f, 0.01f, 0.05f, 0.92f), MoteShade.Transparent);
-
-            var rimGo = new GameObject("Rim");
-            rimGo.transform.SetParent(transform, false);
-            _rim = rimGo.transform;
-            var lr = rimGo.AddComponent<LineRenderer>();
-            lr.useWorldSpace = false;
-            lr.loop = true;
-            lr.widthMultiplier = 0.05f;
-            lr.positionCount = 24;
-            for (int i = 0; i < 24; i++)
+            Transform prey = null;
+            foreach (var z in Zombie.All)
             {
-                float a = i / 24f * Mathf.PI * 2f;
-                lr.SetPosition(i, new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f) * 0.95f);
-            }
-            lr.sharedMaterial = MatterFX.Get(new Color(0.6f, 0.2f, 0.9f, 0.9f), MoteShade.Additive);
-
-            WorldEvents.Report(WorldEventKind.Explosion, transform.position, 2.5f);
-            DrawingWorld.Instance?.LogEvent("THE DARK TEARS OPEN");
-        }
-
-        void Update()
-        {
-            float dt = Time.deltaTime;
-            _age += dt;
-            if (_rim != null) _rim.Rotate(2f, 90f * dt, 40f * dt);
-
-            _fearTick -= dt;
-            if (_fearTick <= 0f)
-            {
-                _fearTick = 0.6f;
-                ZombieBrain.ScareVisible(transform.position, 14f, 0.6f); // the rim glows — they see THIS
-            }
-
-            if (_age < InhaleSeconds) Inhale(dt);
-            else { Spit(); Destroy(gameObject); }
-        }
-
-        void Inhale(float dt)
-        {
-            int n = Physics.OverlapSphereNonAlloc(transform.position, PullRadius, _pull, ~0,
-                QueryTriggerInteraction.Collide);
-            for (int i = 0; i < n; i++)
-            {
-                var c = _pull[i];
-                if (c == null) continue;
-
-                var pilot = c.GetComponent<SimpleFPSController>();
-                if (pilot != null) // players get DRAGGED, never swallowed
+                if (z == null) continue;
+                if (movingOnly)
                 {
-                    pilot.AddSpellForce((transform.position - c.transform.position).normalized * 8f, dt);
-                    continue;
+                    var rb = z.GetComponent<Rigidbody>();
+                    if (rb != null && rb.linearVelocity.sqrMagnitude < 0.4f) continue;
                 }
-
-                var p = c.GetComponent<SpellParticle>();
-                if (p != null)
-                {
-                    if ((c.transform.position - transform.position).sqrMagnitude < 1f) Destroy(c.gameObject);
-                    else p.Pull(transform.position, dt);
-                    continue;
-                }
-
-                var rb = c.attachedRigidbody;
-                if (rb == null) continue;
-                Vector3 to = transform.position - rb.worldCenterOfMass;
-                float d = to.magnitude;
-                rb.AddForce(to.normalized * Mathf.Lerp(14f, 3f, d / PullRadius), ForceMode.Acceleration);
-
-                if (d < 1.0f && _swallowed < 12)
-                {
-                    bool edible = rb.GetComponentInParent<Zombie>() != null
-                        || rb.GetComponent<Matter>() != null;
-                    if (edible) { _swallowed++; Destroy(rb.gameObject); }
-                }
+                float d = (z.transform.position - pos).sqrMagnitude;
+                if (d < bestSqr) { bestSqr = d; prey = z.transform; }
             }
+            if (includePlayers)
+                foreach (var p in SimpleFPSController.All)
+                {
+                    if (p == null) continue;
+                    if (movingOnly && p.Velocity.sqrMagnitude < 0.4f) continue;
+                    float d = (p.transform.position - pos).sqrMagnitude;
+                    if (d < bestSqr) { bestSqr = d; prey = p.transform; }
+                }
+            return prey;
         }
-
-        void Spit()
-        {
-            Active = false;
-
-            // something from the other side — a DEMON, hostile to everyone,
-            // sized by the drawing that tore the rift, and it BECOMES whatever
-            // element touches it (Demon.cs)
-            Demon.Summon(transform.position + Vector3.up * 0.5f, _size);
-
-            // …and what it ate comes back, changed
-            for (int i = 0; i < _swallowed; i++)
-            {
-                var mat = Random.value < 0.12f ? SurfaceMaterialType.Diamond : SurfaceMaterialType.Stone;
-                var m = Matter.Spawn(mat, MatterPhase.Solid, Random.Range(0.15f, 0.3f),
-                    transform.position + Random.insideUnitSphere * 0.5f);
-                if (m.TryGetComponent<Rigidbody>(out var rb))
-                    rb.linearVelocity = Random.onUnitSphere * 6f + Vector3.up * 4f;
-            }
-
-            WorldEvents.Report(WorldEventKind.Explosion, transform.position, 3f);
-            Juice.Boom(transform.position, 1.2f);
-            DrawingWorld.Instance?.LogEvent($"…and something came BACK ({_swallowed} things fed to it)");
-        }
-
-        void OnDestroy() => Active = false;
     }
 
-    /// The rift's spawn hates everything equally: it keeps a fresh grudge
+    /// The demon's spawn hates everything equally: it keeps a fresh grudge
     /// against the nearest zombie while hunting players like any other.
     public class ShadowFeral : MonoBehaviour
     {
