@@ -20,10 +20,51 @@ namespace SpellyZombie
         float _logAccum;
         bool _dead;
 
+        Rigidbody _body;
+
         void Awake()
         {
             // dynamic props can be destroyed; static geometry shouldn't vanish
-            Destructible = GetComponent<Rigidbody>() != null;
+            _body = GetComponent<Rigidbody>();
+            Destructible = _body != null;
+        }
+
+        // ================================================ IMPACT HURTS ====
+        // GETTING YEETED BREAKS THINGS (Marko: thrown objects take damage from
+        // physics). Nothing ever hurt a prop by hitting something — Matter
+        // damaged whatever it LANDED on, but the thrown bench itself was
+        // immortal. A prop with a Rigidbody now takes damage from any hard
+        // enough impact, and the damage scales with how hard it hit.
+        static readonly float ImpactFloor = DrawingConfig.Overlay("ImpactDamageFloor", 4f);
+        static readonly float ImpactScale = DrawingConfig.Overlay("ImpactDamagePerSpeed", 2.2f);
+
+        void OnCollisionEnter(Collision col)
+        {
+            if (_dead) return;
+            // rooted props gain their body only when torn loose, long after
+            // Awake — so look again rather than trusting the cached null
+            if (_body == null)
+            {
+                _body = GetComponent<Rigidbody>();
+                if (_body == null) return;
+                Destructible = true;   // it's a real object now
+            }
+            float speed = col.relativeVelocity.magnitude;
+            if (speed < ImpactFloor) return;
+
+            // heavier things carry more into the hit, and both sides feel it
+            float mass = Mathf.Max(0.2f, _body.mass);
+            float dmg = (speed - ImpactFloor) * ImpactScale * Mathf.Sqrt(mass);
+            if (dmg < 1f) return;
+
+            string what = col.collider != null ? col.collider.name : "the ground";
+            TakeDamage(dmg, $"slammed into {what}");
+
+            // and what it hit takes the same beating — a bench swung into a
+            // crate should wreck the crate too
+            var other = col.collider != null
+                ? col.collider.GetComponentInParent<Damageable>() : null;
+            if (other != null && other != this) other.TakeDamage(dmg * 0.7f, $"hit by {name}");
         }
 
         public void TakeDamage(float amount, string cause)

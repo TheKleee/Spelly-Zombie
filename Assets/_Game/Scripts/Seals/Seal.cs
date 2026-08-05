@@ -123,6 +123,8 @@ namespace SpellyZombie
         /// This is where runes come into existence: the enclosed strokes are
         /// clustered by pure spatial proximity, and each cluster is recognized as
         /// one rune. Ink drawn on top of itself clusters into mush and fizzles.
+        static float _nextHandLearn; // silent handwriting-learning throttle
+
         public void CapturePayload(IReadOnlyList<Stroke> allStrokes)
         {
             // 1) gather enclosed, non-boundary ink
@@ -153,8 +155,31 @@ namespace SpellyZombie
                 float glyphSize = glyph.WorldBounds().size.magnitude;
                 glyph.SizeRatio = Mathf.Clamp01(glyphSize / sealSize);
                 float sizePower = Mathf.Lerp(DrawingConfig.MinSizePower, 1f, Mathf.Clamp01(glyph.SizeRatio * 3f));
+                // (the WRITING LEVEL never touches Strength — Marko's rule:
+                // "level doesn't improve the power of the rune or seal in any
+                // way, shape or form"; it's purely the recognition meter and
+                // only grimoire CORRECTIONS move it)
                 glyph.Strength = glyph.Rune != RuneType.None ? Mathf.Clamp01(match) * sizePower : 0f;
                 Runes.Add(glyph);
+
+                // INVISIBLE PROGRESSION (Marko: "as you play your character
+                // becomes better at casting that rune naturally"): a CLEAN
+                // cast of your own quietly joins your handwriting pool, so
+                // recognition converges on how you actually draw. Throttled,
+                // sloppy-but-accepted casts never teach — and neither do
+                // DECLARED/stamped casts (their perfect score is a stamp,
+                // not a reading; re-posing a body rune must not flood the
+                // pool with the same drawing).
+                if (glyph.Rune != RuneType.None && OwnerId == Grimoire.LocalPlayerId
+                    && (glyph.Members.Count == 0 || glyph.Members[0].DeclaredRune == RuneType.None)
+                    && glyph.Score >= DrawingConfig.HandLearnMinScore
+                    && Time.time >= _nextHandLearn)
+                {
+                    _nextHandLearn = Time.time + DrawingConfig.HandLearnCooldown;
+                    // QUIET: in-memory only — the file write is deferred so
+                    // the cast frame never pays for the lesson
+                    RuneLibrary.AddSample(glyph.Rune, RuneGlyph.RawStrokesOf(glyph.Members), quiet: true);
+                }
 
                 foreach (var member in glyph.Members)
                 {
@@ -162,6 +187,14 @@ namespace SpellyZombie
                     member.State = StrokeState.InSeal;
                     member.Rune = glyph.Rune;
                     member.RuneScore = glyph.Score;
+                    // BODY INK IS MARKED FOREVER (Marko: "first effect should
+                    // be final — drawings on body are permanent thus special,
+                    // runes are already marked as to what they will be"): the
+                    // first successful reading STAMPS the stroke; every
+                    // re-cast from re-posing trusts the stamp. No re-rolls.
+                    if (member.Persistent && glyph.Rune != RuneType.None
+                        && member.DeclaredRune == RuneType.None)
+                        member.DeclaredRune = glyph.Rune;
                     member.SetColor(glyph.Rune != RuneType.None ? Stroke.RuneColor : Stroke.FizzleColor);
                 }
             }

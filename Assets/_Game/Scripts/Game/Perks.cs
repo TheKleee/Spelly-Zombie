@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 namespace SpellyZombie
 {
     /// PERK CAULDRONS (CoD perk machines wearing witch hats): walk up, press E,
-    /// pay Riches, drink the brew. One perk per cauldron type, they last the
+    /// drink the brew. One perk per cauldron type, they last the
     /// whole run and vanish on run end (wipe or victory). Effects are LOCAL
     /// buffs consulted by the systems they touch — same accepted-divergence
     /// model as Powerups until B4 host authority lands.
@@ -20,17 +20,6 @@ namespace SpellyZombie
             new System.Collections.Generic.HashSet<CauldronType>();
 
         public static bool Has(CauldronType t) => _owned.Contains(t);
-
-        public static int Cost(CauldronType t)
-        {
-            switch (t)
-            {
-                case CauldronType.Survival: return 50;
-                case CauldronType.Drawing: return 35;
-                case CauldronType.Spell: return 60;
-                default: return 40; // Weapon
-            }
-        }
 
         public static string NameOf(CauldronType t)
         {
@@ -60,14 +49,8 @@ namespace SpellyZombie
                 DrawingWorld.Instance?.LogEvent($"{NameOf(t)} is already in your blood");
                 return false;
             }
-            int cost = Cost(t);
-            if (Wallet.Riches < cost)
-            {
-                DrawingWorld.Instance?.LogEvent($"{NameOf(t)} costs {cost} riches — you have {Wallet.Riches}");
-                Juice.Thud(buyer != null ? buyer.transform.position : Vector3.zero);
-                return false;
-            }
-            Wallet.Riches -= cost;
+            // (riches REMOVED from the game — Marko: "idk why are they here";
+            // the brews are simply taken, no currency gate)
             _owned.Add(t);
             if (t == CauldronType.Survival && buyer != null)
                 buyer.Health = Mathf.Min(MaxHealth, buyer.Health + 60f); // the first gulp
@@ -144,9 +127,8 @@ namespace SpellyZombie
             if (SimpleFPSController.ThirdPersonActive || SelfPaint.IsActive) return;
 
             // one quiet CoD-style purchase prompt — only while standing at the pot
-            UIPrompt.Show("E", Perks.Has(_marker.Type)
-                ? Loc.F("perk.brewed", Perks.NameOf(_marker.Type))
-                : Loc.F("perk.drink", Perks.NameOf(_marker.Type), Perks.Cost(_marker.Type)));
+            UIPrompt.Show("E", Loc.F(Perks.Has(_marker.Type) ? "perk.brewed" : "perk.drink",
+                Perks.NameOf(_marker.Type)));
 
             var kb = Keyboard.current;
             if (kb != null && kb.eKey.wasPressedThisFrame)

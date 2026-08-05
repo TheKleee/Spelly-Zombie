@@ -12,9 +12,40 @@ namespace SpellyZombie
     {
         const string ScenePath = "Assets/_Game/Scenes/RuneStudio.unity";
 
-        [MenuItem("Spelly Zombie/Build Rune Studio Scene")]
+        /// Marko: "can we remove all but the first drawing on each wall?"
+        /// Trims every rune's recorded pool to its first drawing. Works in or
+        /// out of play mode; the walls redraw on the next Rune Studio load.
+        [MenuItem("Spelly Zombie/Runes — Keep ONLY the first drawing per rune")]
+        public static void KeepFirstDrawingOnly()
+        {
+            if (!EditorUtility.DisplayDialog("Trim rune drawings",
+                "Keep only the FIRST recorded drawing for every rune and delete the rest?\n\n" +
+                "This rewrites sz_rune_templates.json and cannot be undone.",
+                "Trim them", "Cancel")) return;
+            RuneLibrary.KeepOnlyFirstSample();
+        }
+
+        /// The audit is O(samples²) — measured at 26-41 SECONDS on a full
+        /// library — so it no longer runs on scene load. Run it here after
+        /// re-recording, and the result is cached for the game to read.
+        [MenuItem("Spelly Zombie/Runes — Re-audit templates (health check)")]
+        public static void ReAuditTemplates() => RuneLibrary.ReAudit();
+
+        [MenuItem("Spelly Zombie/Build Rune Studio Scene (replaces the open scene)")]
         public static void Build()
         {
+            // AXIOM: NewScene does NOT prompt — this used to silently discard
+            // every unsaved edit in whatever scene was open (Village included).
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+
+            string target = ScenePath;
+            if (System.IO.File.Exists(ScenePath) &&
+                !EditorUtility.DisplayDialog("Build Rune Studio",
+                    ScenePath + " already exists — building REPLACES it (walls you moved, lights you tuned).\n\n" +
+                    "Your recorded rune samples are NOT in the scene — they live in sz_rune_templates.json and are safe either way.",
+                    "Overwrite it", "Save as a NEW scene"))
+                target = AssetDatabase.GenerateUniqueAssetPath(ScenePath);
+
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             var lit = Shader.Find("Universal Render Pipeline/Lit");
@@ -83,7 +114,8 @@ namespace SpellyZombie
                     player.AddComponent<CharacterRig>(); // the real body takes over in play
             }
 
-            EditorSceneManager.SaveScene(scene, ScenePath);
+            EditorSceneManager.SaveScene(scene, target);
+            Debug.Log($"[SpellyZombie] Rune Studio built → {target}");
             Debug.Log("[SpellyZombie] RUNE STUDIO ready — play, walk to a wall, draw samples of " +
                 "that wall's rune, press E to save the wall. Erase + re-save to delete a bad one. " +
                 "Saved drawings repaint on every load.");

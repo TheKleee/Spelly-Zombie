@@ -29,6 +29,7 @@ namespace SpellyZombie
         WeaponSlots _slots;
         Vector3 _lastErasePoint;  // swept-erase track
         bool _hasEraseTrack;
+        PlayerInk _inkPool;       // scoop target — erased ink refills the wand
         bool _wasErasing;         // falling edge → re-preview the edited ink
 
         void Update()
@@ -121,6 +122,7 @@ namespace SpellyZombie
 
             if (erasing)
             {
+                Hints.Retire(Hints.Id.Erase);
                 EndStroke();
                 if (AimHit(GetAimRay(mouse), out var eraseHit))
                 {
@@ -128,7 +130,9 @@ namespace SpellyZombie
                     // skips nodes; a big jump means the aim leapt surfaces — restart
                     Vector3 from = _hasEraseTrack && Vector3.Distance(_lastErasePoint, eraseHit.point) < 0.75f
                         ? _lastErasePoint : eraseHit.point;
-                    DrawingWorld.Instance.EraseAlong(from, eraseHit.point, DrawingConfig.EraseRadius);
+                    if (_inkPool == null) _inkPool = GetComponentInParent<PlayerInk>();
+                    // rubbed-out ink flows back to YOUR wand (Marko's scoop rule)
+                    DrawingWorld.Instance.EraseAlong(from, eraseHit.point, DrawingConfig.EraseRadius, _inkPool);
                     _lastErasePoint = eraseHit.point;
                     _hasEraseTrack = true;
                 }
@@ -139,6 +143,7 @@ namespace SpellyZombie
             }
             else if (penDown && !_suppressUntilRelease)
             {
+                Hints.Offer(Hints.Id.Erase); // the pen's other end, taught once
                 if (AimHit(GetAimRay(mouse), out var hit))
                     HandleDrawHit(hit);
                 else
@@ -200,12 +205,35 @@ namespace SpellyZombie
                 return;
             }
 
-            // one stroke lives on ONE surface: crossing onto a different collider
-            // (a different body part) ends the stroke so ink stays rigid per-limb
-            // and never stretches across a joint — joints are bridged by SEPARATE
-            // strokes meeting, which the pose then opens/closes.
-            if (_current != null && _current.Surface != null && hit.collider.transform != _current.Surface)
+            // BODY INK RIDES BONES FROM BIRTH (Marko: "the drawing is
+            // floating in air... not linked with the arms"): the paint SHELL
+            // is only the canvas the ray lands on — the ink itself parents
+            // to the nearest LIMB, so it moves with the body the moment you
+            // pose. No end-of-session rebase, nothing floats, and every
+            // stroke knows exactly which body part it belongs to.
+            Transform surface = hit.collider.transform;
+            if (surface.name == "PaintShell" && SelfPaint.ActiveRoot != null)
+            {
+                var rig = SelfPaint.ActiveRoot.GetComponent<CharacterRig>();
+                var limb = rig != null ? rig.NearestLimbSurface(hit.point) : null;
+                if (limb != null) surface = limb;
+            }
+
+            // one stroke lives on ONE surface: crossing onto a different limb
+            // ends the stroke so ink stays rigid per-limb and never stretches
+            // across a joint. SEAM WELD (Marko: "the nodes should be created
+            // at the point of separation so that it doesn't look broken"):
+            // the old stroke gets one last node AT the crossing point, riding
+            // its own limb — and the new stroke starts exactly there too, so
+            // the two sides of the joint stay kissing in every pose (touching
+            // = they chain into seals and cluster into one drawing).
+            if (_current != null && _current.Surface != null && surface != _current.Surface)
+            {
+                var weld = DrawNode.Create(_current, _current.Nodes.Count,
+                    hit.point, hit.normal, _current.Surface);
+                _current.AddNode(weld);
                 EndStroke();
+            }
 
             // jump tolerance grows with distance: a small mouse flick sweeps a lot
             // of wall at 8m, and silent stroke splits break closing shapes
@@ -226,7 +254,7 @@ namespace SpellyZombie
                 {
                     BasisRight = Cam.transform.right,
                     BasisUp = Cam.transform.up,
-                    Surface = hit.collider.transform,
+                    Surface = surface, // the LIMB on a body, the collider elsewhere
                     OwnerId = Grimoire.LocalPlayerId // your pen, your ink
                 };
                 DrawingWorld.Instance.Register(_current);
@@ -268,7 +296,7 @@ namespace SpellyZombie
                 }
             }
 
-            var node = DrawNode.Create(_current, _current.Nodes.Count, _smoothedPoint, hit.normal, hit.collider.transform);
+            var node = DrawNode.Create(_current, _current.Nodes.Count, _smoothedPoint, hit.normal, surface);
             _current.AddNode(node);
 
             TryCloseMidDraw(node);

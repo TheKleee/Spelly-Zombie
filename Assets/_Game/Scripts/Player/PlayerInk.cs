@@ -21,16 +21,19 @@ namespace SpellyZombie
         // stranded with an empty well and no way to fight for more
         void Update()
         {
-            if (RoundDirector.RunActive) Award(DrawingConfig.InkRegenPerSec * Time.deltaTime);
+            Award(DrawingConfig.InkRegenPerSec * Time.deltaTime); // same rules in the lobby
         }
 
         // the Drawing perk deepens the well (Perks.InkMax) — no perk = old value
         public float Fraction => Ink / Perks.InkMax;
 
-        /// Spend ink for drawn line length. Free when no run is active.
+        /// Spend ink for drawn line length. THE LOBBY IS NOT A FREE RIDE any
+        /// more (Marko: "the game should not be played differently than normal
+        /// just cause it's lobby — same rules should apply"). Ink used to cost
+        /// nothing outside a run, which is why the wand never shrank there.
+        /// The Lobby cauldron refills itself forever, so you can still test.
         public bool TrySpend(float amount)
         {
-            if (!RoundDirector.RunActive) return true;
             if (Ink < amount) return false;
             Ink -= amount;
             return true;

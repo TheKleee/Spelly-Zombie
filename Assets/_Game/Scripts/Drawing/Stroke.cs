@@ -63,6 +63,11 @@ namespace SpellyZombie
         /// glyph stroke, and reading it caused phantom-rune misfires.
         public bool SealResidue;
 
+        /// When this ink appeared in the world — the evaporation clock
+        /// (loose world ink thins out and vanishes after a minute; body ink
+        /// and seal ink are exempt — see DrawingWorld's sweep).
+        public float BornAt;
+
         LineRenderer _line;
         GameObject _lineGo;
         readonly List<LineRenderer> _extra = new List<LineRenderer>(); // runs after visual breaks
@@ -136,19 +141,25 @@ namespace SpellyZombie
         public void MarkDirty() => _dirty = true;
 
         /// Call once the node list is final (stroke completed or closed into a seal).
+        /// PERSISTENCE IS A MAJORITY VOTE (Marko: body drawings "should never
+        /// expire completely") — the old all-nodes rule let ONE stray node
+        /// (pen clipping past a limb onto the floor for a frame) demote a
+        /// whole body drawing to world ink, which the next cast then BURNED.
         public void CachePersistence()
         {
-            Persistent = Nodes.Count > 0;
             MultiSurface = false;
+            int total = 0, onBody = 0;
             Transform firstParent = null;
             foreach (var n in Nodes)
             {
                 if (n == null) continue;
-                if (!n.OnPersistentSurface) Persistent = false;
+                total++;
+                if (n.OnPersistentSurface) onBody++;
                 var parent = n.transform.parent;
                 if (firstParent == null) firstParent = parent;
                 else if (parent != firstParent) MultiSurface = true;
             }
+            Persistent = total > 0 && onBody * 2 > total;
         }
 
         /// Ink on a holstered surface (weapon stowed in third person, held in an
@@ -234,6 +245,11 @@ namespace SpellyZombie
             _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             SetColor(InkColor);
         }
+
+        /// What colour this ink is showing right now — so a temporary highlight
+        /// (the grimoire tinting the drawing you're aiming at) can put back
+        /// exactly what it found instead of guessing at InkColor.
+        public Color Color => _color;
 
         public void SetColor(Color c)
         {
@@ -372,6 +388,17 @@ namespace SpellyZombie
             foreach (var n in Nodes)
                 if (n == null) return true;
             return false;
+        }
+
+        /// Evaporation: thin the drawn line toward nothing (k = 1 full … 0
+        /// gone). Purely visual — Burn() does the actual removal.
+        public void SetEvaporation(float k)
+        {
+            float w = DrawingConfig.InkWidth * Mathf.Clamp01(k);
+            if (_line != null) _line.widthMultiplier = w;
+            if (_lineGo != null)
+                foreach (var lr in _lineGo.GetComponentsInChildren<LineRenderer>())
+                    lr.widthMultiplier = w;
         }
 
         /// Destroy all ink belonging to this stroke.

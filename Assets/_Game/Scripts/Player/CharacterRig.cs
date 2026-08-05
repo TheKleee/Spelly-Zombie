@@ -100,10 +100,16 @@ namespace SpellyZombie
             Quaternion full = arm.localRotation;
             if (Quaternion.Angle(full, lastWritten) < 0.05f) return;
             Quaternion delta = full * Quaternion.Inverse(armRest);
+            // ADDITIVE ONLY (Marko: a loaded pose "must be exactly the same
+            // as the pose I saved"): the clavicle DERIVES its share from the
+            // arm, the arm keeps precisely what the pose system wrote.
+            // Deriving is repeatable — save→load→save can't drift. The old
+            // split reduced the arm on every write, so a saved pose (which
+            // stores the reduced arm) got reduced AGAIN on load and every
+            // loaded pose bent less than the sculpt.
             clav.localRotation = clavRest
                 * Quaternion.Slerp(Quaternion.identity, delta, ClavicleFollow);
-            arm.localRotation = Quaternion.Slerp(armRest, full, 1f - ClavicleFollow);
-            lastWritten = arm.localRotation;
+            lastWritten = full;
         }
         float _airTime;    // seconds of continuous no-ground (slope-flicker filter)
         bool _airChecked, _hasAirParams, _hasCrouch; // which params the controller actually has
@@ -340,6 +346,17 @@ namespace SpellyZombie
             // eyes (Marko's edit is law); otherwise build them at his
             // hand-tuned fit, in HEAD-LOCAL space
             var eyes = model.GetComponentInChildren<GooglyEyes>(true);
+            if (eyes != null && (!eyes.IsAlive || !eyes.enabled || !eyes.gameObject.activeSelf))
+            {
+                // the bake carried a DEAD eye rig (wiring lost, no usable
+                // Eye→Pupil pair, or baked disabled) — frozen decoration that
+                // can never react. Marko: "make it work normally" — rebuild.
+                Debug.LogWarning("[SpellyZombie] Baked body's eyes are not a working " +
+                    "Eye→Pupil pair — rebuilding fresh googly eyes in their place. " +
+                    "(Re-bake to keep custom eye placement.)", model);
+                Destroy(eyes.gameObject);
+                eyes = null;
+            }
             if (eyes == null)
             {
                 eyes = GooglyEyes.Attach(_head, 0f, EyeScale);
@@ -666,6 +683,26 @@ namespace SpellyZombie
             return worst;
         }
 
+        /// The limb (ragdoll bone) whose collider surface is closest to a
+        /// world point — body ink parents HERE at creation now (Marko: "the
+        /// drawing is floating in air and is not linked with the arms"), so
+        /// it rides the pose from its first frame instead of hanging on the
+        /// static shell until an end-of-session rebase.
+        public Transform NearestLimbSurface(Vector3 at)
+        {
+            Transform best = null;
+            float bestSqr = float.MaxValue;
+            foreach (var rb in _ragdoll)
+            {
+                if (rb == null) continue;
+                var col = rb.GetComponent<Collider>();
+                Vector3 p = col != null ? col.ClosestPoint(at) : rb.transform.position;
+                float d = (p - at).sqrMagnitude;
+                if (d < bestSqr) { bestSqr = d; best = rb.transform; }
+            }
+            return best;
+        }
+
         /// Session over: every ink node on the shell is handed to its nearest
         /// bone, so the drawing rides the animation forever; the shell dies.
         public void EndBodyPaint()
@@ -773,9 +810,17 @@ namespace SpellyZombie
         Rigidbody Limb(Transform bone, Transform child, float radius, float mass, Rigidbody parent)
         {
             if (bone == null) return null;
-            var rb = bone.gameObject.AddComponent<Rigidbody>();
-            rb.isKinematic = true;
-            rb.mass = mass;
+            // AXIOM (Marko Jul 25): ADOPT what his rig already carries. A
+            // Rigidbody or Collider he authored used to make AddComponent
+            // return null → NullReferenceException → the body was left
+            // half-built (no eyes, no sockets, no animator) for the session.
+            var rb = Adopt.Component<Rigidbody>(bone.gameObject, out bool madeRb);
+            if (!madeRb)
+                Debug.LogWarning($"[SpellyZombie] Bone '{bone.name}' brought its own Rigidbody " +
+                                 $"(mass {rb.mass}) — keeping it.", bone);
+            else rb.mass = mass;
+            rb.isKinematic = true; // ALWAYS — SetRagdoll owns this; an adopted
+                                   // non-kinematic body collapses the skeleton on frame 1
             // grippy limbs: a downed doll STOPS where it lands instead of
             // ice-skating away from its rescuer (spell forces still move it —
             // friction only fights sliding, not pushes)
@@ -791,23 +836,40 @@ namespace SpellyZombie
             // (discrete checks skip thin geometry at speed) — the body then
             // "vanished" under the map. Speculative sweeps stop that.
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+            // SMOOTH BONES BETWEEN PHYSICS STEPS (Marko: "camera doesn't
+            // follow it exactly"): without interpolation a ragdolling bone
+            // only moves 50×/s while the game renders faster — the camera
+            // rides the head bone, so the whole view stepped with it.
+            // HandGrab already does this for held objects; the doll gets it too.
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
 
             Vector3 local = child != null
                 ? bone.InverseTransformPoint(child.position)
                 : Vector3.up * radius * 2f;
             float len = Mathf.Max(local.magnitude, radius * 1.6f);
-            var col = bone.gameObject.AddComponent<CapsuleCollider>();
-            col.radius = radius;
-            col.height = len + radius;
-            col.center = local * 0.5f;
-            col.direction = DominantAxis(local);
-            col.material = _limbGrip;
+            // his collider wins — only fit one when the bone has none
+            if (bone.GetComponent<Collider>() == null)
+            {
+                var col = bone.gameObject.AddComponent<CapsuleCollider>();
+                col.radius = radius;
+                col.height = len + radius;
+                col.center = local * 0.5f;
+                col.direction = DominantAxis(local);
+                col.material = _limbGrip;
+            }
+            else
+            {
+                var kept = bone.GetComponent<Collider>();
+                if (kept is MeshCollider mc && !mc.convex)
+                    Debug.LogWarning($"[SpellyZombie] Bone '{bone.name}' has a NON-CONVEX MeshCollider — " +
+                                     "ragdoll bones must be convex or physics will refuse it.", bone);
+            }
 
             if (parent != null)
             {
-                var joint = bone.gameObject.AddComponent<CharacterJoint>();
-                joint.connectedBody = parent;
-                joint.enablePreprocessing = false;
+                var joint = Adopt.Component<CharacterJoint>(bone.gameObject, out bool madeJoint);
+                if (madeJoint) joint.enablePreprocessing = false;
+                if (joint.connectedBody == null) joint.connectedBody = parent;
             }
             _ragdoll.Add(rb);
             return rb;
@@ -883,7 +945,22 @@ namespace SpellyZombie
                 bool showPen = _slots.PenSelected && !_ragdolling
                     && (!SimpleFPSController.ThirdPersonActive && !SelfPaint.IsActive);
                 if (_wand.activeSelf != showPen) _wand.SetActive(showPen);
-                if (_book != null && _book.activeSelf != showPen) _book.SetActive(showPen);
+
+                // THE BOOK STAYS ALIVE ON THE EASEL (Marko: "I need to open
+                // grimoire in character drawing mode — invisible, but I can
+                // still see the UI showing what page we're at"). Deactivating
+                // the object killed GrimoirePages outright, so G could never
+                // open the book while painting. Active + renderers off =
+                // invisible but fully working.
+                bool bookAlive = showPen
+                    || (SelfPaint.IsActive && _slots.PenSelected && !_ragdolling);
+                if (_book != null)
+                {
+                    if (_book.activeSelf != bookAlive) _book.SetActive(bookAlive);
+                    if (bookAlive)
+                        foreach (var r in _book.GetComponentsInChildren<Renderer>(true))
+                            if (r.enabled != showPen) r.enabled = showPen;
+                }
             }
 
             // ---- ragdoll on knockdowns ----
@@ -1148,6 +1225,45 @@ namespace SpellyZombie
                     }
                 }
             }
+
+            RecoverBlendTick();
+            TrackBoneVelocities();
+        }
+
+        /// RAGDOLL RECOVERY (Marko: "doesn't interpolate in getting up" /
+        /// "gradually move ... and back"): for a beat after physics lets go,
+        /// whatever the animator (or the procedural layers) wrote this frame
+        /// is eased in FROM the doll's last real pose — rotations AND the
+        /// hips' height, so the body climbs to its feet instead of popping
+        /// upright off the floor. Runs LAST in LateUpdate so it composes
+        /// over every other writer.
+        void RecoverBlendTick()
+        {
+            if (_recoverT < 0f) return;
+            _recoverT += Time.deltaTime;
+            float a = Mathf.Clamp01(_recoverT / Mathf.Max(0.05f, RagdollRecoverBlend));
+            a = a * a * (3f - 2f * a);
+            foreach (var (t, rot) in _recoverFrom)
+            {
+                if (t == null) continue;
+                t.localRotation = Quaternion.Slerp(rot, t.localRotation, a);
+            }
+            if (_hips != null)
+                _hips.localPosition = Vector3.Lerp(_recoverHipsFrom, _hips.localPosition, a);
+            if (a >= 1f) _recoverT = -1f;
+        }
+
+        /// While ANIMATED, remember where every ragdoll bone was this frame —
+        /// the moment physics takes over, each bone inherits its OWN motion.
+        void TrackBoneVelocities()
+        {
+            if (_ragdolling) { _bonePrevValid = false; return; }
+            if (_bonePrev == null || _bonePrev.Length != _ragdoll.Count)
+                _bonePrev = new Vector3[_ragdoll.Count];
+            for (int i = 0; i < _ragdoll.Count; i++)
+                if (_ragdoll[i] != null) _bonePrev[i] = _ragdoll[i].transform.position;
+            _bonePrevDt = Mathf.Max(Time.deltaTime, 1e-4f);
+            _bonePrevValid = true;
         }
 
         /// One cheap FromToRotation step per frame — converges into a natural
@@ -1167,6 +1283,7 @@ namespace SpellyZombie
             _ragdolling = on;
             if (on)
             {
+                _recoverT = -1f; // going down mid-recovery cancels the blend
                 if (_anim != null) _anim.enabled = false; // physics owns the doll now
                 GetComponent<EmotePlayer>()?.Interrupt();
                 Vector3 vel = (transform.position - _lastPos) / Mathf.Max(Time.deltaTime, 1e-4f);
@@ -1176,11 +1293,25 @@ namespace SpellyZombie
                 // topple, no cut. Downed dolls alone settle fast, so rescuers
                 // can catch you.
                 float drag = _pilot != null && _pilot.IsDowned ? 2.2f : 0.12f;
-                foreach (var rb in _ragdoll)
+                // MOMENTUM-TRUE PER BONE (Marko: "gradually move from the
+                // current animation to ragdoll"): each bone inherits its OWN
+                // last-frame motion — an arm mid-swing keeps swinging, a
+                // kicking leg keeps kicking. Pose AND velocity are continuous
+                // at the handover, so nothing pops. Root velocity remains the
+                // fallback (and the sanity clamp — a hitch frame must not
+                // become a cannon).
+                float pdt = Mathf.Max(_bonePrevDt, 1e-4f);
+                for (int i = 0; i < _ragdoll.Count; i++)
                 {
+                    var rb = _ragdoll[i];
                     if (rb == null) continue;
                     rb.isKinematic = false;
-                    rb.linearVelocity = vel;
+                    Vector3 v = vel;
+                    if (_bonePrevValid && _bonePrev != null && i < _bonePrev.Length)
+                        v = Vector3.ClampMagnitude(
+                            (rb.transform.position - _bonePrev[i]) / pdt,
+                            vel.magnitude + 9f);
+                    rb.linearVelocity = v;
                     rb.linearDamping = drag;
                     rb.angularDamping = 3f; // calmer spin — less flail, same slide
                 }
@@ -1190,15 +1321,37 @@ namespace SpellyZombie
                 return;
             }
             _pilot.SetRagdollFollow(null);
+            // remember the doll's FINAL pose before anything moves — the
+            // recovery blend in LateUpdate eases the animation in from here
+            // (Marko: "my character doesn't interpolate in getting up")
+            _recoverFrom.Clear();
+            foreach (var (t, pos, rot) in _bind)
+                if (t != null) _recoverFrom.Add((t, t.localRotation));
+            _recoverHipsFrom = _hips != null ? _hips.localPosition : Vector3.zero;
+            _recoverT = 0f;
             foreach (var rb in _ragdoll)
                 if (rb != null) rb.isKinematic = true;
-            foreach (var (t, pos, rot) in _bind) // snap home; emotes re-own the bones
-            {
+            foreach (var (t, pos, rot) in _bind) // positions snap home (structural);
+            {                                    // ROTATIONS blend in over RecoverBlend
                 if (t == null) continue;
                 t.localPosition = pos;
                 t.localRotation = rot;
             }
         }
+
+        /// Seconds the get-up eases from the doll's last pose into the
+        /// animation — the climb reads as a climb, not a teleport.
+        public float RagdollRecoverBlend = 0.35f;
+        float _recoverT = -1f;
+        Vector3 _recoverHipsFrom; // lying hips height → standing, eased too
+        readonly List<(Transform t, Quaternion rot)> _recoverFrom =
+            new List<(Transform, Quaternion)>();
+
+        // last ANIMATED world position of every ragdoll bone — the entry
+        // handover reads per-bone velocity from these
+        Vector3[] _bonePrev;
+        float _bonePrevDt;
+        bool _bonePrevValid;
     }
 
     /// The hands work through the Animator's IK pass — upper body grips while

@@ -44,19 +44,43 @@ namespace SpellyZombie
             return d;
         }
         static float O(string key, float def) => _overlay.TryGetValue(key, out var v) ? v : def;
+
+        /// Public door for other tuning blocks (BodyState, StickyBonds, HandGrab)
+        /// so every knob in the game reads from the SAME sz_tuning.json.
+        public static float Overlay(string key, float def) => O(key, def);
+
+        /// FORCE the type initializer to run in a SAFE context. Without this,
+        /// the first touch of DrawingConfig could be a MonoBehaviour FIELD
+        /// INITIALIZER during scene load (PlayerInk's `Ink = InkMax`), where
+        /// Unity forbids persistentDataPath — the overlay silently died for
+        /// the whole session. These hooks run on the main thread BEFORE any
+        /// scene deserializes, so the overlay always loads.
+        public static void Prime() { }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void PrimeRuntime() => Prime();
+
+#if UNITY_EDITOR
+        [UnityEditor.InitializeOnLoadMethod]
+        static void PrimeEditor() => Prime();
+#endif
         static int Oi(string key, int def) => _overlay.TryGetValue(key, out var v) ? Mathf.RoundToInt(v) : def;
 
         // ---- Pen / stroke capture ----
         public static readonly float DrawRange = O(nameof(DrawRange), 8f);           // max raycast distance of the pen
-        public static readonly float NodeSpacing = O(nameof(NodeSpacing), 0.015f);   // min world distance between nodes — dense enough that even finger-sized runes keep their corners
+        public static readonly float NodeSpacing = O(nameof(NodeSpacing), 0.007f);   // min world distance between nodes. Marko Jul 31: "the runes keep not knowing they are connected — shorten the distance of node creation." Sparse nodes leave real gaps between ink that visually touches, so touch tests miss and one rune reads as several.
         public static readonly float SurfaceOffset = O(nameof(SurfaceOffset), 0.008f); // lift ink off the surface to avoid z-fighting
         public static readonly float MaxStrokeJump = O(nameof(MaxStrokeJump), 0.12f); // hit point jumping further than this in one frame ends the stroke — separate marks STAY separate
         public static readonly float MaxStrokeJumpPerMeter = O(nameof(MaxStrokeJumpPerMeter), 0.02f); // tiny distance allowance (fast flicks split; forgiving seals reconnect what should connect)
-        public static readonly int MinStrokeNodes = Oi(nameof(MinStrokeNodes), 3);   // strokes shorter than this are discarded as accidental clicks (3 = ~6cm; small seal-closers survive)
+        public static readonly int MinStrokeNodes = Oi(nameof(MinStrokeNodes), 2);   // Marko Jul 31: "lines aren't even created when I don't move the mouse far enough". 3 nodes = ~3cm of travel before ANY line existed — and an arrowhead's barb or a LIGHT ray is exactly that short. A limb is not an accidental click; 2 is the minimum that can be a line at all.
         public static readonly float InkWidth = O(nameof(InkWidth), 0.007f);         // line renderer width — THIN pen (Marko: more runes in smaller places)
         public static readonly float DrawSmoothingTime = O(nameof(DrawSmoothingTime), 0.025f); // hand-jitter smoothing time constant, seconds (0 = raw input)
         public static readonly float DrawLookSensitivityScale = O(nameof(DrawLookSensitivityScale), 0.35f); // camera sensitivity multiplier while the pen is down
-        public static readonly float EraseRadius = O(nameof(EraseRadius), 0.02f);    // eraser WIDER than the thin pen (Marko: pen-width erasing was impossible to aim) — still small enough for precise corrections; swept along the cursor path so thin ≠ skippy
+        public static readonly float EraseRadius = O(nameof(EraseRadius), 0.02f);
+        // ---- evaporation (Marko Aug 5: "the longer the game lasts the more it
+        // lags — old ink standing there unused should evaporate after 1 minute") ----
+        public static readonly float InkEvaporateSeconds = O(nameof(InkEvaporateSeconds), 60f);    // loose world ink lives this long
+        public static readonly float InkEvaporateFadeSeconds = O(nameof(InkEvaporateFadeSeconds), 6f); // then thins out over this long before vanishing    // eraser WIDER than the thin pen (Marko: pen-width erasing was impossible to aim) — still small enough for precise corrections; swept along the cursor path so thin ≠ skippy
 
         // ---- Seal closure / integrity ----
         // Closure requires the ink to basically touch. Ends only link at
@@ -64,17 +88,45 @@ namespace SpellyZombie
         // close is to let the lines actually cross (CrossingFinder).
         // (CloseThreshold stays in HAND units, not ink widths — the pen got
         // thinner but fingers didn't get steadier.)
-        public static readonly float CloseThreshold = O(nameof(CloseThreshold), 0.035f); // cross-stroke endpoint link distance — EXACTNESS: ink must basically touch
-        public static readonly float SelfCloseFraction = O(nameof(SelfCloseFraction), 0.05f);// self close: threshold = fraction of the loop's length...
-        public static readonly float SelfCloseMin = O(nameof(SelfCloseMin), 0.02f);  // ...clamped to [SelfCloseMin, SelfCloseMax]
-        public static readonly float SelfCloseMax = O(nameof(SelfCloseMax), 0.06f);  // exactness: the ends must MEET — small runes/seals stay drawable side by side
+        public static readonly float CloseThreshold = O(nameof(CloseThreshold), 0.018f); // cross-stroke endpoint link distance. Marko Jul 31: "the seal activates when lines don't even touch" — 3.5cm is a visible GAP on a small drawing, and his law is that only TOUCHING ink joins. Halved so the ink really does have to meet.
+        /// TOUCHING IS TOUCHING, WHEREVER IT HAPPENS (Marko's most-repeated law:
+        /// "only when lines are touching is the main rule for everything: seals
+        /// or runes" / "everything must touch exactly"). This is the ONE distance
+        /// that means "this ink meets that ink", measured point-to-SEGMENT — to
+        /// the LINE, never to the nearest sampled node. Because there is no
+        /// sampling error left to hide, it can be honest: 2 × InkWidth, which is
+        /// the width of the rendered ink plus a hair. Anything wider is a gap you
+        /// can SEE, and a visible gap must never close.
+        /// Endpoint-to-endpoint chaining keeps its own, looser CloseThreshold —
+        /// that one is in HAND units (two pen tips aimed at the same spot), not
+        /// ink units, and it is measured node-to-node by construction.
+        public static readonly float InkTouchDistance = O(nameof(InkTouchDistance), 0.014f);
+        // RETIRED Aug 1, same ruling that killed MaxLoopGapFraction: self-closure
+        // used to be a FRACTION of the loop's own length, clamped to [2cm, 6cm].
+        // Kept as fields only so an existing sz_tuning.json doesn't break — see
+        // SelfCloseThreshold at the bottom of this file for what replaced them.
+        public static readonly float SelfCloseFraction = O(nameof(SelfCloseFraction), 0.05f);// UNUSED
+        public static readonly float SelfCloseMin = O(nameof(SelfCloseMin), 0.02f);  // UNUSED
+        public static readonly float SelfCloseMax = O(nameof(SelfCloseMax), 0.06f);  // UNUSED
         public static readonly float BreakDistance = O(nameof(BreakDistance), 0.12f); // an ACTIVE seal opens when a gap grows this far past its drawn length
         public static readonly int MinLoopNodes = Oi(nameof(MinLoopNodes), 8);
         public static readonly float MinLoopPerimeter = O(nameof(MinLoopPerimeter), 0.18f); // palm-sized seals are legal (~6cm triangle)
         public static readonly float MinLoopBulge = O(nameof(MinLoopBulge), 0.06f);  // a loop must enclose something — rejects paper-thin slivers
         public static readonly float GlyphCellMax = O(nameof(GlyphCellMax), 0.13f);  // a self-crossing CELL smaller than this is a rune's inner point (star), not a seal — bigger loops always close
-        public static readonly float MaxLoopGapFraction = O(nameof(MaxLoopGapFraction), 0.15f); // total link-gaps in a chained loop ≤ this share of its perimeter — kills "sealed without touching"
-        public static readonly int MaxLoopStrokes = Oi(nameof(MaxLoopStrokes), 6);   // DFS depth cap when chaining strokes into one seal
+        // MaxLoopGapFraction is RETIRED (Aug 1). It was a SECOND, RELATIVE gap
+        // test stacked on top of the per-junction CloseThreshold, and being
+        // relative it made SIZE and PEN-LIFT COUNT decide whether a shape is a
+        // seal — both of which Marko's standing rules forbid ("a seal drawn in 5
+        // strokes must behave exactly like the same seal drawn in one sweep",
+        // "size must never matter for shape decisions"). Worked example of the
+        // bug: perimeter × 0.15 ÷ junctions, so a 30cm square allowed 1.1cm per
+        // corner at 4 strokes but only 0.56cm at 8 strokes — under one ink width,
+        // i.e. an honest touch was refused for having been drawn carefully. Every
+        // junction is ALREADY capped at CloseThreshold, which is the absolute,
+        // ink-width-sized law; that cap is the whole test now.
+        // Kept as a field so an existing sz_tuning.json entry doesn't break.
+        public static readonly float MaxLoopGapFraction = O(nameof(MaxLoopGapFraction), 0.15f); // UNUSED — see above
+        public static readonly int MaxLoopStrokes = Oi(nameof(MaxLoopStrokes), 12);  // DFS depth cap when chaining strokes into one seal — BODY loops split per limb (a circle over crossed arms is 6-8 pieces), so 6 silently refused honest body seals
 
         // ---- Seal shape -> duration (Marko Jul 22: "1 second per side with a
         // cap of 10 seconds — circle = 10 lines forming a shape") ----
@@ -98,11 +150,62 @@ namespace SpellyZombie
         // honest drawings fizzle too often.
         public static readonly float RuneChamferFloor = O(nameof(RuneChamferFloor), 0.42f); // similarity the best rune must reach to fire at all (chamfer path, currently benched)
         public static readonly float RuneChamferMargin = O(nameof(RuneChamferMargin), 0.03f); // best must beat runner-up by this — a close second = coin flip → fizzle
-        public static readonly float MinRuneScore = O(nameof(MinRuneScore), 0.42f);  // $P ensemble floor — below this the shape is unreadable → fizzle
-        public static readonly float RuneAmbiguityMargin = O(nameof(RuneAmbiguityMargin), 0.05f); // two DIFFERENT runes within this of each other = coin flip → fizzle, never misfire
-        public static readonly float RuneTrustScore = O(nameof(RuneTrustScore), 0.55f); // a top match AT/ABOVE this is TRUSTED outright — the ambiguity guard only referees weak scribbles (big wall pools raised every runner-up; honest CHILL/COMPRESS draws kept fizzling on 0.03 gaps — Marko's Jul 22 bug)
-        public static readonly float RuneTouchDistance = O(nameof(RuneTouchDistance), 0.05f); // strokes this close read as ONE drawing — matches the endpoint stitcher, so "looks connected" = "is connected" (0.03 left visually-touching arrow barbs orphaned)
-        public static readonly float GoodRuneScore = O(nameof(GoodRuneScore), 0.75f); // at/above this the match counts as full strength
+        // RECALIBRATED Aug 1 FOR THE TURN-SEQUENCE MATCHER. The three numbers
+        // below are a band, and the band moved: the old stem-and-limb score put
+        // an honest draw anywhere from 0.42 to 1.00, so the floor sat at 0.42.
+        // The turn sequence is a far tighter metric and its scores are bunched
+        // right at the top. Measured on Marko's own 24 wall recordings:
+        //   - a fresh drawing scored against his OTHER drawings (leave-one-out,
+        //     the harshest case — one template per rune): 0.89 to 1.00, and the
+        //     best WRONG rune never exceeds 0.84.
+        //   - the same drawings under random rotation, scale x0.14 to x7, one
+        //     to four pen lifts and 1.2% hand wobble, 11,474 draws: the right
+        //     rune scores 0.99 at the 1st percentile, and a wrong rune won
+        //     ZERO times.
+        // Leaving the floor at 0.42 under that distribution would have admitted
+        // 57% of random scribbles.
+        public static readonly float MinRuneScore = O(nameof(MinRuneScore), 0.72f);  // below this the shape is unreadable → fizzle. 0.17 under the worst honest read measured, and it rejects ~78% of random scribbles (0.42 admitted 57% of them)
+        public static readonly float RuneAmbiguityMargin = O(nameof(RuneAmbiguityMargin), 0.10f); // two DIFFERENT runes within this of each other = coin flip → fizzle, never misfire. The thinnest margin on an honest draw measured 0.12 (0.14 leave-one-out), so 0.10 costs nothing and 0.15 would start eating real casts
+        public static readonly float RuneTrustScore = O(nameof(RuneTrustScore), 0.85f); // a top match AT/ABOVE this is TRUSTED outright — the ambiguity guard only referees weak scribbles. Waves through 99.1% of honest draws and, measured, not one misfire (big wall pools raise every runner-up; honest CHILL/COMPRESS draws kept fizzling on thin gaps — Marko's Jul 22 bug)
+        // ONE DRAWING = INK THAT TOUCHES. Aug 1: this was 0.05 — SEVEN ink widths,
+        // a plainly VISIBLE gap — and the flood that uses it is transitive, so a
+        // row of runes each 4cm apart all got swallowed into one "drawing". That
+        // is Marko's complaint verbatim: "it sometimes carries runes along with
+        // the seal… even though these are not touching."
+        // It was 0.05 to paper over a MEASUREMENT bug, not because touching is
+        // 5cm: InkTouches compared node to NODE, so a barb landing on the middle
+        // of a shaft measured to the nearest sampled node instead of to the line.
+        // InkTouches now measures node-to-SEGMENT (see RuneGlyph), so the barb
+        // reads as touching at ~0 — and the number can finally tell the truth.
+        // These two must only ever move together; drop the distance without the
+        // segment math and visually-touching barbs orphan again.
+        public static readonly float RuneTouchDistance = O(nameof(RuneTouchDistance), 0.014f); // = InkTouchDistance: strokes whose INK MEETS read as ONE drawing. Same law as seals — his rule is one rule.
+        public static readonly float BodyCastThrowSpeed = O(nameof(BodyCastThrowSpeed), 7f); // body/weapon seals THROW their particles outward at this speed (Marko: on-skin births activated instantly — thrown, siblings fly together and combine mid-air)
+        // ---- the soft body's nerves (Marko Jul 29: "they are extremely
+        // active... too bouncy, deforming everything left and right", and
+        // "the bones should be repelled a bit by each other, not passing
+        // through, just like jelly") ----
+        public static readonly float BlobWobble = O(nameof(BlobWobble), 0.018f);      // how far the idle breath pushes a bone (fraction of its reach) — barely there
+        public static readonly float BlobWobbleSpeed = O(nameof(BlobWobbleSpeed), 0.18f); // how FAST that breath runs — low is calm
+        public static readonly float BlobFollow = O(nameof(BlobFollow), 2.2f);        // how eagerly a bone chases its target (low = heavy, syrupy)
+        public static readonly float BlobBoneRepel = O(nameof(BlobBoneRepel), 0.8f);  // bones hold this fraction of their rest spacing — the jelly that stops the mesh folding into itself
+        public static readonly float BlobContainerFit = O(nameof(BlobContainerFit), 1f); // 0 = ignore walls, 1 = bones stay inside the world (a blob poured in a pot takes its shape)
+
+        // ---- liquid: pools on the floor, wobbles in your hands (Marko Jul 29:
+        // "while on the floor it should slowly become disk-like but when
+        // grabbed it should deform") ----
+        public static readonly float LiquidPoolSeconds = O(nameof(LiquidPoolSeconds), 2.5f); // how SLOWLY a resting puddle flattens out
+        public static readonly float LiquidPoolSag = O(nameof(LiquidPoolSag), 0.45f);        // how far it settles (0 = keeps its ball, 0.5 = nearly flat)
+        public static readonly float LiquidPoolSpread = O(nameof(LiquidPoolSpread), 0.6f);   // how much it widens as it sinks
+        // ---- gas: a CLOUD that covers ground, not a balloon (Marko Jul 29) ----
+        public static readonly float GasRiseSpeed = O(nameof(GasRiseSpeed), 0.15f);     // terminal climb — barely lifts, so it hangs where you made it
+        public static readonly float GasSpreadMax = O(nameof(GasSpreadMax), 5f);        // final cloud size, in multiples of its birth size. Was 2.6 — Marko Aug 4: the vapor is "in too small of an area to ever hit anyone... much larger, and it should grow in time". 7 once read as "ridiculous", but that was a fast balloon-pop; at the slow bloom below, 5× is a hazard that CREEPS over a room.
+        public static readonly float GasSpreadPerSec = O(nameof(GasSpreadPerSec), 0.45f); // how fast it swells toward that — a slow bloom, not a pop; at this rate the cloud grows for most of its life
+        public static readonly float GasLifeSeconds = O(nameof(GasLifeSeconds), 10f);   // was a hard-coded 2.5s — the cloud died before its growth went anywhere, which is WHY it never hit anyone
+        public static readonly float HandLearnMinScore = O(nameof(HandLearnMinScore), 0.95f); // only CLEAN casts silently teach your handwriting — sloppy-but-accepted never joins the pool. Moved with the band (Aug 1): honest reads now start at 0.89, so the old 0.8 would have taught the matcher from EVERY accepted cast, sloppy ones included
+        public static readonly float HandLearnCooldown = O(nameof(HandLearnCooldown), 30f);  // seconds between silent handwriting samples (steady learning, no per-cast disk churn)
+        public static readonly float WritingPerDeclare = O(nameof(WritingPerDeclare), 0.1f); // a grimoire correction fills 1/10 of the writing bar (Marko: "seemingly maxed out after 10 drawing corrections"); corrections are the ONLY thing that moves it, and it never touches power
+        public static readonly float GoodRuneScore = O(nameof(GoodRuneScore), 0.85f); // at/above this the match counts as full strength. Also moved with the band (Aug 1): every honest read measured 0.89 or better, so full strength is the normal outcome and the sloppy-is-weaker gradient only bites between here and MinRuneScore
         public static readonly float MinSizePower = O(nameof(MinSizePower), 0.30f);  // a tiny rune in a big seal still does this fraction of its effect
 
         // Legacy glyph-join knobs still referenced by Seal.Cast's Segment call;
@@ -143,7 +246,30 @@ namespace SpellyZombie
 
         // ---- Round game (ink economy / survival loop) ----
         public static readonly float InkMax = O(nameof(InkMax), 100f);
-        public static readonly float InkCostPerMeter = O(nameof(InkCostPerMeter), 6f); // ~16m of line per full tank (12/m drained a tank per seal — "unplayable", ship test)
+        public static readonly float InkCostPerMeter = O(nameof(InkCostPerMeter), 11f); // Marko Jul 30: "the wand is really slowly becoming shorter — it needs to lose ink much faster" (was 6/m ≈ 16m per tank; now ≈ 9m, and the lobby cauldron refills forever)
+        public static readonly float WandResizeSpeed = O(nameof(WandResizeSpeed), 3.5f); // how fast the wand's LENGTH chases its ink level — the shrink you actually see
+        /// Ink needed per kilo to lift a thing — and to tear it out of the
+        /// ground, which costs exactly the same (Marko: "the moment you can
+        /// easily lift it you should be able to unroot it"). ONE definition:
+        /// this default used to be repeated at three call sites and they drifted
+        /// apart, so lifting got cheaper while unrooting silently didn't.
+        public static readonly float LiftInkPerKg = O(nameof(LiftInkPerKg), 0.22f);
+        /// THE WORLD-OR-PROP LINE, in meters of collider bounds. Anything
+        /// whose physical bounds exceed this in ANY dimension is WORLD — never
+        /// liftable, never given a rigidbody, never made convex — no matter
+        /// how much ink is on it. (Marko's fall-through, Aug 4: "Grabbing the
+        /// liquid ball made me fall through the ground indefinitely... I guess
+        /// I lifted the ground collider just a little bit." His aim ray passed
+        /// through the blob and hit the FLOOR — which carried every stroke he
+        /// had ever drawn on it, so the tear-loose path out-inked the floor's
+        /// anchor and gave the GROUND a dynamic body and a convex hull the
+        /// size of the map, with him standing inside it.) 2.5m ≈ a wizard and
+        /// a half: every authored prop (bench, chair, crate, cauldron) sits
+        /// well under it; floors, facades and canvases sit well over.
+        public static readonly float LiftMaxDimension = O(nameof(LiftMaxDimension), 2.5f);
+        public static readonly float PropMassKg = O(nameof(PropMassKg), 4f); // weight of any prop you haven't authored a Mass on
+        /// Ink is BLACK (his ruling) — the wand, the line and the ore all share it.
+        public static readonly Color InkColor = new Color(0.06f, 0.06f, 0.08f, 1f);
         public static readonly float InkPerKill = O(nameof(InkPerKill), 10f);        // shared to ALL players per zombie down — the fast lane
         public static readonly float InkRegenPerSec = O(nameof(InkRegenPerSec), 3.5f); // slow passive refill during waves — never truly stuck
         public static readonly float CauldronInkPerSec = O(nameof(CauldronInkPerSec), 22f); // standing at any cauldron refills fast — the ship's "keep coming back" anchor
@@ -202,12 +328,29 @@ namespace SpellyZombie
         public static readonly float SealLimbReach = O(nameof(SealLimbReach), 0.12f);  // a SPENT body seal re-casts when another limb crosses INTO its enclosed loop (Marko: "get my hands near it") — this is how far off the loop's surface a limb may be and still count as inside
         public static readonly int MaxEnvironmentStrokes = Oi(nameof(MaxEnvironmentStrokes), 300);// oldest unsealed world ink fades beyond this (perf cap)
 
-        /// Self-closure distance scales with the loop's own size: a 20cm rune
-        /// keeps its gap open, while a 2m loop closes when the ink visually
-        /// touches (3.5cm at most — no more chunky floating gaps).
-        public static float SelfCloseThreshold(float loopLength)
-        {
-            return Mathf.Clamp(loopLength * SelfCloseFraction, SelfCloseMin, SelfCloseMax);
-        }
+        /// ONE STROKE CLOSES ON ITSELF AT EXACTLY THE SAME DISTANCE TWO STROKES
+        /// LINK AT. The parameter is kept for the three call sites (and because
+        /// the loop's length is still worth having in a stack trace), but it is
+        /// deliberately IGNORED.
+        ///
+        /// This was `Clamp(loopLength × 0.05, 0.02, 0.06)`, and it broke both of
+        /// Marko's standing rules at once:
+        ///   · PEN-LIFT COUNT decided. A 1.2m circle drawn in ONE stroke closed
+        ///     with its ends 6cm apart — eight ink widths, a plainly visible gap,
+        ///     and it fired MID-DRAW before the pen even came back. The SAME
+        ///     circle drawn in TWO strokes got CloseThreshold, 1.8cm. A factor of
+        ///     three to four, decided by nothing but where he lifted the pen.
+        ///     ("A seal drawn in 5 strokes must behave exactly like the same seal
+        ///     drawn in one sweep.")
+        ///   · SIZE decided. Inside the one-stroke path it was 2cm on a small
+        ///     loop and 6cm on a big one, so the bigger you drew, the more air
+        ///     the game would close for you. ("Size must never matter.")
+        /// It is also the most likely surviving source of "the seal activates
+        /// when lines don't even touch" (Jul 31), which is what halving
+        /// CloseThreshold was meant to end.
+        ///
+        /// Overshoot still closes anything, at any size, through CrossingFinder —
+        /// which is the exact way, and needs no allowance at all.
+        public static float SelfCloseThreshold(float loopLength) => CloseThreshold;
     }
 }

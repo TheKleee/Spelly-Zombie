@@ -33,7 +33,6 @@ namespace SpellyZombie
         // grab state
         EmoteRig.JointEntry _grabbed;
         Vector3 _grabLocalDir;
-        Vector3 _grabPlanePoint;
         bool _rotatingCharacter;
 
         // grab point markers
@@ -209,7 +208,6 @@ namespace SpellyZombie
                         if (joint != null)
                         {
                             _grabbed = joint;
-                            _grabPlanePoint = hit.point;
                             _grabLocalDir = joint.T.InverseTransformDirection((hit.point - joint.T.position).normalized);
                             Target.GetComponent<EmotePlayer>()?.Interrupt();
                             _previewFrame = null;
@@ -227,9 +225,11 @@ namespace SpellyZombie
 
             if (_grabbed?.T == null) return;
 
-            // drag the grabbed point across a camera-facing plane; the limb follows
+            // drag across a camera-facing plane THROUGH THE PIVOT — the
+            // handle tracks the mouse 1:1 for the whole swing. Constrain at
+            // every write: what you sculpt is exactly what saves and loads.
             var dragRay = StudioCamera.ScreenPointToRay(mouse.position.ReadValue());
-            var plane = new Plane(-StudioCamera.transform.forward, _grabPlanePoint);
+            var plane = new Plane(-StudioCamera.transform.forward, _grabbed.T.position);
             if (plane.Raycast(dragRay, out float d))
             {
                 Vector3 cursorPoint = dragRay.GetPoint(d);
@@ -237,7 +237,10 @@ namespace SpellyZombie
                 Vector3 currentDir = _grabbed.T.TransformDirection(_grabLocalDir);
                 Vector3 targetDir = cursorPoint - pivot;
                 if (targetDir.sqrMagnitude > 1e-6f)
+                {
                     _grabbed.T.rotation = Quaternion.FromToRotation(currentDir, targetDir.normalized) * _grabbed.T.rotation;
+                    EmoteRig.Constrain(_grabbed);
+                }
             }
 
             float scroll = mouse.scroll.ReadValue().y;
@@ -245,6 +248,7 @@ namespace SpellyZombie
             {
                 Vector3 axis = _grabbed.T.TransformDirection(_grabLocalDir);
                 _grabbed.T.rotation = Quaternion.AngleAxis(Mathf.Sign(scroll) * RollSpeed, axis) * _grabbed.T.rotation;
+                EmoteRig.Constrain(_grabbed);
             }
         }
 

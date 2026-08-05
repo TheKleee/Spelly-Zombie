@@ -19,11 +19,14 @@ namespace SpellyZombie
     public static class StickyBonds
     {
         // the ladder (matches Matter's stickiness range of -1..1)
-        public const float HandHold = 0.35f;      // your grip: real, but a hard yank tears it
-        public const float Sticky1 = 0.55f;       // the Sticky rune's particle
-        public const float Sticky2 = 0.85f;       // lvl2 glue — the ultimate glue OBJECT
-        public const float Sticky3 = 1.0f;        // the scale's cap: a bond AT 1.0 is unbreakable
-        public const float EnvironmentMax = 0.8f; // world surfaces never out-stick lvl2
+        // tunable through sz_tuning.json (AXIOM: no knob locked in code)
+        public static readonly float HandHold = DrawingConfig.Overlay("StickyHandHold", 0.35f);
+        public static readonly float Sticky1 = DrawingConfig.Overlay("Sticky1", 0.55f);
+        public static readonly float Sticky2 = DrawingConfig.Overlay("Sticky2", 0.85f);
+        /// STAYS const — it is the ±1 clamp CAP, not a feel knob. Tuning it
+        /// below Sticky2 would make lvl2 glue permanently unbreakable.
+        public const float Sticky3 = 1.0f;
+        public static readonly float EnvironmentMax = DrawingConfig.Overlay("StickyEnvironmentMax", 0.8f);
 
         /// Two surfaces meet: the stickier side sets the bond; any SLICK on
         /// the other side subtracts. At or below zero, no bond forms.

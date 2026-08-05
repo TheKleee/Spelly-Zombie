@@ -70,6 +70,50 @@ namespace SpellyZombie
 
             PosePicker(kb);
             Orbit();
+
+            // I = DRINK THE BODY INK (Marko: sacrifice every drawing on your
+            // body to regrow the wand — a deliberate, out-of-the-way key).
+            // Enough ink = full wand, surplus wasted; less = a partial wand.
+            var wand = GetComponent<WandState>();
+            if (wand != null && !wand.HasWand)
+                UIPrompt.Show("I", "drink the body ink — regrow your wand",
+                    new Color(0.85f, 0.8f, 1f));
+            if (kb.iKey.wasPressedThisFrame) DrinkBodyInk();
+        }
+
+        /// Every persistent drawing on THIS body flows back into the well.
+        /// The worth is exactly the ink the lines are made of (length ×
+        /// cost-per-meter); Award clamps at the well's ceiling, so surplus
+        /// is honestly wasted — Marko's rule.
+        void DrinkBodyInk()
+        {
+            var world = DrawingWorld.Instance;
+            if (world == null) return;
+            var ink = GetComponent<PlayerInk>();
+            if (ink == null) return;
+
+            float drunk = 0f;
+            int strokes = 0;
+            for (int i = world.Strokes.Count - 1; i >= 0; i--)
+            {
+                var s = world.Strokes[i];
+                if (s == null || !s.Alive || !s.Persistent) continue;
+                if (s.OwnerId != Grimoire.LocalPlayerId) continue;
+                var f = s.First;
+                if (f == null || !f.transform.IsChildOf(transform)) continue; // MY body only
+                drunk += s.PathLength() * DrawingConfig.InkCostPerMeter;
+                strokes++;
+                s.Burn();
+            }
+            if (strokes == 0)
+            {
+                DrawingWorld.Instance?.LogEvent("no body ink to drink");
+                return;
+            }
+            ink.Award(drunk);
+            Juice.Chime(transform.position);
+            DrawingWorld.Instance?.LogEvent(
+                $"the body ink flows back into the wand ({strokes} drawing(s) drunk)");
         }
 
         /// While painting the body: 1-9 drop into a SAVED POSE so you can draw
@@ -86,7 +130,10 @@ namespace SpellyZombie
                 var key = kb[(Key)((int)Key.Digit1 + (slot - 1))];
                 if (key != null && key.wasPressedThisFrame) { LoadPose(slot); return; }
             }
-            if (kb.fKey.wasPressedThisFrame && _emotes.IsPosing)
+            // F relaxes the pose — unless the grimoire has a target under the
+            // cursor (declare/absorb owns F for that press)
+            if (kb.fKey.wasPressedThisFrame && _emotes.IsPosing
+                && !GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach)
             {
                 _emotes.StopToRest();
                 _rebakeIn = PoseSettle;

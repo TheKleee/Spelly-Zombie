@@ -16,15 +16,100 @@ namespace SpellyZombie
         static readonly Dictionary<int, HashSet<RuneCardType>> _byOwner =
             new Dictionary<int, HashSet<RuneCardType>>();
 
+        /// ONE PAGE = ONE RUNE (Marko's ruling: all 12 collected individually,
+        /// no pairs). Absorbing a flame teaches HeatUp — NOT its opposite.
+        /// The card set above stays as the coarse "family" record, so every
+        /// older path (menu cauldron, zombie loot, powerups) keeps working:
+        /// unlocking a CARD wholesale still grants both of its runes.
+        static readonly Dictionary<int, HashSet<RuneType>> _runesByOwner =
+            new Dictionary<int, HashSet<RuneType>>();
+
         public static void Unlock(int owner, RuneCardType card)
         {
             if (!_byOwner.TryGetValue(owner, out var set))
                 _byOwner[owner] = set = new HashSet<RuneCardType>();
             set.Add(card);
+            if (owner == LocalPlayerId)
+                foreach (RuneType r in System.Enum.GetValues(typeof(RuneType)))
+                    if (r != RuneType.None && RuneLibrary.CardOf(r) == card)
+                        SeedWriting(owner, r);
+        }
+
+        /// Unlock ONE rune. Its family is recorded too, so anything that asks
+        /// the coarse question ("do they know any Heat?") still answers yes.
+        public static void UnlockRune(int owner, RuneType rune)
+        {
+            if (!_runesByOwner.TryGetValue(owner, out var set))
+                _runesByOwner[owner] = set = new HashSet<RuneType>();
+            set.Add(rune);
+            Unlock(owner, RuneLibrary.CardOf(rune));
+        }
+
+        // ---- WRITING LEVEL — Marko's three laws, verified with him:
+        //   1) it increases ONLY when you CORRECT a drawing at the grimoire
+        //      (rune pages, and the seal page — the seal's ramp lives on
+        //      RuneType.None),
+        //   2) it represents ONLY how well the book has learned your hand —
+        //      recognition help, nothing else,
+        //   3) it NEVER touches the power of any rune or seal.
+        // 0..1 per rune, this run, local player only. Purely a meter.
+        static readonly Dictionary<(int owner, RuneType rune), float> _writing =
+            new Dictionary<(int, RuneType), float>();
+
+        /// Bumped on every real change — the book page redraws its bar off it.
+        public static int WritingVersion { get; private set; }
+
+        /// 0 fresh … 1 fully corrected-in. 0 when no ramp exists yet — this
+        /// is a display meter, nothing reads it for gameplay.
+        public static float WritingLevelOf(int owner, RuneType rune) =>
+            _writing.TryGetValue((owner, rune), out var v) ? v : 0f;
+
+        /// True when a ramp exists (the page shows its bar).
+        public static bool WritingTracked(int owner, RuneType rune) =>
+            _writing.ContainsKey((owner, rune));
+
+        static void SeedWriting(int owner, RuneType rune)
+        {
+            if (_writing.ContainsKey((owner, rune))) return;
+            _writing[(owner, rune)] = 0f; // minimum — the whole point
+            WritingVersion++;
+        }
+
+        /// A CORRECTION happened — the only thing that moves the meter
+        /// (Marko's law 1). Creates the ramp if this is the first one, so a
+        /// correction always counts, free-play grounds included.
+        public static void BumpWriting(int owner, RuneType rune, float amount)
+        {
+            SeedWriting(owner, rune);
+            float v = _writing[(owner, rune)];
+            if (v >= 1f) return;
+            _writing[(owner, rune)] = System.Math.Min(1f, v + amount);
+            WritingVersion++;
         }
 
         public static bool Has(int owner, RuneCardType card) =>
             _byOwner.TryGetValue(owner, out var set) && set.Contains(card);
+
+        /// Does this owner know THIS rune specifically?
+        ///   • learned it directly            → yes
+        ///   • learned its SIBLING directly   → no (that's the point of per-rune)
+        ///   • has the card, learned neither  → yes (an older wholesale grant:
+        ///                                      menu cauldron, zombie drop, tests)
+        public static bool HasRune(int owner, RuneType rune)
+        {
+            var card = RuneLibrary.CardOf(rune);
+            if (_runesByOwner.TryGetValue(owner, out var runes))
+            {
+                if (runes.Contains(rune)) return true;
+                foreach (var r in runes)                    // sibling learned individually?
+                    if (RuneLibrary.CardOf(r) == card) return false;
+            }
+            return Has(owner, card);                        // wholesale grant
+        }
+
+        public static IReadOnlyCollection<RuneType> RunesOf(int owner) =>
+            _runesByOwner.TryGetValue(owner, out var set)
+                ? (IReadOnlyCollection<RuneType>)set : System.Array.Empty<RuneType>();
 
         public static bool HasAny(int owner) =>
             _byOwner.TryGetValue(owner, out var set) && set.Count > 0;
@@ -33,6 +118,28 @@ namespace SpellyZombie
             _byOwner.TryGetValue(owner, out var set) ? (IReadOnlyCollection<RuneCardType>)set : System.Array.Empty<RuneCardType>();
 
         /// Owner is gone (zombie died) — its knowledge dies with it.
-        public static void Drop(int owner) => _byOwner.Remove(owner);
+        ///
+        /// ALL THREE TABLES, not just the card set. Dropping only _byOwner left
+        /// the per-rune grants behind, and HasRune answers from _runesByOwner
+        /// FIRST — so a dead zombie still "knew" every rune it had been taught
+        /// individually, and since RuneLibrary.IsUnlocked now asks HasRune, its
+        /// knowledge did not die with it at all. The writing meters leaked the
+        /// same way, one entry per (owner, rune) for the whole session.
+        public static void Drop(int owner)
+        {
+            _byOwner.Remove(owner);
+            _runesByOwner.Remove(owner);
+            _dropScratch.Clear();
+            foreach (var key in _writing.Keys)
+                if (key.owner == owner) _dropScratch.Add(key);
+            if (_dropScratch.Count == 0) return;
+            foreach (var key in _dropScratch) _writing.Remove(key);
+            _dropScratch.Clear();
+            WritingVersion++;
+        }
+
+        /// Reused by Drop — a dictionary can't be edited while it is enumerated.
+        static readonly List<(int owner, RuneType rune)> _dropScratch =
+            new List<(int owner, RuneType rune)>();
     }
 }

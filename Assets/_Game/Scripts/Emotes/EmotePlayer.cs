@@ -80,8 +80,10 @@ namespace SpellyZombie
             if (Powerups.IsChoosing) return;
             if (kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed) return;
 
-            // F melts the doll back into the regular idle
-            if (kb.fKey.wasPressedThisFrame && ActiveSlot >= 0)
+            // F melts the doll back into the regular idle — unless the
+            // grimoire has a target (declare/absorb owns F for that press)
+            if (kb.fKey.wasPressedThisFrame && ActiveSlot >= 0
+                && !GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach)
             {
                 StopToRest();
                 return;

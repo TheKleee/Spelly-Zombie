@@ -85,8 +85,8 @@ namespace SpellyZombie
             {
                 // hot water = the same GAS SUBSTANCE as the heat+chill paradox
                 // (Marko's rule: one substance, one behavior — no ambiguity)
-                var steam = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas, 0.9f,
-                    at + normal * 0.5f);
+                var steam = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas, 1.6f,
+                    at + normal * 0.5f); // born big — the hazard must reach people (Marko, Aug 4)
                 steam.Temperature = 130f;
                 steam.Density = 0.3f;
                 steam.Lineage = lineage;

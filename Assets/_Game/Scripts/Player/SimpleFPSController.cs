@@ -312,6 +312,16 @@ namespace SpellyZombie
             // every caster has an identity; seals are owned by whoever completes them
             Grimoire.LocalPlayerId = gameObject.GetInstanceID();
 
+            // BODY INK IS FOREVER, ON EVERY BODY IN EVERY SCENE (Marko:
+            // drawings on the body "should never expire completely"). Only
+            // the test-sandbox builder ever attached this marker — in the
+            // hand-built Lobby the player had none, so body drawings counted
+            // as WORLD ink and the seal CONSUMED them when the spell ended
+            // ("disappeared as if it expired"). Structural now: the player
+            // class carries its own marker, no scene setup can forget it.
+            if (GetComponent<PersistentInkSurface>() == null)
+                gameObject.AddComponent<PersistentInkSurface>();
+
             // the player is googly too — other players (and clips) see your eyes
             // dart to explosions and shrink in terror. Hidden from your own
             // first-person camera; third person and remote avatars re-enable them.
@@ -332,6 +342,7 @@ namespace SpellyZombie
             if (_slots == null) _slots = gameObject.AddComponent<WeaponSlots>();
             if (GetComponent<SelfPaint>() == null) gameObject.AddComponent<SelfPaint>();
             if (GetComponent<HandGrab>() == null) gameObject.AddComponent<HandGrab>();
+            if (GetComponent<GrimoireAbsorb>() == null) gameObject.AddComponent<GrimoireAbsorb>();
             _body = GetComponent<BodyState>();
             if (_body == null) _body = gameObject.AddComponent<BodyState>(); // the slider board
             if (GetComponent<CharacterRig>() == null) gameObject.AddComponent<CharacterRig>();
@@ -474,6 +485,13 @@ namespace SpellyZombie
             // draw modes and R pose mode free the cursor themselves.
             bool altPrecision = !ThirdPersonActive && kb.leftAltKey.isPressed
                 && (_slots == null || _slots.PenSelected);
+            // teach the free-hand pen once (Marko: "players don't know they
+            // can click alt to draw faster")
+            if (!ThirdPersonActive && (_slots == null || _slots.PenSelected))
+            {
+                if (altPrecision) Hints.Retire(Hints.Id.FreeHand);
+                else if (SurfaceDrawer.IsPenActive) Hints.Offer(Hints.Id.FreeHand);
+            }
             bool precision = altPrecision || HeldWeapon.DrawMode || SelfPaint.IsActive
                 || PoseGrab.IsOpen;
             if (precision)
@@ -714,6 +732,20 @@ namespace SpellyZombie
             // spell forces decay gently — flight, launches, downdrafts.
             // While the spell pushes up, it owns your vertical (gravity waits).
             _spellVel = Vector3.MoveTowards(_spellVel, Vector3.zero, 5f * Time.deltaTime);
+
+            // THE EASEL IS AN ANCHOR (Marko's pose-mode ruling: external
+            // forces must not move the body while sculpting/painting — and
+            // his own body runes casting mid-pose were shoving the capsule
+            // out from under the camera, then the get-up snapped the body
+            // back to wherever it ended up): while a pose/paint/draw mode is
+            // open, shoves and spell forces are dropped outright. Gravity
+            // stays; leaving the mode re-arms the forces.
+            if (SelfPaint.IsActive || PoseGrab.IsOpen || HeldWeapon.DrawMode)
+            {
+                _shove = Vector3.zero;
+                _spellVel = Vector3.zero;
+            }
+
             if (_spellVel.y > 0.5f) _verticalVelocity = _spellVel.y;
             Vector3 spellPlanar = new Vector3(_spellVel.x, 0f, _spellVel.z);
 
@@ -744,10 +776,19 @@ namespace SpellyZombie
                 // still in motion (a tumble/knockback arc). A settled body — a
                 // corpse, a friend waiting for revive — we leave where it lies.
                 // per-SECOND ceiling (a per-frame clamp let the doll outrun the
-                // capsule to the leash on low-fps machines)
-                if (planar.sqrMagnitude > 0.01f
-                    || _ragdollFollow.linearVelocity.sqrMagnitude > 0.04f)
-                    _cc.Move(Vector3.ClampMagnitude(gap * 12f, 120f) * Time.deltaTime);
+                // capsule to the leash on low-fps machines).
+                // A FAST DOLL IS TRACKED 1:1 (Marko: "keeps falling out of
+                // frame and then re-appearing") — the soft 12/s spring let a
+                // free-fall open a gap until the lost-doll guard teleported
+                // the body back into frame, over and over. Flying/falling ⇒
+                // the camera rides the doll steadily until it hits something;
+                // the gentle spring remains for crawls and slow settles.
+                float dollSpeed = _ragdollFollow.linearVelocity.magnitude;
+                if (planar.sqrMagnitude > 0.01f || dollSpeed > 0.2f)
+                {
+                    float k = dollSpeed > 4f ? 60f : 12f;
+                    _cc.Move(Vector3.ClampMagnitude(gap * k, 250f) * Time.deltaTime);
+                }
             }
             else
             {
@@ -766,19 +807,9 @@ namespace SpellyZombie
             Cursor.visible = false;
         }
 
-        // shove crates around so half-drawn arcs on two objects can meet and seal;
-        // walking into conjured Gold/Diamond collects it
+        // shove crates around so half-drawn arcs on two objects can meet and seal
         void OnControllerColliderHit(ControllerColliderHit hit)
         {
-            var matter = hit.collider.GetComponent<Matter>();
-            if (matter != null && matter.TreasureValue > 0)
-            {
-                Wallet.Riches += matter.TreasureValue;
-                Debug.Log($"[SpellyZombie] Collected {matter.Material} (+{matter.TreasureValue}) — riches: {Wallet.Riches}");
-                Destroy(matter.gameObject);
-                return;
-            }
-
             var body = hit.collider.attachedRigidbody;
             if (body == null || body.isKinematic) return;
             if (hit.moveDirection.y < -0.3f) return; // don't push things we stand on

@@ -29,20 +29,30 @@ namespace SpellyZombie
         Heat, State, Luminance, Sticky, Direction, Density
     }
 
-    /// Holds one $P point-cloud template per rune. Templates may be drawn in any
-    /// number of strokes, in any order and direction — an arrow recorded as
-    /// shaft + barbs matches an arrow drawn barbs-first. Ships with rough
-    /// synthesized glyphs; each can be overwritten in play mode (draw the glyph,
-    /// press F1-F12) and the recording persists to disk.
+    /// Holds one TURN-SEQUENCE descriptor per rune (see RuneGraph — the signed
+    /// sequence of corners along the rune's single line, so a rune reads the
+    /// same drawn at ANY angle and at ANY size, but never reads as its mirror).
+    /// Templates may be drawn in any number of strokes, in any order and
+    /// direction — an arrow recorded as shaft + barbs matches an arrow drawn
+    /// barbs-first, because pen lifts are stitched away before anything is
+    /// measured. Ships with rough synthesized glyphs; every drawing on a rune's
+    /// Rune Studio wall replaces them.
     public static class RuneLibrary
     {
         class Entry
         {
             public RuneType Type;
-            public Vector2[] Cloud;                 // $P point-cloud template
-            public List<byte[]> Sentences;          // chain-code direction sentences
-            public float Elongation = 1f;           // proportion — separates the bracket family
-            public ShapeFeel Feel;                  // fingerprint — vetoes impostors of a different KIND
+            /// THE SIGNAL. Built once per template here — SetTemplateInternal
+            /// is the single funnel every load, record and learn path goes
+            /// through, so this field IS the descriptor cache; nothing
+            /// re-derives it per match.
+            public RuneGraph Graph;
+            /// COMPOUND SIGILS ONLY. Chain-code direction sentences are how one
+            /// long scribble is parsed into SEVERAL runes (ClassifyCompound).
+            /// They get no vote on which rune a single glyph is — see the note
+            /// above Top2Descriptor for the measurement that retired them from
+            /// that job.
+            public List<byte[]> Sentences;
             // MULTI-TEMPLATE (Marko's studio walls): every drawing on a rune's
             // wall is a variant of HIS hand — the ensemble scores against all
             // of them and keeps the best. More samples = recognition converges
@@ -50,20 +60,12 @@ namespace SpellyZombie
             public readonly List<Entry> Variants = new List<Entry>();
         }
 
-        /// Cheap shape fingerprint. The matchers measure "how much does it
-        /// LOOK like" — this measures "is it even the same KIND of shape":
-        /// how far the pen TURNED in total (a star turns ~3x more than a
-        /// zigzag), which way an open shape's MOUTH faces (the only thing
-        /// separating the solid/liquid brackets), and the pen-lift count.
-        struct ShapeFeel
-        {
-            public float TotalTurn;   // summed |direction change|, degrees
-            public float GapBearing;  // where the opening faces (deg); NaN = closed shape
-            public float LongestFrac; // share of total ink in the longest STRAIGHT RUN —
-                                      // an arrow is shaft-dominated, a Y splits evenly
-                                      // (Marko's "length of the parts involved")
-            public int Strokes;       // count of STITCHED paths — topology, never pen lifts
-        }
+        /// BUMPED WHENEVER THE TEMPLATE POOL CHANGES. The recognition cache in
+        /// RuneGlyph is keyed by stroke ids only, so after a wall save it used
+        /// to hand back the PRE-SAVE verdict for unchanged ink — which in the
+        /// Rune Studio test loop looks exactly like "the matcher ignored my
+        /// drawing". Readers compare this and drop their cache.
+        public static int PoolGeneration { get; private set; }
 
         /// MARKO'S LAW: the pen-lift count NEVER matters — only the end shape.
         /// Strokes whose ENDPOINTS meet are stitched into continuous paths
@@ -75,8 +77,29 @@ namespace SpellyZombie
             var paths = new List<List<Vector2>>();
             foreach (var s in strokes)
                 if (s != null && s.Count >= 2) paths.Add(new List<Vector2>(s));
+            if (paths.Count == 0) return paths;
 
-            const float stitchDist = 0.05f; // endpoints this close = one continuous line
+            // SIZE MUST NOT MATTER (Marko: "the overall length of the runes
+            // shouldn't matter, only their shape"). This threshold used to be
+            // a fixed 5cm, so whether your separate lines joined into one
+            // shape depended on HOW BIG YOU DREW — a large rune's endpoints
+            // sat further apart than 5cm and silently stayed separate paths,
+            // which then failed every topology check.
+            //
+            // It then kept a Clamp(…, 0.01f, 0.09f) around the relative
+            // version, which is the same bug wearing a hat: outside a
+            // drawing-size band of roughly 17cm–1.5m the clamp pinned it and
+            // absolute metres decided the reading again. A rune drawn 3m across
+            // with 12cm pen-lift gaps — 4% of the drawing, well inside the 6%
+            // this rule allows — pinned at 9cm and never stitched, so the graph
+            // saw disconnected limbs and the wrong topology. Gone: 6% of the
+            // drawing, full stop, at every size.
+            //
+            // The size itself is RuneGraph.Extent — the point-set diameter, not
+            // a bounding-box diagonal. A box is world-axis-aligned, so its
+            // diagonal (and therefore this threshold, and Denoise's tolerance
+            // below) used to swing ~23% with how the rune happened to be tilted.
+            float stitchDist = RuneGraph.Extent(paths) * 0.06f;
             bool merged = true;
             while (merged && paths.Count > 1)
             {
@@ -110,127 +133,60 @@ namespace SpellyZombie
                     merged = true;
                 }
             }
-            return paths;
+
+            return Denoise(paths, stitchDist);
         }
 
-        /// Expects STITCHED paths (see StitchStrokes) — callers stitch once.
-        static ShapeFeel Fingerprint(IReadOnlyList<IReadOnlyList<Vector2>> strokes)
+        /// FORGIVE THE SMALL MISTAKES (Marko: "lines popping up even if they
+        /// might be part of the line"). A hand-drawn rune is full of things
+        /// that aren't features: a wobble that reads as a corner, an overshoot
+        /// that reads as a new limb, a slip of the pen that leaves a stub.
+        /// Every one of them invents a fake endpoint and a fake corner, and
+        /// every shape feature downstream then measures the mistake instead of
+        /// the rune. Two passes, both scale-relative so size never matters:
+        ///   1. throw away strokes too short to be a limb
+        ///   2. straighten each path (Douglas-Peucker), collapsing wobble into
+        ///      the line it was always meant to be
+        static List<List<Vector2>> Denoise(List<List<Vector2>> paths, float scale)
         {
-            var f = new ShapeFeel { GapBearing = float.NaN, LongestFrac = 1f };
-            int longest = -1;
-            float longestLen = 0f, totalLen = 0f, turn = 0f, longestRun = 0f;
-            for (int s = 0; s < strokes.Count; s++)
-            {
-                var pts = strokes[s];
-                if (pts == null || pts.Count < 2) continue;
-                f.Strokes++;
-                float len = 0f;
-                for (int i = 1; i < pts.Count; i++) len += Vector2.Distance(pts[i - 1], pts[i]);
-                totalLen += len;
-                if (len > longestLen) { longestLen = len; longest = s; }
+            if (paths.Count == 0) return paths;
 
-                // fixed-step resample so pen speed / point density can't fake
-                // corners; straight RUNS end at corners (> 45°), and the
-                // longest run is the shape's dominant part — pen-lift-proof
-                var r = ResampleStroke(pts, 24);
-                float run = 0f;
-                for (int i = 1; i < r.Count; i++)
-                {
-                    run += Vector2.Distance(r[i - 1], r[i]);
-                    if (i < 2) continue;
-                    Vector2 a = r[i - 1] - r[i - 2], b = r[i] - r[i - 1];
-                    if (a.sqrMagnitude < 1e-10f || b.sqrMagnitude < 1e-10f) continue;
-                    float ang = Mathf.Abs(Vector2.SignedAngle(a, b));
-                    turn += ang;
-                    if (ang > 45f)
-                    {
-                        longestRun = Mathf.Max(longestRun, run);
-                        run = 0f;
-                    }
-                }
-                longestRun = Mathf.Max(longestRun, run);
-            }
-            f.TotalTurn = turn;
-            if (totalLen > 1e-5f) f.LongestFrac = longestRun / totalLen;
+            // NO STROKE IS EVER DELETED. A "throw away short strokes" pass
+            // lived here and it was a disaster: an ARROWHEAD'S BARBS are short
+            // strokes, and so are LIGHT'S RAYS. PUSH was stripped to a bare
+            // shaft (so every straight line read as PUSH, and anything with
+            // structure fell through to PULL) and LIGHT became undrawable.
+            // Short limbs are the whole POINT of these glyphs — only wobble
+            // WITHIN a line is noise, never a line itself.
 
-            if (longest >= 0)
+            // straighten: deviation below this is a shaky hand, not a corner.
+            // ONE straightening rule in the project — RuneGraph owns the
+            // Douglas-Peucker implementation because it is also the segment
+            // extractor the matcher is built on.
+            float eps = scale * 0.10f;
+            var outp = new List<List<Vector2>>(paths.Count);
+            foreach (var p in paths)
             {
-                var pts = strokes[longest];
-                Vector2 min = pts[0], max = pts[0], centroid = Vector2.zero;
-                foreach (var p in pts)
-                {
-                    min = Vector2.Min(min, p);
-                    max = Vector2.Max(max, p);
-                    centroid += p;
-                }
-                centroid /= pts.Count;
-                float diag = (max - min).magnitude;
-                Vector2 mouth = (pts[0] + pts[pts.Count - 1]) * 0.5f;
-                if (diag > 1e-4f && Vector2.Distance(pts[0], pts[pts.Count - 1]) > diag * 0.22f
-                    && (mouth - centroid).sqrMagnitude > 1e-8f)
-                    f.GapBearing = Mathf.Atan2(mouth.y - centroid.y, mouth.x - centroid.x) * Mathf.Rad2Deg;
+                var s = RuneGraph.Simplify(p, eps);
+                outp.Add(s.Count >= 2 ? s : p);
             }
-            return f;
+            return outp;
         }
 
-        static List<Vector2> ResampleStroke(IReadOnlyList<Vector2> pts, int n)
-        {
-            var result = new List<Vector2>(n) { pts[0] };
-            float total = 0f;
-            for (int i = 1; i < pts.Count; i++) total += Vector2.Distance(pts[i - 1], pts[i]);
-            if (total <= 1e-6f) return result;
-            float step = total / (n - 1), acc = 0f;
-            for (int i = 1; i < pts.Count; i++)
-            {
-                Vector2 prev = pts[i - 1], cur = pts[i];
-                float d = Vector2.Distance(prev, cur);
-                while (acc + d >= step && d > 1e-8f)
-                {
-                    float t = (step - acc) / d;
-                    Vector2 q = Vector2.Lerp(prev, cur, t);
-                    result.Add(q);
-                    prev = q;
-                    d = Vector2.Distance(prev, cur);
-                    acc = 0f;
-                }
-                acc += d;
-            }
-            return result;
-        }
-
-        /// 1 = same kind of shape; sinks as fingerprints disagree. Multiplied
-        /// into every match score, so an impostor that "looks similar" but
-        /// turns half as much (star vs zigzag) or opens the wrong way (solid
-        /// vs liquid bracket) loses to the honest candidate BEFORE argmax.
-        static float FeelPenalty(in ShapeFeel d, in ShapeFeel t)
-        {
-            float p = 1f;
-
-            float turnRatio = (Mathf.Min(d.TotalTurn, t.TotalTurn) + 60f)
-                / (Mathf.Max(d.TotalTurn, t.TotalTurn) + 60f); // +60 forgives tiny shapes
-            if (turnRatio < 0.62f)
-            {
-                float k = Mathf.Clamp01(turnRatio / 0.62f);
-                p *= Mathf.Lerp(0.4f, 1f, k * k);
-            }
-
-            if (!float.IsNaN(d.GapBearing) && !float.IsNaN(t.GapBearing))
-            {
-                float dAng = Mathf.Abs(Mathf.DeltaAngle(d.GapBearing, t.GapBearing));
-                if (dAng > 70f)
-                    p *= Mathf.Lerp(1f, 0.5f, Mathf.Clamp01((dAng - 70f) / 70f));
-            }
-
-            // Marko's rule: when shapes are topological cousins (arrow vs Y),
-            // the LENGTH DISTRIBUTION decides — a shaft-heavy drawing is an
-            // arrow even when an overshoot makes the junction look like a fork
-            float dFrac = Mathf.Abs(d.LongestFrac - t.LongestFrac);
-            if (dFrac > 0.18f)
-                p *= Mathf.Lerp(1f, 0.55f, Mathf.Clamp01((dFrac - 0.18f) / 0.25f));
-
-            if (Mathf.Abs(d.Strokes - t.Strokes) >= 2) p *= 0.75f;
-            return p;
-        }
+        // THE SHAPEFEEL SUITE IS GONE (Jul 31, the segment-graph swap).
+        // Fingerprint / MeasureBranchAngle / ConnectedParts / ResampleStroke /
+        // FeelPenalty all lived here: total turn, gap bearing, longest-run
+        // fraction, branch lean, connected-part count. Every one of them was a
+        // hand-rolled approximation of a question RuneGraph now answers
+        // exactly, in the rune's OWN frame:
+        //   longest-run fraction  -> RuneGraph.StemFrac
+        //   branch lean           -> Limb.Angle (SIGNED, so mirrors separate)
+        //   connected parts       -> node degrees + T-junction splitting
+        //   gap bearing           -> measured against the WORLD, which is
+        //                            exactly what Marko's law forbids. Deleted,
+        //                            not ported.
+        // Keeping them as a second opinion would have meant a world-frame
+        // measurement quietly vetoing a correct rotation-invariant read.
 
         [Serializable]
         class SavedStroke { public List<Vector2> points = new List<Vector2>(); }
@@ -256,11 +212,37 @@ namespace SpellyZombie
         {
             public int version;
             public List<SavedTemplate> items = new List<SavedTemplate>();
+            /// Cached result of the last template audit — the rune pairs whose
+            /// drawings read alike. Persisted because RECOMPUTING IT IS THE
+            /// SINGLE SLOWEST THING IN THE GAME: the audit is O(samples²) and
+            /// was MEASURED at 26-41 SECONDS on a 204-sample library, against
+            /// ~200ms for the same scene without it. It ran on every scene load.
+            public List<int> confusable = new List<int>();
+            /// How many samples the cache was built from — if the library grew
+            /// or shrank, the cache is stale and the audit is re-run once.
+            public int auditedCount = -1;
+            /// WHICH MATCHER produced that cache. Sample count alone was not
+            /// enough: swap the matcher and Init would load the $P-era
+            /// confusable list unchanged and silently exempt the WRONG pairs
+            /// from the ambiguity guard. Absent in old files, so it reads 0 and
+            /// forces exactly one re-audit. Deliberately NOT done by bumping
+            /// GlyphSetVersion — that would delete every one of Marko's
+            /// recordings.
+            public int matcher;
         }
 
         /// Bump when the default glyph alphabet changes — stale recordings from
         /// an older alphabet are discarded instead of shadowing the new shapes.
         const int GlyphSetVersion = 6; // v6 = the ORIGINAL alphabet restored (Marko's final pick)
+
+        /// Bump when the SCORING changes shape. Only invalidates the audit
+        /// cache; never touches a recording. 1 = the segment-graph matcher,
+        /// 2 = the signed-turn-sequence matcher (Aug 1). The bump matters:
+        /// without it Init would load the OLD matcher's `confusable` list and
+        /// silently exempt the wrong pairs from the ambiguity guard — and the
+        /// old list is empty anyway, because the audit that produced it was
+        /// scoring every sample against itself.
+        const int MatcherVersion = 2;
 
         static List<Entry> _entries;
         static string SavePath => Path.Combine(Application.persistentDataPath, "sz_rune_templates.json");
@@ -286,7 +268,7 @@ namespace SpellyZombie
 
         public static bool IsUnlocked(int ownerId, RuneType type) =>
             type != RuneType.None
-            && (AllRunesUnlockedForTesting || !RestrictedArena || Grimoire.Has(ownerId, CardOf(type)));
+            && (AllRunesUnlockedForTesting || !RestrictedArena || Grimoire.HasRune(ownerId, type));
 
         public static RuneCardType CardOf(RuneType type)
         {
@@ -409,8 +391,10 @@ namespace SpellyZombie
 
         /// A recording thinner than this can't describe a shape — it misreads
         /// everything angular as itself (the 7-point GRIP flick ate an arrow).
-        /// Sparse recordings are treated as NOT RECORDED: seed shape used for
-        /// recognition AND display, until re-recorded properly.
+        /// Sparse recordings are treated as NOT RECORDED for MATCHING: they
+        /// never become a template, and the seed shape recognizes instead until
+        /// one is drawn properly. They are NOT deleted — his ink stays on his
+        /// wall and in the file (see ReplaceSamples).
         const int MinTemplatePoints = 12;
 
         static int PointCount(List<List<Vector2>> strokes)
@@ -430,34 +414,26 @@ namespace SpellyZombie
             if (_saved == null || _saved.items == null) return null;
             var item = _saved.items.Find(i => i.rune == (int)type);
             if (item == null) return null;
+            // NEWEST USABLE, not "newest, or nothing". Sparse drawings now stay
+            // on the wall instead of being deleted (see ReplaceSamples), so the
+            // newest one can be a small scribble — that must not make the whole
+            // rune report as un-recorded and hand the displays a seed shape when
+            // his handwriting is sitting right there.
             var strokes = ToStrokeLists(item);
-            return strokes.Count > 0 && PointCount(strokes) >= MinTemplatePoints ? strokes : null;
+            if (strokes.Count > 0 && PointCount(strokes) >= MinTemplatePoints) return strokes;
+            if (item.older != null)
+                for (int i = item.older.Count - 1; i >= 0; i--)
+                {
+                    var older = SampleStrokes(item.older[i]?.strokes);
+                    if (older.Count > 0 && PointCount(older) >= MinTemplatePoints) return older;
+                }
+            return null;
         }
 
-        /// Similarity of a partial sketch to EVERY owned rune, best first — the
-        /// choose-and-stamp candidate list. This only SORTS the options; it
-        /// never gates anything (the player's choice is the truth).
-        public static List<(RuneType type, float score)> ScoreAll(int ownerId,
-            IReadOnlyList<IReadOnlyList<Vector2>> rawStrokes)
-        {
-            Init();
-            var results = new List<(RuneType, float)>();
-            var stitchedAll = StitchStrokes(rawStrokes); // end shape, not pen lifts
-            var candidate = PointCloudRecognizer.Normalize(rawStrokes);
-            var sentences = ChainCodeRecognizer.EncodeAll(stitchedAll);
-            float elongation = ChainCodeRecognizer.Elongation(stitchedAll);
-            var feel = Fingerprint(stitchedAll);
-            foreach (var e in _entries)
-            {
-                if (!IsUnlocked(ownerId, e.Type)) continue;
-                float score = VariantScore(e, candidate, sentences, elongation, feel);
-                foreach (var v in e.Variants)
-                    score = Mathf.Max(score, VariantScore(v, candidate, sentences, elongation, feel));
-                results.Add((e.Type, score));
-            }
-            results.Sort((a, b) => b.Item2.CompareTo(a.Item2));
-            return results;
-        }
+        // ScoreAll (the choose-and-stamp candidate list) is DELETED. It had
+        // zero callers and duplicated Top2's scoring loop verbatim — a second
+        // copy of the matcher wiring that nothing exercised and that would
+        // silently rot. Top2 is the one scoring loop.
 
         public static string ShortName(RuneType r)
         {
@@ -486,6 +462,51 @@ namespace SpellyZombie
             RuneType.DirectionAway, RuneType.DirectionToward, RuneType.DensityUp, RuneType.DensityDown
         };
 
+        /// True while the live matcher holds samples learned this round that
+        /// were never saved — so we know a rebuild is needed when it ends.
+        static bool _roundLearned;
+
+        /// FORGET THIS ROUND'S HANDWRITING. Called when a round ends: the
+        /// matcher is rebuilt from the saved file, dropping everything the
+        /// game picked up while playing. Next round starts from your recorded
+        /// drawings again, exactly as it did this one.
+        public static void ForgetRoundLearning()
+        {
+            if (!_roundLearned) return;
+            _roundLearned = false;
+            _entries = null;      // force a clean rebuild from _saved
+            Init();
+        }
+
+        /// KEEP ONLY THE FIRST DRAWING of every rune (Marko: "remove all but
+        /// the first drawing on each wall"). Trims the recorded pools down to
+        /// one sample each and writes the file.
+        public static void KeepOnlyFirstSample()
+        {
+            Init();
+            if (_saved?.items == null) return;
+            int trimmed = 0;
+            foreach (var item in _saved.items)
+            {
+                // the OLDEST recording is the first one you made; `strokes`
+                // holds the newest, `older` the ones before it in order
+                if (item.older != null && item.older.Count > 0)
+                {
+                    var first = item.older[0];
+                    if (first?.strokes != null && first.strokes.Count > 0)
+                        item.strokes = first.strokes;
+                    item.older = new List<SavedSample>();
+                    trimmed++;
+                }
+                item.points = new List<Vector2>(); // legacy field stays retired
+            }
+            try { File.WriteAllText(SavePath, JsonUtility.ToJson(_saved)); }
+            catch (Exception e) { Debug.LogWarning($"[RuneLibrary] Failed to save: {e.Message}"); }
+            _entries = null;
+            Init();
+            Debug.Log($"[RuneLibrary] Trimmed {trimmed} rune(s) down to their first drawing.");
+        }
+
         static void Init()
         {
             if (_entries != null) return;
@@ -493,7 +514,57 @@ namespace SpellyZombie
             foreach (var pair in DefaultGlyphs())
                 SetTemplateInternal(pair.Key, new List<List<Vector2>> { pair.Value });
             LoadRecorded();
+
+            // THE AUDIT NO LONGER RUNS ON EVERY LOAD. It is O(samples²) and was
+            // measured at 26-41 SECONDS with a full library — the entire scene
+            // load time. Its only output is the `confusable` pair set, so that
+            // is cached in the save file and only recomputed when the library
+            // actually changes. Re-run it any time from
+            // Spelly Zombie ▸ Runes — Re-audit templates.
+            int have = CountSamples();
+            if (_saved != null && _saved.confusable != null
+                && _saved.auditedCount == have
+                && _saved.matcher == MatcherVersion) // a $P-era cache exempts the WRONG pairs
+                _confusable = new HashSet<int>(_saved.confusable);
+            else
+                AuditTemplates(); // library or matcher changed (or first run) — pay it once
+
+            PoolGeneration++; // the pool is new: stale recognition caches must drop
+        }
+
+        /// Total recorded samples across every rune — the cache's staleness key.
+        static int CountSamples()
+        {
+            if (_saved?.items == null) return -1;
+            int n = 0;
+            foreach (var it in _saved.items)
+            {
+                if (it.strokes != null && it.strokes.Count > 0) n++;
+                if (it.older != null) n += it.older.Count;
+            }
+            return n;
+        }
+
+        /// Store the audit result so the next load reads it instead of
+        /// recomputing 40,000 point-cloud matches.
+        static void SaveAuditCache()
+        {
+            if (_saved == null) return;
+            _saved.confusable = _confusable != null
+                ? new List<int>(_confusable) : new List<int>();
+            _saved.auditedCount = CountSamples();
+            _saved.matcher = MatcherVersion;
+            try { File.WriteAllText(SavePath, JsonUtility.ToJson(_saved)); }
+            catch (Exception e) { Debug.LogWarning($"[RuneLibrary] audit cache not saved: {e.Message}"); }
+        }
+
+        /// Run the health check by hand (editor menu). Everything it prints —
+        /// "PULL reads as PUSH", "X and Y score within 0.12" — comes from here.
+        public static void ReAudit()
+        {
+            Init();
             AuditTemplates();
+            Debug.Log("[RuneLibrary] Template audit finished; result cached.");
         }
 
         /// Pay the whole recognition bill at SCENE LOAD, never on the first
@@ -504,7 +575,13 @@ namespace SpellyZombie
         public static void Warm()
         {
             Init();
-            var poke = new List<IReadOnlyList<Vector2>>
+            // TWO pokes, because there are two code paths. A zigzag exercises
+            // the turn-sentence path (the ten single-line runes); a Y exercises
+            // the stem-and-limb path (PUSH and PULL). The family gate in
+            // RuneGraph.Compare returns early across families, so a zigzag alone
+            // would leave the whole branched matcher cold and hand the first
+            // arrow of the session the hitch this method exists to prevent.
+            var zigzag = new List<IReadOnlyList<Vector2>>
             {
                 new List<Vector2>
                 {
@@ -512,17 +589,29 @@ namespace SpellyZombie
                     new Vector2(0.6f, 0f), new Vector2(0.9f, 0.5f)
                 }
             };
-            Top2(null, poke);
+            Top2(null, zigzag);
+
+            var fork = new List<IReadOnlyList<Vector2>>
+            {
+                new List<Vector2> { new Vector2(0.5f, 0f), new Vector2(0.5f, 0.6f) },
+                new List<Vector2> { new Vector2(0.2f, 0.9f), new Vector2(0.5f, 0.6f), new Vector2(0.8f, 0.9f) }
+            };
+            Top2(null, fork);
         }
 
         /// Classify a glyph (one or more raw 2D strokes in a shared frame)
         /// against the runes the given OWNER has unlocked — the seal's owner is
         /// whoever completed it, so zombie-closed seals read with zombie cards.
         ///
-        /// REVERTED to the $P + direction-sentence ensemble (Marko's ruling
-        /// Jul 20: his line-scan design measured 76% with the star pair at
-        /// ~12%, below his bar — "then we revert back to what used to work").
-        /// The chamfer matcher stays in the project (InkChamfer), benched.
+        /// THE TURN-SEQUENCE MATCHER (Marko's Aug 1 correction: "all of my
+        /// runes are 1 long line except for push and pull… there's no
+        /// difference with light and dark"). A rune IS its sequence of signed
+        /// corners, so it reads the same drawn at any angle and any size, and
+        /// its mirror reads as the opposite rune. "All shapes are distinct — I
+        /// made them that way exactly because they can be flipped", so any
+        /// cross-fire between two of them is a bug in RuneGraph, never a reason
+        /// to re-record a glyph. The chamfer matcher stays in the project
+        /// (InkChamfer), benched.
         /// AMBIGUITY GUARD kept: two different runes scoring within
         /// RuneAmbiguityMargin = coin flip → fizzle, never misfire.
         /// Every call logs what it received and concluded, and dumps the raw
@@ -546,117 +635,115 @@ namespace SpellyZombie
             float score = t1 == RuneType.None ? 0f : s1;
             bool hit = rune != RuneType.None && score >= DrawingConfig.MinRuneScore;
 
-            int nStrokes = 0, nPts = 0;
-            foreach (var s in rawStrokes) { nStrokes++; nPts += s.Count; }
-            Debug.Log($"[SpellyZombie] CLASSIFY {(hit ? "HIT" : "fizzle")} ($P ensemble) — " +
-                $"input {nStrokes} strokes/{nPts} pts, top {ShortName(t1)} {s1:0.00}, " +
-                $"next {ShortName(t2)} {s2:0.00}{(ambiguous ? " AMBIGUOUS" : "")} " +
-                $"(floor {DrawingConfig.MinRuneScore:0.00})");
-            InkChamfer.DumpClassify(rawStrokes,
-                $"{ShortName(t1)} {s1:0.00} / {ShortName(t2)} {s2:0.00}", hit);
+            // DIAGNOSTICS ARE OFF BY DEFAULT. These two lines ran on EVERY
+            // classify: a stack-traced Editor log plus a CSV append that had
+            // grown to 14MB and is never truncated. Flip LogClassifies when
+            // you're actually debugging recognition.
+            if (LogClassifies)
+            {
+                int nStrokes = 0, nPts = 0;
+                foreach (var s in rawStrokes) { nStrokes++; nPts += s.Count; }
+                Debug.Log($"[SpellyZombie] CLASSIFY {(hit ? "HIT" : "fizzle")} (segment graph) — " +
+                    $"input {nStrokes} strokes/{nPts} pts, top {ShortName(t1)} {s1:0.00}, " +
+                    $"next {ShortName(t2)} {s2:0.00}{(ambiguous ? " AMBIGUOUS" : "")} " +
+                    $"(floor {DrawingConfig.MinRuneScore:0.00})");
+                InkChamfer.DumpClassify(rawStrokes,
+                    $"{ShortName(t1)} {s1:0.00} / {ShortName(t2)} {s2:0.00}", hit);
+            }
 
             return (rune, score);
         }
 
-        /// ENSEMBLE scoring: the $P point-cloud matcher AND the direction-
-        /// sentence matcher both score every rune; each rune keeps its best
-        /// reading. Returns the two best DIFFERENT runes. ownerId gates by
-        /// unlocks; pass null to score the full library (template audit).
+        /// TURN-SEQUENCE scoring. The drawing becomes ONE descriptor — the
+        /// signed corners along its line, or (for an arrow or a Y) a stem plus
+        /// limbs — and every unlocked rune's whole sample pool is scored
+        /// against it. Returns the two best DIFFERENT runes.
         static (RuneType t1, float s1, RuneType t2, float s2) Top2(int? ownerId,
             IReadOnlyList<IReadOnlyList<Vector2>> rawStrokes)
         {
-            // pen lifts never matter: stitch to the END SHAPE first, then measure
+            // Pen lifts never matter: stitch to the END SHAPE first, then
+            // measure. EVERYTHING reads the same stitched paths — an older path
+            // handed RAW strokes to one matcher and stitched ones to the rest,
+            // so the two halves of the ensemble were literally looking at
+            // different drawings.
             var stitched = StitchStrokes(rawStrokes);
-            var candidate = PointCloudRecognizer.Normalize(rawStrokes); // point set — lift-proof already
-            var sentences = ChainCodeRecognizer.EncodeAll(stitched);
-            float elongation = ChainCodeRecognizer.Elongation(stitched);
-            if (candidate == null && sentences.Count == 0)
-                return (RuneType.None, 0f, RuneType.None, 0f);
-            var feel = Fingerprint(stitched);
+            var graph = RuneGraph.Build(stitched);
+            if (graph == null) return (RuneType.None, 0f, RuneType.None, 0f);
 
+            // A BARE LINE IS NOT A RUNE (Marko: "a straight line should be
+            // detected as NOTHING automatically"). Every rune in the alphabet
+            // is one line WITH CORNERS — that is what the pairs differ by. A
+            // drawing that is one straight run has no turn sequence at all, and
+            // letting it match the nearest template is how every stray line
+            // became a PUSH. The graph owns this rule: no corners, no rune. It
+            // is the definition now, not a heuristic on turn totals.
+            if (graph.BareLine) return (RuneType.None, 0f, RuneType.None, 0f);
+
+            return Top2Descriptor(ownerId, graph, null);
+        }
+
+        /// The one scoring loop, over an ALREADY-BUILT descriptor.
+        ///
+        /// `skip` is how a template is kept from scoring against ITSELF — see
+        /// AuditTemplates, which could not see a single one of its own bugs
+        /// until this existed.
+        ///
+        /// EVERY rune is scored, never just the argmax: the unlock gate and the
+        /// ambiguity guard both need the runner-up. ownerId gates by unlocks;
+        /// pass null to score the full library.
+        static (RuneType t1, float s1, RuneType t2, float s2) Top2Descriptor(int? ownerId,
+            RuneGraph graph, Entry skip)
+        {
             RuneType bestType = RuneType.None, secondType = RuneType.None;
             float bestScore = 0f, secondScore = 0f;
-            Entry bestEntry = null, secondEntry = null;
             foreach (var e in _entries)
             {
                 if (ownerId.HasValue && !IsUnlocked(ownerId.Value, e.Type)) continue;
                 // nearest-of-many: the drawing matches whichever of this
                 // rune's samples it most resembles
-                float score = VariantScore(e, candidate, sentences, elongation, feel);
+                float score = e == skip ? 0f : RuneGraph.Compare(graph, e.Graph);
                 foreach (var v in e.Variants)
-                    score = Mathf.Max(score, VariantScore(v, candidate, sentences, elongation, feel));
+                {
+                    if (v == skip) continue;
+                    float s = RuneGraph.Compare(graph, v.Graph);
+                    if (s > score) score = s;
+                }
                 if (score > bestScore)
                 {
-                    secondType = bestType; secondScore = bestScore; secondEntry = bestEntry;
-                    bestType = e.Type; bestScore = score; bestEntry = e;
+                    secondType = bestType; secondScore = bestScore;
+                    bestType = e.Type; bestScore = score;
                 }
                 else if (score > secondScore)
                 {
-                    secondType = e.Type; secondScore = score; secondEntry = e;
+                    secondType = e.Type; secondScore = score;
                 }
-            }
-
-            // SECOND STAGE — THE FOOT-LINE JUDGE (Marko's Solid-vs-Compress
-            // catch: glyphs that differ by one small feature score near-equal
-            // on $P, which shrugs at a missing foot). When the top two are
-            // close, re-rank by mutual COVERAGE: a drawing with a second foot
-            // leaves a one-footed sample's corner uncovered, and pays for it.
-            if (candidate != null && bestEntry != null && secondEntry != null
-                && bestScore - secondScore < 0.18f)
-            {
-                float c1 = BestCoverage(bestEntry, candidate);
-                float c2 = BestCoverage(secondEntry, candidate);
-                float r1 = bestScore * Mathf.Lerp(0.7f, 1f, c1);
-                float r2 = secondScore * Mathf.Lerp(0.7f, 1f, c2);
-                if (r2 > r1)
-                {
-                    (bestType, secondType) = (secondType, bestType);
-                    (bestScore, secondScore) = (r2, r1);
-                }
-                else { bestScore = r1; secondScore = r2; }
             }
             return (bestType, bestScore, secondType, secondScore);
         }
 
-        /// Best mutual-coverage between the drawing and any sample of this
-        /// rune: the fraction of each cloud that finds a neighbour in the
-        /// other. Missing features (an absent foot, an extra tick) live
-        /// exactly in the uncovered remainder.
-        static float BestCoverage(Entry e, Vector2[] candidate)
-        {
-            float best = Coverage(candidate, e.Cloud);
-            foreach (var v in e.Variants)
-                best = Mathf.Max(best, Coverage(candidate, v.Cloud));
-            return best;
-        }
-
-        static float Coverage(Vector2[] a, Vector2[] b)
-        {
-            if (a == null || b == null || a.Length == 0 || b.Length == 0) return 1f;
-            const float eps2 = 0.09f * 0.09f;
-            int hitA = 0;
-            for (int i = 0; i < a.Length; i++)
-                for (int j = 0; j < b.Length; j++)
-                    if ((a[i] - b[j]).sqrMagnitude <= eps2) { hitA++; break; }
-            int hitB = 0;
-            for (int j = 0; j < b.Length; j++)
-                for (int i = 0; i < a.Length; i++)
-                    if ((a[i] - b[j]).sqrMagnitude <= eps2) { hitB++; break; }
-            return 0.5f * (hitA / (float)a.Length + hitB / (float)b.Length);
-        }
-
-        static float VariantScore(Entry v, Vector2[] candidate,
-            List<byte[]> sentences, float elongation, ShapeFeel feel)
-        {
-            float p = candidate != null && v.Cloud != null
-                ? PointCloudRecognizer.Score(PointCloudRecognizer.CloudDistance(candidate, v.Cloud)) : 0f;
-            float chain = v.Sentences != null
-                ? ChainCodeRecognizer.Match(sentences, v.Sentences)
-                  * ChainCodeRecognizer.AspectPenalty(elongation, v.Elongation) : 0f;
-            return Mathf.Max(p, chain) * FeelPenalty(feel, v.Feel);
-        }
+        // THE CHAIN CODE NO LONGER TOUCHES A RUNE VERDICT (Aug 1). It used to
+        // be wired in here as `graph * Lerp(0.88, 1.06, chain)` — the graph held
+        // an absolute veto and the direction sentence was worth ±9%. That
+        // weighting was measured and it was the worst of both worlds:
+        //   - it could not rescue anything. Scored ALONE on Marko's recordings
+        //     the chain code gets 22/24 and reads LIGHT and DARK correctly, but
+        //     ±9% cannot lift the graph's broken 0.18 for LIGHT anywhere near
+        //     the 0.42 floor. The good signal was outvoted by the broken one.
+        //   - now that the primary descriptor works, the same ±9% is purely
+        //     destructive: correct reads and their runner-ups are separated by
+        //     as little as 0.14 (SOLID vs LIQUID), so a ±9% swing driven by a
+        //     45°-bucketed, length-blind sentence read in a frame GUESSED off
+        //     the drawing can flip the ranking on its own.
+        // ChainCodeRecognizer stays in the project and stays in use — it is what
+        // parses COMPOUND SIGILS (see ClassifyCompound), a job the single-glyph
+        // descriptor does not do. It just does not get a vote on which rune a
+        // single glyph is.
 
         // ---- template health: is the alphabet YOURS, and is it unambiguous? --
+
+        /// Per-classify logging + CSV dump. OFF by default — it cost a
+        /// stack-traced Editor log and a file append on every recognition.
+        public static bool LogClassifies = false;
 
         static HashSet<int> _confusable; // rune pairs whose templates read alike
         static int PairKey(RuneType a, RuneType b)
@@ -692,58 +779,66 @@ namespace SpellyZombie
             else
                 Debug.Log("[RuneLibrary] AUDIT: all 12 runes use YOUR recorded handwriting.");
 
-            foreach (var e in _entries)
-            {
-                // read this rune's own template back as if freshly drawn
-                var src = RecordedStrokes(e.Type);
-                if (src == null)
-                {
-                    var poly = GlyphPolyline(e.Type);
-                    if (poly == null) continue;
-                    src = new List<List<Vector2>> { poly };
-                }
-                var (t1, s1, t2, s2) = Top2(null, ToReadOnly(src));
-                if (t1 == RuneType.None) continue;
-
-                if (t1 != e.Type)
-                {
-                    Debug.LogError($"[RuneLibrary] AUDIT: the {ShortName(e.Type)} template reads as {ShortName(t1)} ({s1:F2}) — re-record {ShortName(e.Type)} with a more distinct shape!");
-                    _confusable.Add(PairKey(e.Type, t1));
-                }
-                else if (t2 != RuneType.None && s1 - s2 < 0.12f)
-                {
-                    Debug.LogWarning($"[RuneLibrary] AUDIT: {ShortName(e.Type)} and {ShortName(t2)} templates score within {s1 - s2:F2} of each other — cross-fires possible; consider re-recording one of them.");
-                    _confusable.Add(PairKey(e.Type, t2));
-                }
-            }
-
-            // POOL-AWARE CONFUSABILITY (the multi-template era): every saved
-            // wall drawing is read back as if freshly drawn. When a drawing
-            // of rune A reads as B — or nearly ties with B — those two are
-            // genuinely entangled IN MARKO'S HAND, and the coin-flip guard
-            // would eat every valid cast between them (PULL 0.80/PUSH 0.79
-            // fizzled his correct Ys). Entangled pairs are exempt: the top
-            // score wins. The console names them so cleaning up a wall stays
-            // his informed choice.
+            // LEAVE-ONE-OUT, AND THAT IS THE WHOLE POINT.
+            //
+            // THE AUDIT USED TO BE BLIND BY CONSTRUCTION. It re-derived each
+            // rune's drawing from the saved strokes and scored it with
+            // Top2(null, sample) — against a pool that CONTAINED THAT EXACT
+            // DRAWING. Self-match is 1.00 by definition, so the audit could
+            // never report anything: the saved file proves it, `"confusable":
+            // []` with `auditedCount: 24`, while a freshly drawn LIGHT was
+            // fizzling at 0.18 against its own wall. That is also why the Rune
+            // Studio test loop kept saying a rune worked when it did not — the
+            // studio was scoring his ink against a pool containing that ink.
+            //
+            // A sample is now scored against every template EXCEPT ITSELF, so
+            // "does my handwriting read as itself" is a real question with a
+            // real answer. It also means a rune with only ONE drawing on its
+            // wall cannot be cross-checked at all — there is nothing else of
+            // his to recognise it by — and saying so out loud is more useful
+            // than a fake 1.00.
             var entangled = new List<string>();
+            var lonely = new List<string>();
             foreach (var e in _entries)
             {
-                foreach (var sample in AllSamples(e.Type))
+                int pool = 1 + e.Variants.Count;
+                if (pool < 2) { lonely.Add(ShortName(e.Type)); continue; }
+
+                for (int i = 0; i < pool; i++)
                 {
-                    var (t1, s1, t2, s2) = Top2(null, ToReadOnly(sample));
+                    var self = i == 0 ? e : e.Variants[i - 1];
+                    if (self.Graph == null || self.Graph.BareLine) continue;
+                    var (t1, s1, t2, s2) = Top2Descriptor(null, self.Graph, self);
                     if (t1 == RuneType.None) continue;
-                    int key;
-                    if (t1 != e.Type) key = PairKey(e.Type, t1);
+
+                    if (t1 != e.Type)
+                    {
+                        Debug.LogError($"[RuneLibrary] AUDIT: a {ShortName(e.Type)} drawing reads as {ShortName(t1)} ({s1:F2}) when scored against every OTHER template — this is a bug in RuneGraph, not in your handwriting (he ruled no glyph resembles another under any rotation or reflection).");
+                        if (_confusable.Add(PairKey(e.Type, t1)))
+                            entangled.Add($"{ShortName(e.Type)}~{ShortName(t1)}");
+                    }
+                    // POOL-AWARE CONFUSABILITY: when a drawing of rune A merely
+                    // NEARLY ties with B, those two are entangled IN MARKO'S
+                    // HAND, and the coin-flip guard would eat every valid cast
+                    // between them (PULL 0.80/PUSH 0.79 once fizzled his correct
+                    // Ys). Entangled pairs are exempt from that guard: the top
+                    // score wins. The console names them so cleaning up a wall
+                    // stays his informed choice.
                     else if (t2 != RuneType.None
-                        && s1 - s2 < DrawingConfig.RuneAmbiguityMargin + 0.03f)
-                        key = PairKey(e.Type, t2);
-                    else continue;
-                    if (_confusable.Add(key))
-                        entangled.Add($"{ShortName(e.Type)}~{ShortName(t1 != e.Type ? t1 : t2)}");
+                             && s1 - s2 < DrawingConfig.RuneAmbiguityMargin + 0.03f)
+                    {
+                        Debug.LogWarning($"[RuneLibrary] AUDIT: {ShortName(e.Type)} and {ShortName(t2)} score within {s1 - s2:F2} of each other ({s1:F2} vs {s2:F2}) — cross-fires possible.");
+                        if (_confusable.Add(PairKey(e.Type, t2)))
+                            entangled.Add($"{ShortName(e.Type)}~{ShortName(t2)}");
+                    }
                 }
             }
+            if (lonely.Count > 0)
+                Debug.LogWarning($"[RuneLibrary] AUDIT: {lonely.Count} rune(s) have only ONE usable drawing, so nothing can cross-check them: {string.Join(", ", lonely)} — draw each a second time on its wall.");
             if (entangled.Count > 0)
                 Debug.Log($"[RuneLibrary] AUDIT: pairs entangled in your handwriting (top score decides between them): {string.Join(", ", entangled)}");
+
+            SaveAuditCache(); // never pay for this twice
         }
 
         /// Marko's rule: EVERYTHING drawn on a wall is saved — no practical
@@ -781,23 +876,32 @@ namespace SpellyZombie
 
         /// THE RUNE STUDIO SAVE (Marko's design): a wall's ink IS the rune's
         /// sample pool — this replaces the whole pool with the wall snapshot.
-        /// Too-sparse drawings are skipped (logged); an empty wall clears the
-        /// rune back to its synthetic seed shape. Returns how many were kept.
+        /// An empty wall clears the rune back to its synthetic seed shape.
+        /// Returns how many were kept.
+        ///
+        /// EVERY DRAWING ON THE WALL IS KEPT, however small. This used to DELETE
+        /// any drawing under MinTemplatePoints — and since nodes are laid at a
+        /// fixed world spacing, a point count is a proxy for PHYSICAL SIZE, so
+        /// that was "his small drawings are erased from his wall", breaking both
+        /// "size must never matter" and "I don't want to see any changes from
+        /// what I drew". Sparse drawings are still not used as matcher
+        /// templates (they misread everything angular as themselves) — but that
+        /// is a recognition decision, taken below and in LoadRecorded. It is not
+        /// a licence to throw his ink away.
         public static int ReplaceSamples(RuneType type, List<List<List<Vector2>>> samples)
         {
             Init();
             var kept = new List<List<List<Vector2>>>();
+            int sparse = 0;
             foreach (var s in samples)
             {
                 if (s == null || s.Count == 0) continue;
-                if (PointCount(s) < MinTemplatePoints)
-                {
-                    Debug.LogWarning($"[RuneLibrary] {ShortName(type)}: a wall drawing has only {PointCount(s)} points — skipped (draw larger/slower).");
-                    continue;
-                }
+                if (PointCount(s) < MinTemplatePoints) sparse++;
                 kept.Add(s);
                 if (kept.Count == MaxSamples) break;
             }
+            if (sparse > 0)
+                Debug.Log($"[RuneLibrary] {ShortName(type)}: {sparse} wall drawing(s) too sparse to teach the matcher — kept on the wall, not used as templates (draw larger/slower to teach them).");
 
             var item = _saved.items.Find(i => i.rune == (int)type);
             if (kept.Count == 0)
@@ -826,40 +930,122 @@ namespace SpellyZombie
             // template audit stays a session-start affair.
             if (_entries != null)
             {
-                if (kept.Count == 0)
+                // THE RETURN VALUE IS LOAD-BEARING (see SetTemplateInternal):
+                // false means the descriptor could not be built, so that sample
+                // is NOT the one that restates the rune's identity. Flipping
+                // `first` regardless left the very first sample appending
+                // instead of replacing — the Variants.Clear() branch never ran
+                // and the rune kept matching against drawings that are no
+                // longer on the wall. LoadRecorded has always done this
+                // correctly; this path had drifted.
+                bool first = true;
+                foreach (var sample in kept)
                 {
+                    if (PointCount(sample) < MinTemplatePoints) continue; // kept on the wall, not taught
+                    if (SetTemplateInternal(type, sample, append: !first)) first = false;
+                }
+                if (first)
+                {
+                    // nothing on the wall was usable as a template (an empty
+                    // wall, or only sparse drawings) — the seed shape takes over
                     var poly = GlyphPolyline(type);
                     if (poly != null)
                         SetTemplateInternal(type, new List<List<Vector2>> { poly });
                 }
-                else
-                {
-                    bool first = true;
-                    foreach (var sample in kept)
-                    {
-                        SetTemplateInternal(type, sample, append: !first);
-                        first = false;
-                    }
-                }
 
                 // refresh THIS rune's entanglements immediately — the studio
-                // test loop must judge by the wall as it is NOW
-                if (_confusable != null)
-                    foreach (var sample in kept)
+                // test loop must judge by the wall as it is NOW.
+                //
+                // LEAVE-ONE-OUT here too. This used to re-derive each wall
+                // drawing and score it with Top2(null, sample) against a pool
+                // that had just been rebuilt FROM that same drawing, so it
+                // always saw a 1.00 and never flagged anything. Scoring the
+                // cached descriptor against every template but itself is the
+                // only version of this check that can fail.
+                var entry = _entries.Find(x => x.Type == type);
+                if (_confusable != null && entry != null)
+                {
+                    int pool = 1 + entry.Variants.Count;
+                    for (int i = 0; i < pool && pool >= 2; i++)
                     {
-                        var (t1, s1, t2, s2) = Top2(null, ToReadOnly(sample));
+                        var self = i == 0 ? entry : entry.Variants[i - 1];
+                        if (self.Graph == null || self.Graph.BareLine) continue;
+                        var (t1, s1, t2, s2) = Top2Descriptor(null, self.Graph, self);
                         if (t1 == RuneType.None) continue;
                         if (t1 != type) _confusable.Add(PairKey(type, t1));
                         else if (t2 != RuneType.None
                             && s1 - s2 < DrawingConfig.RuneAmbiguityMargin + 0.03f)
                             _confusable.Add(PairKey(type, t2));
                     }
+                }
             }
             InkChamfer.Invalidate();
             Debug.Log($"[RuneLibrary] {ShortName(type)}: sample pool = {kept.Count} drawing(s)" +
                 (kept.Count == 0 ? " (synthetic seed shape takes over)" : ""));
             return kept.Count;
         }
+
+        /// ONE MORE SAMPLE OF THE PLAYER'S HAND (Marko's invisible natural
+        /// progression: "the game learns the handwriting… your character
+        /// becomes better at casting that rune naturally"). Appends a played
+        /// drawing to the rune's pool; when the pool is full the OLDEST
+        /// sample rolls out, so the ensemble follows how the player draws
+        /// NOW. Returns false for drawings too sparse to teach anything.
+        ///
+        /// QUIET mode (the in-game silent learn): NO pool rebuild, NO
+        /// confusable refresh, NO file write on the cast frame (Marko: closing
+        /// a seal must never hitch) — and no LATER file write either. A quiet
+        /// sample joins the live matcher and nothing else, because what the
+        /// game learns while you play lasts one round; only Rune Studio
+        /// persists. A full pool simply declines quiet samples; the declare
+        /// path still rolls.
+        public static bool AddSample(RuneType type, List<List<Vector2>> sample, bool quiet = false)
+        {
+            Init();
+            if (type == RuneType.None || sample == null
+                || PointCount(sample) < MinTemplatePoints) return false;
+
+            if (quiet)
+            {
+                // WHAT THE GAME LEARNS WHILE YOU PLAY LASTS ONE ROUND (Marko:
+                // "when someone memorizes the handwriting it should only be in
+                // memory for that round and not all the rounds"). So a quiet
+                // sample joins the LIVE matcher and nothing else — it never
+                // touches _saved and never reaches the file. Only what you
+                // deliberately record in Rune Studio persists.
+                var e = _entries.Find(x => x.Type == type);
+                if (e == null || e.Variants.Count >= MaxSamples - 1) return false;
+                if (!SetTemplateInternal(type, sample, append: true)) return false;
+                _roundLearned = true;
+                return true;
+            }
+
+            var pool = new List<List<List<Vector2>>>();
+            var item = _saved.items.Find(i => i.rune == (int)type);
+            if (item != null)
+            {
+                if (item.older != null)
+                    foreach (var old in item.older)
+                    {
+                        var s = SampleStrokes(old.strokes);
+                        if (s.Count > 0) pool.Add(s);
+                    }
+                var newest = SampleStrokes(item.strokes);
+                if (newest.Count > 0) pool.Add(newest);
+            }
+            pool.Add(sample);
+            while (pool.Count > MaxSamples) pool.RemoveAt(0); // the oldest hand rolls out
+            return ReplaceSamples(type, pool) > 0;
+        }
+
+        // FlushSaves() IS GONE, with its `_savedDirty` flag and the 10-second
+        // timer in DrawingWorld that called it. Nothing ever set the flag, so
+        // the method could not write even in principle — it was dead code that
+        // READ as load-bearing, and AddSample's own doc used to promise a
+        // deferred save that would never happen. It has nothing left to do
+        // either: quiet in-game learning is round-only by ruling, so it
+        // deliberately never touches _saved, and the two real write paths
+        // (ReplaceSamples, SaveAuditCache) write immediately.
 
         static List<SavedStroke> ToSavedStrokes(List<List<Vector2>> strokes)
         {
@@ -868,39 +1054,63 @@ namespace SpellyZombie
             return outp;
         }
 
+        /// THE ONE PLACE a descriptor is built. Every load, record and learn
+        /// path funnels through here, so the RuneGraph on an Entry is computed
+        /// exactly once and then cached for the life of the pool — the matcher
+        /// itself never re-derives anything.
+        ///
+        /// Returns false ONLY for a drawing that cannot teach anything. That
+        /// contract is load-bearing: LoadRecorded / AddSample / ReplaceSamples
+        /// all read it as "this template does not exist", and a false makes the
+        /// NEXT sample take over the rune's identity instead of appending to it.
+        ///
+        /// A BARE LINE IS REJECTED HERE, and it has to be. Marko's newest PULL
+        /// wall drawing is 63 points that deviate from their own chord by 0.52%
+        /// — a straight line, as far as any shape math is concerned. It built a
+        /// perfectly non-null graph, so the old `graph == null` gate waved it
+        /// through; it then occupied PULL's newest-sample slot and returned 0.00
+        /// against every drawing on earth, because a bare line matches nothing
+        /// by his own rule. PULL had ONE live template and looked like it had
+        /// two. Accepting a template that can never match is strictly worse than
+        /// admitting the rune is under-taught — and the warning tells him which
+        /// wall to go redraw.
+        ///
+        /// This is NOT a licence to throw his ink away: the drawing stays on the
+        /// wall and in the save file (see ReplaceSamples). It just does not get
+        /// to be a template.
         static bool SetTemplateInternal(RuneType type, List<List<Vector2>> rawStrokes, bool append = false)
         {
-            var cloud = PointCloudRecognizer.Normalize(rawStrokes);
-            if (cloud == null) return false;
             // templates normalize exactly like drawings: end shape, not pen lifts
             var stitched = StitchStrokes(ToReadOnly(rawStrokes));
+            var graph = RuneGraph.Build(stitched);
+            if (graph == null) return false;
+            if (graph.BareLine)
+            {
+                Debug.LogWarning($"[RuneLibrary] {ShortName(type)}: a wall drawing straightens out to a bare line (no corners) — it cannot match anything, so it is kept on the wall but not taught to the matcher. Redraw that one with its corners clearly bent.");
+                return false;
+            }
             var sentences = ChainCodeRecognizer.EncodeAll(stitched);
-            float elongation = ChainCodeRecognizer.Elongation(stitched);
-            var feel = Fingerprint(stitched);
             var existing = _entries.Find(e => e.Type == type);
+            PoolGeneration++; // the matcher's view of this rune just changed
             if (append && existing != null)
             {
                 // one more sample of his hand joins the pool
                 if (existing.Variants.Count < MaxSamples - 1)
                     existing.Variants.Add(new Entry
                     {
-                        Type = type, Cloud = cloud, Sentences = sentences,
-                        Elongation = elongation, Feel = feel
+                        Type = type, Graph = graph, Sentences = sentences
                     });
                 return true;
             }
             if (existing != null)
             {
-                existing.Cloud = cloud;
+                existing.Graph = graph;
                 existing.Sentences = sentences;
-                existing.Elongation = elongation;
-                existing.Feel = feel;
                 existing.Variants.Clear(); // fresh identity: the pool restates itself
             }
             else _entries.Add(new Entry
             {
-                Type = type, Cloud = cloud, Sentences = sentences,
-                Elongation = elongation, Feel = feel
+                Type = type, Graph = graph, Sentences = sentences
             });
             return true;
         }

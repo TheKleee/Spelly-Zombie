@@ -17,7 +17,7 @@ namespace SpellyZombie
         RectTransform _group;
         UIKit.UIBar _bleed;
         Image _vignette;
-        Text _riches, _xp, _bannerText, _downText;
+        Text _bannerText, _downText;
         RectTransform _banner, _downGroup, _badgeRow;
         string _badgesShown = "";
 
@@ -63,10 +63,8 @@ namespace SpellyZombie
             var corner = UIKit.Group(_group, "Vitals");
             UIKit.Place(corner, new Vector2(0f, 0f), new Vector2(18f, 18f), new Vector2(320f, 96f));
 
-            _riches = UIKit.Label(corner, "", 17, UIKit.Parchment, TextAnchor.MiddleLeft, true);
-            UIKit.Place((RectTransform)_riches.transform, new Vector2(0f, 1f), new Vector2(0f, -14f), new Vector2(220f, 24f));
-            _xp = UIKit.Label(corner, "", 15, UIKit.Gold, TextAnchor.MiddleLeft);
-            UIKit.Place((RectTransform)_xp.transform, new Vector2(0f, 1f), new Vector2(0f, -40f), new Vector2(260f, 24f));
+            // (no riches, no XP line — Marko: "this game is simple... it has
+            // no UI indicators of any bar on the screen")
 
             _badgeRow = UIKit.Group(corner, "Perks");
             UIKit.Place(_badgeRow, new Vector2(0f, 1f), new Vector2(0f, -58f), new Vector2(260f, 30f));
@@ -146,8 +144,6 @@ namespace SpellyZombie
                     a += (Mathf.Sin(Time.time * 6f) * 0.5f + 0.5f) * 0.12f;
                 _vignette.color = new Color(0.55f, 0f, 0f, Mathf.Clamp01(a));
             }
-            _riches.text = $"Riches: {Wallet.Riches}";
-            _xp.text = Powerups.XpLine();
 
             // perk badges (rebuilt only when they change)
             string tag = Perks.HudTag();

@@ -45,29 +45,30 @@ namespace SpellyZombie
             try
             {
                 root = PrefabUtility.LoadPrefabContents(path);
+                // AXIOM opt-out: a HandsOff component means "never touch this"
+                if (root.GetComponentInChildren<HandsOff>(true) != null) return;
                 int fixes = 0;
                 var report = new List<string>();
 
-                // ---- corpse scripts off ----
+                // AXIOM (Marko Jul 25): this runs automatically on EVERY import
+                // and every prefab-mode save. It must NEVER delete his work.
+                // Both passes below are now REPORT-ONLY — a renamed .cs file
+                // used to silently eat components (and their Inspector values)
+                // out of his authored prefabs with no undo.
+                // ---- corpse scripts: report, never strip ----
                 foreach (var t in root.GetComponentsInChildren<Transform>(true))
                 {
-                    int removed = GameObjectUtility.RemoveMonoBehavioursWithMissingScript(t.gameObject);
-                    if (removed > 0)
-                    {
-                        fixes += removed;
-                        report.Add($"stripped {removed} broken script(s) on '{t.name}'");
-                    }
+                    int broken = GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject);
+                    if (broken > 0)
+                        Debug.LogWarning($"[SpellyZombie] '{t.name}' in {path} has {broken} missing-script " +
+                            "component(s) — LEFT ALONE (menu: Spelly Zombie/Clean Selected Custom Prefab).", root);
                 }
 
-                // ---- ink off ----
+                // ---- ink: report, never strip ----
                 var inkNodes = root.GetComponentsInChildren<DrawNode>(true);
                 if (inkNodes.Length > 0)
-                {
-                    foreach (var node in inkNodes)
-                        if (node != null) Object.DestroyImmediate(node.gameObject);
-                    fixes += inkNodes.Length;
-                    report.Add($"stripped {inkNodes.Length} ink node(s)");
-                }
+                    Debug.LogWarning($"[SpellyZombie] {path} carries {inkNodes.Length} ink node(s) — LEFT ALONE. " +
+                        "Erase the ink before making the prefab if you didn't mean to keep it.", root);
 
                 // ---- materials persisted ----
                 const string matDir = "Assets/_Game/Resources/Custom/Materials";
@@ -107,6 +108,37 @@ namespace SpellyZombie
                 if (root != null) PrefabUtility.UnloadPrefabContents(root);
                 _healing = false;
             }
+        }
+
+        /// The DESTRUCTIVE strip, now opt-in only (AXIOM: he decides, not the
+        /// importer). Select a prefab and run it when you actually want the
+        /// broken scripts / stray ink gone.
+        [MenuItem("Spelly Zombie/Clean Selected Custom Prefab")]
+        static void CleanSelected()
+        {
+            var sel = Selection.activeGameObject;
+            string path = sel != null ? AssetDatabase.GetAssetPath(sel) : null;
+            if (string.IsNullOrEmpty(path) || !path.EndsWith(".prefab"))
+            {
+                Debug.LogWarning("[SpellyZombie] Select a PREFAB ASSET in the Project window first.");
+                return;
+            }
+            var root = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                int scripts = 0;
+                foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                    scripts += GameObjectUtility.RemoveMonoBehavioursWithMissingScript(t.gameObject);
+                var ink = root.GetComponentsInChildren<DrawNode>(true);
+                if (!EditorUtility.DisplayDialog("Clean Custom Prefab",
+                        $"{path}\n\nRemove {scripts} missing-script component(s) and {ink.Length} ink node(s)?\n\n" +
+                        "This CANNOT be undone.", "Clean it", "Cancel"))
+                    return;
+                foreach (var node in ink) if (node != null) Object.DestroyImmediate(node.gameObject);
+                PrefabUtility.SaveAsPrefabAsset(root, path);
+                Debug.Log($"[SpellyZombie] Cleaned {path}: {scripts} script(s), {ink.Length} ink node(s).");
+            }
+            finally { PrefabUtility.UnloadPrefabContents(root); }
         }
 
         static string Sanitize(string raw)

@@ -172,7 +172,6 @@ namespace SpellyZombie
         void StartRunNow()
         {
             _kills = 0;
-            Wallet.Riches = 0;
             _runStart = Time.time;
             PlayerInk.RefillAll();
             Powerups.ResetRun(); // fresh build every run
@@ -259,6 +258,12 @@ namespace SpellyZombie
 
         void EndRound()
         {
+            // THE ROUND'S HANDWRITING IS FORGOTTEN (Marko: what the game
+            // memorises about how you draw "should only be in memory for that
+            // round and not all the rounds"). Whatever it picked up while
+            // playing is dropped; your Rune Studio recordings are untouched.
+            RuneLibrary.ForgetRoundLearning();
+
             // MARKO'S WIN (maps with Fable gates): spell every gate open, then
             // clear the round — that's the demo victory. Gateless maps keep
             // the round-cap rule. (Full game inserts the boss here later.)
@@ -267,7 +272,7 @@ namespace SpellyZombie
             {
                 _phase = Phase.Victory;
                 ComboBanner.Show("YOU SURVIVED THE DEMO!", new Color(0.5f, 1f, 0.6f));
-                RunStats.Log("victory", _round, _kills, 0, Wallet.Riches, Time.time - _runStart);
+                RunStats.Log("victory", _round, _kills, 0, Time.time - _runStart);
                 return;
             }
             _phase = Phase.Intermission;
@@ -287,7 +292,7 @@ namespace SpellyZombie
             var pw = _players.Count > 0 && _players[0] != null ? _players[0].transform.position : Vector3.zero;
             Juice.Sting(pw);
             SealAutopsy.OnWipe();
-            RunStats.Log("wipe", _round, _kills, 0, Wallet.Riches, Time.time - _runStart);
+            RunStats.Log("wipe", _round, _kills, 0, Time.time - _runStart);
         }
 
         void Restart()
@@ -368,7 +373,7 @@ namespace SpellyZombie
                 Phase.Idle => "", // runs start from the lobby ready-up; idle scenes stay quiet
                 Phase.Wave => $"ROUND {Instance._round} — {Instance._toSpawn + CountableZombies()} zombies left",
                 Phase.Intermission => $"INTERMISSION — round {Instance._round + 1} in {Instance._phaseTimer:0}s (draw!)",
-                Phase.GameOver => $"WIPED on round {Instance._round} — {Instance._kills} kills, {Wallet.Riches} riches. ENTER = again",
+                Phase.GameOver => $"WIPED on round {Instance._round} — {Instance._kills} kills. ENTER = again",
                 _ => $"VICTORY — {Instance._kills} kills, {(Time.time - Instance._runStart) / 60f:0.0} min. ENTER = again",
             };
         }

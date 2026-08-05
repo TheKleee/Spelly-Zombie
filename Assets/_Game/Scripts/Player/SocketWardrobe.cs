@@ -57,6 +57,24 @@ namespace SpellyZombie
         public static void SetChoice(string socket, int index)
             => PlayerPrefs.SetInt("sz_outfit_" + socket, index);
 
+        // AXIOM (Marko Jul 25): a catalog slot HE filled used to be skipped in
+        // total silence when the socket name didn't resolve (a typo, a trailing
+        // space, or a rig whose bone SocketSet couldn't find). Say it once, and
+        // list the sockets this body DOES have so the fix is obvious.
+        static readonly HashSet<string> _warnedSockets = new HashSet<string>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetWarnings() => _warnedSockets.Clear();
+
+        static void WarnMissingSocket(SocketSet set, SocketWardrobe catalog, SocketWardrobe.SocketSlot slot)
+        {
+            string key = (catalog != null ? catalog.name : "?") + "|" + slot.Socket;
+            if (!_warnedSockets.Add(key)) return;
+            Debug.LogWarning($"[SpellyZombie] {(catalog != null ? catalog.name : "catalog")}: slot " +
+                $"'{slot.Socket}' has {slot.Options.Count} option(s) but this body has NO such socket — " +
+                $"nothing worn. Sockets on this body: {string.Join(", ", set.Names)}", catalog);
+        }
+
         /// Locks the CHOSEN piece of every filled catalog slot onto the
         /// matching socket (chooser null = defaults). Returns the pieces so
         /// callers can retint / cloth them.
@@ -69,7 +87,7 @@ namespace SpellyZombie
             {
                 if (slot?.Options == null || slot.Options.Count == 0) continue;
                 var socket = set.Get(slot.Socket);
-                if (socket == null) continue;
+                if (socket == null) { WarnMissingSocket(set, catalog, slot); continue; }
                 int idx = Mathf.Clamp(chooser != null ? chooser(slot.Socket) : 0,
                     0, slot.Options.Count - 1);
                 Lock(slot.Options[idx], socket, pieces);
@@ -93,7 +111,7 @@ namespace SpellyZombie
                 float roll = rng != null ? (float)rng.NextDouble() : Random.value;
                 if (roll > chance) continue;
                 var socket = set.Get(slot.Socket);
-                if (socket == null) continue;
+                if (socket == null) { WarnMissingSocket(set, catalog, slot); continue; }
                 if (socket.childCount > 0) continue; // a baked/worn piece already lives here
                 int pick = rng != null ? rng.Next(slot.Options.Count)
                     : Random.Range(0, slot.Options.Count);

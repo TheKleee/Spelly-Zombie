@@ -154,8 +154,10 @@ namespace SpellyZombie
                 AssetDatabase.CreateAsset(lib, LibPath);
             }
             lib.BodyModel = AssetDatabase.LoadAssetAtPath<GameObject>(fbxPath);
-            lib.AnimController = ctrl;
-            lib.ZombieController = zombieCtrl;
+            // AXIOM: a builder returning null must NEVER blank a controller he
+            // already has wired (a missing clip used to unwire the whole rig)
+            if (ctrl != null) lib.AnimController = ctrl;
+            if (zombieCtrl != null) lib.ZombieController = zombieCtrl;
             EditorUtility.SetDirty(lib);
             AssetDatabase.SaveAssets();
             Debug.Log($"[SpellyZombie] Character wired: {fbxPath} — player clips: " +
@@ -252,8 +254,8 @@ namespace SpellyZombie
             if (idle == null && walk == null) return null;
 
             const string path2 = "Assets/_Game/Art/SZ_ZombieAnim.controller";
-            AssetDatabase.DeleteAsset(path2);
-            var ctrl = AnimatorController.CreateAnimatorControllerAtPath(path2);
+            var ctrl = OpenForBuild(path2);
+            if (ctrl == null) return AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(path2);
             ctrl.AddParameter("Speed", AnimatorControllerParameterType.Float);
             ctrl.AddParameter("Variant", AnimatorControllerParameterType.Float);
             ctrl.AddParameter("Attack", AnimatorControllerParameterType.Trigger);
@@ -325,6 +327,46 @@ namespace SpellyZombie
             return ctrl;
         }
 
+        /// AXIOM (Marko Jul 25): the Animator window is the ONLY authoring
+        /// surface for animation feel, and rebuilding used to DeleteAsset it
+        /// "clean every run" — so every hand-tuned transition, blend threshold,
+        /// extra layer, avatar mask and StateMachineBehaviour died the next
+        /// time he clicked Build (which he must do whenever he adds a clip).
+        /// Now: if the controller carries HIS edits it is KEPT untouched;
+        /// otherwise it is backed up before regenerating. Returns null when the
+        /// caller should keep the existing asset as-is.
+        static AnimatorController OpenForBuild(string path)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<AnimatorController>(path);
+            if (existing != null && HasYourEdits(existing))
+            {
+                Debug.LogWarning($"[SpellyZombie] {path} has YOUR edits (extra layer / avatar mask / " +
+                    "StateMachineBehaviour / hand-added state) — KEPT AS-IS, nothing regenerated. " +
+                    "Delete the file by hand if you want a fresh build.", existing);
+                return null;
+            }
+            if (existing != null)
+                AssetDatabase.CopyAsset(path, AssetDatabase.GenerateUniqueAssetPath(
+                    path.Replace(".controller", $".bak-{System.DateTime.Now:yyyyMMdd-HHmm}.controller")));
+            AssetDatabase.DeleteAsset(path);
+            return AnimatorController.CreateAnimatorControllerAtPath(path);
+        }
+
+        /// Conservative "did a human touch this?" test — any of these means the
+        /// generator never made it, so it must not be thrown away.
+        static bool HasYourEdits(AnimatorController c)
+        {
+            if (c.layers.Length > 1) return true;
+            foreach (var l in c.layers)
+            {
+                if (l.avatarMask != null) return true;
+                if (l.stateMachine == null) continue;
+                foreach (var s in l.stateMachine.states)
+                    if (s.state != null && s.state.behaviours != null && s.state.behaviours.Length > 0) return true;
+            }
+            return false;
+        }
+
         /// Locomotion: 2D freeform-directional blend on (MoveX, MoveZ) — local
         /// velocity in m/s — so forward/backward/strafes each play their own
         /// clip at both walk (4.5) and sprint (7) radii. Crouch is a separate
@@ -335,8 +377,8 @@ namespace SpellyZombie
         {
             AnimationClip C(string key) => clips.TryGetValue(key, out var c) ? c : null;
 
-            AssetDatabase.DeleteAsset(CtrlPath); // rebuild clean every run
-            var ctrl = AnimatorController.CreateAnimatorControllerAtPath(CtrlPath);
+            var ctrl = OpenForBuild(CtrlPath);
+            if (ctrl == null) return AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(CtrlPath);
             ctrl.AddParameter("MoveX", AnimatorControllerParameterType.Float);
             ctrl.AddParameter("MoveZ", AnimatorControllerParameterType.Float);
             ctrl.AddParameter("Crouched", AnimatorControllerParameterType.Bool);

@@ -116,6 +116,14 @@ namespace SpellyZombie
         public Color Tint;      // full-strength field colour — feeds the inside-HUD
 
         protected Transform Ball;
+        /// HIS FX_&lt;FieldClass&gt; skin, when he authored one (AXIOM: code must
+        /// not build its own art inside it, and must not stomp its scale).
+        [System.NonSerialized] public bool HasSkin;
+        [System.NonSerialized] public Transform Skin;
+        [System.NonSerialized] public Vector3 SkinBase = Vector3.one;
+        /// How his skin should scale with the field. Ball uses DIAMETER, so
+        /// the default matches the dome it replaces; fields may override.
+        protected virtual Vector3 SkinShape => Vector3.one * Radius * 2f;
         Transform _ring;        // the ground boundary circle
         float _age, _tick;
         static readonly System.Collections.Generic.HashSet<Component> _seenRoots =
@@ -147,7 +155,9 @@ namespace SpellyZombie
             var skin = PrefabVault.Get("FX_" + typeof(T).Name);
             if (skin != null)
             {
-                Object.Instantiate(skin, go.transform, false);
+                f.Skin = Object.Instantiate(skin, go.transform, false).transform;
+                f.SkinBase = f.Skin.localScale;   // his authored size is HIS
+                f.HasSkin = true;                 // fields must not build code art over it
                 var dome = f.Ball.GetComponent<Renderer>();
                 if (dome != null) dome.enabled = false;
             }
@@ -168,6 +178,9 @@ namespace SpellyZombie
             Grow(dt);
             ShapeBall();
             if (_ring != null) _ring.localScale = Vector3.one * Radius; // grows with the field
+            // his skin grows WITH the field, scaled from what he authored
+            // (a growing black hole used to leave a fixed-size prefab behind)
+            if (Skin != null) Skin.localScale = Vector3.Scale(SkinBase, SkinShape);
 
             _tick -= dt;
             if (_tick <= 0f)
@@ -317,12 +330,15 @@ namespace SpellyZombie
             // a black hole you can SEE (Marko: "currently invisible") — an
             // OPAQUE void core riding the Ball, so it grows with the hunger;
             // the transparent shell becomes its haze
-            var core = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            core.name = "VoidCore";
-            Object.Destroy(core.GetComponent<Collider>());
-            core.transform.SetParent(f.Ball, false);
-            core.transform.localScale = Vector3.one * 0.42f;
-            core.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(Color.black, MoteShade.Opaque);
+            if (!f.HasSkin) // AXIOM: never build code art inside HIS skin
+            {
+                var core = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                core.name = "VoidCore";
+                Object.Destroy(core.GetComponent<Collider>());
+                core.transform.SetParent(f.Ball, false);
+                core.transform.localScale = Vector3.one * 0.42f;
+                core.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(Color.black, MoteShade.Opaque);
+            }
             DrawingWorld.Instance?.LogEvent(growing ? "the BLACK HOLE grows hungry" : "the dark collapses — BLACK HOLE");
             return f;
         }
@@ -506,20 +522,23 @@ namespace SpellyZombie
             f.FieldLineage = lineage;
             // the storm WEARS its vectors (Marko: "visual arrows going around
             // it") — parented to the Ball, they ride its spin for free
-            var vecMat = MatterFX.Get(down ? new Color(0.7f, 0.35f, 0.95f) : new Color(0.92f, 0.9f, 0.6f),
-                MoteShade.Additive); // pull wears PURPLE (Marko), push stays gold
-            for (int i = 0; i < 3; i++)
+            if (!f.HasSkin) // AXIOM: his FX_TornadoField owns the look outright
             {
-                var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                g.name = "StormVector";
-                Object.Destroy(g.GetComponent<Collider>());
-                g.transform.SetParent(f.Ball, false);
-                float ang = i * 120f * Mathf.Deg2Rad;
-                g.transform.localPosition = new Vector3(Mathf.Cos(ang) * 0.42f, (i - 1) * 0.16f, Mathf.Sin(ang) * 0.42f);
-                g.transform.localRotation = Quaternion.LookRotation(
-                    new Vector3(-Mathf.Sin(ang), 0f, Mathf.Cos(ang)) * (down ? -1f : 1f));
-                g.transform.localScale = new Vector3(0.03f, 0.03f, 0.22f);
-                g.GetComponent<Renderer>().sharedMaterial = vecMat;
+                var vecMat = MatterFX.Get(down ? new Color(0.7f, 0.35f, 0.95f) : new Color(0.92f, 0.9f, 0.6f),
+                    MoteShade.Additive); // pull wears PURPLE (Marko), push stays gold
+                for (int i = 0; i < 3; i++)
+                {
+                    var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    g.name = "StormVector";
+                    Object.Destroy(g.GetComponent<Collider>());
+                    g.transform.SetParent(f.Ball, false);
+                    float ang = i * 120f * Mathf.Deg2Rad;
+                    g.transform.localPosition = new Vector3(Mathf.Cos(ang) * 0.42f, (i - 1) * 0.16f, Mathf.Sin(ang) * 0.42f);
+                    g.transform.localRotation = Quaternion.LookRotation(
+                        new Vector3(-Mathf.Sin(ang), 0f, Mathf.Cos(ang)) * (down ? -1f : 1f));
+                    g.transform.localScale = new Vector3(0.03f, 0.03f, 0.22f);
+                    g.GetComponent<Renderer>().sharedMaterial = vecMat;
+                }
             }
             Juice.Whoosh(at);
             var lib = FxLibrary.I; // wind wears trails, water wears rings (Marko's mapping)

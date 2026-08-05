@@ -237,8 +237,14 @@ namespace SpellyZombie
 
         // --------------------------------------------------------- tinting --
 
-        /// "_Team"-named renderers take the color; pieces without any get
-        /// tinted whole (the placeholders work this way).
+        /// "_Team"-named renderers take the color. AXIOM (Marko Jul 25): a
+        /// piece with NO _Team renderer KEEPS HIS MATERIALS — the old fallback
+        /// blanket-replaced sharedMaterial on every renderer of his authored
+        /// costume (his WizardHat lost its look on every player, silently).
+        /// Only empty material slots get filled, so code-built placeholders
+        /// (which ship with none) still show up.
+        static readonly HashSet<string> _untinted = new HashSet<string>();
+
         public static void Retint(List<GameObject> pieces, Color team)
         {
             if (pieces == null) return;
@@ -249,8 +255,23 @@ namespace SpellyZombie
                 var marked = new List<Renderer>();
                 foreach (var r in all)
                     if (r.gameObject.name.EndsWith("_Team")) marked.Add(r);
-                foreach (var r in marked.Count > 0 ? marked : new List<Renderer>(all))
-                    if (!(r is LineRenderer)) r.sharedMaterial = MatterFX.Get(team, MoteShade.Opaque);
+
+                if (marked.Count > 0)
+                {
+                    foreach (var r in marked)
+                        if (!(r is LineRenderer)) r.sharedMaterial = MatterFX.Get(team, MoteShade.Opaque);
+                    continue;
+                }
+
+                // his art, untouched — fill only slots that would draw nothing
+                foreach (var r in all)
+                    if (!(r is LineRenderer) && r.sharedMaterial == null)
+                        r.sharedMaterial = MatterFX.Get(team, MoteShade.Opaque);
+
+                string label = piece.name.Replace("(Clone)", "").Trim();
+                if (_untinted.Add(label))
+                    Debug.LogWarning($"[SpellyZombie] Costume piece '{label}' has no \"_Team\" renderer — " +
+                        "KEEPING ITS OWN MATERIALS. Rename a mesh to end in _Team to team-tint part of it.", piece);
             }
         }
 

@@ -106,7 +106,6 @@ namespace SpellyZombie
             Add(1, "Arm raise", new Vector3(0f, 0f, 105f), Vector3.zero, Vector3.zero);
             Add(2, "Victory", new Vector3(0f, 0f, 150f), new Vector3(0f, 0f, -150f), Vector3.zero);
             Add(3, "Arms crossed", new Vector3(0f, 0f, 100f), new Vector3(0f, 0f, -100f), Vector3.zero);
-            // (slot 4 "Bow" removed by Marko's ruling — slots are his to fill)
         }
 
         public static EmoteDef DefaultForSlot(int slot)

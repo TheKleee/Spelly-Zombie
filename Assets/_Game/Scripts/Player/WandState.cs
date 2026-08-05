@@ -83,28 +83,8 @@ namespace SpellyZombie
             return cam != null && cam.isActiveAndEnabled;
         }
 
-        // functional test readout — the DIEGETIC wand-shrink gauge is task #22 (Marko's art)
-        static Texture2D _px;
-        void OnGUI()
-        {
-            if (!IsLocal() || _ink == null) return;
-            if (_px == null) { _px = new Texture2D(1, 1); _px.SetPixel(0, 0, Color.white); _px.Apply(); }
-
-            float f = Mathf.Clamp01(_ink.Ink / Perks.InkMax);
-            var bg = new Rect(24f, Screen.height - 54f, 260f, 22f);
-            Fill(bg, new Color(0f, 0f, 0f, 0.5f));
-            Fill(new Rect(bg.x, bg.y, bg.width * f, bg.height),
-                HasWand ? new Color(0.35f, 0.75f, 1f, 0.9f) : new Color(0.6f, 0.2f, 0.2f, 0.9f));
-
-            string status = !HasWand ? "WANDLESS — refill at a cauldron"
-                : _ink.Ink <= 0.5f ? $"WAND DRYING — {Mathf.CeilToInt(Mathf.Max(0f, _dissolveLeft))}s"
-                : $"WAND — ink {Mathf.RoundToInt(f * 100f)}%";
-            GUI.Label(new Rect(28f, bg.y - 22f, 420f, 22f), status);
-        }
-
-        static void Fill(Rect r, Color c)
-        {
-            var prev = GUI.color; GUI.color = c; GUI.DrawTexture(r, _px); GUI.color = prev;
-        }
+        // NO UI BAR (Marko: "we don't need any UI — the ink is always visibly
+        // decaying, cauldron or wand"). The wand ITSELF is the gauge now:
+        // WandInk shrinks it with the ink and disintegrates it when wandless.
     }
 }

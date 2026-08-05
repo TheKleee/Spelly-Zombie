@@ -39,9 +39,19 @@ namespace SpellyZombie
             foreach (var pts in AllWalks(strokes))
             {
                 if (pts.Count < 2) continue;
+                // THE FRAME COMES FROM THE DRAWING, NEVER THE WORLD (Marko's
+                // law). A third frame of 0° used to sit at the front of this
+                // list — the raw plane/world frame. Match takes the best over
+                // all readings, so a tilted drawing and its upright twin agreed
+                // on the a1/a2 sentences but produced DIFFERENT frame-0
+                // sentences, and either could raise a template's chain score.
+                // VariantScore multiplies the graph verdict by that score, so
+                // the world frame was quietly swinging the final ranking by up
+                // to ±20% purely on how the rune happened to be tilted. Both
+                // frames left are read off the shape itself.
                 float a1 = LongestSegmentAngle(pts);
                 float a2 = EndToEndAngle(pts);
-                float[] frames = { 0f, a1, a2 };
+                float[] frames = { a1, a2 };
                 foreach (float frame in frames)
                 {
                     var s = Encode(pts, frame);
@@ -102,6 +112,16 @@ namespace SpellyZombie
                 walk.AddRange(stroke);
         }
 
+        /// RETIRED Jul 31 — kept only so nothing that still calls it breaks.
+        /// DO NOT RE-WIRE THIS INTO THE MATCHER. The bounding box is
+        /// WORLD-AXIS-ALIGNED, so a rune drawn tilted has a different
+        /// elongation than the same rune drawn upright, and this penalty then
+        /// punishes it for the tilt. That violates Marko's law directly
+        /// ("measure in the rune's own frame, never the world's"), which is why
+        /// the segment-graph matcher takes proportion from RuneGraph.StemFrac
+        /// and the limb ratios instead — both measured against the rune's own
+        /// stem, both rotation-proof.
+        ///
         /// Proportion of the shape: long side / short side of its bounding box.
         /// Direction sentences are proportion-BLIND, and the alphabet's bracket
         /// family differs ONLY by proportion (wide State vs square Density) —

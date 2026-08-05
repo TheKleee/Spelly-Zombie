@@ -72,12 +72,26 @@ namespace SpellyZombie
             var clone = Object.Instantiate(src);
             clone.name = bakeName;
 
+            // THE BAKE MUST NOT WELD THE FIT INTO THE SPECIES: the runtime
+            // MULTIPLIES the per-kind width (charger 1.25 / runner 0.72) and
+            // the flavor jitter onto the prefab's authored scale. Baking a
+            // charger and re-baking would compound it (1.25 → 1.56 → …) and
+            // every walker would inherit it. Root scale returns to neutral;
+            // his own authored scale inside the prefab is untouched.
+            clone.transform.localScale = Vector3.one;
+
             // the game OWNS these — they re-add (or re-adopt) at runtime, and
             // baked copies would double up or serialize broken
             Strip<CharacterJoint>(clone);   // joints before their rigidbodies
             Strip<Cloth>(clone);
-            Strip<Collider>(clone);
-            Strip<Rigidbody>(clone);
+            // COLLIDERS/BODIES: the PLAYER rig re-adopts them at runtime, but
+            // nothing rebuilds them on a zombie — stripping there would eat
+            // hand-authored physics on every re-bake, permanently.
+            if (bakeName != "ZombieBody")
+            {
+                Strip<Collider>(clone);
+                Strip<Rigidbody>(clone);
+            }
             Strip<ZombieFlavor>(clone);
             Strip<SocketSet>(clone);
             Strip<HandIK>(clone);
@@ -100,7 +114,16 @@ namespace SpellyZombie
             }
 
             string path = $"{Dir}/{bakeName}.prefab";
-            AssetDatabase.DeleteAsset(path); // re-bake = overwrite, that's the loop
+            // AXIOM (Marko Jul 25): NEVER delete his asset before the new one
+            // exists — a failed save used to mean the prefab was simply GONE.
+            // SaveAsPrefabAsset overwrites in place and keeps the GUID, so
+            // every scene reference survives. Back up the old one first.
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
+            {
+                System.IO.Directory.CreateDirectory($"{Dir}/_backup");
+                AssetDatabase.CopyAsset(path, AssetDatabase.GenerateUniqueAssetPath(
+                    $"{Dir}/_backup/{bakeName}_{System.DateTime.Now:yyyyMMdd_HHmm}.prefab"));
+            }
             PrefabUtility.SaveAsPrefabAsset(clone, path, out bool ok);
             Object.DestroyImmediate(clone);
             AssetDatabase.SaveAssets();

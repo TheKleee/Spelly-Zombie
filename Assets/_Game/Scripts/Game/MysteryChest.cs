@@ -19,7 +19,6 @@ namespace SpellyZombie
     /// divergence; the roll only touches local buffs and world pickups).
     public class MysteryChest : MonoBehaviour
     {
-        public const int RollCost = 25;
         const float Reach = 2.4f;
 
         static MysteryChest _instance;
@@ -57,8 +56,24 @@ namespace SpellyZombie
             {
                 root = Object.Instantiate(customChest, at, Quaternion.identity);
                 root.name = "SZ_MysteryChest";
+                // AXIOM (Marko Jul 25): exact "Lid" only meant any other name
+                // → the chest never opens, silently. Exact first, then a TOKEN
+                // match (a raw Contains("lid") would grab "Collider"/"Solid").
                 foreach (var t in root.GetComponentsInChildren<Transform>(true))
                     if (t.name == "Lid") { lidT = t; break; }
+                if (lidT == null)
+                    foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                    {
+                        foreach (var tok in t.name.Split('_', '.', '-', ' '))
+                            if (tok.Equals("lid", System.StringComparison.OrdinalIgnoreCase)
+                             || tok.Equals("cover", System.StringComparison.OrdinalIgnoreCase))
+                            { lidT = t; break; }
+                        if (lidT != null) break;
+                    }
+                if (lidT == null)
+                    Debug.LogWarning($"[SpellyZombie] Chest prefab '{customChest.name}' has no child named " +
+                        "\"Lid\" — it spawns, glows and pays out fine, it just won't SWING OPEN. Name the " +
+                        "hinge child Lid, pivot it on the hinge edge, and author it CLOSED.", root);
 
                 // a Blender export without colliders would be a ghost — the
                 // pen, spells and zombies would pass straight through it
@@ -136,20 +151,12 @@ namespace SpellyZombie
             var player = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             if (player == null || player.IsDowned) return;
             if ((player.transform.position - transform.position).sqrMagnitude > Reach * Reach) return;
-            UIPrompt.Show("E", Loc.F("chest.try", RollCost),
-                new Color(0.6f, 0.95f, 1f));
+            UIPrompt.Show("E", Loc.T("chest.try"), new Color(0.6f, 0.95f, 1f));
 
             var kb = Keyboard.current;
             if (kb == null || !kb.eKey.wasPressedThisFrame) return;
 
-            if (Wallet.Riches < RollCost)
-            {
-                DrawingWorld.Instance?.LogEvent($"The chest wants {RollCost} riches — you have {Wallet.Riches}");
-                Juice.Thud(transform.position);
-                return;
-            }
-            Wallet.Riches -= RollCost;
-            StartCoroutine(Roll());
+            StartCoroutine(Roll()); // no currency gate — riches are gone
         }
 
         IEnumerator Roll()
@@ -224,8 +231,7 @@ namespace SpellyZombie
         IEnumerator TheBear()
         {
             Juice.Sting(transform.position);
-            Wallet.Riches += RollCost / 2; // half refund, no hard feelings
-            DrawingWorld.Instance?.LogEvent("...the chest GROWLS and leaves. Half your riches back.");
+            DrawingWorld.Instance?.LogEvent("...the chest GROWLS and leaves.");
 
             var points = Object.FindObjectsByType<MysteryChestSpawnPoint>(
                 FindObjectsInactive.Exclude, FindObjectsSortMode.None);

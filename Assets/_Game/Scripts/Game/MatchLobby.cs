@@ -4,14 +4,16 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Pre-match lobby (Marko's flow): four TEAM COLOR PILLARS stand in a ring
-    /// at spawn — walk up and press E to wear that color. Nobody picks?
-    /// Everyone is team RED (his decision). ENTER toggles ready; when EVERYONE
-    /// is ready the match starts in 10 seconds. NO auto-start timer — the
-    /// lobby waits as long as the wizards want (his call, timer removed).
-    /// The HOST picks the map with M, Among-Us style: host chooses, everyone
-    /// sees the pick on the lobby board, ready-up loads that scene. Team hues
-    /// are colorblind-safe (Okabe-Ito).
+    /// Pre-match lobby. PURE CO-OP, NO TEAMS, NO PILLARS (Marko: "remove the
+    /// team pillars from code, we don't need them anymore"): your color is
+    /// your JOIN ORDER — host RED, then BLUE, GREEN, YELLOW. Nothing to pick,
+    /// nothing to learn. ENTER toggles ready; when EVERYONE is ready the
+    /// match starts in 10 seconds. NO auto-start timer — the lobby waits as
+    /// long as the wizards want (his call). The HOST picks the map with M,
+    /// Among-Us style: host chooses, everyone sees the pick on the board,
+    /// ready-up loads that scene. Hues are colorblind-safe (Okabe-Ito).
+    /// (TeamNames/TeamColors/LocalTeam keep their names — they're the
+    /// player-COLOR api and wire byte now, renaming would churn net + saves.)
     public class MatchLobby : MonoBehaviour
     {
         public static MatchLobby Instance { get; private set; }
@@ -45,8 +47,10 @@ namespace SpellyZombie
             return _mapCache;
         }
 
-        /// Local player's team (index into TeamColors). Everyone starts RED.
+        /// Local player's COLOR (index into TeamColors), assigned by join
+        /// order — never picked. Host/offline = RED.
         public static byte LocalTeam;
+        bool _colorSet; // client color locks once, at connect
 
         public static readonly string[] TeamNames = { "RED", "BLUE", "GREEN", "YELLOW" };
         public static readonly Color[] TeamColors =
@@ -60,7 +64,6 @@ namespace SpellyZombie
         float _countdown = -1f; // ticks once everyone is ready
         float _pushTimer;
         bool _readyLocal, _built;
-        readonly List<Transform> _pillars = new List<Transform>();
         readonly HashSet<int> _remoteReady = new HashSet<int>();
 
         // client-side mirror of the host's lobby state
@@ -110,24 +113,20 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             bool client = NetGame.Connected && !NetGame.IsHost;
 
+            // COLOR = JOIN ORDER, automatically (no pillars, no picking):
+            // host/offline RED; a client locks in by how many players were
+            // already here when it arrived
+            if (!NetGame.Connected) { LocalTeam = 0; _colorSet = false; }
+            else if (NetGame.IsHost) LocalTeam = 0;
+            else if (!_colorSet)
+            {
+                _colorSet = true;
+                LocalTeam = (byte)Mathf.Clamp(NetSync.RemoteCount, 1, TeamColors.Length - 1);
+            }
+
             if (player != null && kb != null && !GameMenu.IsOpen && !PoseStudio.IsOpen
                 && !UIKit.Typing) // ENTER while typing an IP must not ready you up
             {
-                // E at a pillar = wear its color (the pillar announces itself)
-                for (int i = 0; i < _pillars.Count; i++)
-                    if (_pillars[i] != null && Vector3.Distance(
-                            player.transform.position, _pillars[i].position) < 2.2f)
-                    {
-                        UIPrompt.Show("E", Loc.F("team.wear", TeamNames[i]));
-                        if (kb.eKey.wasPressedThisFrame)
-                        {
-                            LocalTeam = (byte)i;
-                            Juice.Chime(player.transform.position);
-                            DrawingWorld.Instance?.LogEvent($"you are TEAM {TeamNames[i]}");
-                        }
-                        break;
-                    }
-
                 // ENTER = ready toggle
                 if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
                 {
@@ -178,42 +177,12 @@ namespace SpellyZombie
             }
         }
 
-        // --------------------------------------------------------- pillars --
-        void Build()
-        {
-            _built = true;
-            Vector3 anchor = SimpleFPSController.All.Count > 0 && SimpleFPSController.All[0] != null
-                ? SimpleFPSController.All[0].transform.position : Vector3.zero;
-            anchor.y = 0f;
-
-            for (int i = 0; i < TeamColors.Length; i++)
-            {
-                float a = (i / (float)TeamColors.Length) * Mathf.PI * 2f + Mathf.PI * 0.25f;
-                Vector3 pos = anchor + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 4.5f;
-
-                var pillar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                pillar.name = "TeamPillar_" + TeamNames[i];
-                pillar.transform.position = pos + Vector3.up * 0.9f;
-                pillar.transform.localScale = new Vector3(0.35f, 0.9f, 0.35f);
-                pillar.GetComponent<Renderer>().sharedMaterial =
-                    MatterFX.Particle(TeamColors[i], MoteShade.Additive, 0.03f, 0.8f);
-
-                var glow = pillar.AddComponent<Light>();
-                glow.type = LightType.Point;
-                glow.color = TeamColors[i];
-                glow.range = 4.5f;
-                glow.intensity = 2.2f;
-
-                _pillars.Add(pillar.transform);
-            }
-        }
+        // ------------------------------------------------------ lobby state --
+        void Build() => _built = true;
 
         void Teardown()
         {
             _built = false;
-            foreach (var p in _pillars)
-                if (p != null) Destroy(p.gameObject);
-            _pillars.Clear();
             _remoteReady.Clear();
             _readyLocal = false;
             _countdown = -1f;
@@ -250,7 +219,7 @@ namespace SpellyZombie
             _uiStatus.text = countdown >= 0f
                 ? $"STARTING IN {Mathf.CeilToInt(Mathf.Max(0f, countdown))}…"
                 : "LOBBY — ready up to start";
-            _uiTeam.text = $"■ TEAM {TeamNames[LocalTeam]}";
+            _uiTeam.text = $"■ {TeamNames[LocalTeam]}"; // your color, not a team
             _uiTeam.color = TeamColors[Mathf.Min(LocalTeam, (byte)(TeamColors.Length - 1))];
             _uiReady.text = $"READY {ready}/{total} — ENTER to ready up"
                 + (_readyLocal ? "  (you are READY)" : "");
@@ -291,11 +260,8 @@ namespace SpellyZombie
             UIKit.Place((RectTransform)_uiTeam.transform, new Vector2(0.5f, 1f), new Vector2(0f, -20f), new Vector2(430f, 20f));
             _uiReady = UIKit.Label(board, "", 16, UIKit.Ink, TextAnchor.MiddleCenter, true);
             UIKit.Place((RectTransform)_uiReady.transform, new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(430f, 20f));
-            var hint = UIKit.Label(board, "walk to a color pillar + E to pick a team (no pick = RED)",
-                16, new Color(0.32f, 0.25f, 0.16f), TextAnchor.MiddleCenter);
-            UIKit.Place((RectTransform)hint.transform, new Vector2(0.5f, 1f), new Vector2(0f, -72f), new Vector2(430f, 20f));
             _uiMap = UIKit.Label(board, "", 16, UIKit.Ink, TextAnchor.MiddleCenter, true);
-            UIKit.Place((RectTransform)_uiMap.transform, new Vector2(0.5f, 1f), new Vector2(0f, -98f), new Vector2(430f, 20f));
+            UIKit.Place((RectTransform)_uiMap.transform, new Vector2(0.5f, 1f), new Vector2(0f, -72f), new Vector2(430f, 20f));
         }
 
         void OnDestroy()

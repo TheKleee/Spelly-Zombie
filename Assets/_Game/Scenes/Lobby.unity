@@ -229,6 +229,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &178656
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1022,6 +1032,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &13649275
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1476,6 +1496,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &18056994
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1644,6 +1674,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &19441082
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2255,6 +2295,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &23860638
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3591,6 +3641,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &41175688
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4197,6 +4257,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &45352840
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4361,6 +4431,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &49221959
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9383,6 +9463,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &51360807
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9877,6 +9967,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &59840910
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10067,6 +10167,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &61455830
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10467,6 +10577,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &67297819
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11546,6 +11666,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &85614899
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11872,6 +12002,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &87036758
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13009,6 +13149,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &107724404
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14431,6 +14581,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &118991665
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14996,6 +15156,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &128534276
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17135,6 +17305,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &172513803
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17859,6 +18039,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &188702484
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18042,6 +18232,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &189243717
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18392,6 +18592,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &191184486
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18865,6 +19075,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &199897475
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19051,6 +19271,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &201284796
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20051,6 +20281,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &220792671
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20241,6 +20481,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &221297881
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -23752,6 +24002,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &279883397
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25259,6 +25519,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &296316817
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25577,6 +25847,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &299250461
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25873,6 +26153,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &301777772
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26421,6 +26711,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &313671980
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26862,6 +27162,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &324689243
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27184,6 +27494,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &325557430
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27632,6 +27952,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &327289860
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -30325,47 +30655,47 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.x
-      value: 262.28058
+      value: 141.73119
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.y
-      value: 262.28058
+      value: 141.73119
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.z
-      value: 262.28058
+      value: 141.73119
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -5.5047483
+      value: -11.833
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.72821426
+      value: 1.52
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 9.534499
+      value: 6.809
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.18301263
+      value: 0.25516704
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.18301266
+      value: -0.25516695
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.68301266
+      value: -0.65946174
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.6830128
+      value: -0.6594618
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -30373,7 +30703,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: 222.306
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -31421,6 +31751,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &393471286
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31611,6 +31951,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &393896807
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31805,6 +32155,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &394437016
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31991,6 +32351,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &396506752
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32185,6 +32555,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &398428204
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -33225,6 +33605,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &419085635
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -34763,6 +35153,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &452713229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -35193,6 +35593,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &455558251
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -35387,6 +35797,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &456135038
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -36097,6 +36517,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &469742833
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -37383,6 +37813,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &493740350
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -37569,6 +38009,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &496198259
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -37871,47 +38321,47 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.x
-      value: 262.28052
+      value: 134.77547
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.y
-      value: 262.28052
+      value: 134.77547
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.z
-      value: 262.28052
+      value: 134.77547
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 5.5047464
+      value: 3.022
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.7282142
+      value: 1.669
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 9.5345
+      value: 11.041
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.1830127
+      value: -0.07365186
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.18301272
+      value: 0.07365189
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.68301266
+      value: 0.70326054
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.6830128
+      value: 0.70326066
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -37919,7 +38369,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: -168.043
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -38234,6 +38684,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &512846362
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -38639,6 +39099,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &513801972
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -38929,6 +39399,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &517032229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -39119,6 +39599,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &517256937
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -39217,15 +39707,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 11.372413
+      value: 11.42
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.033061147
+      value: -0.033
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 5.0801487
+      value: 4.919
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
       propertyPath: m_LocalRotation.w
@@ -39309,6 +39799,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &518215896
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -39676,6 +40176,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &529115939
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -40126,6 +40636,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &531761839
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -41305,6 +41825,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &557142906
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -41734,6 +42264,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &565634343
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -42972,6 +43512,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &582735232
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -43340,6 +43890,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &584774298
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -43508,6 +44068,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &585936484
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -44146,6 +44716,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &591210032
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -45769,6 +46349,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &620503683
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -47274,6 +47864,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &638629544
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -47563,6 +48163,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &642781258
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -47757,6 +48367,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &645365158
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -47943,6 +48563,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &646496239
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -48860,6 +49490,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &666092400
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -49186,6 +49826,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &669070310
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -49817,6 +50467,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &673615572
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -50263,6 +50923,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &681345221
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -50532,6 +51202,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &681603993
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -51059,6 +51739,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &691616518
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -51445,6 +52135,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &698506994
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -52620,6 +53320,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &729591007
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -53411,6 +54121,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &747900213
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -53869,6 +54589,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &754324334
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -54282,6 +55012,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &756837578
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -54468,6 +55208,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &758218398
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -54794,6 +55544,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &759715136
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -55561,6 +56321,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &768177731
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -55747,6 +56517,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &769627371
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -56926,6 +57706,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &787439197
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -57987,47 +58777,47 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.x
-      value: 262.28052
+      value: 151.00539
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.y
-      value: 262.28052
+      value: 151.00539
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.z
-      value: 262.28052
+      value: 151.00539
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 5.504747
+      value: 9.08
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.7282142
+      value: 1.66
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -9.534499
+      value: -8.846
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.68301266
+      value: -0.6183781
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.6830128
+      value: 0.6183783
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.18301275
+      value: 0.34294084
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.1830128
+      value: 0.34294084
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -58035,7 +58825,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: -58.024
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -58403,6 +59193,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &806961580
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -58799,6 +59599,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &817668331
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -58989,6 +59799,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &818106639
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -59540,6 +60360,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &823402531
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -59626,47 +60456,47 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.x
-      value: 262.28055
+      value: 154.56462
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.y
-      value: 262.28055
+      value: 154.56462
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.z
-      value: 262.28055
+      value: 154.56462
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -11.009492
+      value: -14.071
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.7282142
+      value: 1.219
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.0000005492624
+      value: -1.015
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.5
+      value: -0.69959587
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.5000001
+      value: 0.6995959
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.49999994
+      value: 0.10278936
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.5
+      value: 0.102789156
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -59674,7 +60504,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: -16.717
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -59936,6 +60766,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &828279502
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60104,6 +60944,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &831419400
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60343,6 +61193,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &834470022
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60674,6 +61534,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &836868390
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -61252,6 +62122,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &844834092
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -61767,6 +62647,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &850579693
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -62014,6 +62904,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &851444692
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -62458,6 +63358,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &855804272
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -63598,6 +64508,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &877914586
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -64437,6 +65357,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &889915752
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -64706,6 +65636,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &890796179
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -65622,6 +66562,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &898158569
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -66042,6 +66992,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &909430919
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -66659,35 +67619,35 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 5.7963624
+      value: 6.72
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.0031263232
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 9.3715
+      value: 8.61
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.40557978
+      value: -0.4456532
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.40557986
+      value: 0.44565332
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.5792279
+      value: 0.5489929
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.57922804
+      value: 0.548993
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -66695,7 +67655,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: -101.863
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -66724,6 +67684,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
       insertIndex: -1
       addedObject: {fileID: 918754315}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 918754322}
   m_SourcePrefab: {fileID: 100100000, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
 --- !u!4 &918754313 stripped
 Transform:
@@ -66747,6 +67710,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &918754316
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -66823,6 +67796,22 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 1064877516495748917, guid: 8d4d6fb3f77c583488d20dc798ef9f52, type: 3}
+--- !u!114 &918754322
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 918754314}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17cc25e887c360b4fac516335f2ce3b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Liftable
+  Rooted: 1
+  AnchorHold: 0
+  Size: 2
+  Mass: 0
 --- !u!1001 &919209391
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -66937,6 +67926,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &919209395
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67440,6 +68439,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &924105944
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67847,6 +68856,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &928231168
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -68037,6 +69056,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &928320678
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -68297,6 +69326,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &932215441
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -68984,6 +70023,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &937270036
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -69597,6 +70646,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &943949196
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -70488,6 +71547,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &959414734
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -70678,6 +71747,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &961151581
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -70971,6 +72050,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &961770415
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -71869,6 +72958,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &976117646
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -72059,6 +73158,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &976663560
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -72452,6 +73561,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &982905193
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -73033,6 +74152,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &996746265
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -75964,6 +77093,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1042970139
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -77894,6 +79033,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1083066376
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -78349,6 +79498,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1088108879
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -79600,6 +80759,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1110516926
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -80065,6 +81234,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1118484106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -80951,6 +82130,80 @@ Material:
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
+--- !u!1001 &1131775504
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1826625633}
+    m_Modifications:
+    - target: {fileID: 2810566688733675094, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_Name
+      value: Target Small
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.61109
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.61109
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.61109
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -1.936
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.058000013
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 12.018
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 180
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+--- !u!4 &1131775505 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+  m_PrefabInstance: {fileID: 1131775504}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1132027483
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -81937,6 +83190,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1146270112
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -82333,6 +83596,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1153916619
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -82500,6 +83773,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1154656209}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1154656216}
   m_SourcePrefab: {fileID: 100100000, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
 --- !u!4 &1154656207 stripped
 Transform:
@@ -82523,6 +83799,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1154656210
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -82599,6 +83885,22 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -1926403951900781465, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
+--- !u!114 &1154656216
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1154656208}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17cc25e887c360b4fac516335f2ce3b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Liftable
+  Rooted: 1
+  AnchorHold: 0
+  Size: 2
+  Mass: 0
 --- !u!1001 &1157162653
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -83294,6 +84596,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1161560775
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -84322,6 +85634,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1171759344
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -84685,6 +86007,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1175183559
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -85356,6 +86688,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1188073106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -85752,6 +87094,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1192017711
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -86358,6 +87710,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1201852078
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -87735,6 +89097,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1225320750
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -87925,6 +89297,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1225581383
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -90828,6 +92210,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1278961263
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -91145,6 +92537,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1280219032
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -92485,6 +93887,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1293537933
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -92675,6 +94087,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1293843922
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -93477,6 +94899,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1314343346
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -93868,6 +95300,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1322550345
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -94317,6 +95759,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1324869831
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -94503,6 +95955,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1326405214
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -95510,6 +96972,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1344339092
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -95693,6 +97165,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1345167459
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -96096,6 +97578,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1346745172
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -96286,6 +97778,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1348500847
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -99121,6 +100623,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1392749638
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -99773,6 +101285,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1404589116
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -100262,6 +101784,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1408917736
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -100448,6 +101980,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1409529347
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -101205,6 +102747,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1416017800
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -101474,6 +103026,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1416628860
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -102189,6 +103751,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1434247234
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -102610,6 +104182,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1437571561
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -102696,47 +104278,47 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.x
-      value: 262.28052
+      value: 160.27701
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.y
-      value: 262.28052
+      value: 160.27701
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.z
-      value: 262.28052
+      value: 160.27701
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -5.5047464
+      value: -4.102
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.7282142
+      value: 1.704
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -9.534499
+      value: -12.622
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.68301266
+      value: -0.5235412
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.6830128
+      value: 0.5235412
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.18301272
+      value: 0.47529438
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.18301275
+      value: 0.4752942
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -102744,7 +104326,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: -84.469
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -103195,6 +104777,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1441321422
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -103488,6 +105080,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1442241905
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -103905,6 +105507,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1451394859
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -104785,6 +106397,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1462634362
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -105823,6 +107445,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1481077965
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -106218,6 +107850,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1494790944
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -106737,6 +108379,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1501923457
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -107071,6 +108723,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1510005293
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -107638,6 +109300,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1516415263
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -108679,6 +110351,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1526042669
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -109007,15 +110689,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5fc8380ba5a0f4d4fa0df5840224dcf4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -6.3642354
+      value: -9.48
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5fc8380ba5a0f4d4fa0df5840224dcf4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.0026358366
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5fc8380ba5a0f4d4fa0df5840224dcf4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 6.3639717
+      value: 5.75
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5fc8380ba5a0f4d4fa0df5840224dcf4, type: 3}
       propertyPath: m_LocalRotation.w
@@ -109103,6 +110785,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1537829648
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -109870,6 +111562,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1551823902
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -110270,6 +111972,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1554668010
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -110642,6 +112354,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1559299623
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -110889,6 +112611,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1566996618
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -111057,6 +112789,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1568570838
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -111326,6 +113068,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1569850474
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -111573,6 +113325,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1570456808
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -112014,6 +113776,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1587036040
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -113144,6 +114916,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1601204817
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -113430,6 +115212,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1605437404
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -113624,6 +115416,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1605667554
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -114769,6 +116571,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1622743198
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -114952,6 +116764,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1623599140
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -115481,6 +117303,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1630003477
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -115671,6 +117503,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1630069537
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -116537,6 +118379,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1649178621
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -117279,6 +119131,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1667898167
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -118422,6 +120284,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1691087560
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -118711,6 +120583,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1692418878
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -119337,6 +121219,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1700386445
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -119730,6 +121622,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1706664479
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -120724,6 +122626,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1724454639
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -121149,6 +123061,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1732469510
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -121896,6 +123818,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1743550728
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -122166,6 +124098,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1748628637}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1748628644}
   m_SourcePrefab: {fileID: 100100000, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
 --- !u!4 &1748628635 stripped
 Transform:
@@ -122189,6 +124124,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1748628638
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -122265,6 +124210,22 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -1926403951900781465, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
+--- !u!114 &1748628644
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1748628636}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17cc25e887c360b4fac516335f2ce3b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Liftable
+  Rooted: 0
+  AnchorHold: 0
+  Size: 2
+  Mass: 0
 --- !u!1001 &1749042167
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -122721,6 +124682,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1751656647
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -122931,47 +124902,47 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.x
-      value: 262.28055
+      value: 151.0054
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.y
-      value: 262.28055
+      value: 151.0054
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalScale.z
-      value: 262.28055
+      value: 151.0054
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 11.009492
+      value: 12.73
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.7282142
+      value: 1.74
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.00000062584877
+      value: 0.55
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.49999997
+      value: -0.42563763
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.50000006
+      value: 0.42563775
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.49999997
+      value: 0.56465256
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.50000006
+      value: 0.5646526
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -122979,7 +124950,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: -105.982
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 858a4b02cbe97284687abce69ef67ff4, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -123523,6 +125494,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1760324698
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -125275,6 +127256,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1775113785
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -125689,6 +127680,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1777478097
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -126329,6 +128330,80 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
   Material: 0
+--- !u!1001 &1789294324
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1826625633}
+    m_Modifications:
+    - target: {fileID: 2810566688733675094, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_Name
+      value: Target Large
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.5303
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.5303
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1.5303
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -5.6
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.058000013
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 12.07
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 180
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+--- !u!4 &1789294325 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+  m_PrefabInstance: {fileID: 1789294324}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1791896909
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -126443,6 +128518,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1791896913
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -126856,6 +128941,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1794796412
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -127607,6 +129702,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1807506536
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -127705,15 +129810,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5fc8380ba5a0f4d4fa0df5840224dcf4, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -4.3642154
+      value: -8.73
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5fc8380ba5a0f4d4fa0df5840224dcf4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.0026358366
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5fc8380ba5a0f4d4fa0df5840224dcf4, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 6.9640646
+      value: 6.49
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 5fc8380ba5a0f4d4fa0df5840224dcf4, type: 3}
       propertyPath: m_LocalRotation.w
@@ -127801,6 +129906,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1808179862
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -129988,6 +132103,9 @@ Transform:
   - {fileID: 1432937169}
   - {fileID: 1538430044}
   - {fileID: 49616003}
+  - {fileID: 1789294325}
+  - {fileID: 2110148825}
+  - {fileID: 1131775505}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1827593588
@@ -131121,6 +133239,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1852888561
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -131975,6 +134103,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1870653901}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1870653908}
   m_SourcePrefab: {fileID: 100100000, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
 --- !u!4 &1870653899 stripped
 Transform:
@@ -131998,6 +134129,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1870653902
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -132074,6 +134215,22 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -1926403951900781465, guid: 2bc7447038e575e4abb9b9f6baea5579, type: 3}
+--- !u!114 &1870653908
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1870653900}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17cc25e887c360b4fac516335f2ce3b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Liftable
+  Rooted: 1
+  AnchorHold: 0
+  Size: 2
+  Mass: 0
 --- !u!1 &1875404421
 GameObject:
   m_ObjectHideFlags: 0
@@ -132451,6 +134608,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1881173882
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -133205,6 +135372,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1886608232
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -133494,6 +135671,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1890049603
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -134576,6 +136763,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1906101110
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -135413,6 +137610,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1912805449
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -135666,6 +137873,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1915998904
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -136195,6 +138412,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1921165093
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -139409,6 +141636,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1976023690
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -139780,6 +142017,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1979498700
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -140770,6 +143017,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &1996103019
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -141530,6 +143787,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2010483390
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -141815,6 +144082,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2013500209
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -142005,6 +144282,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2020407565
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -142491,6 +144778,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2027236191
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -142760,6 +145057,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2028003506
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -143803,6 +146110,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2043238765
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -144932,6 +147249,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2068367528
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -145977,6 +148304,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2086929003
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -146401,6 +148738,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2090309866
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -146880,6 +149227,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2094518141
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -147258,6 +149615,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2097253085
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -148631,6 +150998,68 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 2765029961918457010, guid: a94f1163702b8b947b289e280c48de6f, type: 3}
+--- !u!1001 &2110148824
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1826625633}
+    m_Modifications:
+    - target: {fileID: 2810566688733675094, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_Name
+      value: Target Medium
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -3.563
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.058000013
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 12.005
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 180
+      objectReference: {fileID: 0}
+    - target: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+--- !u!4 &2110148825 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3191630672107431148, guid: b733331b9c8671647b262bd79ef1ec74, type: 3}
+  m_PrefabInstance: {fileID: 2110148824}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2110150594
 GameObject:
   m_ObjectHideFlags: 0
@@ -149314,6 +151743,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2119081320
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -149689,6 +152128,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2124385708
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -150612,35 +153061,35 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 7.9640536
+      value: -0.01
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.002245903
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -7.1639357
+      value: 5.01
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.6123724
+      value: -0.00000034272668
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.6123725
+      value: 0.00000039530568
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.3535534
+      value: 0.7071069
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.35355347
+      value: 0.7071067
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -150648,7 +153097,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: -180
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -150700,6 +153149,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2132239248
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -151105,6 +153564,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
 --- !u!114 &2134258619
 MonoBehaviour:
   m_ObjectHideFlags: 0

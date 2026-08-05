@@ -45,10 +45,17 @@ namespace SpellyZombie
                 {
                     int painted = LoadSaved();
                     _shownCount = painted;
-                    if (savedCount > 0 && painted == 0)
+                    // A PARTIAL REPAINT IS A FAILED REPAINT. The guard used to
+                    // fire only at painted == 0: with 3 of 12 samples on the
+                    // wall it stayed silent, the first census adopted those 3 as
+                    // "what's on disk", and the next stroke he drew saved 4 —
+                    // PERMANENTLY DELETING the 9 that never made it back. Any
+                    // shortfall now disables saving for the session, exactly as
+                    // a total failure does.
+                    if (savedCount > 0 && painted < savedCount)
                     {
                         _loadFailed = true;
-                        Debug.LogError($"[RuneWall] {RuneLibrary.ShortName(Rune)}: {savedCount} saved drawing(s) but NONE repainted — saving is DISABLED for this wall this session so the recordings can't be wiped. Tell Claude what this log says.");
+                        Debug.LogError($"[RuneWall] {RuneLibrary.ShortName(Rune)}: only {painted} of {savedCount} saved drawing(s) repainted — saving is DISABLED for this wall this session so the missing recordings can't be wiped. Tell Claude what this log says.");
                     }
                     else if (savedCount > 0)
                     {
@@ -158,7 +165,17 @@ namespace SpellyZombie
             foreach (var s in world.Strokes)
             {
                 if (s == null || !s.Alive || s.State != StrokeState.Open) continue;
-                if (s.Nodes.Count < 3 || !s.ChainIntact() || s.Hidden()) continue;
+                // SHORT STROKES ARE THE POINT (Marko, Jul 31). MinStrokeNodes
+                // was lowered to 2 the same day precisely so an arrowhead's
+                // barb or a LIGHT ray can exist as a line at all — and this
+                // census was still hard-coded to 3, so those limbs rendered on
+                // the wall, stayed visible, and were invisible to the save. The
+                // signature never changed, the stored sample was a barbless
+                // shaft, and next session the wall repainted without them: the
+                // wall silently editing his drawing, 20 lines above the comment
+                // promising it never does.
+                if (s.Nodes.Count < DrawingConfig.MinStrokeNodes
+                    || !s.ChainIntact() || s.Hidden()) continue;
                 if (s.SealResidue) continue;
                 if (s.Surface == null) continue;
                 if (s.Surface != transform && !s.Surface.IsChildOf(transform)) continue;
@@ -171,107 +188,28 @@ namespace SpellyZombie
                 var raw = glyph.BuildRawStrokes();
                 if (raw != null && raw.Count > 0) samples.Add(raw);
             }
-            AlignToFirst(samples);
+            // THE WALL NEVER TOUCHES HIS DRAWINGS (Marko, Jul 31: "I never
+            // drew any of these... you flipped heat and chill on the Y axis,
+            // flipped liquid and solid, flipped dark upside down. When I enter
+            // into the game again I don't want to see any changes from what I
+            // drew on the wall.")
+            //
+            // The flip he saw was NOT this method — it was the repaint frame,
+            // fixed in LoadSaved below; read that comment before touching
+            // anything here. But this method is the other half of the round
+            // trip, so the rule stands: the census reports the wall EXACTLY as
+            // it is. No rotating, no mirroring, no re-ordering, no
+            // "normalising", no dropping short strokes.
+            //
+            // A rotation-snapper used to live here (AlignToFirst: rotate every
+            // sample to match the first drawing's orientation). It was already
+            // unwired; it is now DELETED, helpers and all, because dead code
+            // that flips his ink is a loaded gun. It was pointless anyway — he
+            // designed the alphabet so no glyph resembles any other under any
+            // rotation or reflection, which is precisely why matching can be
+            // rotation-free. Storing what he drew, untouched, costs nothing and
+            // is the only honest thing to do.
             return samples;
-        }
-
-        // ---------------------------------------------------- alignment ----
-        // MARKO'S RULE: the FIRST drawing on the wall determines the up
-        // position — every other sample is rotated (never mirrored — mirrors
-        // are other runes) to best match it before being stored. Drawn
-        // upside-down? It's saved upright. Code never guesses what a rune
-        // "looks like"; it only matches against HIS reference.
-        static void AlignToFirst(List<List<List<Vector2>>> samples)
-        {
-            if (samples.Count < 2) return;
-            var reference = CloudOf(samples[0], out _);
-            if (reference == null) return;
-
-            for (int i = 1; i < samples.Count; i++)
-            {
-                var cloud = CloudOf(samples[i], out Vector2 centroid);
-                if (cloud == null) continue;
-
-                // coarse sweep of the full circle, then a fine pass around
-                // the winner — the sample keeps its shape, only its rotation
-                // snaps to the first drawing's orientation
-                float bestAng = 0f, bestD = float.MaxValue;
-                for (int a = 0; a < 24; a++)
-                {
-                    float ang = a * (Mathf.PI * 2f / 24f);
-                    float d = CloudDistance(cloud, reference, ang);
-                    if (d < bestD) { bestD = d; bestAng = ang; }
-                }
-                for (float off = -0.2f; off <= 0.2f; off += 0.05f) // ±11° in 3° steps
-                {
-                    float ang = bestAng + off;
-                    float d = CloudDistance(cloud, reference, ang);
-                    if (d < bestD) { bestD = d; bestAng = ang; }
-                }
-
-                // normalize into (-π, π]; skip near-zero corrections
-                while (bestAng > Mathf.PI) bestAng -= Mathf.PI * 2f;
-                if (Mathf.Abs(bestAng) < 0.02f) continue;
-                RotateSample(samples[i], centroid, bestAng);
-            }
-        }
-
-        /// Normalized point cloud of a sample (centroid at origin, max
-        /// dimension = 1), thinned to a manageable count. Null if degenerate.
-        static List<Vector2> CloudOf(List<List<Vector2>> sample, out Vector2 centroid)
-        {
-            centroid = Vector2.zero;
-            int total = 0;
-            foreach (var s in sample) total += s.Count;
-            if (total < 4) return null;
-            foreach (var s in sample)
-                foreach (var p in s) centroid += p;
-            centroid /= total;
-
-            float maxDim = 0f;
-            foreach (var s in sample)
-                foreach (var p in s)
-                    maxDim = Mathf.Max(maxDim, (p - centroid).magnitude);
-            if (maxDim < 1e-4f) return null;
-
-            int stride = Mathf.Max(1, total / 64);
-            var cloud = new List<Vector2>(Mathf.Min(total, 80));
-            int k = 0;
-            foreach (var s in sample)
-                foreach (var p in s)
-                {
-                    if (k++ % stride != 0) continue;
-                    cloud.Add((p - centroid) / maxDim);
-                }
-            return cloud.Count >= 4 ? cloud : null;
-        }
-
-        /// Mean nearest-point distance from the rotated cloud to the
-        /// reference cloud — cheap, symmetric enough for orientation search.
-        static float CloudDistance(List<Vector2> cloud, List<Vector2> reference, float angle)
-        {
-            float ca = Mathf.Cos(angle), sa = Mathf.Sin(angle);
-            float sum = 0f;
-            foreach (var p0 in cloud)
-            {
-                var p = new Vector2(p0.x * ca - p0.y * sa, p0.x * sa + p0.y * ca);
-                float best = float.MaxValue;
-                foreach (var r in reference)
-                    best = Mathf.Min(best, (p - r).sqrMagnitude);
-                sum += best;
-            }
-            return sum / cloud.Count;
-        }
-
-        static void RotateSample(List<List<Vector2>> sample, Vector2 centroid, float angle)
-        {
-            float ca = Mathf.Cos(angle), sa = Mathf.Sin(angle);
-            foreach (var stroke in sample)
-                for (int i = 0; i < stroke.Count; i++)
-                {
-                    Vector2 d = stroke[i] - centroid;
-                    stroke[i] = centroid + new Vector2(d.x * ca - d.y * sa, d.x * sa + d.y * ca);
-                }
         }
 
         // ------------------------------------------------------ loading ----
@@ -280,15 +218,61 @@ namespace SpellyZombie
         int LoadSaved()
         {
             var samples = RuneLibrary.AllSamples(Rune);
+            if (samples.Count == 0) return 0;
+            // No collider = nothing for Place() to raycast onto, so NOTHING can
+            // repaint. Reporting samples.Count here claimed a full repaint of a
+            // wall that is empty, which is exactly the lie the fail-safe exists
+            // to catch.
             var col = GetComponentInChildren<Collider>();
-            if (col == null || samples.Count == 0) return samples.Count;
+            if (col == null) return 0;
 
-            Vector3 normal = transform.forward;
-            Vector3 right = transform.right;
-            Vector3 up = transform.up;
+            // ---- REPAINT IN THE FRAME THE INK WAS SAVED IN ----
+            // Marko, Jul 31: "I never drew any of these... you flipped heat and
+            // chill on the Y axis, flipped liquid and solid, flipped dark upside
+            // down. When I enter into the game again I don't want to see any
+            // changes from what I drew on the wall."
+            //
+            // He was right, and it was never AlignToFirst. SAVING
+            // (RuneGlyph.RawStrokesOf) builds its 2D basis with
+            //     up = Cross(right, normal)          =>  Cross(right, up) == -normal
+            // where `normal` is the PEN'S hit.normal, so it points out of the
+            // face toward whoever drew it: a stored (x,y) is literally the
+            // drawer's screen coordinates. Repainting used to grab the raw
+            // transform basis instead — and for ANY Unity transform
+            //     Cross(transform.right, transform.up) == +transform.forward
+            // the OPPOSITE handedness. Two frames differing by a reflection, so
+            // every repaint came back mirrored. It got worse from there:
+            // PaintSample stamps its basis onto the repainted strokes, the next
+            // census re-read them through that flipped frame and ReplaceSamples
+            // wrote the flipped version to disk — the pool alternated
+            // mirrored / upside-down with every cycle and was NEVER what he drew.
+            // Those corrupted samples then WERE the templates the matcher scores
+            // against, widening every pool with shapes that, by his own law, are
+            // not that rune.
+            //
+            // Fix: derive the repaint frame from the SAME law, off the same face.
+            // PlaneBasis also ends with up = Cross(right, normal), and returns
+            // the frame of someone standing in front of the face — `right` is the
+            // VIEWER's right, not the wall's (they are opposite; a viewer of the
+            // +forward face has screen-right -transform.right). The round trip is
+            // then the identity: paint lays x along `right`, the census
+            // re-derives exactly `right` from BasisRight and exactly `up` from
+            // Cross(right, hit.normal). Unlimited save->load->save cycles are a
+            // no-op. WYSIWYG, permanently.
+            //
+            // DO NOT ever "fix" a future flip by negating the samples on load.
+            // That hides a frame mismatch and leaves the census still writing the
+            // wrong thing back to disk — which is how this bug survived so long.
+            Vector3 normal = transform.forward;                         // the face Place() raycasts onto
+            ZombieScribe.PlaneBasis(normal, out var right, out var up); // SAME law as RuneGlyph.RawStrokesOf
+            // THE WALL'S REAL SIZE, never a floor. These used to be
+            // Max(…, 2f) and Max(…, 1.5f): on any wall narrower or shorter than
+            // that, the grid was solved for a surface bigger than the one that
+            // exists, so the outer cells landed off the face, their raycasts
+            // missed and those drawings simply did not repaint.
             Vector3 size = col.bounds.size;
-            float wallW = Mathf.Max(Vector3.Project(size, right).magnitude, 2f);
-            float wallH = Mathf.Max(Vector3.Project(size, up).magnitude, 1.5f);
+            float wallW = Mathf.Max(Vector3.Project(size, right).magnitude, 0.01f);
+            float wallH = Mathf.Max(Vector3.Project(size, up).magnitude, 0.01f);
 
             int count = samples.Count;
             int cols = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt(count * (wallW / wallH))));
@@ -323,7 +307,20 @@ namespace SpellyZombie
                     max = Vector2.Max(max, p);
                 }
             Vector2 span = Vector2.Max(max - min, Vector2.one * 0.001f);
-            float scale = size / Mathf.Max(span.x, span.y);
+            // NEVER MAGNIFY (Marko: "I don't want to see any changes from what
+            // I drew on the wall"). The stored coordinates are already in
+            // metres, exactly as his hand laid them down, so scale 1 repaints
+            // his drawing at its true size. This used to scale EVERY sample up
+            // to fill its grid cell — on the studio slab with two samples that
+            // was a 3.4x magnification of a 40cm rune — and the blow-up was not
+            // cosmetic: the census regroups strokes by RuneTouchDistance, so a
+            // 2cm pen-lift gap inside one drawing came back 7cm wide and the
+            // drawing was split into TWO samples, which were then written back
+            // as two. Repaint and census stopped being inverses of each other
+            // and the pool drifted every cycle. Shrinking to fit is still
+            // allowed — a drawing that no longer fits its cell has to go
+            // somewhere — but the common case is now the identity.
+            float scale = Mathf.Min(1f, size / Mathf.Max(span.x, span.y));
             Vector2 mid = (min + max) * 0.5f;
 
             bool any = false;
@@ -332,6 +329,12 @@ namespace SpellyZombie
                 if (stroke.Count < 2) continue;
                 var s = new Stroke
                 {
+                    // THIS is what closes the loop. The repainted ink carries the
+                    // very frame it was painted in, so when the census re-reads it
+                    // (RuneGlyph.RawStrokesOf: right = ProjectOnPlane(BasisRight,
+                    // hit.normal), up = Cross(right, hit.normal)) it recovers the
+                    // stored coordinates unchanged. Hand a mismatched basis in
+                    // here and the wall starts rewriting his drawings again.
                     BasisRight = right,
                     BasisUp = up,
                     Surface = transform,
@@ -342,17 +345,36 @@ namespace SpellyZombie
                 bool has = false;
                 foreach (var p in stroke)
                 {
+                    // FILL THE GAP TO NODE SPACING, AND NO FURTHER. Repainted
+                    // ink has to be dense enough that the strokes read as
+                    // connected, but this used to insert ONE midpoint per
+                    // segment unconditionally — so an N-point sample repainted
+                    // as 2N-1 nodes, the census wrote 2N-1 back, and every
+                    // editing session DOUBLED the point count of every drawing
+                    // already on the wall (HEAT's older sample is at 184 points
+                    // against 84 for the newer one). Subdividing to the pen's
+                    // own node spacing instead is a fixed point: after one
+                    // repaint the gaps are already at spacing, so the next
+                    // repaint adds nothing. The extra points are exactly on the
+                    // segment, so the shape is untouched either way.
                     if (has)
                     {
-                        Vector2 m = (prev + p) * 0.5f;
-                        Place(s, m, mid, scale, at, right, up, normal);
+                        float gap = (p - prev).magnitude * scale;
+                        int steps = Mathf.Clamp(
+                            Mathf.CeilToInt(gap / Mathf.Max(DrawingConfig.NodeSpacing, 1e-4f)),
+                            1, 64);
+                        for (int i = 1; i < steps; i++)
+                            Place(s, Vector2.Lerp(prev, p, i / (float)steps),
+                                  mid, scale, at, right, up, normal);
                     }
                     Place(s, p, mid, scale, at, right, up, normal);
                     prev = p;
                     has = true;
                 }
                 if (s.Nodes.Count >= 2) any = true;
-                DrawingWorld.Instance.CompleteStroke(s);
+                // a picture on a wall — don't recognise it, don't network it,
+                // don't claim ink with it (this was ~150ms PER SAMPLE at load)
+                DrawingWorld.Instance.CompleteStroke(s, silent: true);
             }
             return any;
         }

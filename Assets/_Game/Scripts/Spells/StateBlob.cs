@@ -38,17 +38,85 @@ namespace SpellyZombie
 
         public float StateT => _stateT;
 
+        // HIS FX_StateBlob skin — instantiated AND DRIVEN (the committed
+        // version instantiated and returned, so his State Matter material
+        // never received _StateT and "the liquid is not the old liquid")
+        GameObject _custom;
+        Animator _customAnim;
+        Quaternion _customRot = Quaternion.identity;
+        bool _animHasStateT, _animHasMuddy, _customMat, _customMsg, _fitted;
+        float _lastPushed = float.NaN;
+        MaterialPropertyBlock _mpb;
+        SphereCollider _sphere; float _sphereR0; Vector3 _sphereC0; float _lastFluid = -1f;
+
+        /// collider fits HIS mesh (a smaller export floated on the default
+        /// 0.5 sphere), then breathes with the state so puddles rest low
+        void FitColliderToSkin()
+        {
+            _fitted = true;
+            if (_custom == null || _sphere == null) return;
+            var rends = _custom.GetComponentsInChildren<Renderer>(true);
+            if (rends.Length == 0) return;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            float scale = Mathf.Max(1e-4f, Mathf.Abs(transform.lossyScale.x));
+            float r = Mathf.Max(b.extents.x, Mathf.Max(b.extents.y, b.extents.z)) / scale;
+            if (r < 1e-3f) return;
+            _sphereR0 = r;
+            _sphereC0 = transform.InverseTransformPoint(b.center);
+            _sphere.radius = r;
+            _sphere.center = _sphereC0;
+            _lastFluid = -1f;
+        }
+
+        void ReshapeCollider()
+        {
+            float fluid = 1f - Mathf.InverseLerp(0.5f, 1f, _stateT); // 0 solid … 1 fluid
+            if (_sphere == null || Mathf.Abs(fluid - _lastFluid) < 0.02f) return;
+            _lastFluid = fluid;
+            _sphere.radius = Mathf.Lerp(_sphereR0, _sphereR0 * 0.55f, fluid);
+            var c = _sphereC0;
+            c.y -= _sphereR0 * 0.28f * fluid; // sink the contact — it rests, not floats
+            _sphere.center = c;
+            var rb = GetComponent<Rigidbody>();
+            if (rb != null && !rb.isKinematic) rb.WakeUp();
+        }
+
         void Start()
         {
             _matter = GetComponent<Matter>();
+            _sphere = GetComponent<SphereCollider>();
+            if (_sphere != null) { _sphereR0 = _sphere.radius; _sphereC0 = _sphere.center; }
 
             // the old look retires — the SKIN is the body now
             foreach (var r in GetComponentsInChildren<Renderer>())
                 r.enabled = false;
 
-            // his art hook: FX_StateBlob replaces the code look entirely
+            // his art hook: FX_StateBlob replaces the code look entirely —
+            // and is DRIVEN: state via Animator "StateT" / material "_StateT"
+            // / OnStateT(float), colour from the matter (one material = water
+            // here, lava there)
             var skinPrefab = PrefabVault.Get("FX_StateBlob");
-            if (skinPrefab != null) { Instantiate(skinPrefab, transform, false); return; }
+            if (skinPrefab != null)
+            {
+                _custom = Instantiate(skinPrefab, transform, false);
+                _customRot = _custom.transform.localRotation;
+                _customAnim = _custom.GetComponentInChildren<Animator>();
+                if (_customAnim != null)
+                {
+                    foreach (var p in _customAnim.parameters)
+                        if (p.type == AnimatorControllerParameterType.Float && p.name == "StateT") _animHasStateT = true;
+                        else if (p.type == AnimatorControllerParameterType.Bool && p.name == "Muddy") _animHasMuddy = true;
+                }
+                foreach (var r in _custom.GetComponentsInChildren<Renderer>(true))
+                    if (r.sharedMaterial != null && r.sharedMaterial.HasProperty("_StateT")) { _customMat = true; break; }
+                _customMsg = _custom.GetComponentInChildren<MonoBehaviour>() != null;
+                // born in its own phase — conjured steam must not melt its way down
+                _stateT = Muddy ? 0.7f
+                    : _matter == null || _matter.Phase == MatterPhase.Solid ? 1f
+                    : _matter.Phase == MatterPhase.Liquid ? 0.5f : 0.1f;
+                return;
+            }
 
             // ---- bones ----
             _home = new Vector3[Bones];
@@ -104,7 +172,7 @@ namespace SpellyZombie
 
         void Update()
         {
-            if (_matter == null || _mesh == null) return;
+            if (_matter == null) return;
 
             // ---- the slider chases the phase (heat melts it down the ladder,
             // compression climbs it back — Matter already derives the phase) ----
@@ -112,6 +180,42 @@ namespace SpellyZombie
                 : _matter.Phase == MatterPhase.Solid ? 1f
                 : _matter.Phase == MatterPhase.Liquid ? 0.5f : 0.1f;
             _stateT = Mathf.MoveTowards(_stateT, target, StateLerpPerSec * Time.deltaTime);
+
+            // HIS SKIN GETS THE STATE (the fix for "State Material is not
+            // getting liquified"): push _StateT + the matter's colour when it
+            // changes, keep fluids level with the world, fit the collider to
+            // his mesh once, and sink it as the state melts.
+            if (_custom != null)
+            {
+                if (!_fitted) FitColliderToSkin();
+                if (float.IsNaN(_lastPushed) || Mathf.Abs(_stateT - _lastPushed) > 0.01f)
+                {
+                    _lastPushed = _stateT;
+                    if (_animHasStateT) _customAnim.SetFloat("StateT", _stateT);
+                    if (_animHasMuddy) _customAnim.SetBool("Muddy", Muddy);
+                    if (_customMat)
+                    {
+                        var tint = SurfaceMaterialDB.Info(
+                            _matter != null ? _matter.Material : SurfaceMaterialType.Stone).SolidColor;
+                        if (_mpb == null) _mpb = new MaterialPropertyBlock();
+                        foreach (var r in _custom.GetComponentsInChildren<Renderer>(true))
+                        {
+                            r.GetPropertyBlock(_mpb);
+                            _mpb.SetFloat("_StateT", _stateT);
+                            _mpb.SetColor("_BaseColor", tint);
+                            r.SetPropertyBlock(_mpb);
+                        }
+                    }
+                    if (_customMsg)
+                        _custom.SendMessage("OnStateT", _stateT, SendMessageOptions.DontRequireReceiver);
+                }
+                if (_stateT < 0.85f)
+                    _custom.transform.rotation = transform.rotation * _customRot;
+                ReshapeCollider();
+                return;
+            }
+
+            if (_mesh == null) return;
 
             // fluid states slump along the WORLD's down, never the body's
             // tilt (Marko's catch: a tumbled body made mud stand like a disc

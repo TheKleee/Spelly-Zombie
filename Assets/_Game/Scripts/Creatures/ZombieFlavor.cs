@@ -20,6 +20,11 @@ namespace SpellyZombie
         /// Marko's kill-switch if the placeholder maw offends the art.
         public static bool GiveMouths = true;
 
+        [Header("Flavour passes — YOUR switches (AXIOM: nothing is forced)")]
+        [SerializeField] bool _posture = true;      // per-frame bone posing
+        [SerializeField] bool _scaleJitter = true;  // random size variety
+        [SerializeField] bool _mouth = true;        // placeholder mouth quad
+
         Animator _anim;
         Transform _armL, _armR, _foreL, _foreR, _handL, _handR, _head, _spine;
         float _reach, _hunch, _tiltRoll, _tiltPitch, _swayAmp, _swayRate, _phase;
@@ -60,9 +65,16 @@ namespace SpellyZombie
                     Mathf.Clamp01(s + valJ * 0.5f), Mathf.Clamp01(v + valJ));
                 if (smr != null) smr.sharedMaterial = MatterFX.Get(varied, MoteShade.Opaque);
             }
-            float wj = R(0.92f, 1.1f), hj = R(0.97f, 1.03f);
-            body.transform.localScale = Vector3.Scale(body.transform.localScale,
-                new Vector3(wj, hj, wj));
+            // AXIOM (Marko Jul 25): tint and mouths correctly stand down for HIS
+            // body — the scale jitter did not, so his authored proportions got
+            // randomised anyway. Now every flavour pass respects customBody,
+            // and each is an Inspector switch he can turn off.
+            if (_scaleJitter && !customBody)
+            {
+                float wj = R(0.92f, 1.1f), hj = R(0.97f, 1.03f);
+                body.transform.localScale = Vector3.Scale(body.transform.localScale,
+                    new Vector3(wj, hj, wj));
+            }
 
             // ---- per-kind posture, then the personal touch ----
             switch (kind)
@@ -102,7 +114,7 @@ namespace SpellyZombie
 
             // ---- the maw: players are eyeless beans; zombies get a MOUTH ----
             // (never on Marko's custom body — his face is his)
-            if (GiveMouths && !customBody && _head != null)
+            if (GiveMouths && _mouth && !customBody && _head != null)
             {
                 var mouth = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 mouth.name = "Mouth";
@@ -141,6 +153,7 @@ namespace SpellyZombie
 
         void ApplyPosture()
         {
+            if (!_posture) return; // his switch — code must never own his bones outright
             _phase += Time.deltaTime * _swayRate;
             float sway = Mathf.Sin(_phase) * _swayAmp;
 

@@ -11,15 +11,15 @@ namespace SpellyZombie
     {
         static string PathFile => Path.Combine(Application.persistentDataPath, "runstats.csv");
 
-        public static void Log(string outcome, int round, int kills, int combos, int riches, float seconds)
+        public static void Log(string outcome, int round, int kills, int combos, float seconds)
         {
             try
             {
                 bool fresh = !File.Exists(PathFile);
                 using (var w = File.AppendText(PathFile))
                 {
-                    if (fresh) w.WriteLine("when,outcome,round,kills,combos,riches,minutes");
-                    w.WriteLine($"{System.DateTime.Now:yyyy-MM-dd HH:mm},{outcome},{round},{kills},{combos},{riches},{seconds / 60f:0.0}");
+                    if (fresh) w.WriteLine("when,outcome,round,kills,combos,minutes");
+                    w.WriteLine($"{System.DateTime.Now:yyyy-MM-dd HH:mm},{outcome},{round},{kills},{combos},{seconds / 60f:0.0}");
                 }
                 Debug.Log($"[SpellyZombie] Run logged → {PathFile}");
             }

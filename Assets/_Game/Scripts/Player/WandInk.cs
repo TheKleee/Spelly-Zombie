@@ -18,12 +18,26 @@ namespace SpellyZombie
         Vector3 _fullScale;
         PlayerInk _pool;
 
+        // THE WAND ITSELF SHRINKS (Marko: the wand IS ink — "always visibly
+        // decaying", and "the wand disintegrating effect should exist as it's
+        // getting smaller or increasing, but opposite, as if it's formed").
+        // The whole wand scales from the grip with the ink fraction; while
+        // the size is actually CHANGING, little motes flake off (drain) or
+        // gather in (reform) — the same effect both ways, played opposite.
+        Vector3 _wandScale0;
+        WandState _state;
+        float _factor = 1f;
+        GameObject _fx;   // HIS shrink/grow effect: a child named "WandFX",
+                          // always present, toggled instead of spawned
+
         void Start()
         {
             foreach (var t in GetComponentsInChildren<Transform>(true))
                 if (t != transform && t.name == "Ink") { _ink = t; break; }
             if (_ink == null) BuildVial();
             if (_ink != null) _fullScale = _ink.localScale;
+            _wandScale0 = transform.localScale; // his authored size is 100%
+            _state = GetComponentInParent<WandState>();
         }
 
         /// Placeholder: a slim ink column strapped to the wand so the
@@ -46,8 +60,10 @@ namespace SpellyZombie
             column.transform.localPosition = new Vector3(0f, 0.035f, 0f);
             column.transform.localScale = new Vector3(0.008f, 0.035f, 0.008f);
             column.layer = gameObject.layer;
+            // THE WAND IS INK, SO IT IS BLACK (Marko: "the wand needs to be the
+            // same color as the ink => both black, not brown and blue")
             column.GetComponent<Renderer>().sharedMaterial =
-                MatterFX.Get(new Color(0.16f, 0.2f, 0.55f), MoteShade.Opaque); // wet ink blue
+                MatterFX.Get(DrawingConfig.InkColor, MoteShade.Opaque);
         }
 
         void LateUpdate()
@@ -62,6 +78,29 @@ namespace SpellyZombie
             var s = _fullScale;
             s.y *= Mathf.Max(f, 0.03f); // a dry wand keeps a visible dreg
             _ink.localScale = s;
+
+            // the wand body follows the ink — wandless melts it to nothing,
+            // a refill FORMS it back (the same motion, reversed)
+            float target = _state != null && !_state.HasWand
+                ? 0f
+                : Mathf.Lerp(0.4f, 1f, f);
+            _factor = Mathf.MoveTowards(_factor, target,
+                Time.deltaTime * DrawingConfig.WandResizeSpeed);
+            transform.localScale = _wandScale0 * Mathf.Max(0.001f, _factor);
+
+            // NO SPAWNED FLAKES (Marko: "remove this laggy particle from wand
+            // degradation" — he's authoring the shrink/grow effect himself as
+            // ONE always-present object, not a spawn-and-despawn burst).
+            // The hook for his version: a child named "WandFX" is switched on
+            // while the size is really moving, off when it settles.
+            if (_fx == null)
+                foreach (var t in GetComponentsInChildren<Transform>(true))
+                    if (t != transform && t.name == "WandFX") { _fx = t.gameObject; break; }
+            if (_fx != null)
+            {
+                bool changing = Mathf.Abs(_factor - target) > 0.0005f;
+                if (_fx.activeSelf != changing) _fx.SetActive(changing);
+            }
         }
     }
 }

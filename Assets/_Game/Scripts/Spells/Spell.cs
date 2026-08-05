@@ -38,6 +38,7 @@ namespace SpellyZombie
         readonly List<Zone> _zones = new List<Zone>();
         SurfaceMaterialType _surface;
         int _ownerId; // whose cast this is — their powerup buffs apply
+        int _edges = 10; // the seal's side count — THE SHAPE the solid takes
         float _remaining;
         bool _ended;
 
@@ -68,6 +69,7 @@ namespace SpellyZombie
             spell._surface = surface;
             spell._ownerId = seal.OwnerId;
             spell._remaining = seal.Duration;
+            spell._edges = seal.Edges; // triangle = 3 … circle = 10 (his shape dial)
 
             // low density + low stickiness make a Dark rune spread and deepen
             foreach (var g in seal.Runes)
@@ -413,6 +415,23 @@ namespace SpellyZombie
             float bigMul = 1f + 0.3f * buff.Big;
 
             Vector3 dir = kind == ParticleKind.Push ? z.PushDir : z.Normal;
+
+            // A BODY (or weapon) SEAL THROWS ITS CAST (Marko: particles born
+            // on the skin "always activate and you can't make combinations
+            // like fire bolts" — his fix: "the body can push the particles
+            // as if they were thrown"): persistent-surface casts launch
+            // along the seal's outward normal, sparing the caster briefly.
+            // Siblings of one drawing leave together, seek each other in
+            // flight, and combine mid-air — the bolt.
+            bool bodyCast = false;
+            Transform caster = null;
+            var m0 = z.Glyph != null && z.Glyph.Members.Count > 0 ? z.Glyph.Members[0] : null;
+            if (m0 != null && m0.Persistent && m0.First != null)
+            {
+                bodyCast = true;
+                caster = m0.First.transform.root;
+            }
+
             for (int i = 0; i < count; i++)
             {
                 var p = SpellParticle.Emit(kind,
@@ -425,6 +444,8 @@ namespace SpellyZombie
                 if (i == 0) z.Tracked = p;           // sustain law: the rune WATCHES this one
                                                      // (powerup extras are untracked bonuses)
                 p.Vel *= speedMul;
+                if (bodyCast)
+                    p.ThrowFrom(caster, z.Normal * DrawingConfig.BodyCastThrowSpeed + p.Vel);
                 p.Temp *= potent;
                 p.Lum *= potent;
                 p.Density *= potent;
@@ -604,8 +625,18 @@ namespace SpellyZombie
                 // SOLID materializes overhead and DROPS — the anvil rune.
                 // Liquids stay surface-born (they slump into puddles in place).
                 float lift = solid ? DrawingConfig.SolidDropHeight : size * 0.5f;
+                // THE SEAL'S SIDES PICK THE SOLID'S SHAPE (his ruling: "3 sides
+                // => 1 shape, 4 => another… 10 would be a wheel for wood but
+                // default for rock") — passed through, resolved in Matter.Spawn
+                // against his prefabs. Liquid/gas ignore it: they share one blob.
                 var conjured = Matter.Spawn(mat, solid ? MatterPhase.Solid : MatterPhase.Liquid, size,
-                    z.Center + z.Normal * lift); // Matter.Spawn attaches the soft-body skin itself
+                    z.Center + z.Normal * lift, solid ? _edges : 0);
+                // SPELL-BORN, FOREVER (Marko's ruling): conjured matter can
+                // never teach a rune, even after the touch law makes it an
+                // object — otherwise conjure → touch → absorb prints runes.
+                // Covers an authored shape/skin prefab that carries Analyzable.
+                foreach (var an in conjured.GetComponentsInChildren<Analyzable>(true))
+                    an.SpellBorn = true;
                 conjured.Lineage = lineage;
                 conjured.FormLevel = formLevel;
                 if (buff.Bond > 0) conjured.AddStickiness(0.2f * buff.Bond); // gooier conjures
@@ -635,26 +666,12 @@ namespace SpellyZombie
             // particles ARE the visibility now; a running spell shows itself by
             // producing, not by drawing UI onto the world.
 
-            // Direction zones show their push as a glowing arrow — on a CHILD
-            // object (a GameObject holds only ONE LineRenderer; keeping the
-            // child layout from the ring era)
+            // NO STATIC GROUND ARROW (Marko, repeatedly — "these arrows that
+            // appear on the floor should disappear"; it was also a FIXED size
+            // no matter how large you drew the rune). The FLYING arrow/Y
+            // particle is the whole visual now — it moves, so it reads.
             if (z.Rune == RuneType.DirectionAway || z.Rune == RuneType.DirectionToward)
-            {
                 root.transform.rotation = Quaternion.LookRotation(z.PushDir);
-                var arrowGo = new GameObject("Arrow");
-                arrowGo.transform.SetParent(root.transform, false);
-                var lr = arrowGo.AddComponent<LineRenderer>();
-                lr.useWorldSpace = false;
-                lr.widthMultiplier = 0.05f;
-                lr.positionCount = 5;
-                lr.sharedMaterial = MatterFX.Get(z.Rune == RuneType.DirectionAway
-                    ? new Color(1f, 0.95f, 0.4f, 0.9f) : new Color(1f, 0.4f, 0.9f, 0.9f), MoteShade.Additive);
-                lr.SetPosition(0, new Vector3(0f, 0f, -0.25f));
-                lr.SetPosition(1, new Vector3(0f, 0f, 0.55f));   // shaft
-                lr.SetPosition(2, new Vector3(-0.14f, 0f, 0.34f)); // barb L
-                lr.SetPosition(3, new Vector3(0f, 0f, 0.55f));
-                lr.SetPosition(4, new Vector3(0.14f, 0f, 0.34f));  // barb R
-            }
 
             // Luminance-down "drinks light" — mild on its own; it deepens & spreads
             // when combined with low density / low stickiness (see _darkSpread).

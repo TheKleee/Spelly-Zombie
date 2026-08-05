@@ -11,11 +11,30 @@ namespace SpellyZombie
     {
         const string Dir = "Assets/_Game/Prefabs";
 
+        // AXIOM (Marko Jul 25): these are prefabs he OWNS and hand-edits. The
+        // export used to replace all 20 at fixed paths with no dialog, no
+        // backup and no undo. Default is now "only create the missing ones".
+        static bool _replaceExisting;
+        static readonly System.Collections.Generic.List<string> _kept = new System.Collections.Generic.List<string>();
+        static readonly System.Collections.Generic.List<string> _wrote = new System.Collections.Generic.List<string>();
+
         [MenuItem("Spelly Zombie/Export Prefabs (_Game/Prefabs)")]
         public static void Export()
         {
             System.IO.Directory.CreateDirectory(Dir);
             AssetDatabase.Refresh();
+
+            // 0 = Only create missing · 1 = Cancel · 2 = Replace everything
+            int choice = EditorUtility.DisplayDialogComplex("Export Prefabs",
+                $"{Dir} may already hold prefabs you have edited by hand.\n\n" +
+                "\"Only create missing\" keeps every existing prefab exactly as it is.\n" +
+                "\"Replace everything\" overwrites them with freshly generated versions (backups are written first).",
+                "Only create missing", "Cancel", "Replace everything");
+            if (choice == 1) return;
+            _replaceExisting = choice == 2;
+            _kept.Clear();
+            _wrote.Clear();
+
             EnvironmentTools.WireFxLibrary();
             var randomState = Random.state;
             Random.InitState(5);
@@ -117,18 +136,33 @@ namespace SpellyZombie
 
             Random.state = randomState;
             AssetDatabase.SaveAssets();
-            Debug.Log($"[SpellyZombie] Prefab library exported to {Dir} — drag, place, compose. " +
-                      "(Everything is pre-wired: canvases, tags, breakables, lights.)");
+            Debug.Log($"[SpellyZombie] Prefab export: wrote {_wrote.Count}, " +
+                      $"KEPT YOUR VERSION of {_kept.Count}" +
+                      (_kept.Count > 0 ? " — code changes did NOT reach these:\n  " + string.Join("\n  ", _kept) : "."));
         }
 
         static void Save(string name, System.Action build)
         {
+            // check the PATH FIRST — the old order built the whole hierarchy
+            // and then threw it away, and overwrote his prefab regardless
+            string path = $"{Dir}/{name}.prefab";
+            bool exists = AssetDatabase.LoadAssetAtPath<GameObject>(path) != null;
+            if (exists && !_replaceExisting) { _kept.Add(name); return; }
+            if (exists)
+            {
+                System.IO.Directory.CreateDirectory($"{Dir}/_backup");
+                AssetDatabase.CopyAsset(path, AssetDatabase.GenerateUniqueAssetPath(
+                    $"{Dir}/_backup/{name}_{System.DateTime.Now:yyyyMMdd_HHmm}.prefab"));
+            }
+
             var root = new GameObject("__export");
             VillageBuilder.BeginPlacement(root.transform);
             GameMapBuilder.SetRoot(root.transform);
             build();
             root.name = name;
-            PrefabUtility.SaveAsPrefabAsset(root, $"{Dir}/{name}.prefab");
+            PrefabUtility.SaveAsPrefabAsset(root, path, out bool ok);
+            if (!ok) Debug.LogError($"[SpellyZombie] FAILED to write {path} — your existing prefab is untouched.");
+            else _wrote.Add(name);
             Object.DestroyImmediate(root);
         }
     }

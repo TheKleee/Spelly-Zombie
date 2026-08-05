@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SpellyZombie
@@ -13,6 +14,12 @@ namespace SpellyZombie
     /// self-destructs when its zombie pops.
     public class ZombieDress : MonoBehaviour
     {
+        // warn ONCE per authored prefab, never per zombie (a horde would spam)
+        static readonly HashSet<int> _warnedNoCrown = new HashSet<int>();
+        static readonly HashSet<int> _warnedNoHead = new HashSet<int>();
+        static readonly HashSet<int> _warnedNoAnim = new HashSet<int>();
+        static readonly HashSet<int> _warnedNoSkin = new HashSet<int>();
+
         Transform _target;
         Rigidbody _rb;
         Animator _anim;
@@ -20,6 +27,7 @@ namespace SpellyZombie
         GameObject _body;
         float _halfHeight;
         bool _wasGettingUp, _socketed;
+        bool _customBody; // HIS prefab is dressing this zombie — hands off
         float _fidgetIn = 6f;
 
         /// The instantiated body model (the CharacterBaker clones this).
@@ -37,11 +45,22 @@ namespace SpellyZombie
             var custom = PrefabVault.Get("ZombieBody");
             var prefab = custom != null ? custom : CharacterLibrary.Model;
             var ctrl = CharacterLibrary.ZombieAnim;
-            if (prefab == null || ctrl == null || z == null) return null;
+            if (prefab == null || z == null) return null;
+            // HIS BODY IS WORN EVEN WITH NO CONTROLLER (axiom: an unwired
+            // animator must never silently discard his prefab — it dresses,
+            // stands still, and the console says why)
+            if (ctrl == null)
+            {
+                if (custom == null) return null;
+                if (_warnedNoAnim.Add(prefab.GetInstanceID()))
+                    Debug.LogWarning("[SpellyZombie] No zombie animator controller wired in " +
+                        "CharacterLibrary — YOUR ZombieBody is worn but cannot animate.", prefab);
+            }
             bool customBody = custom != null;
 
             var go = new GameObject(z.name + "_Dress");
             var d = go.AddComponent<ZombieDress>();
+            d._customBody = customBody;
             d._target = z.transform;
             d._rb = z.GetComponent<Rigidbody>();
             d._creature = z.GetComponent<Creature>();
@@ -51,43 +70,85 @@ namespace SpellyZombie
             body.name = "Body";
             body.transform.localPosition = Vector3.zero;
             body.transform.localRotation = Quaternion.identity; // humanoid retarget faces +Z
+            // AXIOM: his prefab's authored scale is a decision, not a mistake —
+            // the fit MULTIPLIES it instead of assigning over it (assigning
+            // meant a body authored at 0.5 came out double height).
+            Vector3 authoredScale = body.transform.localScale;
 
             // measure the model, scale it to the capsule's height, then widen
-            // or slim it per kind (stocky charger, lanky runner)
-            Transform head = null, crown = null, feetProbe = null;
+            // or slim it per kind (stocky charger, lanky runner).
+            // AXIOM: the head bone is found by HUMANOID first, then loose name
+            // tiers — the old exact "mixamorig:Head" match meant a Blender rig
+            // with a bone simply named "Head" silently lost its eyes and hat.
+            Transform head = null, crown = null;
+            var bodyAnim = body.GetComponent<Animator>();
+            if (bodyAnim != null && bodyAnim.isHuman)
+                head = bodyAnim.GetBoneTransform(HumanBodyBones.Head);
             foreach (var t in body.GetComponentsInChildren<Transform>(true))
             {
-                if (t.name == "mixamorig:Head") head = t;
-                else if (t.name.Contains("HeadTop")) crown = t;
-                else if (t.name.EndsWith("LeftToeBase")) feetProbe = t;
+                if (head == null && (t.name == "mixamorig:Head" || t.name == "Head")) head = t;
+                if (crown == null && t.name.Contains("HeadTop")) crown = t;
             }
-            float modelHeight = crown != null && feetProbe != null
-                ? Mathf.Max(0.5f, crown.position.y - go.transform.position.y)
-                : 1.42f;
+            if (head == null)
+                foreach (var t in body.GetComponentsInChildren<Transform>(true))
+                    if (t.name.EndsWith("Head")) { head = t; break; }
+            if (head == null && _warnedNoHead.Add(prefab.GetInstanceID()))
+                Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no head bone " +
+                    "(humanoid Head, or a bone named/ending in \"Head\") — eyes and hats have nothing to mount on.", prefab);
             float capsuleHeight = z.transform.localScale.y * 2f;
-            float s = capsuleHeight / modelHeight;
-            body.transform.localScale = new Vector3(s * widthMul, s, s * widthMul);
+            float s;
+            if (crown != null)
+            {
+                float modelHeight = Mathf.Max(0.5f, crown.position.y - go.transform.position.y);
+                s = capsuleHeight / modelHeight;
+            }
+            else
+            {
+                // no crown bone on HIS rig — don't invent a height, keep his
+                // authored proportions and say so once
+                s = 1f;
+                if (_warnedNoCrown.Add(prefab.GetInstanceID()))
+                    Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no 'HeadTop' bone — " +
+                        "keeping YOUR authored scale (no auto-fit). Add a HeadTop_End bone if you want " +
+                        "zombies auto-fitted to the capsule.", prefab);
+            }
+            body.transform.localScale = Vector3.Scale(authoredScale, new Vector3(s * widthMul, s, s * widthMul));
             d._halfHeight = capsuleHeight * 0.5f;
 
+            // EVERY skinned renderer, not just the first — a multi-material or
+            // multi-piece body would otherwise leave the rest culling wrongly
             var smr = body.GetComponentInChildren<SkinnedMeshRenderer>();
-            if (smr != null)
+            var skins = body.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            foreach (var sk in skins)
             {
                 if (!customBody) // his prefab keeps HIS materials, always
-                    smr.sharedMaterial = MatterFX.Get(skin, MoteShade.Opaque);
-                smr.updateWhenOffscreen = true;
+                    sk.sharedMaterial = MatterFX.Get(skin, MoteShade.Opaque);
+                sk.updateWhenOffscreen = true;
             }
+            if (skins.Length == 0 && _warnedNoSkin.Add(prefab.GetInstanceID()))
+                Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no SkinnedMeshRenderer — " +
+                    "a static mesh can't be animated by the zombie rig.", prefab);
 
-            d._anim = body.GetComponent<Animator>();
+            // ANIMATOR ANYWHERE IN HIS HIERARCHY (it needn't sit on the root —
+            // silently missing it meant a T-posing statue with no explanation)
+            d._anim = body.GetComponentInChildren<Animator>(true);
             if (d._anim != null)
             {
-                d._anim.runtimeAnimatorController = ctrl;
+                if (ctrl != null) d._anim.runtimeAnimatorController = ctrl;
                 d._anim.applyRootMotion = false;
             }
+            else if (_warnedNoAnim.Add(prefab.GetInstanceID()))
+                Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no Animator — " +
+                    "it will stand still. Add one (humanoid avatar) to the prefab root.", prefab);
 
             // the zombie-ness: seeded posture/variation over the body. With
             // Marko's custom body the LOOK layers (tint, placeholder mouth)
             // stand down — only motion variety remains.
-            body.AddComponent<ZombieFlavor>().Init(z.Kind, z.gameObject.GetInstanceID(),
+            // AXIOM: ADOPT his ZombieFlavor if he put one on the prefab — a
+            // second component would run with default switches while HIS
+            // configured one sat inert (his posture/jitter toggles dead).
+            var flavor = Adopt.Component<ZombieFlavor>(body);
+            flavor.Init(z.Kind, z.gameObject.GetInstanceID(),
                 d._anim, skin, smr, body, customBody);
 
             // hide the graybox: capsule + head cube renderers off (colliders,
@@ -103,8 +164,20 @@ namespace SpellyZombie
 
             // a BAKED body brings its own googly eyes (Marko edited them on
             // the prefab) — the spawn-built pair bows out and the brain's
-            // mood system re-points at his
+            // mood system re-points at his. A DEAD baked rig (bake lost the
+            // wiring, or the eyeballs were renamed) is discarded instead, so
+            // the zombie never ends up with frozen saucer eyes — same guard
+            // the player rig uses.
             var bakedEyes = body.GetComponentInChildren<GooglyEyes>(true);
+            if (bakedEyes != null && !(bakedEyes.IsAlive && bakedEyes.enabled
+                && bakedEyes.gameObject.activeSelf))
+            {
+                Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}': its googly eyes are not a " +
+                    "working Eye→Pupil pair — keeping the code-built eyes instead. (Name two children " +
+                    "starting with 'Eye', each holding a child named 'Pupil'.)", prefab);
+                Object.Destroy(bakedEyes.gameObject);
+                bakedEyes = null;
+            }
             if (bakedEyes != null && eyes != null && bakedEyes != eyes)
             {
                 Object.Destroy(eyes.gameObject);
@@ -115,20 +188,35 @@ namespace SpellyZombie
 
             if (head != null)
             {
-                // the googly soul moves onto the animated head (Marko's fit)
+                // the googly soul moves onto the animated head (Marko's fit).
+                // AXIOM: IsCustom eyes carry HIS placement — mount them and
+                // touch nothing else (the contract on GooglyEyes says so).
                 if (eyes != null && eyes != bakedEyes)
                 {
                     eyes.transform.SetParent(head, false);
-                    eyes.transform.localPosition = CharacterRig.EyeLocalPos; // one knob for all eyes
-                    eyes.transform.localRotation = Quaternion.identity;
+                    if (!eyes.IsCustom)
+                    {
+                        eyes.transform.localPosition = CharacterRig.EyeLocalPos; // one knob for all eyes
+                        eyes.transform.localRotation = Quaternion.identity;
+                    }
                 }
                 // the wizard hat rides the head bone too (collect first —
-                // reparenting while enumerating children throws)
+                // reparenting while enumerating children throws). Its
+                // coordinates were authored against the GRAYBOX capsule, so
+                // on his own rig it must be re-seated on the head instead of
+                // keeping a world position that belongs to another body.
                 var hats = new System.Collections.Generic.List<Transform>();
                 foreach (Transform c in z.transform)
                     if (c.name == "Hat") hats.Add(c);
                 foreach (var hat in hats)
-                    hat.SetParent(head, true);
+                {
+                    hat.SetParent(head, !customBody);
+                    if (customBody)
+                    {
+                        hat.localPosition = Vector3.zero;
+                        hat.localRotation = Quaternion.identity;
+                    }
+                }
             }
 
             d.Sync();
@@ -161,9 +249,14 @@ namespace SpellyZombie
                 _socketed = true;
                 // seed = this zombie's instance id — the SAME id rides the
                 // zombie snapshots, so client proxies can roll the identical
-                // look without a single extra byte (B6 wires that side)
-                Wardrobe.DressZombie(SocketSet.Build(_body, transform), 0.35f,
-                    gameObject.GetInstanceID());
+                // look without a single extra byte (B6 wires that side).
+                // AXIOM: on HIS body the random costume rolls stand down
+                // entirely — a socket he deliberately left bare stays bare,
+                // exactly as tint and the placeholder mouth already do.
+                // Pieces he parented to sockets on the prefab are untouched
+                // (an occupied socket is never rolled over anyway).
+                Wardrobe.DressZombie(SocketSet.Build(_body, transform),
+                    _customBody ? 0f : 0.35f, gameObject.GetInstanceID());
             }
 
             if (_anim == null) return;

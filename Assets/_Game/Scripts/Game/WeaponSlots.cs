@@ -60,7 +60,11 @@ namespace SpellyZombie
             }
 
             if (kb.eKey.wasPressedThisFrame && !HandGrab.LocalHolding) TryPickup();
-            if (kb.fKey.wasPressedThisFrame) DropCurrent();
+            // F is the grimoire's USE key first (Marko: absorb and declare
+            // both on F, absorb priority) — the weapon drop only fires when
+            // the book has nothing in its eye
+            if (kb.fKey.wasPressedThisFrame
+                && !GrimoireAbsorb.TargetInReach && !GrimoireAbsorb.DeclareInReach) DropCurrent();
         }
 
         void Select(int slot)

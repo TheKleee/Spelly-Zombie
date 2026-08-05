@@ -18,6 +18,10 @@ namespace SpellyZombie
     {
         readonly Dictionary<string, Transform> _sockets = new Dictionary<string, Transform>();
 
+        /// Which sockets this body actually has — so a catalog slot that finds
+        /// nothing can say WHY (AXIOM: never fail silently on his content).
+        public IEnumerable<string> Names => _sockets.Keys;
+
         public Transform Get(string socketName) =>
             _sockets.TryGetValue(socketName, out var t) ? t : null;
 

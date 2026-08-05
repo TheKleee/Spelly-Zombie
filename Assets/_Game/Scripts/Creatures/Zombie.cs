@@ -103,13 +103,25 @@ namespace SpellyZombie
             head.transform.localScale = new Vector3(0.55f, 0.4f, 0.55f);
             head.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(skin * 1.15f, MoteShade.Opaque);
 
-            // the scribbler is unmistakably The Wizard: pointy hat, crooked tip
+            // the scribbler is unmistakably The Wizard: pointy hat, crooked tip.
+            // HIS HAT WINS: a prefab at Resources/Custom/ScribblerHat replaces
+            // the code cubes outright (the vault audit already advertised this
+            // name — it just wasn't wired, so dropping one in did nothing).
             if (kind == ZombieKind.Scribbler)
             {
-                AddHatPart(go.transform, new Vector3(0f, 1.32f, 0.05f), new Vector3(0.72f, 0.05f, 0.72f), 0f);   // brim
-                AddHatPart(go.transform, new Vector3(0f, 1.45f, 0.05f), new Vector3(0.4f, 0.22f, 0.4f), 4f);     // base
-                AddHatPart(go.transform, new Vector3(0.03f, 1.64f, 0.05f), new Vector3(0.24f, 0.2f, 0.24f), 10f); // mid
-                AddHatPart(go.transform, new Vector3(0.08f, 1.8f, 0.05f), new Vector3(0.1f, 0.18f, 0.1f), 22f);  // crooked tip
+                var hatSkin = PrefabVault.Spawn("ScribblerHat", go.transform);
+                if (hatSkin != null)
+                {
+                    hatSkin.name = "Hat"; // rides the head bone with the rest
+                    hatSkin.transform.localPosition = new Vector3(0f, 1.32f, 0.05f);
+                }
+                else
+                {
+                    AddHatPart(go.transform, new Vector3(0f, 1.32f, 0.05f), new Vector3(0.72f, 0.05f, 0.72f), 0f);   // brim
+                    AddHatPart(go.transform, new Vector3(0f, 1.45f, 0.05f), new Vector3(0.4f, 0.22f, 0.4f), 4f);     // base
+                    AddHatPart(go.transform, new Vector3(0.03f, 1.64f, 0.05f), new Vector3(0.24f, 0.2f, 0.24f), 10f); // mid
+                    AddHatPart(go.transform, new Vector3(0.08f, 1.8f, 0.05f), new Vector3(0.1f, 0.18f, 0.1f), 22f);  // crooked tip
+                }
             }
 
             var rb = go.GetComponent<Rigidbody>();

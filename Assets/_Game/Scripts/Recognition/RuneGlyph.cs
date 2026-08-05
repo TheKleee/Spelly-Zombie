@@ -91,6 +91,16 @@ namespace SpellyZombie
                 lead.First.SurfaceDelta * lead.BasisRight, normal);
             if (right.sqrMagnitude < 1e-4f) right = Vector3.ProjectOnPlane(Vector3.forward, normal);
             right.Normalize();
+            // THE HANDEDNESS LAW. Every path that writes or repaints ink must
+            // build its frame with THIS line. Note what it implies:
+            //     Cross(right, up) == -normal
+            // which is the OPPOSITE sign to a raw Unity transform basis, where
+            // Cross(transform.right, transform.up) == +transform.forward.
+            // Mixing the two conventions is a reflection, not a rotation — it
+            // mirrors every glyph. RuneWall's repaint did exactly that and gave
+            // Marko back a wall of runes he never drew (see RuneWall.LoadSaved).
+            // ZombieScribe.PlaneBasis ends with this same line; use it rather
+            // than hand-rolling a basis anywhere else.
             Vector3 up = Vector3.Cross(right, normal).normalized;
 
             // UNROLL THE SURFACE (Marko: "fix recognition on uneven
@@ -174,7 +184,12 @@ namespace SpellyZombie
                 {
                     if (Find(i) == Find(j)) continue;
                     float join = baseDist + sizeFactor * Mathf.Min(sizes[i], sizes[j]);
-                    var bi = bounds[i]; bi.Expand(join);
+                    // Bounds.Expand grows the SIZE by the amount — each face
+                    // moves out by HALF of it. Passing `join` therefore culled
+                    // pairs whose boxes were more than join/2 apart, while
+                    // InkTouches below accepts up to join: strokes 0.8-1.4cm
+                    // apart, INSIDE his touch law, never even got tested.
+                    var bi = bounds[i]; bi.Expand(join * 2f);
                     if (!bi.Intersects(bounds[j])) continue;
                     if (InkTouches(strokes[i], strokes[j], join))
                         parent[Find(j)] = Find(i);
@@ -206,23 +221,51 @@ namespace SpellyZombie
         {
             var result = new List<RuneGlyph>();
             var handDrawn = new List<Stroke>();
+            var declared = new List<Stroke>();
             foreach (var s in strokes)
             {
-                if (s.DeclaredRune != RuneType.None)
+                if (s.DeclaredRune != RuneType.None) declared.Add(s);
+                else handDrawn.Add(s);
+            }
+
+            // DECLARED strokes group by touch + same rune: a multi-stroke
+            // drawing the player declared is ONE glyph (one cast), never one
+            // per pen lift. Zombie scribes draw single strokes, so their
+            // behavior is unchanged; two SEPARATE drawings declared as the
+            // same rune stay two glyphs — one cast per drawing.
+            while (declared.Count > 0)
+            {
+                var glyph = new RuneGlyph();
+                glyph.Members.Add(declared[0]);
+                declared.RemoveAt(0);
+                // TOUCHING ONLY — the main rule for everything (Marko's law;
+                // the vector gap exception is dead)
+                var groupRune = glyph.Members[0].DeclaredRune;
+                float join = DrawingConfig.RuneTouchDistance;
+                bool grew = true;
+                while (grew)
                 {
-                    var glyph = new RuneGlyph();
-                    glyph.Members.Add(s);
-                    if (RuneLibrary.IsUnlocked(ownerId, s.DeclaredRune))
+                    grew = false;
+                    for (int i = declared.Count - 1; i >= 0; i--)
                     {
-                        glyph.Rune = s.DeclaredRune;
-                        glyph.Score = 1f;
+                        var s = declared[i];
+                        if (s.DeclaredRune != groupRune) continue;
+                        foreach (var m in glyph.Members)
+                            if (InkTouches(s, m, join))
+                            {
+                                glyph.Members.Add(s);
+                                declared.RemoveAt(i);
+                                grew = true;
+                                break;
+                            }
                     }
-                    result.Add(glyph);
                 }
-                else
+                if (RuneLibrary.IsUnlocked(ownerId, glyph.Members[0].DeclaredRune))
                 {
-                    handDrawn.Add(s);
+                    glyph.Rune = glyph.Members[0].DeclaredRune;
+                    glyph.Score = 1f;
                 }
+                result.Add(glyph);
             }
             result.AddRange(SegmentByRecognition(handDrawn, baseDist, sizeFactor, ownerId));
 
@@ -292,7 +335,11 @@ namespace SpellyZombie
                     if (Find(i) == Find(j)) continue;
                     float join = DrawingConfig.RuneTouchDistance;
                     var bi = bounds[i];
-                    bi.Expand(join);
+                    // × 2: Expand grows SIZE, so each face only moves out by half
+                    // the amount. At `join` this cull threw away touching ink
+                    // before InkTouches could see it — the "connected ink is one
+                    // drawing" law failing on the measurement, not the geometry.
+                    bi.Expand(join * 2f);
                     if (bi.Intersects(bounds[j]) && InkTouches(strokes[i], strokes[j], join))
                         parent[Find(j)] = Find(i);
                 }
@@ -313,13 +360,70 @@ namespace SpellyZombie
             return result;
         }
 
+        // RESULT CACHE (Marko: "the game still lags whenever I close a
+        // seal") — the ensemble runs ONCE per distinct drawing: pen-up warms
+        // the cache via Precognize, the seal close hits it for free. Keyed
+        // by stroke ids + node counts (ink is immutable while Open; erasing
+        // changes the node count and misses cleanly). Body ink only needs
+        // its FIRST honest read — after that the stamp bypasses recognition.
+        static readonly Dictionary<long, (RuneType rune, float score)> _recogCache =
+            new Dictionary<long, (RuneType, float)>();
+
+        /// …AND IT DROPS WHEN THE TEMPLATES CHANGE. The key is stroke ids only,
+        /// so after a Rune Studio wall save, re-reading UNCHANGED ink handed
+        /// back the pre-save verdict — which looks exactly like "the matcher
+        /// ignored what I just drew". RuneLibrary bumps PoolGeneration on every
+        /// pool edit; one int compare per read keeps the test loop honest.
+        static int _cacheGen = -1;
+
+        static long CacheKey(List<Stroke> members, int ownerId)
+        {
+            long h = ownerId;
+            foreach (var m in members)
+                h ^= m.Id * 2654435761L + m.Nodes.Count * 31L;
+            return h;
+        }
+
+        /// Pen-up warm-up: classify the touching cluster around a finished
+        /// stroke NOW, so the seal close pays nothing for recognition.
+        public static void Precognize(Stroke seed, IReadOnlyList<Stroke> all)
+        {
+            if (seed == null || !seed.Alive || seed.DeclaredRune != RuneType.None) return;
+            var members = new List<Stroke> { seed };
+            bool grew = true;
+            while (grew)
+            {
+                grew = false;
+                foreach (var s in all)
+                {
+                    if (s == null || !s.Alive || s.State != StrokeState.Open || s.SealResidue) continue;
+                    if (s.DeclaredRune != RuneType.None || members.Contains(s)) continue;
+                    foreach (var m in members)
+                        if (InkTouches(s, m, DrawingConfig.RuneTouchDistance))
+                        { members.Add(s); grew = true; break; }
+                }
+            }
+            Recognize(members, seed.OwnerId);
+        }
+
         static RuneGlyph Recognize(List<Stroke> members, int ownerId)
         {
             var glyph = new RuneGlyph();
             glyph.Members.AddRange(members);
-            var (rune, score) = RuneLibrary.Classify(ownerId, RawStrokesOf(members));
-            glyph.Score = score;
-            glyph.Rune = score >= DrawingConfig.MinRuneScore ? rune : RuneType.None;
+            if (_cacheGen != RuneLibrary.PoolGeneration)
+            {
+                _recogCache.Clear();
+                _cacheGen = RuneLibrary.PoolGeneration;
+            }
+            long key = CacheKey(members, ownerId);
+            if (!_recogCache.TryGetValue(key, out var r))
+            {
+                r = RuneLibrary.Classify(ownerId, RawStrokesOf(members));
+                if (_recogCache.Count > 128) _recogCache.Clear(); // tiny, self-pruning
+                _recogCache[key] = r;
+            }
+            glyph.Score = r.score;
+            glyph.Rune = r.score >= DrawingConfig.MinRuneScore ? r.rune : RuneType.None;
             return glyph;
         }
 
@@ -336,17 +440,53 @@ namespace SpellyZombie
             return b;
         }
 
+        /// TOUCHING MEANS THE INK MEETS THE INK — measured node-to-LINE, never
+        /// node-to-node. Marko's law: "only when lines are touching is the main
+        /// rule for everything: seals or runes… everything must touch exactly."
+        ///
+        /// The old test compared sampled NODE against sampled NODE, so a barb
+        /// landing squarely ON the middle of a shaft measured its distance to the
+        /// nearest sample rather than to the line it is sitting on — up to half a
+        /// node spacing of pure measurement error. That error is why this
+        /// threshold had to be inflated to 5cm, and 5cm is a gap you can SEE:
+        /// it merged runes into seals that never touched them (his Aug 1 report).
+        ///
+        /// Point-to-segment has no sampling error, so the threshold can be the
+        /// honest one — and BOTH halves of his law hold at once: ink that touches
+        /// always joins, ink that doesn't never does.
+        ///
+        /// Run both ways round: whichever stroke has the coarser samples, one of
+        /// the two passes measures its node against the other's LINE.
         public static bool InkTouches(Stroke a, Stroke b, float maxDist)
         {
-            foreach (var na in a.Nodes)
+            if (a == null || b == null) return false;
+            float m2 = maxDist * maxDist;
+            return NodesTouchLine(a, b, m2) || NodesTouchLine(b, a, m2);
+        }
+
+        /// Any node of `from` within `m2` (squared) of the polyline of `onto`.
+        static bool NodesTouchLine(Stroke from, Stroke onto, float m2)
+        {
+            foreach (var na in from.Nodes)
             {
                 if (na == null) continue;
-                Vector3 pa = na.transform.position;
-                foreach (var nb in b.Nodes)
+                Vector3 p = na.transform.position;
+                Vector3 prev = default;
+                bool has = false;
+                foreach (var nb in onto.Nodes)
                 {
-                    if (nb == null) continue;
-                    if (Vector3.Distance(pa, nb.transform.position) <= maxDist)
-                        return true;
+                    if (nb == null) { has = false; continue; } // erased hole: no segment across it
+                    Vector3 q = nb.transform.position;
+                    if ((p - q).sqrMagnitude <= m2) return true;
+                    if (has)
+                    {
+                        Vector3 d = q - prev;
+                        float l2 = d.sqrMagnitude;
+                        float t = l2 > 1e-10f ? Mathf.Clamp01(Vector3.Dot(p - prev, d) / l2) : 0f;
+                        if ((p - (prev + d * t)).sqrMagnitude <= m2) return true;
+                    }
+                    prev = q;
+                    has = true;
                 }
             }
             return false;

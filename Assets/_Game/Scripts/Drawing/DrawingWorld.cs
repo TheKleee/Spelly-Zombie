@@ -41,6 +41,7 @@ namespace SpellyZombie
         static readonly HashSet<Transform> _insideNow = new HashSet<Transform>(); // capsules inside the loop this tick
         readonly List<string> _events = new List<string>();
         float _detectTimer;
+        float _evapTimer;
         readonly List<Stroke> _eligibleCache = new List<Stroke>();
         string _lastNearMissShown;
         bool _inkDebug; // F12: show what the detector sees (stroke endpoints)
@@ -52,6 +53,9 @@ namespace SpellyZombie
             if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
             LineMaterial = new Material(shader);
             RuneLibrary.Warm(); // recognition loads NOW, not on the first rune
+            SpellParticle.PrewarmPool(); // and the casting hitch dies at load
+                                         // (Marko's pool ruling: "prepare the
+                                         // particles in advance and freeze them")
         }
 
         void OnDestroy()
@@ -62,12 +66,18 @@ namespace SpellyZombie
         public void Register(Stroke stroke)
         {
             stroke.EnsureLine(LineMaterial);
+            stroke.BornAt = Time.time; // the evaporation clock starts now
             Strokes.Add(stroke);
         }
 
         /// Pen lifted: the stroke is just ink now. No grouping, no classification,
         /// no timers — runes are read when a seal closes around them.
-        public void CompleteStroke(Stroke s, bool allowCloseOntoInk = true)
+        /// `silent` = this ink is being REPAINTED, not drawn by a player.
+        /// The Rune Studio walls repaint every saved sample at load, and each
+        /// one was running a full-library recognition sweep, a network send and
+        /// an ink claim — hundreds of them, measured at ~150ms EACH. None of it
+        /// means anything for a picture on a wall.
+        public void CompleteStroke(Stroke s, bool allowCloseOntoInk = true, bool silent = false)
         {
             if (s.Nodes.Count < DrawingConfig.MinStrokeNodes)
             {
@@ -79,6 +89,20 @@ namespace SpellyZombie
             s.State = StrokeState.Open;
             s.CachePersistence();
             s.ComputeRawShape();
+            if (silent) return;
+
+            // MARKING IS JUST DRAWING: ink laid on a thing becomes your CLAIM
+            // on it, and the more you spend the heavier a thing you can lift.
+            // Static scenery counts too — that's how a rooted bench gets
+            // enough ink on it to be torn loose.
+            if (s.Surface != null && s.Surface.GetComponentInParent<SimpleFPSController>() == null
+                && s.Surface.GetComponentInParent<Creature>() == null)
+                InkMark.For(s.Surface, true)?.Add(s.OwnerId,
+                    s.PathLength() * DrawingConfig.InkCostPerMeter * Perks.InkCostMul);
+
+            RuneGlyph.Precognize(s, Strokes); // recognition runs at PEN-UP —
+                                              // the seal close hits the cache
+                                              // (Marko: closing always lagged)
 
             NetSync.OnLocalStrokeFinished(s); // co-op: friends see your ink
 
@@ -230,17 +254,12 @@ namespace SpellyZombie
                 int loopNodes = (hi - lo + 1) + b.Nodes.Count;
                 if (loopNodes < DrawingConfig.MinLoopNodes || loopLength < DrawingConfig.MinLoopPerimeter) continue;
 
-                // GAP BUDGET relative to the WHOLE loop being formed — same rule
-                // as chained loops. This lets a small stroke close a big circle
-                // (big perimeter = generous budget) while a hatch mark next to a
-                // line still can't fake a closure (tiny loop = tiny budget).
-                float gapSum = Vector3.Distance(bLast.transform.position, a.Nodes[i].transform.position)
-                             + Vector3.Distance(bFirst.transform.position, a.Nodes[k].transform.position);
-                if (gapSum > loopLength * DrawingConfig.MaxLoopGapFraction)
-                {
-                    LogEvent($"almost closed onto ink — {gapSum * 100f:0.0}cm of air vs {loopLength * DrawingConfig.MaxLoopGapFraction * 100f:0.0}cm allowed ({loopLength * 100f:0}cm candidate loop)");
-                    continue;
-                }
+                // (The relative gap budget that used to sit here is DELETED, same
+                // reasoning as SealDetector.Dfs: both junctions are ALREADY
+                // capped at CloseThreshold by the NearestNodeIndex calls above,
+                // and stacking a perimeter-relative test on top made the SIZE of
+                // the drawing decide whether a touch counts. His law is absolute
+                // — touching is about ink width, not about how big you drew it.)
 
                 // the loop must enclose something — retracing along a line is not a seal
                 Vector3 junctionA = a.Nodes[k].transform.position;
@@ -293,7 +312,8 @@ namespace SpellyZombie
 
         /// Pen-up SELF-closure: the stroke's END REGION (the last 12cm — the
         /// hook) touched its OWN earlier ink. Plain 3D node distance under the
-        /// EXISTING SelfCloseThreshold (2-6cm clamp) — tolerant of cobblestone
+        /// SelfCloseThreshold (now flat CloseThreshold, no size scaling — pen-lift
+        /// count and size must never decide a shape) — tolerant of cobblestone
         /// height offsets, unlike the crossing finder's exact plan-view
         /// intersection test. Pen-up ONLY: mid-draw stays gated to the stroke's
         /// first 12cm so stars are never truncated mid-glyph again. This is the
@@ -412,10 +432,41 @@ namespace SpellyZombie
             foreach (var s in Strokes)
                 if (s.Alive) s.UpdateLine();
 
+            // OLD INK EVAPORATES (Marko, Aug 5: "the longer the game lasts
+            // the more it lags — old ink that's standing there unused should
+            // evaporate after 1 minute"). Every living stroke costs the
+            // detector, the touch tests and a renderer forever, so a session
+            // slowly drowned in its own scribbles. World ink that just lies
+            // there thins out and vanishes after InkEvaporateSeconds.
+            // EXEMPT: body/weapon ink (Persistent), ink being drawn, and ink
+            // that is part of a seal (active or spent-awaiting-rearm) — only
+            // State == Open strokes are loose ink.
+            _evapTimer -= Time.deltaTime;
+            if (_evapTimer <= 0f)
+            {
+                _evapTimer = 1f;
+                for (int i = Strokes.Count - 1; i >= 0; i--)
+                {
+                    var s = Strokes[i];
+                    if (s == null || !s.Alive) { Strokes.RemoveAt(i); continue; }
+                    if (s.State != StrokeState.Open || s.Persistent) continue;
+                    float over = (Time.time - s.BornAt) - DrawingConfig.InkEvaporateSeconds;
+                    if (over <= 0f) continue;
+                    float k = 1f - over / Mathf.Max(0.5f, DrawingConfig.InkEvaporateFadeSeconds);
+                    if (k <= 0f) { s.Burn(); Strokes.RemoveAt(i); }
+                    else s.SetEvaporation(k); // thins visibly before it goes
+                }
+            }
+
             // active seals: integrity + duration
             for (int i = ActiveSeals.Count - 1; i >= 0; i--)
                 if (!ActiveSeals[i].Tick(Time.deltaTime))
                     ActiveSeals.RemoveAt(i);
+
+            // (the handwriting flush timer lived here; RuneLibrary.FlushSaves
+            // was dead — nothing ever marked the save dirty, and quiet in-game
+            // learning is round-only by ruling, so there was never anything to
+            // defer. Rune Studio writes on the spot.)
 
             // periodic scans — loop detection, spent re-arming, erase repair, ink budget
             _detectTimer -= Time.deltaTime;
@@ -474,12 +525,219 @@ namespace SpellyZombie
                 return;
             }
 
-            // surface why an ALMOST-loop was refused (once per changed reason)
-            if (SealDetector.LastNearMiss != null && SealDetector.LastNearMiss != _lastNearMissShown)
+            // surface why an ALMOST-loop was refused (once per changed reason).
+            // BOTH detectors get to explain themselves — a stroke that stopped
+            // 2cm short of the line it was aiming for is the single most common
+            // refusal, and it used to be the most silent one.
+            string why = SealDetector.LastNearMiss ?? CrossingFinder.LastNearMiss;
+            if (why != null && why != _lastNearMissShown)
             {
-                _lastNearMissShown = SealDetector.LastNearMiss;
-                LogEvent(SealDetector.LastNearMiss);
+                _lastNearMissShown = why;
+                LogEvent(why);
             }
+        }
+
+        /// THE SEAL-PAGE DECLARE (Marko: "a page for seals… but seal must
+        /// always find a closed path — and when you recognize it it will be
+        /// activated"): re-run BOTH closure detectors on just this drawing's
+        /// strokes. The book never conjures a loop that isn't there — it only
+        /// looks again, at exactly the ink you pointed at. True = a seal
+        /// formed and ACTIVATED through the normal casting path.
+        public bool TryDeclareSeal(List<Stroke> cluster)
+        {
+            if (cluster == null) return false;
+            var eligible = new List<Stroke>();
+            foreach (var s in cluster)
+            {
+                if (s == null || !s.Alive || s.State != StrokeState.Open) continue;
+                if (s.Nodes.Count < 3 || !s.ChainIntact() || s.Hidden()) continue;
+                eligible.Add(s);
+            }
+            if (eligible.Count == 0) return false;
+
+            SealDetector.LastNearMiss = null;
+            var loop = SealDetector.FindLoop(eligible);
+            float loopPerim = loop != null ? SealDetector.LoopPerimeter(loop) : -1f;
+            var cross = CrossingFinder.Find(eligible);
+            float crossPerim = cross.Valid ? cross.Perimeter : -1f;
+
+            if (loop != null && loopPerim >= crossPerim)
+            {
+                CreateSeal(loop, "declared at the book");
+                return true;
+            }
+            if (cross.Valid)
+            {
+                ApplyCrossingLoop(cross);
+                return true;
+            }
+
+            // THE BOOK MUST TRY EVERYTHING THE PEN TRIES, FIRST. CompleteStroke
+            // runs TryCloseOntoSelf / TryCloseOntoInk at pen-up; this path ran
+            // only FindLoop + CrossingFinder, so a drawing the pen itself would
+            // have closed fell straight through to the mirror — which then
+            // duplicated the whole drawing instead of closing it.
+            foreach (var s in eligible)
+            {
+                if (!s.Alive || s.State != StrokeState.Open) continue;
+                if (TryCloseOntoSelf(s) || TryCloseOntoInk(s)) return true;
+            }
+
+            // THE BOOK COMPLETES THE LOOP (Marko: "force launch a seal that
+            // redraws it flipped to the other side making a complete seal"):
+            // an OPEN shape gets its mirror image drawn across the line
+            // between its two farthest endpoints — original and reflection
+            // kiss at both ends, and the detector runs again on a drawing
+            // that is now genuinely closed.
+            //
+            // NEVER ON A BODY (his ruling: "completing a seal on the body
+            // should not be allowed — it's not good at it"): a flat mirror
+            // can't follow limbs, so it copied runes and floated off the
+            // skin. Body seals close naturally instead (breathing junctions).
+            foreach (var s in eligible)
+                if (s.Persistent)
+                {
+                    LogEvent("the book can't complete a loop on a body — close it with a pose");
+                    return false;
+                }
+
+            // THE COMPLETION COSTS INK (his rule: "same ink cost as drawing
+            // the half of the seal — you can't do it if you don't have
+            // enough, it should fizzle"): the reflection is as long as what
+            // you drew, and it's paid for exactly like drawing it.
+            // A RUNE IS CONTENT, NEVER A MOUTH TO BE MIRRORED. Mirroring the
+            // whole cluster copied his runes as well as the boundary, and worse:
+            // the mirror AXIS is "the two farthest endpoints", so a rune's
+            // endpoint could define the line to reflect across — throwing the
+            // reflection somewhere that closes nothing, charging him ink for the
+            // duplicate, and leaving mirrored nodes to erase by hand.
+            var mouth = BoundaryCandidates(eligible);
+
+            float mirrorLen = 0f;
+            foreach (var s in mouth) mirrorLen += s.PathLength();
+            float mirrorCost = mirrorLen * DrawingConfig.InkCostPerMeter * Perks.InkCostMul;
+            var payer = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
+            var payerInk = payer != null ? payer.GetComponent<PlayerInk>() : null;
+            if (payerInk != null && !payerInk.TrySpend(mirrorCost))
+            {
+                LogEvent("not enough ink to complete the seal — it fizzles");
+                return false;
+            }
+            var made = MirrorComplete(mouth);
+            // NOTHING WAS DRAWN, SO NOTHING IS OWED. MirrorComplete walks away
+            // empty when the mouth has fewer than two endpoints or is under 2cm
+            // wide, and the ink had already been deducted — he paid full price
+            // for a reflection that never appeared, and the only feedback was
+            // "no closed path". Pay for ink or get the ink back.
+            if (made.Count == 0 && payerInk != null) payerInk.Award(mirrorCost);
+            if (made.Count > 0)
+            {
+                var all2 = new List<Stroke>(eligible);
+                all2.AddRange(made);
+                SealDetector.LastNearMiss = null;
+                var loop2 = SealDetector.FindLoop(all2);
+                if (loop2 != null)
+                {
+                    CreateSeal(loop2, "the book completed the loop");
+                    return true;
+                }
+                // BOTH detectors here too: the reflection meets the original at
+                // the mouth's ends, but a wobbly hand-drawn arc can just as
+                // easily land ON the original's ink instead of on its tip —
+                // which is a touch, and touching is touching.
+                var cross2 = CrossingFinder.Find(all2);
+                if (cross2.Valid)
+                {
+                    ApplyCrossingLoop(cross2);
+                    return true;
+                }
+                // rare: the reflection didn't close it — the mirrored ink
+                // stays as ordinary ink, and the log says why
+            }
+            LogEvent(SealDetector.LastNearMiss ?? CrossingFinder.LastNearMiss
+                ?? "no closed path — the line must come back around");
+            return false;
+        }
+
+        /// The strokes that could be BOUNDARY — everything the drawing says is
+        /// rune CONTENT is dropped. A stroke he has declared is a rune outright;
+        /// a stroke that reads as one on its own is content too. What's left is
+        /// the open shape whose mouth the book is being asked to close.
+        /// Falls back to the whole set rather than doing nothing: if every
+        /// stroke reads as a rune, the mouth is whatever we have.
+        List<Stroke> BoundaryCandidates(List<Stroke> eligible)
+        {
+            var mouth = new List<Stroke>();
+            var one = new List<Stroke>(1) { null };
+            foreach (var s in eligible)
+            {
+                if (s.DeclaredRune != RuneType.None) continue; // he already said what this is
+                one[0] = s;
+                var (type, score) = RuneLibrary.Classify(s.OwnerId, RuneGlyph.RawStrokesOf(one));
+                if (type != RuneType.None && score >= DrawingConfig.MinRuneScore) continue;
+                mouth.Add(s);
+            }
+            return mouth.Count > 0 ? mouth : eligible;
+        }
+
+        /// Mirror every stroke of the cluster across the line between its two
+        /// farthest endpoints (the shape's "mouth"). The reflections are real
+        /// ink — marked SealResidue so they serve as BOUNDARY, never as rune
+        /// content — and they touch the originals at both ends by geometry.
+        List<Stroke> MirrorComplete(List<Stroke> cluster)
+        {
+            var made = new List<Stroke>();
+            var ends = new List<Vector3>();
+            foreach (var s in cluster)
+            {
+                if (s.First != null) ends.Add(s.First.transform.position);
+                if (s.Last != null) ends.Add(s.Last.transform.position);
+            }
+            if (ends.Count < 2) return made;
+            Vector3 a = ends[0], b = ends[0];
+            float best = -1f;
+            foreach (var p1 in ends)
+                foreach (var p2 in ends)
+                {
+                    float d = (p1 - p2).sqrMagnitude;
+                    if (d > best) { best = d; a = p1; b = p2; }
+                }
+            if (best < 0.02f * 0.02f) return made; // a closed dot has no mouth
+
+            Vector3 axis = (b - a).normalized;
+            foreach (var src in cluster)
+            {
+                var piece = new Stroke
+                {
+                    BasisRight = src.BasisRight,
+                    BasisUp = src.BasisUp,
+                    Surface = src.Surface,
+                    OwnerId = src.OwnerId
+                };
+                int idx = 0;
+                foreach (var n in src.Nodes)
+                {
+                    if (n == null) continue;
+                    Vector3 d = n.transform.position - a;
+                    Vector3 along = Vector3.Dot(d, axis) * axis;
+                    Vector3 mirrored = a + along - (d - along);
+                    var node = DrawNode.Create(piece, idx++, mirrored, n.SurfaceNormal, src.Surface);
+                    piece.AddNode(node);
+                }
+                if (piece.Nodes.Count < 2)
+                {
+                    foreach (var n in piece.Nodes)
+                        if (n != null) Destroy(n.gameObject);
+                    continue;
+                }
+                Register(piece);
+                piece.State = StrokeState.Open;
+                piece.SealResidue = true; // boundary ink, never rune content
+                piece.CachePersistence();
+                piece.ComputeRawShape();
+                made.Add(piece);
+            }
+            return made;
         }
 
         /// Turn a detected crossing cycle into a seal: split every crossed stroke
@@ -916,7 +1174,11 @@ namespace SpellyZombie
         /// eraser is only as wide as the pen now, so a fast hand would skip
         /// clean over nodes with point-erasing — sweeping the segment catches
         /// everything the cursor actually passed over.
-        public void EraseAlong(Vector3 from, Vector3 to, float radius)
+        /// SCOOPING (Marko: "we can scoop up the ink from the floor by
+        /// erasing it — our wand is growing"): pass the eraser's own ink pool
+        /// and every rubbed-out node flows back into it. Null = plain erase
+        /// (zombie soap gets nothing).
+        public void EraseAlong(Vector3 from, Vector3 to, float radius, PlayerInk scoopInto = null)
         {
             Vector3 seg = to - from;
             float len2 = seg.sqrMagnitude;
@@ -930,7 +1192,10 @@ namespace SpellyZombie
                     Vector3 p = n.transform.position;
                     float t = len2 > 1e-8f ? Mathf.Clamp01(Vector3.Dot(p - from, seg) / len2) : 0f;
                     if ((p - (from + seg * t)).sqrMagnitude <= r2)
+                    {
+                        scoopInto?.Award(DrawingConfig.NodeSpacing * DrawingConfig.InkCostPerMeter);
                         Destroy(n.gameObject);
+                    }
                 }
             }
         }

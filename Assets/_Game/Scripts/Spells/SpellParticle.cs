@@ -88,10 +88,29 @@ namespace SpellyZombie
         bool Spares(Transform t) =>
             t == Holder || (t == _graceFor && Time.time < _graceUntil);
 
+        /// A BODY CAST IS A THROW (Marko: "the body can push the particles
+        /// as if they were thrown") — the particle leaves with real speed
+        /// and spares its caster on the way out, exactly like a hand-thrown
+        /// one spares the thrower. Siblings launched together fly together
+        /// and combine mid-air: the fire bolt.
+        public void ThrowFrom(Transform caster, Vector3 velocity, float grace = 0.35f)
+        {
+            _graceFor = caster;
+            _graceUntil = Time.time + grace;
+            Vel = velocity;
+            _settled = false;
+        }
+
+        float _impactFxAt; // juice throttle — repeats within the window are noise
+
         /// EVERY delivery lands with JUICE (Marko: "we're not using almost
         /// anything") — one impact effect per kind, at the point of contact.
+        /// THROTTLED per particle (Marko: "chain effects overly pop up and
+        /// lag") — a chain hitting the same mote 10× a second reads as ONE.
         public void ImpactFx()
         {
+            if (Time.time - _impactFxAt < 0.5f) return;
+            _impactFxAt = Time.time;
             var lib = FxLibrary.I;
             if (lib == null) return;
             Vector3 at = transform.position;
@@ -186,20 +205,89 @@ namespace SpellyZombie
         int _generation;
         bool _dead, _settled, _explosive;
 
+        // ---- THE FREEZER (Marko: "prepare the particles in advance and
+        // freeze them and call them from the pool" — building a sphere, a
+        // rigidbody and a CFXR/FX rig from scratch at every seal close was
+        // the casting hitch). Pools are PER KIND, so a thawed body wakes with
+        // its look, its light and its glyph shape already built.
+        static readonly Dictionary<ParticleKind, Stack<SpellParticle>> _pool =
+            new Dictionary<ParticleKind, Stack<SpellParticle>>();
+        const int PoolKeep = 6; // per kind — beyond this, dying particles really die
+
+        static Stack<SpellParticle> PoolFor(ParticleKind k)
+        {
+            if (!_pool.TryGetValue(k, out var s)) _pool[k] = s = new Stack<SpellParticle>();
+            return s;
+        }
+
+        /// Load-time warmup: build a few of every kind (shaders compile, his
+        /// FX_&lt;Kind&gt; prefabs and the CFXR idles instantiate ONCE) and freeze
+        /// them — the first seal of the match costs the same as the fiftieth.
+        public static void PrewarmPool(int perKind = 2)
+        {
+            foreach (ParticleKind k in System.Enum.GetValues(typeof(ParticleKind)))
+                for (int i = 0; i < perKind; i++)
+                    Emit(k, new Vector3(0f, -900f, 0f), Vector3.up, 1f).Die();
+        }
+
+        /// Everything a past life could have left behind, zeroed. Kind, the
+        /// look, the light and the vector glyph survive on purpose — they are
+        /// exactly the expensive parts the pool exists to keep.
+        void ResetForReuse()
+        {
+            _dead = false;
+            _age = 0f;
+            _settled = false;
+            _explosive = false;
+            _chaosLeft = 0f;
+            _isolatedUntil = 0f;
+            _auraTick = _donateTick = _patchTick = 0f;
+            _fearTick = _strikeTick = _retarget = _lureRetarget = 0f;
+            _impactFxAt = 0f;
+            _lure = null;
+            _prey = null;
+            GrammarLevel = 1;
+            Lineage = 0;
+            SealId = 0;
+            BecameObj = null;
+            Claimed = false;
+            Holder = null;
+            _graceUntil = 0f;
+            _graceFor = null;
+            Temp = Lum = Density = Stick = 0f;
+            Vel = Vector3.zero;
+        }
+
         // ------------------------------------------------------------- birth --
         public static SpellParticle Emit(ParticleKind kind, Vector3 pos, Vector3 dir,
             float intensity, int generation = 0)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            SpellParticle p = null;
+            var stack = PoolFor(kind);
+            while (stack.Count > 0 && (p = stack.Pop()) == null) { } // scene changes leave husks
+            GameObject go;
+            if (p != null)
+            {
+                go = p.gameObject;
+                go.SetActive(true);
+                p.ResetForReuse();
+                All.Add(p);
+                if (All.Count > DrawingConfig.ParticleCap && All[0] != null)
+                    All[0].Die(); // oldest yields — the same fence Awake holds
+            }
+            else
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                go.GetComponent<SphereCollider>().isTrigger = true;
+                var rb = go.AddComponent<Rigidbody>();
+                rb.isKinematic = true; // moves by script; triggers do the touching
+                p = go.AddComponent<SpellParticle>();
+                p.Kind = kind;
+            }
             go.name = "P_" + kind;
             go.transform.position = pos;
+            go.transform.rotation = Quaternion.identity;
             go.transform.localScale = Vector3.one * (kind == ParticleKind.Push ? 0.09f : 0.14f);
-            go.GetComponent<SphereCollider>().isTrigger = true;
-            var rb = go.AddComponent<Rigidbody>();
-            rb.isKinematic = true; // moves by script; triggers do the touching
-
-            var p = go.AddComponent<SpellParticle>();
-            p.Kind = kind;
             p.Power = Mathf.Clamp(intensity, 0.2f, 2f);
             p._generation = generation;
             p._appetite = Random.value; // personality: some motes stalk, some are lazy
@@ -230,9 +318,9 @@ namespace SpellyZombie
             p.Vel = dir.normalized * speed
                 + Random.insideUnitSphere * (kind == ParticleKind.Push ? 0.2f : 0.22f);
 
-            if (kind == ParticleKind.Light)
+            if (kind == ParticleKind.Light && go.GetComponent<Light>() == null)
             {
-                var l = go.AddComponent<Light>();
+                var l = go.AddComponent<Light>(); // a thawed Light keeps its lamp
                 l.type = LightType.Point; l.range = 4.5f; l.intensity = 2.2f;
                 l.color = new Color(1f, 0.96f, 0.8f);
             }
@@ -256,7 +344,27 @@ namespace SpellyZombie
             if (_dead) return;
             _dead = true;
             All.Remove(this);
-            Destroy(gameObject);
+            // into the freezer, not the grave (Marko's pool ruling) — the
+            // body keeps its kind-specific look for the next cast
+            var stack = PoolFor(Kind);
+            if (stack.Count < PoolKeep)
+            {
+                transform.SetParent(null); // a hand may still be holding us
+                if (_vectorShaped)
+                {
+                    // the glyph was tinted by THIS life's arrow/Y identity —
+                    // the next life re-shapes it from its own lineage
+                    _vectorShaped = false;
+                    for (int i = transform.childCount - 1; i >= 0; i--)
+                    {
+                        var c = transform.GetChild(i);
+                        if (c.name == "Glyph") Destroy(c.gameObject);
+                    }
+                }
+                gameObject.SetActive(false);
+                stack.Push(this);
+            }
+            else Destroy(gameObject);
         }
 
         // ------------------------------------------------------------ living --
@@ -332,6 +440,7 @@ namespace SpellyZombie
                     bool nearIsKin = false, nearIsVector = false;
                     float baseRange = DrawingConfig.ParticleKinRange * DrawingConfig.ParticleKinRange;
                     float kinRange = baseRange * 4f; // same-seal reach: 2× the distance
+                    float vecRange = baseRange * 9f; // twin sight: 3× — vectors FLY, they need the head start
                     float bestSqr = float.MaxValue;
                     for (int i = 0; i < All.Count; i++)
                     {
@@ -346,15 +455,22 @@ namespace SpellyZombie
                             {
                                 if (o.IsY != IsY) continue; // arrow×Y stays undefined — no bending
                                 float vd = (o.transform.position - transform.position).sqrMagnitude;
-                                if (vd <= kinRange && vd < bestSqr)
+                                if (vd <= vecRange && vd < bestSqr)
                                 { near = o; bestSqr = vd; nearIsVector = true; }
                                 continue;
                             }
-                            // THE ARROW IS WIND: it still herds every essence
+                            // THE ARROW IS WIND: it still herds every essence —
+                            // and SIZE IS NO ARMOR (Marko: "push should work
+                            // on all objects"): reach measures to the SURFACE,
+                            // so a huge compress+fire ball is a bigger sail,
+                            // not an immovable one (center-distance ranging
+                            // made anything large silently push-proof)
                             if (o.Kind != ParticleKind.BarrierMote)
                             {
+                                float reach = DrawingConfig.ParticleKinRange
+                                    + (transform.localScale.x + o.transform.localScale.x) * 0.5f;
                                 float wd = (o.transform.position - transform.position).sqrMagnitude;
-                                if (wd < baseRange)
+                                if (wd < reach * reach)
                                 {
                                     o.Vel += Vel.normalized * (3f * Power * dt);
                                     o._settled = false; // wind wakes resting embers
@@ -383,12 +499,46 @@ namespace SpellyZombie
                         { near = o; bestSqr = d; nearIsKin = true; nearIsVector = false; continue; }
                         if (d < bestSqr) { bestSqr = d; near = o; nearIsKin = kin; }
                     }
+
+                    // WIND MOVES MATTER TOO (Marko: "push should work on all
+                    // objects, even those that are not grabbable — pull as
+                    // well"): conjured rocks, blobs, fireballs-turned-object —
+                    // anything with a body catches the vector's draft
+                    if (iAmPush)
+                        foreach (var mm in Matter.Living)
+                        {
+                            if (mm == null) continue;
+                            var mrb = mm.GetComponent<Rigidbody>();
+                            if (mrb == null || mrb.isKinematic) continue;
+                            float reach = DrawingConfig.ParticleKinRange
+                                + (transform.localScale.x + mm.transform.localScale.x) * 0.5f;
+                            if ((mm.transform.position - transform.position).sqrMagnitude < reach * reach)
+                                mrb.AddForce(Vel.normalized * (3f * Power * dt), ForceMode.VelocityChange);
+                        }
+
                     if (near != null)
                     {
                         // FIRST LOVE: other particles — affinity beats appetite
                         Vector3 to = near.transform.position - transform.position;
-                        Vel += to.normalized * ((iAmPush ? 4.5f : nearIsVector ? 3.6f : 2.2f) * dt); // twins curve hard or they'd fly past
-                        if (bestSqr < 0.12f * 0.12f && GetInstanceID() < near.GetInstanceID())
+                        if (iAmPush && nearIsVector)
+                        {
+                            // TWINS HUNT HARD (Marko: "stronger attraction…
+                            // they move so fast it's hard to make them
+                            // combine"): raw pull plus a real STEER — the
+                            // arrow bends its flight line toward its twin
+                            // instead of adding a nudge it instantly outruns.
+                            Vel += to.normalized * (22f * dt);
+                            float sp = Vel.magnitude;
+                            if (sp > 0.05f)
+                                Vel = Vector3.Slerp(Vel / sp, to.normalized,
+                                    Mathf.Clamp01(6f * dt)) * sp;
+                        }
+                        else
+                            Vel += to.normalized * ((iAmPush ? 4.5f : nearIsVector ? 3.6f : 2.2f) * dt);
+                        // two fast twins can STEP OVER a tiny meet window in a
+                        // single frame — theirs is wider so the pass connects
+                        float meetR = iAmPush && nearIsVector ? 0.3f : 0.12f;
+                        if (bestSqr < meetR * meetR && GetInstanceID() < near.GetInstanceID())
                             ResolveLaw(this, near);
                     }
                     else if (!iAmPush)
@@ -800,8 +950,12 @@ namespace SpellyZombie
                     // heat + chill = a GAS SUBSTANCE (Marko: "as we defined,
                     // not the gas bubbles") — real steam matter, billowing
                     // soft-body skin, rises and disperses by the state law
+                    // BORN BIG (Marko, Aug 4: the scalding vapor was "in too
+                    // small of an area to ever hit anyone — it should be much
+                    // larger and grow in time") — the growth is the gas law's,
+                    // this is the head start
                     var steam = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas,
-                        big ? 0.9f : 0.45f, at + Vector3.up * 0.3f);
+                        big ? 1.6f : 0.9f, at + Vector3.up * 0.3f);
                     steam.Temperature = 130f; // scalding — hot gas bites waders
                     steam.Density = 0.3f;
                     steam.Lineage = lineage;
@@ -1288,7 +1442,8 @@ namespace SpellyZombie
                 if (_donateTick > 0f) return;
                 _donateTick = 0.5f;
                 Donate(c, m, creature, rb);
-                ImpactFx(); // the flame LICKS visibly, every beat (juice pass)
+                // (no per-beat ImpactFx — a resident flame bursting every half
+                // second was most of the chain-lag; the idle look carries it)
                 return;
             }
 
@@ -1545,17 +1700,18 @@ namespace SpellyZombie
             if (m != null) { m.AddHeat(delta); return; }
             var go = c.attachedRigidbody ? c.attachedRigidbody.gameObject : c.gameObject;
 
-            // a CHARACTER limb is not furniture: the limb capsules carry
-            // kinematic rigidbodies on the BONES — heat must route to the
-            // BEING (a Damageable on a bone once burned a leg clean off the
-            // skeleton and the skin snapped to the world origin)
+            // a PLAYER'S temperature lives on the BODY BOARD, full stop —
+            // giving the player a Thermal made a SECOND thermometer that
+            // freeze-damaged a phantom Damageable every beat (the 3.4e38-hp
+            // log spam). Route heat to the slider and stop.
             var pilot = c.GetComponentInParent<SimpleFPSController>();
-            if (pilot != null) go = pilot.gameObject;
-            else
+            if (pilot != null)
             {
-                var creature = c.GetComponentInParent<Creature>();
-                if (creature != null) go = creature.gameObject;
+                BodyState.Of(pilot)?.PushTemp(delta * 0.12f); // same scale as mote touches
+                return;
             }
+            var creature = c.GetComponentInParent<Creature>();
+            if (creature != null) go = creature.gameObject;
 
             // don't cook giant static surfaces — same guard the old zones used
             var rend = go.GetComponentInChildren<Renderer>();
@@ -1648,6 +1804,10 @@ namespace SpellyZombie
         {
             var old = transform.Find("IdleFx");
             if (old != null) Destroy(old.gameObject);
+            // AXIOM: if HIS FX_<Kind> prefab is in play, it owns the look —
+            // don't staple a CFXR effect onto his art. (Destroy runs first so
+            // a stale IdleFx can't ride along after a kind change.)
+            if (_customLook != null) return;
             var lib = FxLibrary.I;
             if (lib == null) return;
             GameObject pick = null;
@@ -1656,25 +1816,24 @@ namespace SpellyZombie
             // lvl1 heat carries NO idle flame (Marko: "too large — it just
             // needs juice when it hits, like chill") — real fire is for the
             // Flame fixture and lvl2+ radiance
+            // TRIMMED (Marko: the star/shine storms were clutter + lag) — only
+            // the two kinds whose IDENTITY is "actively burning energy" wear a
+            // looping effect; everyone else speaks through delivery juice.
             if (Kind == ParticleKind.Flame || (fam == ParticleKind.Spark && GrammarLevel >= 2))
                 pick = lib.Fire;
-            else if (fam == ParticleKind.Frost) { pick = lib.Stars; scale = 2.2f; }
             else if (Kind == ParticleKind.Lightning) pick = lib.ElectricHit;
-            else if (fam == ParticleKind.Light) pick = lib.HealShine;
-            else if (Kind == ParticleKind.Shadow || fam == ParticleKind.Dark) { pick = lib.Smoke; scale = 1.6f; }
-            else if (Kind == ParticleKind.Repel) { pick = lib.Poof; scale = 2f; }
             if (pick == null) return;
             var fx = Instantiate(pick, transform.position, Quaternion.identity, transform);
             fx.name = "IdleFx";
-            fx.transform.localScale = Vector3.one * scale;
+            fx.transform.localScale *= scale; // *= keeps an authored prefab scale
         }
 
         void RefreshLook()
         {
             if (_rend == null) _rend = GetComponent<Renderer>();
             if (_rend == null) return;
+            EnsureCustomLook();   // resolve HIS art FIRST — AttachIdleFx checks it
             AttachIdleFx();
-            EnsureCustomLook();
             if (_customLook != null) return; // your art owns the look now
             Color c;
             MoteShade shade = MoteShade.Additive;

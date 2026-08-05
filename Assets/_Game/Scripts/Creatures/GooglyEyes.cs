@@ -28,6 +28,16 @@ namespace SpellyZombie
         float _pupilBase = 0.45f;  // Marko's Eyes prefab keeps its own pupil size
         float _pupilDepth = 0.4f;  // ...and its own pupil-forward offset
 
+        /// True when HIS prefab supplied the eyes — callers must not then
+        /// re-position/re-scale them as if they were the code-built pair.
+        public bool IsCustom { get; private set; }
+
+        /// A fully wired pair: two eyeballs, two pupils, ready to animate.
+        /// False = this component is dead decoration (bake lost the wiring
+        /// and self-wire found no usable pair) — callers should rebuild.
+        public bool IsAlive => _leftEye != null && _rightEye != null
+            && _leftPupil != null && _rightPupil != null;
+
         /// Builds the rig on any transform. headHeight = local Y of eye line,
         /// scale ≈ creature size (1 = human).
         public static GooglyEyes Attach(Transform body, float headHeight, float scale)
@@ -35,28 +45,32 @@ namespace SpellyZombie
             // MARKO'S PREFAB FIRST (Resources/Custom/Eyes): children named
             // "Eye" — each with a child "Pupil" — get the full googly
             // behavior; anything else in the prefab just rides the head.
-            var custom = PrefabVault.Spawn("Eyes", body);
+            // AXIOM (Marko Jul 25): his Resources/Custom/GooglyEyes.prefab had
+            // NEVER loaded — the hook only asked for "Eyes". Both names work
+            // now, his prefab's own GooglyEyes component is ADOPTED (adding a
+            // second made a dead copy that SetMood then drove), and his
+            // authored offset/scale are composed with, not overwritten.
+            var custom = PrefabVault.Spawn("Eyes", body) ?? PrefabVault.Spawn("GooglyEyes", body);
             if (custom != null)
             {
                 custom.name = "GooglyEyes";
-                custom.transform.localPosition = new Vector3(0f, headHeight, 0f);
-                var e = custom.AddComponent<GooglyEyes>();
+                custom.transform.localPosition += new Vector3(0f, headHeight, 0f);
+                custom.transform.localScale *= scale;
+                var e = Adopt.Component<GooglyEyes>(custom);
+                e.IsCustom = true;
                 e._scale = scale;
-                var balls = new System.Collections.Generic.List<Transform>();
-                foreach (var t in custom.GetComponentsInChildren<Transform>(true))
-                    if (t.name == "Eye") balls.Add(t);
-                if (balls.Count >= 2)
+                if (e.WireEyeballs(out var pupil))
                 {
-                    e._leftEye = balls[0];
-                    e._rightEye = balls[1];
-                    e._leftPupil = balls[0].Find("Pupil");
-                    e._rightPupil = balls[1].Find("Pupil");
-                    if (e._leftPupil != null) // keep HIS pupil proportions
-                    {
-                        e._pupilBase = e._leftPupil.localScale.x;
-                        e._pupilDepth = e._leftPupil.localPosition.z;
-                    }
+                    // pupil DEPTH is styling (his); pupil RATIO is behavior —
+                    // dilation animates it every frame, and prefabs that came
+                    // from bakes carry a frozen mid-dilation scale that made
+                    // eyes permanently saucer-sized. Neutral ratio for all.
+                    e._pupilDepth = pupil.localPosition.z;
                 }
+                else
+                    Debug.LogWarning("[SpellyZombie] Eyes prefab has no Eye→Pupil pair — " +
+                        "pupils can't react. Name two children starting with 'Eye', " +
+                        "each holding a child named 'Pupil'.", custom);
                 return e;
             }
 
@@ -89,6 +103,51 @@ namespace SpellyZombie
             p.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(new Color(0.05f, 0.05f, 0.05f), MoteShade.Opaque);
             pupil = p.transform;
             return eye.transform;
+        }
+
+        /// A BAKED body carries this component with its private wiring LOST
+        /// (Marko's bug: "eyes always too large instead of reacting") — the
+        /// pupils sat frozen at whatever dilation the bake caught. Re-find the
+        /// pair so they live again. Baked pupil scale is a frozen animation
+        /// instant, NOT authoring — it returns to the neutral ratio.
+        void Awake()
+        {
+            if (_leftEye != null && _leftPupil != null) return; // Attach wired us
+            if (WireEyeballs(out var pupil))
+                _pupilDepth = pupil.localPosition.z; // depth survives; ratio resets
+        }
+
+        /// Find two eyeballs: children named "Eye*" each holding a "*Pupil*"
+        /// child. Returns the left pupil for proportion reading.
+        bool WireEyeballs(out Transform leftPupil)
+        {
+            leftPupil = null;
+            Transform FindPupil(Transform eye)
+            {
+                foreach (var c in eye.GetComponentsInChildren<Transform>(true))
+                    if (c != eye && c.name.Contains("Pupil")) return c;
+                return null;
+            }
+            var balls = new System.Collections.Generic.List<Transform>();
+            foreach (var t in GetComponentsInChildren<Transform>(true))
+            {
+                if (t == transform || !t.name.StartsWith("Eye") || t.name.Contains("Pupil")
+                    || t.name == "GooglyEyes" || t.name == "Eyes" || FindPupil(t) == null)
+                    continue;
+                // a container ("Eyes" group) and its eyeball both match — the
+                // OUTERMOST wins per branch, nested repeats are the same eye
+                bool nested = false;
+                foreach (var b in balls)
+                    if (t.IsChildOf(b)) { nested = true; break; }
+                if (!nested) balls.Add(t);
+            }
+            if (balls.Count < 2) return false;
+            _leftEye = balls[0];
+            _rightEye = balls[1];
+            _leftPupil = FindPupil(balls[0]);
+            _rightPupil = FindPupil(balls[1]);
+            leftPupil = _leftPupil;
+            return true;
         }
 
         /// Brains call this to hold a mood for a while (auto-mood resumes after).
