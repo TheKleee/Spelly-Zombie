@@ -118,11 +118,17 @@ namespace SpellyZombie
         // standing rules); the per-junction CloseThreshold is the whole law.
         public static readonly int MaxLoopStrokes = Oi(nameof(MaxLoopStrokes), 12);  // DFS depth cap when chaining strokes into one seal — BODY loops split per limb (a circle over crossed arms is 6-8 pieces), so 6 silently refused honest body seals
 
-        // ---- Seal shape -> duration (Marko Jul 22: "1 second per side with a
-        // cap of 10 seconds - circle = 10 lines forming a shape") ----
-        public static readonly float DurationPerEdge = O(nameof(DurationPerEdge), 1f); // triangle = 3s
-        public static readonly int CircleEdges = Oi(nameof(CircleEdges), 10);        // a circle reads as 10 sides = the cap
-        public static readonly float SealMaxSeconds = O(nameof(SealMaxSeconds), 10f); // no shape outlasts this
+        // ---- Seal shape -> WHICH VARIANT, and a flat production time ----
+        // Marko, Aug 6: "Seal sides create variants... different types of the same
+        // thing. Like we could create different zombies (smarter and dumber for
+        // example) per rune." And: "All seals keep producing for 10 seconds."
+        //
+        // SIDE COUNT IS A SELECTOR, NOT A MAGNITUDE. It picks which variant of that
+        // rune's spell you get. It sets no duration and no lifetime. The old
+        // 1-second-per-side rule (Jul 22) is DEAD; it survived in code long after
+        // he had replaced it, and it is what made Claude keep repeating it back.
+        public static readonly int CircleEdges = Oi(nameof(CircleEdges), 10);        // a circle reads as 10 sides = the top variant
+        public static readonly float SealProduceSeconds = O(nameof(SealProduceSeconds), 10f); // FLAT. Every seal, every shape.
         public static readonly float CircleMaxVariance = O(nameof(CircleMaxVariance), 0.16f);// radius variation below this = circle — HAND circles are 10-18% wobbly, 7% only accepted machines
         public static readonly int CircleMinCorners = Oi(nameof(CircleMinCorners), 8); // and it must not be an obvious low-corner polygon
         public static readonly float RdpEpsilonFactor = O(nameof(RdpEpsilonFactor), 0.015f);// RDP epsilon as fraction of the loop's bounding diagonal

@@ -48,6 +48,29 @@ at a chair, absorb it, and you can become that chair. Same verb, same key, same
 **Transformed:** you can move, you CANNOT draw, and you see yourself in third
 person. Transformation does NOT expire. Learned forms are permanent for the round.
 
+### Acolyte controls: SHAPE MODE replaces POSE MODE
+
+Acolytes cannot draw on their own bodies, so they have no use for pose mode. **That
+whole mode is swapped for shape mode, reusing the same keys.**
+
+- **1, 2, 3 ...** switch instantly to a form you have collected. Same slot layout
+  the wizard's pose mode already uses, so it is the existing system with a
+  different payload rather than a new one.
+- **F** returns you to your own body, in third person.
+- **Tab** goes to first person, always in your body, holding wand and grimoire.
+- **Acolytes have no R modes at all.** R is free on this class.
+
+That gives three states, and they form a clean ladder of exposure:
+
+| state | you can | you risk |
+|---|---|---|
+| in a shape, 3rd person | move, hide | nothing much |
+| your body, 3rd person | move, look around | being seen |
+| your body, 1st person | draw and summon | everything |
+
+The most powerful thing an acolyte does is also the thing that puts them in the
+most exposed state, which is the same law the wizard lives under.
+
 **Weaker than a wizard one-on-one.** This is what makes contesting anything
 dangerous for them.
 
@@ -80,10 +103,37 @@ somewhere unrecoverable, wizards can be starved into an unwinnable round.
 duration. That replaces any per-player cap: a busy acolyte has zombies, an idle
 one does not.
 
+**They live at least a minute**, because they have to walk somewhere to matter.
+This is NOT the same clock as the seal: every seal produces for a flat 10 seconds,
+and what it produced then lives its own life. Two clocks, never conflate them.
+
 Summoned by drawing zombie icons plus a direction arrow **inside one seal**. The
 arrow commands where they go, so a single drawing is the whole order. Uses the
 existing arrow glyph; corrupt ink is what makes an arrow command the dead instead
 of pushing matter. **No new glyphs.**
+
+**One drawing carries five channels, all of them existing spell grammar:**
+
+| what you draw | what it sets |
+|---|---|
+| number of zombie icons | how many |
+| **seal side count** | **which VARIANT**, e.g. smarter or dumber |
+| rune-to-seal scale | how big they are |
+| which direction of the rune pair | melee or ranged |
+| the arrow | where they go |
+
+**Seal sides are a SELECTOR, not a magnitude.** They pick a different type of the
+same thing, per rune. They do NOT set how long anything lives. (Seal duration,
+which is edges x DurationPerEdge, is how long the SEAL keeps producing. What it
+produces has its own separate lifetime. Two clocks, never conflate them.)
+
+Scope rule for variants: **a variant that is a set of numbers is nearly free; a
+variant that needs its own model is not.** Smart and dumb zombies share a mesh and
+differ only in sensor range, reaction rate, field of view and avoidance strength.
+Keep it that way and the variant system costs almost nothing.
+
+Readability comes for free here: a dumb zombie walking into a wall is its own
+tell, so no visual difference is strictly required.
 
 **Two types, from the rune pair's two directions:**
 - **melee** - corruption cloud around them (Warcraft 3 undead disease cloud), better
@@ -264,6 +314,52 @@ the pot is corrupted the mode becomes a retake, exactly like a Counter-Strike
 bomb plant, and it needs real approaches and cover.
 
 ---
+
+## THE LOBBY IS THE TUTORIAL
+
+Ruled Aug 6. In the lobby you **pick your side and can switch freely**, and
+switching lets you test that side's whole kit. Zombies wander in and attack the
+centre cauldron, which is **immortal**, so nothing happens. **Everyone in the lobby
+is immortal too**, so nothing matters.
+
+Why this earns its place: asymmetric games rot when players only ever learn one
+side. A free switch in the lobby means everybody sees both kits before they are
+asked to play against them, and it teaches by play rather than by text, which is
+the standing rule. It also converts ready-up dead time into practice.
+
+**You start the lobby with an EMPTY grimoire**, exactly as you start a round, and
+earn everything from a display of **immortal sources** standing there waiting to be
+absorbed. Absorbing one does not consume it, so every player can absorb everything,
+with no queue and no three second wait.
+
+That split is deliberate: **the lobby teaches the verbs, the round teaches the
+economy.** You learn what the twelve runes do and how the two kits feel by trying
+all of them; you learn scarcity, prioritisation and denial only where it costs
+something.
+
+Three things the lobby needs that a real round does not:
+
+- **Lobby sources are immortal and re-absorbable.** In a round, absorbing consumes
+  the source and scanning is per instance. In the lobby that would leave a
+  practising acolyte dry within a minute and make twelve players queue for one
+  torch. The lobby needs the opposite rule.
+- **A zombie cap.** Twelve immortal players summoning freely, with zombies living
+  a minute and nothing able to kill them, fills the lobby fast. That is both a
+  readability and a performance problem.
+- **Nothing carries into the round.** Forms scanned and runes absorbed in the lobby
+  do not come with you.
+
+**The death mechanics are deliberately NOT taught here** (his ruling). Corruption,
+souls and conversion are learned in play, the first time you die. That is
+discovered complexity, which his filter keeps, and dying is the best teaching
+moment the game has: the player has nothing else to do and their full attention is
+on what just happened to them.
+
+Two of the three parts already carry their own warning. Corruption shows on your
+wand, greening from the tip, long before it matters. Conversion is visible because
+you become the other thing. **The one moment with no build-up is being bound to
+your killer**, so that is the beat that has to read instantly and unmistakably,
+since there is no second chance to explain it.
 
 ## HOW THE WIZARD IS FORCED TO PLAY
 

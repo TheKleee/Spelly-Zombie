@@ -1105,7 +1105,7 @@ namespace SpellyZombie
                 ? av.transform : null;
             Spell.CreateRemote(OwnerIdOf(conn.ClientId), msg.Origin, msg.Normal,
                 Mathf.Clamp(msg.Edges, 1, 10),
-                Mathf.Clamp(msg.Duration, 0.5f, DrawingConfig.SealMaxSeconds),
+                Mathf.Clamp(msg.Duration, 0.5f, DrawingConfig.SealProduceSeconds),
                 msg.Runes, msg.Strengths, msg.Centers, msg.PushDirs, msg.Sizes, caster);
         }
 

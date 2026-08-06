@@ -101,13 +101,15 @@ namespace SpellyZombie
 
             _polygon2D = GeometryUtil.ProjectToPlane(worldPts, PlaneOrigin, _u, _v);
 
-            // ---- shape -> edges -> duration ----
+            // ---- shape -> edges -> WHICH VARIANT (not how long) ----
+            // Marko Aug 6: side count picks the VARIANT of the spell, different
+            // types of the same thing. Every seal produces for a flat 10s
+            // regardless of shape. The old Edges x DurationPerEdge rule is gone.
             float radialCv = GeometryUtil.RadialVariation(_polygon2D);
             int corners = GeometryUtil.ClosedLoopCorners(_polygon2D);
             IsCircle = radialCv <= DrawingConfig.CircleMaxVariance && corners >= DrawingConfig.CircleMinCorners;
             Edges = IsCircle ? DrawingConfig.CircleEdges : corners;
-            Duration = Mathf.Min(DrawingConfig.SealMaxSeconds,
-                Edges * DrawingConfig.DurationPerEdge);
+            Duration = DrawingConfig.SealProduceSeconds;
             Remaining = Duration;
             Area = GeometryUtil.PolygonArea(_polygon2D);
 
