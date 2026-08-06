@@ -248,7 +248,7 @@ namespace SpellyZombie
                 // cross-stroke gaps — if this fires during honest circles, the
                 // pen-continuity weld gets built next
                 DrawingWorld.Instance.LogEvent(
-                    $"stroke split mid-draw — aim jumped {Vector3.Distance(hit.point, _lastHitPoint) * 100f:0}cm (limit {allowedJump * 100f:0}cm)");
+                    $"stroke split mid-draw: aim jumped {Vector3.Distance(hit.point, _lastHitPoint) * 100f:0}cm (limit {allowedJump * 100f:0}cm)");
                 EndStroke(); // aim jumped to a distant surface — that's a new stroke
             }
 
@@ -288,7 +288,7 @@ namespace SpellyZombie
                     * DrawingConfig.InkCostPerMeter * Perks.InkCostMul;
                 if (!_ink.TrySpend(cost))
                 {
-                    DrawingWorld.Instance.LogEvent("OUT OF INK — kills refill the well");
+                    DrawingWorld.Instance.LogEvent("OUT OF INK. kills refill the well");
                     EndStroke();
                     _suppressUntilRelease = true;
                     return;

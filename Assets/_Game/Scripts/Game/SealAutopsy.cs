@@ -34,7 +34,7 @@ namespace SpellyZombie
             if (_recentKills.Count < 3 || _active != null) return;
 
             var seal = LastRecentSeal(6f);
-            if (seal != null) Play(seal, $"{_recentKills.Count} KILLS — THE SEAL THAT DID IT");
+            if (seal != null) Play(seal, $"{_recentKills.Count} KILLS FROM ONE SEAL");
         }
 
         /// Team wipe: show what doomed them (comedically, whatever fired last).

@@ -36,31 +36,38 @@ It cannot be destroyed. It can be **tipped** (spills fill) and **stolen**
 
 Ore in a backpack is *potential*; only the cauldron converts it to ink.
 
-## The chariot — the foundation
+## Moving the cauldron — ink levitation
 
-Players pull it; more pullers = faster. Under this design the vehicle
-carries the whole game the way the mountain carries PEAK — **if hauling
-does not feel great, nothing underneath catches the game.**
+**THE CHARIOT IS CUT.** There is no vehicle and there never will be. It was
+removed long ago; nothing named Chariot or Backpack exists in the project.
 
-- **The chariot is the only thing with HP.** Players and cauldron have none.
-- Wrecked chariot ≠ lost run: the cauldron can always be **hand-carried,
-  slowly**, even with help. You are slow and vulnerable, not dead.
-- **Rebuildable** from scavenged material (planks/barrels in the pack) so
-  an early, doomed assault on the Ink Ore is survivable.
-- Upgradeable by drawing seals on materials and attaching them (defensive
-  and utility mods). Same verb, new surface. Shared by the whole crew and
-  visible on the cart — the run's history written on the vehicle.
+**You haul the pot by drawing ink on it and levitating it.** That is the
+mechanic the chariot used to be, so it carries the game the way the mountain
+carries PEAK: if hauling does not feel great, nothing underneath catches the
+game.
+
+- **Nothing has HP here.** Players and the cauldron both have none.
+- **Upgradeable by attaching solid objects to it with Sticky** — you conjure or
+  find a solid thing and stick it on. Same verb, new surface, and the run's
+  history is written on the pot itself.
 
 ## Zombies — thieves and repairmen, not predators
 
-**They do not attack players at all.** They are afraid of wizards. They want
-the pot, the fragments, and to undo your work:
+**They do not attack players at all.** They run away from you. They cannot cast
+and they have no special attack. They exist to undo your work:
 
-- steal the cauldron and drag it away · tip it to spill the fill
-- **smudge and ruin drawings in progress** (an attack on your verb, not
-  your health — post a guard, or draw on the cart or high on a wall)
-- carry broken Ink Ore fragments back to **repair** what you are breaking
+- **CURSE THE CAULDRON to remove its ink.** This is their entire offense.
+- **They swarm you ONLY when you have lost your wand completely.**
 - squabble with each other for no reason (they are stupid)
+
+**CUT, never built, do not reintroduce:** the soap zombie that erases your ink,
+the sack zombie that steals the pot, and the zombie that carries fragments back
+to repair the Ink Ore. None of those are in the game.
+
+**The causal chain is the whole game's pressure:** curse the pot → no clean ink →
+you cannot refill → your wand dissolves → wandless → NOW they swarm you. Zombies
+never threaten you directly. They threaten your supply, and the supply is what
+keeps them afraid of you.
 
 **No downed system. No player HP loss from zombies.** Danger comes from
 the world: a crowd is a *stampede* — it jostles, tramples, and shoves you

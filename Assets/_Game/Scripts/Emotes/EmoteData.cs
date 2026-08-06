@@ -81,7 +81,7 @@ namespace SpellyZombie
                 for (int i = 0; i < _data.slots.Count; i++) _data.slots[i] = -1;
                 _data.rigVersion = currentRigVersion;
                 Save();
-                Debug.Log("[Emotes] Bean-era pose bindings cleared — keys now play the rig-baked defaults; re-bind your own in the Pose Studio (B).");
+                Debug.Log("[Emotes] Bean-era pose bindings cleared. Keys now play the rig-baked defaults; re-bind your own in the Pose Studio (B).");
             }
         }
 

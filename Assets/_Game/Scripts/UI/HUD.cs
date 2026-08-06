@@ -164,7 +164,7 @@ namespace SpellyZombie
             {
                 _downText.text = player.IsDead ? "DEAD"
                     : player.ReviveProgress > 0f ? $"REVIVING… {player.ReviveProgress * 100f:0}%"
-                    : $"DOWNED — bleeding out ({player.BleedOut:0}s)   teammate: hold E";
+                    : $"DOWNED. bleeding out ({player.BleedOut:0}s). a teammate holds E";
                 _downText.color = player.IsDead ? Color.red : new Color(1f, 0.5f, 0.4f);
                 _bleed.Set(player.ReviveProgress > 0f
                     ? player.ReviveProgress

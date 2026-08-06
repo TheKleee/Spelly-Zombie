@@ -93,7 +93,7 @@ namespace SpellyZombie
             _logAccum += amount;
             if (_logAccum >= 30f)
             {
-                Debug.Log($"[SpellyZombie] {name}: {cause} — {Mathf.Max(0, Health):0} hp left");
+                Debug.Log($"[SpellyZombie] {name}: {cause}, {Mathf.Max(0, Health):0} hp left");
                 _logAccum = 0f;
             }
             if (Health <= 0f)

@@ -191,13 +191,29 @@ namespace SpellyZombie
             return Nodes.Count > 0;
         }
 
+        /// Walks every node, so SealDetector calls it once per eligible stroke
+        /// per tick AND again per candidate loop. It reads each node's position
+        /// ONCE by carrying the previous one, rather than re-reading node i-1
+        /// on the next step: half the transform calls and half the Unity null
+        /// checks, same number to the last decimal.
+        ///
+        /// Not cached on purpose. Erasing destroys nodes from outside the
+        /// stroke without telling it (DrawingWorld.EraseAlong), which is why
+        /// _runningLength is documented as drawing-time only. A stale perimeter
+        /// would resize seals, so this stays exact.
         public float PathLength()
         {
             float len = 0f;
-            for (int i = 1; i < Nodes.Count; i++)
+            Vector3 prev = default;
+            bool has = false;
+            for (int i = 0; i < Nodes.Count; i++)
             {
-                if (Nodes[i - 1] == null || Nodes[i] == null) continue;
-                len += Vector3.Distance(Nodes[i - 1].transform.position, Nodes[i].transform.position);
+                var n = Nodes[i];
+                if (n == null) { has = false; continue; } // erased hole: no segment across it
+                Vector3 p = n.transform.position;
+                if (has) len += Vector3.Distance(prev, p);
+                prev = p;
+                has = true;
             }
             return len;
         }

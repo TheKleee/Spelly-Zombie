@@ -807,7 +807,7 @@ namespace SpellyZombie
         static void LevelMerge(SpellParticle a, SpellParticle b)
         {
             // BOTH ingredients announce themselves at the meeting (Marko:
-            // "tell exactly what's interacting with what — remove ambiguity")
+            // "tell exactly what's interacting with what - remove ambiguity")
             a.ImpactFx(); b.ImpactFx();
             int la = EffLevel(a), lb = EffLevel(b);
             var hi = la >= lb ? a : b;
@@ -905,7 +905,7 @@ namespace SpellyZombie
                     // one behavior) — born big per his Aug 4 area ruling
                     var steam = FormConjures.SpawnSteam(at + Vector3.up * 0.3f,
                         big ? 1.6f : 0.9f, lineage);
-                    DrawingWorld.Instance?.LogEvent("fire and frost REFUSE each other — SCALDING STEAM");
+                    DrawingWorld.Instance?.LogEvent("fire and frost make SCALDING STEAM");
                     a.BecameObj = steam; b.BecameObj = steam; // sustain law: runes wait on the cloud
                     a.Die(); b.Die();
                     return;
@@ -1007,7 +1007,7 @@ namespace SpellyZombie
             Temp = Mathf.Max(Temp, 60f);
             transform.localScale = Vector3.one * 0.3f;
             Vel *= 0.2f;
-            DrawingWorld.Instance?.LogEvent("the fire TAKES — a flame");
+            DrawingWorld.Instance?.LogEvent("the fire becomes a FLAME");
             RefreshLook();
         }
 
@@ -1020,7 +1020,7 @@ namespace SpellyZombie
             m.Temperature = -30f;
             if (m.TryGetComponent<Rigidbody>(out var rb))
                 rb.linearVelocity = Vel + Vector3.down * 1f;
-            DrawingWorld.Instance?.LogEvent("the cold TAKES — a snowball");
+            DrawingWorld.Instance?.LogEvent("the cold becomes a SNOWBALL");
             m.Lineage = Lineage; // the demon chain survives the snowball
             BecameObj = m;       // the rune waits for the snowball to be gone
             Die();
@@ -1036,7 +1036,7 @@ namespace SpellyZombie
             transform.localScale = Vector3.one * 0.4f;
             var l = GetComponent<Light>();
             if (l != null) Destroy(l);
-            DrawingWorld.Instance?.LogEvent("the dark COLLAPSES — black hole");
+            DrawingWorld.Instance?.LogEvent("the dark becomes a BLACK HOLE");
             RefreshLook();
         }
 
@@ -1125,7 +1125,7 @@ namespace SpellyZombie
                 l.color = new Color(0.75f, 0.9f, 1f);
             }
             Juice.Crackle(transform.position);
-            DrawingWorld.Instance?.LogEvent("the light CONDENSES — lightning");
+            DrawingWorld.Instance?.LogEvent("the light becomes LIGHTNING");
             RefreshLook();
         }
 
@@ -1606,7 +1606,7 @@ namespace SpellyZombie
             GameObject pick = null;
             float scale = 3.2f; // motes are ~0.14 scale — children inherit it
             var fam = RuneGrammar.Family(Kind);
-            // lvl1 heat carries NO idle flame (Marko: "too large — it just
+            // lvl1 heat carries NO idle flame (Marko: "too large - it just
             // needs juice when it hits, like chill") — real fire is for the
             // Flame fixture and lvl2+ radiance
             // TRIMMED (Marko: the star/shine storms were clutter + lag) — only

@@ -235,7 +235,7 @@ namespace SpellyZombie
                 else
                 {
                     Health = Perks.MaxHealth; // sandbox mercy respawn-in-place
-                    Debug.Log("[SpellyZombie] Player DOWN — shaking it off (sandbox)");
+                    Debug.Log("[SpellyZombie] Player DOWN - shaking it off (sandbox)");
                 }
             }
         }
@@ -274,7 +274,7 @@ namespace SpellyZombie
             _soulFled = false;
             if (_heartFx == null && FxLibrary.I != null)
                 _heartFx = FxLibrary.Spawn(FxLibrary.I.BrokenHeart, transform.position + Vector3.up * 2.1f, transform);
-            Debug.Log("[SpellyZombie] Player DOWNED — teammate hold E to revive");
+            Debug.Log("[SpellyZombie] Player DOWNED - teammate hold E to revive");
         }
 
         /// A teammate is holding E over this body.

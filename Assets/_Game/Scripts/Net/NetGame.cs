@@ -58,7 +58,7 @@ namespace SpellyZombie
                 if (players != _shownPlayers || IsHost != _shownHost || code != _shownCode)
                 {
                     _shownPlayers = players; _shownHost = IsHost; _shownCode = code;
-                    _status.text = $"● {(IsHost ? "HOSTING" : "CONNECTED")} — {players} player(s)"
+                    _status.text = $"● {(IsHost ? "HOSTING" : "CONNECTED")}, {players} player(s)"
                         + (string.IsNullOrEmpty(code) ? "" : $" · CODE {code}");
                 }
             }

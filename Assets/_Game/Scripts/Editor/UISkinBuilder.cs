@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// One-click wiring of the imported Kenney "UI Pack — Adventure":
+    /// One-click wiring of the imported Kenney "UI Pack - Adventure":
     /// configures every PNG importer (sprite type, 9-slice borders so panels
     /// and bars stretch cleanly) and builds/refreshes the UISkin asset in
     /// _Game/Resources. Re-run any time the pack changes.
@@ -18,7 +18,7 @@ namespace SpellyZombie
             var guids = AssetDatabase.FindAssets("t:Texture2D", new[] { PackDir });
             if (guids.Length == 0)
             {
-                Debug.LogError($"[SpellyZombie] No textures under {PackDir} — is the Kenney pack imported?");
+                Debug.LogError($"[SpellyZombie] No textures under {PackDir}. Is the Kenney pack imported?");
                 return;
             }
 
@@ -61,7 +61,7 @@ namespace SpellyZombie
 
             EditorUtility.SetDirty(skin);
             AssetDatabase.SaveAssets();
-            Debug.Log("[SpellyZombie] UI skin built — the interface wears Kenney Adventure now. " +
+            Debug.Log("[SpellyZombie] UI skin built. The interface wears Kenney Adventure now. " +
                       "(Assign TextFont on the asset when the hand-drawn font is imported.)");
         }
 

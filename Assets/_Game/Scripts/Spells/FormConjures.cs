@@ -11,7 +11,7 @@ namespace SpellyZombie
     public static class FormConjures
     {
         /// STEAM IS BORN HERE AND ONLY HERE (Marko: "one substance, one
-        /// behavior — no ambiguity"): the heat+chill paradox and hot water
+        /// behavior - no ambiguity"): the heat+chill paradox and hot water
         /// both call this, so the scalding numbers can never drift apart.
         public static Matter SpawnSteam(Vector3 at, float size, ulong lineage)
         {
@@ -29,7 +29,7 @@ namespace SpellyZombie
         public static void Meteorite(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
             float size, int count, ulong lineage)
         {
-            DrawingWorld.Instance?.LogEvent("the sky answers — METEORITE");
+            DrawingWorld.Instance?.LogEvent("the sky drops a METEORITE");
             // a WALL or CEILING seal still calls the sky: when the surface
             // normal isn't up-ish, spawn overhead and aim the fall at the seal
             bool skyward = Vector3.Dot(normal, Vector3.up) >= 0.5f;
@@ -53,7 +53,7 @@ namespace SpellyZombie
         public static void IceSpikes(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
             float size, ulong lineage)
         {
-            DrawingWorld.Instance?.LogEvent("the ground bares its TEETH — ice spikes");
+            DrawingWorld.Instance?.LogEvent("the ground grows ICE SPIKES");
             Juice.Crackle(at);
             int spikes = 6;
             for (int i = 0; i < spikes; i++)
@@ -82,7 +82,7 @@ namespace SpellyZombie
             var g = go.AddComponent<GlacierChannel>();
             g.Power = power;
             g.Lineage = lineage;
-            DrawingWorld.Instance?.LogEvent("the liquid LOCKS — a glacier grows…");
+            DrawingWorld.Instance?.LogEvent("the liquid LOCKS into a glacier…");
         }
 
         // --------------------------------------------------- HeatUp + Liquid --
@@ -136,7 +136,7 @@ namespace SpellyZombie
             j.Size = Mathf.Max(0.12f, size * 0.7f);
             j.Power = power;
             j.Lineage = lineage;
-            DrawingWorld.Instance?.LogEvent("PRESSURE — the seal becomes a cannon");
+            DrawingWorld.Instance?.LogEvent("the seal becomes a PRESSURE cannon");
         }
     }
 
@@ -269,7 +269,7 @@ namespace SpellyZombie
                 new Color(0.6f, 0.5f, 0.4f, 0.2f), MoteShade.Transparent);
             f.Mat = mat;
             f.FieldLineage = lineage;
-            DrawingWorld.Instance?.LogEvent("the ground MULTIPLIES — avalanche");
+            DrawingWorld.Instance?.LogEvent("the ground becomes an AVALANCHE");
         }
 
         protected override void Grow(float dt)
@@ -308,7 +308,7 @@ namespace SpellyZombie
                 DrawingConfig.UltimateSeconds * 2f, c, MoteShade.Transparent);
             f.Mat = mat;
             f.FieldLineage = lineage;
-            DrawingWorld.Instance?.LogEvent("the liquid REFUSES the ground — a floating sea");
+            DrawingWorld.Instance?.LogEvent("the liquid rises into a floating SEA");
         }
 
         protected override float TickPeriod => 0.25f;

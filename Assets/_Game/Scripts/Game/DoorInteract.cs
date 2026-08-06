@@ -60,7 +60,7 @@ namespace SpellyZombie
 
                 if (t.gameObject.isStatic)
                 {
-                    Debug.Log($"[SpellyZombie] '{t.name}' looks like a door but is marked Static — untick Static and it will open on E.");
+                    Debug.Log($"[SpellyZombie] '{t.name}' looks like a door but is marked Static. Untick Static and it will open on E.");
                     continue;
                 }
                 Attach(t, local, ext[1]);

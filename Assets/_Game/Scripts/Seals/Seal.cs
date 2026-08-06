@@ -188,7 +188,7 @@ namespace SpellyZombie
                     Payload.Add(member);
                     member.State = StrokeState.InSeal;
                     // BODY INK IS MARKED FOREVER (Marko: "first effect should
-                    // be final — drawings on body are permanent thus special,
+                    // be final - drawings on body are permanent thus special,
                     // runes are already marked as to what they will be"): the
                     // first successful reading STAMPS the stroke; every
                     // re-cast from re-posing trusts the stamp. No re-rolls.
@@ -324,9 +324,9 @@ namespace SpellyZombie
             string fate = spent.Count > 0
                 ? burned > 0
                     ? $"{spent.Count} stroke(s) spent (open the loop to re-arm), {burned} consumed"
-                    : $"{spent.Count} stroke(s) spent — open the loop to re-arm"
+                    : $"{spent.Count} stroke(s) spent (open the loop to re-arm)"
                 : "ink consumed";
-            DrawingWorld.Instance?.OnSealEnded(this, $"Seal #{Id} resolved after {Duration:0.0}s — {fate}", true);
+            DrawingWorld.Instance?.OnSealEnded(this, $"Seal #{Id} resolved after {Duration:0.0}s: {fate}", true);
         }
 
         static void SpendOrBurn(Stroke s, List<Stroke> spent, ref int burned)

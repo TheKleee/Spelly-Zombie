@@ -41,7 +41,7 @@ namespace SpellyZombie
             new Color(0.55f, 0.30f, 0.80f), // arcane purple
         };
 
-        [MenuItem("Spelly Zombie/Art/1 — Generate Palette PNG")]
+        [MenuItem("Spelly Zombie/Art/1 - Generate Palette PNG")]
         public static void GeneratePalette()
         {
             Directory.CreateDirectory(ArtDir);
@@ -98,7 +98,7 @@ namespace SpellyZombie
                     tex.SetPixel(col * Cell + x, y0 + y, c);
         }
 
-        [MenuItem("Spelly Zombie/Art/2 — Build Surface Materials")]
+        [MenuItem("Spelly Zombie/Art/2 - Build Surface Materials")]
         public static void BuildMaterials()
         {
             var shader = Shader.Find("SpellyZombie/Surface");

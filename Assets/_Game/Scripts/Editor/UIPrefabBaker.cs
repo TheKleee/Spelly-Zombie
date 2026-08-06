@@ -26,22 +26,22 @@ namespace SpellyZombie
             if (!Application.isPlaying)
             {
                 EditorUtility.DisplayDialog("Save UI As Prefab",
-                    "Enter Play mode first — visit the Menu and the Lobby so all UI exists, then run this again.", "OK");
+                    "Enter Play mode first, visit the Menu and the Lobby so all UI exists, then run this again.", "OK");
                 return;
             }
             var canvas = GameObject.Find("SZ_UI");
             if (canvas == null)
             {
                 EditorUtility.DisplayDialog("Save UI As Prefab",
-                    "No SZ_UI canvas found — the UI hasn't been built yet this session.", "OK");
+                    "No SZ_UI canvas found. The UI hasn't been built yet this session.", "OK");
                 return;
             }
             if (!AssetDatabase.IsValidFolder("Assets/_Game/Resources"))
                 AssetDatabase.CreateFolder("Assets/_Game", "Resources");
             PrefabUtility.SaveAsPrefabAsset(canvas, PathToPrefab, out bool ok);
             Debug.Log(ok
-                ? $"[SpellyZombie] UI saved → {PathToPrefab}. Stop playing and edit it freely — your layout is law from now on."
-                : "[SpellyZombie] UI prefab save FAILED — see errors above.");
+                ? $"[SpellyZombie] UI saved → {PathToPrefab}. Stop playing and edit it freely. Your layout is law from now on."
+                : "[SpellyZombie] UI prefab save FAILED. See errors above.");
         }
     }
 }

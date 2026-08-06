@@ -85064,6 +85064,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SimpleFPSController
   CameraPivot: {fileID: 658323814}
+  CameraTarget: {fileID: 0}
   MoveSpeed: 4.5
   SprintSpeed: 7
   JumpSpeed: 4.6

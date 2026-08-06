@@ -29,7 +29,7 @@ namespace SpellyZombie
             made += Make("SZ_WardrobeDemon");
             AssetDatabase.SaveAssets();
             Debug.Log(made > 0
-                ? $"[SpellyZombie] Created {made} wardrobe catalog(s) in Assets/_Game/Resources — drag prefabs into each socket's Options list (index 0 = default look)."
+                ? $"[SpellyZombie] Created {made} wardrobe catalog(s) in Assets/_Game/Resources. Drag prefabs into each socket's Options list (index 0 = default look)."
                 : "[SpellyZombie] All three wardrobe catalogs already exist.");
         }
 
@@ -67,12 +67,12 @@ namespace SpellyZombie
                 $"Assets/_Game/Resources/{catalogName}.asset");
             if (catalog == null)
             {
-                Debug.LogError($"[SpellyZombie] {catalogName} is missing — run Spelly Zombie → Wardrobe → Create Wardrobe Catalogs first.");
+                Debug.LogError($"[SpellyZombie] {catalogName} is missing. Run Spelly Zombie → Wardrobe → Create Wardrobe Catalogs first.");
                 return;
             }
             if (Selection.gameObjects.Length == 0)
             {
-                Debug.LogWarning("[SpellyZombie] Nothing selected — pick your model(s) in the Hierarchy or Project first.");
+                Debug.LogWarning("[SpellyZombie] Nothing selected. Pick your model(s) in the Hierarchy or Project first.");
                 return;
             }
             if (!AssetDatabase.IsValidFolder("Assets/_Game/Prefabs"))
@@ -86,7 +86,7 @@ namespace SpellyZombie
                 string socket = InferSocket(go.name);
                 if (socket == null)
                 {
-                    Debug.LogWarning($"[SpellyZombie] '{go.name}': can't tell the socket from the name — include one of Hat, Head, Cape, Chest, Belt, ShoulderL/R, HandL/R, LegL/R (or a word like helm/cloak/mask/torso) and retry.");
+                    Debug.LogWarning($"[SpellyZombie] '{go.name}': can't tell the socket from the name. Include one of Hat, Head, Cape, Chest, Belt, ShoulderL/R, HandL/R, LegL/R (or a word like helm/cloak/mask/torso) and retry.");
                     continue;
                 }
                 GameObject prefab = null;
@@ -150,7 +150,7 @@ namespace SpellyZombie
                 var outer = PrefabUtility.GetOutermostPrefabInstanceRoot(go);
                 if (outer != null && outer != go)
                 {
-                    Debug.Log($"[SpellyZombie] '{go.name}' is part of '{outer.name}' — saving the whole piece.");
+                    Debug.Log($"[SpellyZombie] '{go.name}' is part of '{outer.name}', saving the whole piece.");
                     go = outer;
                 }
                 // re-run on a piece already in the costume folder: UPDATE the
@@ -235,9 +235,9 @@ namespace SpellyZombie
             ext = new Vector3(Mathf.Abs(ext.x), Mathf.Abs(ext.y), Mathf.Abs(ext.z));
             float wide = Mathf.Max(ext.x, ext.z);
             if (ext.y < wide * 0.6f)
-                Debug.LogWarning($"[SpellyZombie] '{prefab.name}' looks FLAT ({ext.x:0.00} x {ext.y:0.00} x {ext.z:0.00}) — a cape must HANG: tall in Y, pivot at the top where it meets the shoulders, at least a 12x16 vertex grid. Rotate/re-export and it'll flow.");
+                Debug.LogWarning($"[SpellyZombie] '{prefab.name}' looks FLAT ({ext.x:0.00} x {ext.y:0.00} x {ext.z:0.00}). A cape must HANG: tall in Y, pivot at the top where it meets the shoulders, at least a 12x16 vertex grid. Rotate/re-export and it'll flow.");
             if (mesh.vertexCount < 12)
-                Debug.LogWarning($"[SpellyZombie] '{prefab.name}' has only {mesh.vertexCount} vertices — cloth needs 12+, and it only bends where there are vertices. Subdivide it (a 12x16 grid moves nicely).");
+                Debug.LogWarning($"[SpellyZombie] '{prefab.name}' has only {mesh.vertexCount} vertices. Cloth needs 12+, and it only bends where there are vertices. Subdivide it (a 12x16 grid moves nicely).");
         }
     }
 }

@@ -19,7 +19,7 @@ namespace SpellyZombie
 
         const float SnapshotPeriod = 0.6f; // live wall census cadence
 
-        TextMesh _label;
+        TMPro.TextMeshPro _label;
         float _timer;
         int _shownCount = -1;
         bool _loadFailed;  // repaint blew up — this session must NOT save
@@ -33,7 +33,7 @@ namespace SpellyZombie
 
         void Start()
         {
-            _label = GetComponentInChildren<TextMesh>();
+            _label = GetComponentInChildren<TMPro.TextMeshPro>();
 
             // WIPE-PROOFING (after the Jul 20 data loss): loading is guarded,
             // and a session that never managed to show the saved ink is never
@@ -55,7 +55,7 @@ namespace SpellyZombie
                     if (savedCount > 0 && painted < savedCount)
                     {
                         _loadFailed = true;
-                        Debug.LogError($"[RuneWall] {RuneLibrary.ShortName(Rune)}: only {painted} of {savedCount} saved drawing(s) repainted — saving is DISABLED for this wall this session so the missing recordings can't be wiped. Tell Claude what this log says.");
+                        Debug.LogError($"[RuneWall] {RuneLibrary.ShortName(Rune)}: only {painted} of {savedCount} saved drawing(s) repainted. Saving is DISABLED for this wall this session so the missing recordings can't be wiped. Tell Claude what this log says.");
                     }
                     else if (savedCount > 0)
                     {
@@ -70,13 +70,13 @@ namespace SpellyZombie
             catch (System.Exception e)
             {
                 _loadFailed = true;
-                Debug.LogError($"[RuneWall] {RuneLibrary.ShortName(Rune)}: repaint CRASHED ({e.Message}) — saving disabled this session to protect the recordings.");
+                Debug.LogError($"[RuneWall] {RuneLibrary.ShortName(Rune)}: repaint CRASHED ({e.Message}). Saving disabled this session to protect the recordings.");
             }
             RefreshLabel(Mathf.Max(0, _shownCount));
         }
 
         /// INSTANT SAVE (Marko: "if a wall can tell when I drew something on
-        /// it, it can also save immediately — and override the old ones, so
+        /// it, it can also save immediately - and override the old ones, so
         /// deleting saves what's on the wall now"): the census runs on a
         /// beat; the moment the wall's ink SETTLES (two identical censuses —
         /// so mid-stroke churn doesn't spam saves) and differs from what's on
@@ -393,7 +393,7 @@ namespace SpellyZombie
         void RefreshLabel(int count)
         {
             if (_label != null)
-                _label.text = $"{RuneLibrary.Icon(Rune)}\n{count} drawing(s) — auto-saves";
+                _label.text = $"{RuneLibrary.IconInline(Rune)}\n{count} drawing(s), auto-saved";
         }
     }
 }

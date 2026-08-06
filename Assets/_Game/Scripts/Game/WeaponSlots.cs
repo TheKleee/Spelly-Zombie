@@ -71,13 +71,13 @@ namespace SpellyZombie
             if (slot == Current) return;
             if (slot != 1 && _held[slot] == null)
             {
-                DrawingWorld.Instance?.LogEvent($"Slot {slot} is empty — E picks up a weapon");
+                DrawingWorld.Instance?.LogEvent($"Slot {slot} is empty. E picks up a weapon");
                 return;
             }
             HeldWeapon.CancelDrawMode();
             Current = slot;
             DrawingWorld.Instance?.LogEvent(slot == 1
-                ? "Wand + grimoire — the pen draws again"
+                ? "Wand + grimoire, the pen draws again"
                 : $"Weapon slot {slot}");
         }
 
@@ -107,7 +107,7 @@ namespace SpellyZombie
             int free = _held[2] == null ? 2 : _held[3] == null ? 3 : -1;
             if (free < 0)
             {
-                DrawingWorld.Instance?.LogEvent("Hands full (3 max) — F drops the current weapon first");
+                DrawingWorld.Instance?.LogEvent("Hands full (3 max). F drops the current weapon first");
                 return;
             }
             _held[free] = best;

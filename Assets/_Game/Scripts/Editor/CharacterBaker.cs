@@ -33,7 +33,7 @@ namespace SpellyZombie
                 }
             if (src == null)
             {
-                Debug.LogError("[SpellyZombie] No dressed zombie alive to bake — press Z, let one spawn, then bake.");
+                Debug.LogError("[SpellyZombie] No dressed zombie alive to bake. Press Z, let one spawn, then bake.");
                 return;
             }
             Bake(src, "ZombieBody");
@@ -47,7 +47,7 @@ namespace SpellyZombie
             var rig = pilot != null ? pilot.GetComponent<CharacterRig>() : null;
             if (rig == null || rig.ModelGO == null)
             {
-                Debug.LogError("[SpellyZombie] No built player body to bake — enter play with the character wired.");
+                Debug.LogError("[SpellyZombie] No built player body to bake. Enter play with the character wired.");
                 return;
             }
             Bake(rig.ModelGO, "PlayerBody");
@@ -56,7 +56,7 @@ namespace SpellyZombie
         static bool Playing()
         {
             if (Application.isPlaying) return true;
-            Debug.LogError("[SpellyZombie] Baking captures the LIVE body — enter play mode first.");
+            Debug.LogError("[SpellyZombie] Baking captures the LIVE body. Enter play mode first.");
             return false;
         }
 
@@ -64,7 +64,7 @@ namespace SpellyZombie
         {
             if (src.GetComponentInChildren<DrawNode>() != null)
             {
-                Debug.LogError($"[SpellyZombie] '{src.name}' carries INK — erase body ink before baking " +
+                Debug.LogError($"[SpellyZombie] '{src.name}' carries INK. Erase body ink before baking " +
                                "(or the doodles become part of the species).");
                 return;
             }
@@ -130,9 +130,9 @@ namespace SpellyZombie
 
             Debug.Log(ok
                 ? $"[SpellyZombie] {bakeName} baked → {path} (materials in {MatDir}). " +
-                  "Stop play, edit the prefab freely — meshes, materials, eyes, mouth, worn pieces. " +
+                  "Stop play, edit the prefab freely: meshes, materials, eyes, mouth, worn pieces. " +
                   "The game now adopts it as-is and only adds behavior. Bake again anytime."
-                : $"[SpellyZombie] {bakeName} bake FAILED — see console.");
+                : $"[SpellyZombie] {bakeName} bake FAILED. See console.");
         }
 
         static void Strip<T>(GameObject root) where T : Component

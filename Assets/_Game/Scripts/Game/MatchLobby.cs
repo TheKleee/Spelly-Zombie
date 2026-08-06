@@ -217,7 +217,7 @@ namespace SpellyZombie
             if (cd != _shownCountdown)
             {
                 _shownCountdown = cd;
-                _uiStatus.text = cd >= 0 ? $"STARTING IN {cd}…" : "LOBBY — ready up to start";
+                _uiStatus.text = cd >= 0 ? $"STARTING IN {cd}…" : "READY UP TO START";
             }
             if (LocalTeam != _shownTeam)
             {
@@ -228,7 +228,7 @@ namespace SpellyZombie
             if (ready != _shownReady || total != _shownTotal || _readyLocal != _shownReadyLocal)
             {
                 _shownReady = ready; _shownTotal = total; _shownReadyLocal = _readyLocal;
-                _uiReady.text = $"READY {ready}/{total} — ENTER to ready up"
+                _uiReady.text = $"READY {ready}/{total}, ENTER to ready up"
                     + (_readyLocal ? "  (you are READY)" : "");
             }
             if (map != _shownMap || client != _shownClient)
@@ -236,7 +236,7 @@ namespace SpellyZombie
                 _shownMap = map; _shownClient = client;
                 _uiMap.text = client
                     ? $"MAP: {map} (the host picks)"
-                    : $"MAP: {map} — M to change";
+                    : $"MAP: {map} (M to change)";
             }
         }
 

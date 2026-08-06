@@ -41,11 +41,11 @@ namespace SpellyZombie
             if (RoundDirector.RunActive && !pilot.IsDowned)
             {
                 pilot.DropDowned();
-                DrawingWorld.Instance?.LogEvent("the void spat you back — hold E over them to help");
+                DrawingWorld.Instance?.LogEvent("the void spat you back. hold E over them to help");
             }
             else
             {
-                DrawingWorld.Instance?.LogEvent("the world caught you — watch that last step");
+                DrawingWorld.Instance?.LogEvent("the world caught you. watch that last step");
             }
         }
 

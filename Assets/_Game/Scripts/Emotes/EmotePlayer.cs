@@ -114,14 +114,14 @@ namespace SpellyZombie
             if (!EmoteLibrary.HasCustom(slot))
             {
                 DrawingWorld.Instance?.LogEvent(
-                    $"Slot {slot} already runs the built-in emote — those can't be removed");
+                    $"Slot {slot} already runs the built-in emote, which can't be removed");
                 return;
             }
             EmoteLibrary.ClearSlot(slot);
             var def = EmoteLibrary.DefaultForSlot(slot);
             if (def != null) Play(def, slot);
             else StopToRest();
-            DrawingWorld.Instance?.LogEvent($"Custom emote cleared from key {slot} — back to the built-in");
+            DrawingWorld.Instance?.LogEvent($"Custom emote cleared, key {slot} runs the built-in again");
         }
 
         public void ToggleSlot(int slot)
@@ -134,7 +134,7 @@ namespace SpellyZombie
             var def = EmoteLibrary.GetSlot(slot); // custom binding, or the built-in
             if (def == null || def.frames.Count == 0)
             {
-                DrawingWorld.Instance?.LogEvent($"Key {slot} has no pose — the Pose Studio (B) makes and binds one");
+                DrawingWorld.Instance?.LogEvent($"Key {slot} has no pose. Make one in the Pose Studio (B)");
                 return;
             }
             Play(def, slot);

@@ -25,7 +25,7 @@ namespace SpellyZombie
     /// scenery.)
     public class Breakable : MonoBehaviour
     {
-        [Header("WHAT IT LEAVES BEHIND — your prefabs")]
+        [Header("WHAT IT LEAVES BEHIND: your prefabs")]
         [Tooltip("Your log / chunk prefabs. One is picked at random per piece. Leave EMPTY to use code-built material chunks.")]
         public GameObject[] DebrisPrefabs;
         [Tooltip("How many pieces. 0/0 = scale the count to the object's size.")]
@@ -40,9 +40,9 @@ namespace SpellyZombie
         [Header("THE MOMENT IT BREAKS")]
         [Tooltip("Your particle effect, spawned at the break point. Empty = the default poof.")]
         public GameObject BreakFx;
-        [Tooltip("Optional: what's left standing — a stump, a cracked rock. Empty = the whole thing goes.")]
+        [Tooltip("Optional stump or cracked rock left standing. Empty = the whole thing goes.")]
         public GameObject Standing;
-        [Tooltip("Code-built splinters — placeholder spectacle. Turn OFF once your own debris looks right.")]
+        [Tooltip("Code-built splinters, a placeholder. Turn OFF once your own debris looks right.")]
         public bool CodeSplinters = true;
         [Tooltip("Play the default thud. Off if your effect brings its own sound.")]
         public bool DefaultSound = true;
@@ -116,7 +116,7 @@ namespace SpellyZombie
                 // adopt, never dictate: your rigidbody/collider/tag win
                 var rb = Adopt.Component<Rigidbody>(piece, out bool madeRb);
                 if (madeRb && piece.GetComponentInChildren<Collider>() == null)
-                    Debug.LogWarning($"[SpellyZombie] Debris '{prefab.name}' has no collider — " +
+                    Debug.LogWarning($"[SpellyZombie] Debris '{prefab.name}' has no collider: " +
                                      "it will fall through the world. Add one to the prefab.", prefab);
                 rb.linearVelocity = Random.onUnitSphere * DebrisSpread + Vector3.up * (DebrisSpread * 0.5f);
                 rb.angularVelocity = Random.insideUnitSphere * 4f;

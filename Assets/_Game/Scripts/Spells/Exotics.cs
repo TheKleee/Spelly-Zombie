@@ -63,7 +63,7 @@ namespace SpellyZombie
             go.transform.position = at;
             var s = go.AddComponent<LightStrike>();
             s.Power = power;
-            DrawingWorld.Instance?.LogEvent("the light takes AIM — move!");
+            DrawingWorld.Instance?.LogEvent("the light AIMS here, move");
             return s;
         }
 
@@ -143,7 +143,7 @@ namespace SpellyZombie
                 float best = 14f * 14f;
                 _prey = Targets.Nearest(transform.position, ref best,
                     includePlayers: true, movingOnly: true); // moving zombies + wizards
-                // "anything that moves — EVEN AN OBJECT" (Marko): rolling
+                // "anything that moves - EVEN AN OBJECT" (Marko): rolling
                 // crates, thrown ores, tumbling matter — all legitimate prey
                 int n = Physics.OverlapSphereNonAlloc(transform.position, 14f,
                     GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
@@ -199,7 +199,7 @@ namespace SpellyZombie
     }
 
     /// HeatDown + Sticky — FROST GLUE (Marko Jul 22, the blade's replacement:
-    /// "a glue that freezes... sticky lava is just a glue that burns — chill
+    /// "a glue that freezes... sticky lava is just a glue that burns - chill
     /// and heat can have the same logic"): a patch that grips and CHILLS.
     /// Whatever stays stuck is freezing toward the ice-block.
     public class FrostGlueField : GrammarField
@@ -290,7 +290,7 @@ namespace SpellyZombie
         {
             var f = Spawn<AbsoluteZeroField>(at, power, 2.6f, 4.5f,
                 new Color(0.5f, 0.7f, 1f, 0.3f), MoteShade.Transparent);
-            DrawingWorld.Instance?.LogEvent("ABSOLUTE ZERO — nothing moves here");
+            DrawingWorld.Instance?.LogEvent("nothing moves in ABSOLUTE ZERO");
             return f;
         }
 
@@ -384,7 +384,7 @@ namespace SpellyZombie
             var trig = go.AddComponent<SphereCollider>();
             trig.isTrigger = true;
             trig.radius = 0.7f;
-            DrawingWorld.Instance?.LogEvent("a light that HOLDS — moths incoming");
+            DrawingWorld.Instance?.LogEvent("a light that HOLDS, zombies come");
             return go.AddComponent<StickyLightMote>();
         }
 
@@ -520,7 +520,7 @@ namespace SpellyZombie
             var b = One(at, -dir.normalized * 5f);
             a.Partner = b;
             b.Partner = a;
-            DrawingWorld.Instance?.LogEvent("space folds — a DOOR PAIR flies apart");
+            DrawingWorld.Instance?.LogEvent("a DOOR PAIR flies apart");
             return a;
         }
 

@@ -22,7 +22,7 @@ namespace SpellyZombie
                     if (System.IO.Path.GetFileNameWithoutExtension(path) == sceneName) { found = path; break; }
                 }
                 if (found != null) list.Add(new EditorBuildSettingsScene(found, true));
-                else Debug.LogWarning($"[SpellyZombie] Scene '{sceneName}' not found — save it first.");
+                else Debug.LogWarning($"[SpellyZombie] Scene '{sceneName}' not found. Save it first.");
             }
             EditorBuildSettings.scenes = list.ToArray();
             Debug.Log($"[SpellyZombie] Build Settings now has {list.Count} scenes (in order).");

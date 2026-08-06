@@ -146,7 +146,7 @@ namespace SpellyZombie
                     _drawDist = DrawPose.z;
                     _drawPan = Vector2.zero;
                     DrawingWorld.Instance?.LogEvent(
-                        "weapon raised — engrave it (MMB-drag turns it, WASD moves the view, scroll zooms, R lowers)");
+                        "weapon raised. engrave it (MMB-drag turns it, WASD moves the view, scroll zooms, R lowers)");
                 }
             }
 

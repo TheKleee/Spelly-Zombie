@@ -293,12 +293,12 @@ namespace SpellyZombie
         {
             switch (card)
             {
-                case RuneCardType.Heat: return "Heat — the jagged flame heats; the flat zigzag chills.";
-                case RuneCardType.State: return "State — bracket open at the bottom = SOLID; open at the top = LIQUID.";
-                case RuneCardType.Luminance: return "Luminance — the star brightens; the collapsed star darkens.";
-                case RuneCardType.Sticky: return "Sticky — the slope-hook grips; its mirror slides.";
-                case RuneCardType.Direction: return "Direction — the arrow pushes the way you drew it; the Y pulls.";
-                default: return "Density — small bracket open-down compresses; open-up spreads.";
+                case RuneCardType.Heat: return "Heat: the jagged flame heats; the flat zigzag chills.";
+                case RuneCardType.State: return "State: bracket open at the bottom = SOLID; open at the top = LIQUID.";
+                case RuneCardType.Luminance: return "Luminance: the star brightens; the collapsed star darkens.";
+                case RuneCardType.Sticky: return "Sticky: the slope-hook grips; its mirror slides.";
+                case RuneCardType.Direction: return "Direction: the arrow pushes the way you drew it; the Y pulls.";
+                default: return "Density: small bracket open-down compresses; open-up spreads.";
             }
         }
 
@@ -442,7 +442,9 @@ namespace SpellyZombie
             switch (r)
             {
                 case RuneType.HeatUp: return "🔥";
-                case RuneType.HeatDown: return "❄️";
+                // BARE 2744, no U+FE0F variation selector — the selector has no
+                // glyph, so TMP drew a missing-box beside the snowflake
+                case RuneType.HeatDown: return "❄";
                 case RuneType.StateSolid: return "🗿";
                 case RuneType.StateLiquid: return "💦";
                 case RuneType.LuminanceUp: return "🌞";
@@ -455,6 +457,30 @@ namespace SpellyZombie
                 case RuneType.DensityDown: return "💨";
                 default: return "?";
             }
+        }
+
+        /// INLINE form: the icon sitting INSIDE a line of text.
+        ///
+        /// Alignment is the SPRITE ASSET'S job, not this string's. EmojiGrid
+        /// shipped with HorizontalBearingX -256 (half a glyph to the LEFT, so
+        /// every icon collided with the word before it) and BearingY 256 (only
+        /// half the glyph above the baseline, so half of every emoji hung
+        /// BELOW it). Fixed in the asset to 0 and 462.3, matching Unity's own
+        /// EmojiOne ratio of 0.90 x height. With correct metrics this returns
+        /// the bare icon and adds NOTHING to the string.
+        ///
+        /// The knobs stay only as a trim: leave them at 0 / 100 and no tags are
+        /// emitted at all. Set them in sz_tuning.json if a font's line spacing
+        /// ever needs a nudge.
+        public static string IconInline(RuneType r)
+        {
+            string icon = Icon(r);
+            bool lift = Mathf.Abs(DrawingConfig.RuneIconLift) > 0.001f;
+            bool scale = Mathf.Abs(DrawingConfig.RuneIconScale - 100f) > 0.5f;
+            if (!lift && !scale) return icon;
+            if (lift) icon = $"<voffset={DrawingConfig.RuneIconLift:0.##}em>{icon}</voffset>";
+            if (scale) icon = $"<size={DrawingConfig.RuneIconScale:0}%>{icon}</size>";
+            return icon;
         }
 
         public static string ShortName(RuneType r)
@@ -629,7 +655,7 @@ namespace SpellyZombie
         /// runes are 1 long line except for push and pull… there's no
         /// difference with light and dark"). A rune IS its sequence of signed
         /// corners, so it reads the same drawn at any angle and any size, and
-        /// its mirror reads as the opposite rune. "All shapes are distinct — I
+        /// its mirror reads as the opposite rune. "All shapes are distinct - I
         /// made them that way exactly because they can be flipped", so any
         /// cross-fire between two of them is a bug in RuneGraph, never a reason
         /// to re-record a glyph. The chamfer matcher stays in the project
@@ -665,7 +691,7 @@ namespace SpellyZombie
             {
                 int nStrokes = 0, nPts = 0;
                 foreach (var s in rawStrokes) { nStrokes++; nPts += s.Count; }
-                Debug.Log($"[SpellyZombie] CLASSIFY {(hit ? "HIT" : "fizzle")} (segment graph) — " +
+                Debug.Log($"[SpellyZombie] CLASSIFY {(hit ? "HIT" : "fizzle")} (segment graph): " +
                     $"input {nStrokes} strokes/{nPts} pts, top {ShortName(t1)} {s1:0.00}, " +
                     $"next {ShortName(t2)} {s2:0.00}{(ambiguous ? " AMBIGUOUS" : "")} " +
                     $"(floor {DrawingConfig.MinRuneScore:0.00})");
@@ -794,10 +820,10 @@ namespace SpellyZombie
                 // score weakly against their OWN drawings, so a richer rune's
                 // template can outbid them (how GRIP once read as SOLID)
                 if (pts < 12)
-                    Debug.LogWarning($"[RuneLibrary] AUDIT: the {ShortName(r)} template is only {pts} points — sparse recordings misread easily; re-record it drawing larger and slower.");
+                    Debug.LogWarning($"[RuneLibrary] AUDIT: the {ShortName(r)} template is only {pts} points. Sparse recordings misread easily; re-record it drawing larger and slower.");
             }
             if (seedRunes.Count > 0)
-                Debug.LogWarning($"[RuneLibrary] AUDIT: {seedRunes.Count} rune(s) still use DEFAULT shapes, not your handwriting: {string.Join(", ", seedRunes)} — draw each and press its F-key to record.");
+                Debug.LogWarning($"[RuneLibrary] AUDIT: {seedRunes.Count} rune(s) still use DEFAULT shapes, not your handwriting: {string.Join(", ", seedRunes)}. Draw each and press its F-key to record.");
             else
                 Debug.Log("[RuneLibrary] AUDIT: all 12 runes use YOUR recorded handwriting.");
 
@@ -835,7 +861,7 @@ namespace SpellyZombie
 
                     if (t1 != e.Type)
                     {
-                        Debug.LogError($"[RuneLibrary] AUDIT: a {ShortName(e.Type)} drawing reads as {ShortName(t1)} ({s1:F2}) when scored against every OTHER template — this is a bug in RuneGraph, not in your handwriting (he ruled no glyph resembles another under any rotation or reflection).");
+                        Debug.LogError($"[RuneLibrary] AUDIT: a {ShortName(e.Type)} drawing reads as {ShortName(t1)} ({s1:F2}) when scored against every OTHER template. This is a bug in RuneGraph, not in your handwriting (he ruled no glyph resembles another under any rotation or reflection).");
                         if (_confusable.Add(PairKey(e.Type, t1)))
                             entangled.Add($"{ShortName(e.Type)}~{ShortName(t1)}");
                     }
@@ -849,14 +875,14 @@ namespace SpellyZombie
                     else if (t2 != RuneType.None
                              && s1 - s2 < DrawingConfig.RuneAmbiguityMargin + 0.03f)
                     {
-                        Debug.LogWarning($"[RuneLibrary] AUDIT: {ShortName(e.Type)} and {ShortName(t2)} score within {s1 - s2:F2} of each other ({s1:F2} vs {s2:F2}) — cross-fires possible.");
+                        Debug.LogWarning($"[RuneLibrary] AUDIT: {ShortName(e.Type)} and {ShortName(t2)} score within {s1 - s2:F2} of each other ({s1:F2} vs {s2:F2}). Cross-fires possible.");
                         if (_confusable.Add(PairKey(e.Type, t2)))
                             entangled.Add($"{ShortName(e.Type)}~{ShortName(t2)}");
                     }
                 }
             }
             if (lonely.Count > 0)
-                Debug.LogWarning($"[RuneLibrary] AUDIT: {lonely.Count} rune(s) have only ONE usable drawing, so nothing can cross-check them: {string.Join(", ", lonely)} — draw each a second time on its wall.");
+                Debug.LogWarning($"[RuneLibrary] AUDIT: {lonely.Count} rune(s) have only ONE usable drawing, so nothing can cross-check them: {string.Join(", ", lonely)}. Draw each a second time on its wall.");
             if (entangled.Count > 0)
                 Debug.Log($"[RuneLibrary] AUDIT: pairs entangled in your handwriting (top score decides between them): {string.Join(", ", entangled)}");
 
@@ -923,7 +949,7 @@ namespace SpellyZombie
                 if (kept.Count == MaxSamples) break;
             }
             if (sparse > 0)
-                Debug.Log($"[RuneLibrary] {ShortName(type)}: {sparse} wall drawing(s) too sparse to teach the matcher — kept on the wall, not used as templates (draw larger/slower to teach them).");
+                Debug.Log($"[RuneLibrary] {ShortName(type)}: {sparse} wall drawing(s) too sparse to teach the matcher. Kept on the wall, not used as templates (draw larger/slower to teach them).");
 
             var item = _saved.items.Find(i => i.rune == (int)type);
             if (kept.Count == 0)
@@ -1108,7 +1134,7 @@ namespace SpellyZombie
             if (graph == null) return false;
             if (graph.BareLine)
             {
-                Debug.LogWarning($"[RuneLibrary] {ShortName(type)}: a wall drawing straightens out to a bare line (no corners) — it cannot match anything, so it is kept on the wall but not taught to the matcher. Redraw that one with its corners clearly bent.");
+                Debug.LogWarning($"[RuneLibrary] {ShortName(type)}: a wall drawing straightens out to a bare line (no corners). It cannot match anything, so it is kept on the wall but not taught to the matcher. Redraw that one with its corners clearly bent.");
                 return false;
             }
             var existing = _entries.Find(e => e.Type == type);
@@ -1192,7 +1218,7 @@ namespace SpellyZombie
                     }
                     if (used > 0) { loaded++; totalSamples += used; }
                     else if (all.Count > 0)
-                        Debug.LogWarning($"[RuneLibrary] {ShortName((RuneType)t.rune)}: all {all.Count} saved drawing(s) too sparse — seed shape recognizes instead. Draw larger/slower on its wall.");
+                        Debug.LogWarning($"[RuneLibrary] {ShortName((RuneType)t.rune)}: all {all.Count} saved drawing(s) too sparse. Seed shape recognizes instead. Draw larger/slower on its wall.");
                 }
                 Debug.Log($"[RuneLibrary] Loaded {loaded} rune(s), {totalSamples} handwriting sample(s) from {SavePath}");
             }

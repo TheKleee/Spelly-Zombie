@@ -123,7 +123,7 @@ namespace SpellyZombie
         /// per-prop authoring is needed — a bench yields, a house doesn't.
         /// Once torn free it stays free.
         /// ROOT IS NEVER STRONGER THAN THE LIFT (Marko: "root should never be
-        /// that strong — the moment you can easily lift it you should be able
+        /// that strong - the moment you can easily lift it you should be able
         /// to unroot it"). So there is no second gate: tearing a thing out of
         /// the ground costs exactly what holding it up costs. If you can carry
         /// it, you can free it.

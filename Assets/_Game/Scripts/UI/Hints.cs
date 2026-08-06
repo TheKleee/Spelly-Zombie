@@ -5,7 +5,7 @@ namespace SpellyZombie
 {
     /// ONE-SHOT HINTS (Marko: "our players don't know that they can click alt
     /// to use a free-hand tool... hints should tell you about every available
-    /// option when it arises — once, when you do it the hint disappears").
+    /// option when it arises - once, when you do it the hint disappears").
     ///
     /// Exactly that, nothing more: a system calls Offer() every frame the
     /// option is genuinely available, Retire() the moment the player uses it.
@@ -72,10 +72,10 @@ namespace SpellyZombie
         {
             switch (id)
             {
-                case Id.FreeHand: return "hold Alt — free the cursor and draw faster";
-                case Id.Erase: return "right-drag rubs ink out — it flows back into your wand";
+                case Id.FreeHand: return "hold Alt to free the cursor and draw fast";
+                case Id.Erase: return "right-drag erases ink and returns it to your wand";
                 case Id.Pages: return "← and → turn the pages";
-                case Id.Absorb: return "F — absorb it into your grimoire";
+                case Id.Absorb: return "F absorbs it into your grimoire";
                 default: return "";
             }
         }

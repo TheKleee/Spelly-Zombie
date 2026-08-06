@@ -169,7 +169,7 @@ namespace SpellyZombie
 
                 string label = piece.name.Replace("(Clone)", "").Trim();
                 if (_untinted.Add(label))
-                    Debug.LogWarning($"[SpellyZombie] Costume piece '{label}' has no \"_Team\" renderer — " +
+                    Debug.LogWarning($"[SpellyZombie] Costume piece '{label}' has no \"_Team\" renderer, " +
                         "KEEPING ITS OWN MATERIALS. Rename a mesh to end in _Team to team-tint part of it.", piece);
             }
         }

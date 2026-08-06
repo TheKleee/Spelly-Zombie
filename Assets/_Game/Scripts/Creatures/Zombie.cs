@@ -286,7 +286,7 @@ namespace SpellyZombie
                 {
                     _brain.Mumble("OOOH…", 2f);
                     _ritualLeft = 1.8f;
-                    Debug.Log("[SpellyZombie] A scribbler locked onto a doodle — it MUST complete it.");
+                    Debug.Log("[SpellyZombie] A scribbler locked onto a doodle. It MUST complete it.");
                 }
             }
 

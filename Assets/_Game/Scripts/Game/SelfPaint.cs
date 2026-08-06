@@ -76,7 +76,7 @@ namespace SpellyZombie
             // Enough ink = full wand, surplus wasted; less = a partial wand.
             var wand = GetComponent<WandState>();
             if (wand != null && !wand.HasWand)
-                UIPrompt.Show("I", "drink the body ink — regrow your wand",
+                UIPrompt.Show("I", "drink body ink to regrow your wand",
                     new Color(0.85f, 0.8f, 1f));
             if (kb.iKey.wasPressedThisFrame) DrinkBodyInk();
         }
@@ -208,7 +208,7 @@ namespace SpellyZombie
             bool skin = body != null && body.HasBody && body.BeginBodyPaint();
             Debug.Log(skin
                 ? "[SpellyZombie] CANVAS: skin shell ('PaintShell' in the Hierarchy)"
-                : "[SpellyZombie] CANVAS: limb capsules — the skin shell was unavailable, see the message above");
+                : "[SpellyZombie] CANVAS: limb capsules. The skin shell was unavailable, see the message above");
             if (!skin)
             {
                 bool skipRoot = body != null && body.HasBody; // fat CC capsule stays pen-proof
@@ -239,7 +239,7 @@ namespace SpellyZombie
 
             ActiveRoot = transform;
             Orbit(); // snap the easel into place this frame
-            Debug.Log("[SpellyZombie] Body paint — MMB-drag rotates, WASD moves the camera, scroll zooms, LMB ink / RMB erase, R done");
+            Debug.Log("[SpellyZombie] Body paint: MMB-drag rotates, WASD moves the camera, scroll zooms, LMB ink / RMB erase, R done");
         }
 
         void Exit()

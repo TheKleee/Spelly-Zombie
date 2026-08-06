@@ -25,7 +25,7 @@ namespace SpellyZombie
             }
             if (fbxPath == null)
             {
-                Debug.LogError("[SpellyZombie] SZ_Body.fbx not found under Assets/_Game — import the Mixamo T-pose first.");
+                Debug.LogError("[SpellyZombie] SZ_Body.fbx not found under Assets/_Game. Import the Mixamo T-pose first.");
                 return;
             }
 
@@ -42,12 +42,12 @@ namespace SpellyZombie
                 if (importer.animationType != ModelImporterAnimationType.Human)
                 {
                     Debug.LogError(
-                        "[SpellyZombie] SZ_Body is not set up as Humanoid — and the wizard will NOT " +
+                        "[SpellyZombie] SZ_Body is not set up as Humanoid, and the wizard will NOT " +
                         "convert it (automatic conversion is what kept ruining the character). " +
                         "One-time manual setup: select SZ_Body.fbx → Inspector → Rig tab → " +
                         "Animation Type: Humanoid → Apply. Then click Configure… and CHECK the bone " +
                         "mapping (especially the shoulders you edited) before pressing Done. " +
-                        "Re-run Build Character Rig afterwards — it only READS the rig from now on.");
+                        "Re-run Build Character Rig afterwards. It only READS the rig from now on.");
                     return;
                 }
                 bool dirty = false;
@@ -160,7 +160,7 @@ namespace SpellyZombie
             if (zombieCtrl != null) lib.ZombieController = zombieCtrl;
             EditorUtility.SetDirty(lib);
             AssetDatabase.SaveAssets();
-            Debug.Log($"[SpellyZombie] Character wired: {fbxPath} — player clips: " +
+            Debug.Log($"[SpellyZombie] Character wired: {fbxPath} · player clips: " +
                       string.Join(", ", clips.Keys) +
                       $" · zombie set {(zombieCtrl != null ? "✓" : "–")}" +
                       $" · costume pieces {costumes.Pieces.Count} (drop prefabs in Prefabs/Costume, " +
@@ -341,7 +341,7 @@ namespace SpellyZombie
             if (existing != null && HasYourEdits(existing))
             {
                 Debug.LogWarning($"[SpellyZombie] {path} has YOUR edits (extra layer / avatar mask / " +
-                    "StateMachineBehaviour / hand-added state) — KEPT AS-IS, nothing regenerated. " +
+                    "StateMachineBehaviour / hand-added state). KEPT AS-IS, nothing regenerated. " +
                     "Delete the file by hand if you want a fresh build.", existing);
                 return null;
             }

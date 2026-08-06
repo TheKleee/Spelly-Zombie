@@ -138,7 +138,7 @@ namespace SpellyZombie
             AssetDatabase.SaveAssets();
             Debug.Log($"[SpellyZombie] Prefab export: wrote {_wrote.Count}, " +
                       $"KEPT YOUR VERSION of {_kept.Count}" +
-                      (_kept.Count > 0 ? " — code changes did NOT reach these:\n  " + string.Join("\n  ", _kept) : "."));
+                      (_kept.Count > 0 ? ". Code changes did NOT reach these:\n  " + string.Join("\n  ", _kept) : "."));
         }
 
         static void Save(string name, System.Action build)
@@ -161,7 +161,7 @@ namespace SpellyZombie
             build();
             root.name = name;
             PrefabUtility.SaveAsPrefabAsset(root, path, out bool ok);
-            if (!ok) Debug.LogError($"[SpellyZombie] FAILED to write {path} — your existing prefab is untouched.");
+            if (!ok) Debug.LogError($"[SpellyZombie] FAILED to write {path}. Your existing prefab is untouched.");
             else _wrote.Add(name);
             Object.DestroyImmediate(root);
         }

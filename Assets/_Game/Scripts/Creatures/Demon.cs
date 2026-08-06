@@ -55,7 +55,7 @@ namespace SpellyZombie
             // memories that froze it mid-rampage (it scared itself, verified)
             var brain = d.GetComponent<ZombieBrain>();
             if (brain != null) brain.Fearless = true;
-            DrawingWorld.Instance?.LogEvent("ALL TWELVE ANSWERED — RUN.");
+            DrawingWorld.Instance?.LogEvent("ALL TWELVE ANSWERED. RUN.");
             Juice.Boom(pos, 1.4f);
             Juice.Shake(1f, 0.8f);
             return d;
@@ -190,7 +190,7 @@ namespace SpellyZombie
             if (changed)
             {
                 GetComponent<ZombieBrain>()?.Mumble("MMM… " + _form + ".", 1.6f);
-                DrawingWorld.Instance?.LogEvent($"the demon DRINKS it — {_form} DEMON");
+                DrawingWorld.Instance?.LogEvent($"the demon DRINKS it. {_form} DEMON");
                 WorldEvents.Report(WorldEventKind.Sparkle, transform.position, 1.5f);
             }
         }

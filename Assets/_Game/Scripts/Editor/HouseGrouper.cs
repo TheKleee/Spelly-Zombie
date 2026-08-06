@@ -36,7 +36,7 @@ namespace SpellyZombie
             if (floors.Count == 0)
             {
                 EditorUtility.DisplayDialog("Group House Parts",
-                    "No 'HouseFloor' objects found in the open scene — nothing to group.", "OK");
+                    "No 'HouseFloor' objects found in the open scene. Nothing to group.", "OK");
                 return;
             }
 
@@ -57,7 +57,7 @@ namespace SpellyZombie
             if (rects.Count == 0)
             {
                 EditorUtility.DisplayDialog("Group House Parts",
-                    "Every house is already grouped — nothing to do.", "OK");
+                    "Every house is already grouped. Nothing to do.", "OK");
                 return;
             }
 
@@ -105,7 +105,7 @@ namespace SpellyZombie
             }
 
             Undo.CollapseUndoOperations(undoGroup);
-            Debug.Log($"[SpellyZombie] Grouped {rects.Count} house(s), {totalMoved} parts total — drag each 'House N' to the Project window to make a prefab. Ctrl+Z reverts everything.");
+            Debug.Log($"[SpellyZombie] Grouped {rects.Count} house(s), {totalMoved} parts total. Drag each 'House N' to the Project window to make a prefab. Ctrl+Z reverts everything.");
         }
 
         static bool NearerToAnotherFloor(Vector3 p, Transform mine,

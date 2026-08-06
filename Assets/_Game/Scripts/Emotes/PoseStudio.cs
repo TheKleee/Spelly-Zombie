@@ -299,7 +299,7 @@ namespace SpellyZombie
             _selectedPose = EmoteLibrary.AddPose(def);
             _poseName = "";
             GUIUtility.keyboardControl = 0;
-            _status = $"'{name}' saved — press 1-9 to bind it to a key";
+            _status = $"'{name}' saved. Press 1-9 to bind it to a key";
         }
 
         void Preview(EmoteDef def)
@@ -354,7 +354,7 @@ namespace SpellyZombie
             GUILayout.EndHorizontal();
             GUILayout.Space(8);
 
-            GUILayout.Label("<b>Your poses</b> — click one to try it, press 1-9 to put it on that key:", Rich());
+            GUILayout.Label("<b>Your poses</b>. Click one to try it, press 1-9 to put it on that key:", Rich());
             _scroll = GUILayout.BeginScrollView(_scroll);
             var poses = EmoteLibrary.Poses;
             for (int i = 0; i < poses.Count; i++)

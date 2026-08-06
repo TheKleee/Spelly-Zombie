@@ -83,7 +83,7 @@ namespace SpellyZombie
                     _wallH = s.y;                     // authored 3.12 — exact stacking
                     _wallW = Mathf.Max(s.x, s.z);     // authored 2.00 — exact snapping
                     _wallYawAuto = s.z > s.x ? 90f : 0f; // authored: walls run along X → expect 0
-                    Debug.Log($"[SpellyZombie] wall probe (fixed): {s.x:0.00} × {s.y:0.00} × {s.z:0.00} — yawAuto {_wallYawAuto}°");
+                    Debug.Log($"[SpellyZombie] wall probe (fixed): {s.x:0.00} × {s.y:0.00} × {s.z:0.00}, yawAuto {_wallYawAuto}°");
                     Object.DestroyImmediate(probe2);
                 }
             }

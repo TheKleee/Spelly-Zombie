@@ -385,6 +385,25 @@ namespace SpellyZombie
         /// ink never join, so the preview label and the seal read the same ink.
         public static void GrowTouchingCluster(List<Stroke> members, IReadOnlyList<Stroke> all)
         {
+            // THE PEN-UP HITCH LIVED HERE. This flood ran InkTouches (a full
+            // node-vs-segment double loop, BOTH directions) against every open
+            // stroke in the world on every pass, with no proximity test at all,
+            // and it fires 2-3 times the instant you lift the pen. Cost grew
+            // with how much ink was already lying on the ground, which is
+            // exactly the lag Marko reported.
+            //
+            // Cluster() above has always had the cure. Same cull, same maths:
+            // Bounds.Expand grows the SIZE (each face moves half), so x2 keeps
+            // every pair InkTouches could still accept. Ink that is nowhere near
+            // the cluster now costs one AABB test instead of thousands of
+            // distance tests. The touching law is untouched: nothing that used
+            // to join stops joining.
+            float join = DrawingConfig.RuneTouchDistance;
+
+            _memberBounds.Clear();
+            for (int i = 0; i < members.Count; i++)
+                _memberBounds.Add(StrokeBounds(members[i]));
+
             bool grew = true;
             while (grew)
             {
@@ -393,12 +412,26 @@ namespace SpellyZombie
                 {
                     if (s == null || !s.Alive || s.State != StrokeState.Open || s.SealResidue) continue;
                     if (s.DeclaredRune != RuneType.None || s.Hidden() || members.Contains(s)) continue;
-                    foreach (var m in members)
-                        if (InkTouches(s, m, DrawingConfig.RuneTouchDistance))
-                        { members.Add(s); grew = true; break; }
+
+                    var bs = StrokeBounds(s);
+                    bs.Expand(join * 2f);
+
+                    for (int i = 0; i < members.Count; i++)
+                    {
+                        if (!bs.Intersects(_memberBounds[i])) continue;
+                        if (!InkTouches(s, members[i], join)) continue;
+                        members.Add(s);
+                        _memberBounds.Add(StrokeBounds(s));
+                        grew = true;
+                        break;   // members just grew: leave the loop, never enumerate past a mutation
+                    }
                 }
             }
         }
+
+        /// Bounds of the strokes already in the cluster, index-aligned with
+        /// `members`. Reused between calls so the flood allocates nothing.
+        static readonly List<Bounds> _memberBounds = new List<Bounds>();
 
         static RuneGlyph Recognize(List<Stroke> members, int ownerId)
         {
@@ -427,7 +460,8 @@ namespace SpellyZombie
             return glyph;
         }
 
-        static Bounds StrokeBounds(Stroke s)
+        /// Public so the erase sweep in DrawingWorld can cull by it too.
+        public static Bounds StrokeBounds(Stroke s)
         {
             var b = new Bounds();
             bool any = false;

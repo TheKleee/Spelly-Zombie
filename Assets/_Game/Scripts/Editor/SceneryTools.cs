@@ -77,14 +77,14 @@ namespace SpellyZombie
                       "BreakFx (your particle effect), Standing (your stump).");
 
             if (noCollider > 0)
-                Debug.LogWarning($"[SpellyZombie] {noCollider} object(s) have NO collider — spells and the pen " +
+                Debug.LogWarning($"[SpellyZombie] {noCollider} object(s) have NO collider. Spells and the pen " +
                                  "will pass straight through. Add the collider YOU want (capsule for trunks, box/sphere for rocks).");
             if (meshColliders > 0)
                 Debug.LogWarning($"[SpellyZombie] {meshColliders} object(s) use MeshColliders. They're the most " +
-                                 "expensive kind at forest scale — a capsule/box is far cheaper if the shape allows it.");
+                                 "expensive kind at forest scale. A capsule/box is far cheaper if the shape allows it.");
             if (thermals > 0)
                 Debug.LogWarning($"[SpellyZombie] {thermals} object(s) have Thermal pre-attached. Thermal ticks EVERY " +
-                                 "FRAME per object — at forest scale that is the main lag risk. Let spells add it on " +
+                                 "FRAME per object. At forest scale that is the main lag risk. Let spells add it on " +
                                  "contact instead (they already do).");
         }
 
@@ -110,7 +110,7 @@ namespace SpellyZombie
             foreach (var b in Object.FindObjectsByType<Breakable>(FindObjectsSortMode.None)) breakables++;
 
             Debug.Log($"[SpellyZombie] Scene performance report:\n" +
-                      $"  Breakables: {breakables} (these cost NOTHING until they break — no Update)\n" +
+                      $"  Breakables: {breakables} (these cost NOTHING until they break, no Update)\n" +
                       $"  Thermal components: {thermal}  ← these DO tick every frame, per object\n" +
                       $"  Non-kinematic Rigidbodies: {rbs}  ← every one is simulated continuously\n" +
                       $"  MeshColliders: {meshCol}  ← the most expensive collider type\n" +

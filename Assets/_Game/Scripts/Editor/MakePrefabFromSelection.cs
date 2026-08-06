@@ -28,7 +28,7 @@ namespace SpellyZombie
             {
                 if (go.GetComponentInChildren<DrawNode>() != null)
                 {
-                    Debug.LogWarning($"[SpellyZombie] '{go.name}' has INK on it — erase it (RMB) " +
+                    Debug.LogWarning($"[SpellyZombie] '{go.name}' has INK on it. Erase it (RMB) " +
                                      "before prefabbing, or the ink gets baked into the prefab.");
                     continue;
                 }
@@ -49,7 +49,7 @@ namespace SpellyZombie
                 string path = AssetDatabase.GenerateUniqueAssetPath($"{Dir}/{Sanitize(go.name)}.prefab");
                 PrefabUtility.SaveAsPrefabAsset(go, path, out bool ok);
                 Debug.Log(ok
-                    ? $"[SpellyZombie] Prefab saved: {path} — materials included, drop it in any scene."
+                    ? $"[SpellyZombie] Prefab saved with materials: {path}. Drop it in any scene."
                     : $"[SpellyZombie] FAILED to save prefab for '{go.name}'.");
             }
             AssetDatabase.SaveAssets();

@@ -151,7 +151,7 @@ namespace SpellyZombie
                 }
                 ComboBanner.Show("THE LOBBY IS SAFE GROUND", new Color(0.7f, 0.9f, 1f));
                 DrawingWorld.Instance?.LogEvent(
-                    "runs happen on the game map — no 'Game' scene in Build Settings yet");
+                    "runs happen on the game map. no 'Game' scene in Build Settings yet");
                 return;
             }
             StartRunNow();
@@ -177,7 +177,7 @@ namespace SpellyZombie
             ComboBanner.Show($"ROUND {round}", new Color(1f, 0.85f, 0.4f));
             var p0 = _players.Count > 0 && _players[0] != null ? _players[0].transform.position : Vector3.zero;
             Juice.Drum(p0);
-            DrawingWorld.Instance?.LogEvent($"ROUND {round} — {_toSpawn} incoming");
+            DrawingWorld.Instance?.LogEvent($"ROUND {round}: {_toSpawn} incoming");
         }
 
         /// Zombies that count toward ending a round — DEMONS don't (an unkillable grand demon held the round hostage).
@@ -358,20 +358,20 @@ namespace SpellyZombie
             !NetSync.HasRound ? "co-op: waiting for the host…"
                 : NetSync.NetPhase switch
             {
-                1 => $"ROUND {NetSync.NetRound} — {NetSync.NetLeft} zombies left",
-                2 => $"INTERMISSION — round {NetSync.NetRound + 1} in {NetSync.NetTimer:0}s (draw!)",
-                3 => $"WIPED on round {NetSync.NetRound} — {NetSync.NetKills} kills. Host restarts",
-                4 => $"VICTORY — {NetSync.NetKills} kills!",
+                1 => $"ROUND {NetSync.NetRound}: {NetSync.NetLeft} zombies left",
+                2 => $"INTERMISSION: round {NetSync.NetRound + 1} in {NetSync.NetTimer:0}s (draw!)",
+                3 => $"WIPED on round {NetSync.NetRound}, {NetSync.NetKills} kills. Host restarts",
+                4 => $"VICTORY: {NetSync.NetKills} kills!",
                 _ => "the host starts the run from the lobby",
             };
 
         static string LocalStatus() => Instance._phase switch
         {
             Phase.Idle => "", // runs start from the lobby ready-up; idle scenes stay quiet
-            Phase.Wave => $"ROUND {Instance._round} — {Instance._toSpawn + CountableZombies()} zombies left",
-            Phase.Intermission => $"INTERMISSION — round {Instance._round + 1} in {Instance._phaseTimer:0}s (draw!)",
-            Phase.GameOver => $"WIPED on round {Instance._round} — {Instance._kills} kills. ENTER = again",
-            _ => $"VICTORY — {Instance._kills} kills, {(Time.time - Instance._runStart) / 60f:0.0} min. ENTER = again",
+            Phase.Wave => $"ROUND {Instance._round}: {Instance._toSpawn + CountableZombies()} zombies left",
+            Phase.Intermission => $"INTERMISSION: round {Instance._round + 1} in {Instance._phaseTimer:0}s (draw!)",
+            Phase.GameOver => $"WIPED on round {Instance._round}, {Instance._kills} kills. ENTER = again",
+            _ => $"VICTORY: {Instance._kills} kills, {(Time.time - Instance._runStart) / 60f:0.0} min. ENTER = again",
         };
     }
 }

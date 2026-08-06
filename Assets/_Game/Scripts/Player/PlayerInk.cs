@@ -29,7 +29,7 @@ namespace SpellyZombie
 
         /// Spend ink for drawn line length. THE LOBBY IS NOT A FREE RIDE any
         /// more (Marko: "the game should not be played differently than normal
-        /// just cause it's lobby — same rules should apply"). Ink used to cost
+        /// just cause it's lobby - same rules should apply"). Ink used to cost
         /// nothing outside a run, which is why the wand never shrank there.
         /// The Lobby cauldron refills itself forever, so you can still test.
         public bool TrySpend(float amount)

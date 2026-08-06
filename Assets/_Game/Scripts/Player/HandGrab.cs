@@ -125,7 +125,7 @@ namespace SpellyZombie
             if (auth <= 0f)
             {
                 ClearBodyHold();
-                DrawingWorld.Instance?.LogEvent("your ink is gone — it drops");
+                DrawingWorld.Instance?.LogEvent("your ink is gone, it drops");
                 return;
             }
 
@@ -167,7 +167,7 @@ namespace SpellyZombie
                 _heldMarks = null;
                 var board = GetComponent<BodyState>();
                 if (board != null) board.CarriedWeight = 0f; // arms free again
-                DrawingWorld.Instance?.LogEvent("what you held is gone — merged or spent");
+                DrawingWorld.Instance?.LogEvent("what you held is gone, merged or spent");
             }
 
             bool holding = _heldParticle != null || _heldBody != null || _remoteHolding;
@@ -292,7 +292,7 @@ namespace SpellyZombie
                 var pv0 = _pilot.CameraPivot;
                 if (pv0 != null) _holdDist = Mathf.Clamp(
                     Vector3.Distance(pv0.position, bestP.transform.position), 0.7f, GrabRange);
-                DrawingWorld.Instance?.LogEvent($"grabbed the {bestP.Kind} — E throws it");
+                DrawingWorld.Instance?.LogEvent($"grabbed the {bestP.Kind}. E throws it");
                 return;
             }
 
@@ -357,7 +357,7 @@ namespace SpellyZombie
             {
                 if (stateRefused != null) // the law, out loud — no silently eaten press
                     DrawingWorld.Instance?.LogEvent(
-                        $"the {stateRefused.Material} has been handled — only a SOLID grabs again");
+                        $"the {stateRefused.Material} has been handled. only a SOLID grabs again");
                 return;
             }
 
@@ -406,8 +406,8 @@ namespace SpellyZombie
             float needInk = bestB.mass * DrawingConfig.LiftInkPerKg;
             float haveInk = InkMark.AuthorityIn(_heldMarks, Grimoire.LocalPlayerId);
             DrawingWorld.Instance?.LogEvent(auth0 >= 1f
-                ? "it lifts free — alt + left-drag turns it · F drops · E throws"
-                : $"only slowing it — ink {haveInk:0} of {needInk:0} ({bestB.mass:0.#}kg): draw more, no turning yet");
+                ? "it lifts free. alt + left-drag turns it · F drops · E throws"
+                : $"too heavy to lift. your ink is {haveInk:0} of {needInk:0}. draw more on it");
         }
 
         /// THE ACQUIRE LAW, owner-parameterized — one implementation for the local
@@ -440,12 +440,12 @@ namespace SpellyZombie
                 if (Liftable.WorldScale(hitRb.transform, out var kd))
                 {
                     DrawingWorld.Instance?.LogEvent(
-                        $"the world itself refuses — {hitRb.name} is {kd.x:0.#}×{kd.y:0.#}×{kd.z:0.#}m of world, not a prop");
+                        $"the world itself refuses: {hitRb.name} is {kd.x:0.#}×{kd.y:0.#}×{kd.z:0.#}m of world, not a prop");
                     return null;
                 }
                 if (InkMark.AuthorityIn(hitRb.transform, ownerId) <= 0f)
                 {
-                    DrawingWorld.Instance?.LogEvent($"no ink on {hitRb.name} — draw on it to lift it");
+                    DrawingWorld.Instance?.LogEvent($"no ink on {hitRb.name}, draw on it to lift it");
                     return null;
                 }
                 Liftable.MakePhysicsLegal(hitRb.transform);
@@ -460,7 +460,7 @@ namespace SpellyZombie
                 {
                     float have = InkMark.AuthorityIn(hitRb.transform, ownerId);
                     DrawingWorld.Instance?.LogEvent(
-                        $"{hitRb.name}: your ink {have:0}, needs {hitRb.mass * DrawingConfig.LiftInkPerKg:0} — draw more on it");
+                        $"{hitRb.name}: your ink {have:0}, needs {hitRb.mass * DrawingConfig.LiftInkPerKg:0}. draw more on it");
                     return null;
                 }
                 return hitRb;
@@ -478,7 +478,7 @@ namespace SpellyZombie
             if (Liftable.WorldScale(host, out var wd))
             {
                 DrawingWorld.Instance?.LogEvent(
-                    $"the world itself refuses — {host.name} is {wd.x:0.#}×{wd.y:0.#}×{wd.z:0.#}m of world, not a prop");
+                    $"the world itself refuses: {host.name} is {wd.x:0.#}×{wd.y:0.#}×{wd.z:0.#}m of world, not a prop");
                 return null;
             }
 
@@ -489,7 +489,7 @@ namespace SpellyZombie
                 // SAY THE NUMBERS. "It won't budge" is useless; knowing
                 // you're 9 ink short tells you to keep drawing.
                 DrawingWorld.Instance?.LogEvent(
-                    $"rooted — your ink on it: {mine:0} of {hold:0} needed ({host.name})");
+                    $"it is rooted. your ink is {mine:0} of {hold:0} needed");
                 return null;
             }
 
@@ -521,7 +521,7 @@ namespace SpellyZombie
             _slotAtGrab = _slots != null ? _slots.Current : 1;
             _spinRot = Quaternion.identity;
             _grabRelRot = Quaternion.identity;
-            DrawingWorld.Instance?.LogEvent("held through the host — F drops · E throws");
+            DrawingWorld.Instance?.LogEvent("held through the host. F drops · E throws");
         }
 
         static HandGrab _localGrab;

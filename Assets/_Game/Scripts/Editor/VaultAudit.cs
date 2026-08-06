@@ -36,7 +36,7 @@ namespace SpellyZombie
 
             string best = known.OrderBy(k => Distance(k.ToLowerInvariant(), name.ToLowerInvariant()))
                                .FirstOrDefault();
-            Debug.LogWarning($"[SpellyZombie] Resources/Custom/{name} is not a hook name — NOTHING loads it." +
+            Debug.LogWarning($"[SpellyZombie] Resources/Custom/{name} is not a hook name. NOTHING loads it." +
                              (best != null ? $" Closest hook: \"{best}\"." : "") +
                              " See the list at the top of PrefabVault.cs.",
                              AssetDatabase.LoadAssetAtPath<GameObject>(path));

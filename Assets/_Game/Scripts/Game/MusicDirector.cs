@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 namespace SpellyZombie
 {
     /// MARKO'S TWO-SONG SOUNDTRACK (his Song Maker pair: "one for action,
-    /// one for chilling — almost the same"): that similarity is exactly what
+    /// one for chilling - almost the same"): that similarity is exactly what
     /// vertical layering wants. Both tracks play in lockstep from the same
     /// moment, and the mix CROSSFADES between them — chill during prep,
     /// lobby and menus; action while a wave is actually running. The

@@ -20,7 +20,7 @@ namespace SpellyZombie
         /// Marko's kill-switch if the placeholder maw offends the art.
         public static bool GiveMouths = true;
 
-        [Header("Flavour passes — YOUR switches (AXIOM: nothing is forced)")]
+        [Header("Flavour passes: YOUR switches (AXIOM: nothing is forced)")]
         [SerializeField] bool _posture = true;      // per-frame bone posing
         [SerializeField] bool _scaleJitter = true;  // random size variety
         [SerializeField] bool _mouth = true;        // placeholder mouth quad

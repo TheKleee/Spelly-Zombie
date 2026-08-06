@@ -97,7 +97,7 @@ namespace SpellyZombie
             }
             if (!SteamLobby.SteamReady)
             {
-                _statusLabel.text = "Steam isn't running — start Steam to host or join online. (Offline: Create Server opens the village solo.)";
+                _statusLabel.text = "Steam isn't running. Start Steam to host or join online. (Offline: Create Server opens the village solo.)";
                 return;
             }
 
@@ -118,7 +118,7 @@ namespace SpellyZombie
                 skin != null ? skin.ButtonBrown : null, 15);
             UIKit.Place((RectTransform)joinBtn.transform, new Vector2(0.5f, 1f), new Vector2(100f, -52f), new Vector2(76f, 30f));
 
-            var quick = UIKit.Button(_joinUi, "QUICK JOIN — public lobby", () => SteamLobby.QuickJoin(),
+            var quick = UIKit.Button(_joinUi, "QUICK JOIN A PUBLIC LOBBY", () => SteamLobby.QuickJoin(),
                 skin != null ? skin.ButtonGrey : null, 15);
             UIKit.Place((RectTransform)quick.transform, new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(270f, 36f));
         }

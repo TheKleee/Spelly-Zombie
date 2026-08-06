@@ -75,10 +75,11 @@ namespace SpellyZombie
                     Consider(_single, perimeter);
                 }
                 else if (gap <= thr * 3f) // this path failed SILENTLY for months — never again
-                    LastNearMiss = $"loop ends {gap * 100f:0.0}cm apart — {thr * 100f:0.0}cm allowed";
+                    LastNearMiss = $"loop ends {gap * 100f:0.0}cm apart ({thr * 100f:0.0}cm allowed)";
             }
 
             // 2) multi-stroke chains — explore ALL, keep the biggest
+            CacheEnds(eligible); // read every endpoint once, not once per DFS visit
             foreach (var s0 in eligible)
             {
                 _used.Clear();
@@ -99,7 +100,7 @@ namespace SpellyZombie
                 LastNearMiss = (_nearestChain > 0
                         ? $"a {_nearestChain}-stroke chain didn't come back around"
                         : "two line ends nearly meet")
-                    + $" — {_nearestOpen * 100f:0.0}cm apart, and they must touch ({DrawingConfig.CloseThreshold * 100f:0.0}cm)";
+                    + $", {_nearestOpen * 100f:0.0}cm apart and they must touch ({DrawingConfig.CloseThreshold * 100f:0.0}cm)";
             // the winner is copied out ONCE, at the end — the search itself
             // snapshots into a reused buffer instead of allocating per improvement
             return _best ? new List<LoopEntry>(_bestBuf) : null;
@@ -125,6 +126,38 @@ namespace SpellyZombie
             if (gap >= _nearestOpen) return;
             _nearestOpen = gap;
             _nearestChain = chainLen;
+        }
+
+        /// Squared-distance door to NoteOpenGap. The near-miss window is only
+        /// [allowed, allowed x 3], and the DFS calls this for every stroke it
+        /// rejects, so the sqrt is worth paying only inside that window. The
+        /// gate below is the same test NoteOpenGap opens with, squared.
+        static void NoteOpenGapSq(float gapSq, float allowed, int chainLen)
+        {
+            float hi = allowed * 3f;
+            if (gapSq <= allowed * allowed || gapSq > hi * hi) return;
+            NoteOpenGap(Mathf.Sqrt(gapSq), allowed, chainLen);
+        }
+
+        // Endpoint positions for the eligible set, index-aligned with the list
+        // handed to Dfs. Filled once per FindLoop; grown, never reallocated per
+        // call. Ink cannot move between the fill and the end of the scan.
+        static Vector3[] _endA = new Vector3[64];
+        static Vector3[] _endB = new Vector3[64];
+
+        static void CacheEnds(IReadOnlyList<Stroke> all)
+        {
+            if (_endA.Length < all.Count)
+            {
+                int cap = Mathf.NextPowerOfTwo(all.Count);
+                _endA = new Vector3[cap];
+                _endB = new Vector3[cap];
+            }
+            for (int i = 0; i < all.Count; i++)
+            {
+                _endA[i] = all[i].First.transform.position;
+                _endB[i] = all[i].Last.transform.position;
+            }
         }
 
         static void Consider(List<LoopEntry> path, float perimeter)
@@ -190,16 +223,27 @@ namespace SpellyZombie
 
             if (path.Count >= DrawingConfig.MaxLoopStrokes) return;
 
-            foreach (var t in all)
+            float link = DrawingConfig.CloseThreshold; // touching exactly — body and world alike
+            float link2 = link * link;
+
+            for (int i = 0; i < all.Count; i++)
             {
+                var t = all[i];
                 if (used.Contains(t)) continue;
 
-                float link = DrawingConfig.CloseThreshold; // touching exactly — body and world alike
-                Vector3 a = t.First.transform.position;
-                Vector3 b = t.Last.transform.position;
+                // ENDPOINTS COME FROM THE CACHE, NOT THE TRANSFORM. This loop
+                // used to do t.First.transform.position and t.Last.transform.
+                // position on every candidate on every DFS visit: four native
+                // calls per stroke, and the search seeds from every stroke, so
+                // it is quadratic. Ink cannot move mid-scan, so FindLoop reads
+                // each endpoint exactly once into _endA/_endB.
+                Vector3 a = _endA[i];
+                Vector3 b = _endB[i];
 
-                float dA = Vector3.Distance(exitPos, a);
-                if (dA <= link)
+                // Squared distance: the sqrt is only paid inside the near-miss
+                // window, by NoteOpenGapSq. Same accept/reject decisions.
+                float dA2 = (exitPos - a).sqrMagnitude;
+                if (dA2 <= link2)
                 {
                     path.Add(new LoopEntry(t, true));
                     used.Add(t);
@@ -207,11 +251,11 @@ namespace SpellyZombie
                     path.RemoveAt(path.Count - 1);
                     used.Remove(t);
                 }
-                else NoteOpenGap(dA, link, 0);
+                else NoteOpenGapSq(dA2, link, 0);
 
-                float dB = Vector3.Distance(exitPos, b);
-                if (dB > link) NoteOpenGap(dB, link, 0);
-                if (dB <= link)
+                float dB2 = (exitPos - b).sqrMagnitude;
+                if (dB2 > link2) NoteOpenGapSq(dB2, link, 0);
+                if (dB2 <= link2)
                 {
                     path.Add(new LoopEntry(t, false));
                     used.Add(t);

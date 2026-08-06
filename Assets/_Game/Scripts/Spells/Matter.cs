@@ -687,7 +687,7 @@ namespace SpellyZombie
             // chase only targets CanFuse partners (the cohere drink asks too)
             if (FuseGraced(a, b)) return false;
             // MATERIALS KEEP THEIR OWN LIVES (Marko: "particles of different
-            // materials do not combine — rock, metal and wood keep their
+            // materials do not combine - rock, metal and wood keep their
             // separate states"). Two rocks pool; rock and metal never do.
             if (a.Material != b.Material) return false;
             // gas mixes only with gas

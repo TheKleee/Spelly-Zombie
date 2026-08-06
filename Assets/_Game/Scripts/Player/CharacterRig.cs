@@ -64,16 +64,16 @@ namespace SpellyZombie
         static readonly Color SkinColor = new Color(0.93f, 0.87f, 0.72f); // temp — Marko restyles materials
 
         [Header("Natural stride (Marko's root-motion experiment)")]
-        [Tooltip("ON: damped blending + cycle playback synced to actual ground speed (the in-place-clip substitute for root motion). OFF: the old raw feel — flip live to compare.")]
+        [Tooltip("ON: damped blending + cycle playback synced to actual ground speed (the in-place-clip substitute for root motion). OFF: the old raw feel. Flip live to compare.")]
         public bool NaturalStride = true;
         [Tooltip("Ground speed (m/s) the WALK cycle naturally covers. If feet slide at no-shift speed, LOWER this (faster playback). ~2.4 grips a 4.5 m/s stroll.")]
         public float WalkClipSpeed = 2.4f;
         [Tooltip("Ground speed (m/s) the RUN cycle naturally covers. If feet slide at sprint speed, nudge this one. (4.5 = Marko's tuned value.)")]
         public float RunClipSpeed = 4.5f;
-        [Tooltip("Mixamo crouch clips sneak at an angle baked into the pose — this yaw (degrees) turns the crouched body back to face its travel. Dial live while crouch-walking until he faces forward; 0 = off.")]
+        [Tooltip("Mixamo crouch clips sneak at an angle baked into the pose. This yaw (degrees) turns the crouched body back to face its travel. Dial live while crouch-walking until he faces forward; 0 = off.")]
         public float CrouchYawFix = 38f;
 
-        [Tooltip("While posing, the shoulder (clavicle) bone carries this share of the upper arm's travel — a real shoulder girdle instead of a dead one. 0 = old behavior.")]
+        [Tooltip("While posing, the shoulder (clavicle) bone carries this share of the upper arm's travel, a real shoulder girdle instead of a dead one. 0 = old behavior.")]
         public float ClavicleFollow = 0.3f;
 
         SimpleFPSController _pilot;
@@ -200,7 +200,7 @@ namespace SpellyZombie
             var headTop = Bone("HeadTop");
             if (_hips == null || _head == null || _armL == null)
             {
-                Debug.LogWarning("[SpellyZombie] CharacterRig: mixamorig bones not found — keeping whatever body exists.");
+                Debug.LogWarning("[SpellyZombie] CharacterRig: mixamorig bones not found, keeping whatever body exists.");
                 return;
             }
 
@@ -340,7 +340,7 @@ namespace SpellyZombie
                 // Eye→Pupil pair, or baked disabled) — frozen decoration that
                 // can never react. Marko: "make it work normally" — rebuild.
                 Debug.LogWarning("[SpellyZombie] Baked body's eyes are not a working " +
-                    "Eye→Pupil pair — rebuilding fresh googly eyes in their place. " +
+                    "Eye→Pupil pair, rebuilding fresh googly eyes in their place. " +
                     "(Re-bake to keep custom eye placement.)", model);
                 Destroy(eyes.gameObject);
                 eyes = null;
@@ -535,7 +535,7 @@ namespace SpellyZombie
             if (_paintShell != null) return true;
             if (_smr == null)
             {
-                Debug.LogError("[SpellyZombie] Body paint: no SkinnedMeshRenderer on the rig — capsules catch the pen.");
+                Debug.LogError("[SpellyZombie] Body paint: no SkinnedMeshRenderer on the rig. Capsules catch the pen.");
                 return false;
             }
             try
@@ -553,7 +553,7 @@ namespace SpellyZombie
                 {
                     Destroy(meshLocal);
                     Destroy(meshScaled);
-                    Debug.LogError("[SpellyZombie] Body paint: bake produced no vertices — capsules catch the pen.");
+                    Debug.LogError("[SpellyZombie] Body paint: bake produced no vertices. Capsules catch the pen.");
                     return false;
                 }
 
@@ -630,7 +630,7 @@ namespace SpellyZombie
                 {
                     if (best.col.sharedMesh != null) Destroy(best.col.sharedMesh);
                     Destroy(best.go);
-                    Debug.LogWarning($"[SpellyZombie] Paint shell REJECTED ({best.tag}) — capsules catch the pen:\n"
+                    Debug.LogWarning($"[SpellyZombie] Paint shell REJECTED ({best.tag}). Capsules catch the pen:\n"
                         + string.Join("\n", report));
                     return false;
                 }
@@ -646,7 +646,7 @@ namespace SpellyZombie
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[SpellyZombie] Paint shell bake FAILED ({e.Message}) — run 'Spelly Zombie → Build Character Rig' once (it enables Read/Write on SZ_Body). Limb capsules catch the pen for now.");
+                Debug.LogError($"[SpellyZombie] Paint shell bake FAILED ({e.Message}). Run 'Spelly Zombie → Build Character Rig' once (it enables Read/Write on SZ_Body). Limb capsules catch the pen for now.");
                 return false;
             }
         }
@@ -793,7 +793,7 @@ namespace SpellyZombie
             var rb = Adopt.Component<Rigidbody>(bone.gameObject, out bool madeRb);
             if (!madeRb)
                 Debug.LogWarning($"[SpellyZombie] Bone '{bone.name}' brought its own Rigidbody " +
-                                 $"(mass {rb.mass}) — keeping it.", bone);
+                                 $"(mass {rb.mass}), keeping it.", bone);
             else rb.mass = mass;
             rb.isKinematic = true; // ALWAYS — SetRagdoll owns this; an adopted
                                    // non-kinematic body collapses the skeleton on frame 1
@@ -837,8 +837,8 @@ namespace SpellyZombie
             {
                 var kept = bone.GetComponent<Collider>();
                 if (kept is MeshCollider mc && !mc.convex)
-                    Debug.LogWarning($"[SpellyZombie] Bone '{bone.name}' has a NON-CONVEX MeshCollider — " +
-                                     "ragdoll bones must be convex or physics will refuse it.", bone);
+                    Debug.LogWarning($"[SpellyZombie] Bone '{bone.name}' has a NON-CONVEX MeshCollider. " +
+                                     "Ragdoll bones must be convex or physics will refuse it.", bone);
             }
 
             if (parent != null)
@@ -918,7 +918,7 @@ namespace SpellyZombie
                 if (_wand.activeSelf != showPen) _wand.SetActive(showPen);
 
                 // THE BOOK STAYS ALIVE ON THE EASEL (Marko: "I need to open
-                // grimoire in character drawing mode — invisible, but I can
+                // grimoire in character drawing mode - invisible, but I can
                 // still see the UI showing what page we're at"). Deactivating
                 // the object killed GrimoirePages outright, so G could never
                 // open the book while painting. Active + renderers off =
@@ -1123,7 +1123,7 @@ namespace SpellyZombie
             _bob += Time.deltaTime * (2f + vel.magnitude * 1.1f);
             float lean = Mathf.Clamp(lv.z * 3.4f, -16f, 16f);
             float roll = Mathf.Clamp(-lv.x * 2.8f, -13f, 13f);
-            // SHAKE BUDGET (Marko: "shaking a bit is fine — funny moments —
+            // SHAKE BUDGET (Marko: "shaking a bit is fine - funny moments -
             // but this is too much, many people wouldn't be able to draw").
             // The camera rides the head bone, so the head's idle bob WAS the
             // nonstop view shake: now idle keeps a gentle breath, the full
@@ -1265,7 +1265,7 @@ namespace SpellyZombie
                 GetComponent<EmotePlayer>()?.Interrupt();
                 Vector3 vel = (transform.position - _lastPos) / Mathf.Max(Time.deltaTime, 1e-4f);
                 // MOMENTUM-TRUE (Marko's final ruling: "simply take your
-                // current momentum — standing falls in place, running falls
+                // current momentum - standing falls in place, running falls
                 // WHILE running"): full velocity inheritance, no artificial
                 // topple, no cut. Downed dolls alone settle fast, so rescuers
                 // can catch you.

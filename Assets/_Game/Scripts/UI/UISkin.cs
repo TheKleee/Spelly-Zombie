@@ -40,15 +40,15 @@ namespace SpellyZombie
         public Sprite HexRed;
         public Sprite HexGreen;
 
-        [Header("Type — assign the hand-drawn font when it lands")]
+        [Header("Type: assign the hand-drawn font when it lands")]
         public Font TextFont;
 
-        [Header("Marko's UI prefab — when assigned, it IS the interface")]
-        [Tooltip("Drag your edited SZ_UI prefab here. The game instantiates it untouched — code only rebinds button clicks, feeds live values into existing texts (counters, timers), and adds elements the prefab doesn't have. Empty = code-built UI.")]
+        [Header("Marko's UI prefab: when assigned, it IS the interface")]
+        [Tooltip("Drag your edited SZ_UI prefab here. The game instantiates it untouched. Code only rebinds button clicks, feeds live values into existing texts (counters, timers), and adds elements the prefab doesn't have. Empty = code-built UI.")]
         public GameObject UIPrefab;
 
-        [Header("Marko's surface prefabs — prefab NAME = the UI group it replaces")]
-        [Tooltip("Drop ANY menu/submenu/popup prefab here. Whenever the game is about to code-build a UI group whose name matches a prefab in this list, YOUR prefab is instantiated instead — untouched. Known names: MainMenu, Settings, PauseMenu, HUD, Vitals, RoundBanner, Downed, LobbyBanner, LobbyBoard, NetPanel, PromptGroup, RuneChooser, PowerupChooser, Announcement, SealGallery. Buttons and live texts wire up by name + sibling order.")]
+        [Header("Marko's surface prefabs: prefab NAME = the UI group it replaces")]
+        [Tooltip("Drop ANY menu/submenu/popup prefab here. Whenever the game is about to code-build a UI group whose name matches a prefab in this list, YOUR prefab is instantiated instead, untouched. Known names: MainMenu, Settings, PauseMenu, HUD, Vitals, RoundBanner, Downed, LobbyBanner, LobbyBoard, NetPanel, PromptGroup, RuneChooser, PowerupChooser, Announcement, SealGallery. Buttons and live texts wire up by name + sibling order.")]
         public List<GameObject> SurfacePrefabs = new List<GameObject>();
 
         /// Marko's prefab for a named UI surface, or null → code builds it.

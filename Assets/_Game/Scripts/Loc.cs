@@ -24,17 +24,17 @@ namespace SpellyZombie
             ["door.open"] = "open the door",
             ["door.close"] = "close the door",
             ["pickup.weapon"] = "pick up the weapon",
-            ["pickup.full"] = "hands full — drop one first",
+            ["pickup.full"] = "hands full, drop one first",
             ["revive.friend"] = "hold to revive your friend",
             ["revive.pct"] = "reviving…  {0}%",
             ["chest.try"] = "try the mystery chest",
             ["perk.drink"] = "drink {0}",
-            ["perk.brewed"] = "{0} — already brewed",
+            ["perk.brewed"] = "{0} is already brewed",
             ["grimoire.open"] = "open the grimoire",
             ["grimoire.close"] = "close the grimoire  ·  ← → turn pages",
             ["pose.grab"] = "grab limbs · tap 1-9 = load · HOLD 1-9 = save · F = relax · R = done",
             ["pose.key"] = "pose mode · F = relax · X = reset this key",
-            ["pose.enter"] = "pose mode — sculpt your wizard, save to keys 1-9",
+            ["pose.enter"] = "pose mode: sculpt your wizard, save to keys 1-9",
         };
 
         static Dictionary<string, string> _active; // loaded translation (null = English)

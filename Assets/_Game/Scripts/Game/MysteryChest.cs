@@ -72,7 +72,7 @@ namespace SpellyZombie
                     }
                 if (lidT == null)
                     Debug.LogWarning($"[SpellyZombie] Chest prefab '{customChest.name}' has no child named " +
-                        "\"Lid\" — it spawns, glows and pays out fine, it just won't SWING OPEN. Name the " +
+                        "\"Lid\". It spawns, glows and pays out fine, it just won't SWING OPEN. Name the " +
                         "hinge child Lid, pivot it on the hinge edge, and author it CLOSED.", root);
 
                 // a Blender export without colliders would be a ghost — the
@@ -225,7 +225,7 @@ namespace SpellyZombie
         {
             PlayerInk.RefillAll();
             Juice.Chime(transform.position);
-            DrawingWorld.Instance?.LogEvent("The chest overflows — ink refilled for everyone");
+            DrawingWorld.Instance?.LogEvent("The chest overflows: ink refilled for everyone");
         }
 
         IEnumerator TheBear()

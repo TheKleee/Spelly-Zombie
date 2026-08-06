@@ -44,7 +44,7 @@ namespace SpellyZombie
         {
             "+2 particles per burst",
             "particles launch 50% faster",
-            "particles carry glue — everything connects",
+            "particles carry glue, everything connects",
             "payload +35%: hotter, darker, heavier",
             "particles 30% bigger (rifts remember size…)",
             "the seal pulses 25% more often",
@@ -188,7 +188,7 @@ namespace SpellyZombie
             }
             _buffs[o.Card] = b;
             _pending--;
-            DrawingWorld.Instance?.LogEvent($"POWERUP: {o.Card} rune — {StatName[o.Stat]}");
+            DrawingWorld.Instance?.LogEvent($"POWERUP: {o.Card} rune, {StatName[o.Stat]}");
 
             Nova(); // the escape blast — shove the crowd that gathered
 
@@ -249,7 +249,7 @@ namespace SpellyZombie
                 skin != null ? Color.white : new Color(0f, 0f, 0f, 0.6f));
             UIKit.Place((RectTransform)header.transform, new Vector2(0.5f, 1f), Vector2.zero, new Vector2(760f, 76f));
             var headText = UIKit.Label((RectTransform)header.transform,
-                "LEVEL UP — the horde is entranced by your glow… and closing in",
+                "LEVEL UP: the horde is entranced by your glow… and closing in",
                 17, UIKit.Ink, TextAnchor.MiddleCenter, true);
             UIKit.Stretch((RectTransform)headText.transform);
 
@@ -275,7 +275,7 @@ namespace SpellyZombie
                 var cap = UIKit.Keycap(card, (i + 1).ToString(), 30f);
                 UIKit.Place(cap, new Vector2(0f, 1f), new Vector2(12f, -12f), cap.sizeDelta);
 
-                var title = UIKit.Label(card, $"{o.Card.ToString().ToUpper()} — {StatName[o.Stat]}",
+                var title = UIKit.Label(card, $"{o.Card.ToString().ToUpper()}: {StatName[o.Stat]}",
                     18, UIKit.Ink, TextAnchor.MiddleLeft, true);
                 UIKit.Place((RectTransform)title.transform, new Vector2(0f, 1f), new Vector2(58f, -28f), new Vector2(w - 70f, 24f));
 
@@ -284,7 +284,7 @@ namespace SpellyZombie
                     15, new Color(0.25f, 0.19f, 0.12f), TextAnchor.UpperLeft);
                 // live data beats adopted prefab text (same stale-label class
                 // as the rune chooser — the offers change every level-up)
-                title.text = $"{o.Card.ToString().ToUpper()} — {StatName[o.Stat]}";
+                title.text = $"{o.Card.ToString().ToUpper()}: {StatName[o.Stat]}";
                 desc.text = StatDesc[o.Stat] + (stacks > 0 ? $"\n(owned ×{stacks})" : "");
                 var dr = (RectTransform)desc.transform;
                 UIKit.Place(dr, new Vector2(0f, 1f), new Vector2(16f, -58f), new Vector2(w - 32f, 80f));

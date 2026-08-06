@@ -85,7 +85,7 @@ namespace SpellyZombie
                         if (ManagedSurfaces.Contains(child.name))
                             child.gameObject.SetActive(false);
                     EnsureEventSystem();
-                    Debug.Log("[SpellyZombie] UI: SZ_UI.prefab adopted — edits in the prefab are law.");
+                    Debug.Log("[SpellyZombie] UI: SZ_UI.prefab adopted. Edits in the prefab are law.");
                     return;
                 }
                 UnityEngine.Object.Destroy(pgo); // malformed — code takes over
@@ -456,7 +456,7 @@ namespace SpellyZombie
     {
         static UIPrompt _i;
         RectTransform _group;
-        Text _label;
+        TMPro.TextMeshProUGUI _label; // TMP: prompts name runes by EMOJI (sprites)
         int _lastFrame = -1;
 
         public static void Show(string key, string text, Color? accent = null)
@@ -494,7 +494,13 @@ namespace SpellyZombie
             UIKit.Place(_cap, new Vector2(0f, 0.5f), new Vector2(28f, 0f), _cap.sizeDelta);
             _capKey = key;
 
-            _label = UIKit.Label(_group, "", 19, UIKit.Parchment, TextAnchor.MiddleLeft, true);
+            var labelGo = new GameObject("PromptLabel", typeof(RectTransform));
+            labelGo.transform.SetParent(_group, false);
+            _label = labelGo.AddComponent<TMPro.TextMeshProUGUI>();
+            _label.fontSize = 19f;
+            _label.color = UIKit.Parchment;
+            _label.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
+            _label.raycastTarget = false;
             var lr = (RectTransform)_label.transform;
             UIKit.Stretch(lr);
             lr.offsetMin = new Vector2(84f, 0f);

@@ -26,13 +26,13 @@ namespace SpellyZombie
     {
         [Header("WHAT THIS TEACHES")]
         [Tooltip("The ONE rune the grimoire learns from this object. One page = one rune " +
-                 "(all 12 collected individually) — a flame teaches HeatUp, not its opposite.")]
+                 "(all 12 collected individually). A flame teaches HeatUp, not its opposite.")]
         public RuneType Teaches = RuneType.HeatUp;
 
-        [Header("WHAT HAPPENS WHEN IT'S ABSORBED — your call")]
+        [Header("WHAT HAPPENS WHEN IT'S ABSORBED (your call)")]
         [Tooltip("Your effect at the moment of absorbing. Empty = the default poof.")]
         public GameObject AbsorbFx;
-        [Tooltip("What's left behind — a spent torch, a dry basin. Empty = see Consume below.")]
+        [Tooltip("What's left behind: a spent torch, a dry basin. Empty = see Consume below.")]
         public GameObject Remains;
         [Tooltip("ON (his ruling): the source is used up, so only ONE player can learn from it. " +
                  "Turn OFF for a teaching object you want everyone to be able to read.")]
@@ -74,7 +74,7 @@ namespace SpellyZombie
             if (AbsorbFx != null) Instantiate(AbsorbFx, transform.position, Quaternion.identity);
             else if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, transform.position);
             Juice.Chime(transform.position);
-            DrawingWorld.Instance?.LogEvent($"the grimoire drinks it in — {Teaches} is yours");
+            DrawingWorld.Instance?.LogEvent($"the grimoire absorbs it. {Teaches} is yours");
 
             if (!Consume) return true;
 
@@ -109,7 +109,7 @@ namespace SpellyZombie
         public const float Cone = 0.72f;   // a bit wider than the grab cone — you're reading, not grabbing
 
         /// True while the local player is aiming at something LEARNABLE.
-        /// ABSORB IS ON **F** (Marko: "Grimoire using G to absorb is wrong —
+        /// ABSORB IS ON **F** (Marko: "Grimoire using G to absorb is wrong -
         /// it's going to use F, the same thing it's using to set the
         /// handwriting"), and **ABSORB TAKES PRIORITY** when a drawing and a
         /// learnable object are both under the cursor. G is now purely the
@@ -202,14 +202,14 @@ namespace SpellyZombie
                     if (_promptRune != _inkRune || _declarePrompt == null)
                     {
                         _promptRune = _inkRune;
-                        _declarePrompt = $"this is {RuneLibrary.Icon(_inkRune)} — declare it";
+                        _declarePrompt = $"declare this as {RuneLibrary.IconInline(_inkRune)}";
                     }
                     UIPrompt.Show("F", _declarePrompt, new Color(0.85f, 0.8f, 1f));
                     if (kb.fKey.wasPressedThisFrame) DeclareInk();
                 }
                 else if (declSeal)
                 {
-                    UIPrompt.Show("F", "this is a seal — trace its loop",
+                    UIPrompt.Show("F", "trace this loop as a seal",
                         new Color(0.85f, 0.8f, 1f));
                     if (kb.fKey.wasPressedThisFrame) DeclareSeal();
                 }
@@ -218,7 +218,7 @@ namespace SpellyZombie
                     // nobody knows this exists by default (Marko: "it should
                     // pop up to show them") — an unreadable drawing teaches
                     // the flow the moment you look at one
-                    UIPrompt.Show("G", "unreadable — open the book to its rune's page, F declares it",
+                    UIPrompt.Show("G", "unreadable. open the book to its rune's page, F declares it",
                         new Color(0.7f, 0.7f, 0.75f));
                 }
 
@@ -229,7 +229,7 @@ namespace SpellyZombie
                 if (!DeclareInReach && kb.fKey.wasPressedThisFrame && GrimoirePages.BookOpen
                     && (GrimoirePages.SealPageOpen || GrimoirePages.PageRune != RuneType.None))
                     DrawingWorld.Instance?.LogEvent(
-                        "the book has nothing selected — aim at one of your own LINES (it lights up when the book has it)");
+                        "the book has nothing selected. aim at one of your own LINES (it lights up when the book has it)");
                 return;
             }
             DeclareInReach = false;
@@ -239,7 +239,7 @@ namespace SpellyZombie
             if (!ReferenceEquals(target, _promptTarget) || _absorbPrompt == null)
             {
                 _promptTarget = target;
-                _absorbPrompt = $"absorb — learn {RuneLibrary.Icon(target.Teaches)}";
+                _absorbPrompt = $"absorb to learn {RuneLibrary.IconInline(target.Teaches)}";
             }
             UIPrompt.Show("F", _absorbPrompt, new Color(0.85f, 0.8f, 1f));
             Hints.Offer(Hints.Id.Absorb);
@@ -265,7 +265,7 @@ namespace SpellyZombie
             if (Time.time < _inkScan) return;
             _inkScan = Time.time + 0.25f;
             // the recognizer SLEEPS while the pen is down (Marko: "should not
-            // fire all the time — only after you release the mouse")
+            // fire all the time - only after you release the mouse")
             var w0 = DrawingWorld.Instance;
             if (w0 != null)
                 for (int i = 0; i < w0.Strokes.Count; i++)
@@ -284,7 +284,7 @@ namespace SpellyZombie
             Vector3 seedC = default;
             // ON THE EASEL (body paint or any free-cursor mode) the pen IS
             // the pointer (Marko: "while drawing on the body you should also
-            // be able to use grimoire — drawing on body is the main quick
+            // be able to use grimoire - drawing on body is the main quick
             // weapon"): ink is picked under the CURSOR — no aim cone, no
             // occlusion ray, you are looking straight at your own body.
             bool easel = SelfPaint.IsActive || Cursor.lockState != CursorLockMode.Locked;
@@ -530,8 +530,8 @@ namespace SpellyZombie
             if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, at);
             Juice.Chime(at);
             DrawingWorld.Instance?.LogEvent(learned
-                ? $"declared: this is {RuneLibrary.Icon(_inkRune)} — the book learns your hand"
-                : $"declared: this is {RuneLibrary.Icon(_inkRune)}");
+                ? $"declared: this is {RuneLibrary.IconInline(_inkRune)}. the book learns your hand"
+                : $"declared: this is {RuneLibrary.IconInline(_inkRune)}");
             _inkMembers.Clear();
             _inkRune = RuneType.None;
             DeclareInReach = false;

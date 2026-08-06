@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 
 namespace SpellyZombie
@@ -10,7 +11,7 @@ namespace SpellyZombie
     {
         static RunePreview _current; // one at a time — the newest reading wins
 
-        TextMesh _tm;
+        TextMeshPro _tm;   // TMP, not legacy TextMesh — emoji are sprites
         float _age;
         Color _color;
         const float Hold = 1.1f; // fully visible…
@@ -28,18 +29,28 @@ namespace SpellyZombie
         {
             transform.position = pos;
             _color = color;
-            _tm = gameObject.AddComponent<TextMesh>();
-            _tm.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _tm.text = text;
-            _tm.fontSize = 64;
-            _tm.characterSize = 0.006f;
-            _tm.anchor = TextAnchor.MiddleCenter;
-            _tm.alignment = TextAlignment.Center;
+            // legacy TextMesh has ONE font atlas and no sprite support, so a
+            // rune's emoji could only ever be a tofu box (only ❄ survived —
+            // it's the one glyph of the twelve that lives in a normal font)
+            _tm = gameObject.AddComponent<TextMeshPro>();
+            // Midline = centred BOTH ways. TMP's "Center" is horizontal-only
+            // and top-anchored, which parked every icon up-left of the ink.
+            _tm.alignment = TextAlignmentOptions.Midline;
+            _tm.fontSize = 1.4f;
             _tm.color = color;
+            _tm.enableWordWrapping = false;
+            _tm.text = Ghost(text);
+            var rt = _tm.rectTransform;
+            rt.sizeDelta = new Vector2(2f, 2f);
             var mr = GetComponent<MeshRenderer>();
-            if (_tm.font != null) mr.material = _tm.font.material;
-            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            if (mr != null) mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
+
+        /// A reading is a HINT, not a billboard — the icon sits back so the
+        /// ink stays the loudest thing on screen. Sprites ignore the label's
+        /// colour (TMP tints sprites only if "Tint All Sprites" is on), so
+        /// the alpha tag is what actually softens them.
+        static string Ghost(string s) => $"<alpha=#B4>{s}";
 
         void LateUpdate()
         {

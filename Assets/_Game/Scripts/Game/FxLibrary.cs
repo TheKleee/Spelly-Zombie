@@ -78,9 +78,9 @@ namespace SpellyZombie
                     _instance = Resources.Load<FxLibrary>("FxLibrary");
                     // silent-nothing guard: unwired roles spawn NOTHING — say so
                     if (_instance == null)
-                        Debug.LogWarning("[SpellyZombie] No FxLibrary asset — run 'Spelly Zombie → Art/7 — Wire FX Library (JMO)'");
+                        Debug.LogWarning("[SpellyZombie] No FxLibrary asset. Run 'Spelly Zombie → Art/7 - Wire FX Library (JMO)'");
                     else if (_instance.IceHit == null || _instance.HitSpark == null || _instance.TextPow == null)
-                        Debug.LogWarning("[SpellyZombie] FxLibrary has EMPTY roles (effects will be invisible) — re-run 'Spelly Zombie → Art/7 — Wire FX Library (JMO)'");
+                        Debug.LogWarning("[SpellyZombie] FxLibrary has EMPTY roles (effects will be invisible). Re-run 'Spelly Zombie → Art/7 - Wire FX Library (JMO)'");
                     // pay the shader-compile cost ONCE, here, not mid-fight
                     if (_instance != null) _instance.Prewarm();
                 }

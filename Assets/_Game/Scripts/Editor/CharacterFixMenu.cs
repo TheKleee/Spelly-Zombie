@@ -12,13 +12,13 @@ namespace SpellyZombie
         {
             if (!Application.isPlaying)
             {
-                Debug.LogError("[SpellyZombie] Character Fix saves PLAY-MODE edits — " +
+                Debug.LogError("[SpellyZombie] Character Fix saves PLAY-MODE edits: " +
                                "enter play, adjust the pieces, then save.");
                 return;
             }
             int saved = CharacterFix.SaveNow();
             AssetDatabase.Refresh();
-            Debug.Log($"[SpellyZombie] Character Fix saved — {saved} piece(s) locked in. " +
+            Debug.Log($"[SpellyZombie] Character Fix saved: {saved} piece(s) locked in. " +
                       "They re-apply on every rig build from now on.");
         }
     }

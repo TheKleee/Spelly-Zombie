@@ -21,7 +21,7 @@ namespace SpellyZombie
     {
         [Tooltip("Spring pull toward the modeled pose")]
         public float Stiffness = 70f;
-        [Tooltip("Velocity damping — higher settles faster")]
+        [Tooltip("Velocity damping (higher settles faster)")]
         public float Damping = 4.5f;
         [Tooltip("How much the tail droops")]
         public float Gravity = 5f;

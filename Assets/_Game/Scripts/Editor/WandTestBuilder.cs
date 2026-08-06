@@ -91,7 +91,7 @@ namespace SpellyZombie
             }
 
             Selection.activeGameObject = player;
-            Debug.Log("[SpellyZombie] Wand Tether test built. Press Play — draw to drain, refill at the cauldron.");
+            Debug.Log("[SpellyZombie] Wand Tether test built. Press Play, draw to drain, refill at the cauldron.");
         }
     }
 }

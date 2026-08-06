@@ -15,7 +15,7 @@ namespace SpellyZombie
         /// Marko: "can we remove all but the first drawing on each wall?"
         /// Trims every rune's recorded pool to its first drawing. Works in or
         /// out of play mode; the walls redraw on the next Rune Studio load.
-        [MenuItem("Spelly Zombie/Runes — Keep ONLY the first drawing per rune")]
+        [MenuItem("Spelly Zombie/Runes - Keep ONLY the first drawing per rune")]
         public static void KeepFirstDrawingOnly()
         {
             if (!EditorUtility.DisplayDialog("Trim rune drawings",
@@ -28,7 +28,7 @@ namespace SpellyZombie
         /// The audit is O(samples²) — measured at 26-41 SECONDS on a full
         /// library — so it no longer runs on scene load. Run it here after
         /// re-recording, and the result is cached for the game to read.
-        [MenuItem("Spelly Zombie/Runes — Re-audit templates (health check)")]
+        [MenuItem("Spelly Zombie/Runes - Re-audit templates (health check)")]
         public static void ReAuditTemplates() => RuneLibrary.ReAudit();
 
         [MenuItem("Spelly Zombie/Build Rune Studio Scene (replaces the open scene)")]
@@ -41,8 +41,8 @@ namespace SpellyZombie
             string target = ScenePath;
             if (System.IO.File.Exists(ScenePath) &&
                 !EditorUtility.DisplayDialog("Build Rune Studio",
-                    ScenePath + " already exists — building REPLACES it (walls you moved, lights you tuned).\n\n" +
-                    "Your recorded rune samples are NOT in the scene — they live in sz_rune_templates.json and are safe either way.",
+                    ScenePath + " already exists. Building REPLACES it (walls you moved, lights you tuned).\n\n" +
+                    "Your recorded rune samples are NOT in the scene. They live in sz_rune_templates.json and are safe either way.",
                     "Overwrite it", "Save as a NEW scene"))
                 target = AssetDatabase.GenerateUniqueAssetPath(ScenePath);
 
@@ -77,7 +77,7 @@ namespace SpellyZombie
             for (int i = 0; i < runes.Length; i++)
             {
                 // root carries RuneWall + label; the scaled cube is a child so
-                // the TextMesh doesn't inherit its squash
+                // the label doesn't inherit its squash
                 var root = new GameObject($"RuneWall_{runes[i]}");
                 root.transform.position = new Vector3((i - (runes.Length - 1) * 0.5f) * 5f, 1.55f, 8f);
                 root.transform.rotation = Quaternion.Euler(0f, 180f, 0f); // face the walkway
@@ -92,13 +92,13 @@ namespace SpellyZombie
                 var labelGo = new GameObject("Label");
                 labelGo.transform.SetParent(root.transform, false);
                 labelGo.transform.localPosition = new Vector3(0f, 1.75f, 0f);
-                var label = labelGo.AddComponent<TextMesh>();
-                label.text = RuneLibrary.ShortName(runes[i]);
-                label.fontSize = 64;
-                label.characterSize = 0.045f;
-                label.anchor = TextAnchor.MiddleCenter;
-                label.alignment = TextAlignment.Center;
+                var label = labelGo.AddComponent<TMPro.TextMeshPro>();
+                label.text = RuneLibrary.Icon(runes[i]); // emoji needs TMP sprites
+                label.fontSize = 8f;
+                label.alignment = TMPro.TextAlignmentOptions.Center;
                 label.color = new Color(0.15f, 0.13f, 0.1f);
+                label.enableWordWrapping = false;
+                label.rectTransform.sizeDelta = new Vector2(4.4f, 1.2f);
 
                 var wall = root.AddComponent<RuneWall>();
                 wall.Rune = runes[i];
@@ -116,7 +116,7 @@ namespace SpellyZombie
 
             EditorSceneManager.SaveScene(scene, target);
             Debug.Log($"[SpellyZombie] Rune Studio built → {target}");
-            Debug.Log("[SpellyZombie] RUNE STUDIO ready — play, walk to a wall, draw samples of " +
+            Debug.Log("[SpellyZombie] RUNE STUDIO ready. Play, walk to a wall, draw samples of " +
                 "that wall's rune, press E to save the wall. Erase + re-save to delete a bad one. " +
                 "Saved drawings repaint on every load.");
         }

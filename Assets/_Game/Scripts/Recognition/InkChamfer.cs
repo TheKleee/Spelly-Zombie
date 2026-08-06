@@ -135,7 +135,7 @@ namespace SpellyZombie
             string top = "";
             for (int i = 0; i < Mathf.Min(3, scores.Count); i++)
                 top += $" {RuneLibrary.ShortName(scores[i].t)} {scores[i].s:0.00}";
-            Debug.Log($"[SpellyZombie] CLASSIFY {(accept ? "HIT" : "fizzle")} — " +
+            Debug.Log($"[SpellyZombie] CLASSIFY {(accept ? "HIT" : "fizzle")}: " +
                 $"input {nStrokes} strokes/{nPts} pts, readings {drawn.Count}, " +
                 $"templates {_templates.Count} ({locked} locked), top:{top} " +
                 $"(floor {DrawingConfig.RuneChamferFloor:0.00} margin {DrawingConfig.RuneChamferMargin:0.00})");

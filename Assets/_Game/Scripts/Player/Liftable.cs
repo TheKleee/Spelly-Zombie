@@ -81,7 +81,7 @@ namespace SpellyZombie
             {
                 rb.isKinematic = true;
                 Debug.LogWarning($"[SpellyZombie] {rb.name} measures " +
-                    $"{dim.x:0.#}×{dim.y:0.#}×{dim.z:0.#}m — over the " +
+                    $"{dim.x:0.#}×{dim.y:0.#}×{dim.z:0.#}m, over the " +
                     $"{DrawingConfig.LiftMaxDimension}m world cap, so it stays " +
                     "kinematic instead of falling through the world", rb);
             }
@@ -144,8 +144,8 @@ namespace SpellyZombie
                 if (s.x > cap || s.y > cap || s.z > cap)
                 {
                     Debug.LogWarning($"[SpellyZombie] refusing to convex {mc.name} " +
-                        $"({s.x:0.#}×{s.y:0.#}×{s.z:0.#}m exceeds the {cap}m world cap) — " +
-                        "that mesh is the world, not a prop; it stays static geometry", mc);
+                        $"({s.x:0.#}×{s.y:0.#}×{s.z:0.#}m exceeds the {cap}m world cap). " +
+                        "That mesh is the world, not a prop; it stays static geometry", mc);
                     continue;
                 }
                 mc.convex = true;

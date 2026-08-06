@@ -54,7 +54,7 @@ namespace SpellyZombie
 
         /// THE rune on the open page — ONE RUNE PER PAGE, strictly (Marko:
         /// "heat rune is not on the same page as chill rune even if they are
-        /// opposites — each rune gets a dedicated page"). None when closed,
+        /// opposites - each rune gets a dedicated page"). None when closed,
         /// mid-flip, or on the seal-lesson page. The DECLARE flow reads this:
         /// open the rune's page, aim at a wrongly read drawing, F states that
         /// it IS this rune.
@@ -97,7 +97,7 @@ namespace SpellyZombie
             // his page-turn. Awake runs inside AddComponent (before the caller
             // can set AuthoredSkin), so the check lives in Start.
             if (!AuthoredSkin || _anchor != transform) return;
-            Debug.LogWarning($"[SpellyZombie] Grimoire '{name}': no child named \"PageAnchor\" — page art is " +
+            Debug.LogWarning($"[SpellyZombie] Grimoire '{name}': no child named \"PageAnchor\". Page art is " +
                 "sitting on the book ROOT, not on the paper. Add an empty PageAnchor on the open spread " +
                 "(+Y off the paper, +Z toward the top edge). Its SCALE sets the spread size.", gameObject);
         }
@@ -254,7 +254,7 @@ namespace SpellyZombie
             }
 
             // ONE RUNE PER PAGE, STRICTLY (Marko: "heat rune is not on the
-            // same page as chill rune even if they are opposites — each rune
+            // same page as chill rune even if they are opposites - each rune
             // gets a dedicated page"): pages run family by family, up then
             // down. The open page IS the rune you can declare.
             int idx = _page - 1;
@@ -440,16 +440,15 @@ namespace SpellyZombie
         {
             var go = new GameObject("PageLabel");
             Place(go.transform, pagePos);
-            var tm = go.AddComponent<TextMesh>();
-            tm.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            // TMP: the page shows a rune's EMOJI, which is a sprite — legacy
+            // TextMesh can't draw one. charSize kept as the caller's scale.
+            var tm = go.AddComponent<TMPro.TextMeshPro>();
             tm.text = text;
-            tm.fontSize = 64;
-            tm.characterSize = charSize;
-            tm.anchor = TextAnchor.UpperCenter;
-            tm.alignment = TextAlignment.Center;
+            tm.fontSize = charSize * 1400f; // legacy characterSize → TMP point size
+            tm.alignment = TMPro.TextAlignmentOptions.Top;
             tm.color = color;
-            if (tm.font != null)
-                go.GetComponent<MeshRenderer>().material = tm.font.material;
+            tm.enableWordWrapping = false;
+            tm.rectTransform.sizeDelta = new Vector2(charSize * 3000f, charSize * 1200f);
         }
 
         /// The family's polarity pair — public: dropped spell pages stamp the

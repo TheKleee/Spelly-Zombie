@@ -355,7 +355,7 @@ namespace SpellyZombie
                 core.transform.localScale = Vector3.one * 0.42f;
                 core.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(Color.black, MoteShade.Opaque);
             }
-            DrawingWorld.Instance?.LogEvent(growing ? "the BLACK HOLE grows hungry" : "the dark collapses — BLACK HOLE");
+            DrawingWorld.Instance?.LogEvent(growing ? "the BLACK HOLE grows hungry" : "a BLACK HOLE opens in the dark");
             return f;
         }
 
@@ -415,7 +415,7 @@ namespace SpellyZombie
                 if (rb != null && !rb.isKinematic)
                     rb.AddForce(away * 15f + Vector3.up * 4f, ForceMode.VelocityChange);
             }
-            DrawingWorld.Instance?.LogEvent("light and dark REFUSE each other — WHITE HOLE");
+            DrawingWorld.Instance?.LogEvent("light and dark make a WHITE HOLE");
             return f;
         }
 
@@ -440,7 +440,7 @@ namespace SpellyZombie
         {
             var f = Spawn<TimeFreezeField>(at, power, DrawingConfig.UltimateRadius, DrawingConfig.UltimateSeconds * 0.8f,
                 new Color(0.75f, 0.95f, 0.7f, 0.28f), MoteShade.Transparent);
-            DrawingWorld.Instance?.LogEvent("absolute grip — TIME stops here");
+            DrawingWorld.Instance?.LogEvent("absolute grip stops TIME here");
             return f;
         }
 
@@ -471,7 +471,7 @@ namespace SpellyZombie
         {
             var f = Spawn<InertiaField>(at, power, DrawingConfig.UltimateRadius, DrawingConfig.UltimateSeconds,
                 new Color(0.9f, 0.9f, 1f, 0.22f), MoteShade.Transparent);
-            DrawingWorld.Instance?.LogEvent("absolute slip — NOTHING stands still");
+            DrawingWorld.Instance?.LogEvent("absolute slip, NOTHING stands still");
             return f;
         }
 
@@ -538,7 +538,7 @@ namespace SpellyZombie
             if (lib != null)
                 FxLibrary.Spawn(down ? lib.Ripples : lib.WindTrails, f.transform.position, f.transform,
                     DrawingConfig.UltimateSeconds * 1.2f + 0.5f);
-            DrawingWorld.Instance?.LogEvent(down ? "the pulls entwine — WHIRLPOOL" : "the winds entwine — TORNADO");
+            DrawingWorld.Instance?.LogEvent(down ? "the pulls become a WHIRLPOOL" : "the winds become a TORNADO");
             return f;
         }
 
@@ -638,7 +638,7 @@ namespace SpellyZombie
             var f = Spawn<HealingField>(at, power, DrawingConfig.UltimateRadius * 0.8f,
                 DrawingConfig.UltimateSeconds * 1.4f,
                 new Color(0.85f, 1f, 0.8f, 0.4f), MoteShade.Additive);
-            DrawingWorld.Instance?.LogEvent("cold light is MERCY — a healing ground");
+            DrawingWorld.Instance?.LogEvent("cold light is MERCY, a healing ground");
             Juice.Chime(at);
             if (FxLibrary.I != null) // the mercy ring — a runic circle on the ground
                 FxLibrary.Spawn(FxLibrary.I.RunicAura, at + Vector3.up * 0.1f, f.transform,
@@ -682,7 +682,7 @@ namespace SpellyZombie
                 b._shell.SetParent(root, true);
                 if (FxLibrary.I != null) // the JMO shield loop rides the shell
                     FxLibrary.Spawn(FxLibrary.I.Shield, root.position, b._shell, 0f);
-                DrawingWorld.Instance?.LogEvent("BARRIER — isolated (protected, and harmless)");
+                DrawingWorld.Instance?.LogEvent("BARRIER: isolated (protected, and harmless)");
             }
             b._left = DrawingConfig.BarrierSeconds;
         }

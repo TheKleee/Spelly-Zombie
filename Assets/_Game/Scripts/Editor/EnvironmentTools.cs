@@ -127,17 +127,17 @@ namespace SpellyZombie
             _fxFilled++;
         }
 
-        [MenuItem("Spelly Zombie/Art/8 — FX: RESET Library To CFXR Defaults (overwrites your picks)")]
+        [MenuItem("Spelly Zombie/Art/8 - FX: RESET Library To CFXR Defaults (overwrites your picks)")]
         static void ResetFxLibrary()
         {
             if (!EditorUtility.DisplayDialog("Reset FX Library",
-                    "This OVERWRITES every FX role with the CFXR default — including prefabs you assigned yourself.\n\nThis cannot be undone.",
+                    "This OVERWRITES every FX role with the CFXR default, including prefabs you assigned yourself.\n\nThis cannot be undone.",
                     "Overwrite everything", "Cancel")) return;
             _fxReset = true;
             try { WireFxLibrary(); } finally { _fxReset = false; }
         }
 
-        [MenuItem("Spelly Zombie/Art/7 — Wire FX Library (JMO) — fills blanks only")]
+        [MenuItem("Spelly Zombie/Art/7 - Wire FX Library (JMO) - fills blanks only")]
         public static void WireFxLibrary()
         {
             Directory.CreateDirectory("Assets/_Game/Resources");
@@ -192,16 +192,16 @@ namespace SpellyZombie
                 if (f.FieldType == typeof(GameObject) && f.GetValue(lib) == null) missing++;
             Debug.Log($"[SpellyZombie] FxLibrary: filled {_fxFilled} empty role(s), " +
                       $"LEFT {_fxKept} of YOUR assignments untouched" +
-                      (missing > 0 ? $" — {missing} role(s) still empty." : "."));
+                      (missing > 0 ? $". {missing} role(s) still empty." : "."));
         }
 
         // ---------------------------------------------------- pack import --
-        [MenuItem("Spelly Zombie/Art/5 — Prepare Imported Packs (colliders + URP)")]
+        [MenuItem("Spelly Zombie/Art/5 - Prepare Imported Packs (colliders + URP)")]
         public static void PreparePacks()
         {
             if (!Directory.Exists(PacksDir))
             {
-                Debug.LogWarning($"[SpellyZombie] No {PacksDir} yet — drop the Quaternius packs there first (use their FBX folders).");
+                Debug.LogWarning($"[SpellyZombie] No {PacksDir} yet. Drop the Quaternius packs there first (use their FBX folders).");
                 return;
             }
 
@@ -265,7 +265,7 @@ namespace SpellyZombie
             ("bridge", SurfaceMaterialType.Wood),
         };
 
-        [MenuItem("Spelly Zombie/Art/6 — Auto-Tag Scene By Name")]
+        [MenuItem("Spelly Zombie/Art/6 - Auto-Tag Scene By Name")]
         public static void AutoTagScene()
         {
             int tagged = 0;

@@ -54,7 +54,7 @@ namespace SpellyZombie
                 if (custom == null) return null;
                 if (_warnedNoAnim.Add(prefab.GetInstanceID()))
                     Debug.LogWarning("[SpellyZombie] No zombie animator controller wired in " +
-                        "CharacterLibrary — YOUR ZombieBody is worn but cannot animate.", prefab);
+                        "CharacterLibrary. YOUR ZombieBody is worn but cannot animate.", prefab);
             }
             bool customBody = custom != null;
 
@@ -94,7 +94,7 @@ namespace SpellyZombie
                     if (t.name.EndsWith("Head")) { head = t; break; }
             if (head == null && _warnedNoHead.Add(prefab.GetInstanceID()))
                 Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no head bone " +
-                    "(humanoid Head, or a bone named/ending in \"Head\") — eyes and hats have nothing to mount on.", prefab);
+                    "(humanoid Head, or a bone named/ending in \"Head\"). eyes and hats have nothing to mount on.", prefab);
             float capsuleHeight = z.transform.localScale.y * 2f;
             float s;
             if (crown != null)
@@ -108,7 +108,7 @@ namespace SpellyZombie
                 // authored proportions and say so once
                 s = 1f;
                 if (_warnedNoCrown.Add(prefab.GetInstanceID()))
-                    Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no 'HeadTop' bone — " +
+                    Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no 'HeadTop' bone. " +
                         "keeping YOUR authored scale (no auto-fit). Add a HeadTop_End bone if you want " +
                         "zombies auto-fitted to the capsule.", prefab);
             }
@@ -126,7 +126,7 @@ namespace SpellyZombie
                 sk.updateWhenOffscreen = true;
             }
             if (skins.Length == 0 && _warnedNoSkin.Add(prefab.GetInstanceID()))
-                Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no SkinnedMeshRenderer — " +
+                Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no SkinnedMeshRenderer. " +
                     "a static mesh can't be animated by the zombie rig.", prefab);
 
             // ANIMATOR ANYWHERE IN HIS HIERARCHY (it needn't sit on the root —
@@ -138,7 +138,7 @@ namespace SpellyZombie
                 d._anim.applyRootMotion = false;
             }
             else if (_warnedNoAnim.Add(prefab.GetInstanceID()))
-                Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no Animator — " +
+                Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no Animator. " +
                     "it will stand still. Add one (humanoid avatar) to the prefab root.", prefab);
 
             // the zombie-ness: seeded posture/variation over the body. With
@@ -173,7 +173,7 @@ namespace SpellyZombie
                 && bakedEyes.gameObject.activeSelf))
             {
                 Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}': its googly eyes are not a " +
-                    "working Eye→Pupil pair — keeping the code-built eyes instead. (Name two children " +
+                    "working Eye→Pupil pair, so the code-built eyes stay. (Name two children " +
                     "starting with 'Eye', each holding a child named 'Pupil'.)", prefab);
                 Object.Destroy(bakedEyes.gameObject);
                 bakedEyes = null;

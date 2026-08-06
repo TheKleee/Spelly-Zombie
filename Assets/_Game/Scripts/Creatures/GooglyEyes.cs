@@ -49,7 +49,7 @@ namespace SpellyZombie
                     e._pupilDepth = pupil.localPosition.z;
                 }
                 else
-                    Debug.LogWarning("[SpellyZombie] Eyes prefab has no Eye→Pupil pair — " +
+                    Debug.LogWarning("[SpellyZombie] Eyes prefab has no Eye→Pupil pair. " +
                         "pupils can't react. Name two children starting with 'Eye', " +
                         "each holding a child named 'Pupil'.", custom);
                 return e;

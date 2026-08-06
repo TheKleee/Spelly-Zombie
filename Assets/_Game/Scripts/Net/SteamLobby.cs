@@ -64,12 +64,12 @@ namespace SpellyZombie
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[SpellyZombie] Steam unavailable ({e.Message}) — LAN panel still works.");
+                Debug.LogWarning($"[SpellyZombie] Steam unavailable ({e.Message}). LAN panel still works.");
                 SteamReady = false;
             }
             if (!SteamReady)
             {
-                Status = "Steam not running — offline & LAN only";
+                Status = "Steam not running, offline & LAN only";
                 return;
             }
             _cbCreated = Callback<LobbyCreated_t>.Create(OnLobbyCreated);
@@ -77,7 +77,7 @@ namespace SpellyZombie
             _cbJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(
                 r => SteamMatchmaking.JoinLobby(r.m_steamIDLobby)); // overlay "Join Game"
             _crList = CallResult<LobbyMatchList_t>.Create(OnLobbyList);
-            Status = $"Steam ready — {SteamFriends.GetPersonaName()}";
+            Status = $"Steam ready: {SteamFriends.GetPersonaName()}";
         }
 
         // ------------------------------------------------------ public API --
@@ -119,8 +119,8 @@ namespace SpellyZombie
                 SteamUser.GetSteamID().m_SteamID.ToString());
 
             _pending = Pending.Host;
-            Status = $"LOBBY {CurrentCode} — {(_isPrivate ? "friends" : "public")}";
-            Debug.Log($"[SpellyZombie] Steam lobby up — CODE {CurrentCode}. Overlay invites work too.");
+            Status = $"LOBBY {CurrentCode}, {(_isPrivate ? "friends" : "public")}";
+            Debug.Log($"[SpellyZombie] Steam lobby up: CODE {CurrentCode}. Overlay invites work too.");
             EnterVillage();
         }
 
@@ -155,7 +155,7 @@ namespace SpellyZombie
                 if (_quickJoinSearch)
                 {
                     // his rule: nobody out there = you host and randoms find YOU
-                    Status = "no open lobbies — hosting a public one";
+                    Status = "no open lobbies, hosting a public one";
                     CreateLobby(friendsPrivate: false);
                 }
                 else
@@ -181,12 +181,12 @@ namespace SpellyZombie
             _hostAddress = SteamMatchmaking.GetLobbyData(_lobby, "sz_host");
             if (string.IsNullOrEmpty(_hostAddress))
             {
-                Status = "lobby has no host — try again";
+                Status = "lobby has no host, try again";
                 return;
             }
             CurrentCode = SteamMatchmaking.GetLobbyData(_lobby, "sz_code");
             _pending = Pending.Client;
-            Status = $"joined {CurrentCode} — connecting…";
+            Status = $"joined {CurrentCode}, connecting…";
             EnterVillage();
         }
 

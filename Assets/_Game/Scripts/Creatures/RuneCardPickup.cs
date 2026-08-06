@@ -96,7 +96,7 @@ namespace SpellyZombie
             if ((transform.position - _player.position).sqrMagnitude < 1.6f * 1.6f)
             {
                 RuneLibrary.UnlockCard(_card);
-                Debug.Log($"[SpellyZombie] Learned rune card: {_card} — {RuneLibrary.CardDescription(_card)}");
+                Debug.Log($"[SpellyZombie] Learned rune card {_card}: {RuneLibrary.CardDescription(_card)}");
                 Destroy(gameObject);
             }
         }

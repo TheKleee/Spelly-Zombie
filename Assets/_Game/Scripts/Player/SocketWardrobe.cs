@@ -18,7 +18,7 @@ namespace SpellyZombie
             [Tooltip("SocketSet name: Hat, Head, Cape, Chest, Belt, ShoulderL, ShoulderR, HandL, HandR, LegL, LegR")]
             public string Socket = "Hat";
 
-            [Tooltip("The looks for this socket — index 0 is the default. Add as many as you like.")]
+            [Tooltip("The looks for this socket. Index 0 is the default. Add as many as you like.")]
             public List<GameObject> Options = new List<GameObject>();
         }
 
@@ -71,7 +71,7 @@ namespace SpellyZombie
             string key = (catalog != null ? catalog.name : "?") + "|" + slot.Socket;
             if (!_warnedSockets.Add(key)) return;
             Debug.LogWarning($"[SpellyZombie] {(catalog != null ? catalog.name : "catalog")}: slot " +
-                $"'{slot.Socket}' has {slot.Options.Count} option(s) but this body has NO such socket — " +
+                $"'{slot.Socket}' has {slot.Options.Count} option(s) but this body has NO such socket, " +
                 $"nothing worn. Sockets on this body: {string.Join(", ", set.Names)}", catalog);
         }
 

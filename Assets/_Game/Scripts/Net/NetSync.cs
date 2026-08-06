@@ -545,7 +545,7 @@ namespace SpellyZombie
                     if (h.Mote.Dead || !h.Mote.Claimed)
                     {
                         _holdGone.Add(kv.Key);
-                        NotifyHoldLost(kv.Key, "what you held is gone — merged or spent");
+                        NotifyHoldLost(kv.Key, "what you held is gone, merged or spent");
                         continue;
                     }
                     if (h.HasAim)
@@ -556,7 +556,7 @@ namespace SpellyZombie
                 if (h.Body == null)
                 {
                     _holdGone.Add(kv.Key);
-                    NotifyHoldLost(kv.Key, "what you held is gone — merged or spent");
+                    NotifyHoldLost(kv.Key, "what you held is gone, merged or spent");
                     continue;
                 }
                 if (!h.HasAim) continue;
@@ -567,7 +567,7 @@ namespace SpellyZombie
                 {
                     ReleaseHeldBody(h, Vector3.zero);
                     _holdGone.Add(kv.Key);
-                    NotifyHoldLost(kv.Key, "your ink is gone — it drops");
+                    NotifyHoldLost(kv.Key, "your ink is gone, it drops");
                     continue;
                 }
                 Vector3 delta = h.Hand - h.Body.position;
@@ -1152,7 +1152,7 @@ namespace SpellyZombie
                 // STATE RULE (Marko): once touched, only SOLID grabs again
                 if (blob.Touched && blob.Phase != MatterPhase.Solid)
                 {
-                    Ack(conn, false, $"the {blob.Material} has been handled — only a SOLID grabs again");
+                    Ack(conn, false, $"the {blob.Material} has been handled, only a SOLID grabs again");
                     return;
                 }
                 if (blob.Core != null) rb = HandGrab.AcquireBody(blob.Core, OwnerIdOf(conn.ClientId));
@@ -1166,7 +1166,7 @@ namespace SpellyZombie
             }
             if (rb == null)
             {
-                Ack(conn, false, "the host refused — no ink, or the world itself");
+                Ack(conn, false, "the host refused: no ink, or the world itself");
                 return;
             }
             _holds[conn.ClientId] = new RemoteHold

@@ -116,7 +116,7 @@ namespace SpellyZombie
             // when there is no live rig to read.
             if (Active.Count == 0)
             {
-                Debug.LogError("[SpellyZombie] Save CHARACTER Fix: no live character in the scene — " +
+                Debug.LogError("[SpellyZombie] Save CHARACTER Fix: no live character in the scene. " +
                                "NOTHING was written (your saved fixes are untouched). Enter play mode with a wizard first.");
                 return -1;
             }

@@ -70,7 +70,7 @@ namespace SpellyZombie
             Grimoire.Unlock(Grimoire.LocalPlayerId, _offers[i]);
             ChosenCard = _offers[i];
             HasChosen = true;
-            Debug.Log($"[SpellyZombie] Primary rune chosen: {_offers[i]} — collect the rest from zombies.");
+            Debug.Log($"[SpellyZombie] Primary rune chosen: {_offers[i]}. Collect the rest from zombies.");
         }
 
         /// Three distinct random families out of the six.
@@ -108,7 +108,7 @@ namespace SpellyZombie
                 skin != null ? Color.white : new Color(0f, 0f, 0f, 0.6f));
             UIKit.Place((RectTransform)header.transform, new Vector2(0.5f, 1f), Vector2.zero, new Vector2(720f, 70f));
             var headText = UIKit.Label((RectTransform)header.transform,
-                "CHOOSE YOUR PRIMARY RUNE — one of three", 18, UIKit.Ink, TextAnchor.MiddleCenter, true);
+                "CHOOSE ONE PRIMARY RUNE", 18, UIKit.Ink, TextAnchor.MiddleCenter, true);
             UIKit.Stretch((RectTransform)headText.transform);
 
             float w = 272f, gap = 16f;

@@ -68,7 +68,7 @@ namespace SpellyZombie
 
         // ---- Pen / stroke capture ----
         public static readonly float DrawRange = O(nameof(DrawRange), 8f);           // max raycast distance of the pen
-        public static readonly float NodeSpacing = O(nameof(NodeSpacing), 0.007f);   // min world distance between nodes. Marko Jul 31: "the runes keep not knowing they are connected — shorten the distance of node creation." Sparse nodes leave real gaps between ink that visually touches, so touch tests miss and one rune reads as several.
+        public static readonly float NodeSpacing = O(nameof(NodeSpacing), 0.007f);   // min world distance between nodes. Marko Jul 31: "the runes keep not knowing they are connected - shorten the distance of node creation." Sparse nodes leave real gaps between ink that visually touches, so touch tests miss and one rune reads as several.
         public static readonly float SurfaceOffset = O(nameof(SurfaceOffset), 0.008f); // lift ink off the surface to avoid z-fighting
         public static readonly float MaxStrokeJump = O(nameof(MaxStrokeJump), 0.12f); // hit point jumping further than this in one frame ends the stroke — separate marks STAY separate
         public static readonly float MaxStrokeJumpPerMeter = O(nameof(MaxStrokeJumpPerMeter), 0.02f); // tiny distance allowance (fast flicks split; forgiving seals reconnect what should connect)
@@ -78,7 +78,11 @@ namespace SpellyZombie
         public static readonly float DrawLookSensitivityScale = O(nameof(DrawLookSensitivityScale), 0.35f); // camera sensitivity multiplier while the pen is down
         public static readonly float EraseRadius = O(nameof(EraseRadius), 0.02f);
         // ---- evaporation (Marko Aug 5: "the longer the game lasts the more it
-        // lags — old ink standing there unused should evaporate after 1 minute") ----
+        // lags - old ink standing there unused should evaporate after 1 minute") ----
+        // ---- rune emoji sitting inline in a line of text (TMP sprites sit on
+        // the baseline; letters read centred higher, so the icon needs a lift) ----
+        public static readonly float RuneIconLift = O(nameof(RuneIconLift), 0f);     // em above the baseline. 0 = no tag emitted; the sprite asset's own metrics do the aligning
+        public static readonly float RuneIconScale = O(nameof(RuneIconScale), 100f); // % of the surrounding text size. 100 = no tag emitted
         public static readonly float InkEvaporateSeconds = O(nameof(InkEvaporateSeconds), 60f);    // loose world ink lives this long
         public static readonly float InkEvaporateFadeSeconds = O(nameof(InkEvaporateFadeSeconds), 6f); // then thins out over this long before vanishing    // eraser WIDER than the thin pen (Marko: pen-width erasing was impossible to aim) — still small enough for precise corrections; swept along the cursor path so thin ≠ skippy
 
@@ -115,7 +119,7 @@ namespace SpellyZombie
         public static readonly int MaxLoopStrokes = Oi(nameof(MaxLoopStrokes), 12);  // DFS depth cap when chaining strokes into one seal — BODY loops split per limb (a circle over crossed arms is 6-8 pieces), so 6 silently refused honest body seals
 
         // ---- Seal shape -> duration (Marko Jul 22: "1 second per side with a
-        // cap of 10 seconds — circle = 10 lines forming a shape") ----
+        // cap of 10 seconds - circle = 10 lines forming a shape") ----
         public static readonly float DurationPerEdge = O(nameof(DurationPerEdge), 1f); // triangle = 3s
         public static readonly int CircleEdges = Oi(nameof(CircleEdges), 10);        // a circle reads as 10 sides = the cap
         public static readonly float SealMaxSeconds = O(nameof(SealMaxSeconds), 10f); // no shape outlasts this
@@ -221,7 +225,7 @@ namespace SpellyZombie
 
         // ---- Round game (ink economy / survival loop) ----
         public static readonly float InkMax = O(nameof(InkMax), 100f);
-        public static readonly float InkCostPerMeter = O(nameof(InkCostPerMeter), 11f); // Marko Jul 30: "the wand is really slowly becoming shorter — it needs to lose ink much faster" (was 6/m ≈ 16m per tank; now ≈ 9m, and the lobby cauldron refills forever)
+        public static readonly float InkCostPerMeter = O(nameof(InkCostPerMeter), 11f); // Marko Jul 30: "the wand is really slowly becoming shorter - it needs to lose ink much faster" (was 6/m ≈ 16m per tank; now ≈ 9m, and the lobby cauldron refills forever)
         public static readonly float WandResizeSpeed = O(nameof(WandResizeSpeed), 3.5f); // how fast the wand's LENGTH chases its ink level — the shrink you actually see
         /// Ink needed per kilo to lift a thing — and to tear it out of the
         /// ground, which costs exactly the same (Marko: "the moment you can

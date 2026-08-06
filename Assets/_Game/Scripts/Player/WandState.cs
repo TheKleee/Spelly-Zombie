@@ -61,7 +61,7 @@ namespace SpellyZombie
                     if (_dissolveLeft <= 0f)
                     {
                         HasWand = false;
-                        DrawingWorld.Instance?.LogEvent("your wand DISSOLVES — reach a cauldron");
+                        DrawingWorld.Instance?.LogEvent("your wand is dissolving. find a cauldron");
                     }
                 }
                 else _dissolveLeft = -1f;          // topped up before it went
@@ -76,7 +76,7 @@ namespace SpellyZombie
             if (local) LocalCanDraw = HasWand && _ink.Ink > 0.5f;
         }
 
-        // NO UI BAR (Marko: "we don't need any UI — the ink is always visibly
+        // NO UI BAR (Marko: "we don't need any UI - the ink is always visibly
         // decaying, cauldron or wand"). The wand ITSELF is the gauge now:
         // WandInk shrinks it with the ink and disintegrates it when wandless.
     }

@@ -3,7 +3,7 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// THE WORKSHOP HOOK (Marko: "make sure it's mod-able so people can make
-    /// their custom stuff in modded maps — via Steam Workshop").
+    /// their custom stuff in modded maps - via Steam Workshop").
     ///
     /// A map maker drops this component anywhere in their scene, hooks up
     /// their own ShapeLibrary asset, and their shapes are live for as long as
@@ -19,15 +19,15 @@ namespace SpellyZombie
     public class ModShapes : MonoBehaviour
     {
         [Tooltip("Your own Shape Library asset (Create ▸ Spelly Zombie ▸ Shape Library). " +
-                 "Fill only the slots you made — everything else falls back to the base game.")]
+                 "Fill only the slots you made. Everything else falls back to the base game.")]
         public ShapeLibrary Shapes;
 
         void OnEnable()
         {
             if (Shapes == null)
             {
-                Debug.LogWarning("[SpellyZombie] ModShapes has no Shape Library assigned — " +
-                    "this map adds no shapes.", this);
+                Debug.LogWarning("[SpellyZombie] ModShapes has no Shape Library assigned. " +
+                    "This map adds no shapes.", this);
                 return;
             }
             ShapeLibrary.Push(Shapes);

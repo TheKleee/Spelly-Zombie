@@ -8,10 +8,10 @@ namespace SpellyZombie
     /// moment ink flows and resumes after 3 consecutive quiet seconds.
     public class MenuOrbit : MonoBehaviour
     {
-        [Tooltip("Point the camera circles — the cauldron / diorama center. If empty, the legacy Turntable wiring is used as the pivot.")]
+        [Tooltip("Point the camera circles: the cauldron / diorama center. If empty, the legacy Turntable wiring is used as the pivot.")]
         public Transform Pivot;
 
-        [Tooltip("Legacy field (was the object being rotated) — kept so existing scene wiring works: it now serves as the pivot when Pivot is empty.")]
+        [Tooltip("Legacy field (was the object being rotated), kept so existing scene wiring works: it now serves as the pivot when Pivot is empty.")]
         public Transform Turntable;
 
         [Tooltip("Camera to orbit. Empty = Camera.main.")]

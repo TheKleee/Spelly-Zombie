@@ -177,7 +177,7 @@ namespace SpellyZombie
             if (_cycleReject != null)
                 LastNearMiss = _cycleReject;
             else if (_nearMissDist < r * 3f)
-                LastNearMiss = $"a line stops {_nearMissDist * 100f:0.0}cm short of the ink it should meet — nudge it ONTO the line (touching is {r * 100f:0.0}cm)";
+                LastNearMiss = $"a line stops {_nearMissDist * 100f:0.0}cm short of the ink it should meet. nudge it ONTO the line (touching is {r * 100f:0.0}cm)";
             return result;
         }
 
@@ -266,7 +266,7 @@ namespace SpellyZombie
             // a stroke that crosses ITSELF two or more times is a complex
             // GLYPH being drawn (a five-point star self-crosses five times),
             // not a lasso — its internal cells must never self-seal and eat
-            // the drawing (Marko's star: "Seal resolved — ink consumed" left
+            // the drawing (Marko's star: "Seal resolved - ink consumed" left
             // a grey star inside an empty gold circle). ONE self-crossing
             // stays a seal: that's the overshoot-closed circle, the most
             // common seal in the game.
@@ -578,7 +578,7 @@ namespace SpellyZombie
                 if (AllFromOneGlyph(edges, cycle, glyphish))
                 {
                     // stars stay drawings
-                    Refuse(perim, "that ring is a cell inside one self-crossing drawing, and it's smaller than a seal — draw the boundary bigger, or as its own line");
+                    Refuse(perim, "that ring is a cell inside one self-crossing drawing, and it's smaller than a seal. draw the boundary bigger, or as its own line");
                     continue;
                 }
                 if (!Encloses(edges, cycle, out string why))
@@ -756,7 +756,7 @@ namespace SpellyZombie
             }
             if (nodeCount < DrawingConfig.MinLoopNodes || perim < DrawingConfig.MinLoopPerimeter)
             {
-                why = $"the ink closes, but that loop is only {perim * 100f:0}cm around — a seal needs {DrawingConfig.MinLoopPerimeter * 100f:0}cm";
+                why = $"the ink closes, but that loop is only {perim * 100f:0}cm around. a seal needs {DrawingConfig.MinLoopPerimeter * 100f:0}cm";
                 return false;
             }
             if (ring.Count < 3)
@@ -772,7 +772,7 @@ namespace SpellyZombie
             Vector3 normal = GeometryUtil.NewellNormal(ring);
             if (normal.sqrMagnitude < 1e-8f)
             {
-                why = "the ink closes, but that loop is flat — it encloses no area";
+                why = "the ink closes, but that loop is flat and encloses no area";
                 return false;
             }
             normal.Normalize();
@@ -787,7 +787,7 @@ namespace SpellyZombie
             }
             if ((maxU - minU) < DrawingConfig.MinLoopBulge || (maxV - minV) < DrawingConfig.MinLoopBulge)
             {
-                why = $"the ink closes, but that loop is a sliver — it has to bulge {DrawingConfig.MinLoopBulge * 100f:0}cm across to hold anything";
+                why = $"the ink closes, but that loop is a sliver and has to bulge {DrawingConfig.MinLoopBulge * 100f:0}cm across to hold anything";
                 return false;
             }
             return true;

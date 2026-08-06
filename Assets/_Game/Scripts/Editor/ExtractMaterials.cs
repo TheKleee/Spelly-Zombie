@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// MARKO'S MATERIAL FAUCET (his rule: "allow me to create materials from
-    /// a selected object — extract them to resources/materials"): select
+    /// a selected object - extract them to resources/materials"): select
     /// ANYTHING — scene object, play-mode runtime object, prefab instance —
     /// and every runtime-only material on it becomes a real, editable .mat
     /// asset in Resources/Custom/Materials. The selection keeps referencing
@@ -46,7 +46,7 @@ namespace SpellyZombie
                     }
                 }
             AssetDatabase.SaveAssets();
-            Debug.Log($"[SpellyZombie] Extract done — {saved} material(s) saved to {MatDir}" +
+            Debug.Log($"[SpellyZombie] Extract done: {saved} material(s) saved to {MatDir}" +
                       (already > 0 ? $", {already} were already assets." : "."));
         }
 

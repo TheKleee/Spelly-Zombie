@@ -513,7 +513,7 @@ namespace SpellyZombie
         }
 
         /// THE SEAL-PAGE DECLARE (Marko: "a page for seals… but seal must
-        /// always find a closed path — and when you recognize it it will be
+        /// always find a closed path - and when you recognize it it will be
         /// activated"): re-run BOTH closure detectors on just this drawing's
         /// strokes. The book never conjures a loop that isn't there — it only
         /// looks again, at exactly the ink you pointed at. True = a seal
@@ -560,7 +560,7 @@ namespace SpellyZombie
             if (!allowMirror)
             {
                 LogEvent(SealDetector.LastNearMiss ?? CrossingFinder.LastNearMiss
-                    ?? "no closed path — the line must come back around");
+                    ?? "no closed path. the line must come back around");
                 return false;
             }
 
@@ -571,7 +571,7 @@ namespace SpellyZombie
             foreach (var s in eligible)
                 if (s.Persistent)
                 {
-                    LogEvent("the book can't complete a loop on a body — close it with a pose");
+                    LogEvent("the book can't complete a loop on a body. close it with a pose");
                     return false;
                 }
 
@@ -587,7 +587,7 @@ namespace SpellyZombie
             var payerInk = payer != null ? payer.GetComponent<PlayerInk>() : null;
             if (payerInk != null && !payerInk.TrySpend(mirrorCost))
             {
-                LogEvent("not enough ink to complete the seal — it fizzles");
+                LogEvent("not enough ink, the seal fizzles");
                 return false;
             }
             var made = MirrorComplete(mouth);
@@ -618,7 +618,7 @@ namespace SpellyZombie
                 // stays as ordinary ink, and the log says why
             }
             LogEvent(SealDetector.LastNearMiss ?? CrossingFinder.LastNearMiss
-                ?? "no closed path — the line must come back around");
+                ?? "no closed path. the line must come back around");
             return false;
         }
 
@@ -755,7 +755,7 @@ namespace SpellyZombie
                     // should be unreachable (eligibility guarantees intact chains) —
                     // but the sources are already split/retired by now, so if this
                     // ever fires the drawing was consumed with NO seal: shout.
-                    LogEvent("crossing seal ABORTED mid-adopt — report this drawing");
+                    LogEvent("crossing seal ABORTED mid-adopt. report this drawing");
                     return;
                 }
                 boundary.Add(new SealDetector.LoopEntry(pieceForArc[k], true));
@@ -773,7 +773,7 @@ namespace SpellyZombie
                 foreach (var e in loop)
                     if (e.Stroke == null || !e.Stroke.Persistent)
                     {
-                        LogEvent("world seals close on the host — the ink stays ink here");
+                        LogEvent("world seals close on the host. the ink stays ink here");
                         return;
                     }
 
@@ -958,7 +958,7 @@ namespace SpellyZombie
                     {
                         ReleaseSpent(g.Strokes);
                         g.Armed = true;
-                        LogEvent("Spent seal re-armed — the loop opened");
+                        LogEvent("Spent seal re-armed: the loop opened");
                     }
                 }
                 else if (widest <= DrawingConfig.ReCloseDistance)
@@ -1064,9 +1064,16 @@ namespace SpellyZombie
         /// doesn't — fade the oldest unsealed world scribbles beyond the cap.
         void EnforceInkBudget()
         {
+            // COUNT WHAT WE ARE ALLOWED TO BURN. The census used to include
+            // every non-persistent stroke while the burn loop below only ever
+            // reclaims Open ones, so seal and spent ink inflated the count and
+            // could never be freed. In a seal-heavy session that meant the cap
+            // read as exceeded forever: it burned away ALL of your loose ink
+            // and then re-walked the whole list every tick achieving nothing.
+            // Matching the two filters makes the cap mean what it says.
             int env = 0;
             foreach (var s in Strokes)
-                if (s.Alive && !s.Persistent) env++;
+                if (s.Alive && !s.Persistent && s.State == StrokeState.Open) env++;
             if (env <= DrawingConfig.MaxEnvironmentStrokes) return;
 
             int burned = 0;
@@ -1080,7 +1087,7 @@ namespace SpellyZombie
                 }
             }
             if (burned > 0)
-                LogEvent($"Old environment ink faded ({burned} strokes) — world ink caps at {DrawingConfig.MaxEnvironmentStrokes}");
+                LogEvent($"Old environment ink faded ({burned} strokes) at the world cap of {DrawingConfig.MaxEnvironmentStrokes}");
         }
 
         /// Erasing punches holes in strokes; a stroke with holes can never seal.
@@ -1137,7 +1144,7 @@ namespace SpellyZombie
         /// clean over nodes with point-erasing — sweeping the segment catches
         /// everything the cursor actually passed over.
         /// SCOOPING (Marko: "we can scoop up the ink from the floor by
-        /// erasing it — our wand is growing"): pass the eraser's own ink pool
+        /// erasing it - our wand is growing"): pass the eraser's own ink pool
         /// and every rubbed-out node flows back into it. Null = plain erase
         /// (zombie soap gets nothing).
         public void EraseAlong(Vector3 from, Vector3 to, float radius, PlayerInk scoopInto = null)
@@ -1146,9 +1153,23 @@ namespace SpellyZombie
             Vector3 seg = to - from;
             float len2 = seg.sqrMagnitude;
             float r2 = radius * radius;
+
+            // ONLY LOOK AT INK THE ERASER COULD REACH. This used to test every
+            // node of every stroke in the world, every frame the button is held,
+            // so rubbing ink out got slower the more ink existed. The sweep box
+            // is this frame's cursor segment grown by the eraser radius
+            // (Bounds.Expand moves each face half, so x2 gives exactly radius).
+            // A node within `radius` of the segment is inside this box AND
+            // inside its own stroke's bounds, so the two must intersect: no ink
+            // the old loop would have erased can be skipped by this test.
+            var sweep = new Bounds(from, Vector3.zero);
+            sweep.Encapsulate(to);
+            sweep.Expand(radius * 2f);
+
             foreach (var s in Strokes)
             {
                 if (!s.Alive || s.Hidden()) continue; // can't rub out invisible ink
+                if (!sweep.Intersects(RuneGlyph.StrokeBounds(s))) continue;
                 foreach (var n in s.Nodes)
                 {
                     if (n == null) continue;
@@ -1185,7 +1206,7 @@ namespace SpellyZombie
                     DebugDot(s.Last.transform.position, c);
                 }
                 GUI.color = Color.white;
-                GUI.Label(new Rect(10, 224, 560, 20), "F12 ink debug ON — dots = endpoints the detector sees");
+                GUI.Label(new Rect(10, 224, 560, 20), "F12 ink debug ON: dots = endpoints the detector sees");
             }
 
             // Marko's rule (July 12): NO instruction walls, NO debug spam on

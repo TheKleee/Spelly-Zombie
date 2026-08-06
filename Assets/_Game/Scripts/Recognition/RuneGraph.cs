@@ -79,7 +79,7 @@ namespace SpellyZombie
     /// shaft) or open FORWARD (acute), and Marko says PUSH and PULL are fine as
     /// they are. Do not regress them by "unifying" the two paths.
     ///
-    /// HIS STANDING LAW, unchanged: "All shapes are distinct — I made them that
+    /// HIS STANDING LAW, unchanged: "All shapes are distinct - I made them that
     /// way exactly because they can be flipped." No glyph resembles any other
     /// under ANY rotation or reflection, so full rotation invariance is SAFE and
     /// EVERY cross-fire is a bug in this file, never an ambiguity in his

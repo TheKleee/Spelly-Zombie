@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE DRAG-AND-DROP GUARANTEE (Marko's rule: "no buttons for everything —
+    /// THE DRAG-AND-DROP GUARANTEE (Marko's rule: "no buttons for everything -
     /// let me drag ANYTHING into a prefab and your code picks it up"):
     /// every prefab saved anywhere under Resources/Custom is automatically
     /// healed the moment it lands, play mode or edit mode:
@@ -61,13 +61,13 @@ namespace SpellyZombie
                     int broken = GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject);
                     if (broken > 0)
                         Debug.LogWarning($"[SpellyZombie] '{t.name}' in {path} has {broken} missing-script " +
-                            "component(s) — LEFT ALONE (menu: Spelly Zombie/Clean Selected Custom Prefab).", root);
+                            "component(s). LEFT ALONE (menu: Spelly Zombie/Clean Selected Custom Prefab).", root);
                 }
 
                 // ---- ink: report, never strip ----
                 var inkNodes = root.GetComponentsInChildren<DrawNode>(true);
                 if (inkNodes.Length > 0)
-                    Debug.LogWarning($"[SpellyZombie] {path} carries {inkNodes.Length} ink node(s) — LEFT ALONE. " +
+                    Debug.LogWarning($"[SpellyZombie] {path} carries {inkNodes.Length} ink node(s). LEFT ALONE. " +
                         "Erase the ink before making the prefab if you didn't mean to keep it.", root);
 
                 // ---- materials persisted ----
@@ -100,7 +100,7 @@ namespace SpellyZombie
                               string.Join("\n  ", report) +
                               (deadSlots > 0
                                   ? $"\n  ⚠ {deadSlots} material slot(s) were ALREADY DEAD (prefab was " +
-                                    "made after play stopped) — delete it and re-drag DURING play mode."
+                                    "made after play stopped). Delete it and re-drag DURING play mode."
                                   : ""));
             }
             finally
