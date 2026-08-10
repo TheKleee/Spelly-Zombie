@@ -71,17 +71,10 @@ namespace SpellyZombie
         {
             Active = this;
 
-            // THE LOBBY POT IS ALREADY BREWED, AND IMMORTAL (Marko Aug 10:
-            // "this ink is immortal in the lobby"). The lobby is the practice
-            // ground — a 30-second prep countdown before anyone can even fill a
-            // wand, followed by a reserve that runs out, makes it useless for
-            // testing. Here it opens full, stays full, and its ink is visible
-            // from the first frame so there is always something to draw with.
-            _lobby = RoundDirector.InLobby;
-            _prep = _lobby ? 0f : DrawingConfig.PotPrepSeconds;
-            _open = _lobby;
+            _prep = DrawingConfig.PotPrepSeconds;
+            _open = false;
             _corrupt = false;
-            _ink = _lobby ? DrawingConfig.PotCapacityInk : 0f;
+            _ink = 0f;
             if (InkSurface != null) _surfaceScale0 = InkSurface.localScale;
             _blk = new MaterialPropertyBlock();
         }
@@ -94,6 +87,24 @@ namespace SpellyZombie
         void Update()
         {
             float dt = Time.deltaTime;
+
+            // ⛔ ASKED EVERY FRAME, NOT ONCE AT ENABLE (Marko Aug 11: "we need to
+            // wake up the lobby cauldron cause wizards can't use spells in lobby
+            // unless cauldron is active"). RoundDirector.InLobby reads
+            // Instance._phase, and OnEnable can easily run BEFORE that Instance
+            // exists — so the pot cached "not lobby", sat through a 30-second
+            // prep, and then drained like a real round. Evaluated live it wakes
+            // the moment the director does.
+            //
+            // THE LOBBY POT IS ALWAYS OPEN AND ALWAYS FULL: it is the practice
+            // ground, so it can never be the reason you cannot test a spell.
+            _lobby = RoundDirector.InLobby;
+            if (_lobby)
+            {
+                _prep = 0f;
+                _open = true;
+                _ink = DrawingConfig.PotCapacityInk;
+            }
             if (NetGame.IsAuthority) Simulate(dt);
             LocalWandTick(dt);
 
@@ -102,6 +113,7 @@ namespace SpellyZombie
             CauldronHUD.Corrupt = IsCorrupt;
             CauldronHUD.TimerSeconds = PrepRemaining > 0f ? PrepRemaining : -1f;
             PaintSurface();
+            FlowTick(dt);
         }
 
         // ------------------------------------------------------- authority --
@@ -283,6 +295,50 @@ namespace SpellyZombie
         static readonly int ColorId = Shader.PropertyToID("_Color");
 
         /// HIS ink object inside the pot: height = the ink, colour = the team.
+        // ---- THE POT SAYS WHICH WAY ITS INK IS GOING ------------------------
+        FlowMotes _flow;
+        float _lastFill = -1f;
+
+        /// THE GREEN POT TELLS ACOLYTES WHAT IS HAPPENING (Marko Aug 11: "the
+        /// green cauldron ink should also have an evaporation effect when
+        /// acolytes are not nearby and regeneration effect when they are").
+        ///
+        /// Their whole win condition is the pot running dry, and the cruel twist
+        /// he designed is that STANDING NEAR IT REFILLS IT from their own
+        /// corruption — so the one thing an acolyte must know is which way it is
+        /// going right now, and their instinct to guard it is the mistake.
+        ///
+        /// Same language as the wand, deliberately: motes rising OFF the surface
+        /// mean it is evaporating (good for them), motes falling INTO it mean
+        /// they are filling it (bad). Anyone who learned the wand already reads
+        /// this, which matters more than either effect being prettier alone.
+        void FlowTick(float dt)
+        {
+            if (InkSurface == null) return;
+            float fill = Fill01;
+            if (_lastFill < 0f) { _lastFill = fill; return; }
+
+            float rate = (fill - _lastFill) / Mathf.Max(0.0001f, dt);
+            _lastFill = fill;
+
+            // only while it is THEIRS — a black pot is the wizards' business and
+            // its own HUD bar already covers it
+            if (!IsCorrupt || PrepRemaining > 0f) { rate = 0f; }
+
+            if (_flow == null) _flow = new FlowMotes(4, gameObject.layer);
+
+            // up off the surface. Rising = evaporating, falling in = refilling,
+            // so the sign is inverted against the wand's outward/inward.
+            Vector3 top = InkSurface.position + Vector3.up * 0.05f;
+            _flow.Tick(top, Vector3.up, -rate, DrawingConfig.CorruptInkColor,
+                reach: 0.55f, spread: 0.22f,
+                fullRate: DrawingConfig.PotFlowFullRate,
+                minSize: 0.03f, maxSize: 0.09f,
+                deadzone: DrawingConfig.PotFlowDeadzone, cycle: 0.9f);
+        }
+
+        void OnDestroy() { _flow?.Dispose(); }
+
         static bool _warnedNoSurface;
 
         void PaintSurface()

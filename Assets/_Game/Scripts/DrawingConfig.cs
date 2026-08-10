@@ -504,11 +504,38 @@ namespace SpellyZombie
         // PlayerInk.Update, on top of the cauldron. Nothing reads it now.
         public static readonly float AcolyteInkEvaporatePerSec = O(nameof(AcolyteInkEvaporatePerSec), 1.6f);
 
-        // BOTH SIDES START WANDLESS, and the lobby is not exempt — it is the
-        // preparation phase, so it plays by the same rules. Wizards grow a wand
-        // at the pot, acolytes grow one by scanning. Set this above zero only to
-        // debug something that needs ink in hand immediately.
-        public static readonly float StartInk = O(nameof(StartInk), 0f);
+        // ⛔ REVERSED Aug 11: "it's boring if we start the game with no wands...
+        // so let them start with wands." Starting empty was his own Aug 9 rule
+        // and it lost on FEEL — the first thing a player does is stand around
+        // unable to play while they go find ink. Losing your wand still means
+        // something; being handed an empty one to begin with just delays the game.
+        //
+        // A FRACTION of the ceiling rather than a flat number, so it tracks
+        // InkMax (and the Drawing perk's larger well) instead of drifting from
+        // it. 0 restores the wandless start if he ever wants it back for a mode.
+        public static readonly float StartInkFraction = O(nameof(StartInkFraction), 1f);
+
+        // ---- THE WAND TIP FLOW: his dowsing rod ------------------------------
+        // Mote size rides the RATE of ink change, not just its direction, which
+        // makes one effect answer two questions: am I gaining or losing (which
+        // way they fly) and how fast (how big they are). Because the cauldron
+        // refills faster the closer you stand, "how big" IS the hot-cold compass
+        // to a hidden pot — no second system, nothing new to teach.
+        //
+        // Rates are in ink FRACTION per second. For scale: the pot up close is
+        // ~0.45, drawing drains ~0.2, the far-away floor is ~0.025, and an
+        // acolyte's evaporation is ~0.016.
+        public static readonly float WandFlowDeadzone = O(nameof(WandFlowDeadzone), 0.008f); // below this the tip is quiet
+        public static readonly float WandFlowFullRate = O(nameof(WandFlowFullRate), 0.25f);  // at or above this the motes are at full size
+        public static readonly float WandMoteMin = O(nameof(WandMoteMin), 0.005f);           // world metres — a trickle
+        public static readonly float WandMoteMax = O(nameof(WandMoteMax), 0.026f);           // world metres — standing in the cauldron
+
+        // The POT speaks the same language on its own scale: rising motes mean
+        // it is evaporating (the acolytes' win creeping closer), motes falling
+        // in mean an acolyte standing too near is refilling it from their own
+        // corruption. Pot fill moves far slower than a wand, hence its own rates.
+        public static readonly float PotFlowDeadzone = O(nameof(PotFlowDeadzone), 0.0006f);
+        public static readonly float PotFlowFullRate = O(nameof(PotFlowFullRate), 0.02f);
 
         // How long a broken lobby prop stays gone before rebuilding itself.
         // Long enough that breaking things still reads as breaking them, short

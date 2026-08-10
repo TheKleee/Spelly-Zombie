@@ -32,7 +32,7 @@ namespace SpellyZombie
         SimpleFPSController _pilot;
 
         float _phase;
-        float _dir;          // +1 gaining, -1 losing, 0 idle
+        float _rate;         // signed ink fraction per second, straight from WandInk
         float _shown;        // eased, so a single frame's jitter cannot flicker it
         Color _tint = Color.white;
 
@@ -101,11 +101,11 @@ namespace SpellyZombie
             _pilot = GetComponentInParent<SimpleFPSController>();
         }
 
-        /// Called by WandInk, which already knows the fraction and its change.
-        public void Report(float deltaPerSec)
-        {
-            _dir = Mathf.Abs(deltaPerSec) < 0.01f ? 0f : Mathf.Sign(deltaPerSec);
-        }
+        /// Called by WandInk with the ink fraction's rate of change per second.
+        /// THE MAGNITUDE MATTERS AS MUCH AS THE SIGN (Marko Aug 11): it is not
+        /// just "am I gaining or losing", it is HOW FAST — which is what turns
+        /// this into his dowsing rod.
+        public void Report(float deltaPerSec) => _rate = deltaPerSec;
 
         void OnDestroy()
         {
@@ -119,8 +119,9 @@ namespace SpellyZombie
             if (_motes == null || _tip == null) return;
 
             // eased so a frame of noise cannot strobe the motes
-            _shown = Mathf.MoveTowards(_shown, _dir, Time.deltaTime * 6f);
-            bool on = Mathf.Abs(_shown) > 0.15f;
+            _shown = Mathf.MoveTowards(_shown, _rate, Time.deltaTime * 1.5f);
+            float mag = Mathf.Abs(_shown);
+            bool on = mag > DrawingConfig.WandFlowDeadzone;
 
             for (int i = 0; i < Motes; i++)
                 if (_motes[i] != null && _motes[i].gameObject.activeSelf != on)
@@ -138,7 +139,22 @@ namespace SpellyZombie
                 foreach (var r in _rends) if (r != null) r.sharedMaterial = mat;
             }
 
-            _phase += Time.deltaTime / Cycle;
+            // ⛔ HOW FAST DECIDES HOW BIG (Marko Aug 11). Two rules in one
+            // number, because they are the same number:
+            //   "deteriorating when drawing should create a larger effect" —
+            //   drawing is a fast drain, so it reads loud.
+            //   "if it's filling up slowly the balls are smaller and if they are
+            //   closer the balls are larger" — THE WAND IS THE DOWSING ROD. The
+            //   cauldron already refills faster the nearer you stand, so the
+            //   mote size IS the hot-cold compass to a hidden pot, with no
+            //   second system and nothing new to learn.
+            // Direction stays the whole message: out is loss, in is gain, same
+            // path run backwards.
+            float hot = Mathf.Clamp01(mag / DrawingConfig.WandFlowFullRate);
+            float moteSize = Mathf.Lerp(DrawingConfig.WandMoteMin, DrawingConfig.WandMoteMax, hot);
+
+            // and it hurries when the flow is strong, so a rush reads as a rush
+            _phase += Time.deltaTime / Mathf.Lerp(Cycle, Cycle * 0.45f, hot);
             if (_phase > 1f) _phase -= 1f;
 
             // read purely as a pose — where the point is and which way it faces
@@ -156,11 +172,14 @@ namespace SpellyZombie
 
                 // fanned like his sketch: three motes leaving on their own arcs
                 float a = (i / (float)Motes) * Mathf.PI * 2f;
-                Vector3 fan = (right * Mathf.Cos(a) + up * Mathf.Sin(a)) * (Travel * 0.45f * along);
-                _motes[i].position = origin + fan + fwd * (Travel * along);
+                // the fan and the run both grow with the flow, so a strong
+                // one is a wide spray and a trickle is a thin wisp
+                float reach = Travel * Mathf.Lerp(0.55f, 1.35f, hot);
+                Vector3 fan = (right * Mathf.Cos(a) + up * Mathf.Sin(a)) * (reach * 0.45f * along);
+                _motes[i].position = origin + fan + fwd * (reach * along);
 
                 // fade out at the far end so they dissolve rather than vanish
-                _motes[i].localScale = Vector3.one * (MoteSize * (1f - along * 0.6f));
+                _motes[i].localScale = Vector3.one * (moteSize * (1f - along * 0.6f));
             }
         }
     }

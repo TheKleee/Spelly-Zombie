@@ -17,16 +17,17 @@ namespace SpellyZombie
         void Awake()
         {
             All.Add(this);
-            // EVERYONE STARTS WANDLESS, LOBBY INCLUDED (Marko Aug 10: "lobby is
-            // initial preparation for the gameplay so the rule should apply in
-            // lobby as well" — the same law as his earlier "the game should not
-            // be played differently just cause it's lobby").
+            // EVERYONE STARTS WITH A WAND (Marko Aug 11, reversing his own Aug 9
+            // wandless-start rule: "it's boring if we start the game with no
+            // wands"). Losing a wand still costs you; being handed an empty one
+            // just makes the first minute a chore.
             //
             // Assigned HERE rather than by editing his prefab: Player.prefab
             // serializes Ink: 100, so the field initializer above never runs for
-            // the real player. Setting it in Awake beats the bake and keeps the
-            // value a tunable knob instead of buried in an asset.
-            Ink = DrawingConfig.StartInk;
+            // the real player. Setting it in Awake beats the bake, and taking a
+            // FRACTION of Perks.InkMax means it follows the ceiling instead of
+            // drifting away from it.
+            Ink = Perks.InkMax * Mathf.Clamp01(DrawingConfig.StartInkFraction);
         }
         void OnDestroy() => All.Remove(this);
 
