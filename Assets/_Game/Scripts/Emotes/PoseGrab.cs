@@ -150,9 +150,15 @@ namespace SpellyZombie
             HandleGrab(mouse);
         }
 
+        static PoseGrab _live;
+
+        /// BLOWN OFF THE EASEL — same rule as SelfPaint, driven from Shove.
+        public static void Blown() { if (IsOpen && _live != null) _live.Close(); }
+
         void Open()
         {
             IsOpen = true;
+            _live = this;
             _camLocalPos = _cam.transform.localPosition;
             _camLocalRot = _cam.transform.localRotation;
             _yaw = transform.eulerAngles.y + 180f; // start facing the wizard
@@ -480,6 +486,60 @@ namespace SpellyZombie
         {
             cam.transform.position = focus + rot * new Vector3(0f, 0f, -dist);
             cam.transform.rotation = rot;
+        }
+
+        /// THE WHOLE BORROWED-CAMERA MODE, not just its maths (Marko Aug 10:
+        /// "you need to reuse the code more often"). EaselOrbit owned the orbit
+        /// but every mode that USED it re-wrote the same lifecycle privately —
+        /// remember the camera's local pose, keep yaw/pitch/dist/pan, hand it
+        /// back on close. PoseGrab, SelfPaint and ShapeShift each carry their
+        /// own copy of exactly that, and ZombieWatch was about to be the fourth.
+        ///
+        /// Borrow(), Orbit() each frame, Release() when the mode closes.
+        public class Borrowed
+        {
+            public float Yaw, Pitch, Dist = 3.5f;
+            public Vector3 Pan;
+
+            Camera _cam;
+            Vector3 _homePos;
+            Quaternion _homeRot;
+
+            public Camera Cam => _cam;
+            public bool Held => _cam != null;
+
+            public void Borrow(Camera cam, float yaw, float pitch, float dist)
+            {
+                if (cam == null) return;
+                _cam = cam;
+                _homePos = cam.transform.localPosition;
+                _homeRot = cam.transform.localRotation;
+                Yaw = yaw; Pitch = pitch; Dist = dist; Pan = Vector3.zero;
+            }
+
+            /// One frame of orbiting a focus point. zoomMax 0 forbids zooming
+            /// out at all, which is how a mode says "this is a peephole, not a
+            /// drone" without inventing its own clamp.
+            public void Orbit(Keyboard kb, Mouse mouse, Vector3 focus,
+                float zoomMin = 1f, float zoomMax = 4.5f)
+            {
+                if (_cam == null) return;
+                Quaternion rot = kb != null && mouse != null && zoomMax > zoomMin
+                    ? Tick(kb, mouse, ref Yaw, ref Pitch, ref Dist, ref Pan, true, zoomMin, zoomMax)
+                    : Quaternion.Euler(Pitch, Yaw, 0f);
+                Dist = Mathf.Clamp(Dist, zoomMin, Mathf.Max(zoomMin, zoomMax));
+                Apply(_cam, focus + Pan, rot, Dist);
+            }
+
+            /// Always safe to call twice — a mode that closes from more than one
+            /// path (his R / Tab / F) must not have to track whether it already did.
+            public void Release()
+            {
+                if (_cam == null) return;
+                _cam.transform.localPosition = _homePos;
+                _cam.transform.localRotation = _homeRot;
+                _cam = null;
+            }
         }
     }
 }

@@ -370,7 +370,10 @@ namespace SpellyZombie
             }
             OneShot("Hit", hit, "Hit");
             OneShot("Scream", scream, "Scream");
-            OneShot("StandUp", Clip("standup"), "StandUp", 0.95f);
+            // getting up plays ALL the way — cutting it at 0.95 and crossfading
+            // out is exactly what he was seeing (Aug 10: "the same with getting
+            // out of the ground")
+            OneShot("StandUp", Clip("standup"), "StandUp");
             OneShot("Fidget", Clip("fidget"), "Fidget");
             return ctrl;
         }

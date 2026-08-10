@@ -149,11 +149,47 @@ namespace SpellyZombie
         protected abstract void Affect(Collider c, float dt);
         protected virtual void Grow(float dt) { }
         protected virtual void ShapeBall() { if (Ball != null) Ball.localScale = Vector3.one * Radius * 2f; }
+
+        /// A field whose look is carried entirely by particles turns the solid
+        /// dome off (Marko Aug 10: "the aura is ugly... keep the aura
+        /// invisible"). The zone, the ring and the inside-HUD all still work —
+        /// only the coloured sphere goes.
+        protected virtual bool ShowDome => true;
+
+        /// Does this field do anything to this body at all? Answered BEFORE the
+        /// inside-HUD pulse, so a field never claims to affect someone it is
+        /// about to skip. Default: everyone.
+        protected virtual bool AffectsPlayer(SimpleFPSController p) => true;
+
+        /// Some fields mark their edge on the ground, some are pure volume.
+        public void ShowGroundRing(bool on)
+        {
+            if (_ring != null) _ring.gameObject.SetActive(on);
+        }
         protected virtual void OnExpire() { }
 
-        protected static T Spawn<T>(Vector3 at, float power, float radius, float seconds, Color c, MoteShade shade)
+        /// Top the clock back up — a field that keeps being fed keeps living,
+        /// and starts stabilising again the moment feeding stops.
+        protected void Extend(float seconds)
+        {
+            Seconds = Mathf.Max(Seconds, seconds);
+            _age = 0f;
+        }
+
+        /// ⛔ THE ONE PLACE A FIELD LEARNS HOW BIG ITS PARENTS WERE (Marko Aug
+        /// 10: "if a particle has small aoe than the combined spell will have
+        /// small aoe"). Every field's dome, ground ring and damage sphere all
+        /// read f.Radius, so scaling it HERE makes fourteen fields inherit at
+        /// once and none of them can drift apart later.
+        ///
+        /// size defaults to 0, and SizeMul clamps 0 up to 1 — so every caller
+        /// that does not know a size (Demon.Calamity fires seven of these)
+        /// behaves exactly as it does today.
+        protected static T Spawn<T>(Vector3 at, float power, float radius, float seconds, Color c, MoteShade shade,
+            float size = 0f)
             where T : GrammarField
         {
+            radius *= SpellParticle.SizeMul(size);
             var go = new GameObject(typeof(T).Name);
             go.transform.position = at;
             var f = go.AddComponent<T>();
@@ -183,6 +219,12 @@ namespace SpellyZombie
                 // its whole life — his FX_<FieldClass> override still wins
                 var jmo = FxLibrary.I.FieldFor(typeof(T).Name);
                 if (jmo != null) FxLibrary.Spawn(jmo, at, go.transform, seconds + 0.5f);
+            }
+
+            if (!f.ShowDome)
+            {
+                var bare = f.Ball.GetComponent<Renderer>();
+                if (bare != null) bare.enabled = false;
             }
             return f;
         }
@@ -223,6 +265,14 @@ namespace SpellyZombie
                     // in any field pulses the screen edges in its colour
                     if (root is SimpleFPSController pilotRoot)
                     {
+                        // ONLY IF IT ACTUALLY TOUCHES YOU (Marko Aug 10: poison
+                        // "is visually affecting them and I'm saying it
+                        // shouldn't"). The edge pulse fired for every body
+                        // inside regardless of whether the field would do
+                        // anything to it, so an acolyte immune to corruption
+                        // still got the green screen and had no way to know it
+                        // was lying.
+                        if (!AffectsPlayer(pilotRoot)) continue;
                         GrammarFieldHUD.Inside(Tint);
                         // the elected collider may be a LIMB BONE — fields test
                         // GetComponent on it, so hand them the pilot's own
@@ -240,13 +290,162 @@ namespace SpellyZombie
 
     /// Frost lvl3 — SNOW FIELD: freezing snow covers the area; ice damage,
     /// slow, and staying too long freezes you solid for a moment.
+    /// THE CORRUPTION, AS A ZONE (Marko Aug 10: "since all the other effects
+    /// already work I believe if we focus on zone effects they will all always
+    /// work. It's just about defining what area the zone is in").
+    ///
+    /// This was a bespoke GasAura with its own puff cadence, its own damage
+    /// tick and its own OverlapSphere — which is exactly how it shipped broken:
+    /// it queried with DefaultRaycastLayers while every player collider lives
+    /// on layer 2. As a field it inherits the query that already works, the
+    /// one-body-one-tick dedupe, the ground ring, his FX_PoisonField skin hook,
+    /// and the inside-HUD pulse that TELLS you that you are standing in it.
+    ///
+    /// One class covers all three uses: the cloud a zombie breathes, the bigger
+    /// one a detonation leaves, and the one that CLINGS TO A BODY.
+    public class PoisonField : GrammarField
+    {
+        /// The body wearing this cloud. It never poisons its own host — you are
+        /// already poisoned; what your cloud does is give it to everyone else.
+        [System.NonSerialized] public Transform Wearer;
+
+        static readonly Color Sick = new Color(0.55f, 0.85f, 0.25f);
+
+        /// NO SOLID SPHERE (Marko Aug 10: "the aura is ugly make it look like
+        /// the old particle effect. Keep the aura invisible"). Gas is drawn by
+        /// the CFXR poison cloud, the way it looked before this became a zone —
+        /// the dome was only ever the default skin every field starts with.
+        protected override bool ShowDome => false;
+
+        const float PuffLife = 2.8f;
+        float _puffIn;
+        bool _firstPuff = true;
+
+        /// How many poison zones exist right now. A horde must not cost a horde
+        /// of particle systems (Marko Aug 10: "what if we had 40 zombies?").
+        static int _liveFields;
+        void OnEnable() => _liveFields++;
+        void OnDisable() => _liveFields--;
+
+        /// Grow() is the base class's own per-frame hook, so the cloud rides the
+        /// field's real Radius — it swells as a clinging cloud swells and thins
+        /// out as the field stabilises, with no second clock to keep in sync.
+        protected override void Grow(float dt)
+        {
+            if ((_puffIn -= dt) > 0f) return;
+            if (FxLibrary.I == null) return;
+
+            // ⛔ ONE PUFF PER TICK, NEVER A BURST. FxLibrary drops everything
+            // past MaxPerFrame (8) spawns in a single frame — his own anti-lag
+            // budget — so a field asking for eight at once lost the race against
+            // every other effect that frame and drew nothing but its ring. That
+            // is why the cloud on the wizard was "once again just a circle".
+            //
+            // Emitted steadily instead: each puff lives PuffLife, so at this
+            // cadence roughly ten are alive at once and the volume fills anyway.
+            // The count is not a dial — it falls out of life ÷ cadence.
+            // THE CROWD PAYS FOR ITSELF. FxLibrary only POOLS 12 instances per
+            // prefab and destroys the rest, so forty zombies each keeping ten
+            // clouds alive would sit in permanent Instantiate/Destroy churn —
+            // the lag his budget exists to stop. The cadence stretches as more
+            // zones exist, so the TOTAL smoke stays roughly fixed no matter how
+            // many are breathing it: one zombie is thick, a horde is a fog bank
+            // made of the same number of particles.
+            float crowd = Mathf.Max(1f, _liveFields / DrawingConfig.PoisonFxCrowd);
+            _puffIn = DrawingConfig.PoisonPuffEvery * crowd;
+
+            // AND NOTHING RENDERS SMOKE YOU CANNOT SEE. Costs nothing visually,
+            // and it is what keeps a distant horde free rather than merely cheap.
+            var eye = Camera.main;
+            if (eye != null)
+            {
+                float far = DrawingConfig.PoisonFxDistance;
+                if ((eye.transform.position - transform.position).sqrMagnitude > far * far)
+                    return;
+            }
+
+            // scattered through the sphere so the smoke IS the zone rather than
+            // a plume at its centre, but the first one lands dead centre so a
+            // brand-new cloud is visible immediately
+            Vector3 spot = transform.position;
+            if (!_firstPuff) spot += Random.insideUnitSphere * Radius * 0.6f;
+            _firstPuff = false;
+
+            var fx = FxLibrary.Spawn(FxLibrary.I.GasCloud, spot, null, PuffLife);
+            // the prefab emits 2-3 UNIT particles, so metres need converting
+            if (fx != null)
+                fx.transform.localScale = Vector3.one *
+                    Mathf.Max(0.05f, Radius * DrawingConfig.PoisonFxScale);
+        }
+
+        /// `ring` draws the ground circle. OFF for the gas a body carries — it
+        /// is a cloud, not a marked area — and ON for a detonation, where his
+        /// ruling is that the circle "is fine for the explosion radius".
+        public static PoisonField Open(Vector3 at, float radius, float seconds,
+            Transform rideOn = null, bool ring = false)
+        {
+            var f = Spawn<PoisonField>(at, 1f, radius, seconds, Sick, MoteShade.Transparent);
+            f.ShowGroundRing(ring);
+            // stagger the cadence so several clouds alive at once do not all
+            // ask for their puff on the same frame and starve each other
+            f._puffIn = Random.value * DrawingConfig.PoisonPuffEvery;
+            if (rideOn != null)
+            {
+                f.transform.SetParent(rideOn, true);   // it follows what made it
+                f.Wearer = rideOn;
+            }
+            return f;
+        }
+
+        /// Corrupt ink does not choke the corrupted — and because the base asks
+        /// this BEFORE the screen pulse, an acolyte gets no green edges either.
+        protected override bool AffectsPlayer(SimpleFPSController p) =>
+            !Sides.IsAcolytePlayer(p);
+
+        protected override void Affect(Collider c, float dt)
+        {
+            var p = c.GetComponentInParent<SimpleFPSController>();
+            if (p == null || p.IsDowned) return;
+            if (Wearer != null && p.transform == Wearer) return;  // your own cloud
+            if (!AffectsPlayer(p)) return;   // one predicate, asked here and by the HUD
+
+            p.TakeHit(Vector3.zero, DrawingConfig.PoisonDamage * dt, "the corruption");
+            Cling(p, dt);
+        }
+
+        /// IT STICKS TO YOU AND IT GROWS (his spec): "if you get poisoned it
+        /// should appear on your head (small area) that disappears quickly but
+        /// still is poisoning you... the longer you are in the poison the larger
+        /// the gas on your body is and you can poison others as well with it."
+        ///
+        /// Because the thing clinging to you IS a PoisonField, spreading it
+        /// costs no new code — your cloud ticks on everyone else exactly the way
+        /// the zombie's did on you. And it fades on its own, which is the world
+        /// stabilising, same as every other field here.
+        static void Cling(SimpleFPSController victim, float dt)
+        {
+            var worn = victim.GetComponentInChildren<PoisonField>();
+            if (worn == null)
+            {
+                // ON THE HEAD and small, so other players can SEE you carrying it
+                PoisonField.Open(victim.transform.position + Vector3.up * 1.6f,
+                    DrawingConfig.PoisonClingRadius,
+                    DrawingConfig.PoisonClingSeconds, victim.transform);
+                return;
+            }
+            worn.Radius = Mathf.Min(worn.Radius + DrawingConfig.PoisonClingGrow * dt,
+                DrawingConfig.PoisonClingMax);
+            worn.Extend(DrawingConfig.PoisonClingSeconds);
+        }
+    }
+
     public class SnowField : GrammarField
     {
         float _burstTick;
 
-        public static SnowField Open(Vector3 at, float power) =>
+        public static SnowField Open(Vector3 at, float power, float size = 0f) =>
             Spawn<SnowField>(at, power, DrawingConfig.UltimateRadius, DrawingConfig.UltimateSeconds * 1.3f,
-                new Color(0.85f, 0.93f, 1f, 0.35f), MoteShade.Transparent);
+                new Color(0.85f, 0.93f, 1f, 0.35f), MoteShade.Transparent, size);
 
         protected override void Grow(float dt)
         {
@@ -283,10 +482,10 @@ namespace SpellyZombie
     {
         Light _glow;
 
-        public static PlasmaField Open(Vector3 at, float power)
+        public static PlasmaField Open(Vector3 at, float power, float size = 0f)
         {
             var f = Spawn<PlasmaField>(at + Vector3.up * 1.2f, power, 1.1f, DrawingConfig.UltimateSeconds,
-                new Color(1f, 0.9f, 0.5f, 0.95f), MoteShade.Additive);
+                new Color(1f, 0.9f, 0.5f, 0.95f), MoteShade.Additive, size);
             var l = f.gameObject.AddComponent<Light>();
             l.type = LightType.Point; l.range = 18f; l.intensity = 10f;
             l.color = new Color(1f, 0.93f, 0.7f);
@@ -336,12 +535,12 @@ namespace SpellyZombie
         public bool Growing;
         int _swallowed;
 
-        public static BlackHoleField Open(Vector3 at, float power, bool growing)
+        public static BlackHoleField Open(Vector3 at, float power, bool growing, float size = 0f)
         {
             var f = Spawn<BlackHoleField>(at + Vector3.up * 0.8f, power,
                 growing ? 2.2f : 1.8f,
                 DrawingConfig.UltimateSeconds * (growing ? 1.4f : 0.9f),
-                new Color(0.02f, 0.01f, 0.05f, 0.93f), MoteShade.Transparent);
+                new Color(0.02f, 0.01f, 0.05f, 0.93f), MoteShade.Transparent, size);
             f.Growing = growing;
             // a black hole you can SEE (Marko: "currently invisible") — an
             // OPAQUE void core riding the Ball, so it grows with the hunger;
@@ -391,10 +590,10 @@ namespace SpellyZombie
     /// Light+Dark paradox — WHITE HOLE: black hole strength, opposite sign.
     public class WhiteHoleField : GrammarField
     {
-        public static WhiteHoleField Open(Vector3 at, float power)
+        public static WhiteHoleField Open(Vector3 at, float power, float size = 0f)
         {
             var f = Spawn<WhiteHoleField>(at + Vector3.up * 0.8f, power, 4f, DrawingConfig.UltimateSeconds * 0.9f,
-                new Color(1f, 1f, 0.97f, 0.75f), MoteShade.Additive);
+                new Color(1f, 1f, 0.97f, 0.75f), MoteShade.Additive, size);
             if (FxLibrary.I != null) // ignition flash; the stars ride the field
                 FxLibrary.Spawn(FxLibrary.I.Flash, at + Vector3.up * 0.8f);
             // THE OPENING YEET (Marko: "it should yeet everything in all
@@ -436,10 +635,10 @@ namespace SpellyZombie
     /// Glue lvl3 — TIME FREEZE: the area spreads and stops anything inside.
     public class TimeFreezeField : GrammarField
     {
-        public static TimeFreezeField Open(Vector3 at, float power)
+        public static TimeFreezeField Open(Vector3 at, float power, float size = 0f)
         {
             var f = Spawn<TimeFreezeField>(at, power, DrawingConfig.UltimateRadius, DrawingConfig.UltimateSeconds * 0.8f,
-                new Color(0.75f, 0.95f, 0.7f, 0.28f), MoteShade.Transparent);
+                new Color(0.75f, 0.95f, 0.7f, 0.28f), MoteShade.Transparent, size);
             DrawingWorld.Instance?.LogEvent("absolute grip stops TIME here");
             return f;
         }
@@ -467,10 +666,10 @@ namespace SpellyZombie
     /// Repel lvl3 — INERTIA: nothing inside can stand in place.
     public class InertiaField : GrammarField
     {
-        public static InertiaField Open(Vector3 at, float power)
+        public static InertiaField Open(Vector3 at, float power, float size = 0f)
         {
             var f = Spawn<InertiaField>(at, power, DrawingConfig.UltimateRadius, DrawingConfig.UltimateSeconds,
-                new Color(0.9f, 0.9f, 1f, 0.22f), MoteShade.Transparent);
+                new Color(0.9f, 0.9f, 1f, 0.22f), MoteShade.Transparent, size);
             DrawingWorld.Instance?.LogEvent("absolute slip, NOTHING stands still");
             return f;
         }
@@ -505,12 +704,12 @@ namespace SpellyZombie
         Vector3 _drift;
         bool _down;
 
-        public static TornadoField Open(Vector3 at, float power, bool down, ulong lineage)
+        public static TornadoField Open(Vector3 at, float power, bool down, ulong lineage, float size = 0f)
         {
             var f = Spawn<TornadoField>(at + Vector3.up * (down ? 0.2f : 1.4f), power,
                 2.4f, DrawingConfig.UltimateSeconds * 1.2f,
                 down ? new Color(0.35f, 0.55f, 0.75f, 0.35f) : new Color(0.78f, 0.8f, 0.88f, 0.3f),
-                MoteShade.Transparent);
+                MoteShade.Transparent, size);
             f._down = down;
             f.FieldLineage = lineage;
             // the storm WEARS its vectors (Marko: "visual arrows going around
@@ -633,11 +832,11 @@ namespace SpellyZombie
     /// MERCY, the only healing in the game. Walk in, mend over time.
     public class HealingField : GrammarField
     {
-        public static HealingField Open(Vector3 at, float power)
+        public static HealingField Open(Vector3 at, float power, float size = 0f)
         {
             var f = Spawn<HealingField>(at, power, DrawingConfig.UltimateRadius * 0.8f,
                 DrawingConfig.UltimateSeconds * 1.4f,
-                new Color(0.85f, 1f, 0.8f, 0.4f), MoteShade.Additive);
+                new Color(0.85f, 1f, 0.8f, 0.4f), MoteShade.Additive, size);
             DrawingWorld.Instance?.LogEvent("cold light is MERCY, a healing ground");
             Juice.Chime(at);
             if (FxLibrary.I != null) // the mercy ring — a runic circle on the ground

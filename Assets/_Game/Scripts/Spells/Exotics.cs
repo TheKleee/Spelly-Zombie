@@ -13,16 +13,23 @@ namespace SpellyZombie
         public static Object Cast(RuneGrammar.ExoticKind kind, SpellParticle a, SpellParticle b,
             Vector3 at, float power)
         {
+            // BOTH PARENTS DECIDE HOW BIG THIS IS. Cast has always been handed
+            // a and b and never read them — so a fusion of two big runes made
+            // exactly the same exotic as two of the smallest ones.
+            float size = a != null && b != null
+                ? SpellParticle.FuseSize(a.SrcSize, b.SrcSize)
+                : DrawingConfig.RuneSizeMin;
+
             switch (kind)
             {
-                case RuneGrammar.ExoticKind.Healing: return HealingField.Open(at, power);
-                case RuneGrammar.ExoticKind.LightStrike: return LightStrike.Open(at, power);
-                case RuneGrammar.ExoticKind.DarkFlames: return DarkFlame.Open(at, power);
-                case RuneGrammar.ExoticKind.StickyLava: return StickyLavaField.Open(at, power);
-                case RuneGrammar.ExoticKind.FireBolts: return ElementBolt.Volley(at, power, hot: true);
-                case RuneGrammar.ExoticKind.IceBolts: return ElementBolt.Volley(at, power, hot: false);
-                case RuneGrammar.ExoticKind.FrostGlue: return FrostGlueField.Open(at, power);
-                case RuneGrammar.ExoticKind.AbsoluteZero: return AbsoluteZeroField.Open(at, power);
+                case RuneGrammar.ExoticKind.Healing: return HealingField.Open(at, power, size);
+                case RuneGrammar.ExoticKind.LightStrike: return LightStrike.Open(at, power, size);
+                case RuneGrammar.ExoticKind.DarkFlames: return DarkFlame.Open(at, power, size);
+                case RuneGrammar.ExoticKind.StickyLava: return StickyLavaField.Open(at, power, size);
+                case RuneGrammar.ExoticKind.FireBolts: return ElementBolt.Volley(at, power, hot: true, size: size);
+                case RuneGrammar.ExoticKind.IceBolts: return ElementBolt.Volley(at, power, hot: false, size: size);
+                case RuneGrammar.ExoticKind.FrostGlue: return FrostGlueField.Open(at, power, size);
+                case RuneGrammar.ExoticKind.AbsoluteZero: return AbsoluteZeroField.Open(at, power, size);
                 case RuneGrammar.ExoticKind.DarkMatter: return DarkMatterMote.Open(at, power);
                 case RuneGrammar.ExoticKind.StickyLight: return StickyLightMote.Open(at, power);
                 case RuneGrammar.ExoticKind.SlickLight: return SlickLightMote.Open(at, power);
@@ -50,12 +57,14 @@ namespace SpellyZombie
     {
         public float Power = 1f;
         const float ChannelSeconds = 1.7f;
-        const float BlastRadius = 2.4f;
+        // scaled by the fusion that made it (Marko Aug 10) - an instance
+        // value now, not a const, because two big runes must strike wider
+        float BlastRadius = 2.4f;
         float _age;
         Light _glow;
         Transform _ring;
 
-        public static LightStrike Open(Vector3 at, float power)
+        public static LightStrike Open(Vector3 at, float power, float size = 0f)
         {
             if (Physics.Raycast(at + Vector3.up * 2f, Vector3.down, out var hit, 30f))
                 at = hit.point;
@@ -63,6 +72,7 @@ namespace SpellyZombie
             go.transform.position = at;
             var s = go.AddComponent<LightStrike>();
             s.Power = power;
+            s.BlastRadius = 2.4f * SpellParticle.SizeMul(size);
             DrawingWorld.Instance?.LogEvent("the light AIMS here, move");
             return s;
         }
@@ -114,12 +124,13 @@ namespace SpellyZombie
         float _age, _retarget;
         Transform _prey;
 
-        public static DarkFlame Open(Vector3 at, float power)
+        public static DarkFlame Open(Vector3 at, float power, float size = 0f)
         {
             DarkFlame first = null;
             for (int i = 0; i < 2; i++)
             {
-                var go = Exotics.Glow(at + Random.insideUnitSphere * 0.3f, 0.34f,
+                var go = Exotics.Glow(at + Random.insideUnitSphere * 0.3f,
+                    0.34f * SpellParticle.SizeMul(size),
                     new Color(0.12f, 0.02f, 0.1f, 0.92f), MoteShade.Transparent);
                 go.name = "DarkFlame";
                 var f = go.AddComponent<DarkFlame>();
@@ -173,10 +184,10 @@ namespace SpellyZombie
     /// wades through it.
     public class StickyLavaField : GrammarField
     {
-        public static StickyLavaField Open(Vector3 at, float power)
+        public static StickyLavaField Open(Vector3 at, float power, float size = 0f)
         {
             var f = Spawn<StickyLavaField>(at, power, 2.1f, 9f,
-                new Color(0.85f, 0.3f, 0.05f, 0.5f), MoteShade.Additive);
+                new Color(0.85f, 0.3f, 0.05f, 0.5f), MoteShade.Additive, size);
             DrawingWorld.Instance?.LogEvent("the lava CLINGS");
             return f;
         }
@@ -204,10 +215,10 @@ namespace SpellyZombie
     /// Whatever stays stuck is freezing toward the ice-block.
     public class FrostGlueField : GrammarField
     {
-        public static FrostGlueField Open(Vector3 at, float power)
+        public static FrostGlueField Open(Vector3 at, float power, float size = 0f)
         {
             var f = Spawn<FrostGlueField>(at, power, 2.1f, 9f,
-                new Color(0.55f, 0.78f, 1f, 0.5f), MoteShade.Additive);
+                new Color(0.55f, 0.78f, 1f, 0.5f), MoteShade.Additive, size);
             DrawingWorld.Instance?.LogEvent("the frost CLINGS");
             return f;
         }
@@ -238,7 +249,7 @@ namespace SpellyZombie
         Vector3 _vel;
         float _age;
 
-        public static ElementBolt Volley(Vector3 at, float power, bool hot)
+        public static ElementBolt Volley(Vector3 at, float power, bool hot, float size = 0f)
         {
             ElementBolt first = null;
             for (int i = 0; i < 5; i++)
@@ -286,10 +297,10 @@ namespace SpellyZombie
     /// HeatDown + Darkness — ABSOLUTE ZERO: everything inside freezes. Now.
     public class AbsoluteZeroField : GrammarField
     {
-        public static AbsoluteZeroField Open(Vector3 at, float power)
+        public static AbsoluteZeroField Open(Vector3 at, float power, float size = 0f)
         {
             var f = Spawn<AbsoluteZeroField>(at, power, 2.6f, 4.5f,
-                new Color(0.5f, 0.7f, 1f, 0.3f), MoteShade.Transparent);
+                new Color(0.5f, 0.7f, 1f, 0.3f), MoteShade.Transparent, size);
             DrawingWorld.Instance?.LogEvent("nothing moves in ABSOLUTE ZERO");
             return f;
         }
@@ -489,6 +500,7 @@ namespace SpellyZombie
                     Random.onUnitSphere, sp.Power);
                 twin.Temp = sp.Temp; twin.Lum = sp.Lum; twin.Density = sp.Density; twin.Stick = sp.Stick;
                 twin.Lineage = sp.Lineage;
+                twin.SrcSize = sp.SrcSize;   // a clone is the same SIZE of spell, not a reset one
                 twin.SealId = sp.SealId;
                 return;
             }

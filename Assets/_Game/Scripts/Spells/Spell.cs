@@ -68,7 +68,26 @@ namespace SpellyZombie
             // zombie, Liquid a ranged one, and every other rune does nothing
             // because they never learned it. Same recognizer, same templates,
             // same walls, no second alphabet anywhere.
-            if (Sides.IsAcolyte(seal.OwnerId)) return AcolyteSummon(seal);
+            // THE CURSED INK BLOWS THE DEAD (Marko Aug 10): "acolytes regardless
+            // if they are in the overseeing mode of the zombies or not... if they
+            // draw a seal on a zombie that zombie will explode. That's their
+            // cursed power of the cursed ink." So this is NOT a mode — it is
+            // what an acolyte's seal MEANS when it closes on a corpse, whether
+            // they are watching through it or standing next to it.
+            //
+            // WIZARDS DO NOT GET THIS ("It doesn't work for Wizards" — "ofc"):
+            // it sits inside the acolyte branch, so a wizard's seal on a zombie
+            // resolves as an ordinary spell exactly as before.
+            if (Sides.IsAcolyte(seal.OwnerId))
+            {
+                var doomed = ZombieUnder(seal);
+                if (doomed != null)
+                {
+                    doomed.Detonate(SealSizeMul(seal), SealPower(seal));
+                    return null;
+                }
+                return AcolyteSummon(seal);
+            }
 
             var host = new GameObject($"Spell_{seal.Id}");
             host.transform.position = seal.PlaneOrigin;
@@ -97,7 +116,11 @@ namespace SpellyZombie
                     Rune = g.Rune,
                     Center = g.Centroid() + seal.PlaneNormal * 0.06f,
                     Normal = seal.PlaneNormal,
-                    Radius = Mathf.Clamp(glyphHalf * DrawingConfig.ZoneRadiusScale, 0.9f, 3.5f),
+                    // the floor is the NEUTRAL POINT — SpellParticle.SizeMul
+                    // returns exactly 1 there, so a smallest rune is unchanged.
+                    // Shared constant so the floor and the reference cannot drift.
+                    Radius = Mathf.Clamp(glyphHalf * DrawingConfig.ZoneRadiusScale,
+                        DrawingConfig.RuneSizeMin, 3.5f),
                     GlyphSize = glyphHalf,
                     Intensity = g.Strength,
                     Phase = Random.value * 6.28f,
@@ -137,36 +160,86 @@ namespace SpellyZombie
         static readonly System.Collections.Generic.List<ZombieBrain> _orderBuf =
             new System.Collections.Generic.List<ZombieBrain>();
 
-        /// One summon glyph: which kind it raises and how big it was drawn.
-        struct SummonOrder { public bool Ranged; public float SizeMul; }
+        /// One summon glyph: which kind it raises and how far its gas reaches.
+        /// Body size and strength are properties of the SEAL, not the glyph, so
+        /// they are read once per cast rather than stored per order.
+        struct SummonOrder { public bool Ranged; public float GasRadius; }
+
+        /// The seal's equivalent RADIUS — commensurate with a glyph's
+        /// half-diagonal. sqrt(Area) alone is an edge length and comparing the
+        /// two runs every ratio ~1.77x cold.
+        static float SealRadius(Seal seal) =>
+            Mathf.Sqrt(Mathf.Max(0.0004f, seal.Area) / Mathf.PI);
+
+        /// DIAL 1 for anything a seal raises or blows up. Two marked points, the
+        /// line runs through them and does NOT stop — draw past either end and
+        /// it keeps paying out. Floor is physics, not balance.
+        ///
+        /// Shared rather than re-derived: the summon and the detonation must
+        /// answer "how big was this seal" with the SAME number, or a zombie
+        /// would explode at a size it was never raised at.
+        static float SealSizeMul(Seal seal)
+        {
+            float range = Mathf.Max(0.001f,
+                DrawingConfig.SummonSealMax - DrawingConfig.SummonSealMin);
+            return Mathf.Max(DrawingConfig.SummonSizeFloor,
+                Mathf.LerpUnclamped(DrawingConfig.SummonSizeMin, DrawingConfig.SummonSizeMax,
+                    (SealRadius(seal) * 2f - DrawingConfig.SummonSealMin) / range));
+        }
+
+        /// DIAL 3, likewise shared: 1.2x per line missing from ten, so a circle
+        /// is exactly 1.0 and a triangle 3.58x. "A triangle on a zombie is a
+        /// really potent poison" is this number reaching the detonation.
+        static float SealPower(Seal seal) =>
+            Mathf.Pow(DrawingConfig.SealLineBonus,
+                Mathf.Max(0, DrawingConfig.CircleEdges - seal.Edges));
+
+        static readonly Collider[] _sealHits = new Collider[16];
+
+        /// The zombie this seal was drawn ON, if any. The loop is traced across
+        /// a body, so its plane origin sits on that body — a short overlap at
+        /// the origin finds it without needing the strokes to report a host.
+        static Zombie ZombieUnder(Seal seal)
+        {
+            int n = Physics.OverlapSphereNonAlloc(seal.PlaneOrigin,
+                DrawingConfig.DetonateSealReach, _sealHits,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide);
+            Zombie best = null;
+            float bestSqr = float.MaxValue;
+            for (int i = 0; i < n; i++)
+            {
+                if (_sealHits[i] == null) continue;
+                // through ZombieOwner, so a seal drawn on the DRESSED SKIN finds
+                // its zombie — the dress is a world-space follower, so walking
+                // up from it reaches no Zombie at all
+                var z = ZombieOwner.From(_sealHits[i]);
+                if (z == null || z.IsDemon) continue;   // demons are not fireworks
+                // ON the zombie, not merely NEAR it — measured to the collider's
+                // surface, so a summon seal drawn on the ground beside one keeps
+                // summoning instead of blowing up the zombie standing there
+                float d = (_sealHits[i].ClosestPoint(seal.PlaneOrigin) - seal.PlaneOrigin).sqrMagnitude;
+                if (d > DrawingConfig.DetonateSurfaceSlack * DrawingConfig.DetonateSurfaceSlack)
+                    continue;
+                if (d < bestSqr) { bestSqr = d; best = z; }
+            }
+            return best;
+        }
 
         static readonly System.Collections.Generic.List<SummonOrder> _summonBuf =
             new System.Collections.Generic.List<SummonOrder>();
 
         static Spell AcolyteSummon(Seal seal)
         {
-            // ONE ENTRY PER SUMMON GLYPH, carrying how big it was drawn.
-            // Marko: "Can zombie size change depending on the rune size? Just
-            // like other spells change in size?" It is the same rune-to-seal
-            // ratio every other spell already reads, so a big glyph inside a
-            // small seal raises a big one, at any drawing scale.
+            // ONE ENTRY PER SUMMON GLYPH, carrying the radius of the gas it will
+            // breathe. THE RUNE-TO-SEAL RATIO IS THE AoE DIAL, NOT THE SIZE DIAL
+            // (Marko Aug 10, correcting a build that crossed the two): body size
+            // comes from the seal's OWN diameter, further down. What the rune's
+            // size relative to its seal buys is how far the cloud reaches.
             _summonBuf.Clear();
             bool hasArrow = false, scatter = false;
             Vector3 marchDir = Vector3.zero;
 
-            // the seal's own linear size, so this is a RATIO and not a
-            // measurement: draw the whole thing twice as large and nothing changes
-            //
-            // COMMENSURATE MEASURES (Marko Aug 10: "they are huge even when I
-            // draw really small indicators"). glyphSpan below is a HALF-diagonal
-            // — a radius — but this was sqrt(Area), which is an EDGE length, so
-            // the two were never the same kind of number and every ratio came
-            // out ~1.77x cold against the neutral it was compared to. Dividing
-            // the area by PI first makes this the seal's equivalent RADIUS, so
-            // `ratio` is now literally "what fraction of the seal the rune
-            // fills", 0..1 — which is what SummonSizeNeutral always claimed to
-            // measure. Its default moves with it.
-            float sealSpan = Mathf.Sqrt(Mathf.Max(0.0004f, seal.Area) / Mathf.PI);
+            float sealSpan = SealRadius(seal);
 
             foreach (var g in seal.Runes)
             {
@@ -174,18 +247,13 @@ namespace SpellyZombie
                 if (g.Rune == RuneType.StateSolid || g.Rune == RuneType.StateLiquid)
                 {
                     float glyphSpan = g.WorldBounds().size.magnitude * 0.5f;
-                    float ratio = glyphSpan / sealSpan;
-                    // a glyph filling about a third of its seal is "normal"
-                    // squared, so his small end gets genuinely small and his big
-                    // end genuinely big out of a ratio that only spans ~0.15..1
-                    float mul = Mathf.Clamp(
-                        Mathf.Pow(ratio / DrawingConfig.SummonSizeNeutral,
-                            DrawingConfig.SummonSizeCurve),
-                        DrawingConfig.SummonSizeMin, DrawingConfig.SummonSizeMax);
+                    float ratio = glyphSpan / sealSpan;   // 0..1, how much of the seal the rune fills
+                    float gas = Mathf.Lerp(DrawingConfig.SummonGasRadiusMin,
+                        DrawingConfig.SummonGasRadiusMax, Mathf.Clamp01(ratio));
                     _summonBuf.Add(new SummonOrder
                     {
                         Ranged = g.Rune == RuneType.StateLiquid,
-                        SizeMul = mul
+                        GasRadius = gas
                     });
                 }
                 else if (g.Rune == RuneType.DirectionAway || g.Rune == RuneType.DirectionToward)
@@ -256,6 +324,12 @@ namespace SpellyZombie
 
             int total = _summonBuf.Count;
             float life = DrawingConfig.SummonedZombieLife;
+
+            // DIAL 1 (seal diameter → body) and DIAL 3 (lines → strength), read
+            // through the shared helpers so a summon and a detonation can never
+            // disagree about how big or how potent the same seal was.
+            float sizeMul = SealSizeMul(seal);
+            float power = SealPower(seal);
             for (int i = 0; i < total; i++)
             {
                 bool isRanged = _summonBuf[i].Ranged;
@@ -274,13 +348,48 @@ namespace SpellyZombie
                 var z = Zombie.Spawn(spot, isRanged ? ZombieKind.Walker : ZombieKind.Charger);
                 if (z == null) continue;
 
-                // HOW BIG IT WAS DRAWN. Multiplies the kind's own shape, so a
+                // HOW BIG THE SEAL WAS. Multiplies the kind's own shape, so a
                 // big Solid still raises a stocky brute and a big Liquid still
                 // raises a lanky one.
-                z.transform.localScale *= _summonBuf[i].SizeMul;
+                z.transform.localScale *= sizeMul;
+
+                // EVERYTHING THAT HANGS OFF BODY SIZE FOLLOWS IT DOWN (his
+                // ruling: "the mass should scale with the size that makes
+                // sense... base stats should also scale with the size, but the
+                // lines should be multipliers").
+                //
+                // MASS IS CUBIC because that is what physically makes sense — it
+                // is volume, not height. A 0.25m scout weighs a quarter kilo and
+                // gets punted across the square; the 5.4m giant is 2.5 tonnes and
+                // walks through a shove like weather. A flat 70kg at every scale
+                // made the scout a lead pellet.
+                //
+                // COMBAT STATS ARE LINEAR in size, then take the line bonus.
+                // Cubic health would hand the giant 36x a normal zombie before
+                // the 3.58x triangle multiplier even lands.
+                var srb = z.GetComponent<Rigidbody>();
+                if (srb != null) srb.mass *= sizeMul * sizeMul * sizeMul;
+
+                var sdmg = z.GetComponent<Damageable>();
+                if (sdmg != null) sdmg.Health *= sizeMul * power;
+                z.AttackDamage *= sizeMul * power;
+
+                // BIG IS SLOW, SMALL IS QUICK (his ruling). Inverse SQUARE ROOT,
+                // not straight inverse: 1/sizeMul would make the scout an 8.5 m/s
+                // blur and the giant a 0.4 m/s statue. This gives the scout a
+                // 3.3 m/s scurry and the giant a 0.72 m/s lumber. The floor keeps
+                // an uncapped kaiju lumbering instead of becoming scenery.
+                // ⛔ REVERTED (Marko Aug 11: "the zombie is completely out of
+                // control... can you revert the movement logic to what it was
+                // before"). Size no longer touches WalkSpeed at all — his
+                // "bigger slower, smaller faster" rule is worth having, but it
+                // rode on sizeMul, and once seal diameter drove size absolutely
+                // and UNCLAMPED, the inverse-sqrt produced speeds no clamp of
+                // mine caught in time. A zombie's speed is its KIND's speed
+                // again, exactly as it was before today.
 
                 z.gameObject.AddComponent<SummonedZombie>()
-                    .Begin(seal.OwnerId, isRanged, life);
+                    .Begin(seal.OwnerId, isRanged, life, _summonBuf[i].GasRadius);
 
                 // in this mode ignoring a zombie has to cost you something
                 var brain = z.GetComponent<ZombieBrain>();
@@ -329,7 +438,11 @@ namespace SpellyZombie
                     Rune = rune,
                     Center = centers[i] + normal * 0.06f,
                     Normal = normal,
-                    Radius = Mathf.Clamp(glyphHalf * DrawingConfig.ZoneRadiusScale, 0.9f, 3.5f),
+                    // the floor is the NEUTRAL POINT — SpellParticle.SizeMul
+                    // returns exactly 1 there, so a smallest rune is unchanged.
+                    // Shared constant so the floor and the reference cannot drift.
+                    Radius = Mathf.Clamp(glyphHalf * DrawingConfig.ZoneRadiusScale,
+                        DrawingConfig.RuneSizeMin, 3.5f),
                     GlyphSize = glyphHalf,
                     Intensity = strength,
                     Phase = Random.value * 6.28f,
@@ -837,7 +950,7 @@ namespace SpellyZombie
 
             // ---- HEAT × FORM — the showpieces ----
             if (solid && heatUp) { FormConjures.Meteorite(z.Center, z.Normal, mat, size, 1 + buff.More, lineage); return; }
-            if (solid && heatDown) { FormConjures.IceSpikes(z.Center, z.Normal, mat, size, lineage); return; }
+            if (solid && heatDown) { FormConjures.IceSpikes(z.Center, z.Normal, mat, size, lineage, _ownerId); return; }
             if (!solid && heatDown) { FormConjures.Glacier(z.Center, mat, z.Intensity, lineage); return; }
             if (!solid && heatUp) { FormConjures.HotLiquid(z.Center, z.Normal, mat, size, z.Intensity, lineage); return; }
 

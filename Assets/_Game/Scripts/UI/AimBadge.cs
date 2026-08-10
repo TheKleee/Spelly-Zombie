@@ -162,26 +162,19 @@ namespace SpellyZombie
             // natural"). The badge appears at the exact moment your ink
             // authority lifts the thing free — the same law TryGrab enforces,
             // asked ahead of time instead of after the keypress.
-            if (!HandGrab.LocalHolding)
+            // ROOTED THINGS COUNT TOO (Marko Aug 10: a freshly inked bench that
+            // was NEVER lifted showed no badge) — but the badge must ask the
+            // GRAB'S OWN QUESTION, not a lookalike. This used to test "any
+            // InkMark under the collider vs prop mass", which knew nothing about
+            // the world-scale refusal or anchor hold, so aiming at inked ground
+            // promised an E the keypress then refused ("The E pops up even on
+            // things I can't interact with which is a clear bug"). One law, one
+            // implementation, asked ahead of time instead of after.
+            if (!HandGrab.LocalHolding && HandGrab.CanAcquire(hit.collider, me))
             {
-                // ROOTED THINGS COUNT TOO (Marko Aug 10: a freshly inked bench
-                // that was NEVER lifted showed no badge) — a static prop has no
-                // Rigidbody until the grab tears it loose, so the authority
-                // question is asked with the default prop mass instead.
                 var rb = hit.collider.attachedRigidbody;
-                bool person = hit.collider.GetComponentInParent<SimpleFPSController>() != null
-                    || hit.collider.GetComponentInParent<Creature>() != null;
-                if (!person)
-                {
-                    var root = rb != null ? rb.transform : hit.collider.transform;
-                    var marks = root.GetComponentsInChildren<InkMark>(true);
-                    if (marks.Length > 0)
-                    {
-                        float mass = rb != null ? rb.mass : DrawingConfig.PropMassKg;
-                        if (InkMark.AuthorityIn(marks, me) >= mass * DrawingConfig.LiftInkPerKg)
-                            Point(rb != null ? (Component)rb : hit.collider, root, hit, "E");
-                    }
-                }
+                var root = rb != null ? rb.transform : hit.collider.transform;
+                Point(rb != null ? (Component)rb : hit.collider, root, hit, "E");
             }
         }
 

@@ -25,6 +25,8 @@ namespace SpellyZombie
         // the size is actually CHANGING, little motes flake off (drain) or
         // gather in (reform) — the same effect both ways, played opposite.
         Vector3 _wandScale0;
+        WandTipFlow _flow;   // the three motes at the tip: out = draining, in = filling
+        float _lastF = -1f;
         WandState _state;
         float _factor = 1f;
         GameObject _fx;   // HIS shrink/grow effect: a child named "WandFX",
@@ -84,6 +86,16 @@ namespace SpellyZombie
             var s = _fullScale;
             s.y *= Mathf.Max(f, 0.03f); // a dry wand keeps a visible dreg
             _ink.localScale = s;
+
+            // WHICH WAY IS IT GOING? (Marko Aug 10: "it does shrink and increase
+            // but there's no vfx for it... a small vfx playing on the tip of the
+            // wand telling us if it's growing or shrinking"). The length alone
+            // made you watch for a second to find out. The tip says it now.
+            if (_flow == null) _flow = GetComponent<WandTipFlow>()
+                ?? gameObject.AddComponent<WandTipFlow>();
+            float dt = Mathf.Max(0.0001f, Time.deltaTime);
+            _flow.Report((f - _lastF) / dt);
+            _lastF = f;
 
             // the wand body follows the ink — wandless melts it to nothing,
             // a refill FORMS it back (the same motion, reversed)

@@ -280,15 +280,10 @@ namespace SpellyZombie
             if (desired.sqrMagnitude > 0.01f) desired = desired.normalized * speed;
             else desired = Vector3.zero;
 
-            // THE RAY HAS TO CLEAR ITS OWN LEGS. transform.position is the
-            // capsule's CENTRE and its half-height is localScale.y, so a fixed
-            // 1.35 only reached the floor while the zombie was base-sized: a
-            // summon scaled past ~1.6x was permanently "airborne", dropped to
-            // grip 2, and crawled up to speed instead of walking (Marko Aug 10:
-            // "they move strangely"). Same margin as before, measured off the
-            // body it actually has.
-            bool grounded = Physics.Raycast(transform.position, Vector3.down,
-                transform.localScale.y + 0.53f,
+            // REVERTED to the fixed reach (Marko Aug 11). Scaling it off
+            // localScale.y was defensible on its own, but it is part of the same
+            // movement pass that broke, and known-good beats clever.
+            bool grounded = Physics.Raycast(transform.position, Vector3.down, 1.35f,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             float grip = grounded ? 14f : 2f;
 
@@ -756,6 +751,102 @@ namespace SpellyZombie
             }
         }
 
+        static readonly Collider[] _boomHits = new Collider[48];
+
+        /// THE CURSED INK GOING OFF (Marko Aug 10). A seal closed on a zombie by
+        /// an acolyte blows it: the same gas it was already breathing, at
+        /// SummonGasDetonateMul — his flat "always 3x larger" — and this one
+        /// SHOVES, which is the whole point. His words: "a detonation makes a
+        /// much bigger cloud that SHOVES people away, which is how you steal the
+        /// cauldron", and the play he wants is a wizard chasing a zombie and
+        /// getting it blown in his face.
+        ///
+        /// Both dials arrive from the seal: bigger seal = bigger explosion,
+        /// fewer lines = more potent ("a triangle on a zombie is a really potent
+        /// poison"). Size widens the blast, potency drives what it does to you.
+        public void Detonate(float sizeMul, float potency)
+        {
+            // 3x THE DEATH CLOUD, not 3x the living aura — the aura is only a
+            // body-width now, so multiplying that would have quietly shrunk
+            // every detonation to nothing.
+            var summoned = GetComponent<SummonedZombie>();
+            float radius = (summoned != null ? summoned.GasRadius : DrawingConfig.SummonGasRadiusMin)
+                * DrawingConfig.SummonGasDetonateMul * Mathf.Max(0.2f, sizeMul);
+
+            // AND NEVER SMALLER THAN THE THING THAT BLEW UP (Marko Aug 10: "it
+            // should be larger than the zombie body at least 3x"). The gas
+            // radius comes off the rune-to-seal ratio, which knows nothing about
+            // how big the body is — so a fat zombie with a small rune could
+            // detonate inside its own silhouette. Measured off the body it
+            // actually has: DIAMETER at least 3x its height, hence 1.5x here.
+            float bodyHeight = transform.localScale.y * 2f;
+            radius = Mathf.Max(radius, bodyHeight * DrawingConfig.DetonateBodyMul);
+            Vector3 at = transform.position + Vector3.up * bodyHeight * 0.35f;
+
+            // IT LEAVES THE GROUND POISONED — one zone, standing where the
+            // zombie stood, at his flat 3x. The field draws its own dome, ring
+            // and skin and fades on its own clock, so there is nothing here to
+            // hand-roll: no puff cadence, no sprite scaling, no lifetime timer.
+            PoisonField.Open(at, radius, DrawingConfig.DetonateFieldSeconds);
+            Juice.Thud(at);
+
+            float shove = DrawingConfig.DetonateShove * potency;
+
+            // ⛔ PLAYERS BY LIST, PROPS BY QUERY — and this split IS the fix.
+            // The old single OverlapSphere used Physics.DefaultRaycastLayers,
+            // which is ~(1 << 2), while every player collider lives on layer 2
+            // on purpose ("the pen ignores our own body"). So the player branch
+            // below was unreachable code: only furniture ever flew, and the
+            // blast in your face moved you nowhere. Same root cause as the gas.
+            foreach (var p in SimpleFPSController.All)
+            {
+                if (p == null || p.IsDowned) continue;
+                Vector3 away = p.transform.position - at;
+                away.y = 0f;
+                float dist = away.magnitude;
+                if (dist > radius) continue;
+                if (away.sqrMagnitude < 0.01f) away = Random.insideUnitSphere;
+
+                // falls off with distance, so standing at the edge shoves you
+                // rather than deleting you
+                float t = 1f - Mathf.Clamp01(dist / Mathf.Max(0.1f, radius));
+
+                // THE BLAST IS PHYSICS, THE POISON IS CORRUPTION (Marko Aug 10:
+                // "it shouldn't deal damage to Acolytes[,] the explosion itself
+                // should push acolytes away if caught in the blast as well").
+                // The shove reaches EVERYONE — an acolyte who stands too close
+                // to their own trick still gets thrown — while the poison passes
+                // through their corrupted body. Asked PER VICTIM, so this stays
+                // right when the other side is a different player.
+                bool corrupted = Sides.IsAcolytePlayer(p);
+
+                // through Shove, not TakeHit — a blast this size has to break
+                // your drawing before the push can land, or his controller
+                // zeroes it the same frame
+                Shove.Hit(p,
+                    away.normalized * shove * t + Vector3.up * shove * 0.3f * t,
+                    corrupted ? 0f : DrawingConfig.DetonateDamage * potency * t,
+                    "a zombie went off");
+            }
+
+            // loose props ride the blast too — the cloud you cannot see through
+            // plus furniture in the air is the escape window. Props sit on
+            // ordinary layers, so the query mask is fine for them.
+            int n = Physics.OverlapSphereNonAlloc(at, radius, _boomHits,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                if (_boomHits[i] == null) continue;
+                var rb = _boomHits[i].attachedRigidbody;
+                if (rb != null && !rb.isKinematic && rb != _rb)
+                    rb.AddExplosionForce(shove * 18f, at, radius, 0.4f, ForceMode.Impulse);
+            }
+
+            // it was a spell; spells end. OnDeath adds its own small puff on top,
+            // which reads as the corpse gassing off inside the bigger blast.
+            _dmg2?.TakeDamage(999999f, "detonated");
+        }
+
         void OnDeath(string cause)
         {
             WorldEvents.Report(WorldEventKind.Death, transform.position, 2f); // others hear a buddy pop
@@ -764,15 +855,22 @@ namespace SpellyZombie
 
             // A CORPSE GASSES OFF (Marko Aug 10: "when zombie dies it should
             // create a poison cloud just not as explosive and large as when
-            // detonated"). The same green cloud a detonation will use, at its
-            // natural size and a short life, so dying reads as "that thing was
-            // full of bad air" and the detonation still gets to be the event.
-            // Spawned at chest height off the body it actually has, so a giant
-            // does not puff around its ankles.
-            if (FxLibrary.I != null)
-                FxLibrary.Spawn(FxLibrary.I.GasCloud,
-                    transform.position + Vector3.up * transform.localScale.y * 0.35f,
-                    null, DrawingConfig.ZombieDeathCloudSeconds);
+            // detonated"). It is the SAME cloud it was already breathing, at the
+            // SAME radius — dying just makes it visible as an event. The
+            // detonation is the loud version at SummonGasDetonateMul (3x), which
+            // is why this one is deliberately not scaled up at all.
+            // THE CORPSE IS THE CLOUD (Marko Aug 10). Alive it only carried a
+            // body-tight aura; everything the rune-to-seal ratio bought is
+            // released HERE. That is what makes killing one a decision instead
+            // of a reward, and it is why a courtyard where a fight happened
+            // stays poisoned afterwards — the atmosphere is earned, not ambient.
+            var mine = GetComponent<SummonedZombie>();
+            PoisonField.Open(
+                transform.position + Vector3.up * transform.localScale.y * 0.35f,
+                // a world zombie has no seal behind it, so no ratio — it gets the
+                // small end of the range rather than a number invented for it
+                mine != null ? mine.GasRadius : DrawingConfig.SummonGasRadiusMin,
+                DrawingConfig.ZombieDeathCloudSeconds);
 
             // NO CARD DROPS. Runes are learned by ANALYZING NATURAL OBJECTS with
             // the grimoire (his acquisition ruling), not by picking loot off a

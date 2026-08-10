@@ -29,21 +29,33 @@ namespace SpellyZombie
         public static void Meteorite(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
             float size, int count, ulong lineage)
         {
-            DrawingWorld.Instance?.LogEvent("the sky drops a METEORITE");
-            // a WALL or CEILING seal still calls the sky: when the surface
-            // normal isn't up-ish, spawn overhead and aim the fall at the seal
-            bool skyward = Vector3.Dot(normal, Vector3.up) >= 0.5f;
+            // ⛔ IT ERUPTS AND LEAPS — IT DOES NOT FALL OUT OF THE SKY.
+            // This used to spawn 12m overhead and drop, which broke his Aug 9
+            // no-sky-drop law and hid the cause: a boulder just appeared. Now
+            // the stone is born at the seal, catches the heat, and is THROWN
+            // upward while swelling, so the whole chain reads from the ground.
+            DrawingWorld.Instance?.LogEvent("the stone catches fire and LEAPS");
             for (int i = 0; i < count; i++)
             {
-                Vector3 spawn = (skyward ? at + normal * 12f : at + Vector3.up * 12f)
-                    + Random.insideUnitSphere * 1.2f;
-                Vector3 fall = skyward ? -normal : (at - spawn).normalized;
-                var m = Matter.Spawn(mat, MatterPhase.Solid, size * 1.4f, spawn);
+                Vector3 spawn = at + normal * (size * 0.7f) + Random.insideUnitSphere * 0.2f;
+                var m = Matter.Spawn(mat, MatterPhase.Solid, size, spawn);
                 m.Temperature = 420f; // glowing — ignites what it grazes
                 m.Lineage = lineage;
-                if (m.TryGetComponent<Rigidbody>(out var rb))
-                    rb.linearVelocity = fall * 11f + Random.insideUnitSphere * 1.5f;
                 m.gameObject.AddComponent<MeteorTrail>();
+
+                // "meteor is quite small" — it is born at the drawn size and
+                // GROWS on the way up, so the size you see landing is earned in
+                // front of you rather than assigned at spawn.
+                m.gameObject.AddComponent<MeteorRise>().Grow = DrawingConfig.MeteorGrowth;
+
+                if (m.TryGetComponent<Rigidbody>(out var rb))
+                {
+                    // launched along the SURFACE NORMAL, so a wall seal throws
+                    // it off the wall and a floor seal throws it straight up
+                    Vector3 up = Vector3.Dot(normal, Vector3.up) >= 0.5f ? Vector3.up : normal;
+                    rb.linearVelocity = (up + Random.insideUnitSphere * 0.12f).normalized
+                        * DrawingConfig.MeteorRiseSpeed;
+                }
             }
         }
 
@@ -51,7 +63,7 @@ namespace SpellyZombie
         /// ICE SPIKES: frozen shards of the surface's material erupt from the
         /// ground in a ring — standing terrain that chills whatever touches it.
         public static void IceSpikes(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
-            float size, ulong lineage)
+            float size, ulong lineage, int owner = -1)
         {
             DrawingWorld.Instance?.LogEvent("the ground grows ICE SPIKES");
             Juice.Crackle(at);
@@ -63,12 +75,25 @@ namespace SpellyZombie
                 var m = Matter.Spawn(mat, MatterPhase.Solid, size, at + ring + normal * size * 0.8f);
                 m.Temperature = -60f;
                 m.Lineage = lineage;
-                // a spike, not a cube: stretched along the surface normal and
-                // planted (kinematic) — it's terrain for its lifetime
+                // a spike, not a cube: stretched to a point
                 m.transform.localScale = new Vector3(size * 0.45f, size * 2.4f, size * 0.45f);
                 m.transform.rotation = Quaternion.FromToRotation(Vector3.up, normal)
                     * Quaternion.Euler(Random.Range(-12f, 12f), Random.value * 360f, Random.Range(-12f, 12f));
-                if (m.TryGetComponent<Rigidbody>(out var rb)) rb.isKinematic = true;
+
+                // ⛔ THEY HUNT, THEY DO NOT SIT (Marko Aug 10: "some useless ice
+                // shards... they do absolutely nothing. If they were floating
+                // and attacking like spikes they'd be nice but just being on
+                // the ground is worthless").
+                //
+                // They were planted KINEMATIC — literally terrain, in a game
+                // whose spell law is that everything erupts, leaps and slams.
+                // MatterStrike is that law, already written and already used by
+                // the plain solid conjure: float, lock a target, jump, hit with
+                // real momentum. A spike is the shape it was always begging for.
+                if (m.TryGetComponent<Rigidbody>(out var rb)) rb.isKinematic = false;
+                var strike = m.GetComponent<MatterStrike>();
+                if (strike == null) strike = m.gameObject.AddComponent<MatterStrike>();
+                strike.Init(owner, mat, MatterPhase.Solid, size);
             }
         }
 

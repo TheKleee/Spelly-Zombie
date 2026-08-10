@@ -86,6 +86,13 @@ namespace SpellyZombie
             else SpawnCodeChunks(count, b, mat);
 
             if (CodeSplinters) Splinters(b, mat);
+
+            // THE LOBBY PUTS ITSELF BACK TOGETHER (Marko Aug 10). It is the
+            // practice ground, so it has to survive being practised on —
+            // acolytes need shapes left to scan and wizards need things left to
+            // break. In a real round, broken stays broken.
+            if (RoundDirector.InLobby)
+                LobbyRespawn.Take(gameObject, DrawingConfig.LobbyRespawnSeconds);
         }
 
         /// YOUR prefabs become real, physical, chemistry-aware debris — with

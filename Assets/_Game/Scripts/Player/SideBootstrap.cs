@@ -96,6 +96,9 @@ namespace SpellyZombie
                     if (p == null) continue;
                     if (p.GetComponent<ShapeShift>() == null) p.gameObject.AddComponent<ShapeShift>();
                     if (p.GetComponent<SideLook>() == null) p.gameObject.AddComponent<SideLook>();
+                    // the acolyte's R overwatch belongs on this same list — a
+                    // script nobody attaches is a key that does nothing
+                    if (p.GetComponent<ZombieWatch>() == null) p.gameObject.AddComponent<ZombieWatch>();
                 }
 
                 // push and pull, before anyone has absorbed anything

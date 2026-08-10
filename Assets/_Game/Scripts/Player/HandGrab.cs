@@ -453,6 +453,52 @@ namespace SpellyZombie
         /// THE ACQUIRE LAW, owner-parameterized — one implementation for the local
         /// grab and for the host applying a client's GrabIntent (netcode §4).
         /// Returns the freed body, or null with the refusal logged.
+        /// WOULD THE GRAB SUCCEED? The same law as AcquireBody below with every
+        /// mutation and every log stripped out, so the badge asks the question
+        /// the keypress will actually answer.
+        ///
+        /// Marko Aug 10: "The E pops up even on things I can't interact with
+        /// which is a clear bug." The badge had its OWN lookalike test — any
+        /// InkMark under the collider against a prop-mass threshold — which knew
+        /// nothing about the world-scale refusal, about InkMark.Host, or about
+        /// anchor hold. Aiming at ground he had drawn seals on passed the
+        /// lookalike and failed the real one. Two implementations of one rule is
+        /// the bug; this is the one rule.
+        public static bool CanAcquire(Collider aimedCollider, int ownerId)
+        {
+            if (aimedCollider == null) return false;
+            var hitRb = aimedCollider.attachedRigidbody;
+
+            var zomb = aimedCollider.GetComponentInParent<Zombie>();
+            bool liftableCreature = zomb != null && !zomb.IsDemon;
+            if (aimedCollider.GetComponentInParent<SimpleFPSController>() != null
+                || (!liftableCreature && aimedCollider.GetComponentInParent<Creature>() != null)
+                || aimedCollider.GetComponentInParent<HeldWeapon>() != null)
+                return false;
+
+            if (hitRb != null)
+            {
+                // a kinematic body has to clear the world refusal AND carry ink
+                // before it would be made dynamic — then it faces the same
+                // authority test every other body does, exactly as below
+                if (hitRb.isKinematic)
+                {
+                    if (Liftable.WorldScale(hitRb.transform, out _)) return false;
+                    if (InkMark.AuthorityIn(hitRb.transform, ownerId) <= 0f) return false;
+                }
+                return AuthorityFor(hitRb, hitRb.GetComponentsInChildren<InkMark>(true),
+                    ownerId, out _) > 0f;
+            }
+
+            var host = InkMark.Host(aimedCollider.transform);
+            var lift = host.GetComponentInParent<Liftable>();
+            if (lift != null) host = lift.transform;
+            if (Liftable.WorldScale(host, out _)) return false;   // the ground and the buildings
+
+            float hold = lift != null ? lift.HoldStrength : InkMark.AnchorHold(host);
+            return InkMark.AuthorityIn(host, ownerId) >= hold;
+        }
+
         public static Rigidbody AcquireBody(Collider aimedCollider, int ownerId)
         {
             var hitRb = aimedCollider.attachedRigidbody;

@@ -22,6 +22,14 @@ namespace SpellyZombie
     {
         public static bool IsActive { get; private set; }
 
+        static SelfPaint _live;
+
+        /// BLOWN OFF THE EASEL (Marko Aug 10: "whenever you're in any mode like
+        /// posing or shapeshift mode... you drop into either first person or
+        /// third person mode so that your body can ragdoll"). A hit big enough
+        /// ends the mode instead of being swallowed by it — see Shove.
+        public static void Blown() { if (IsActive && _live != null) _live.Exit(); }
+
         /// The painter's root while the mode is open — the pen raycasts ONLY
         /// against this hierarchy (a miss draws NOTHING; never ink on the
         /// world behind you = no accidental spells).
@@ -192,6 +200,7 @@ namespace SpellyZombie
             if (_cam == null) _cam = GetComponentInChildren<Camera>();
             if (_cam == null) return;
             IsActive = true;
+            _live = this;
 
             _camLocalPos = _cam.transform.localPosition;
             _camLocalRot = _cam.transform.localRotation;
@@ -256,6 +265,7 @@ namespace SpellyZombie
         void Exit()
         {
             IsActive = false;
+            _live = null;
             ActiveRoot = null;
             // skin-shell ink moves onto the bones so it rides the animation;
             // fallback capsule ink already lives there

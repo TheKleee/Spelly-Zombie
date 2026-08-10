@@ -823,16 +823,42 @@ namespace SpellyZombie
             if (transform.position.y < FallCatcher.KillY) FallCatcher.Catch(this);
         }
 
-        /// THE one third-person toggle (Marko's order, Aug 10): Tab calls this,
-        /// and the acolyte's F-near-an-object calls this very same method — two
-        /// callers, one behavior, nothing imitated.
+        /// TAB'S toggle, and only Tab's — the one caller that genuinely means
+        /// "the other mode, whichever that is". Everything that wants a SPECIFIC
+        /// mode calls EnterFirstPerson / EnterThirdPerson below instead.
         public void ToggleThirdPerson()
         {
-            ThirdPersonActive = !ThirdPersonActive;
+            if (ThirdPersonActive) EnterFirstPerson();
+            else EnterThirdPerson();
+        }
+
+        /// ASK FOR THE MODE BY NAME (Marko Aug 10: "this is why we put the third
+        /// person aspects in one method so you would call it when we need the
+        /// mode. The same should be done for the first person. No more confusion
+        /// please").
+        ///
+        /// Callers that need a SPECIFIC mode must say so instead of flipping the
+        /// toggle and hoping the current state was the one they assumed —
+        /// getting that wrong lands you in the opposite mode. Both are
+        /// idempotent, so asking twice is free, and BOTH ARE FULL MODE CHANGES:
+        /// everything downstream keys off ThirdPersonActive, which is what hands
+        /// the wand and grimoire back on the way into first person.
+        public void EnterThirdPerson()
+        {
+            if (ThirdPersonActive) return;
+            ThirdPersonActive = true;
             if (_emotes == null) _emotes = GetComponent<EmotePlayer>();
             _emotes?.StopToRest();
-            // back to first person: aim owns the pivot again, immediately
-            if (!ThirdPersonActive && CameraPivot != null)
+        }
+
+        public void EnterFirstPerson()
+        {
+            if (!ThirdPersonActive) return;
+            ThirdPersonActive = false;
+            if (_emotes == null) _emotes = GetComponent<EmotePlayer>();
+            _emotes?.StopToRest();
+            // aim owns the pivot again, immediately
+            if (CameraPivot != null)
                 CameraPivot.localEulerAngles = new Vector3(_pitch, 0f, 0f);
         }
 

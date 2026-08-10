@@ -14,7 +14,10 @@ namespace SpellyZombie
     /// lands, this replaces the run-gated ink spend and kills passive regen.
     public class WandState : MonoBehaviour
     {
-        public const float DrainPerSec = 6f;    // drawing wears the wand down
+        /// Drawing wears the wand down. A KNOB now, not a const — his "quickly
+        /// gets used up when drawing" has to be tunable from sz_tuning.json, and
+        /// as a const it was the one drain in the game he could not reach.
+        public static float DrainPerSec => DrawingConfig.WandDrainPerSec;
         public const float DissolveGrace = 6f;  // empty this long → wandless
         public const float ReformAt = 4f;       // refilled past this → wand returns
 

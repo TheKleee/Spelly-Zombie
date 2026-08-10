@@ -14,14 +14,40 @@ namespace SpellyZombie
 
         public static readonly List<PlayerInk> All = new List<PlayerInk>();
 
-        void Awake() => All.Add(this);
+        void Awake()
+        {
+            All.Add(this);
+            // EVERYONE STARTS WANDLESS, LOBBY INCLUDED (Marko Aug 10: "lobby is
+            // initial preparation for the gameplay so the rule should apply in
+            // lobby as well" — the same law as his earlier "the game should not
+            // be played differently just cause it's lobby").
+            //
+            // Assigned HERE rather than by editing his prefab: Player.prefab
+            // serializes Ink: 100, so the field initializer above never runs for
+            // the real player. Setting it in Awake beats the bake and keeps the
+            // value a tunable knob instead of buried in an asset.
+            Ink = DrawingConfig.StartInk;
+        }
         void OnDestroy() => All.Remove(this);
 
-        // slow passive regen — kills are the FAST refill, but you can never be
-        // stranded with an empty well and no way to fight for more
+        SimpleFPSController _pilot;
+
+        /// ⛔ NO FREE INK FOR ANYONE (Marko Aug 10). This used to Award() every
+        /// frame, unconditionally, to every player of both sides — a SECOND
+        /// passive regen sitting on top of CauldronEconomy's distance-scaled
+        /// one. WandState's own header has said since the day it was written
+        /// that it "kills passive regen" once the real map lands; this is that.
+        ///
+        /// His rule, split by side:
+        ///   WIZARD  — nothing passive at all. The pot is the only well, and
+        ///             CauldronEconomy.LocalWandTick already pours it.
+        ///   ACOLYTE — ink EVAPORATES. Corrupt ink does not keep, which is what
+        ///             forces them to keep moving and keep scanning.
         void Update()
         {
-            Award(DrawingConfig.InkRegenPerSec * Time.deltaTime); // same rules in the lobby
+            if (_pilot == null) _pilot = GetComponent<SimpleFPSController>();
+            if (!Sides.IsAcolytePlayer(_pilot)) return;   // wizards: the pot, or nothing
+            Ink = Mathf.Max(0f, Ink - DrawingConfig.AcolyteInkEvaporatePerSec * Time.deltaTime);
         }
 
         // the Drawing perk deepens the well (Perks.InkMax) — no perk = old value

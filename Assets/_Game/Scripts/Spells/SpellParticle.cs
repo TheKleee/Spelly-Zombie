@@ -23,6 +23,38 @@ namespace SpellyZombie
         public ParticleKind Kind;
         public float Power = 1f;
         public Vector3 Vel;
+        /// ⛔ FUSION ADDS, IT DOES NOT PICK THE BIGGER ONE (Marko Aug 10: "if a
+        /// particle is large than the element is large, if a particle has small
+        /// aoe than the combined spell will have small aoe — ofc combinations
+        /// are additions so they increase really quickly — you can combine
+        /// small with large").
+        ///
+        /// Every fusion path used Mathf.Max, which meant a small parent
+        /// contributed NOTHING: small + large came out exactly the size of the
+        /// large one, as though you had never drawn the small one. Addition is
+        /// what makes both parents matter, what makes a chain of combinations
+        /// escalate fast, and what makes deliberately mixing a small rune with
+        /// a big one a real choice rather than a wasted stroke.
+        ///
+        /// One function so no fusion path can quietly go back to Max.
+        public static float FuseSize(float a, float b) =>
+            Mathf.Min(a + b, DrawingConfig.FusedSizeCap);
+
+        /// The OTHER half of his law. FuseSize says how big a fusion IS;
+        /// this says what that does to an authored radius — "if a particle has
+        /// small aoe than the combined spell will have small aoe".
+        ///
+        /// One function so no effect invents its own curve, and it is not a new
+        /// curve either: Demon.Summon already ships exactly this mapping, and it
+        /// is the only consumer of SrcSize that works today. Reusing it means
+        /// the demon and every spell agree about what "big" means.
+        ///
+        /// RuneSizeMin (0.9) returns exactly 1, so a smallest-rune spell is
+        /// unchanged. The 1f floor is a fail-safe: a path that forgets to pass a
+        /// size gets today's behaviour, never a shrunken spell.
+        public static float SizeMul(float srcSize) =>
+            Mathf.Clamp(0.55f + srcSize * 0.5f, 1f, DrawingConfig.FusedSizeMulMax);
+
         public float SrcSize = 1f; // zone radius of the emitting rune — rides the
                                    // chain so the Demon is sized by the DRAWING
         public int Echo;           // ECHO powerup stacks: landing may re-emit
@@ -248,6 +280,13 @@ namespace SpellyZombie
             _graceFor = null;
             Temp = Lum = Density = Stick = 0f;
             Vel = Vector3.zero;
+            // A POOLED PARTICLE KEPT ITS LAST LIFE (found Aug 10). SrcSize and
+            // Echo were the two fields ResetForReuse forgot, so a recycled mote
+            // inherited a stale size all the way up to FusedSizeCap. Harmless
+            // while only the Demon read it; the moment size drives AoE it would
+            // hand a freshly drawn rune a random 3x spell.
+            SrcSize = DrawingConfig.RuneSizeMin;
+            Echo = 0;
         }
 
         // ------------------------------------------------------------- birth --
@@ -310,6 +349,7 @@ namespace SpellyZombie
             {
                 Vector3 d = (Random.onUnitSphere + Vector3.up * 0.6f).normalized;
                 var piece = Emit(Kind, transform.position + d * 0.3f, d, 0.5f, 1);
+                if (piece != null) piece.SrcSize = SrcSize;   // debris is the same SIZE of spell
                 if (piece != null) piece.Vel = d * (DrawingConfig.StrikeSpeed * 0.45f);
             }
             Juice.Thud(transform.position);
@@ -350,6 +390,7 @@ namespace SpellyZombie
             // a bigger body is also a bigger trigger, so strikes actually CONNECT
             go.transform.localScale = Vector3.one * (kind == ParticleKind.Push ? 0.18f : 0.3f);
             p.Power = Mathf.Clamp(intensity, 0.2f, 2f);
+            p.SrcSize = DrawingConfig.RuneSizeMin;  // callers that know better overwrite it
             p._generation = generation;
             p._appetite = Random.value; // personality: some motes stalk, some are lazy
 
@@ -895,8 +936,11 @@ namespace SpellyZombie
                     if (bothAway || bothToward)
                     {
                         Vector3 vat = (a.transform.position + b.transform.position) * 0.5f;
+                        // the ONE fusion path that never called FuseSize at all —
+                        // two arrows made the same tornado at any drawn size
                         var storm = TornadoField.Open(vat, (a.Power + b.Power) * 0.5f,
-                            down: bothToward, a.Lineage | b.Lineage);
+                            down: bothToward, a.Lineage | b.Lineage,
+                            FuseSize(a.SrcSize, b.SrcSize));
                         a.BecameObj = storm; b.BecameObj = storm; // arrows wait out their storm
                         a.Die(); b.Die();
                         return;
@@ -920,7 +964,7 @@ namespace SpellyZombie
                 Vector3 xat = (a.transform.position + b.transform.position) * 0.5f;
                 ulong xlin = a.Lineage | b.Lineage;
                 float xpow = (a.Power + b.Power) * 0.5f;
-                RuneGrammar.TryDemon(xlin, xat, Mathf.Max(a.SrcSize, b.SrcSize));
+                RuneGrammar.TryDemon(xlin, xat, FuseSize(a.SrcSize, b.SrcSize));
                 Object made = Exotics.Cast(exotic, a, b, xat, xpow);
                 a.BecameObj = made; b.BecameObj = made; // sustain: wait on the product
                 a.Die(); b.Die();
@@ -970,7 +1014,7 @@ namespace SpellyZombie
             hi.Power = la != lb
                 ? Mathf.Min(3f, Mathf.Min(hi.Power, lo.Power) * 1.25f)
                 : Mathf.Min(3f, hi.Power + lo.Power * 0.5f);
-            hi.SrcSize = Mathf.Max(hi.SrcSize, lo.SrcSize);
+            hi.SrcSize = FuseSize(hi.SrcSize, lo.SrcSize);
 
             Vector3 at = (a.transform.position + b.transform.position) * 0.5f;
             int target = Mathf.Min(3, Mathf.Max(la, lb) + 1);
@@ -1024,11 +1068,11 @@ namespace SpellyZombie
             switch (family)
             {
                 case ParticleKind.Spark: GrammarFX.FlameBurst(at, power); return null;
-                case ParticleKind.Frost: return SnowField.Open(at, power);
-                case ParticleKind.Light: return PlasmaField.Open(at, power);
-                case ParticleKind.Dark: return BlackHoleField.Open(at, power, growing: true);
-                case ParticleKind.Glue: return TimeFreezeField.Open(at, power);
-                case ParticleKind.Repel: return InertiaField.Open(at, power);
+                case ParticleKind.Frost: return SnowField.Open(at, power, srcSize);
+                case ParticleKind.Light: return PlasmaField.Open(at, power, srcSize);
+                case ParticleKind.Dark: return BlackHoleField.Open(at, power, growing: true, size: srcSize);
+                case ParticleKind.Glue: return TimeFreezeField.Open(at, power, srcSize);
+                case ParticleKind.Repel: return InertiaField.Open(at, power, srcSize);
             }
             return null;
         }
@@ -1040,7 +1084,7 @@ namespace SpellyZombie
             Vector3 at = (a.transform.position + b.transform.position) * 0.5f;
             ulong lineage = a.Lineage | b.Lineage;
             float power = (a.Power + b.Power) * 0.5f;
-            float srcSize = Mathf.Max(a.SrcSize, b.SrcSize);
+            float srcSize = FuseSize(a.SrcSize, b.SrcSize);
             bool big = EffLevel(a) >= 2 && EffLevel(b) >= 2; // lvl2 × lvl2 = the AREA version
             RuneGrammar.TryDemon(lineage, at, srcSize);
 
@@ -1059,7 +1103,7 @@ namespace SpellyZombie
                 }
                 case ParadoxKind.WhiteHole:
                 {
-                    var f = WhiteHoleField.Open(at, power * (big ? 1.6f : 1f));
+                    var f = WhiteHoleField.Open(at, power * (big ? 1.6f : 1f), srcSize);
                     a.BecameObj = f; b.BecameObj = f;
                     a.Die(); b.Die();
                     return;
@@ -1070,6 +1114,7 @@ namespace SpellyZombie
                     var keep = RuneGrammar.Family(a.Kind) == ParticleKind.Glue ? a : b;
                     var eat = keep == a ? b : a;
                     keep.Lineage = lineage;
+            keep.SrcSize = srcSize;   // Chaos Grip was the one survivor path that dropped it
                     keep.Stick = Mathf.Abs(keep.Stick) + Mathf.Abs(eat.Stick);
                     keep._chaosLeft = 999f;
                     keep._settled = false;
@@ -1097,7 +1142,7 @@ namespace SpellyZombie
             Temp += food.Temp; Lum += food.Lum; Density += food.Density; Stick += food.Stick;
             if (food.Kind == ParticleKind.Push || food.Kind == Kind) Vel += food.Vel * 0.55f;
             Power = Mathf.Min(3f, Power + food.Power * 0.35f);
-            SrcSize = Mathf.Max(SrcSize, food.SrcSize);
+            SrcSize = FuseSize(SrcSize, food.SrcSize);
             Lineage |= food.Lineage; // ancestry rides EVERY combination
             food.BecameObj = this;   // the food's rune now waits on ME (sustain law)
             _settled = false; // fresh attributes knock it loose

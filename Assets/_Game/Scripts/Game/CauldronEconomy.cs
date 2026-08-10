@@ -31,6 +31,9 @@ namespace SpellyZombie
         [Tooltip("The liquid ink object inside your cauldron model. Its Y scale becomes the ink level; its colour becomes the owning team's (black/green). Leave empty and the pot still WORKS, it just shows nothing inside.")]
         public Transform InkSurface;
 
+        /// The lobby pot skips prep and never runs dry — it is the practice well.
+        bool _lobby;
+
         public static CauldronEconomy Active { get; private set; }
 
         // authority truth (solo/host); clients mirror the synced copies below
@@ -67,10 +70,18 @@ namespace SpellyZombie
         void OnEnable()
         {
             Active = this;
-            _prep = DrawingConfig.PotPrepSeconds;
-            _open = false;
+
+            // THE LOBBY POT IS ALREADY BREWED, AND IMMORTAL (Marko Aug 10:
+            // "this ink is immortal in the lobby"). The lobby is the practice
+            // ground — a 30-second prep countdown before anyone can even fill a
+            // wand, followed by a reserve that runs out, makes it useless for
+            // testing. Here it opens full, stays full, and its ink is visible
+            // from the first frame so there is always something to draw with.
+            _lobby = RoundDirector.InLobby;
+            _prep = _lobby ? 0f : DrawingConfig.PotPrepSeconds;
+            _open = _lobby;
             _corrupt = false;
-            _ink = 0f;
+            _ink = _lobby ? DrawingConfig.PotCapacityInk : 0f;
             if (InkSurface != null) _surfaceScale0 = InkSurface.localScale;
             _blk = new MaterialPropertyBlock();
         }
@@ -191,6 +202,10 @@ namespace SpellyZombie
                 }
             }
 
+            // IMMORTAL IN THE LOBBY: everything above may bill it, and then it
+            // is simply full again. One line rather than a bypass at every
+            // drain, so a drain added later cannot forget the rule.
+            if (_lobby) _ink = DrawingConfig.PotCapacityInk;
             _ink = Mathf.Clamp(_ink, 0f, DrawingConfig.PotCapacityInk); // full = no rule, it clamps
             PushNet();
         }
@@ -268,9 +283,26 @@ namespace SpellyZombie
         static readonly int ColorId = Shader.PropertyToID("_Color");
 
         /// HIS ink object inside the pot: height = the ink, colour = the team.
+        static bool _warnedNoSurface;
+
         void PaintSurface()
         {
-            if (InkSurface == null) return;
+            // FAIL LOUDLY, NEVER SILENTLY (his standing rule). An unassigned
+            // InkSurface meant the pot had ink mechanically and showed nothing,
+            // and the return below said so to nobody — "when I said ink in
+            // cauldron I meant visually as well". Said once, not per frame.
+            if (InkSurface == null)
+            {
+                if (!_warnedNoSurface)
+                {
+                    _warnedNoSurface = true;
+                    Debug.LogError("[SpellyZombie] CauldronEconomy has no InkSurface assigned, so the " +
+                        "pot's ink is INVISIBLE. Drag the liquid object from inside your cauldron into " +
+                        "the InkSurface slot — its height becomes the ink level and its colour the " +
+                        "owning team. Put its PIVOT AT THE BOTTOM so it drains downward.", this);
+                }
+                return;
+            }
             float f = PrepRemaining > 0f ? 0f : Fill01;
             bool show = f > 0.01f;
             if (InkSurface.gameObject.activeSelf != show) InkSurface.gameObject.SetActive(show);

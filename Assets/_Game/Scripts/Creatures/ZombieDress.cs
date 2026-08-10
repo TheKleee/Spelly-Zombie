@@ -29,13 +29,6 @@ namespace SpellyZombie
         float _fitCapsuleY;      // the capsule scale the fit below was measured against
         Vector3 _fitBodyScale;   // the body scale that fit produced
 
-        /// SZ_ZombieAnim runs THREE DISCRETE STATES (Idle / Walk / Run), not a
-        /// blend — see CharacterWizard for why. Speed only picks which one; how
-        /// fast is carried by Animator.speed against the clip's own authored
-        /// ground speed, which is what stops the feet sliding.
-        const float RunAt = 3.0f;         // the Walk→Run threshold in the controller
-        const float WalkClipSpeed = 1.4f; // ground speed walking.fbx was authored at
-        const float RunClipSpeed = 4.5f;  // ditto zombie running.fbx
         bool _wasGettingUp, _socketed;
         static MaterialPropertyBlock _tintBlock;
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -174,6 +167,33 @@ namespace SpellyZombie
                 }
                 sk.updateWhenOffscreen = true;
             }
+            // ⛔ DRAW ON THE ZOMBIE, NOT ON ITS CAPSULE (Marko Aug 10: "you
+            // can't draw on a zombie the same way you can draw on a player").
+            //
+            // The physics body is a capsule; the thing you SEE is this skinned
+            // mesh, and the pen was hitting the capsule — so ink landed nowhere
+            // near where you aimed. The player solved this long ago and I got
+            // the reason wrong twice: it is NOT a per-frame BakeMesh. Per
+            // CharacterRig's axiom, BakeMesh is unusable on his rig, so the
+            // shell is the SHARED MESH mounted at identity under the renderer.
+            // One collider, built once, no per-frame cost.
+            if (smr != null && smr.sharedMesh != null)
+            {
+                var shell = new GameObject("PaintShell");
+                shell.transform.SetParent(smr.transform, false);
+                shell.transform.localPosition = Vector3.zero;
+                shell.transform.localRotation = Quaternion.identity;
+                shell.transform.localScale = Vector3.one;
+                shell.AddComponent<MeshCollider>().sharedMesh = smr.sharedMesh;
+                // ink drawn here must RIDE the body and persist, same as a player's
+                shell.AddComponent<PersistentInkSurface>();
+                // and it must lead BACK to the zombie: the dress lives outside
+                // the zombie's hierarchy on purpose, so GetComponentInParent
+                // would never find it and a seal drawn on the skin could not
+                // detonate the thing it was drawn on.
+                d.gameObject.AddComponent<ZombieOwner>().Of = z;
+            }
+
             if (skins.Length == 0 && _warnedNoSkin.Add(prefab.GetInstanceID()))
                 Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no SkinnedMeshRenderer. " +
                     "a static mesh can't be animated by the zombie rig.", prefab);
@@ -333,23 +353,17 @@ namespace SpellyZombie
             //   multiplied it by — so a giant covering 1.3 m/s is barely moving
             //   relative to its own legs and blends even further toward idle.
             //
-            // So: measure in body-lengths, let the controller pick ONE whole
-            // clip, and put how-fast into the playback rate. A shambler takes
-            // slow full strides instead of twitching in place, and a giant
-            // strides slowly instead of freezing mid-glide.
-            float grow = _fitCapsuleY > 0.0001f
-                ? Mathf.Max(0.0001f, _target.localScale.y) / _fitCapsuleY : 1f;
-            float bodySpeed = speed / grow;
-            _anim.SetFloat("Speed", bodySpeed);
-
-            // RATE AGAINST THE CLIP'S OWN GROUND SPEED, not the zombie's stat:
-            // the feet stop sliding only when the cycle advances at the rate the
-            // animator authored it to cover ground at. One-shots (attack, hit,
-            // fidget) ride this too, so it stays in a range that never reads as
-            // fast-forward.
-            float authored = bodySpeed >= RunAt ? RunClipSpeed : WalkClipSpeed;
-            _anim.speed = bodySpeed > 0.06f
-                ? Mathf.Clamp(bodySpeed / authored, 0.5f, 1.6f) : 1f;
+            // ⛔ REVERTED (Marko Aug 11: "he's not moving any animation, he's
+            // standing in place but is flying all over the place").
+            //
+            // Two things went out with this. Dividing by the body's scale meant
+            // an unclamped sizeMul fed the blend a wild number. And Animator.speed
+            // gates EVERY clip, not just locomotion — so one bad value there
+            // freezes the whole rig while physics keeps moving the capsule,
+            // which is exactly the symptom. Raw world speed, straight in, and
+            // the animator's own rate left alone.
+            _anim.SetFloat("Speed", speed);
+            _anim.speed = 1f;
 
             // struggled back to its feet — play the climb
             if (_creature != null)

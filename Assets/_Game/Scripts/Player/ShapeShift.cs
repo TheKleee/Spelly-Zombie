@@ -44,6 +44,10 @@ namespace SpellyZombie
         /// cursor shows, and the look stops turning the body.
         public static bool PoseOpen => Local != null && Local._posing;
 
+        /// BLOWN OUT OF THE POSE — a blast big enough ends shape posing so the
+        /// body is free to be thrown (Marko Aug 10). Driven by Shove.
+        public static void Blown() { if (Local != null && Local._posing) Local.SetPosing(false); }
+
         [Tooltip("Scan reach in meters.")]
         public float LearnRange = 2.6f;
 
@@ -114,7 +118,12 @@ namespace SpellyZombie
             // over with its own line below, so the two never fight for it.
             if (!_posing)
             {
-                UIPrompt.Show("TAB", "back to yourself", new Color(0.75f, 1f, 0.8f));
+                // BOTH WAYS OUT ARE NAMED (Marko Aug 10: "now we see that the Tab
+                // will get you back to yourself but we have no idea that R allows
+                // you to rotate"). One prompt slot, so R rides the same line
+                // rather than fighting TAB for it.
+                UIPrompt.Show("TAB", "back to yourself  ·  R turns you",
+                    new Color(0.75f, 1f, 0.8f));
                 return;
             }
 
@@ -311,7 +320,27 @@ namespace SpellyZombie
 
             _storedShape = root; // the last shape, remembered for TAB
             _storedGroundOffset = CenterHeightAboveGround(root);
-            _pilot.ToggleThirdPerson();
+
+            // ⛔ INK FIRST, THEN THE MODE (his order, Aug 10: "first give them
+            // the ink then make them go to the third person mode").
+            //
+            // Scanning is the acolyte's ONLY well — a wizard has the cauldron,
+            // an acolyte has this and nothing else. The award used to live in
+            // Scan(), which the 1-by-1 rebuild PARKED, so the live path granted
+            // nothing and an acolyte could never get a wand at all. Invisible
+            // until everyone started wandless with evaporation on top.
+            //
+            // It runs BEFORE the mode change so the wand is already full when
+            // the disguise goes on, rather than reforming underneath one.
+            var ink = GetComponent<PlayerInk>();
+            if (ink != null)
+            {
+                ink.Award(Perks.InkMax);   // full, not a trickle
+                Juice.Chime(transform.position);
+                DrawingWorld.Instance?.LogEvent("the shape fills your wand");
+            }
+
+            _pilot.EnterThirdPerson();   // the mode by name — scanning always ENTERS it
             // BECOME IT FIRST, TINT IT AFTER (his order, Aug 10): the clone
             // must be taken BEFORE the green goes on, or the disguise itself
             // would be born tinted and give the acolyte away instantly.
@@ -428,52 +457,6 @@ namespace SpellyZombie
             Wear();
             if (FxLibrary.I != null)
                 FxLibrary.Spawn(FxLibrary.I.Poof, transform.position + Vector3.up * 0.5f);
-        }
-
-        /// (Parked — the old one-shot scan flow, superseded by the 1-by-1 rebuild.)
-        void Scan(Transform source)
-        {
-            var mark = source.GetComponentInParent<ScannedMark>();
-            if (mark == null)
-            {
-                mark = source.gameObject.AddComponent<ScannedMark>();
-                mark.Paint(); // the green trail — permanent on this instance
-                // bigger object = more ink (his law) — size IS the reward
-                float dim = 1f;
-                var col = source.GetComponentInChildren<Collider>();
-                if (col != null)
-                {
-                    var s = col.bounds.size;
-                    dim = Mathf.Max(s.x, Mathf.Max(s.y, s.z));
-                }
-                GetComponent<PlayerInk>()?.Award(dim * DrawingConfig.ScanInkPerMeter);
-                Juice.Chime(transform.position);
-            }
-            else
-            {
-                DrawingWorld.Instance?.LogEvent("already scanned. it remembers you");
-            }
-
-            // rebuild the disguise as a VISUAL-ONLY clone of the source
-            if (_worn != null) Destroy(_worn);
-            _worn = Instantiate(source.gameObject, transform);
-            _worn.name = "WornShape";
-            foreach (var c in _worn.GetComponentsInChildren<Component>(true))
-            {
-                if (c is Transform || c is Renderer || c is MeshFilter) continue;
-                Destroy(c);
-            }
-            _worn.transform.localScale = source.lossyScale;
-            // ROTATED EXACTLY AS IT STOOD when you scanned it (his v3 spec #2)
-            _wornRot = source.rotation;
-            _worn.transform.rotation = _wornRot;
-            // stand it ON the ground: feet level plus half its own height
-            float half = 0.4f;
-            var wr = _worn.GetComponentInChildren<Renderer>();
-            if (wr != null) half = wr.bounds.extents.y;
-            _worn.transform.localPosition = new Vector3(0f, -0.9f + half, 0f);
-            Wear();
-            DrawingWorld.Instance?.LogEvent($"you are the {source.name} now"); // loud — a silent fail can never hide again
         }
 
         void Wear()

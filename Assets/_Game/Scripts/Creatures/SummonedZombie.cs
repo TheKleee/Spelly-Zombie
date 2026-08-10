@@ -20,15 +20,38 @@ namespace SpellyZombie
         /// Melee zombies got the Solid rune, ranged ones got Liquid.
         public bool Ranged;
 
+        /// The tight aura it breathes while alive — body-sized, not a fog bank.
+        public PoisonField Gas => _gas;
+        PoisonField _gas;
+
+        /// What the rune-to-seal ratio bought: the size of the cloud its CORPSE
+        /// releases, and the base a detonation multiplies by three.
+        public float GasRadius { get; private set; } = 1f;
+
         float _left, _paintRetry;
         bool _painted;
         static MaterialPropertyBlock _block;
 
-        public void Begin(int owner, bool ranged, float seconds)
+        public void Begin(int owner, bool ranged, float seconds, float gasRadius)
         {
             SummonedBy = owner;
             Ranged = ranged;
             _left = seconds;
+            // DIAL 2 IS THE DEATH CLOUD, NOT THE LIVING ONE (Marko Aug 10, after
+            // trying the fog-bank version). A permanent cloud cancelled his own
+            // zombie design — they "flee whoever chases them" and "their role is
+            // to be chased", and you cannot chase into gas you must not stand
+            // in. Death-only inverts it into the better trade: chasing is
+            // inviting, KILLING is punished, so the acolyte wants you to succeed.
+            // His frame for it is Deidara — the art is harmless until it goes off.
+            //
+            // Alive, it keeps a TIGHT aura roughly its own body: the Warcraft 3
+            // abomination he actually referenced hugged its unit, it was never a
+            // fog bank. Close enough to bite, not wide enough to wall off a street.
+            GasRadius = gasRadius;
+            float bodyHeight = transform.localScale.y * 2f;
+            _gas = PoisonField.Open(transform.position + Vector3.up * bodyHeight * 0.35f,
+                bodyHeight * DrawingConfig.PoisonAuraBodyMul, seconds + 1f, transform);
             Paint();
         }
 
