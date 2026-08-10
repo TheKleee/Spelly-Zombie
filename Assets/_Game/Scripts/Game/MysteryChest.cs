@@ -179,9 +179,11 @@ namespace SpellyZombie
                 yield return null;
             }
 
+            // NO WEAPONS (Marko Aug 8: "remove weapons from the game completely...
+            // they do not belong to this game at all right now") — the chest was
+            // the last live spawner; its 20% weapon slice folds into ink
             float roll = Random.value;
             if (roll < 0.60f) GiveCard();
-            else if (roll < 0.80f) GiveWeapon();
             else if (roll < 0.90f) GiveInk();
             else yield return TheBear();
 

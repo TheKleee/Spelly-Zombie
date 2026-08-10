@@ -459,6 +459,44 @@ namespace SpellyZombie
             }
         }
 
+        /// THE SAME GLYPH MEANS SOMETHING ELSE IN A CORRUPT HAND. Marko, Aug 6:
+        /// "When acolyte is drawing the runes should not be recognized the same
+        /// way as they are for the wizard. They should only recognize zombie icon
+        /// instead of solid and poison instead of liquid."
+        ///
+        /// The recogniser is untouched: it still reads the shape as StateSolid.
+        /// Only what the acolyte's book CALLS it changes, which is the same
+        /// corrupt-ink-reinterprets rule that makes an arrow command the dead
+        /// instead of shoving a crate.
+        ///
+        /// ⚠️ THE ICONS ARE PLACEHOLDERS. EmojiGrid holds exactly the twelve rune
+        /// sprites, so a zombie or a skull would render as a missing box until
+        /// they are added to the atlas. Names are correct today; art is Marko's.
+        public static string IconFor(RuneType r, int owner)
+        {
+            if (!Sides.IsAcolyte(owner)) return Icon(r);
+            switch (r)
+            {
+                case RuneType.StateSolid: return "🧟";   // U+1F9DF
+                case RuneType.StateLiquid: return "💀";  // U+1F480
+                default: return Icon(r);
+            }
+        }
+
+        public static string IconInlineFor(RuneType r, int owner) =>
+            !Sides.IsAcolyte(owner) ? IconInline(r) : IconFor(r, owner);
+
+        public static string ShortNameFor(RuneType r, int owner)
+        {
+            if (!Sides.IsAcolyte(owner)) return ShortName(r);
+            switch (r)
+            {
+                case RuneType.StateSolid: return "ZOMBIE";
+                case RuneType.StateLiquid: return "POISON";
+                default: return ShortName(r);
+            }
+        }
+
         /// INLINE form: the icon sitting INSIDE a line of text.
         ///
         /// Alignment is the SPRITE ASSET'S job, not this string's. EmojiGrid

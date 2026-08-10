@@ -61,6 +61,14 @@ namespace SpellyZombie
         /// the mesh) — SelfPaint's fallback must not slim them under the skin.
         public bool IsTorsoBone(Transform t) => t == _hips || t == _spine1;
 
+        [Header("His body — drag it in and the code stops guessing")]
+        [Tooltip("The BODY's Skinned Mesh Renderer (SZ_Body). Set this and the rig " +
+                 "uses it, full stop. Leave it empty and the rig searches, skipping " +
+                 "anything worn or held. Worth setting: a PROP can be a skinned mesh " +
+                 "too — his grimoire is — and a baked prefab carries it inside the " +
+                 "arm, where a depth-first search reaches it before the body.")]
+        public SkinnedMeshRenderer BodyRenderer;
+
         static readonly Color SkinColor = new Color(0.93f, 0.87f, 0.72f); // temp — Marko restyles materials
 
         [Header("Natural stride (Marko's root-motion experiment)")]
@@ -135,21 +143,34 @@ namespace SpellyZombie
             var custom = PrefabVault.Get("PlayerBody");
             _customBody = custom != null;
             var prefab = _customBody ? custom : CharacterLibrary.Model;
-            if (prefab == null || _pilot == null) return; // bean life continues
+
+            // A player he prefabbed already carries its Body, so it needs NO
+            // source prefab at all. Only a bodiless player needs one to build from.
+            bool hasBody = transform.Find("Body") != null;
+            if (_pilot == null || (prefab == null && !hasBody)) return; // bean life continues
+            if (hasBody) _customBody = true;   // his baked body keeps HIS materials
 
             RemovePlaceholder();
             BuildBody(prefab);
 
             // Marko's play-mode edits to props/sockets/eyes/IK anchors
             // re-apply here on every build (see CharacterFix — the runtime
-            // player can never be prefabbed; this is his control instead)
+            // player CAN now be prefabbed — BuildBody adopts an existing Body —
+            // but CharacterFix still re-applies his play-mode prop/socket edits)
             if (GetComponent<CharacterFix>() == null) gameObject.AddComponent<CharacterFix>();
         }
 
         /// Only the KNOWN graybox parts — anything Marko added by hand survives.
         void RemovePlaceholder()
         {
-            foreach (var childName in new[] { "Bean", "ShoulderPivot.L", "ShoulderPivot.R", "NeckPivot" })
+            // "GooglyEyes" here is the BEAN-ERA pair: SimpleFPSController attaches
+            // one to the player ROOT at 1.55m before any body exists, and this rig
+            // attaches the real pair to the HEAD BONE afterwards. Nobody removed
+            // the first, so every player carried two sets and the orphan floated
+            // at chest height. transform.Find only looks at DIRECT children, and
+            // the real pair lives deep under the head, so this can only ever hit
+            // the placeholder.
+            foreach (var childName in new[] { "Bean", "ShoulderPivot.L", "ShoulderPivot.R", "NeckPivot", "GooglyEyes" })
             {
                 var t = transform.Find(childName);
                 if (t != null) Destroy(t.gameObject);
@@ -161,15 +182,64 @@ namespace SpellyZombie
             var cc = GetComponent<CharacterController>();
             float bottom = cc != null ? cc.center.y - cc.height * 0.5f : -0.9f;
 
-            var model = Instantiate(prefab, transform);
+            // ---- HIS PREFABBED PLAYER ---------------------------------------
+            // Drag the player out of the Hierarchy and it comes with a "Body"
+            // child already on it. Instantiating a second one on top is what
+            // broke every prefab he ever made: two bodies, one of them unwired,
+            // animation on the wrong skeleton.
+            //
+            // If a Body is already here, ADOPT it. Everything below wires it
+            // identically, and his placement stands rather than being reset.
+            var already = transform.Find("Body");
+            bool adopted = already != null;
+            var model = adopted ? already.gameObject : Instantiate(prefab, transform);
             _model = model;
             model.name = "Body";
-            model.transform.localPosition = new Vector3(0f, bottom, 0f); // origin at feet
-            model.transform.localRotation = Quaternion.identity; // FaceForward aligns by anatomy below
+            if (!adopted)
+            {
+                model.transform.localPosition = new Vector3(0f, bottom, 0f); // origin at feet
+                model.transform.localRotation = Quaternion.identity; // FaceForward aligns by anatomy below
+            }
             foreach (var t in model.GetComponentsInChildren<Transform>(true))
                 t.gameObject.layer = 2; // the pen ignores our own body (body paint flips it)
 
-            _smr = model.GetComponentInChildren<SkinnedMeshRenderer>();
+            // THE BODY'S RENDERER, NOT THE FIRST SKINNED MESH IN THE TREE.
+            //
+            // AXIOM (Marko Aug 8, "we're drawing on capsules... the mesh collider
+            // that's supposed to be on the body doesn't exist"): this was
+            // GetComponentInChildren, a DEPTH-FIRST search. His Blender grimoire
+            // is itself a skinned mesh (bones Page_Left/Page_Right) and it hangs
+            // in Socket.HandL, deep inside the arm — which the search reaches
+            // BEFORE SZ_Body. So _smr became the BOOK: rootBone 'Page_Right',
+            // a flat 0.34 x 0.25 x 0.04 mesh at scale 1 instead of the body's
+            // 100. Body paint then baked its canvas from the grimoire, got a
+            // book-shaped blob, rejected it every time, and fell through to the
+            // capsules — which is ink under the skin.
+            //
+            // Runtime never hit this because it built the body BEFORE the props
+            // existed. His baked prefab carries them from frame one. Skip
+            // anything worn or held; the body is what is left.
+            // ON HIS BODY, HIS SLOT IS THE ONLY ANSWER (Marko Aug 8: "you keep
+            // making code that works without my input and that's not allowed").
+            // The auto-search IS what broke this: it picked his grimoire, which
+            // is a skinned mesh living inside the arm, and body paint spent the
+            // day building its canvas out of a book. A guess that silently
+            // succeeds is worse than no guess at all.
+            //
+            // So: a body HE authored must be pointed at. A body CODE built keeps
+            // the search, because it has no props yet and nobody exists to fill
+            // the slot. Empty slot on his body = a loud stop, never a guess.
+            _smr = BodyRenderer;
+            if (_smr == null && !adopted)
+                foreach (var skin in model.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                {
+                    if (skin != null && !IsHisProp(skin.transform)) { _smr = skin; break; }
+                }
+            if (_smr == null)
+                Debug.LogError("[SpellyZombie] CharacterRig: Body Renderer is empty. Drag your body's "
+                    + "Skinned Mesh Renderer (SZ_Body) into Character Rig > Body Renderer on the Player "
+                    + "prefab. Nothing is guessed here on purpose — a prop can be a skinned mesh too, and "
+                    + "guessing picked the grimoire.", gameObject);
             if (_smr != null)
             {
                 if (!_customBody) // his PlayerBody prefab keeps HIS materials
@@ -323,12 +393,24 @@ namespace SpellyZombie
             _bindHead = _head.localRotation;
 
             // EVERY bone's local position is structural (only the hips move) —
-            // cache the WHOLE skeleton for the runaway-limb guard. At Start the
-            // hierarchy under the hips is pure bone; props, sockets and ink
-            // all attach later and stay unguarded on purpose.
+            // cache the WHOLE skeleton for the runaway-limb guard.
+            //
+            // AXIOM (Marko Aug 7): this used to sweep EVERYTHING under the hips
+            // on the assumption that "at Start the hierarchy is pure bone —
+            // props and sockets attach later". A BAKED PLAYER PREFAB BREAKS
+            // THAT: his Socket.HandL/Grimoire, the wand, the hat and the eyes
+            // are all present at Start, so the guard adopted them as bones and
+            // then rewrote their localPosition EVERY FRAME. He moved the book
+            // into the hand, the guard snapped it back, and the book read as
+            // floating loose in the world ("your braindead code that moves
+            // things instead of keeping them where I left them").
+            //
+            // The guard exists for BONES ONLY — a ragdoll shove blowing a limb
+            // out of its socket. His props are HIS. Skip anything at or under a
+            // Socket.*, and the named props, exactly like CharacterFix.IsFixable.
             _boneHome.Clear();
             foreach (var t in _hips.GetComponentsInChildren<Transform>(true))
-                if (t != _hips) _boneHome.Add((t, t.localPosition));
+                if (t != _hips && !IsHisProp(t)) _boneHome.Add((t, t.localPosition));
 
             // ---- the face and the wardrobe: a BAKED body brings its own
             // eyes (Marko's edit is law); otherwise build them at his
@@ -383,6 +465,24 @@ namespace SpellyZombie
                 FaceForward(model.transform, footL, Bone("LeftToeBase"), transform.forward);
 
             _lastPos = transform.position;
+        }
+
+        /// HIS, not ours: a socket, anything worn or held inside one, or a
+        /// named prop. The runaway-limb guard must never write to these — he
+        /// places them by hand on the prefab and in play mode, and a snapshot
+        /// taken at Start would overrule him for the rest of the session.
+        /// Same test CharacterFix.IsFixable uses, so "what Marko may move" and
+        /// "what code may not move" are ONE definition, not two that drift.
+        static bool IsHisProp(Transform t)
+        {
+            for (var walk = t; walk != null; walk = walk.parent)
+            {
+                string n = walk.name;
+                if (n.StartsWith("Socket.") || n.StartsWith("IKAnchor_")
+                    || n == "Wand" || n == "Grimoire" || n == "GooglyEyes") return true;
+                if (n.StartsWith("mixamorig:")) return false; // reached bone again: pure skeleton
+            }
+            return false;
         }
 
         // ---------------------------------------------------- pen & grimoire --
@@ -450,8 +550,13 @@ namespace SpellyZombie
                 shaft.transform.localPosition = new Vector3(0f, 0.02f, 0.07f);
                 shaft.transform.localRotation = Quaternion.Euler(70f, 0f, 0f); // tip forward-up
                 shaft.transform.localScale = new Vector3(0.022f, 0.15f, 0.022f);
+                // THE WAND IS INK, SO IT IS BLACK (Marko, twice: "the wand needs
+                // to be the same color as the ink => both black, not brown and
+                // blue", and Aug 7 "black and green, not brown and green"). This
+                // line was still the old brown, so the placeholder wand argued
+                // with the ink column bolted to it.
                 shaft.GetComponent<Renderer>().sharedMaterial =
-                    MatterFX.Get(new Color(0.32f, 0.2f, 0.12f), MoteShade.Opaque);
+                    MatterFX.Get(DrawingConfig.InkColor, MoteShade.Opaque);
             }
 
             var bookSkin = _book != null ? null : PrefabVault.Get("Grimoire");
@@ -530,6 +635,18 @@ namespace SpellyZombie
         /// matches reality is accepted. Returns false when no honest shell
         /// can be made (mesh not readable → the wizard fixes that) — the
         /// limb capsules then catch the pen instead.
+        /// Free a mesh WE created, never one that came off disk. The shell can
+        /// legitimately be _smr.sharedMesh, and destroying that is an attempt on
+        /// his SZ_Body asset (Unity refuses with "Destroying assets is not
+        /// permitted to avoid data loss" — the refusal is the safety net, not
+        /// the design).
+        void DestroyBake(Mesh m)
+        {
+            if (m == null) return;
+            if (_smr != null && m == _smr.sharedMesh) return;
+            Destroy(m);
+        }
+
         public bool BeginBodyPaint()
         {
             if (_paintShell != null) return true;
@@ -578,6 +695,35 @@ namespace SpellyZombie
                 Mount(meshLocal, false, "local-bake/world");
                 Mount(meshScaled, true, "scale-bake/child");
                 Mount(meshScaled, false, "scale-bake/world");
+
+                // THE MESH ITSELF, NOT A BAKE OF IT (Marko Aug 8: "turn the
+                // capsules off and turn the mesh on").
+                //
+                // AXIOM: BakeMesh is unusable on his rig. Measured from his own
+                // console: smr.transform.lossyScale is 1 while the mesh's
+                // bindposes were authored at scale 100, so BOTH bakes return the
+                // SAME 0.18 x 0.26 x 0.15 blob against a 0.73 x 1.46 x 0.54 body
+                // — and because useScale true/false stop differing at scale 1,
+                // all four mounts above collapse into one measurement. No mount
+                // maths can rescue a bake that is the wrong SHAPE.
+                //
+                // sharedMesh is the authored asset in the renderer's own space,
+                // which is exactly where Unity draws the body at bind pose — and
+                // RelaxForPaint has just put the bones at rest, which is that
+                // pose. Mounted at identity under the renderer it needs no
+                // guessing at all. It still goes through the same measurement
+                // below, so if it is wrong it loses like any other candidate.
+                if (_smr.sharedMesh != null)
+                {
+                    var go = new GameObject("PaintShellCandidate");
+                    go.transform.SetParent(_smr.transform, false);
+                    go.transform.localPosition = Vector3.zero;
+                    go.transform.localRotation = Quaternion.identity;
+                    go.transform.localScale = Vector3.one;
+                    var c = go.AddComponent<MeshCollider>();
+                    c.sharedMesh = _smr.sharedMesh;
+                    candidates.Add((go, c, "sharedMesh/renderer"));
+                }
                 Physics.SyncTransforms(); // make collider.bounds tell the truth NOW
 
                 // TRUTH = the limb capsules' union: they sit ON the bones, so
@@ -598,13 +744,31 @@ namespace SpellyZombie
                 (GameObject go, MeshCollider col, string tag) best = default;
                 float bestScore = float.MaxValue;
                 var report = new List<string>(); // spoken only if the pick smells wrong
+                // RAW NUMBERS, not just ratios. A ratio cannot tell you WHICH of
+                // the two boxes is wrong, and four mounts that differ by 100x
+                // once reported one identical ratio — which is only possible if
+                // the mounts collapsed together. Print what was actually measured.
+                report.Add($"  TRUTH (capsule union): size {truth.size} center {truth.center}");
+                // WHO IS _smr, EXACTLY. The bake comes out a different SHAPE, not
+                // just a different size, so the question is no longer "which
+                // mount" but "which object, in what space". Print the chain.
+                string chain = "";
+                for (var w = _smr.transform; w != null; w = w.parent)
+                    chain += $"{w.name}(ls {w.localScale.x:F3}) < ";
+                report.Add($"  CHAIN: {chain}");
+                report.Add($"  smr: name '{_smr.name}' rootBone '{(_smr.rootBone != null ? _smr.rootBone.name : "NULL")}'"
+                    + $" | renderer WORLD bounds {_smr.bounds.size} center {_smr.bounds.center}");
+                report.Add($"  sharedMesh bounds {_smr.sharedMesh.bounds.size} verts {_smr.sharedMesh.vertexCount}"
+                    + $" | bakeLocal {meshLocal.bounds.size} | bakeScaled {meshScaled.bounds.size}");
                 foreach (var cand in candidates)
                 {
                     var b = cand.col.bounds;
                     float sizeMiss = SizeMismatch(b.size, truth.size);
                     float centerMiss = Vector3.Distance(b.center, truth.center) / height;
                     float score = (sizeMiss - 1f) + centerMiss;
-                    report.Add($"  {cand.tag}: size x{sizeMiss:F2}, center off {centerMiss:F2} body-heights");
+                    report.Add($"  {cand.tag}: bounds {b.size} center {b.center} "
+                        + $"| lossyScale {cand.go.transform.lossyScale.x:F3} "
+                        + $"| size x{sizeMiss:F2}, center off {centerMiss:F2} body-heights");
                     if (score < bestScore)
                     {
                         bestScore = score;
@@ -617,7 +781,12 @@ namespace SpellyZombie
                         cand.go.SetActive(false); // collider off this frame
                         Destroy(cand.go);
                     }
-                Destroy(best.col.sharedMesh == meshLocal ? meshScaled : meshLocal);
+                // destroy the bakes we made and NEVER the shared asset — the
+                // sharedMesh candidate hands back _smr.sharedMesh itself, and
+                // Destroy on that is "Destroying assets is not permitted to
+                // avoid data loss" (Unity refuses, but we must not ask)
+                if (best.col.sharedMesh != meshLocal) DestroyBake(meshLocal);
+                if (best.col.sharedMesh != meshScaled) DestroyBake(meshScaled);
 
                 float finalSize = SizeMismatch(best.col.bounds.size, truth.size);
                 float finalCenter = Vector3.Distance(best.col.bounds.center, truth.center);
@@ -628,7 +797,7 @@ namespace SpellyZombie
                 // the limb capsules catch the pen (drawing always works).
                 if (finalSize >= 1.6f || finalCenter >= height * 0.5f)
                 {
-                    if (best.col.sharedMesh != null) Destroy(best.col.sharedMesh);
+                    DestroyBake(best.col.sharedMesh);
                     Destroy(best.go);
                     Debug.LogWarning($"[SpellyZombie] Paint shell REJECTED ({best.tag}). Capsules catch the pen:\n"
                         + string.Join("\n", report));
@@ -705,8 +874,7 @@ namespace SpellyZombie
                 if (best != null) node.Rebase(best);
             }
             var shellCol = _paintShell.GetComponent<MeshCollider>();
-            if (shellCol != null && shellCol.sharedMesh != null)
-                Destroy(shellCol.sharedMesh); // no leaked bakes
+            if (shellCol != null) DestroyBake(shellCol.sharedMesh); // no leaked bakes
             Destroy(_paintShell.gameObject);
             _paintShell = null;
         }
@@ -872,6 +1040,11 @@ namespace SpellyZombie
                 {
                     _sockets = SocketSet.Build(_model, transform); // sockets first —
                     BuildPenProps();                               // the props live in them
+                    // NOW the pose is real: the animator has evaluated once and
+                    // the body faces forward. A baked prefab's EmoteRig already
+                    // ran its Awake at scene load and caught the bind pose, so
+                    // re-read rest here or body paint relaxes into a T-pose.
+                    GetComponent<EmoteRig>()?.CaptureRest();
                     _teamShown = MatchLobby.LocalTeam;
                     _capeStamped = StartingRuneChooser.HasChosen;
                     // CLOTH RETIRED (Marko) — capes are rigid pieces, no
@@ -1344,132 +1517,4 @@ namespace SpellyZombie
         bool _bonePrevValid;
     }
 
-    /// The hands work through the Animator's IK pass — upper body grips while
-    /// the legs keep running (Marko's spec). A held weapon gets both hands on
-    /// it; the wand slot holds PEN + GRIMOIRE positions in front of the view,
-    /// so you always see your hands while drawing. Lives on the model object
-    /// (OnAnimatorIK must share the Animator's GameObject).
-    public class HandIK : MonoBehaviour
-    {
-        public WeaponSlots Slots;
-        public Transform Pivot; // the camera pivot — pen/grimoire anchor
-
-        Animator _anim;
-        float _weight;
-        float _supportWeight; // the book hand: raised only while the grimoire is OPEN
-        Vector3 _grip, _support; // last targets, for the ease-out
-
-        // pen stance blends between READING (book up, you consult it) and
-        // CASTING (wand hand thrusts at the surface, book tucks away).
-        // The stances live in IKAnchor_* child transforms under the camera
-        // pivot — MARKO MOVES THEM in play mode and saves via Character Fix
-        // ("the grimoire is way too low": raise IKAnchor_ReadSupport).
-        Vector3 _penGrip, _penSupport;
-        static readonly Vector3 ReadGripDefault = new Vector3(0.17f, -0.25f, 0.38f);
-        static readonly Vector3 ReadSupportDefault = new Vector3(-0.11f, -0.07f, 0.46f); // raised: the open book must be SEEN
-        static readonly Vector3 CastGripDefault = new Vector3(0.14f, -0.16f, 0.56f);
-        static readonly Vector3 CastSupportDefault = new Vector3(-0.25f, -0.36f, 0.28f);
-        Transform _aReadGrip, _aReadSupport, _aCastGrip, _aCastSupport;
-
-        void Awake() => _anim = GetComponent<Animator>();
-
-        Transform Anchor(ref Transform cache, string anchorName, Vector3 def)
-        {
-            if (cache != null || Pivot == null) return cache;
-            var t = Pivot.Find(anchorName);
-            if (t == null)
-            {
-                t = new GameObject(anchorName).transform;
-                t.SetParent(Pivot, false);
-                t.localPosition = def;
-            }
-            cache = t;
-            return cache;
-        }
-
-        void OnAnimatorIK(int layerIndex)
-        {
-            if (_anim == null) return;
-            var weapon = Slots != null ? Slots.CurrentWeapon : null;
-            bool weaponHold = weapon != null && weapon.gameObject.activeInHierarchy;
-            bool penHold = !weaponHold && Slots != null && Slots.PenSelected && Pivot != null
-                && (!SimpleFPSController.ThirdPersonActive && !SelfPaint.IsActive);
-
-            if (weaponHold)
-            {
-                // the weapon is GLUED to this hand — the IK holds the hand at
-                // the camera-anchored aim point, so the weapon points where
-                // you look while the animation adds the sway. In draw mode the
-                // weapon sits at screen center; the hands follow it there.
-                _grip = HeldWeapon.DrawMode || Pivot == null
-                    ? weapon.transform.TransformPoint(new Vector3(0.02f, -0.08f, -0.1f))
-                    : Pivot.TransformPoint(new Vector3(0.3f, -0.26f, 0.55f));
-                _support = weapon.transform.TransformPoint(new Vector3(-0.12f, 0f, 0.05f));
-            }
-            else if (penHold)
-            {
-                // ink flowing = the wand hand lunges forward and the book gets
-                // out of the way; otherwise an OPEN grimoire is held up to
-                // READ (G raised it) — closed, the book hand hangs free.
-                // Stances read from the IKAnchor transforms (Marko's knobs).
-                bool casting = SurfaceDrawer.IsPenActive;
-                var readGrip = Anchor(ref _aReadGrip, "IKAnchor_ReadGrip", ReadGripDefault);
-                var readSupport = Anchor(ref _aReadSupport, "IKAnchor_ReadSupport", ReadSupportDefault);
-                var castGrip = Anchor(ref _aCastGrip, "IKAnchor_CastGrip", CastGripDefault);
-                var castSupport = Anchor(ref _aCastSupport, "IKAnchor_CastSupport", CastSupportDefault);
-                Vector3 gripTarget = casting
-                    ? (castGrip != null ? castGrip.localPosition : CastGripDefault)
-                    : (readGrip != null ? readGrip.localPosition : ReadGripDefault);
-                Vector3 supportTarget = casting
-                    ? (castSupport != null ? castSupport.localPosition : CastSupportDefault)
-                    : (readSupport != null ? readSupport.localPosition : ReadSupportDefault);
-                if (_penGrip == Vector3.zero) { _penGrip = gripTarget; _penSupport = supportTarget; }
-                _penGrip = Vector3.Lerp(_penGrip, gripTarget, Time.deltaTime * 7f);
-                _penSupport = Vector3.Lerp(_penSupport, supportTarget, Time.deltaTime * 7f);
-                _grip = Pivot.TransformPoint(_penGrip);
-                _support = Pivot.TransformPoint(_penSupport);
-            }
-
-            // CARRYING (Marko's rule: "arms should be in front of us") — both
-            // hands reach the carried load, overriding pen/weapon stances.
-            // The sticky hand's cargo counts too: rocks, blobs, held spells —
-            // the wizard VISIBLY grips what he carries.
-            var carried = InkRuneStone.Carried;
-            var grabbed = HandGrab.LocalHeldBody;
-            var grabbedMote = HandGrab.LocalHeldMote;
-            bool carryHold = carried != null || grabbed != null || grabbedMote != null;
-            if (carryHold)
-            {
-                Vector3 c = carried != null ? carried.transform.position
-                    : grabbed != null ? grabbed.worldCenterOfMass
-                    : grabbedMote.transform.position;
-                float half = 0.18f;
-                if (grabbed != null)
-                {
-                    var cargoCol = grabbed.GetComponent<Collider>();
-                    if (cargoCol != null)
-                        half = Mathf.Clamp(cargoCol.bounds.extents.magnitude * 0.55f, 0.14f, 0.5f);
-                }
-                Vector3 side = _anim.transform.right * half;
-                _grip = c + side;
-                _support = c - side;
-            }
-
-            bool bookUp = weaponHold || carryHold || (penHold && GrimoirePages.BookOpen);
-            _weight = Mathf.MoveTowards(_weight, weaponHold || penHold || carryHold ? 1f : 0f,
-                Time.deltaTime * 5f);
-            _supportWeight = Mathf.MoveTowards(_supportWeight, bookUp ? 1f : 0f,
-                Time.deltaTime * 5f);
-            if (_weight <= 0.001f && _supportWeight <= 0.001f)
-            {
-                _anim.SetIKPositionWeight(AvatarIKGoal.RightHand, 0f);
-                _anim.SetIKPositionWeight(AvatarIKGoal.LeftHand, 0f);
-                return;
-            }
-            _anim.SetIKPositionWeight(AvatarIKGoal.RightHand, _weight);
-            _anim.SetIKPosition(AvatarIKGoal.RightHand, _grip);
-            _anim.SetIKPositionWeight(AvatarIKGoal.LeftHand, _supportWeight); // full when the book is UP
-            _anim.SetIKPosition(AvatarIKGoal.LeftHand, _support);
-        }
-    }
 }

@@ -38,9 +38,18 @@ namespace SpellyZombie
 
         public static SocketSet Build(GameObject body, Transform facing)
         {
+            // AXIOM (Marko Aug 7): a BAKED body brings a SocketSet COMPONENT
+            // with it, but _sockets is a plain Dictionary — Unity cannot
+            // serialize one, so the bake saves an EMPTY SHELL. This used to
+            // early-return on the component alone, so on his baked player
+            // every Get() answered null: no wand, no grimoire (BuildPenProps
+            // bails on its first line), no costume mount points. The component
+            // is adopted; the LOOKUP is always rebuilt, because it only ever
+            // exists at runtime. "Fills gaps only", same as every other adopt.
             var set = body.GetComponent<SocketSet>();
-            if (set != null) return set;
-            set = body.AddComponent<SocketSet>();
+            if (set != null && set._sockets.Count > 0) return set; // resolved already this session
+            if (set == null) set = body.AddComponent<SocketSet>();
+            set._sockets.Clear();
 
             var bones = body.GetComponentsInChildren<Transform>(true);
             Transform Find(string boneName) => FindBone(bones, boneName);

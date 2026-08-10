@@ -73,6 +73,8 @@ namespace SpellyZombie
         readonly List<GameObject> _content = new List<GameObject>();
         Transform _anchor;
         Animator _flip;
+        Transform _pageBone;      // his Page_Left — the clip displaces it
+        Vector3 _pageBoneRest;
 
         // the placeholder book's page surface floats 0.028 above its root;
         // Marko's PageAnchor sits ON the paper, so content barely lifts
@@ -88,6 +90,16 @@ namespace SpellyZombie
                 if (t.name == "PageAnchor") { _anchor = t; break; }
             if (_anchor == null) _anchor = transform;
             _flip = GetComponentInChildren<Animator>();
+
+            // THE DRIFTING PAGE (verified Aug 10): his BookClosed clip keys
+            // Page_Left's POSITION (y +0.1735) and BookOpen keys none — Unity
+            // never resets an unkeyed property, so the first close leaves that
+            // offset on the bone forever and the paper sits wrong under the
+            // art until a scene reload. Remember the bone's rest position here,
+            // before any clip has played, and put it back while the book is
+            // open. Costs one transform write; his clips stay untouched.
+            foreach (var t in GetComponentsInChildren<Transform>(true))
+                if (t.name == "Page_Left") { _pageBone = t; _pageBoneRest = t.localPosition; break; }
         }
 
         void Start()
@@ -128,12 +140,19 @@ namespace SpellyZombie
                     _pendingFlip = false;
                     PageRune = RuneType.None;
                     SealPageOpen = false;
+                    ScanPageOpen = false;
+                    AbsorbPageOpen = false;
                 }
             }
+            // put the drifted page bone back (see Awake) — the closed clip's
+            // stale position offset would otherwise sit there all session
+            if (_open && _pageBone != null) _pageBone.localPosition = _pageBoneRest;
+
             if (!_open)
             {
-                // taught once, then the prompt stays out of E-pickup's way
-                if (!_taughtOpen) UIPrompt.Show("G", Loc.T("grimoire.open"));
+                // taught once, then the prompt stays out of E-pickup's way —
+                // and NEVER while carrying (Marko: full hands, no book talk)
+                if (!_taughtOpen && !HandGrab.LocalHolding) UIPrompt.Show("G", Loc.T("grimoire.open"));
                 return;
             }
             // the prompt slot is last-caller-wins — while a DECLARE or an
@@ -141,10 +160,11 @@ namespace SpellyZombie
             // (No page readout anywhere — Marko's ruling: the declare prompt
             // already names the page's rune when it matters, "people are not
             // that dumb.")
-            if (!GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach)
+            if (!GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach
+                && !HandGrab.LocalHolding)
                 UIPrompt.Show("G", Loc.T("grimoire.close"));
 
-            int pages = 1 + Families.Length * 2; // seal lesson + ONE PAGE PER RUNE (all 12)
+            int pages = PageCount; // wizard: seal + 12 runes · acolyte: seal + kit (+ scan)
 
             // ← → turn pages — ONLY the arrows (Marko removed , and .). The
             // turn itself is our paper-quad effect; content lands mid-turn.
@@ -180,10 +200,12 @@ namespace SpellyZombie
             // happens with the book open on that very page, so the bar must
             // fill in front of the player, not on the next flip
             int stamp = OwnedMask();
-            if (stamp != _cardsShown || _writingShown != Grimoire.WritingVersion)
+            if (stamp != _cardsShown || _writingShown != Grimoire.WritingVersion
+                || _sideShown != Sides.Of(Grimoire.LocalPlayerId)) // C mid-open = new book
             {
                 _cardsShown = stamp;
                 _writingShown = Grimoire.WritingVersion;
+                _sideShown = Sides.Of(Grimoire.LocalPlayerId);
                 _page = Mathf.Min(_page, pages - 1);
                 Rebuild(stamp);
             }
@@ -198,7 +220,9 @@ namespace SpellyZombie
             _pendingFlip = false;
             PageRune = RuneType.None;
             SealPageOpen = false;
-            ClearContent();
+            ScanPageOpen = false;
+            AbsorbPageOpen = false;
+            ClearContent();   // _page is KEPT — the book remembers where you were
         }
 
         // (the floating top-of-screen page readout is GONE — Marko: "why is
@@ -221,6 +245,50 @@ namespace SpellyZombie
 
         static readonly RuneCardType[] Families =
             (RuneCardType[])System.Enum.GetValues(typeof(RuneCardType));
+
+        // THE ACOLYTE BOOK (Marko's Aug 7 ruling, wired Aug 9 when he turned
+        // acolyte and still saw the wizard's 13 pages): its own book entirely —
+        // the SHARED seal page, then the four-rune kit (solid/liquid raise
+        // zombies, the arrows command them), then the Scan page when his
+        // GrimoirePage_Scan art exists. Acolytes own their kit outright.
+        static readonly RuneType[] AcolyteRunes =
+        {
+            RuneType.StateSolid, RuneType.StateLiquid,
+            RuneType.DirectionAway, RuneType.DirectionToward
+        };
+        /// PAGE ZERO IS THE VERB (Marko Aug 10: "when you open up the grimoire
+        /// you should see the most useful pages first, then you learn about
+        /// the seals and runes after"). Acolyte: SCAN. Wizard: ABSORB. Then
+        /// the seal lesson, then the runes.
+        public static bool ScanPageOpen { get; private set; }
+        public static bool AbsorbPageOpen { get; private set; }
+        bool Acolyte => Sides.Of(Grimoire.LocalPlayerId) == Side.Acolyte;
+        Side _sideShown = (Side)255; // force the first build to pick a side
+
+        /// THE EARNED BOOK (Marko Aug 10: "it shouldn't wire up all of the
+        /// pages... by absorbing as a wizard you unlock more pages"). In the
+        /// ARENA a rune's page EXISTS only once the rune is absorbed — not
+        /// faded, absent. The LOBBY is the training ground and keeps the whole
+        /// book from the start, exactly as he ruled.
+        static readonly List<RuneType> _wizPages = new List<RuneType>();
+        List<RuneType> WizardPageList()
+        {
+            _wizPages.Clear();
+            bool all = !RuneLibrary.RestrictedArena; // lobby/practice: everything
+            int me = Grimoire.LocalPlayerId;
+            foreach (var fam in Families)
+            {
+                Pair(fam, out var up, out var down);
+                if (all || Grimoire.HasRune(me, up)) _wizPages.Add(up);
+                if (all || Grimoire.HasRune(me, down)) _wizPages.Add(down);
+            }
+            return _wizPages;
+        }
+
+        // page 0 = the verb (scan / absorb), page 1 = the seal, then the runes
+        int PageCount => Acolyte
+            ? 2 + AcolyteRunes.Length
+            : 2 + WizardPageList().Count;
 
         /// Bit per family: which chapters are in working ink. Free-practice
         /// grounds (lobby/menu/sandboxes) own everything; in the arena the
@@ -245,11 +313,51 @@ namespace SpellyZombie
         {
             ClearContent();
             PageRune = RuneType.None;
-            SealPageOpen = _page == 0;
+            SealPageOpen = _page == 1;   // page 0 is the verb now
+            ScanPageOpen = false;
+            AbsorbPageOpen = false;
 
+            // PAGE 0 — the verb: SCAN for acolytes, ABSORB for wizards
             if (_page == 0)
             {
-                BuildSealLesson(mask);
+                if (Acolyte)
+                {
+                    ScanPageOpen = true;
+                    if (!CustomPage("GrimoirePage_Scan", true))
+                        Label("SCAN", new Vector3(0f, 0.001f, 0.02f), 0.004f, Ink);
+                }
+                else
+                {
+                    AbsorbPageOpen = true;
+                    if (!CustomPage("GrimoirePage_Absorb", true))
+                        Label("ABSORB", new Vector3(0f, 0.001f, 0.02f), 0.004f, Ink);
+                }
+                return;
+            }
+
+            if (_page == 1)
+            {
+                BuildSealLesson(mask); // the seal page is SHARED — his call:
+                return;                // "Seal_acolyte and Seal are the same"
+            }
+
+            // ---- THE ACOLYTE'S PAGES (his book, not a subset of the wizard's)
+            if (Acolyte)
+            {
+                int ai = _page - 2;
+                if (ai < AcolyteRunes.Length)
+                {
+                    var arune = AcolyteRunes[ai];
+                    PageRune = arune; // declare flow works on the kit pages too
+                    // his art, acolyte variant first ("_Acolyte"), wizard art as
+                    // the stand-in while the arrow split stays undecided
+                    if (CustomPage($"GrimoirePage_{arune}_Acolyte", true)) return;
+                    if (CustomPage($"GrimoirePage_{arune}", true)) return;
+                    Label(RuneLibrary.Icon(arune), new Vector3(0f, 0.001f, 0.094f), 0.003f, Ink);
+                    var atex = Wardrobe.RuneIcon(arune, Ink);
+                    if (atex != null) Quad(atex, new Vector3(0f, 0f, 0.012f), 0.092f);
+                    return;
+                }
                 return;
             }
 
@@ -257,14 +365,14 @@ namespace SpellyZombie
             // same page as chill rune even if they are opposites - each rune
             // gets a dedicated page"): pages run family by family, up then
             // down. The open page IS the rune you can declare.
-            int idx = _page - 1;
-            var family = Families[idx / 2];
-            Pair(family, out var up, out var down);
-            var rune = idx % 2 == 0 ? up : down;
+            var earned = WizardPageList(); // arena: only absorbed runes have pages
+            int idx = _page - 2;
+            if (idx >= earned.Count) { PageRune = RuneType.None; return; }
+            var rune = earned[idx];
+            var family = RuneLibrary.CardOf(rune);
             PageRune = rune;
 
-            int me = Grimoire.LocalPlayerId;
-            bool owned = !RuneLibrary.RestrictedArena || Grimoire.HasRune(me, rune);
+            bool owned = true; // a page that exists is a page you own now
 
             // HIS ART, most specific first: per-rune page, then family page
             if (CustomPage($"GrimoirePage_{rune}", owned)) return;
@@ -324,16 +432,30 @@ namespace SpellyZombie
         ///   Custom/GrimoirePage_&lt;RuneType&gt;_Full  his complete spread
         ///   Custom/GrimoirePage_&lt;Family&gt;(_Full)  covers both halves at once
         ///   Custom/GrimoirePage_Lesson(_Full)     page one
+        /// HIS PAGE IS THE PAGE (Marko, Aug 6). He draws fourteen images, one per
+        /// page, and that is the whole system:
+        ///
+        ///     Custom/GrimoirePage_Seal
+        ///     Custom/GrimoirePage_HeatUp ... one per rune, twelve of them
+        ///     Custom/GrimoirePage_Absorb
+        ///
+        /// Finding one means DONE: no code glyphs drawn over the top, no _Full
+        /// suffix to remember, no family fallback to reason about. It used to
+        /// take a `_Full` suffix to mean "complete", which made one rune look
+        /// like six possible filenames. It is one filename.
+        ///
+        /// The `_Full` and family names still resolve underneath, so nothing
+        /// already made stops working, but nobody needs to know they exist.
         bool CustomPage(string pageName, bool owned)
         {
+            Color tint = owned ? Color.white : new Color(1f, 1f, 1f, 0.45f);
+
+            var mine = Resources.Load<Texture2D>($"Custom/{pageName}");
+            if (mine != null) { ArtQuad(mine, tint); return true; }
+
             var full = Resources.Load<Texture2D>($"Custom/{pageName}_Full");
-            if (full != null)
-            {
-                ArtQuad(full, owned ? Color.white : new Color(1f, 1f, 1f, 0.45f));
-                return true;
-            }
-            var bg = Resources.Load<Texture2D>($"Custom/{pageName}");
-            if (bg != null) ArtQuad(bg, owned ? Color.white : new Color(1f, 1f, 1f, 0.55f));
+            if (full != null) { ArtQuad(full, tint); return true; }
+
             return false;
         }
 
@@ -342,7 +464,9 @@ namespace SpellyZombie
             var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quad.name = "PageArtFull";
             Destroy(quad.GetComponent<Collider>());
-            Place(quad.transform, new Vector3(0f, -0.0004f, 0f));
+            // his measured position: (-0.0125, 0, 0) exactly — the -Lift
+            // cancels Place()'s lift so Y lands on his zero
+            Place(quad.transform, new Vector3(-0.0125f, -Lift, 0f));
             quad.transform.localScale = new Vector3(0.19f, 0.21f, 1f); // the whole spread
             var shader = Shader.Find("Sprites/Default");
             if (shader != null)
@@ -357,6 +481,9 @@ namespace SpellyZombie
         /// more power), each with a duration bar you can compare at a glance.
         void BuildSealLesson(int mask)
         {
+            // his name for this page is SEAL; "Lesson" was the old code name and
+            // still resolves so nothing already drawn stops working
+            if (CustomPage("GrimoirePage_Seal", true)) return;
             if (CustomPage("GrimoirePage_Lesson", true)) return;
 
             Label("SEAL OVER RUNE", new Vector3(0f, 0.001f, 0.096f), 0.0032f, Ink);
@@ -419,7 +546,11 @@ namespace SpellyZombie
         {
             t.SetParent(_anchor, false);
             t.localPosition = new Vector3(pagePos.x, Lift + pagePos.y, pagePos.z);
-            t.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            // HIS MEASURED ORIENTATION (Marko Aug 9, set live on his book):
+            // rotation (90, 180, 0). His Blender book's axes are mirrored, so
+            // the mathematically-up -90 showed the art flipped left-right —
+            // +90 with the 180 yaw reads correctly on the paper HE built.
+            t.localRotation = Quaternion.Euler(90f, 180f, 0f);
             t.gameObject.layer = gameObject.layer;
             _content.Add(t.gameObject);
         }
@@ -495,7 +626,8 @@ namespace SpellyZombie
             // half a spread, lying flat, hinged at the spine: the pivot sits
             // ON the spine and the quad hangs half a page to the turning side
             quad.transform.localPosition = new Vector3(dir > 0 ? 0.0475f : -0.0475f, 0f, 0f);
-            quad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            quad.transform.localRotation = Quaternion.Euler(90f, 180f, 0f); // faces up, same as Place (his measured axes)
+
             quad.transform.localScale = new Vector3(0.095f, 0.21f, 1f);
             quad.layer = anchor.gameObject.layer;
             var shader = Shader.Find("Sprites/Default");

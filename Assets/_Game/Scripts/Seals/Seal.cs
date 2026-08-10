@@ -109,7 +109,18 @@ namespace SpellyZombie
             int corners = GeometryUtil.ClosedLoopCorners(_polygon2D);
             IsCircle = radialCv <= DrawingConfig.CircleMaxVariance && corners >= DrawingConfig.CircleMinCorners;
             Edges = IsCircle ? DrawingConfig.CircleEdges : corners;
-            Duration = DrawingConfig.SealProduceSeconds;
+            // WORLD SEALS ARE CONSUMED, NOT FARMED (Marko Aug 8): "seals should
+            // not re-emit but be consumed quickly after the spell is cast =>
+            // you can't abuse the system by erasing a cast seal to re-spam the
+            // spell (this is only allowed on your own body now as a wizard)."
+            // A body seal keeps the full produce window and the spent/re-arm
+            // loop; everything else fires its spell and is gone in a breath —
+            // cheaper to run, impossible to farm, and the ink is honestly SPENT.
+            bool onBody = Boundary.Count > 0;
+            foreach (var e in Boundary)
+                if (!e.Stroke.Persistent) { onBody = false; break; }
+            Duration = onBody ? DrawingConfig.SealProduceSeconds
+                              : DrawingConfig.SealConsumeSeconds;
             Remaining = Duration;
             Area = GeometryUtil.PolygonArea(_polygon2D);
 
@@ -293,7 +304,7 @@ namespace SpellyZombie
         {
             if (!s.Alive) return;
             s.State = StrokeState.Open;
-            s.SetColor(Stroke.InkColor);
+            s.SetColor(Stroke.InkColorFor(s.OwnerId));
             s.SetLoop(false); // broken seals show their gap again
         }
 

@@ -88,6 +88,14 @@ namespace SpellyZombie
             if (_cam == null) _cam = GetComponentInChildren<Camera>();
             if (_rig == null || _cam == null) return;
 
+            // ACOLYTES NEVER POSE-SCULPT (Marko Aug 10: their third person is
+            // ONLY the transformation view; R there is the shape pose mode)
+            if (Sides.Of(Grimoire.LocalPlayerId) == Side.Acolyte || ShapeShift.LocalIsShaped)
+            {
+                if (IsOpen) Close();
+                return;
+            }
+
             if (kb.rKey.wasPressedThisFrame)
             {
                 if (IsOpen) { Close(); return; }

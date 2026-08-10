@@ -140,6 +140,16 @@ MonoBehaviour:
     m_GlyphIndex: 11
     m_Scale: 1
     m_Name: EmojiGrid_11
+  - m_ElementType: 2
+    m_Unicode: 129503
+    m_GlyphIndex: 12
+    m_Scale: 1
+    m_Name: EmojiGrid_12
+  - m_ElementType: 2
+    m_Unicode: 128128
+    m_GlyphIndex: 13
+    m_Scale: 1
+    m_Name: EmojiGrid_13
   m_GlyphTable:
   - m_Index: 0
     m_Metrics:
@@ -333,5 +343,37 @@ MonoBehaviour:
     m_AtlasIndex: 0
     m_ClassDefinitionType: 0
     sprite: {fileID: -1344978682, guid: eed692ef51c66dd4dafe655ef1798c2e, type: 3}
+  - m_Index: 12
+    m_Metrics:
+      m_Width: 512
+      m_Height: 512
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 462.3
+      m_HorizontalAdvance: 512
+    m_GlyphRect:
+      m_X: 0
+      m_Y: 1536
+      m_Width: 512
+      m_Height: 512
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 1900000012, guid: eed692ef51c66dd4dafe655ef1798c2e, type: 3}
+  - m_Index: 13
+    m_Metrics:
+      m_Width: 512
+      m_Height: 512
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 462.3
+      m_HorizontalAdvance: 512
+    m_GlyphRect:
+      m_X: 512
+      m_Y: 1536
+      m_Width: 512
+      m_Height: 512
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 1900000013, guid: eed692ef51c66dd4dafe655ef1798c2e, type: 3}
   spriteInfoList: []
   fallbackSpriteAssets: []

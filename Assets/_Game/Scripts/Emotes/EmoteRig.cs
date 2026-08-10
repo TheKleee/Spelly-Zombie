@@ -52,7 +52,23 @@ namespace SpellyZombie
             j.T.localRotation = j.Rest * Quaternion.AngleAxis(around, j.HingeAxis);
         }
 
-        void Awake()
+        void Awake() => CaptureRest();
+
+        /// REST IS RUNTIME-ONLY and must be read AFTER the animator's first
+        /// frame, or every value lives in the wrong basis.
+        ///
+        /// AXIOM (Marko Aug 7, "drawing on the body doesn't work properly
+        /// again... probably something happened cause of the prefab"): this
+        /// used to be captured in Awake and never again. That was safe only
+        /// while EmoteRig was ADDED AT RUNTIME, after the model was worn and
+        /// the animator had evaluated. On a BAKED PLAYER PREFAB it is a
+        /// serialized component, so Awake fires at scene load and Rest takes
+        /// the raw FBX bind pose. RelaxForPaint then snapped the body into
+        /// that on every R, and the paint shell baked against a pose nobody
+        /// could see. CharacterRig re-captures at its first LateUpdate, the
+        /// same moment it builds the sockets, which is the earliest point the
+        /// pose is real. Awake still runs so nothing is ever uninitialised.
+        public void CaptureRest()
         {
             foreach (var j in Joints)
                 if (j.T != null) j.Rest = j.T.localRotation;

@@ -24,7 +24,7 @@ namespace SpellyZombie
             head.transform.localPosition = new Vector3(0f, 1.05f, 0.05f);
             head.transform.localScale = new Vector3(0.55f, 0.4f, 0.55f);
             head.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(skin * 1.15f, MoteShade.Opaque);
-            GooglyEyes.Attach(head.transform, 0f, 2.2f);
+            GooglyEyes.Attach(head.transform, 0f, DrawingConfig.ZombieEyeScale);
 
             // kinematic body: snapshots own the position, but particle triggers
             // still fire against it and heat/impacts still land

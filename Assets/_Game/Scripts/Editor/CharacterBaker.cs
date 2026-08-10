@@ -53,6 +53,98 @@ namespace SpellyZombie
             Bake(rig.ModelGO, "PlayerBody");
         }
 
+        /// THE WHOLE PLAYER, NOT JUST THE BODY. Marko, Aug 6: "I don't want
+        /// scripts to be created at run time... I feel like in multiplayer this
+        /// would be felt even more. So having a prefab is a must." He is right:
+        /// FishNet wants registered prefabs, and a player assembled by code at
+        /// spawn is awkward to replicate and impossible to inspect.
+        ///
+        /// Unlike the BODY bake this strips NOTHING. Colliders, the
+        /// CharacterController, every script and the animator controller all
+        /// survive, because the point is a player you can drop in a scene and
+        /// press play on. It only turns the runtime-generated materials into
+        /// real assets, which is the one thing that does not survive leaving
+        /// play mode.
+        ///
+        /// CharacterRig adopts an existing "Body" child, so the saved prefab does
+        /// NOT rebuild itself on load.
+        [MenuItem("Spelly Zombie/Bake WHOLE PLAYER To Prefab (play mode)")]
+        public static void BakeWholePlayer()
+        {
+            if (!Playing()) return;
+            var pilot = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
+            if (pilot == null)
+            {
+                Debug.LogError("[SpellyZombie] No player in the scene to bake.");
+                return;
+            }
+
+            var src = pilot.gameObject;
+            if (src.GetComponentInChildren<DrawNode>() != null)
+            {
+                Debug.LogError("[SpellyZombie] The player carries INK. Erase body ink before baking, " +
+                               "or the doodles become part of the prefab.");
+                return;
+            }
+
+            var clone = Object.Instantiate(src);
+            clone.name = "Player";
+
+            // STRIP WHAT THE RUNTIME REBUILDS. Baking these froze throwaway
+            // state into the prefab and, worse, forced SaveRuntimeMaterials to
+            // write every scratch MatterFX material out as an asset, which is
+            // where the pile of "Universal..." materials came from.
+            //   Ink     - WandInk's ink column, regenerated from the ink level
+            //   Shapes  - ShapeShift's worn-prop holder, per round
+            foreach (var t in clone.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == null || t == clone.transform) continue;
+                if (t.name == "Ink" || t.name == "Shapes")
+                    Object.DestroyImmediate(t.gameObject);
+            }
+
+            SaveRuntimeMaterials(clone);
+
+            string path = $"{Dir}/Player.prefab";
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
+            {
+                System.IO.Directory.CreateDirectory($"{Dir}/_backup");
+                AssetDatabase.CopyAsset(path, AssetDatabase.GenerateUniqueAssetPath(
+                    $"{Dir}/_backup/Player_{System.DateTime.Now:yyyyMMdd_HHmm}.prefab"));
+            }
+
+            PrefabUtility.SaveAsPrefabAsset(clone, path, out bool ok);
+            Object.DestroyImmediate(clone);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+
+            if (ok) Debug.Log($"[SpellyZombie] Whole player baked to {path}. " +
+                              "Drag it into a scene in place of SZ_Player.");
+            else Debug.LogError($"[SpellyZombie] Failed to save {path} (the old one is untouched).");
+        }
+
+        /// Runtime materials (MatterFX makes them with `new Material(...)`) are not
+        /// assets, so a prefab referencing them loses them the moment play mode
+        /// ends. Write each one out as a real file, keeping the live reference
+        /// valid so the prefab points at the saved asset.
+        static void SaveRuntimeMaterials(GameObject clone)
+        {
+            System.IO.Directory.CreateDirectory(MatDir);
+            AssetDatabase.Refresh();
+            foreach (var rend in clone.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = rend.sharedMaterials;
+                foreach (var m in mats)
+                {
+                    if (m == null || AssetDatabase.Contains(m)) continue;
+                    string matPath = AssetDatabase.GenerateUniqueAssetPath(
+                        $"{MatDir}/{Sanitize(m.name)}.mat");
+                    AssetDatabase.CreateAsset(m, matPath);
+                }
+                rend.sharedMaterials = mats;
+            }
+        }
+
         static bool Playing()
         {
             if (Application.isPlaying) return true;

@@ -29,42 +29,15 @@ namespace SpellyZombie
 
         void Awake() => _pilot = GetComponent<SimpleFPSController>();
 
-        void Update()
-        {
-            ApplyVisibility(); // even while frozen — held weapons must hide in 3rd person
-
-            var kb = Keyboard.current;
-            if (kb == null) return;
-            if (PoseStudio.IsOpen || GameMenu.IsOpen || Powerups.IsChoosing || UIKit.Typing) return;
-            if (SelfPaint.IsActive || HeldWeapon.DrawMode) return; // mid-drawing: hands stay put
-            if (_pilot != null && _pilot.IsDowned) return;
-            if (SimpleFPSController.ThirdPersonActive) return; // numbers are EMOTES there
-
-            for (int slot = 1; slot <= MaxSlots; slot++)
-            {
-                var key = kb[(Key)((int)Key.Digit1 + slot - 1)];
-                if (key != null && key.wasPressedThisFrame) Select(slot);
-            }
-
-            // the ground offers: a takeable weapon in reach announces itself
-            // a grabbed particle occupies the hand (Marko's law) — E belongs
-            // to the THROW until it's released, so no weapon offers meanwhile
-            var offer = HandGrab.LocalHolding ? null : FindPickup();
-            if (offer != null)
-            {
-                if (_held[2] != null && _held[3] != null)
-                    UIPrompt.Show("F", Loc.T("pickup.full"));
-                else
-                    UIPrompt.Show("E", Loc.T("pickup.weapon"));
-            }
-
-            if (kb.eKey.wasPressedThisFrame && !HandGrab.LocalHolding) TryPickup();
-            // F is the grimoire's USE key first (Marko: absorb and declare
-            // both on F, absorb priority) — the weapon drop only fires when
-            // the book has nothing in its eye
-            if (kb.fKey.wasPressedThisFrame
-                && !GrimoireAbsorb.TargetInReach && !GrimoireAbsorb.DeclareInReach) DropCurrent();
-        }
+        // WEAPONS ARE OUT OF THE GAME (Marko Aug 8: "remove weapons from the
+        // game completely... they do not belong to this game at all right now.
+        // They might belong in some future game modes"). This component stays
+        // only because his baked Player prefab and SimpleFPSController (his
+        // file) reference it — but it DOES NOTHING: no slot keys, no ground
+        // offers, no E pickup, no F drop. Slot 1 (wand + grimoire) is the only
+        // hand there is. The engine below is kept for the possible future
+        // mode, unreachable until a ruling brings it back.
+        void Update() { }
 
         void Select(int slot)
         {

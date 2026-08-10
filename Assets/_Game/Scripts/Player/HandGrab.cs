@@ -19,8 +19,8 @@ namespace SpellyZombie
     {
         const float GrabRange = 2.8f;
         const float AimCone = 0.78f;   // same cone as every other E interaction
-        public const float ThrowSpeed = 11f;  // particles: push, aimed down the cursor (host reuses — netcode §4)
-        public const float ThrowImpulse = 7f; // rigidbodies: velocity change
+        public const float ThrowSpeed = 22f;  // particles: push, aimed down the cursor (host reuses — netcode §4). Marko Aug 9: "make my throw twice as strong"
+        public const float ThrowImpulse = 14f; // rigidbodies: velocity change — doubled by the same ruling
         const float HandLerp = 14f;
         static readonly float TurnSensitivity = DrawingConfig.Overlay("GrabTurnSensitivity", 0.6f);
         static readonly float LiftRangeMax = DrawingConfig.Overlay("LiftRangeMax", 9f);
@@ -60,6 +60,10 @@ namespace SpellyZombie
         /// wheel DOWN rolls it to the right. Shift stays free for RUNNING —
         /// he wants to sprint around with a bench and hit things with it.
         Quaternion _spinRot = Quaternion.identity;
+        // the shared arcball drag state (same feel as the shape pose mode)
+        Vector3 _turnGrabLocal;
+        float _turnRadius;
+        bool _turning;
 
         Vector3 HandPoint()
         {
@@ -97,7 +101,16 @@ namespace SpellyZombie
         public static float AuthorityFor(Rigidbody rb, InkMark[] marks, int ownerId, out float share)
         {
             share = 1f;
-            if (rb == null || marks == null) return 0f;
+            if (rb == null) return 0f;
+
+            // HIS OWN SPELL LIFTS FREE (Marko Aug 9 #4): spell-form matter is
+            // the caster's magic — no ink required, weight ignored. The moment
+            // it is THROWN it stops being a spell and the ink law rules again.
+            var spellMatter = rb.GetComponent<MatterStrike>();
+            if (spellMatter != null && spellMatter.SpellForm && spellMatter.OwnerId == ownerId)
+                return 1f;
+
+            if (marks == null) return 0f;
 
             // the WHOLE subtree, not one transform — ledgers live on whichever
             // collider the strokes hit (same law as InkMark.AuthorityIn)
@@ -209,15 +222,42 @@ namespace SpellyZombie
             // so moving the free cursor around doesn't spin your cargo by
             // accident. Axes follow the drag: pull right and it turns right,
             // pull up and it tips up (both were inverted).
+            // THE SAME DRAG AS THE SHAPE POSE MODE (his ruling, Aug 10: "when
+            // lifting it should work the same way as well => reuse the code").
+            // Grab a point on the cargo, drag, and it turns so that point
+            // follows your hand — ArcballDrag, shared with ShapeShift.
             if (mouse != null && canTurn
-                && (kb.leftAltKey.isPressed || kb.rightAltKey.isPressed)
-                && mouse.leftButton.isPressed)
+                && (kb.leftAltKey.isPressed || kb.rightAltKey.isPressed))
             {
-                Vector2 d = mouse.delta.ReadValue() * TurnSensitivity;
-                if (d.sqrMagnitude > 0.0001f)
-                    _spinRot = Quaternion.AngleAxis(-d.x, Vector3.up)
-                             * Quaternion.AngleAxis(d.y, Vector3.right)
-                             * _spinRot;
+                var held = _heldBody != null ? _heldBody.transform
+                    : _heldParticle != null ? _heldParticle.transform : null;
+                var cam = Camera.main;
+                if (held != null && cam != null)
+                {
+                    Vector3 center = _heldBody != null
+                        ? _heldBody.worldCenterOfMass
+                        : held.position;
+                    Vector2 screen = mouse.position.ReadValue();
+                    if (mouse.leftButton.wasPressedThisFrame)
+                    {
+                        _turnRadius = Mathf.Max(0.2f,
+                            ShapeShift.FindObjectBounds(held).extents.magnitude);
+                        _turnGrabLocal = held.InverseTransformDirection(
+                            ArcballDrag.Grab(cam, screen, center, _turnRadius));
+                        _turning = true;
+                    }
+                    else if (!mouse.leftButton.isPressed) _turning = false;
+                    else if (_turning)
+                    {
+                        // the turn is applied to the SPIN, so the hold keeps
+                        // following your heading exactly as it always did
+                        Quaternion before = HoldRot();
+                        Quaternion after = ArcballDrag.Turn(cam, screen, center, _turnRadius,
+                            held.TransformDirection(_turnGrabLocal), before, Time.deltaTime);
+                        _spinRot = Quaternion.Inverse(YawRot()) * after
+                                 * Quaternion.Inverse(_grabRelRot);
+                    }
+                }
             }
 
             // F PUTS IT DOWN, E THROWS IT (his split)
@@ -421,8 +461,18 @@ namespace SpellyZombie
             // must come BEFORE any physics change: the old order made an
             // excluded kinematic body dynamic first and said "you can't lift
             // it" after, leaving it fallen loose forever.
+            // ZOMBIES ARE LIFTABLE (Marko, Aug 6: "I want to be able to lift and
+            // throw zombies"). They are Creatures, so the blanket creature refusal
+            // below used to catch them. Everything else on this path already
+            // works for one: their body is non-kinematic, so it falls through to
+            // the ink check, which means you draw on a zombie and then pick it up
+            // exactly like a barrel. Demons stay exempt, being unkillable and
+            // roughly the size of the problem.
+            var zomb = aimedCollider.GetComponentInParent<Zombie>();
+            bool liftableCreature = zomb != null && !zomb.IsDemon;
+
             if (aimedCollider.GetComponentInParent<SimpleFPSController>() != null
-                || aimedCollider.GetComponentInParent<Creature>() != null
+                || (!liftableCreature && aimedCollider.GetComponentInParent<Creature>() != null)
                 || aimedCollider.GetComponentInParent<HeldWeapon>() != null)
             {
                 DrawingWorld.Instance?.LogEvent($"you can't lift {aimedCollider.name}");

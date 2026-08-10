@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SocketWardrobe
   Slots:
   - Socket: Hat
-    Options:
-    - {fileID: 919132149155446097, guid: 6a3fc7ef84870c449a1e00741c9df6cb, type: 3}
+    Options: []
   - Socket: Head
     Options: []
   - Socket: Cape

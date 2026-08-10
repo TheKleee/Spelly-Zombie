@@ -183,6 +183,7 @@ namespace SpellyZombie
                 Perceive();
                 Gossip();
                 Decide();
+                SteerAround(); // Decide() says WHERE, this says HOW to get there
             }
             if (_mumble != null)
             {
@@ -252,12 +253,32 @@ namespace SpellyZombie
             foreach (var p in SimpleFPSController.All)
             {
                 if (p == null || p.IsDowned) continue;
+                // ACOLYTES ARE NOT PREY. They summoned us. A zombie that hunts its
+                // own master is funny exactly once and then it is a bug.
+                if (Sides.IsAcolytePlayer(p)) continue;
                 Vector3 to = p.transform.position - transform.position;
                 if (to.sqrMagnitude > SightRange * SightRange) continue;
                 if (Vector3.Angle(transform.forward, to) > 70f) continue; // it's behind me? doesn't exist
                 if (Physics.Raycast(transform.position + Vector3.up * 1.4f, to.normalized,
                         out var hit, SightRange) && hit.collider.GetComponentInParent<SimpleFPSController>() == null)
                     continue; // wall in the way
+                // THE WAND IS YOUR AUTHORITY (Marko's standing law, and until now
+                // never actually built: WandState.HasWand carried a comment saying
+                // "Phase 4's fear/attack system will read this" and nothing ever
+                // did). Zombies feared fireballs and shrugged at the person
+                // holding the wand.
+                //
+                // Armed, they run. Wandless, you are just meat and they come for
+                // you. That one flip is what makes losing your wand frightening
+                // and what makes the cauldron worth defending.
+                if (IsArmed(p) && !Fearless)
+                {
+                    Remember(MemKind.Danger, MemEvent.HeardDanger, p.transform.position, p.transform);
+                    if (Random.value < 0.15f) Mumble("NO NO NO", 1.5f);
+                    Eyes?.SetMood(EyeMood.Scared, 0.4f);
+                    continue;
+                }
+
                 Remember(MemKind.Player, MemEvent.SawPlayer, p.transform.position, p.transform);
                 if (!TryGet(MemKind.MadAt, out _)) Mumble("BRAAINS!", 2f);
             }
@@ -306,8 +327,30 @@ namespace SpellyZombie
             SpeedScale = 0f;
             AttackTarget = null;
 
+            // frozen or sliding is PHYSICAL: an order cannot beat that
             if (_creature != null && (!_creature.CanMove || _creature.Slipping)) return;
-            if (Time.time < _confusedUntil) { LookAround(); return; }
+
+            // ...but being confused is MENTAL, and an order overrides the mind,
+            // so a commanded zombie marches even while it has forgotten why.
+            if (Time.time < _confusedUntil && !_hasOrder) { LookAround(); return; }
+
+            // 0. AN ORDER OVERRIDES EVERYTHING (Marko, Aug 6: "Zombies should
+            // listen to our command as it should override their brain. So if we
+            // say walk there they walk there even if attacked or spells are
+            // nearby or they are fighting each other or destroying things... it
+            // doesn't matter").
+            //
+            // This sits ABOVE fear, beef, prey and curiosity on purpose. It is
+            // mind control, not a suggestion. An acolyte paid ink and stood in
+            // the open to draw that arrow, so it has to be worth more than a
+            // zombie's own opinion. I had it below everything, which made
+            // commands look like they were being ignored.
+            if (_hasOrder)
+            {
+                Vector3 toOrder = _orderTarget - transform.position; toOrder.y = 0f;
+                if (toOrder.sqrMagnitude < 2f * 2f) SetOrdered(false);   // arrived, think for yourself again
+                else { Head(_orderTarget, 1f); return; }
+            }
 
             // 1. beef comes first — zombies have priorities
             if (TryGet(MemKind.MadAt, out var mad) && mad.Who != null)
@@ -318,12 +361,40 @@ namespace SpellyZombie
                 return;
             }
 
-            // 2. run AWAY from remembered danger
+            // 1.5 THEIR BACK IS TURNED. Fear is the rule; this is the exception.
+            // A zombie will not face a wizard, but it will absolutely jump one who
+            // has stopped looking. Marko: "they want to be chased, that's their
+            // role" — a struck player turns around, and a player turning around is
+            // a player not doing something else.
+            if (StrikesTurnedBacks)
+            {
+                var back = NearbyPlayer(out bool facingMe);
+                if (back != null && !facingMe)
+                {
+                    Head(back.position, 1.25f);
+                    AttackTarget = back;
+                    Eyes?.SetMood(EyeMood.Mad, 0.3f);
+                    return;
+                }
+            }
+
+            // 2. run AWAY from remembered danger — but FEAR IS REACTIVE. They flee
+            // whoever is actually coming for them and stop the moment nobody is,
+            // rather than panicking on a timer. Without this they sprint away from
+            // a wizard who left thirty seconds ago, which reads as broken and
+            // makes them useless as the bait they are supposed to be.
             if (TryGet(MemKind.Danger, out var danger2))
             {
-                Vector3 away = transform.position - danger2.Where; away.y = 0f;
-                if (away.sqrMagnitude > 0.01f) { MoveDir = away.normalized; SpeedScale = 1.6f; }
-                return;
+                if (NearbyPlayer(out _) == null)
+                {
+                    Forget(MemKind.Danger);   // nobody is chasing: get back to work
+                }
+                else
+                {
+                    Vector3 away = transform.position - danger2.Where; away.y = 0f;
+                    if (away.sqrMagnitude > 0.01f) { MoveDir = away.normalized; SpeedScale = 1.6f; }
+                    return;
+                }
             }
 
             // 3. gawk — or, if curious, shuffle over for a closer look
@@ -364,6 +435,193 @@ namespace SpellyZombie
 
             // 5. nothing in the head: patrol the map
             Patrol();
+        }
+
+        /// OFF by default, because it contradicts the co-op mode's law that zombies
+        /// never attack you. The acolyte mode switches it ON: there, a zombie's job
+        /// is to make you deal with it, and ignoring one has to cost something.
+        public bool StrikesTurnedBacks;
+
+        // where an acolyte's arrow sent us
+        Vector3 _orderTarget;
+        bool _hasOrder;
+
+        /// GO THERE. Marko's rule: the acolyte draws an arrow inside the summoning
+        /// seal and that one drawing is the whole order, how many and which way.
+        /// Cleared on arrival, so a commanded zombie goes back to being a zombie
+        /// rather than standing on a spot forever.
+        public void Order(Vector3 where)
+        {
+            _orderTarget = where;
+            SetOrdered(true);
+        }
+
+        /// Red pupils for as long as somebody else is doing the thinking.
+        void SetOrdered(bool on)
+        {
+            if (_hasOrder == on) return;
+            _hasOrder = on;
+            Eyes?.SetPupilTint(on ? DrawingConfig.MindControlEyeColor : (Color?)null);
+        }
+
+        /// Holding a working wand. Marko's rule is "armed = holding a wand OR a
+        /// grabbed spell"; the wand half is what exists today, so that is what
+        /// this reads. The grabbed-spell half is the disarmed player's recovery
+        /// move and belongs with the rest of the levitation work.
+        static bool IsArmed(SimpleFPSController p)
+        {
+            if (p == null) return false;
+            var w = p.GetComponent<WandState>();
+            return w == null || w.HasWand;   // no WandState (lobby, studio) = armed
+        }
+
+        /// Closest live player within ZombieChaseRange, and whether they are facing
+        /// this zombie. One scan answers both of Marko's rules: someone facing me
+        /// and close is CHASING me, someone close with their back to me is PREY.
+        /// Downed players count for neither, same as everywhere else in this file.
+        Transform NearbyPlayer(out bool facingMe)
+        {
+            facingMe = false;
+            float range = DrawingConfig.ZombieChaseRange;
+            float bestSq = range * range;
+            Transform best = null;
+            bool bestFacing = false;
+
+            foreach (var p in SimpleFPSController.All)
+            {
+                if (p == null || p.IsDowned) continue;
+                if (Sides.IsAcolytePlayer(p)) continue;   // acolytes are our masters
+                Vector3 to = p.transform.position - transform.position;
+                to.y = 0f;
+                float d2 = to.sqrMagnitude;
+                if (d2 > bestSq) continue;
+
+                // Are they looking at me? `to` runs zombie -> player, so the way
+                // from THEM to ME is -to. Their forward pointing that way means
+                // they can see me; more than ZombieBackAngle off it means their
+                // back is turned.
+                Vector3 theirFwd = p.transform.forward; theirFwd.y = 0f;
+                bool looking = Vector3.Angle(theirFwd, -to) < DrawingConfig.ZombieBackAngle;
+
+                bestSq = d2;
+                best = p.transform;
+                bestFacing = looking;
+            }
+
+            facingMe = bestFacing;
+            return best;
+        }
+
+        // (Forget(MemKind) already exists above — no duplicate needed)
+
+        // ------------------------------------------------ navigation ------
+        // Decide() picks a DIRECTION it wants. It has no idea there is a wall in
+        // the way. This layer sits between that decision and the body, and only
+        // ever bends MoveDir — every behaviour above (fear, hunting, gossip,
+        // patrol, trance) keeps working exactly as written.
+        //
+        // Two rules, in order:
+        //   1. STEER. Probe ahead; if blocked, take the nearest clear angle.
+        //   2. WALL-FOLLOW. Steering alone cannot escape concave shapes: inside a
+        //      courtyard with one gate a zombie mills against the wall forever.
+        //      So when it stops making progress it commits to hugging ONE side
+        //      until it can head for its target again. That is the cheap classic
+        //      fix and it gets them out of most real geometry.
+        //
+        // Being stupid is on brand, and zombies expire on a timer, so a genuinely
+        // stuck one is self-cleaning. This does not need to be good, only sane.
+
+        /// How far ahead this zombie looks. Raise for a smarter variant, lower for
+        /// a dumber one that walks into things.
+        public float LookAhead = -1f;   // -1 = use the tuning default
+
+        float _noProgress, _progressCheck, _wallFollowUntil;
+        Vector3 _lastNavPos;
+        int _wallSide = 1;              // +1 hug right, -1 hug left
+        static readonly RaycastHit[] _navHits = new RaycastHit[8];
+
+        void SteerAround()
+        {
+            if (MoveDir.sqrMagnitude < 0.0001f || SpeedScale <= 0f)
+            {
+                _noProgress = 0f;          // standing still on purpose is not stuck
+                _lastNavPos = transform.position;
+                return;
+            }
+
+            float dt = Time.deltaTime;
+
+            // --- am I actually getting anywhere? ---
+            _progressCheck -= dt;
+            if (_progressCheck <= 0f)
+            {
+                const float Beat = 0.3f;
+                _progressCheck = Beat;
+                float moved = (transform.position - _lastNavPos).magnitude;
+                _lastNavPos = transform.position;
+                // wanting to move and barely moving = something is in the way
+                _noProgress = moved < 0.06f ? _noProgress + Beat : 0f;
+
+                if (_noProgress >= DrawingConfig.ZombieStuckSeconds)
+                {
+                    _noProgress = 0f;
+                    // pick the side with more room, and commit to it
+                    _wallSide = Clear(Rotate(MoveDir, 55f)) ? 1
+                              : Clear(Rotate(MoveDir, -55f)) ? -1
+                              : (GetInstanceID() & 1) == 0 ? 1 : -1;
+                    _wallFollowUntil = Time.time + DrawingConfig.ZombieWallFollowSeconds;
+                }
+            }
+
+            Vector3 want = MoveDir;
+
+            // --- hugging a wall: bias hard to the committed side ---
+            if (Time.time < _wallFollowUntil)
+            {
+                Vector3 hug = Rotate(want, _wallSide * 70f);
+                if (Clear(hug)) { MoveDir = hug; return; }
+                Vector3 slight = Rotate(want, _wallSide * 35f);
+                if (Clear(slight)) { MoveDir = slight; return; }
+                if (Clear(want)) { _wallFollowUntil = 0f; MoveDir = want; return; } // escaped
+            }
+
+            // --- ordinary steering: straight if you can, else nearest clear ---
+            if (Clear(want)) return;
+
+            for (float a = 25f; a <= 130f; a += 25f)
+            {
+                Vector3 first = Rotate(want, _wallSide * a);   // prefer the side we last committed to
+                if (Clear(first)) { MoveDir = first; return; }
+                Vector3 second = Rotate(want, -_wallSide * a);
+                if (Clear(second)) { MoveDir = second; return; }
+            }
+
+            MoveDir = -want; // boxed in on every side: turn around
+        }
+
+        static Vector3 Rotate(Vector3 dir, float degrees) =>
+            Quaternion.AngleAxis(degrees, Vector3.up) * dir;
+
+        /// Is there room to walk this way? Sweeps a zombie-width sphere at chest
+        /// height. Creatures are NOT obstacles: a zombie that dodges its own prey
+        /// never arrives, and shoving past each other is what a crowd does.
+        bool Clear(Vector3 dir)
+        {
+            float reach = LookAhead > 0f ? LookAhead : DrawingConfig.ZombieLookAhead;
+            Vector3 origin = transform.position + Vector3.up * 1.1f;
+            int n = Physics.SphereCastNonAlloc(origin, DrawingConfig.ZombieProbeRadius,
+                dir, _navHits, reach, Physics.DefaultRaycastLayers,
+                QueryTriggerInteraction.Ignore);
+
+            for (int i = 0; i < n; i++)
+            {
+                var t = _navHits[i].transform;
+                if (t == null || t.IsChildOf(transform)) continue;           // itself
+                if (AttackTarget != null && t.IsChildOf(AttackTarget)) continue; // never dodge prey
+                if (t.GetComponentInParent<Creature>() != null) continue;   // players and other zombies
+                return false;
+            }
+            return true;
         }
 
         void Head(Vector3 target, float speedScale)

@@ -208,6 +208,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2c05615ec5a453648a17e74199905892, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7617239616629580352}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2c05615ec5a453648a17e74199905892, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 641515068043905617}
   m_SourcePrefab: {fileID: 100100000, guid: 2c05615ec5a453648a17e74199905892, type: 3}
 --- !u!1 &4884948637868380248 stripped
 GameObject:
@@ -249,6 +252,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
   Material: 3
+--- !u!114 &641515068043905617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4884948637868380248}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 039f0ee95a02117488008b2e4e07807a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.CauldronHUD
+  CauldronWizard: {fileID: 21300000, guid: 801460043e84ae444898b9338e3d729a, type: 3}
+  CauldronAcolyte: {fileID: 21300000, guid: a6cafc3b1de06de4a824ff45fadf14b9, type: 3}
+  AcolyteFace: {fileID: 21300000, guid: 826804ed8f824b44cb38f2b88ae13b8e, type: 3}
+  WizardFace: {fileID: 21300000, guid: 91488bb5924081a4f8a0c7ad0d3ee00c, type: 3}
+  Trophy: {fileID: 21300000, guid: fb0f391695f9c794d88e4752457b3a78, type: 3}
+  BarWidth: 380
+  BarHeight: 26
 --- !u!4 &5224459564016732898 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2c05615ec5a453648a17e74199905892, type: 3}

@@ -29,6 +29,45 @@ namespace SpellyZombie
         public bool IsAlive => _leftEye != null && _rightEye != null
             && _leftPupil != null && _rightPupil != null;
 
+        Material _pupilMatL, _pupilMatR;   // whatever the pupils wore before a tint
+        bool _tinted;
+
+        /// MIND CONTROL SHOWS IN THE EYES (Marko, Aug 6). A zombie under an
+        /// acolyte's order gets red pupils, so a wizard can tell across a
+        /// courtyard which of them are being driven and which are just wandering.
+        /// That makes the acolyte's command visible in the world, the same way
+        /// their green ink and their spent props already are.
+        ///
+        /// Passing null restores EXACTLY what the pupils wore before, including
+        /// his own materials if these are his custom eyes, so this borrows the
+        /// look rather than overwriting it.
+        public void SetPupilTint(Color? c)
+        {
+            if (_leftPupil == null || _rightPupil == null) return;
+            var lr = _leftPupil.GetComponent<Renderer>();
+            var rr = _rightPupil.GetComponent<Renderer>();
+            if (lr == null || rr == null) return;
+
+            if (c == null)
+            {
+                if (!_tinted) return;
+                if (_pupilMatL != null) lr.sharedMaterial = _pupilMatL;
+                if (_pupilMatR != null) rr.sharedMaterial = _pupilMatR;
+                _tinted = false;
+                return;
+            }
+
+            if (!_tinted)
+            {
+                _pupilMatL = lr.sharedMaterial;
+                _pupilMatR = rr.sharedMaterial;
+                _tinted = true;
+            }
+            var m = MatterFX.Get(c.Value, MoteShade.Opaque);
+            lr.sharedMaterial = m;
+            rr.sharedMaterial = m;
+        }
+
         /// Builds the rig on any transform. headHeight = local Y of eye line,
         /// scale ≈ creature size (1 = human).
         public static GooglyEyes Attach(Transform body, float headHeight, float scale)
@@ -47,6 +86,16 @@ namespace SpellyZombie
                 {
                     // pupil DEPTH is his styling; RATIO is behavior — bakes froze mid-dilation saucers
                     e._pupilDepth = pupil.localPosition.z;
+
+                    // DO NOT adopt the pupil's authored localScale as _pupilBase.
+                    // Tried it Aug 6 and reverted the same minute: his Eyes prefab
+                    // authors pupils at a local scale near 1 (sized by the MESH,
+                    // not by the transform), so using it drove them to full eye
+                    // size at rest and every character stared like a saucer.
+                    // The hardcoded 0.45 is not an oversight, it NORMALISES any
+                    // eyes to a known ratio so dilation behaves the same on all of
+                    // them. Respecting his authored size would mean measuring the
+                    // pupil against the EYE in world space, not reading localScale.
                 }
                 else
                     Debug.LogWarning("[SpellyZombie] Eyes prefab has no Eye→Pupil pair. " +

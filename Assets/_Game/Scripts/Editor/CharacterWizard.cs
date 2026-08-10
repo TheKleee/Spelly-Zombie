@@ -167,7 +167,14 @@ namespace SpellyZombie
                       "named Hat_x / Cape_x / ZHat_x…). Placeholder team hat+cloak until then.");
         }
 
-        static void ConfigureClipFbx(string path, Avatar avatar)
+        /// `loop` is the clip's NATURE, not a default (Marko Aug 10: "the same
+        /// with getting out of the ground and pretty much all animations. They
+        /// are all independent"). This used to force looping ON for everything,
+        /// which is right for idle/walk/run and wrong for every one-shot: a
+        /// standup marked as a loop replays getting up forever, and only the
+        /// exit transition cutting it early hid that. One-shots now import as
+        /// one-shots and are allowed to finish.
+        static void ConfigureClipFbx(string path, Avatar avatar, bool loop = true)
         {
             var imp = AssetImporter.GetAtPath(path) as ModelImporter;
             if (imp == null) return;
@@ -186,9 +193,9 @@ namespace SpellyZombie
             var clips = imp.clipAnimations;
             if (clips == null || clips.Length == 0) clips = imp.defaultClipAnimations;
             foreach (var c in clips)
-                if (!c.loopTime)
+                if (c.loopTime != loop)
                 {
-                    c.loopTime = true; // Mixamo ships loops with looping OFF
+                    c.loopTime = loop; // Mixamo ships loops with looping OFF
                     dirty = true;
                 }
             if (dirty)
@@ -242,7 +249,10 @@ namespace SpellyZombie
             AnimationClip Clip(string slot)
             {
                 if (!picks.TryGetValue(slot, out var path)) return null;
-                ConfigureClipFbx(path, avatar);
+                // only the cycles loop; every one-shot imports as a one-shot
+                bool loops = slot == "idle" || slot == "walk"
+                    || slot == "run" || slot == "fidget";
+                ConfigureClipFbx(path, avatar, loops);
                 return LoadClip(path);
             }
             var idle = Clip("idle");
@@ -265,61 +275,99 @@ namespace SpellyZombie
             ctrl.AddParameter("Fidget", AnimatorControllerParameterType.Trigger);
             var sm = ctrl.layers[0].stateMachine;
 
-            var tree = new BlendTree
-            {
-                name = "Shamble",
-                blendParameter = "Speed",
-                blendType = BlendTreeType.Simple1D,
-                useAutomaticThresholds = false,
-                hideFlags = HideFlags.HideInHierarchy
-            };
-            AssetDatabase.AddObjectToAsset(tree, ctrl);
-            if (idle != null) tree.AddChild(idle, 0f);
-            if (walk != null) tree.AddChild(walk, 1.4f);   // shamble speed
-            if (run != null) tree.AddChild(run, 4.5f);     // runner / charger sprint
-            var loco = sm.AddState("Shamble");
-            loco.motion = tree;
+            // THREE STATES, NOT ONE BLEND (Marko Aug 10: "this whole blend tree
+            // is not well made... we're blending between 3 completely separate
+            // animations that work well independently but together they are
+            // awful"). He is right and this was mine.
+            //
+            // Mixamo idle/walk/run are authored apart — different posture,
+            // different limb phase, no shared cadence. A 1D tree crossfades them
+            // PERMANENTLY, not just while switching: a zombie wandering at
+            // 0.55 * WalkSpeed sat at a fixed ~50/50 idle-walk mix for its whole
+            // life, which is half a walk cycle smeared over an idle pose. That
+            // is the mush, and no threshold tuning fixes it because the blend
+            // itself is the defect.
+            //
+            // Discrete states play each clip WHOLE, so each looks exactly as
+            // good as it does on its own. ZombieDress carries HOW FAST in
+            // Animator.speed instead, so the stride matches ground speed rather
+            // than sliding. Thresholds carry hysteresis (enter 0.15, leave 0.10;
+            // enter 3.0, leave 2.6) so a zombie loitering on a boundary cannot
+            // flicker between two states.
+            AnimatorState idleSt = null, walkSt = null, runSt = null;
+            if (idle != null) { idleSt = sm.AddState("Idle"); idleSt.motion = idle; }
+            if (walk != null) { walkSt = sm.AddState("Walk"); walkSt.motion = walk; }
+            if (run != null) { runSt = sm.AddState("Run"); runSt.motion = run; }
+            var loco = idleSt ?? walkSt ?? runSt;
             sm.defaultState = loco;
 
-            void OneShot(string stateName, Motion motion, string trigger, float exitTime = 0.9f)
+            void Cross(AnimatorState from, AnimatorState to,
+                AnimatorConditionMode mode, float at, float dur)
             {
-                if (motion == null) return;
+                if (from == null || to == null) return;
+                var tr = from.AddTransition(to);
+                tr.hasExitTime = false;
+                tr.duration = dur;
+                tr.AddCondition(mode, at, "Speed");
+            }
+
+            // ORDER MATTERS: Unity takes the first transition whose condition
+            // passes, so the sprint exits are registered before the walk ones or
+            // a runner leaving idle would stop at Walk on its way past.
+            Cross(idleSt, runSt, AnimatorConditionMode.Greater, 3.0f, 0.20f);
+            Cross(idleSt, walkSt, AnimatorConditionMode.Greater, 0.15f, 0.18f);
+            Cross(walkSt, runSt, AnimatorConditionMode.Greater, 3.0f, 0.20f);
+            Cross(walkSt, idleSt, AnimatorConditionMode.Less, 0.10f, 0.18f);
+            Cross(runSt, idleSt, AnimatorConditionMode.Less, 0.10f, 0.20f);
+            Cross(runSt, walkSt, AnimatorConditionMode.Less, 2.6f, 0.20f);
+
+            // ONE-SHOTS ARE CUT TO AND CUT FROM, NEVER BLENDED (his ruling, and
+            // the same one as the locomotion tree). These clips share nothing
+            // but a skeleton, so a 0.08s crossfade into a standup from a walk
+            // pose was averaging two unrelated poses at exactly the moment the
+            // animation needed to read clearly. And exitTime 0.9 threw away the
+            // last tenth of every clip — the settle at the end of getting up,
+            // the recovery after a swing — smearing it into locomotion instead.
+            // Hard in, whole clip, hard out.
+            AnimatorStateTransition OneShot(string stateName, Motion motion, string trigger)
+            {
+                if (motion == null) return null;
                 var st = sm.AddState(stateName);
                 st.motion = motion;
                 var enter = sm.AddAnyStateTransition(st);
                 enter.hasExitTime = false;
-                enter.duration = 0.08f;
+                enter.duration = 0f;
                 enter.canTransitionToSelf = false;
                 enter.AddCondition(AnimatorConditionMode.If, 0f, trigger);
                 var exit = st.AddTransition(loco);
                 exit.hasExitTime = true;
-                exit.exitTime = exitTime;
-                exit.duration = 0.15f;
+                exit.exitTime = 1f;   // the WHOLE clip, last frames included
+                exit.duration = 0f;
+                return enter;         // callers may add conditions of their own
             }
 
-            // attacks come in flavors — ZombieDress rolls "Variant" per swipe
-            Motion attackMotion = attack;
+            // FOUR SEPARATE SWINGS, NOT A BLEND. A punch and a headbutt share
+            // nothing but a skeleton, so averaging them on a Variant axis was
+            // the locomotion mistake a second time. ZombieDress rolls Variant to
+            // a whole number, so each swing gets its own state and plays whole.
             var punch = Clip("punch");
             var kick = Clip("kick");
             var headbutt = Clip("headbutt");
-            if (punch != null || kick != null || headbutt != null)
+            var swings = new System.Collections.Generic.List<AnimationClip>();
+            foreach (var clip in new[] { attack, punch, kick, headbutt })
+                if (clip != null) swings.Add(clip);
+            for (int i = 0; i < swings.Count; i++)
             {
-                var variants = new BlendTree
-                {
-                    name = "AttackVariants",
-                    blendParameter = "Variant",
-                    blendType = BlendTreeType.Simple1D,
-                    useAutomaticThresholds = false,
-                    hideFlags = HideFlags.HideInHierarchy
-                };
-                AssetDatabase.AddObjectToAsset(variants, ctrl);
-                float slot = 0f;
-                foreach (var clip in new[] { attack, punch, kick, headbutt })
-                    if (clip != null) variants.AddChild(clip, slot++);
-                attackMotion = variants;
+                var enter = OneShot(swings.Count == 1 ? "Attack" : "Attack" + i,
+                    swings[i], "Attack");
+                if (enter == null || swings.Count == 1) continue;
+                enter.AddCondition(AnimatorConditionMode.Greater, i - 0.5f, "Variant");
+                // the LAST swing catches every roll above it, so a Variant
+                // rolled across four flavours still lands when only two clips
+                // were found in the folder
+                if (i < swings.Count - 1)
+                    enter.AddCondition(AnimatorConditionMode.Less, i + 0.5f, "Variant");
             }
-
-            OneShot("Attack", attackMotion, "Attack");
             OneShot("Hit", hit, "Hit");
             OneShot("Scream", scream, "Scream");
             OneShot("StandUp", Clip("standup"), "StandUp", 0.95f);

@@ -38,7 +38,9 @@ namespace SpellyZombie
         static readonly Color SwarmColor = new Color(0.3f, 0.45f, 0.25f);    // little dark gremlins
 
         /// Shared kind→look table — NetZombieProxy reads these so host and client visuals can never drift.
-        public static Vector3 KindScale(ZombieKind kind) =>
+        public static Vector3 KindScale(ZombieKind kind) => RawKindScale(kind) * DrawingConfig.ZombieBodyScale;
+
+        static Vector3 RawKindScale(ZombieKind kind) =>
             kind == ZombieKind.Charger ? new Vector3(0.9f, 0.95f, 0.9f)   // stocky
             : kind == ZombieKind.Runner ? new Vector3(0.5f, 1.05f, 0.5f)  // lanky
             : kind == ZombieKind.Swarm ? new Vector3(0.42f, 0.5f, 0.42f)  // gremlin
@@ -79,23 +81,60 @@ namespace SpellyZombie
             // B4: zombies exist ONLY on the host — clients get NetZombieProxy stand-ins
             if (NetGame.Connected && !NetGame.IsHost) return null;
 
-            var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            go.name = "Zombie_" + kind;
-            go.transform.position = pos + Vector3.up * 1.1f;
-            go.transform.localScale = KindScale(kind);
             Color skin = KindSkin(kind);
-            go.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(skin, MoteShade.Opaque);
+            GameObject go, head;
 
-            var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            head.name = "Head";
-            Destroy(head.GetComponent<Collider>());
-            head.transform.SetParent(go.transform, false);
-            head.transform.localPosition = new Vector3(0f, 1.05f, 0.05f);
-            head.transform.localScale = new Vector3(0.55f, 0.4f, 0.55f);
-            head.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(skin * 1.15f, MoteShade.Opaque);
+            // ---- HIS PREFAB WINS, WHOLESALE ----------------------------------
+            // ONE prefab covers every kind. Drag a zombie out of the Hierarchy,
+            // drop it at Resources/Custom/Zombie, and the game spawns THAT
+            // instead of building a capsule. (Resources/Custom/Zombie_Charger
+            // and friends are checked first, so a per-kind override is possible
+            // but never required.)
+            //
+            // The KINDS still differ, because that is code's job: a Charger is
+            // stocky and a Runner is lanky. His authored scale is the base and
+            // the kind multiplies it, so his prefab's size is respected and the
+            // roster still reads at a glance from one model.
+            //
+            // His materials, his hat, his head placement are left alone, and
+            // every component below is filled in ONLY IF MISSING, the same
+            // "fills gaps only" rule his scenery tools already follow.
+            var custom = PrefabVault.Get("Zombie_" + kind) ?? PrefabVault.Get("Zombie");
+            bool graybox = custom == null;
+
+            if (!graybox)
+            {
+                go = Instantiate(custom);
+                go.name = "Zombie_" + kind;
+                go.transform.position = pos + Vector3.up * 1.1f;
+
+                // kind shape relative to a Walker, applied on top of HIS scale
+                Vector3 rel = RawKindScale(kind);
+                Vector3 baseK = RawKindScale(ZombieKind.Walker);
+                go.transform.localScale = Vector3.Scale(go.transform.localScale,
+                    new Vector3(rel.x / baseK.x, rel.y / baseK.y, rel.z / baseK.z));
+
+                head = FindNamed(go.transform, "Head") ?? go;   // eyes mount here
+            }
+            else
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                go.name = "Zombie_" + kind;
+                go.transform.position = pos + Vector3.up * 1.1f;
+                go.transform.localScale = KindScale(kind);
+                go.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(skin, MoteShade.Opaque);
+
+                head = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                head.name = "Head";
+                Destroy(head.GetComponent<Collider>());
+                head.transform.SetParent(go.transform, false);
+                head.transform.localPosition = new Vector3(0f, 1.05f, 0.05f);
+                head.transform.localScale = new Vector3(0.55f, 0.4f, 0.55f);
+                head.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(skin * 1.15f, MoteShade.Opaque);
+            }
 
             // scribbler = The Wizard; HIS HAT WINS: Resources/Custom/ScribblerHat replaces the code cubes
-            if (kind == ZombieKind.Scribbler)
+            if (graybox && kind == ZombieKind.Scribbler)
             {
                 var hatSkin = PrefabVault.Spawn("ScribblerHat", go.transform);
                 if (hatSkin != null)
@@ -112,37 +151,53 @@ namespace SpellyZombie
                 }
             }
 
-            var rb = go.GetComponent<Rigidbody>();
-            if (rb == null) rb = go.AddComponent<Rigidbody>();
-            rb.mass = kind == ZombieKind.Charger ? 110f : kind == ZombieKind.Swarm ? 25f : 70f;
-            rb.constraints = RigidbodyConstraints.FreezeRotation;
-
-            var dmg = go.AddComponent<Damageable>();
-            dmg.Health = kind == ZombieKind.Charger ? 90f
-                : kind == ZombieKind.Runner ? 30f
-                : kind == ZombieKind.Swarm ? 12f : 60f;
-
-            var creature = go.AddComponent<Creature>();
-            go.AddComponent<SurfaceMaterialTag>().Material = SurfaceMaterialType.Flesh;
-            go.AddComponent<PersistentInkSurface>(); // runes drawn ON zombies ride them and persist
-
-            // the googly soul — mounted on the head so it wobbles with every step
-            var eyes = GooglyEyes.Attach(head.transform, 0f, 2.2f);
-
-            var brain = go.AddComponent<ZombieBrain>();
-            brain.Eyes = eyes;
-            // capacity IS intelligence: charger 1 slot, scribbler the horde's intellectual
-            brain.Capacity = kind == ZombieKind.Charger || kind == ZombieKind.Swarm ? 1
-                : kind == ZombieKind.Scribbler ? 5 : 3;
-            if (kind == ZombieKind.Runner) { brain.SightRange = 17f; brain.HearRange = 12f; } // skittish
-
-            var z = go.AddComponent<Zombie>();
-            z.Kind = kind;
-            switch (kind) // body stats — the roster is mostly numbers on one bean
+            // EVERY COMPONENT BELOW FILLS A GAP. If his prefab already carries
+            // one, it is used exactly as he configured it and none of these
+            // numbers get written over the top. Only components the code itself
+            // created take the per-kind stat pass.
+            var rb = Adopt.Component<Rigidbody>(go, out bool rbNew);
+            if (rbNew)
             {
-                case ZombieKind.Runner: z.WalkSpeed = 3.4f; z.AttackDamage = 6f; z.AttackCooldown = 0.7f; break;
-                case ZombieKind.Swarm: z.WalkSpeed = 2.3f; z.AttackDamage = 3f; z.AttackCooldown = 0.5f; z.AttackRange = 0.9f; break;
-                case ZombieKind.Charger: z.AttackDamage = 14f; break;
+                rb.mass = kind == ZombieKind.Charger ? 110f : kind == ZombieKind.Swarm ? 25f : 70f;
+                rb.constraints = RigidbodyConstraints.FreezeRotation;
+            }
+
+            var dmg = Adopt.Component<Damageable>(go, out bool dmgNew);
+            if (dmgNew)
+                dmg.Health = kind == ZombieKind.Charger ? 90f
+                    : kind == ZombieKind.Runner ? 30f
+                    : kind == ZombieKind.Swarm ? 12f : 60f;
+
+            var creature = Adopt.Component<Creature>(go);
+            var tag = Adopt.Component<SurfaceMaterialTag>(go, out bool tagNew);
+            if (tagNew) tag.Material = SurfaceMaterialType.Flesh;
+            Adopt.Component<PersistentInkSurface>(go); // runes drawn ON zombies ride them and persist
+
+            // the googly soul — HIS eyes if the prefab already has a pair,
+            // otherwise the code-built ones on the head
+            var eyes = go.GetComponentInChildren<GooglyEyes>(true)
+                ?? GooglyEyes.Attach(head.transform, 0f, DrawingConfig.ZombieEyeScale);
+
+            var brain = Adopt.Component<ZombieBrain>(go, out bool brainNew);
+            brain.Eyes = eyes;
+            if (brainNew)
+            {
+                // capacity IS intelligence: charger 1 slot, scribbler the horde's intellectual
+                brain.Capacity = kind == ZombieKind.Charger || kind == ZombieKind.Swarm ? 1
+                    : kind == ZombieKind.Scribbler ? 5 : 3;
+                if (kind == ZombieKind.Runner) { brain.SightRange = 17f; brain.HearRange = 12f; } // skittish
+            }
+
+            var z = Adopt.Component<Zombie>(go, out bool zNew);
+            z.Kind = kind;
+            if (zNew)
+            {
+                switch (kind) // body stats — the roster is mostly numbers on one bean
+                {
+                    case ZombieKind.Runner: z.WalkSpeed = 3.4f; z.AttackDamage = 6f; z.AttackCooldown = 0.7f; break;
+                    case ZombieKind.Swarm: z.WalkSpeed = 2.3f; z.AttackDamage = 3f; z.AttackCooldown = 0.5f; z.AttackRange = 0.9f; break;
+                    case ZombieKind.Charger: z.AttackDamage = 14f; break;
+                }
             }
             z.WalkSpeed *= speedMul; // rounds make everything faster
             dmg.OnDeath += z.OnDeath;
@@ -165,11 +220,25 @@ namespace SpellyZombie
                 Debug.Log($"[SpellyZombie] Scribbler spawned (hat, purple) carrying: {string.Join(", ", z.Cards)}");
             }
 
-            // wardrobe: shared character model follows the capsule (graybox continues if not wired)
-            float widthMul = kind == ZombieKind.Charger ? 1.25f
-                : kind == ZombieKind.Runner ? 0.72f : 1f;
-            z._dress = ZombieDress.DressUp(z, skin, widthMul, eyes);
+            // wardrobe: shared character model follows the capsule (graybox continues if not wired).
+            // HIS PREFAB IS ALREADY DRESSED — do not wear a second body over it.
+            if (graybox)
+            {
+                float widthMul = kind == ZombieKind.Charger ? 1.25f
+                    : kind == ZombieKind.Runner ? 0.72f : 1f;
+                z._dress = ZombieDress.DressUp(z, skin, widthMul, eyes);
+            }
             return z;
+        }
+
+        /// First child whose name contains `name`, case-insensitive. Lets his
+        /// prefab call the head "Head", "head_geo" or "SZ_Head" and still get eyes.
+        static GameObject FindNamed(Transform root, string name)
+        {
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                if (t != root && t.name.IndexOf(name, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return t.gameObject;
+            return null;
         }
 
         ZombieDress _dress;
@@ -211,7 +280,15 @@ namespace SpellyZombie
             if (desired.sqrMagnitude > 0.01f) desired = desired.normalized * speed;
             else desired = Vector3.zero;
 
-            bool grounded = Physics.Raycast(transform.position, Vector3.down, 1.35f,
+            // THE RAY HAS TO CLEAR ITS OWN LEGS. transform.position is the
+            // capsule's CENTRE and its half-height is localScale.y, so a fixed
+            // 1.35 only reached the floor while the zombie was base-sized: a
+            // summon scaled past ~1.6x was permanently "airborne", dropped to
+            // grip 2, and crawled up to speed instead of walking (Marko Aug 10:
+            // "they move strangely"). Same margin as before, measured off the
+            // body it actually has.
+            bool grounded = Physics.Raycast(transform.position, Vector3.down,
+                transform.localScale.y + 0.53f,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             float grip = grounded ? 14f : 2f;
 
@@ -232,6 +309,12 @@ namespace SpellyZombie
 
             if (_charging) { TickCharge(); return; }
             if (!_creature.CanMove) return;
+
+            // LIMP WHILE LIFTED. A zombie that keeps walking in mid-air fights the
+            // levitation and jitters, and one that steers itself while flying does
+            // not read as thrown. While something has hold of it, it is cargo
+            // rather than a creature: no steering, no turning, no chewing.
+            if (HandGrab.LocalHeldBody == _rb) { _windup = 0f; return; }
 
             // TRANCE: full stop, just bliss (steered, not hard-set — fireballs still launch it)
             if (_brain.Tranced)
@@ -679,9 +762,22 @@ namespace SpellyZombie
             RoundDirector.NotifyKill(this); // round economy: kills are the ink mine
             Juice.Pop(transform.position);
 
-            // drops the ACTUAL cards it carried — kill the zombie whose rune you need
-            foreach (var card in Cards)
-                RuneCardPickup.Spawn(transform.position + Vector3.up * 0.5f + Random.insideUnitSphere * 0.3f, card);
+            // A CORPSE GASSES OFF (Marko Aug 10: "when zombie dies it should
+            // create a poison cloud just not as explosive and large as when
+            // detonated"). The same green cloud a detonation will use, at its
+            // natural size and a short life, so dying reads as "that thing was
+            // full of bad air" and the detonation still gets to be the event.
+            // Spawned at chest height off the body it actually has, so a giant
+            // does not puff around its ankles.
+            if (FxLibrary.I != null)
+                FxLibrary.Spawn(FxLibrary.I.GasCloud,
+                    transform.position + Vector3.up * transform.localScale.y * 0.35f,
+                    null, DrawingConfig.ZombieDeathCloudSeconds);
+
+            // NO CARD DROPS. Runes are learned by ANALYZING NATURAL OBJECTS with
+            // the grimoire (his acquisition ruling), not by picking loot off a
+            // corpse. Floating pickups were replaced long ago and this drop was
+            // the last place still spawning them.
             Grimoire.Drop(OwnerId);
         }
     }

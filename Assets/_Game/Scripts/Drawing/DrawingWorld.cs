@@ -74,7 +74,11 @@ namespace SpellyZombie
         /// Pen lifted: the stroke is just ink now — runes are read when a seal
         /// closes around them. `silent` = repainted wall ink: skip recognition,
         /// net-send and claim (each cost ~150ms per Rune Studio sample at load).
-        public void CompleteStroke(Stroke s, bool allowCloseOntoInk = true, bool silent = false)
+        /// `preview: false` = the pen is still down and this is a structural
+        /// split, so skip the READING only (Marko Aug 8: recognition runs on ink
+        /// release, same as on the floor). Everything else still happens.
+        public void CompleteStroke(Stroke s, bool allowCloseOntoInk = true, bool silent = false,
+            bool preview = true)
         {
             if (s.Nodes.Count < DrawingConfig.MinStrokeNodes)
             {
@@ -113,7 +117,7 @@ namespace SpellyZombie
                 && (TryCloseOntoSelf(s) || TryCloseOntoInk(s))) return;
 
             LastInk = s;
-            PreviewRune(s);
+            if (preview) PreviewRune(s);
         }
 
         /// Marko's live feedback: the moment ink changes, read the whole
@@ -143,7 +147,10 @@ namespace SpellyZombie
             }
             else
             {
-                label = RuneLibrary.Icon(type); // emoji, never words (Marko)
+                // emoji, never words (Marko). A CORRUPT HAND READS ITS OWN BOOK:
+                // an acolyte sees zombie and poison where a wizard sees solid and
+                // liquid, from the very same glyph.
+                label = RuneLibrary.IconFor(type, Grimoire.LocalPlayerId);
                 color = score >= DrawingConfig.GoodRuneScore
                     ? new Color(0.45f, 1f, 0.6f)   // clean — fires at full strength
                     : new Color(1f, 0.85f, 0.4f);  // readable but sloppy
@@ -1055,7 +1062,7 @@ namespace SpellyZombie
             {
                 if (!s.Alive || s.State != StrokeState.Spent) continue;
                 s.State = StrokeState.Open;
-                s.SetColor(Stroke.InkColor);
+                s.SetColor(Stroke.InkColorFor(s.OwnerId));
                 s.SetLoop(false);
             }
         }
@@ -1177,7 +1184,11 @@ namespace SpellyZombie
                     float t = len2 > 1e-8f ? Mathf.Clamp01(Vector3.Dot(p - from, seg) / len2) : 0f;
                     if ((p - (from + seg * t)).sqrMagnitude <= r2)
                     {
-                        scoopInto?.Award(DrawingConfig.NodeSpacing * DrawingConfig.InkCostPerMeter);
+                        // AT A LOSS (Marko's scoop tax): full-worth refunds made a
+                        // free spell loop — draw, scoop, cast forever, never visit
+                        // the cauldron. The pot must stay the only true source.
+                        scoopInto?.Award(DrawingConfig.NodeSpacing * DrawingConfig.InkCostPerMeter
+                            * DrawingConfig.ScoopRefund);
                         Destroy(n.gameObject);
                     }
                 }

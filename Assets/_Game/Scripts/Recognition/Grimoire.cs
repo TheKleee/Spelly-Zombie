@@ -174,6 +174,22 @@ namespace SpellyZombie
         /// individually, and since RuneLibrary.IsUnlocked now asks HasRune, its
         /// knowledge did not die with it at all. The writing meters leaked the
         /// same way, one entry per (owner, rune) for the whole session.
+        /// SWITCHING SIDES REBUILDS THE BOOK. Marko: converting hands you a
+        /// "different grimoire mostly empty as when you start the game on that
+        /// team". An acolyte's whole kit is Solid and Liquid; a wizard starts
+        /// with nothing and earns everything.
+        ///
+        /// Deliberately NOT Drop(): that also wipes your HANDWRITING, and how you
+        /// draw is yours, not your side's. Losing your hand every time you turned
+        /// would be a punishment nobody asked for.
+        public static void SetKit(int owner, params RuneType[] runes)
+        {
+            _byOwner.Remove(owner);
+            _runesByOwner.Remove(owner);
+            if (runes != null)
+                foreach (var r in runes) UnlockRune(owner, r);
+        }
+
         public static void Drop(int owner)
         {
             _byOwner.Remove(owner);

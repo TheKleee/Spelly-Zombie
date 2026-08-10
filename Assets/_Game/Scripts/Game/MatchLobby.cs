@@ -22,6 +22,24 @@ namespace SpellyZombie
             Instance != null && !string.IsNullOrEmpty(Instance._netMap)
                 ? Instance._netMap : SelectedMap;
 
+        /// The game MODE (Marko Aug 8: the book stand picks "not just maps but
+        /// game modes as well => if we decide to put in more game modes"). One
+        /// exists today — Wizards vs Acolytes — so this is the named slot the
+        /// second mode will drop into, not a menu yet.
+        public static string SelectedMode { get; private set; } = "Acolytes";
+
+        /// HOST cycles the map — same rule as the M key (Among Us style: host
+        /// picks, everyone sees the pick on the board). Public so the BOOK
+        /// STAND menu is the same action, not a second implementation.
+        public static void CycleMap()
+        {
+            if (NetGame.Connected && !NetGame.IsHost) return; // host-only pick
+            var maps = MapList();
+            int i = Mathf.Max(0, maps.IndexOf(SelectedMap));
+            SelectedMap = maps[(i + 1) % maps.Count];
+            DrawingWorld.Instance?.LogEvent($"map: {SelectedMap}");
+        }
+
         static List<string> _mapCache;
 
         static List<string> MapList()
@@ -125,15 +143,17 @@ namespace SpellyZombie
                     if (client) NetSync.SendReady(_readyLocal);
                 }
 
+                // (C switches side, and it lives in SideBootstrap, NOT here. This
+                // input block sits behind RoundDirector.InLobby, the scene name, a
+                // non-null player and UIKit.Typing, and any one of those silently
+                // eats the key. The board below still shows which side you are on.)
+
                 // M = the HOST cycles the map (Among Us style — host picks,
                 // everyone sees the pick on the board)
                 if (!client && kb.mKey.wasPressedThisFrame)
                 {
-                    var maps = MapList();
-                    int i = Mathf.Max(0, maps.IndexOf(SelectedMap));
-                    SelectedMap = maps[(i + 1) % maps.Count];
+                    CycleMap(); // one implementation — the book stand calls the same
                     Juice.Chime(player.transform.position);
-                    DrawingWorld.Instance?.LogEvent($"map: {SelectedMap}");
                 }
             }
 
@@ -222,7 +242,9 @@ namespace SpellyZombie
             if (LocalTeam != _shownTeam)
             {
                 _shownTeam = LocalTeam;
-                _uiTeam.text = $"■ {TeamNames[LocalTeam]}"; // your color, not a team
+                // your colour, plus which side you are practising as
+                _uiTeam.text = $"■ {TeamNames[LocalTeam]}  ·  "
+                    + (Sides.LocalIsAcolyte ? "ACOLYTE" : "WIZARD") + "  ·  C to switch";
                 _uiTeam.color = TeamColors[Mathf.Min(LocalTeam, (byte)(TeamColors.Length - 1))];
             }
             if (ready != _shownReady || total != _shownTotal || _readyLocal != _shownReadyLocal)

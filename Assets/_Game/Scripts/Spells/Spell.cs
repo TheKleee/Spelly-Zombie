@@ -63,6 +63,13 @@ namespace SpellyZombie
 
         public static Spell Create(Seal seal, SurfaceMaterialType surface)
         {
+            // ACOLYTES DO NOT CAST. Their ink is corrupt, and corrupt ink reads
+            // the same glyphs as something else entirely: Solid raises a melee
+            // zombie, Liquid a ranged one, and every other rune does nothing
+            // because they never learned it. Same recognizer, same templates,
+            // same walls, no second alphabet anywhere.
+            if (Sides.IsAcolyte(seal.OwnerId)) return AcolyteSummon(seal);
+
             var host = new GameObject($"Spell_{seal.Id}");
             host.transform.position = seal.PlaneOrigin;
             var spell = host.AddComponent<Spell>();
@@ -117,6 +124,178 @@ namespace SpellyZombie
             WorldEvents.Report(WorldEventKind.Spell, seal.PlaneOrigin, 1.5f); // eyes turn, zombies notice
 
             return spell;
+        }
+
+        /// THE ACOLYTE'S ONLY SPELL. Returns null on purpose: nothing about a
+        /// summon is a Spell object, there are no zones, no auras and no physics
+        /// to run. The seal simply opens and the dead walk out of it.
+        ///
+        /// One Solid glyph = one melee zombie. One Liquid glyph = one ranged one.
+        /// Draw three Solids inside a seal and three walk out, which is his
+        /// "draws zombie icons and summons that many" using nothing but the
+        /// multiple-runes-per-seal his grammar already had.
+        static readonly System.Collections.Generic.List<ZombieBrain> _orderBuf =
+            new System.Collections.Generic.List<ZombieBrain>();
+
+        /// One summon glyph: which kind it raises and how big it was drawn.
+        struct SummonOrder { public bool Ranged; public float SizeMul; }
+
+        static readonly System.Collections.Generic.List<SummonOrder> _summonBuf =
+            new System.Collections.Generic.List<SummonOrder>();
+
+        static Spell AcolyteSummon(Seal seal)
+        {
+            // ONE ENTRY PER SUMMON GLYPH, carrying how big it was drawn.
+            // Marko: "Can zombie size change depending on the rune size? Just
+            // like other spells change in size?" It is the same rune-to-seal
+            // ratio every other spell already reads, so a big glyph inside a
+            // small seal raises a big one, at any drawing scale.
+            _summonBuf.Clear();
+            bool hasArrow = false, scatter = false;
+            Vector3 marchDir = Vector3.zero;
+
+            // the seal's own linear size, so this is a RATIO and not a
+            // measurement: draw the whole thing twice as large and nothing changes
+            //
+            // COMMENSURATE MEASURES (Marko Aug 10: "they are huge even when I
+            // draw really small indicators"). glyphSpan below is a HALF-diagonal
+            // — a radius — but this was sqrt(Area), which is an EDGE length, so
+            // the two were never the same kind of number and every ratio came
+            // out ~1.77x cold against the neutral it was compared to. Dividing
+            // the area by PI first makes this the seal's equivalent RADIUS, so
+            // `ratio` is now literally "what fraction of the seal the rune
+            // fills", 0..1 — which is what SummonSizeNeutral always claimed to
+            // measure. Its default moves with it.
+            float sealSpan = Mathf.Sqrt(Mathf.Max(0.0004f, seal.Area) / Mathf.PI);
+
+            foreach (var g in seal.Runes)
+            {
+                if (g.Strength <= 0.02f) continue;
+                if (g.Rune == RuneType.StateSolid || g.Rune == RuneType.StateLiquid)
+                {
+                    float glyphSpan = g.WorldBounds().size.magnitude * 0.5f;
+                    float ratio = glyphSpan / sealSpan;
+                    // a glyph filling about a third of its seal is "normal"
+                    // squared, so his small end gets genuinely small and his big
+                    // end genuinely big out of a ratio that only spans ~0.15..1
+                    float mul = Mathf.Clamp(
+                        Mathf.Pow(ratio / DrawingConfig.SummonSizeNeutral,
+                            DrawingConfig.SummonSizeCurve),
+                        DrawingConfig.SummonSizeMin, DrawingConfig.SummonSizeMax);
+                    _summonBuf.Add(new SummonOrder
+                    {
+                        Ranged = g.Rune == RuneType.StateLiquid,
+                        SizeMul = mul
+                    });
+                }
+                else if (g.Rune == RuneType.DirectionAway || g.Rune == RuneType.DirectionToward)
+                {
+                    // THE SAME ARROW GLYPH, READ BY CORRUPT INK. In a wizard's hand
+                    // it shoves matter; in an acolyte's it points the dead. Flatten
+                    // it: zombies walk, they do not fly at the ceiling.
+                    Vector3 d = ArrowDirection(g, seal.PlaneNormal, g.Rune);
+                    d.y = 0f;
+                    if (d.sqrMagnitude > 0.0001f)
+                    {
+                        marchDir = d.normalized;
+                        hasArrow = true;
+                        // ARROW MARCHES, Y SCATTERS (his call). Same heading, two
+                        // shapes: the arrow sends a column at one place, the Y
+                        // fans them out across it. One is a push, the other is a
+                        // sweep, and an acolyte picks by which glyph they draw.
+                        scatter = g.Rune == RuneType.DirectionToward;
+                    }
+                }
+            }
+
+            // An arrow sends everyone to ONE spot. A Y fans them across an arc in
+            // the same heading, so `i of n` spreads them instead of stacking them.
+            Vector3 MarchPoint(int i, int n)
+            {
+                Vector3 dir = marchDir;
+                if (scatter && n > 0)
+                {
+                    float t = n == 1 ? 0f : (i / (float)(n - 1)) * 2f - 1f;  // -1 .. +1
+                    dir = Quaternion.AngleAxis(t * DrawingConfig.ZombieScatterArc * 0.5f,
+                        Vector3.up) * marchDir;
+                }
+                return seal.PlaneOrigin + dir * DrawingConfig.ZombieMarchDistance;
+            }
+
+            // AN ARROW ON ITS OWN IS A REDIRECT. No summon runes, so this is not a
+            // summon at all: it re-points the dead this acolyte already has, which
+            // costs a drawing and a moment in the open rather than more ink.
+            if (_summonBuf.Count == 0)
+            {
+                if (!hasArrow)
+                {
+                    DrawingWorld.Instance?.LogEvent("nothing answers. draw solid or liquid");
+                    return null;
+                }
+
+                // gather mine first, so a scatter can fan them across the arc
+                _orderBuf.Clear();
+                foreach (var z in Zombie.All)
+                {
+                    if (z == null) continue;
+                    var mine = z.GetComponent<SummonedZombie>();
+                    if (mine == null || mine.SummonedBy != seal.OwnerId) continue;
+                    var b = z.GetComponent<ZombieBrain>();
+                    if (b != null) _orderBuf.Add(b);
+                }
+
+                int told = _orderBuf.Count;
+                for (int i = 0; i < told; i++) _orderBuf[i].Order(MarchPoint(i, told));
+                _orderBuf.Clear();
+
+                DrawingWorld.Instance?.LogEvent(told == 0
+                    ? "nobody is listening"
+                    : told == 1 ? "it turns and goes" : $"{told} of them turn and go");
+                return null;
+            }
+
+            int total = _summonBuf.Count;
+            float life = DrawingConfig.SummonedZombieLife;
+            for (int i = 0; i < total; i++)
+            {
+                bool isRanged = _summonBuf[i].Ranged;
+
+                // stand them in a ring around the seal so they do not spawn
+                // inside each other and shove themselves apart
+                float a = total <= 1 ? 0f : (i / (float)total) * Mathf.PI * 2f;
+                Vector3 spot = seal.PlaneOrigin
+                    + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * (0.6f + total * 0.12f)
+                    + Vector3.up * 0.2f;
+
+                // Charger is the brute. Ranged uses Walker for now: Scribbler is
+                // the spitter by name but it can still CAST, and zombies never
+                // cast. The real melee cloud and thrown corruption ball are their
+                // own step and will replace this pairing.
+                var z = Zombie.Spawn(spot, isRanged ? ZombieKind.Walker : ZombieKind.Charger);
+                if (z == null) continue;
+
+                // HOW BIG IT WAS DRAWN. Multiplies the kind's own shape, so a
+                // big Solid still raises a stocky brute and a big Liquid still
+                // raises a lanky one.
+                z.transform.localScale *= _summonBuf[i].SizeMul;
+
+                z.gameObject.AddComponent<SummonedZombie>()
+                    .Begin(seal.OwnerId, isRanged, life);
+
+                // in this mode ignoring a zombie has to cost you something
+                var brain = z.GetComponent<ZombieBrain>();
+                if (brain != null)
+                {
+                    brain.StrikesTurnedBacks = true;
+                    if (hasArrow) brain.Order(MarchPoint(i, total)); // how many, and which way
+                }
+            }
+
+            DrawingWorld.Instance?.LogEvent(total == 1
+                ? "one of them gets up"
+                : $"{total} of them get up");
+            WorldEvents.Report(WorldEventKind.Spell, seal.PlaneOrigin, 1.5f);
+            return null;
         }
 
         /// A client's BODY seal fired: its ink never replicated, so the HOST builds
@@ -609,6 +788,7 @@ namespace SpellyZombie
             if (mat == SurfaceMaterialType.Unknown)
                 mat = solid ? SurfaceMaterialType.Stone : SurfaceMaterialType.Water;
 
+
             // ONE recipe per drawing (verified bug: each State zone resolved the
             // whole seal independently — three Solid runes opened THREE
             // avalanches). The first zone of each State rune does the work.
@@ -674,13 +854,24 @@ namespace SpellyZombie
             {
                 // SOLID materializes overhead and DROPS — the anvil rune.
                 // Liquids stay surface-born (they slump into puddles in place).
-                float lift = solid ? DrawingConfig.SolidDropHeight : size * 0.5f;
+                // POPS FROM THE GROUND (Marko: no more sky-drop) — the strike
+                // driver below does the jumping; birth is at the seal
+                float lift = size * 0.55f;
                 // THE SEAL'S SIDES PICK THE SOLID'S SHAPE (his ruling: "3 sides
                 // => 1 shape, 4 => another… 10 would be a wheel for wood but
                 // default for rock") — passed through, resolved in Matter.Spawn
                 // against his prefabs. Liquid/gas ignore it: they share one blob.
-                var conjured = Matter.Spawn(mat, solid ? MatterPhase.Solid : MatterPhase.Liquid, size,
+                var conjured = Matter.Spawn(mat, solid ? MatterPhase.Solid : MatterPhase.Liquid,
+                    size * 2f, // Marko Aug 9: "make them 2x larger" — the drawn size, doubled
                     z.Center + z.Normal * lift, solid ? _edges : 0);
+                // A PARTICLE IN BEHAVIOR, NOT IN SHAPE (Marko Aug 9: "It's a
+                // particle when it comes to the behavior not when it comes to
+                // the shape... they still behave as before but fly cause they
+                // are magical spells"). HIS conjured shape, HIS material, HIS
+                // sides-pick-the-shape rule — plus flight: float, lock, jump.
+                var msStrike = conjured.GetComponent<MatterStrike>();
+                if (msStrike == null) msStrike = conjured.gameObject.AddComponent<MatterStrike>();
+                msStrike.Init(_ownerId, mat, solid ? MatterPhase.Solid : MatterPhase.Liquid, size * 2f);
                 // SPELL-BORN, FOREVER (Marko's ruling): conjured matter can
                 // never teach a rune, even after the touch law makes it an
                 // object — otherwise conjure → touch → absorb prints runes.

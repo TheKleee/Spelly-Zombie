@@ -67,11 +67,15 @@ namespace SpellyZombie
         /// Let go (throw or drop): velocity in, and 0.2s of grace for the
         /// former holder so it has time to get clear — you can never land a
         /// spell on yourself, but allies CAN be hit: saves are skill shots.
+        /// RELEASED = A PARTICLE AGAIN (Marko Aug 8): claiming no longer takes
+        /// it out of the magic world, so letting go returns it whole — it
+        /// combines, seeks its kin mid-air and dies on its own clock.
         public void ReleaseHeld(Vector3 velocity)
         {
             _graceFor = Holder;
             _graceUntil = Time.time + 0.2f;
             Holder = null;
+            Claimed = false;
             Vel = velocity;
             _settled = false; // brushing walls while held must not freeze the throw
         }
@@ -230,6 +234,10 @@ namespace SpellyZombie
             _fearTick = _strikeTick = _lureRetarget = 0f;
             _impactFxAt = 0f;
             _lure = null;
+            _slamActive = false;
+            _slamPrey = null;
+            _scanCd = 0f;
+            _strikeGen = 0;
             GrammarLevel = 1;
             Lineage = 0;
             SealId = 0;
@@ -243,6 +251,71 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------------------- birth --
+        // ---- THE STRIKE (Marko Aug 9): erupt, pounce, slam, shatter, then
+        // the survivors hover as turrets. Delivery only — chemistry untouched.
+        Vector3 _slamPoint;
+        Transform _slamPrey; // live aim while it exists — precision beats purity
+        bool _slamActive;
+        float _scanCd;
+        int _strikeGen; // burst children don't burst again
+
+        /// Vectors keep their own flight law; the sky-scale kinds never hover.
+        bool StrikeKind => Kind != ParticleKind.Push && Kind != ParticleKind.Lightning
+            && Kind != ParticleKind.BlackHole && Kind != ParticleKind.BarrierMote;
+
+        /// Snapshot targeting at birth: the nearest zombie's position AT SPAWN
+        /// is the slam point — locked, not homing, so moving dodges it. No
+        /// target = fly off and hover (the turret half of the law).
+        void StrikeLaunch(int generation)
+        {
+            _strikeGen = generation;
+            _slamActive = false;
+            _scanCd = 0f;
+            if (!StrikeKind) return;
+            float best = DrawingConfig.StrikeLockRange * DrawingConfig.StrikeLockRange;
+            var prey = Targets.Nearest(transform.position, ref best, includePlayers: false);
+            if (prey == null) return;
+            _slamPrey = prey;
+            _slamPoint = prey.position + Vector3.up * 0.6f;
+            _slamActive = true;
+            _settled = false;
+            // the pounce: up and OUT, fast — the god feel is the speed
+            Vel = ((_slamPoint - transform.position).normalized + Vector3.up * 0.25f).normalized
+                * DrawingConfig.StrikeSpeed;
+        }
+
+        /// Impact: the payload lands (existing chemistry) and the body SHATTERS
+        /// — pieces fly in all directions, each a real particle that will
+        /// hover and hunt on its own. This is how players learn they can grab.
+        void Burst()
+        {
+            if (!_slamActive) return;
+            _slamActive = false;
+            _slamPrey = null;
+
+            // THE BURST IS THE HIT (Marko Aug 9: "particles are still extremely
+            // unprecise" — final warning before homing gets removed). The slam
+            // used to detonate at its arrival radius, a step short of the prey,
+            // and the payload only delivered through direct trigger contact —
+            // so it LOOKED like a hit and gave nothing. Now the burst delivers
+            // the payload to everything in its blast, which is also the AoE
+            // dial working as ruled (rune size will scale this radius).
+            float aoe = 1.6f * Mathf.Max(1f, transform.localScale.x * 2f);
+            var hits = Physics.OverlapSphere(transform.position, aoe);
+            foreach (var h in hits)
+                if (h != null && !h.isTrigger) Touch(h);
+            if (_strikeGen > 0) { Die(); return; } // debris doesn't re-shatter
+            int n = Mathf.Max(2, DrawingConfig.StrikeBurstPieces);
+            for (int i = 0; i < n; i++)
+            {
+                Vector3 d = (Random.onUnitSphere + Vector3.up * 0.6f).normalized;
+                var piece = Emit(Kind, transform.position + d * 0.3f, d, 0.5f, 1);
+                if (piece != null) piece.Vel = d * (DrawingConfig.StrikeSpeed * 0.45f);
+            }
+            Juice.Thud(transform.position);
+            Die();
+        }
+
         public static SpellParticle Emit(ParticleKind kind, Vector3 pos, Vector3 dir,
             float intensity, int generation = 0)
         {
@@ -271,7 +344,11 @@ namespace SpellyZombie
             go.name = "P_" + kind;
             go.transform.position = pos;
             go.transform.rotation = Quaternion.identity;
-            go.transform.localScale = Vector3.one * (kind == ParticleKind.Push ? 0.09f : 0.14f);
+            // "I'm not afraid of pebbles" (Marko Aug 9): state particles start
+            // IMPOSING — the seal multiplies from there, never up from a dot
+            // ALL doubled (Marko Aug 9: "make them all at least 2x the size") —
+            // a bigger body is also a bigger trigger, so strikes actually CONNECT
+            go.transform.localScale = Vector3.one * (kind == ParticleKind.Push ? 0.18f : 0.3f);
             p.Power = Mathf.Clamp(intensity, 0.2f, 2f);
             p._generation = generation;
             p._appetite = Random.value; // personality: some motes stalk, some are lazy
@@ -310,6 +387,10 @@ namespace SpellyZombie
             }
 
             p.RefreshLook();
+            // THE STRIKE (Marko Aug 9): after the payload is set, the pounce —
+            // a spawn-locked slam when prey is in range, a hovering turret when
+            // not. Overrides the gentle bloom velocity above only when it locks.
+            p.StrikeLaunch(generation);
             return p;
         }
 
@@ -359,10 +440,16 @@ namespace SpellyZombie
             _age += dt;
             EnsureVectorShape();
 
-            // CLAIMED = object now (Marko's law): no combining, no lure, no
-            // expiry. Held, the hand drives the position (HandGrab); free,
-            // plain physics. Auras keep burning EVERYONE ELSE, and a carried
-            // flame still terrifies zombies that can see it.
+            // CLAIMED = object now (Marko's law): no combining, no lure. Held,
+            // the hand drives the position (HandGrab); free, plain physics.
+            // Auras keep burning EVERYONE ELSE, and a carried flame still
+            // terrifies zombies that can see it.
+            //
+            // BUT IT STILL DIES ON TIME (Marko Aug 8: "particles no longer
+            // last longer/forever when grabbed") — the old no-expiry clause
+            // made a claimed spark an eternal pocket weapon, hoarded instead
+            // of cast. The clock never stops now; claiming keeps everything
+            // else about the harvest, just not immortality.
             if (Claimed)
             {
                 if (GrammarLevel >= 2 || Kind == ParticleKind.Flame) TickAura(dt);
@@ -378,6 +465,13 @@ namespace SpellyZombie
                     _fearTick = 0.4f;
                     if (Dangerous()) ZombieBrain.ScareVisible(transform.position, 11f, EffectiveLum());
                 }
+                float claimedLife = DrawingConfig.ParticleLife
+                    * (Kind == ParticleKind.Flame ? 2.5f
+                     : Kind == ParticleKind.BlackHole ? 1.5f
+                     : GrammarLevel >= 2 ? 1.5f : 1f); // same clock as free particles
+                if (_age > claimedLife - 0.8f)
+                    transform.localScale *= Mathf.Max(0.01f, 1f - dt / 0.8f);
+                if (_age > claimedLife || transform.localScale.x < 0.015f) Die();
                 return;
             }
 
@@ -394,11 +488,50 @@ namespace SpellyZombie
                 _settled = false;
             }
 
+            // ---- THE STRIKE TICK (Marko Aug 9) ----
+            if (_slamActive)
+            {
+                // committed: fast and TRACKING (Marko: "extremely not precise"
+                // killed the pure snapshot — the slam now follows its prey while
+                // it lives; the snapshot point is the fallback for a dead one)
+                if (_slamPrey != null) _slamPoint = _slamPrey.position + Vector3.up * 0.6f;
+                Vel = (_slamPoint - transform.position).normalized * DrawingConfig.StrikeSpeed;
+                transform.position += Vel * dt;
+                if ((transform.position - _slamPoint).sqrMagnitude < 1.4f) Burst();
+                return; // the slam owns the frame — seeking/gravity stand down
+            }
+            if (StrikeKind)
+            {
+                // the TURRET half: hold in the air (no settling into a boring
+                // puddle of dots) and watch. Prey in range — hovering OR thrown
+                // — triggers the same quick slam ("when they get in range to
+                // lock on they will quickly fly at them").
+                _scanCd -= dt;
+                if (_scanCd <= 0f)
+                {
+                    _scanCd = 0.25f;
+                    float best = DrawingConfig.StrikeLockRange * DrawingConfig.StrikeLockRange;
+                    var prey = Targets.Nearest(transform.position, ref best, includePlayers: false);
+                    if (prey != null)
+                    {
+                        _slamPrey = prey;
+                        _slamPoint = prey.position + Vector3.up * 0.6f;
+                        _slamActive = true;
+                        _settled = false;
+                    }
+                }
+            }
+
             if (!_settled)
             {
                 // DENSITY IS WEIGHT (Marko's rule): heavy falls, thinned floats — gently
-                if (Kind != ParticleKind.Lightning && Kind != ParticleKind.BlackHole)
+                // — except a strike elemental: it HOVERS where it stopped, a
+                // visible waiting turret, catchable until it fires or expires
+                if (Kind != ParticleKind.Lightning && Kind != ParticleKind.BlackHole
+                    && !StrikeKind)
                     Vel += Vector3.down * (EffDensity() - AirDensity) * 2.5f * dt;
+                else if (StrikeKind)
+                    Vel *= Mathf.Max(0f, 1f - 1.6f * dt); // ease to a hanging stop
 
                 // MOTES SEEK EACH OTHER (Marko: "they almost always miss")
                 if (Kind != ParticleKind.Lightning && Kind != ParticleKind.BlackHole
@@ -579,8 +712,13 @@ namespace SpellyZombie
             if (_age > life || transform.localScale.x < 0.015f) Die();
         }
 
-        /// PARTICLES FEEL ALIVE (Marko's rule): a kinless mote stalks the
-        /// nearest living thing; only the hungriest quarter stalks wizards.
+        /// ZOMBIES ATTRACT SPELLS — and only zombies (Marko Aug 8: spells are
+        /// "battle oriented" now, not slow stalkers; luring survives as "zombies
+        /// might attract spells so it's both easier to hit them and they can be
+        /// used as distractions to bend the spell's path as you rush to steal
+        /// the cauldron as an acolyte"). The old rule stalked the nearest LIVING
+        /// THING with the hungriest quarter chasing wizards — players are prey
+        /// no more, on any appetite.
         void TickLure(float dt)
         {
             if (_appetite < 0.35f) return; // the lazy third just sits there — variety reads as life
@@ -590,7 +728,7 @@ namespace SpellyZombie
             {
                 _lureRetarget = 0.5f;
                 float best = DrawingConfig.ParticleChaseRange * DrawingConfig.ParticleChaseRange;
-                _lure = Targets.Nearest(transform.position, ref best, _appetite > 0.75f);
+                _lure = Targets.Nearest(transform.position, ref best, includePlayers: false);
             }
             if (_lure == null) return;
 
@@ -645,14 +783,23 @@ namespace SpellyZombie
             var op = other.GetComponent<SpellParticle>();
             if (op != null)
             {
-                // objects don't combine (Marko's law): a claimed particle is
-                // out of the grammar for good, on either side of the meeting
-                if (Claimed || op.Claimed) return;
+                // CLAIMED PARTICLES COMBINE NOW (Marko Aug 8: "they should be
+                // able to combine" — the old out-of-the-grammar clause is
+                // revoked with the rest of claim immortality; a held spark
+                // touched to a held frost still makes what chemistry says)
                 // both sides get the event — only one resolves the law
                 if (GetInstanceID() < op.GetInstanceID()) ResolveLaw(this, op);
                 return;
             }
             if (other.isTrigger) return;
+            if (_slamActive)
+            {
+                // the slam lands: payload first (existing chemistry), then the
+                // SHATTER — debris out in all directions, each piece a hunter
+                Touch(other);
+                Burst();
+                return;
+            }
             Touch(other);
         }
 

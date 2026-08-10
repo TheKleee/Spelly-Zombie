@@ -88,6 +88,22 @@ namespace SpellyZombie
         // line material lets it GLOW faintly in a pitch-dark cave, so ink
         // path-marks on walls work as wayfinding (Marko's ruling, Jul 20)
         public static readonly Color InkColor = new Color(0.16f, 0.19f, 0.33f);
+
+        /// WHAT COLOUR THIS HAND DRAWS IN. Marko, Aug 6: "when corrupted part of
+        /// the wand is drawing the ink should be green not black", and "wands get
+        /// corrupted or cured from the tip downwards".
+        ///
+        /// The tip is what writing consumes, and the green lives at the tip, so a
+        /// corrupted wizard lays down green ink until they have burned through it.
+        /// That makes corruption visible in the WORLD, not just on your hand:
+        /// your friends start finding enemy-coloured drawings and cannot tell
+        /// whether that was an acolyte or you.
+        ///
+        /// Today only the fully-corrupt case exists, which is an acolyte. When
+        /// souls land, this becomes "is the drawing end of this wand green yet",
+        /// and every call site here already asks the right question.
+        public static Color InkColorFor(int owner) =>
+            Sides.IsAcolyte(owner) ? DrawingConfig.CorruptInkColor : InkColor;
         public static readonly Color SealColor = new Color(1f, 0.80f, 0.25f);
         public static readonly Color RuneColor = new Color(0.30f, 0.90f, 1f);
         public static readonly Color FizzleColor = new Color(0.5f, 0.5f, 0.5f);
@@ -261,7 +277,7 @@ namespace SpellyZombie
             _line.numCapVertices = 2;
             _line.numCornerVertices = 2;
             _line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            SetColor(InkColor);
+            SetColor(InkColorFor(OwnerId));   // green if this hand is corrupt
         }
 
         /// What colour this ink is showing right now — so a temporary highlight

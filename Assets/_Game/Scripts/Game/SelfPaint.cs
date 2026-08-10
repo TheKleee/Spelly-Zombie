@@ -81,6 +81,9 @@ namespace SpellyZombie
             if (kb.iKey.wasPressedThisFrame) DrinkBodyInk();
         }
 
+        static readonly System.Collections.Generic.List<Stroke> _drunkStrokes =
+            new System.Collections.Generic.List<Stroke>(); // reused buffer (no-alloc law)
+
         /// Every persistent drawing on THIS body flows back into the well.
         /// The worth is exactly the ink the lines are made of (length ×
         /// cost-per-meter); Award clamps at the well's ceiling, so surplus
@@ -94,6 +97,7 @@ namespace SpellyZombie
 
             float drunk = 0f;
             int strokes = 0;
+            _drunkStrokes.Clear();
             for (int i = world.Strokes.Count - 1; i >= 0; i--)
             {
                 var s = world.Strokes[i];
@@ -103,8 +107,11 @@ namespace SpellyZombie
                 if (f == null || !f.transform.IsChildOf(transform)) continue; // MY body only
                 drunk += s.PathLength() * DrawingConfig.InkCostPerMeter;
                 strokes++;
+                _drunkStrokes.Add(s); // remembered BEFORE Burn — friends' copies must die too
                 s.Burn();
             }
+            // the copies riding my avatar on every other machine (parity law)
+            NetSync.OnLocalInkBurned(_drunkStrokes);
             if (strokes == 0)
             {
                 DrawingWorld.Instance?.LogEvent("no body ink to drink");
@@ -169,6 +176,10 @@ namespace SpellyZombie
         /// Marko's split: draw on yourself with the wand, pose from outside.
         bool CanEnter()
         {
+            // ACOLYTES CANNOT DRAW ON THEIR OWN BODY (his Aug 8 ruling) — and
+            // R belongs to rotating the worn shape for them, so body paint
+            // must never steal the key
+            if (Sides.Of(Grimoire.LocalPlayerId) == Side.Acolyte) return false;
             if (_pilot != null
                 && (_pilot.IsDowned || _pilot.IsSprawled || _pilot.IsAirTumbling)) return false;
             if (SimpleFPSController.ThirdPersonActive) return false;

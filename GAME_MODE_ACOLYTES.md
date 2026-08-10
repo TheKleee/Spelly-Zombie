@@ -135,6 +135,23 @@ Keep it that way and the variant system costs almost nothing.
 Readability comes for free here: a dumb zombie walking into a wall is its own
 tell, so no visual difference is strictly required.
 
+**THE SUMMON RUNES ARE SOLID AND LIQUID** (ruled Aug 6). There is no new glyph and
+no acolyte alphabet. Corrupt ink reinterprets the existing twelve:
+
+| drawn in clean ink | drawn in corrupt ink |
+|---|---|
+| Solid: makes solid matter | **a melee zombie** |
+| Liquid: makes liquid | **a ranged zombie** |
+| Push (arrow): shoves matter | **commands the dead where to go** |
+
+Same recognizer, same templates, same Rune Studio walls, nothing new to train.
+The branch lives at spell resolution: ask `Sides.IsAcolyte(owner)`.
+
+**So "mostly empty grimoire" has a concrete meaning: an acolyte starts knowing
+SOLID and LIQUID and nothing else.** That is their entire spell kit for the round.
+Everything else they gain is forms, never runes. Wizards grow a rune library and
+have no forms; acolytes grow a form library and have a fixed two-rune kit.
+
 **Two types, from the rune pair's two directions:**
 - **melee** - corruption cloud around them (Warcraft 3 undead disease cloud), better
   corruption up close
@@ -315,6 +332,95 @@ bomb plant, and it needs real approaches and cover.
 
 ---
 
+## THE GRIMOIRE IS DYNAMIC (ruled Aug 6)
+
+Pages are NOT a fixed set. The book grows with what you have learned, and the two
+classes grow differently.
+
+**Everyone starts with four pages:**
+
+1. Seal
+2. DirectionAway (push)
+3. DirectionToward (pull)
+4. **Absorb**
+
+**WIZARD.** Absorb something and **the Absorb page becomes that rune**, and Absorb
+itself moves to the next page. So Absorb is always the last page, and every rune
+you learn is inserted in front of it. The book is a record of your run.
+
+**ACOLYTE.** Same first three, then:
+
+4. Zombie, melee (Solid)
+5. Zombie, ranged (Liquid)
+6. **Scan** — you scan a thing rather than absorb it
+
+### The acquiring page exists only while there is something left to acquire
+
+- **Absorb disappears** once the wizard has collected all twelve runes.
+- **Scan disappears** once the acolyte has nine transformations.
+
+So the book ends the run as pure content, with no tool page on the end. Nine is
+also the form cap, which lands exactly on the number keys: one slot per key, no
+paging, no overflow.
+
+(Scanning is no longer their only ink, so losing the Scan page at nine forms does
+not starve them. See below.)
+
+## THE ACOLYTE HAS THREE INK SOURCES (ruled Aug 6)
+
+1. **Scanning objects**, which also teaches the form.
+2. **A zombie dying returns ink.** So they always want more of them up, and their
+   army is a battery as well as a weapon. This is what keeps them summoning into
+   the late game instead of hoarding.
+3. **The corrupted cauldron.** Once it is theirs, they drink from it.
+
+## THE CAULDRON HAS AN OWNER
+
+**It starts owned by the wizards.** Corrupting it takes it.
+
+- **While corrupted, wizards cannot draw ink from it at all.** It is not their pot
+  any more. That is a far harder consequence than a slow meter, and it means
+  losing the pot immediately threatens every wand on the team.
+- **Acolytes CAN draw from it while it is theirs.** Their attack and their supply
+  are the same act.
+
+Wizards take it back two ways, unchanged from before:
+
+- **wait for the corruption to expire**, free but slow
+- **sacrifice ink ore** to turn it black again, fast, and it does NOT refill the
+  pot, so it is pure cost
+
+So the pot is a contested resource rather than a health bar, and whoever holds it
+is drinking while the other side is drying out.
+
+⚠️ **Watch for the death spiral.** Losing the pot means no refills, and no refills
+means you cannot fight for the pot. The escape hatch is that waiting it out is free
+and ore is still liftable, but this needs playtesting: a wizard team that loses the
+pot at minute two must not be mathematically dead.
+
+### The Scan page IS the transformation list
+
+It replaces poses, because an acolyte has no use for them.
+
+- **3rd person, press a number** → transform into that scanned object, where a
+  wizard would have loaded a pose.
+- **3rd person, press R** → rotate the object you currently are, with the mouse.
+  Same rotation code the pose mode already uses, so it is reuse rather than a new
+  system. You choose which way the crate is facing, which matters for hiding.
+
+**Why it exists:** an acolyte cannot draw on their own body, so without this they
+would simply have fewer options than the wizard. This is the missing half.
+
+### Astral projection
+
+- **1st person, press R** → an invisible camera flies off to scout.
+- **You cannot be transformed while in first person.** So while you are scouting,
+  your real body is standing there in the open, un-disguised.
+
+That is the whole trade, and it is deliberately double edged: the best information
+in the game costs you the one thing keeping you alive. Anyone who finds your body
+while you are away has a free kill.
+
 ## THE LOBBY IS THE TUTORIAL
 
 Ruled Aug 6. In the lobby you **pick your side and can switch freely**, and
@@ -380,6 +486,30 @@ condition and it corrupts them, so their zombies should distract rather than
 farm. This keeps the mode about the pot instead of degenerating into deathmatch.
 
 ---
+
+## IDEA PARKED: SANDBOX / EXPLORATION MODE
+
+**NOT APPROVED. Post-demo, and Marko's own words are "on the maybe, not 100%".
+Do not build any part of this.** Recorded Aug 6 so it survives.
+
+A third mode, quieter than everything else: an **open map with no goal at all**.
+Wizards and acolytes together rather than against each other, **everyone immortal**,
+walking, exploring, and doing puzzles. Playable **solo**, and meant as a place to go
+on a spell exploration journey rather than to win anything.
+
+Why it is worth keeping on the list:
+
+- **The spell grammar is deeper than any round has time for.** Twelve runes,
+  combinations, particles that react to each other. A five minute round never lets
+  anyone find that. A sandbox is where combinations get discovered, and discoveries
+  are what people record and post.
+- **It is cheap in its bare form**: a map, both classes enabled, nothing lethal. No
+  win condition, no balance, no netcode pressure. The expensive word in his
+  description is "puzzles", which is authored content and can come later or never.
+- **It is the only mode that plays alone.** Which is worth weighing against his own
+  post-demo timing, because a Next Fest demo gets opened by one stranger at a random
+  hour with nobody else online, and the acolyte mode structurally cannot serve them.
+  Flagged once here rather than argued; the timing is his call.
 
 ## STILL OPEN
 

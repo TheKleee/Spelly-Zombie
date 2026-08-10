@@ -452,15 +452,9 @@ namespace SpellyZombie
             // TAB flips the camera; third person = the emote stage. Either
             // direction lands on the plain idle — a saved emote pose only
             // replays when its key is pressed again (Marko's spec).
-            if (kb.tabKey.wasPressedThisFrame && !IsDowned && !SelfPaint.IsActive)
-            {
-                ThirdPersonActive = !ThirdPersonActive;
-                if (_emotes == null) _emotes = GetComponent<EmotePlayer>();
-                _emotes?.StopToRest();
-                // back to first person: aim owns the pivot again, immediately
-                if (!ThirdPersonActive && CameraPivot != null)
-                    CameraPivot.localEulerAngles = new Vector3(_pitch, 0f, 0f);
-            }
+            if (kb.tabKey.wasPressedThisFrame && !IsDowned && !SelfPaint.IsActive
+                && ShapeShift.ThirdPersonAllowed) // acolyte with no stored shape: refused
+                ToggleThirdPerson();
             if (_cam != null && !SelfPaint.IsActive && !PoseGrab.IsOpen) // easel modes own the camera
             {
                 if (ThirdPersonActive)
@@ -513,7 +507,8 @@ namespace SpellyZombie
                 else if (SurfaceDrawer.IsPenActive) Hints.Offer(Hints.Id.FreeHand);
             }
             bool precision = altPrecision || HeldWeapon.DrawMode || SelfPaint.IsActive
-                || PoseGrab.IsOpen;
+                || PoseGrab.IsOpen || LobbyStand.PanelOpen  // book stand menu = real mouse (Marko approved this line)
+                || ShapeShift.PoseOpen;                     // acolyte shape posing = same precision cursor
             if (precision)
             {
                 Cursor.lockState = CursorLockMode.None;
@@ -826,6 +821,19 @@ namespace SpellyZombie
             // FallCatcher slab) you were flung, -12y always brings you home —
             // mid-run at a price (floored, revivable), in the lobby for free.
             if (transform.position.y < FallCatcher.KillY) FallCatcher.Catch(this);
+        }
+
+        /// THE one third-person toggle (Marko's order, Aug 10): Tab calls this,
+        /// and the acolyte's F-near-an-object calls this very same method — two
+        /// callers, one behavior, nothing imitated.
+        public void ToggleThirdPerson()
+        {
+            ThirdPersonActive = !ThirdPersonActive;
+            if (_emotes == null) _emotes = GetComponent<EmotePlayer>();
+            _emotes?.StopToRest();
+            // back to first person: aim owns the pivot again, immediately
+            if (!ThirdPersonActive && CameraPivot != null)
+                CameraPivot.localEulerAngles = new Vector3(_pitch, 0f, 0f);
         }
 
         static void LockCursor()

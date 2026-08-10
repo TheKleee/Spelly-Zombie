@@ -26,8 +26,27 @@ namespace SpellyZombie
         Creature _creature;
         GameObject _body;
         float _halfHeight;
+        float _fitCapsuleY;      // the capsule scale the fit below was measured against
+        Vector3 _fitBodyScale;   // the body scale that fit produced
+
+        /// SZ_ZombieAnim runs THREE DISCRETE STATES (Idle / Walk / Run), not a
+        /// blend — see CharacterWizard for why. Speed only picks which one; how
+        /// fast is carried by Animator.speed against the clip's own authored
+        /// ground speed, which is what stops the feet sliding.
+        const float RunAt = 3.0f;         // the Walk→Run threshold in the controller
+        const float WalkClipSpeed = 1.4f; // ground speed walking.fbx was authored at
+        const float RunClipSpeed = 4.5f;  // ditto zombie running.fbx
         bool _wasGettingUp, _socketed;
+        static MaterialPropertyBlock _tintBlock;
+        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        static readonly int ColorId = Shader.PropertyToID("_Color");
+
         bool _customBody; // HIS prefab is dressing this zombie — hands off
+
+        /// HIS prefab is wearing this body, so no code may recolour it. Read by
+        /// SummonedZombie, which tints code-built zombies green and must leave
+        /// his materials completely alone.
+        public bool IsCustomBody => _customBody;
         float _fidgetIn = 6f;
 
         /// The instantiated body model (the CharacterBaker clones this).
@@ -114,15 +133,45 @@ namespace SpellyZombie
             }
             body.transform.localScale = Vector3.Scale(authoredScale, new Vector3(s * widthMul, s, s * widthMul));
             d._halfHeight = capsuleHeight * 0.5f;
+            // THE CAPSULE CAN BE RESIZED AFTER IT IS DRESSED (Marko Aug 10: "the
+            // zombie is now floating"). A summon multiplies the zombie's scale
+            // once Spawn has already returned, so a one-time _halfHeight left the
+            // outfit hanging 0.82*(SizeMul-1) above the feet — floating for a big
+            // draw, sunk into the floor for a small one. Remember the fit so Sync
+            // can re-derive both numbers from the capsule's LIVE scale.
+            d._fitCapsuleY = z.transform.localScale.y;
+            d._fitBodyScale = body.transform.localScale;
 
             // EVERY skinned renderer, not just the first — a multi-material or
             // multi-piece body would otherwise leave the rest culling wrongly
             var smr = body.GetComponentInChildren<SkinnedMeshRenderer>();
             var skins = body.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            // COLOUR PER KIND, WITHOUT TOUCHING HIS MATERIAL (Marko, Aug 6: "All
+            // my zombies are brown now. Can you make them change color?").
+            //
+            // He baked ONE ZombieBody, a brown Charger, and the old rule here was
+            // that his prefab keeps his materials always, so every kind wore that
+            // one colour. Swapping his material out would throw away his shader
+            // and textures, and making a material asset per kind is five files he
+            // has to maintain.
+            //
+            // A MaterialPropertyBlock is neither: his material, his shader, his
+            // maps, with only the colour overridden per renderer. Clearing the
+            // block puts his exact look back.
+            if (_tintBlock == null) _tintBlock = new MaterialPropertyBlock();
             foreach (var sk in skins)
             {
-                if (!customBody) // his prefab keeps HIS materials, always
+                if (!customBody)
+                {
                     sk.sharedMaterial = MatterFX.Get(skin, MoteShade.Opaque);
+                }
+                else
+                {
+                    sk.GetPropertyBlock(_tintBlock);
+                    _tintBlock.SetColor(BaseColorId, skin);
+                    _tintBlock.SetColor(ColorId, skin);   // built-in shaders
+                    sk.SetPropertyBlock(_tintBlock);
+                }
                 sk.updateWhenOffscreen = true;
             }
             if (skins.Length == 0 && _warnedNoSkin.Add(prefab.GetInstanceID()))
@@ -267,8 +316,40 @@ namespace SpellyZombie
                 Vector3 v = _rb.linearVelocity;
                 v.y = 0f;
                 speed = v.magnitude;
-                _anim.SetFloat("Speed", speed);
             }
+
+            // LOCOMOTION IN THE BODY'S OWN UNITS (Marko Aug 10: "they barely
+            // move their legs yet somehow their bodies travel in a direction").
+            //
+            // The Shamble tree is authored in m/s for a 1.0-scale body — idle 0,
+            // walk 1.4, run 4.5 — and the raw world speed went straight into it.
+            // Two things were wrong with that:
+            //
+            //   a WANDERING zombie only moves at 0.55 * WalkSpeed = 0.72 m/s
+            //   (ZombieBrain), which lands squarely between idle and walk. Half
+            //   the leg motion, all of the travel: it slides.
+            //
+            //   the body is SCALED — 0.82 base, times whatever a summon
+            //   multiplied it by — so a giant covering 1.3 m/s is barely moving
+            //   relative to its own legs and blends even further toward idle.
+            //
+            // So: measure in body-lengths, let the controller pick ONE whole
+            // clip, and put how-fast into the playback rate. A shambler takes
+            // slow full strides instead of twitching in place, and a giant
+            // strides slowly instead of freezing mid-glide.
+            float grow = _fitCapsuleY > 0.0001f
+                ? Mathf.Max(0.0001f, _target.localScale.y) / _fitCapsuleY : 1f;
+            float bodySpeed = speed / grow;
+            _anim.SetFloat("Speed", bodySpeed);
+
+            // RATE AGAINST THE CLIP'S OWN GROUND SPEED, not the zombie's stat:
+            // the feet stop sliding only when the cycle advances at the rate the
+            // animator authored it to cover ground at. One-shots (attack, hit,
+            // fidget) ride this too, so it stays in a range that never reads as
+            // fast-forward.
+            float authored = bodySpeed >= RunAt ? RunClipSpeed : WalkClipSpeed;
+            _anim.speed = bodySpeed > 0.06f
+                ? Mathf.Clamp(bodySpeed / authored, 0.5f, 1.6f) : 1f;
 
             // struggled back to its feet — play the climb
             if (_creature != null)
@@ -296,6 +377,17 @@ namespace SpellyZombie
 
         void Sync()
         {
+            // the capsule's CURRENT size, not the one it wore when it was
+            // dressed — a summon resizes it after the fact and the outfit has
+            // to grow with it or hover over its own feet
+            float capsuleY = _target.localScale.y;
+            if (!Mathf.Approximately(capsuleY, _fitCapsuleY) && _fitCapsuleY > 0.0001f)
+            {
+                _halfHeight = capsuleY;
+                if (_body != null)
+                    _body.transform.localScale = _fitBodyScale * (capsuleY / _fitCapsuleY);
+            }
+
             // feet at the capsule's bottom END — when a knockdown releases the
             // constraints and the capsule topples, the body topples with it
             transform.rotation = _target.rotation;

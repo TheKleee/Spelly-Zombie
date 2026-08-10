@@ -46,6 +46,59 @@ namespace SpellyZombie
             public float ReadScore;    // the host primes its cache, never re-reads (netcode §1)
             public int[] ClusterOwners;
             public int[] ClusterIds;
+            // BODY INK (Marko Aug 8, multiplayer parity: "if something exists in
+            // the game then it's part of the game for everyone"). Non-empty =
+            // this stroke lives on the owner's SKELETON: Points and Normal are
+            // in that bone's LOCAL space, and the receiver mounts them on the
+            // same-named bone of the owner's avatar. World positions would be
+            // wrong twice over — the avatar stands elsewhere and poses
+            // differently. Empty = world ink, exactly as before.
+            public string BoneName;
+        }
+
+        /// Body ink drunk/burned by its owner (I key) — the copies on every
+        /// other machine must die too. (Owner, id) pairs, same naming as
+        /// StrokeMsg (netcode §0).
+        public struct InkBurnMsg : IBroadcast
+        {
+            public int Owner;
+            public int[] Ids;
+        }
+
+        // ---- the BOOK STAND lobby (Marko Aug 8) ----
+        /// A joiner announces the password it typed at the stand; the host
+        /// kicks mismatches. No password set = open lobby, nothing checked.
+        public struct JoinAuthMsg : IBroadcast
+        {
+            public string Password;
+        }
+
+        /// A player likes the map they want (client → host). One like per
+        /// player — liking again just moves it.
+        public struct MapLikeMsg : IBroadcast
+        {
+            public string Map;
+        }
+
+        /// Host → all: the current like tally, shown at the book stand.
+        public struct MapLikesMsg : IBroadcast
+        {
+            public string[] Maps;
+            public int[] Counts;
+        }
+
+        /// Host → all, 2 Hz: the pot's truth (one ink pool, host law).
+        public struct PotMsg : IBroadcast
+        {
+            public float Fill01;
+            public bool Corrupt;
+            public float Prep;
+        }
+
+        /// Client → host: "my wand drank this much from the pot" — the bill.
+        public struct PotDrinkMsg : IBroadcast
+        {
+            public float Amount;
         }
 
         public struct PlayerLeft : IBroadcast
@@ -647,6 +700,18 @@ namespace SpellyZombie
             InstanceFinder.ClientManager.RegisterBroadcast<SealEndMsg>(OnSealEndClient);
             InstanceFinder.ServerManager.RegisterBroadcast<EraseMsg>(OnEraseServer);
             InstanceFinder.ClientManager.RegisterBroadcast<EraseMsg>(OnEraseClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<InkBurnMsg>(OnInkBurnServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<InkBurnMsg>(OnInkBurnClient);
+
+            // the book stand lobby (Marko Aug 8): password gate + map likes
+            InstanceFinder.ServerManager.RegisterBroadcast<JoinAuthMsg>(OnJoinAuthServer);
+            InstanceFinder.ServerManager.RegisterBroadcast<MapLikeMsg>(OnMapLikeServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<MapLikesMsg>(OnMapLikesClient);
+            InstanceFinder.ClientManager.OnClientConnectionState += OnLocalClientState;
+
+            // the pot (Marko's cauldron economy, Aug 8-9)
+            InstanceFinder.ClientManager.RegisterBroadcast<PotMsg>(OnPotClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<PotDrinkMsg>(OnPotDrinkServer);
             InstanceFinder.ClientManager.RegisterBroadcast<MatterSnap>(OnMatterSnapClient);
             InstanceFinder.ClientManager.RegisterBroadcast<ParticleSnap>(OnParticleSnapClient);
             InstanceFinder.ClientManager.RegisterBroadcast<PropReg>(OnPropRegClient);
@@ -700,7 +765,9 @@ namespace SpellyZombie
         }
 
         /// DrawingWorld calls this whenever a local stroke finishes — replicate
-        /// it if it lives on world geometry (dynamic surfaces come with B4).
+        /// it if it lives on world geometry (dynamic surfaces come with B4)
+        /// or on the LOCAL PLAYER'S BODY (Marko Aug 8: "fix the ink to be
+        /// visible to everyone in multiplayer" — parity law, see below).
         public static void OnLocalStrokeFinished(Stroke s)
         {
             if (_instance == null || !NetGame.Connected || ApplyingRemote) return;
@@ -708,28 +775,48 @@ namespace SpellyZombie
             // your own pen — and, on the HOST, the zombie scribes too (their ink is host truth)
             if (s.OwnerId != Grimoire.LocalPlayerId && !NetGame.IsHost) return;
             if (s.Surface == null) return;
-            if (s.Persistent) return; // body/weapon ink: BodySealFire carries the cast (netcode §2)
-            if (s.Surface.GetComponentInParent<Creature>() != null) return;       // dynamic: later
-            if (s.Surface.GetComponentInParent<Rigidbody>() != null) return;      // dynamic: later
+
+            // BODY INK REPLICATES (Marko Aug 8: "never remove things in
+            // multiplayer... if something exists in the game then it's part of
+            // the game for everyone"). The old blanket `if (s.Persistent)
+            // return` is DEAD BY RULING. Body strokes ride mixamorig bones on
+            // the local player — those bones carry ragdoll Rigidbodies, so this
+            // branch must be decided BEFORE the dynamic-surface skips below.
+            bool bodyInk = s.Persistent
+                && s.Surface.name.StartsWith("mixamorig:")
+                && s.Surface.GetComponentInParent<SimpleFPSController>() != null;
+
+            // still local-only: weapon engravings (remote hands hold nothing
+            // yet — the avatar wand/grimoire gap, same parity law) and the
+            // PaintShell fallback (the shell never exists on a remote)
+            if (s.Persistent && !bodyInk) return;
+            if (!bodyInk && s.Surface.GetComponentInParent<Creature>() != null) return;  // dynamic: later
+            if (!bodyInk && s.Surface.GetComponentInParent<Rigidbody>() != null) return; // dynamic: later
 
             var pts = new List<Vector3>();
             Vector3 normal = Vector3.up;
             foreach (var n in s.Nodes)
             {
                 if (n == null) continue;
-                pts.Add(n.transform.position);
+                // body ink travels in BONE-LOCAL space: the receiver's copy of
+                // this player stands somewhere else, in some other pose — only
+                // the bone frame means the same thing on both machines
+                pts.Add(bodyInk ? s.Surface.InverseTransformPoint(n.transform.position)
+                                : n.transform.position);
                 normal = n.SurfaceNormal;
             }
             if (pts.Count < 2) return;
+            if (bodyInk) normal = s.Surface.InverseTransformDirection(normal);
 
             if (s.NetId == 0) s.NetId = _nextStrokeId++;
             RegisterNetStroke(s);
 
             // the OWNER's pen-up verdict rides along — the host primes, never re-reads (netcode §1)
+            // (not for body ink: its casts ship whole via BodySealFire, netcode §2)
             int readRune = 0;
             float readScore = 0f;
             int[] clOwners = null, clIds = null;
-            if (s.DeclaredRune == RuneType.None && s.OwnerId == Grimoire.LocalPlayerId
+            if (!bodyInk && s.DeclaredRune == RuneType.None && s.OwnerId == Grimoire.LocalPlayerId
                 && DrawingWorld.Instance != null)
             {
                 _clusterBuf.Clear();
@@ -752,7 +839,7 @@ namespace SpellyZombie
             InstanceFinder.ClientManager.Broadcast(new StrokeMsg
             {
                 Owner = s.OwnerId,
-                SurfacePath = FullPath(s.Surface),
+                SurfacePath = bodyInk ? "" : FullPath(s.Surface), // bone name IS the address
                 Normal = normal,
                 Points = pts.ToArray(),
                 DeclaredRune = (int)s.DeclaredRune,
@@ -760,8 +847,26 @@ namespace SpellyZombie
                 ReadRune = readRune,
                 ReadScore = readScore,
                 ClusterOwners = clOwners,
-                ClusterIds = clIds
+                ClusterIds = clIds,
+                BoneName = bodyInk ? s.Surface.name : ""
             });
+        }
+
+        static readonly List<int> _drinkBuf = new List<int>();
+
+        /// The owner drank/burned their own body ink — tell everyone, so the
+        /// copies riding their avatar die too. Strokes that never replicated
+        /// (NetId 0: drawn offline, shell-fallback ink) are skipped.
+        public static void OnLocalInkBurned(List<Stroke> burned)
+        {
+            if (_instance == null || !NetGame.Connected || burned == null) return;
+            _drinkBuf.Clear();
+            foreach (var s in burned)
+                if (s != null && s.NetId != 0 && s.OwnerId == Grimoire.LocalPlayerId)
+                    _drinkBuf.Add(s.NetId);
+            if (_drinkBuf.Count == 0) return;
+            InstanceFinder.ClientManager.Broadcast(new InkBurnMsg
+                { Owner = Grimoire.LocalPlayerId, Ids = _drinkBuf.ToArray() });
         }
 
         static string FullPath(Transform t)
@@ -1447,6 +1552,9 @@ namespace SpellyZombie
         {
             if (msg.Owner == Grimoire.LocalPlayerId || DrawingWorld.Instance == null) return;
 
+            // body ink names a BONE, not a scene path (Marko Aug 8 parity law)
+            if (!string.IsNullOrEmpty(msg.BoneName)) { ApplyBodyStroke(msg); return; }
+
             Transform surface = null;
             var go = GameObject.Find(msg.SurfacePath);
             if (go != null) surface = go.transform;
@@ -1495,6 +1603,173 @@ namespace SpellyZombie
             }
         }
 
+        /// A friend's BODY ink lands on their avatar's skeleton (Marko Aug 8:
+        /// "fix the ink to be visible to everyone in multiplayer"). The points
+        /// arrive in bone-local space and mount on the same-named bone here, so
+        /// the drawing sits on the body whatever pose or place the avatar is
+        /// in. The copy is COSMETIC: silent complete — no recognition, no
+        /// claim, no closure (the owner's BodySealFire carries any cast,
+        /// netcode §2) — and CachePersistence inside CompleteStroke makes it
+        /// evaporation-exempt via the avatar's PersistentInkSurface.
+        void ApplyBodyStroke(StrokeMsg msg)
+        {
+            // avatars key by CLIENT id; stroke owners are OwnerIdOf = client+1
+            if (!_avatars.TryGetValue(msg.Owner - 1, out var avatar) || avatar == null) return;
+            if (msg.Points == null || msg.Points.Length < 2) return;
+
+            Transform bone = null;
+            foreach (var t in avatar.GetComponentsInChildren<Transform>(true))
+                if (t.name == msg.BoneName) { bone = t; break; }
+            if (bone == null) return; // capsule-fallback avatar: no skeleton, skip quietly
+
+            ApplyingRemote = true;
+            try
+            {
+                Vector3 normal = bone.TransformDirection(msg.Normal);
+                ZombieScribe.PlaneBasis(normal, out var right, out var up);
+                var s = new Stroke
+                {
+                    BasisRight = right,
+                    BasisUp = up,
+                    Surface = bone,
+                    OwnerId = msg.Owner,
+                    DeclaredRune = (RuneType)msg.DeclaredRune,
+                    NetId = msg.StrokeId
+                };
+                RegisterNetStroke(s); // (owner, id) → this copy, so drink-burns find it
+                DrawingWorld.Instance.Register(s);
+                for (int i = 0; i < msg.Points.Length; i++)
+                    s.AddNode(DrawNode.Create(s, i,
+                        bone.TransformPoint(msg.Points[i]), normal, bone));
+                DrawingWorld.Instance.CompleteStroke(s,
+                    allowCloseOntoInk: false, silent: true, preview: false);
+            }
+            finally
+            {
+                ApplyingRemote = false;
+            }
+        }
+
+        // ------------------------------------------- book stand lobby (Aug 8) --
+        static readonly Dictionary<int, string> _mapLikes = new Dictionary<int, string>();   // host: clientId → liked map
+        static readonly Dictionary<string, int> _likeCounts = new Dictionary<string, int>(); // everyone: map → likes (stand UI reads)
+
+        /// Likes for a map, as last announced by the host.
+        public static int LikeCount(string map) =>
+            !string.IsNullOrEmpty(map) && _likeCounts.TryGetValue(map, out var n) ? n : 0;
+
+        /// Local player likes a map at the stand. One like per player; liking
+        /// another map moves it.
+        public static void SendMapLike(string map)
+        {
+            if (_instance == null || !NetGame.Connected || string.IsNullOrEmpty(map)) return;
+            if (NetGame.IsHost) _instance.ApplyLike(-1, map); // the host's own like, id -1
+            else InstanceFinder.ClientManager.Broadcast(new MapLikeMsg { Map = map });
+        }
+
+        void OnMapLikeServer(NetworkConnection conn, MapLikeMsg msg, Channel channel)
+            => ApplyLike(conn.ClientId, msg.Map);
+
+        void ApplyLike(int clientId, string map)
+        {
+            _mapLikes[clientId] = map ?? "";
+            _likeCounts.Clear();
+            foreach (var kv in _mapLikes)
+                if (!string.IsNullOrEmpty(kv.Value))
+                    _likeCounts[kv.Value] = (_likeCounts.TryGetValue(kv.Value, out var n) ? n : 0) + 1;
+            var maps = new string[_likeCounts.Count];
+            var counts = new int[_likeCounts.Count];
+            int i = 0;
+            foreach (var kv in _likeCounts) { maps[i] = kv.Key; counts[i] = kv.Value; i++; }
+            InstanceFinder.ServerManager.Broadcast(new MapLikesMsg { Maps = maps, Counts = counts });
+        }
+
+        void OnMapLikesClient(MapLikesMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return; // host tallied it itself
+            _likeCounts.Clear();
+            if (msg.Maps == null || msg.Counts == null) return;
+            for (int i = 0; i < msg.Maps.Length && i < msg.Counts.Length; i++)
+                _likeCounts[msg.Maps[i]] = msg.Counts[i];
+        }
+
+        /// The moment our CLIENT connection stands, announce the password we
+        /// typed at the stand. The host ignores empty-password lobbies.
+        void OnLocalClientState(FishNet.Transporting.ClientConnectionStateArgs args)
+        {
+            if (args.ConnectionState != FishNet.Transporting.LocalConnectionState.Started) return;
+            if (InstanceFinder.ServerManager.Started) return; // the host trusts itself
+            InstanceFinder.ClientManager.Broadcast(new JoinAuthMsg
+                { Password = NetGame.JoinPassword ?? "" });
+        }
+
+        /// Wrong password = disconnected on the spot. No password set = open
+        /// lobby, everyone passes.
+        void OnJoinAuthServer(NetworkConnection conn, JoinAuthMsg msg, Channel channel)
+        {
+            if (string.IsNullOrEmpty(NetGame.HostPassword)) return;
+            if ((msg.Password ?? "") == NetGame.HostPassword) return;
+            Debug.Log($"[SpellyZombie] Book stand: wrong lobby password from client {conn.ClientId} — kicked.");
+            conn.Disconnect(true);
+        }
+
+        // ------------------------------------------------ the pot (Aug 8-9) --
+        /// Local player excluded — the sim already counts it directly.
+        public static void EachRemotePlayer(System.Action<int, Vector3> visit)
+        {
+            if (_instance == null) return;
+            foreach (var kv in _instance._avatars)
+                if (kv.Value != null) visit(OwnerIdOf(kv.Key), kv.Value.transform.position);
+        }
+
+        public static void PushPot(float fill01, bool corrupt, float prep)
+        {
+            if (_instance == null || !NetGame.IsHost || !NetGame.Connected) return;
+            InstanceFinder.ServerManager.Broadcast(new PotMsg
+                { Fill01 = fill01, Corrupt = corrupt, Prep = prep });
+        }
+
+        public static void SendPotDrink(float amount)
+        {
+            if (_instance == null || !NetGame.Connected || NetGame.IsHost) return;
+            InstanceFinder.ClientManager.Broadcast(new PotDrinkMsg { Amount = amount });
+        }
+
+        void OnPotClient(PotMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return; // the host IS the truth
+            CauldronEconomy.ApplyNet(msg.Fill01, msg.Corrupt, msg.Prep);
+        }
+
+        void OnPotDrinkServer(NetworkConnection conn, PotDrinkMsg msg, Channel channel)
+        {
+            // sanity-capped: nobody drinks more than a second of near-rate per bill
+            float amount = Mathf.Clamp(msg.Amount, 0f, DrawingConfig.PotRefillNearPerSec);
+            CauldronEconomy.Active?.BillInk(amount);
+        }
+
+        void ApplyInkBurn(InkBurnMsg msg)
+        {
+            if (msg.Owner == Grimoire.LocalPlayerId || msg.Ids == null) return;
+            foreach (var id in msg.Ids)
+            {
+                var s = FindNetStroke(msg.Owner, id);
+                if (s != null && s.Alive) s.Burn(); // the sweep culls the dead entry
+            }
+        }
+
+        void OnInkBurnServer(NetworkConnection conn, InkBurnMsg msg, Channel channel)
+        {
+            ApplyInkBurn(msg);
+            InstanceFinder.ServerManager.BroadcastExcept(conn, msg);
+        }
+
+        void OnInkBurnClient(InkBurnMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return; // host applied via server path
+            ApplyInkBurn(msg);
+        }
+
         void RemoveAvatar(int id)
         {
             if (_avatars.TryGetValue(id, out var avatar) && avatar != null)
@@ -1534,6 +1809,10 @@ namespace SpellyZombie
                 // friends wear the real wizard (T-pose arms eased down until
                 // pose sync lands in B4 — a gliding T-pose is a bit too cursed)
                 go = new GameObject($"NetPlayer_{id}");
+                // their body ink mounts on these bones (Marko Aug 8 parity law) —
+                // the marker makes the copies Persistent: evaporation-exempt and
+                // never consumed by spells, same as on the owner's machine
+                go.AddComponent<PersistentInkSurface>();
                 var body = Object.Instantiate(prefab, go.transform);
                 body.name = "Body";
                 body.transform.localPosition = new Vector3(0f, -0.9f, 0f); // avatar anchor is mid-body

@@ -45,8 +45,11 @@ namespace SpellyZombie
                 return;
             }
 
-            // the Pose Studio / pause menu own the mouse while open
-            if (PoseStudio.IsOpen || GameMenu.IsOpen)
+            // the Pose Studio / pause menu own the mouse while open.
+            // A SHAPED ACOLYTE CANNOT DRAW either (Marko's rule): hiding is safe
+            // and powerless, and everything that wins the round happens in your
+            // own body. This is the whole trade the class is built on.
+            if (PoseStudio.IsOpen || GameMenu.IsOpen || ShapeShift.LocalIsShaped)
             {
                 IsPenActive = false;
                 EndStroke();
@@ -236,7 +239,7 @@ namespace SpellyZombie
                 var weld = DrawNode.Create(_current, _current.Nodes.Count,
                     hit.point, hit.normal, _current.Surface);
                 _current.AddNode(weld);
-                EndStroke();
+                EndStroke(penLifted: false); // still drawing — don't re-read yet
             }
 
             // jump tolerance grows with distance: a small mouse flick sweeps a lot
@@ -249,7 +252,7 @@ namespace SpellyZombie
                 // pen-continuity weld gets built next
                 DrawingWorld.Instance.LogEvent(
                     $"stroke split mid-draw: aim jumped {Vector3.Distance(hit.point, _lastHitPoint) * 100f:0}cm (limit {allowedJump * 100f:0}cm)");
-                EndStroke(); // aim jumped to a distant surface — that's a new stroke
+                EndStroke(penLifted: false); // new stroke, but the pen never came up
             }
 
             if (_current == null)
@@ -367,12 +370,20 @@ namespace SpellyZombie
             DrawingWorld.Instance.CloseSingleStroke(stroke);
         }
 
-        void EndStroke()
+        /// `penLifted: false` = the pen is STILL DOWN and this is only a
+        /// structural split (a bone seam, an aim jump). Marko Aug 8: "the
+        /// recognition should only run after the ink release just like on the
+        /// floor." On the floor one drag is one stroke, so nobody noticed that
+        /// every split re-reads the whole connected drawing and rebuilds the
+        /// preview label. On the BODY the pen crosses a bone every few
+        /// centimetres, so one drag fired dozens of reads. The ink, the welds
+        /// and seal closure are unchanged — only the READING waits for release.
+        void EndStroke(bool penLifted = true)
         {
             if (_current == null) return;
             var stroke = _current;
             _current = null;
-            DrawingWorld.Instance.CompleteStroke(stroke);
+            DrawingWorld.Instance.CompleteStroke(stroke, preview: penLifted);
         }
 
         void OnGUI()

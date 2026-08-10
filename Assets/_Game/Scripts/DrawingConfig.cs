@@ -84,6 +84,42 @@ namespace SpellyZombie
         public static readonly float RuneIconLift = O(nameof(RuneIconLift), 0f);     // em above the baseline. 0 = no tag emitted; the sprite asset's own metrics do the aligning
         public static readonly float RuneIconScale = O(nameof(RuneIconScale), 100f); // % of the surrounding text size. 100 = no tag emitted
         public static readonly float InkEvaporateSeconds = O(nameof(InkEvaporateSeconds), 60f);    // loose world ink lives this long
+        /// THE SCOOP TAX (Marko Aug 8): rubbed-out ink refills the wand at a LOSS —
+        /// "without that logic people could cast spells for free without having to
+        /// take any ink from the cauldron ever." Half back is his opening number
+        /// ("or 70% if half is too strict idk"), so it lives in sz_tuning.json for
+        /// him to try 0.7 without a build. He wants wizard power LIMITED.
+        public static readonly float ScoopRefund = O(nameof(ScoopRefund), 0.5f);
+        /// How long a WORLD seal lives after casting before its ink is consumed
+        /// (Marko Aug 8: "consumed quickly after the spell is cast" — no re-emit
+        /// farming, no erase-and-recast). Body seals keep SealProduceSeconds.
+        public static readonly float SealConsumeSeconds = O(nameof(SealConsumeSeconds), 1.2f);
+
+        // ---- THE POT (Marko's cauldron economy, ruled Aug 8-9). One ink pool,
+        // no exceptions: every wand refill bills it, nothing ever refills it.
+        public static readonly float PotPrepSeconds = O(nameof(PotPrepSeconds), 30f);        // inert gather phase, then it opens full
+        public static readonly float PotCapacityInk = O(nameof(PotCapacityInk), 1600f);      // total reserve, in wand ink units
+        public static readonly float PotCloseRadius = O(nameof(PotCloseRadius), 2.6f);       // "close enough to lift it": fast refill, spill, defuse, corrupt touch
+        public static readonly float PotRefillRange = O(nameof(PotRefillRange), 45f);        // beyond this the refill sits at the floor rate
+        public static readonly float PotRefillNearPerSec = O(nameof(PotRefillNearPerSec), 22f);  // ink/s at the pot (the old cauldron station rate)
+        public static readonly float PotRefillFloorPerSec = O(nameof(PotRefillFloorPerSec), 2.5f); // ink/s across the map — never truly dry, never enough to camp on
+        public static readonly float PotSpillPerSec = O(nameof(PotSpillPerSec), 8f);         // full wand inside the close radius: the tap keeps running, the pot pays
+        public static readonly float PotCorruptDrainPerSec = O(nameof(PotCorruptDrainPerSec), 11f); // green evaporation, "as if 3 or 4 people are filling their wands"
+        public static readonly float PotAcolyteFillPerSec = O(nameof(PotAcolyteFillPerSec), 9f);   // the babysitting tax: their corruption FILLS it
+        public static readonly float PotAcolyteFillRadius = O(nameof(PotAcolyteFillRadius), 6f);   // must stay smaller than a sensible overwatch distance
+        public static readonly float PotCorruptSeconds = O(nameof(PotCorruptSeconds), 3.2f); // acolyte touch to turn it green — the CS PLANT time (his ruling)
+        public static readonly float PotDefuseSeconds = O(nameof(PotDefuseSeconds), 10f);    // wizard presence to turn green back — the CS DEFUSE time (colour only, ink lost is lost)
+
+        // ---- THE STRIKE (Marko Aug 9: "spells need to be faster and jump to
+        // move towards the target... when I cast a fire I need to feel like a
+        // god"). Delivery only — the elemental chemistry is untouched.
+        public static readonly float StrikeLockRange = O(nameof(StrikeLockRange), 12f);   // snapshot at spawn + hover lock-on radius
+        public static readonly float StrikeSpeed = O(nameof(StrikeSpeed), 14f);           // the slam. 24 flew PAST everything ("way too fast and extremely not precise")
+        public static readonly int StrikeBurstPieces = (int)O(nameof(StrikeBurstPieces), 4f); // shatter count on impact — the flying debris that teaches grabbing
+        /// Scan ink per meter of the scanned object's largest dimension (Marko:
+        /// "larger objects... regenerate more ink" — size IS the reward, and a
+        /// big disguise is a bad disguise, so the trade balances itself).
+        public static readonly float ScanInkPerMeter = O(nameof(ScanInkPerMeter), 25f);
         public static readonly float InkEvaporateFadeSeconds = O(nameof(InkEvaporateFadeSeconds), 6f); // then thins out over this long before vanishing    // eraser WIDER than the thin pen (Marko: pen-width erasing was impossible to aim) — still small enough for precise corrections; swept along the cursor path so thin ≠ skippy
 
         // ---- Seal closure / integrity ----
@@ -133,6 +169,96 @@ namespace SpellyZombie
         public static readonly int CircleMinCorners = Oi(nameof(CircleMinCorners), 8); // and it must not be an obvious low-corner polygon
         public static readonly float RdpEpsilonFactor = O(nameof(RdpEpsilonFactor), 0.015f);// RDP epsilon as fraction of the loop's bounding diagonal
         public static readonly float MinCornerAngle = O(nameof(MinCornerAngle), 20f); // degrees of direction change required to count as an edge corner
+
+        // ---- Zombie navigation (Marko Aug 6: "Zombies need a way to navigate.
+        // They are naturally stupid but they need some navigation logic at least
+        // simple kind.") ----
+        // NO NAVMESH ON PURPOSE. Baking would have to happen per map, and maps are
+        // the content strategy: downloaded environments must work with zero prep.
+        // NavMeshAgent also owns its own movement, which fights the Rigidbody that
+        // spells push, freeze and ragdoll. So: local steering, and wall-following
+        // when steering alone cannot escape (a courtyard with one exit).
+        public static readonly float ZombieLookAhead = O(nameof(ZombieLookAhead), 1.8f);      // metres probed in front. Bigger = smarter = notices walls sooner
+        public static readonly float ZombieProbeRadius = O(nameof(ZombieProbeRadius), 0.35f); // half a zombie's width, so it fits where it thinks it fits
+        public static readonly float ZombieStuckSeconds = O(nameof(ZombieStuckSeconds), 0.9f);// trying to move but going nowhere for this long = start wall-following
+        public static readonly float ZombieWallFollowSeconds = O(nameof(ZombieWallFollowSeconds), 3f); // how long to commit to hugging one side before trying straight again
+
+        // A summoned zombie is a SPELL and expires. Marko: "zombies should not
+        // last forever... they will last a duration forcing acolytes to create
+        // more zombies and reveal themselves" and "zombies will last for a minute
+        // at least. Cause they need to walk." NOT the same clock as the seal,
+        // which produces for a flat 10 seconds; what it produced lives its own life.
+        public static readonly float SummonedZombieLife = O(nameof(SummonedZombieLife), 75f);
+
+        /// Pupils of a zombie somebody else is steering. Red reads as "not its
+        /// own idea" instantly, and it is the only red on a creature otherwise
+        /// made of greens.
+        public static readonly Color MindControlEyeColor = new Color(0.85f, 0.10f, 0.10f, 1f);
+
+        // ---- how big a zombie is, and how big its eyes are ----
+        // Marko, Aug 6: "They are too large... They should be more of a player
+        // size and they have huge eyes". Both are numbers rather than prefab
+        // surgery, so he can tune them live in sz_tuning.json and never risk the
+        // animation by rebuilding a prefab.
+        // How long the green puff off a dead zombie lingers. The detonation
+        // cloud, when it is built, is the loud one — this is the quiet version.
+        public static readonly float ZombieDeathCloudSeconds = O(nameof(ZombieDeathCloudSeconds), 2.2f);
+
+        public static readonly float ZombieBodyScale = O(nameof(ZombieBodyScale), 0.82f); // multiplies KindScale. 1 = the old size
+        public static readonly float ZombieEyeScale = O(nameof(ZombieEyeScale), 1.3f);    // was a hardcoded 2.2, which is where the saucers came from
+
+        // A summoned zombie is sized by HOW BIG THE RUNE WAS DRAWN inside its
+        // seal, the same rune-to-seal ratio every other spell reads. Neutral is
+        // the fraction of the seal a rune fills to come out ordinary-sized.
+        //
+        // HIS RANGE (Marko Aug 10): smallest = half the old smallest, largest =
+        // the old largest plus 50%. The base body is 1.64m (2 * ZombieBodyScale),
+        // so Min 0.3 is a 0.49m gremlin and Max 3.3 a 5.4m giant.
+        //
+        // A straight ratio/Neutral could not span that: the ratio itself only
+        // runs about 0.15 (a speck in a wide loop) to 1.0 (a rune filling its
+        // seal), so the top of his range was unreachable and every summon
+        // bunched in the middle. SQUARING it opens the ends without moving the
+        // centre — fill 55% of the seal and you still get exactly 1.0:
+        //
+        //   rune at 30% of the seal → 0.30 → 0.49m     (his smallest)
+        //   rune at 55%             → 1.00 → 1.64m     (ordinary)
+        //   rune at 70%             → 1.62 → 2.66m
+        //   rune filling the seal   → 3.31 → 5.4m      (his largest)
+        //
+        // These four are the size dial, live in sz_tuning.json, no rebuild.
+        public static readonly float SummonSizeNeutral = O(nameof(SummonSizeNeutral), 0.55f);
+        public static readonly float SummonSizeCurve = O(nameof(SummonSizeCurve), 2f);   // 1 = linear, higher = more dramatic ends
+        public static readonly float SummonSizeMin = O(nameof(SummonSizeMin), 0.3f);
+        public static readonly float SummonSizeMax = O(nameof(SummonSizeMax), 3.3f);
+
+        /// How far along the arrow a commanded zombie marches. An arrow is a
+        /// HEADING, not a map pin: it points, they walk that way until they get
+        /// there or until something more interesting happens on the way.
+        public static readonly float ZombieMarchDistance = O(nameof(ZombieMarchDistance), 25f);
+
+        /// Total arc a Y fans its zombies across. The arrow sends a column at one
+        /// spot; the Y sweeps a front. 110 degrees is wide enough to read as
+        /// "spread out" without sending anyone backwards.
+        public static readonly float ZombieScatterArc = O(nameof(ZombieScatterArc), 110f);
+
+        /// Summoned dead are GREEN, because they are made of corrupt ink like
+        /// everything else an acolyte touches. Marko: melee brownish green, ranged
+        /// light green, so you can read which one is coming at you from across a
+        /// courtyard without a single icon.
+        public static readonly Color SummonMeleeColor = new Color(0.40f, 0.44f, 0.22f, 1f);
+        public static readonly Color SummonRangedColor = new Color(0.58f, 0.80f, 0.46f, 1f);
+
+        // ---- Zombie nerve (Marko Aug 6) ----
+        // "Zombies are really weak and are easily destroyed but are also really
+        // afraid... and they stop running away if player isn't chasing them
+        // (isn't nearby)." Fear is REACTIVE, not a standing state: they flee who
+        // is coming for them, and get on with it when nobody is.
+        // "Also zombies attack players that turned back to them... so that they
+        // can more easily protect their masters, or draw more attention to
+        // themselves... they want to be chased, that's their role."
+        public static readonly float ZombieChaseRange = O(nameof(ZombieChaseRange), 7f);  // a player nearer than this is "on me"; further and I stop panicking
+        public static readonly float ZombieBackAngle = O(nameof(ZombieBackAngle), 105f);  // player facing more than this far from me = their back is turned
 
         // ---- Detection / recognition ----
         public static readonly float DetectInterval = O(nameof(DetectInterval), 0.12f); // how often the seal detector rescans stroke endpoints
@@ -255,6 +381,10 @@ namespace SpellyZombie
         public static readonly float PropMassKg = O(nameof(PropMassKg), 4f); // weight of any prop you haven't authored a Mass on
         /// Ink is BLACK (his ruling) — the wand, the line and the ore all share it.
         public static readonly Color InkColor = new Color(0.06f, 0.06f, 0.08f, 1f);
+        /// CORRUPT ink is GREEN (his standing law: a corrupt cauldron makes a green
+        /// wand). An acolyte holds nothing else, so their wand is green outright;
+        /// a corrupting wizard's greens from the tip down as the soul eats it.
+        public static readonly Color CorruptInkColor = new Color(0.25f, 0.62f, 0.16f, 1f);
         public static readonly float InkPerKill = O(nameof(InkPerKill), 10f);        // shared to ALL players per zombie down — the fast lane
         public static readonly float InkRegenPerSec = O(nameof(InkRegenPerSec), 3.5f); // slow passive refill during waves — never truly stuck
         public static readonly float CauldronInkPerSec = O(nameof(CauldronInkPerSec), 22f); // standing at any cauldron refills fast — the ship's "keep coming back" anchor
