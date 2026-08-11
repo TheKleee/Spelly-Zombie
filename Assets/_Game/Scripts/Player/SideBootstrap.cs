@@ -101,6 +101,8 @@ namespace SpellyZombie
                     if (p.GetComponent<ZombieWatch>() == null) p.gameObject.AddComponent<ZombieWatch>();
                     // every body is someone else's canvas (Marko Aug 11)
                     if (p.GetComponent<BodyCanvas>() == null) p.gameObject.AddComponent<BodyCanvas>();
+                    // and your own body ink follows you across scenes and sessions
+                    if (p.GetComponent<BodyInkKeeper>() == null) p.gameObject.AddComponent<BodyInkKeeper>();
                 }
 
                 // push and pull, before anyone has absorbed anything

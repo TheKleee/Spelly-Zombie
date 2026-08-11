@@ -66,6 +66,8 @@ namespace SpellyZombie
         Analyzable _promptTarget;
         string _absorbPrompt;
         int _lastHash;          // aimed-drawing identity — classify ONLY on change
+        Stroke _lastSeed;       // steady-aim skip: same seed + same ink = no re-flood
+        int _lastStrokeCount;
         RuneType _lastReadAs;
         float _lastReadScore;
 
@@ -296,6 +298,26 @@ namespace SpellyZombie
                 }
                 if (seed == null) { _inkMembers.Clear(); _lastHash = 0; return; }
             }
+
+            // ⛔ STEADY AIM PAYS NOTHING (Marko Aug 11: "the game is lagging a
+            // lot... only when my camera is on the ink... and only when I'm not
+            // drawing" — exactly this method's schedule: it sleeps while the
+            // pen is down and runs 4x/sec otherwise). The flood below is
+            // node-pair touch math over every nearby stroke, tens of thousands
+            // of distance checks against a doodled-on floor, and it reran on
+            // EVERY tick even though the answer could not have changed. Same
+            // seed + same stroke count + every cached member still eligible =
+            // the cluster, the rune and the prompt are all still true; keep them.
+            if (seed == _lastSeed && world.Strokes.Count == _lastStrokeCount
+                && _inkMembers.Count > 0)
+            {
+                bool stillTrue = true;
+                foreach (var m in _inkMembers)
+                    if (!Mine(m)) { stillTrue = false; break; }
+                if (stillTrue) return;
+            }
+            _lastSeed = seed;
+            _lastStrokeCount = world.Strokes.Count;
 
             // the whole DRAWING: flood among NEARBY strokes only (a drawing
             // is metres, not the map) — node-pair touch math runs only for
