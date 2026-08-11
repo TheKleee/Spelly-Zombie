@@ -204,6 +204,11 @@ namespace SpellyZombie
             for (int i = 0; i < count; i++)
             {
                 var h = hits[i];
+                // the floated grimoire rides the CAMERA (a child of this same
+                // root) 0.8m from the lens — nearest-hit would hand it every
+                // stroke that crosses it, and the book is a book, not skin
+                if (SelfPaint.FloatingBook != null
+                    && h.collider.transform.IsChildOf(SelfPaint.FloatingBook)) continue;
                 if (h.distance < best && h.collider.transform.IsChildOf(SelfPaint.ActiveRoot))
                 {
                     best = h.distance;

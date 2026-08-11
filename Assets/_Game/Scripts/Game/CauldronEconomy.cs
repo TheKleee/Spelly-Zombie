@@ -52,6 +52,23 @@ namespace SpellyZombie
         /// well with real behaviour and a failsafe.
         bool _lobby;
         float _lobbyRefreshIn;
+        float _lobbySkyIn = -1f;  // lobby: seconds until the ink falls from the sky
+        bool _cometSent;          // the courier left the sky; ink lands WITH it
+        bool _warnedMortal;
+
+        /// The endgame puddle at the InkGrave — a pot with no vessel, built by
+        /// Ground() when every real cauldron is rubble. Same rules, no hiding.
+        [System.NonSerialized] public bool Grounded;
+
+        void Awake()
+        {
+            // THE POT DIES LIKE ANYTHING ELSE (Marko): his Damageable carries
+            // the durability, his Breakable makes the debris — we only listen.
+            // Subscribed once for the object's lifetime; lobby SetActive
+            // cycles must not stack handlers.
+            var dmg = GetComponent<Damageable>();
+            if (dmg != null) dmg.OnDeath += _ => OnPotBroken();
+        }
 
         public static CauldronEconomy Active { get; private set; }
 
@@ -124,7 +141,9 @@ namespace SpellyZombie
         {
             All.Remove(this);
             if (Active == this) Active = null;
-            if (All.Count == 0) { _cycleArmed = false; _hopGap = false; } // scene change resets the cycle
+            // NO _hopGap reset here: the ACTIVE pot's death empties All while
+            // the fled ink is mid-flight, and GapTick must still land it (or
+            // ground it). Scene changes reset it in GapTick via InLobby.
         }
 
         void Update()
@@ -138,84 +157,187 @@ namespace SpellyZombie
             if (NetGame.IsAuthority) Simulate(dt);
             LocalWandTick(dt);
 
-            // the HUD reads one set of statics wherever the truth came from
+            // the HUD reads one set of statics wherever the truth came from.
+            // The countdown slot serves whichever drought is running: the
+            // vacuum after a shatter (his "special timer"), the lobby's
+            // sky-fall wait, or a round's prep.
             CauldronHUD.Fill = Fill01;
             CauldronHUD.Corrupt = IsCorrupt;
-            CauldronHUD.TimerSeconds = PrepRemaining > 0f ? PrepRemaining : -1f;
+            CauldronHUD.TimerSeconds = VacuumRemaining >= 0f ? VacuumRemaining
+                : _lobbySkyIn > 0f ? _lobbySkyIn
+                : PrepRemaining > 0f ? PrepRemaining : -1f;
             PaintSurface();
             FlowTick(dt);
+
+            // a match pot that cannot break would silently disable the whole
+            // endgame — say so once, loudly (his law: fail loud, never guess)
+            if (!_lobby && !Grounded && !_warnedMortal)
+            {
+                _warnedMortal = true;
+                if (GetComponent<Damageable>() == null)
+                    Debug.LogWarning($"[SpellyZombie] Cauldron '{name}' has no Damageable — it can never " +
+                        "shatter, the ink can never flee, and the InkGrave endgame can never happen. Add " +
+                        "Damageable (big HP — 'more durable') + Breakable to the prefab.", this);
+            }
         }
 
-        // ------------------------------------------- the hop cycle (2+ pots) --
+        // ------------------------------------------- the ink flees (breaks) --
         static float _hopTimer;
-        static bool _hopGap;      // the 10s vacuum: no pot pours, wizards bleed
-        static bool _cycleArmed;
+        static bool _hopGap;       // the 10s vacuum: no pot pours, wizards bleed
+        static float _fleeInk;     // the pool mid-flight — it carries everything
+        static bool _fleeCorrupt;  // corruption rides along: breaking never cleanses
+        static Vector3 _lastBrokenAt;
 
-        /// THE FULL CYCLE (Marko Aug 11): ink lives in one pot, the beam rises
-        /// where it LEFT, ten seconds of drought, then the beam falls and the
-        /// splash lands where it ARRIVES — "showing where it is across the
-        /// map" (his call: the landing IS telegraphed). Ink amount and
-        /// corruption ride along: it is the same ink, somewhere else.
-        void HopTick(float dt)
+        /// The vacuum's public face — his "special timer" while the ink is down.
+        public static float VacuumRemaining => _hopGap ? Mathf.Max(0f, _hopTimer) : -1f;
+
+        /// THE HOP IS EARNED, NEVER SCHEDULED (Marko Aug 11: "we essentially
+        /// remove the timer and leave it to strategy instead"). The only way
+        /// ink moves is someone SHATTERING its pot: beam up, ten seconds of
+        /// drought, beam down into a random SURVIVING pot — broken stays
+        /// broken, so wizards must protect all of them. When no pot survives,
+        /// the ink hits the floor at the InkGrave and the round turns into a
+        /// base defense (his call: "turning what was hide and seek into a
+        /// base defense game"). Corruption stays the only way to win either
+        /// way — demolition reshapes the board, it never opens the door.
+        ///
+        /// Driven from SideBootstrap, not from a pot: the LAST pot's death
+        /// must still land the ink, and dead objects don't Update.
+
+        public static void GapTick(float dt)
         {
-            if (All.Count < 2) { _hopGap = false; _cycleArmed = false; return; }
-            if (this != All[0]) return;   // one conductor, not one per pot
-
-            if (!_cycleArmed)
-            {
-                _cycleArmed = true;
-                _hopTimer = DrawingConfig.PotHopLiveSeconds;
-            }
+            if (!NetGame.IsAuthority || !_hopGap) return;
+            if (RoundDirector.InLobby) { _hopGap = false; return; } // lobby falls its own way
 
             _hopTimer -= dt;
             if (_hopTimer > 0f) return;
+            _hopGap = false;
 
-            if (!_hopGap)
-            {
-                // the ink LEAVES — beam up where it was, then darkness
-                var old = Active;
-                if (old != null)
-                {
-                    SkyBeam.Up(old.transform.position,
-                        old._corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
-                    old._open = false;
-                }
-                _hopGap = true;
-                _hopTimer = DrawingConfig.PotHopGapSeconds;
-            }
+            // THE VACUUM RAN ITS FULL COURSE. Now the comet appears, picks a
+            // surviving pot, and CHASES it down (it may be mid-toss — "you
+            // can't time it perfectly"). The ink exists only when the comet
+            // actually touches the rim: arrival, never a timer.
+            if (All.Count == 0) { Ground(); return; }
+            var pick = All[Random.Range(0, All.Count)];
+            SkyBeam.Down(pick.transform,
+                _fleeCorrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor,
+                () => LandMatchInk(pick));
+        }
+
+        /// The comet touched a pot mid-match — the fled ink moves in. If its
+        /// pot died during the fall, the nearest law applies: another
+        /// survivor takes it, or the ink grounds at the InkGrave.
+        static void LandMatchInk(CauldronEconomy pot)
+        {
+            var next = pot != null && All.Contains(pot) ? pot
+                : All.Count > 0 ? All[Random.Range(0, All.Count)] : null;
+            if (next == null) { Ground(); return; }
+            next._ink = Mathf.Max(_fleeInk, 1f);
+            next._corrupt = _fleeCorrupt;
+            next._defuse = 0f;
+            next._prep = 0f;
+            next._open = true;
+            Active = next;
+            if (FxLibrary.I != null)
+                FxLibrary.SpawnTinted(FxLibrary.I.Splash, next.transform.position + Vector3.up * 0.6f,
+                    next._corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
+            Juice.Chime(next.transform.position);
+        }
+
+        /// The lobby comet touched the rim — NOW the ink exists. Rubble or an
+        /// already-served pot just resets the cycle for the next fall.
+        void LandLobbyInk()
+        {
+            if (this == null || !isActiveAndEnabled) return;
+            _cometSent = false;
+            _lobbySkyIn = -1f;
+            var grave = GetComponent<LobbyRespawn>();
+            if ((grave != null && grave.Hidden) || _open) return;
+            _open = true;
+            _ink = DrawingConfig.PotCapacityInk;
+            _corrupt = false;
+            _defuse = 0f;
+            if (FxLibrary.I != null)
+                FxLibrary.SpawnTinted(FxLibrary.I.Splash, transform.position + Vector3.up * 0.6f,
+                    DrawingConfig.InkColor);
+            Juice.Chime(transform.position);
+        }
+
+        /// EVERY VESSEL IS RUBBLE: the ink pools at the map's marked center
+        /// and can never move again. All the pot's rules keep running on the
+        /// puddle — regen, spill, corrupt, defuse — there is just no more
+        /// hiding. The flat-disc look is a placeholder awaiting his art.
+        static void Ground()
+        {
+            Vector3 at;
+            if (InkGrave.I != null) at = InkGrave.I.transform.position;
             else
             {
-                // the ink ARRIVES — a different pot, the falling beam, the
-                // splash "as if it fell to the ground, just like liquid does"
-                // COMPLETELY RANDOM, same pot allowed (his rule: "it can fall
-                // back into the same cauldron it left") — the beam still rises
-                // and falls, so even a repeat reads as an event
-                var old = Active;
-                var next = All[Random.Range(0, All.Count)];
-
-                next._ink = old != null ? Mathf.Max(old._ink, 1f) : DrawingConfig.PotCapacityInk;
-                next._corrupt = old != null && old._corrupt;
-                next._defuse = 0f;
-                if (old != null) { old._ink = 0f; old._corrupt = false; }
-
-                Active = next;
-                next._open = true;
-                Color c = next._corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
-                SkyBeam.Down(next.transform.position, c);
-                if (FxLibrary.I != null)
-                    FxLibrary.Spawn(FxLibrary.I.Splash, next.transform.position + Vector3.up * 0.6f);
-                Juice.Chime(next.transform.position);
-
-                _hopGap = false;
-                _hopTimer = DrawingConfig.PotHopLiveSeconds;
+                Debug.LogError("[SpellyZombie] Every cauldron is broken but this map has NO InkGrave " +
+                    "marker! Add an empty GameObject with the InkGrave component at the arena center. " +
+                    "Using the last pot's grave instead.");
+                at = _lastBrokenAt;
             }
+
+            var go = new GameObject("~GroundedInk");
+            go.transform.position = at;
+            var pool = go.AddComponent<CauldronEconomy>();
+            pool.Grounded = true;
+            pool._ink = Mathf.Max(_fleeInk, 1f);
+            pool._corrupt = _fleeCorrupt;
+            pool._open = true;
+            pool._prep = 0f;
+            Active = pool;
+
+            Color c = pool._corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
+            SkyBeam.Down(at, c);
+            if (FxLibrary.I != null) FxLibrary.SpawnTinted(FxLibrary.I.Splash, at + Vector3.up * 0.3f, c);
+            Juice.Thud(at);
+            DrawingWorld.Instance?.LogEvent("no cauldron left. the ink pools at the heart of the map");
+        }
+
+        /// THE POT IS MORTAL (Marko Aug 11: "cauldron can be broken like
+        /// anything else but it's more durable... brakes apart into smaller
+        /// pieces and ink flies off"). Durability is HIS number on the
+        /// Damageable; Breakable makes the debris. Here: a lobby pot resets
+        /// for its sky-fall rebirth; a match pot is gone for good — and if it
+        /// held the ink, the ink flees.
+        void OnPotBroken()
+        {
+            _lastBrokenAt = transform.position;
+            if (_lobby)
+            {
+                // the ink FLEES the breaking pot skyward here too (Marko: "I
+                // want to see the flying up the sky effect when cauldron is
+                // destroyed") — then LobbyRespawn rebuilds the OBJECT (3s,
+                // his number on the Breakable) and the ink falls back 10s
+                // after the pot stands again
+                if (_open && _ink > 0.5f)
+                    SkyBeam.Up(transform.position,
+                        _corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
+                _open = false; _ink = 0f; _corrupt = false;
+                _defuse = 0f; _corruptTouch = 0f;
+                _lobbySkyIn = -1f;
+                return;
+            }
+            if (!NetGame.IsAuthority) return; // clients mirror via PushNet
+            if (Active == this)
+            {
+                _fleeInk = Mathf.Max(_ink, 1f);
+                _fleeCorrupt = _corrupt;
+                SkyBeam.Up(transform.position,
+                    _corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
+                Active = null;
+                _hopGap = true;
+                _hopTimer = DrawingConfig.PotHopGapSeconds;
+                DrawingWorld.Instance?.LogEvent("the cauldron shatters. the ink flees");
+            }
+            _open = false;
         }
 
         // ------------------------------------------------------- authority --
         void Simulate(float dt)
         {
-            HopTick(dt);
-
             // A DORMANT VESSEL DOES NOTHING: no prep, no drains, no corruption.
             // It is scenery holding a bowl until the ink chooses it.
             if (Active != this) { _open = false; return; }
@@ -242,7 +364,39 @@ namespace SpellyZombie
             if (_lobby && !_hopGap)   // the vacuum outranks the failsafe: the drought must be FELT, even here
             {
                 _prep = 0f;
-                if (!_open) { _open = true; _ink = DrawingConfig.PotCapacityInk; }
+
+                // THE LOBBY OPENS ON A SKY-FALL (Marko Aug 11: "it can start
+                // with no ink and after a 10s timer the ink will appear by
+                // falling from the sky with the trail effect") — and a rebuilt
+                // pot (3s after breaking, his number on the Breakable) waits
+                // the same ten seconds for its ink. Every lobby teaches the
+                // beam before the first match needs reading.
+                if (!_open)
+                {
+                    // a broken lobby pot stays ACTIVE while hidden (LobbyRespawn
+                    // hides, never disables) — the ink must not fall on a pot
+                    // that isn't standing yet, so the 10s only count from its
+                    // comeback: 3s of rubble, then 10s of empty vessel, his spec
+                    var grave = GetComponent<LobbyRespawn>();
+                    if (grave != null && grave.Hidden) { PushNet(); return; }
+
+                    if (_lobbySkyIn < 0f)
+                    {
+                        _lobbySkyIn = DrawingConfig.LobbyPotRefreshSeconds;
+                        _cometSent = false;
+                    }
+                    _lobbySkyIn -= dt;
+                    if (_lobbySkyIn > 0f) { PushNet(); return; }
+                    if (!_cometSent)
+                    {
+                        // the 10s are UP: the comet appears and CHASES the pot
+                        // down — the ink exists only at its true arrival
+                        _cometSent = true;
+                        SkyBeam.Down(transform, DrawingConfig.InkColor, LandLobbyInk);
+                    }
+                    PushNet();
+                    return; // an empty vessel until the comet actually lands
+                }
                 _lobbyRefreshIn -= dt;
                 if (_lobbyRefreshIn <= 0f)
                 {
@@ -550,8 +704,44 @@ namespace SpellyZombie
 
         static bool _warnedNoSurface;
 
+        Transform _poolDisc;
+
+        /// The endgame pool at the InkGrave: a squashed disc of ink, sized by
+        /// the pool (drinking visibly shrinks it) and tinted along the same
+        /// black↔green journey as any pot. PLACEHOLDER look — his art pass
+        /// replaces the disc, the rules underneath stay.
+        void PaintGroundPool()
+        {
+            if (_poolDisc == null)
+            {
+                var d = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                d.name = "PoolDisc";
+                Destroy(d.GetComponent<Collider>()); // you wade through ink, never stand on it
+                d.transform.SetParent(transform, false);
+                d.transform.localPosition = new Vector3(0f, 0.03f, 0f);
+                d.GetComponent<Renderer>().sharedMaterial =
+                    MatterFX.Get(DrawingConfig.InkColor, MoteShade.Opaque);
+                _poolDisc = d.transform;
+            }
+            float f = Mathf.Max(0.06f, Fill01);
+            float r = 2.6f * Mathf.Sqrt(f);
+            _poolDisc.localScale = new Vector3(r, 0.09f, r);
+
+            var rend = _poolDisc.GetComponent<Renderer>();
+            Color c = Color.Lerp(DrawingConfig.InkColor, DrawingConfig.CorruptInkColor, Greenness);
+            rend.GetPropertyBlock(_blk);
+            _blk.SetColor(BaseColorId, c);
+            _blk.SetColor(ColorId, c);
+            rend.SetPropertyBlock(_blk);
+        }
+
         void PaintSurface()
         {
+            // the grounded puddle has no vessel and no authored liquid — the
+            // disc stands in, and the loud no-InkSurface error stays for REAL
+            // pots only (a puddle without a bowl is correct, not a mistake)
+            if (Grounded) { PaintGroundPool(); return; }
+
             // FAIL LOUDLY, NEVER SILENTLY (his standing rule). An unassigned
             // InkSurface meant the pot had ink mechanically and showed nothing,
             // and the return below said so to nobody — "when I said ink in

@@ -21,8 +21,14 @@ namespace SpellyZombie
 
         static void Build()
         {
-            const int size = 48;
-            const float ring = 15f;   // ring radius in px
+            // 32×32 IS LOAD-BEARING (Marko Aug 11: "aim appears and
+            // disappears — it should follow the mouse"). Windows only makes
+            // a HARDWARE cursor from a 32×32 texture; this ring was 48 and
+            // silently fell back to Unity's software cursor — drawn a frame
+            // late and skipped entirely on hitch frames, so the brush circle
+            // flickered while the 32px quill never did.
+            const int size = 32;
+            const float ring = 10f;   // ring radius in px
             const float thick = 1.6f; // ring stroke width
             _tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             var clear = new Color(0f, 0f, 0f, 0f);

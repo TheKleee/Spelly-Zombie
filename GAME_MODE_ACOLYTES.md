@@ -279,22 +279,28 @@ is a favour nobody wants to receive.
 
 ---
 
-## WINNING
+## WINNING (corrected Aug 8, re-confirmed by Marko Aug 12. CONVERSION IS CUT)
 
-Four endings, no overlap:
+How it ends:
 
-1. every acolyte gone → **wizards win**
-2. every wizard converted → **acolytes win**
-3. timer hits zero, pot corrupted → **acolytes win**
-4. timer hits zero, pot clean → **wizards win**
+1. pot EMPTY at any moment → **acolytes win, instantly, always**
+2. all wizards dead → **acolytes win**
+3. timer out with a GREEN pot → **acolytes win, even from the grave** (wiping the
+   team does not defuse the plant; the bomb still goes off)
+4. timer out, pot clean with ink left → **wizards win**
+5. all acolytes dead AND the pot clean → **wizards win on the spot**
 
-The cauldron does **not** need its own win condition. Corrupting it means wizards
-cannot purge, which means they convert, which is ending 2. One causal chain
-instead of a fourth rule.
+All acolytes dead + pot still green + timer running = the match is NOT over. It
+races: evaporation empties the pot or the timer expires → acolytes; wizards finish
+the defuse → wizards.
 
-The timer being decided by the pot's state is what stops both sides stalling:
-acolytes cannot corrupt once and hide, because wizards will heal it; wizards
-cannot turtle, because sitting there does not clean it.
+Wizards turn a green pot back to black by standing near it, Counter-Strike defuse
+style. The defuse restores the COLOR only: ink lost to the green drain is lost
+forever, and the pot can never be refilled by anything.
+
+(The old four-endings list with conversion is dead. There is no conversion in this
+game: a wizard dies, he does not change sides. The wand-corruption conversion
+sections elsewhere in this file are historical.)
 
 ---
 

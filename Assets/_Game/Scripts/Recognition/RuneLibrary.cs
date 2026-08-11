@@ -469,9 +469,9 @@ namespace SpellyZombie
         /// corrupt-ink-reinterprets rule that makes an arrow command the dead
         /// instead of shoving a crate.
         ///
-        /// ⚠️ THE ICONS ARE PLACEHOLDERS. EmojiGrid holds exactly the twelve rune
-        /// sprites, so a zombie or a skull would render as a missing box until
-        /// they are added to the atlas. Names are correct today; art is Marko's.
+        /// EmojiGrid rebuilds itself from Assets/_Game/Fonts/sz-emoji (see
+        /// EmojiGridBuilder) — zombie and skull are in the atlas, and any new
+        /// icon is one Noto png dropped in that folder. Art is Marko's call.
         public static string IconFor(RuneType r, int owner)
         {
             if (!Sides.IsAcolyte(owner)) return Icon(r);

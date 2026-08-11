@@ -907,7 +907,7 @@ namespace SpellyZombie
                     if (j.T != null) j.T.localRotation = j.Rest;
             }
 
-            Vector3 fwd = bindFwd, up = Vector3.up, right = bindRight;
+            Vector3 up = Vector3.up, right = bindRight;
             Bake(1, "Arm raise", () => AimLimb(_armR, _handR, up));
             Bake(2, "Victory", () =>
             {
@@ -919,13 +919,10 @@ namespace SpellyZombie
                 AimLimb(_armL, _handL, -right);
                 AimLimb(_armR, _handR, right);
             });
-            Bake(4, "Bow", () =>
-            {
-                if (spine != null) spine.rotation = Quaternion.AngleAxis(40f, right) * spine.rotation;
-                if (neckBone != null) neckBone.rotation = Quaternion.AngleAxis(20f, right) * neckBone.rotation;
-                AimLimb(_armL, _handL, (Vector3.down - fwd * 0.3f).normalized);
-                AimLimb(_armR, _handR, (Vector3.down - fwd * 0.3f).normalized);
-            });
+            // NO POSE 4. The old "Bow" bent the spine — and players have no
+            // spine control, so a default no one can recreate or undo is a
+            // trap (Marko ordered it removed; key 4 now honestly says "no
+            // pose, make one in the Pose Studio").
         }
 
         static Color TeamColor(byte team) =>

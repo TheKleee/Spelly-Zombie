@@ -28,6 +28,11 @@ namespace SpellyZombie
         float _back = -1f;
         bool _wasKinematic;   // rooted scenery is kinematic; it must go back that way
 
+        /// True while the object is in the graveyard (invisible, waiting).
+        /// The object stays ACTIVE the whole time — its scripts keep running —
+        /// so anything timing itself against the comeback must ask this.
+        public bool Hidden => _back > 0f;
+
         readonly List<Renderer> _hidden = new List<Renderer>();
         readonly List<Collider> _off = new List<Collider>();
 
@@ -56,6 +61,19 @@ namespace SpellyZombie
         void Vanish(float seconds)
         {
             if (_back > 0f) return;   // already gone; do not double-hide
+
+            // THE DRAWING DIES WITH THE CANVAS (Marko Aug 11: "when object is
+            // destroyed in the lobby the lines on the object need to be
+            // destroyed with it") — no ink floating where the prop was, and
+            // the rebuilt prop comes back factory-new, ready to be drawn on.
+            var world = DrawingWorld.Instance;
+            if (world != null)
+                for (int i = world.Strokes.Count - 1; i >= 0; i--)
+                {
+                    var s = world.Strokes[i];
+                    if (s == null || !s.Alive || s.Surface == null) continue;
+                    if (s.Surface == transform || s.Surface.IsChildOf(transform)) s.Burn();
+                }
 
             // Damageable would Destroy() us the moment OnDeath returns — this is
             // the one hook that stops it, and it is restored on the way back.
@@ -119,7 +137,9 @@ namespace SpellyZombie
             var dmg = GetComponent<Damageable>();
             if (dmg != null)
             {
-                if (_health0 > 0f) dmg.Health = _health0;
+                // Revive, not just heal: the private dead-flag must drop too,
+                // or the prop comes back IMMORTAL (breakable exactly once)
+                dmg.Revive(_health0 > 0f ? _health0 : 100f);
                 dmg.Destructible = true;
             }
 

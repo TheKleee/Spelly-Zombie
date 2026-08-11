@@ -77,8 +77,8 @@ namespace SpellyZombie
                 case 5: TimeFreezeField.Open(at, 1f); break;
                 case 6: InertiaField.Open(at, 1f); break;
                 case 7: TornadoField.Open(at, 1f, Random.value < 0.5f, 0UL); break;
-                case 8: FormConjures.Meteorite(at, Vector3.up, SurfaceMaterialType.Stone, 0.3f, 1, 0UL); break;
-                default: FormConjures.IceSpikes(at, Vector3.up, SurfaceMaterialType.Stone, 0.25f, 0UL); break;
+                case 8: FormConjures.Meteorite(at, Vector3.up, SurfaceMaterialType.Stone, 0.3f, 1.1f, 1, 0UL); break;
+                default: FormConjures.IceSpikes(at, Vector3.up, SurfaceMaterialType.Stone, 0.25f, 0.9f, 0UL); break;
             }
             GetComponent<ZombieBrain>()?.Mumble("HAHAHA!!", 1.2f);
         }
@@ -91,7 +91,11 @@ namespace SpellyZombie
             if (z == null) return null;
             z.name = "Demon";
 
-            float scale = Mathf.Clamp(0.55f + srcSize * 0.5f, 0.8f, 2.4f);
+            // A DEMON TOWERS (Marko: "it uses the same body as zombies...
+            // since it's destroying everything that thing should be large") —
+            // the same rig, but never below twice a normal zombie, and a big
+            // drawing raises a proper kaiju.
+            float scale = Mathf.Clamp(1.8f + srcSize * 0.6f, 2.2f, 4f);
             z.transform.localScale = Vector3.one * scale;
 
             var demon = z.gameObject.AddComponent<Demon>();

@@ -27,8 +27,31 @@ namespace SpellyZombie
         /// and falls — crush is momentum (existing law), the burning trail
         /// marks the sky, and what it lands on catches the heat.
         public static void Meteorite(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
-            float size, int count, ulong lineage)
+            float size, float reach, int count, ulong lineage, bool fromSky = false)
         {
+            // RELEASED FROM A DORMANT GHOST: no rise story, the rock appears
+            // OVERHEAD at full grown size and slams down (Marko: "when I
+            // release the dormant meteor it should fall from the sky").
+            if (fromSky)
+            {
+                // MADARA'S METEOR (his framing): it appears COLOSSAL high in
+                // the sky, grows even bigger on the way down, and the shadow
+                // arrives before the rock does.
+                DrawingWorld.Instance?.LogEvent("the sky delivers");
+                for (int i = 0; i < count; i++)
+                {
+                    Vector3 high = at + Vector3.up * 70f + Random.insideUnitSphere * 1.5f;
+                    var sky = Matter.Spawn(mat, MatterPhase.Solid, size * 8f, high);
+                    sky.Temperature = 420f;
+                    sky.Lineage = lineage;
+                    sky.gameObject.AddComponent<MeteorTrail>();
+                    var drop = sky.gameObject.AddComponent<MeteorRise>();
+                    drop.Grow = 2.2f;    // big at birth, BIGGER by landing
+                    drop.Reach = reach;
+                    drop.SkyDrop = true; // dive from frame one
+                }
+                return;
+            }
             // ⛔ IT ERUPTS AND LEAPS — IT DOES NOT FALL OUT OF THE SKY.
             // This used to spawn 12m overhead and drop, which broke his Aug 9
             // no-sky-drop law and hid the cause: a boulder just appeared. Now
@@ -43,10 +66,11 @@ namespace SpellyZombie
                 m.Lineage = lineage;
                 m.gameObject.AddComponent<MeteorTrail>();
 
-                // "meteor is quite small" — it is born at the drawn size and
-                // GROWS on the way up, so the size you see landing is earned in
-                // front of you rather than assigned at spawn.
-                m.gameObject.AddComponent<MeteorRise>().Grow = DrawingConfig.MeteorGrowth;
+                // born at the drawn size, grows tenfold on the way up (his
+                // "10x larger"); reach stays the dial for the impact area
+                var rise = m.gameObject.AddComponent<MeteorRise>();
+                rise.Grow = 10f;
+                rise.Reach = reach;
 
                 if (m.TryGetComponent<Rigidbody>(out var rb))
                 {
@@ -63,7 +87,7 @@ namespace SpellyZombie
         /// ICE SPIKES: frozen shards of the surface's material erupt from the
         /// ground in a ring — standing terrain that chills whatever touches it.
         public static void IceSpikes(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
-            float size, ulong lineage, int owner = -1)
+            float size, float reach, ulong lineage, int owner = -1)
         {
             DrawingWorld.Instance?.LogEvent("the ground grows ICE SPIKES");
             Juice.Crackle(at);
@@ -71,7 +95,8 @@ namespace SpellyZombie
             for (int i = 0; i < spikes; i++)
             {
                 float a = i / (float)spikes * Mathf.PI * 2f;
-                Vector3 ring = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * (0.35f + size);
+                // the RING is the area dial — summed ingredient reach, not size
+                Vector3 ring = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * (0.35f + reach * 0.5f);
                 var m = Matter.Spawn(mat, MatterPhase.Solid, size, at + ring + normal * size * 0.8f);
                 m.Temperature = -60f;
                 m.Lineage = lineage;
@@ -115,14 +140,14 @@ namespace SpellyZombie
         /// area · meltable stone ERUPTS lava · burnable sap pours out already
         /// aflame and spreading.
         public static void HotLiquid(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
-            float size, float power, ulong lineage)
+            float size, float reach, float power, ulong lineage)
         {
             var info = SurfaceMaterialDB.Info(mat);
             if (mat == SurfaceMaterialType.Water)
             {
                 // hot water = the same GAS SUBSTANCE as the heat+chill paradox;
-                // born big — the hazard must reach people (Marko, Aug 4)
-                SpawnSteam(at + normal * 0.5f, 1.6f, lineage);
+                // sized by the SUMMED ingredient reach (his area law)
+                SpawnSteam(at + normal * 0.5f, Mathf.Max(0.9f, reach), lineage);
                 return;
             }
             if (info.Meltable)
@@ -168,21 +193,33 @@ namespace SpellyZombie
     /// A falling meteor sheds burning motes — the trail IS the warning.
     public class MeteorTrail : MonoBehaviour
     {
+        // pure spectacle now: sheds burning motes while the rock flies. The
+        // EXPLOSION lives in MeteorRise.OnCollisionEnter (real impact, never
+        // a stopped-velocity guess that a hover could fake).
+        void Start()
+        {
+            // THE CAULDRON COMET'S RIBBON, IN FIRE (his "the trail for the
+            // cauldron is perfect"): one long bright streak riding the rock,
+            // width scaled to the rock, and the shed motes burn beside it.
+            var ribbon = gameObject.AddComponent<TrailRenderer>();
+            float s = Mathf.Max(1f, transform.lossyScale.x * 0.4f);
+            ribbon.time = 1.1f;
+            ribbon.startWidth = 0.55f * s;
+            ribbon.endWidth = 0.03f;
+            ribbon.minVertexDistance = 0.3f;
+            ribbon.sharedMaterial = MatterFX.Get(new Color(1f, 0.55f, 0.15f, 0.9f), MoteShade.Additive);
+        }
+
         float _tick;
         void Update()
         {
             _tick -= Time.deltaTime;
             if (_tick > 0f) return;
             _tick = 0.06f;
-            GrammarFX.FireMote(transform.position + Random.insideUnitSphere * 0.2f,
-                Random.Range(0.08f, 0.18f), 0.5f);
-
-            // landed (or nearly stopped): one hot stamp on arrival, then done
-            if (TryGetComponent<Rigidbody>(out var rb) && rb.linearVelocity.sqrMagnitude < 1f)
-            {
-                GrammarFX.FlameBurst(transform.position, 0.7f);
-                Destroy(this);
-            }
+            // motes wear the rock's own scale: a colossus sheds colossal fire
+            float s = Mathf.Max(1f, transform.lossyScale.x * 0.45f);
+            GrammarFX.FireMote(transform.position + Random.insideUnitSphere * 0.25f * s,
+                Random.Range(0.08f, 0.18f) * s, 0.5f);
         }
     }
 

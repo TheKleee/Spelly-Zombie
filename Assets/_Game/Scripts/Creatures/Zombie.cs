@@ -228,7 +228,22 @@ namespace SpellyZombie
                     : kind == ZombieKind.Runner ? 0.72f : 1f;
                 z._dress = ZombieDress.DressUp(z, skin, widthMul, eyes);
             }
+            z.RiseFromGrave();
             return z;
+        }
+
+        /// BIRTH RITUAL (Marko Aug 11: "when zombies are created I want them
+        /// to get up from the ground and not move until they fully completed
+        /// that animation") — the same StandUp clip the knockdown recovery
+        /// plays, fired at spawn, with the brain tranced for its duration
+        /// (the paint-freeze line, reused). Tune ZombieRiseSeconds to the clip.
+        public void RiseFromGrave()
+        {
+            if (_brain == null) _brain = GetComponent<ZombieBrain>();
+            if (_brain != null)
+                _brain.TrancedUntil = Mathf.Max(_brain.TrancedUntil,
+                    Time.time + DrawingConfig.ZombieRiseSeconds);
+            _dress?.Rise();
         }
 
         /// First child whose name contains `name`, case-insensitive. Lets his

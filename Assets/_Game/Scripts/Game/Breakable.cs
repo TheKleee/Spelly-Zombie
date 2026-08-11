@@ -46,6 +46,8 @@ namespace SpellyZombie
         public bool CodeSplinters = true;
         [Tooltip("Play the default thud. Off if your effect brings its own sound.")]
         public bool DefaultSound = true;
+        [Tooltip("LOBBY ONLY: seconds before this object rebuilds itself after breaking. 0 = the global LobbyRespawnSeconds. The cauldron wants 3 (Marko: \"it can just spawn after 3 seconds\").")]
+        public float LobbyRespawnOverride = 0f;
 
         void Awake()
         {
@@ -92,7 +94,8 @@ namespace SpellyZombie
             // acolytes need shapes left to scan and wizards need things left to
             // break. In a real round, broken stays broken.
             if (RoundDirector.InLobby)
-                LobbyRespawn.Take(gameObject, DrawingConfig.LobbyRespawnSeconds);
+                LobbyRespawn.Take(gameObject, LobbyRespawnOverride > 0f
+                    ? LobbyRespawnOverride : DrawingConfig.LobbyRespawnSeconds);
         }
 
         /// YOUR prefabs become real, physical, chemistry-aware debris — with

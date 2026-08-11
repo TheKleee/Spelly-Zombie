@@ -82,6 +82,12 @@ namespace SpellyZombie
                 {
                     _flames = Object.Instantiate(lib.Fire, transform);
                     _flames.transform.localPosition = Vector3.zero;
+                    // the flame at ITS authored size (Marko: "why is the fire
+                    // so large?") — parenting inherits the object's scale, so
+                    // a burning HOUSE was wearing house-sized flames. Undo it.
+                    var ls = transform.lossyScale;
+                    float inv = 1f / Mathf.Max(0.01f, Mathf.Max(ls.x, Mathf.Max(ls.y, ls.z)));
+                    _flames.transform.localScale = Vector3.one * inv;
                 }
             }
             else if (!ablaze && _flames != null)

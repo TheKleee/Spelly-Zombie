@@ -3,13 +3,20 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// YOUR BODY INK TRAVELS WITH YOU (Marko Aug 11: "when you draw ink on
-    /// your body I want it to come with you to the game mode... persistent in
-    /// the multiplayer as well"). Prep your combos in the lobby; they are on
-    /// your skin in the match, and next session too.
+    /// YOUR BODY INK TRAVELS WITH YOU — WITHIN ONE SITTING (Marko Aug 11:
+    /// "when you draw ink on your body I want it to come with you to the
+    /// game mode... persistent in the multiplayer as well"). Prep combos in
+    /// the lobby; they are on your skin in the match.
+    ///
+    /// NO DISK. The first version also saved to a file and restored at boot,
+    /// and Marko hit both failure modes the same day: ghost ink from an old
+    /// session appearing uninvited, and unerasable strokes (a boot-time
+    /// restore can run before Grimoire.LocalPlayerId exists, so the ink
+    /// belonged to player 0 — nobody — and the eraser refused it). Ink now
+    /// lives exactly as long as the play session.
     ///
     /// Nothing new is invented here — this is the NETCODE'S OWN BODY-INK
-    /// CODEC pointed at a file: strokes are kept in BONE-LOCAL space keyed by
+    /// CODEC held in memory: strokes are kept in BONE-LOCAL space keyed by
     /// bone name (exactly what StrokeMsg ships), and the restore is
     /// ApplyBodyStroke's recipe run on your own skeleton with YOUR owner id.
     /// Because the restore completes strokes through DrawingWorld like any
@@ -24,7 +31,6 @@ namespace SpellyZombie
     /// where recognition lives.
     public class BodyInkKeeper : MonoBehaviour
     {
-        [System.Serializable]
         struct SavedStroke
         {
             public string Bone;
@@ -32,16 +38,12 @@ namespace SpellyZombie
             public Vector3[] Pts;     // bone-local
             public int Declared;
         }
-        [System.Serializable] class SaveFile { public List<SavedStroke> Strokes = new List<SavedStroke>(); }
 
-        static List<SavedStroke> _kept;   // survives scene loads in-process
-        static string SavePath =>
-            System.IO.Path.Combine(Application.persistentDataPath, "sz_bodyink.json");
+        static List<SavedStroke> _kept; // survives scene loads in-process only
 
         SimpleFPSController _pilot;
         float _scanIn = 1.5f;
         bool _restored;
-        int _lastSavedNodes = -1;
 
         void Update()
         {
@@ -49,7 +51,7 @@ namespace SpellyZombie
             if (_pilot == null || !_pilot.IsLocalViewer) return;
             if (DrawingWorld.Instance == null) return;
 
-            if (_kept == null) LoadDisk();
+            if (_kept == null) _kept = new List<SavedStroke>();
 
             if (!_restored) { TryRestore(); return; }
 
@@ -69,7 +71,6 @@ namespace SpellyZombie
         {
             var world = DrawingWorld.Instance;
             var snap = new List<SavedStroke>();
-            int nodes = 0;
             foreach (var s in world.Strokes)
             {
                 if (!MineOnBone(s)) continue;
@@ -77,7 +78,6 @@ namespace SpellyZombie
                 foreach (var n in s.Nodes)
                     if (n != null) pts.Add(s.Surface.InverseTransformPoint(n.transform.position));
                 if (pts.Count < 2) continue;
-                nodes += pts.Count;
                 snap.Add(new SavedStroke
                 {
                     Bone = s.Surface.name,
@@ -88,36 +88,14 @@ namespace SpellyZombie
                 });
             }
             _kept = snap;
-            if (nodes != _lastSavedNodes)   // disk only when the ink actually changed
-            {
-                _lastSavedNodes = nodes;
-                try
-                {
-                    var f = new SaveFile { Strokes = _kept };
-                    System.IO.File.WriteAllText(SavePath, JsonUtility.ToJson(f));
-                }
-                catch (System.Exception e)
-                { Debug.LogWarning("[SpellyZombie] body ink save skipped: " + e.Message); }
-            }
-        }
-
-        void LoadDisk()
-        {
-            _kept = new List<SavedStroke>();
-            try
-            {
-                if (System.IO.File.Exists(SavePath))
-                {
-                    var f = JsonUtility.FromJson<SaveFile>(System.IO.File.ReadAllText(SavePath));
-                    if (f != null && f.Strokes != null) _kept = f.Strokes;
-                }
-            }
-            catch (System.Exception e)
-            { Debug.LogWarning("[SpellyZombie] body ink load skipped: " + e.Message); }
         }
 
         void TryRestore()
         {
+            // no owner yet = strokes would belong to player 0 and refuse the
+            // eraser forever — wait until the pilot has an identity
+            if (Grimoire.LocalPlayerId == 0) return;
+
             // ink already on my body (drawn this scene, or an earlier restore)
             // = nothing to do — restoring over it would double every stroke
             foreach (var s in DrawingWorld.Instance.Strokes)

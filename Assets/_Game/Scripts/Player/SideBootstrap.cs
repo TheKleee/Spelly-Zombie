@@ -86,6 +86,10 @@ namespace SpellyZombie
 
         void Update()
         {
+            // broken-pot ink must land even when ZERO pots remain to Update —
+            // dead objects can't conduct their own hop (CauldronEconomy.GapTick)
+            CauldronEconomy.GapTick(Time.deltaTime);
+
             // keep every player wearing the two side components
             _sweep -= Time.deltaTime;
             if (_sweep <= 0f)
@@ -103,6 +107,10 @@ namespace SpellyZombie
                     if (p.GetComponent<BodyCanvas>() == null) p.gameObject.AddComponent<BodyCanvas>();
                     // and your own body ink follows you across scenes and sessions
                     if (p.GetComponent<BodyInkKeeper>() == null) p.gameObject.AddComponent<BodyInkKeeper>();
+                    // the crossroads line: what TAB and R do from here, both sides
+                    if (p.GetComponent<ModeGuide>() == null) p.gameObject.AddComponent<ModeGuide>();
+                    // the chosen hat color survives scene loads and sessions
+                    HatColor.Dress(p);
                 }
 
                 // push and pull, before anyone has absorbed anything

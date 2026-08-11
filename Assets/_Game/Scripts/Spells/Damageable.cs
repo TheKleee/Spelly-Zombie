@@ -70,6 +70,15 @@ namespace SpellyZombie
             if (other != null && other != this) other.TakeDamage(dmg * 0.7f, $"hit by {name}");
         }
 
+        /// Back from the lobby graveyard: alive again, ready to die again.
+        /// (LobbyRespawn restored Health but the private dead-flag stayed up,
+        /// so every restored prop was secretly IMMORTAL — one break per lobby.)
+        public void Revive(float health)
+        {
+            _dead = false;
+            Health = health;
+        }
+
         public void TakeDamage(float amount, string cause)
         {
             if (amount <= 0f || _dead) return;

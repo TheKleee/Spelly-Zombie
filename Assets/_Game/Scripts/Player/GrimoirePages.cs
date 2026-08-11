@@ -66,6 +66,12 @@ namespace SpellyZombie
         public static bool SealPageOpen { get; private set; }
 
         static bool _taughtOpen; // the G hint retires after the first open
+
+        /// Has the grimoire ever been opened this session? Until then the G
+        /// lesson is the ONLY guide voice on screen (Marko Aug 11: "we want
+        /// the users to first open up the grimoire. After that G should
+        /// remain but R should appear") — ModeGuide waits on this.
+        public static bool TaughtOpen => _taughtOpen;
         bool _open;
         int _page;
         int _cardsShown = int.MinValue;
@@ -155,14 +161,16 @@ namespace SpellyZombie
                 if (!_taughtOpen && !HandGrab.LocalHolding) UIPrompt.Show("G", Loc.T("grimoire.open"));
                 return;
             }
-            // the prompt slot is last-caller-wins — while a DECLARE or an
-            // absorb is on offer, that prompt matters more than "close".
-            // (No page readout anywhere — Marko's ruling: the declare prompt
-            // already names the page's rune when it matters, "people are not
-            // that dumb.")
+            // ONE FACT PER BLOCK (Marko's law): the open book offers two
+            // chips — close, and turn. A DECLARE or absorb Show outranks
+            // them by tier, and while the flying F offers a scan NOTHING
+            // else speaks (the scan moment owns the screen alone).
             if (!GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach
-                && !HandGrab.LocalHolding)
-                UIPrompt.Show("G", Loc.T("grimoire.close"));
+                && !HandGrab.LocalHolding && !AimBadge.ScanOfferLive)
+            {
+                UIPrompt.Offer("G", Loc.T("grimoire.close"));
+                UIPrompt.Offer("← →", Loc.T("chip.pages"));
+            }
 
             int pages = PageCount; // wizard: seal + 12 runes · acolyte: seal + kit (+ scan)
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -51,8 +51,8 @@ namespace SpellyZombie
         static readonly HashSet<string> ManagedSurfaces = new HashSet<string>
         {
             "MainMenu", "Settings", "PauseMenu", "HUD", "Vitals", "RoundBanner",
-            "Downed", "LobbyBanner", "LobbyBoard", "NetPanel", "PromptGroup",
-            "RuneChooser", "PowerupChooser", "Announcement", "SealGallery", "JoinPanel",
+            "Downed", "LobbyBanner", "LobbyBoard", "NetPanel", "PromptGroup", "PromptChips",
+            "RuneChooser", "PowerupChooser", "Announcement", "SealGallery", "JoinPanel", "HatPanel",
         };
 
         static void EnsureCanvas()
@@ -510,22 +510,123 @@ namespace SpellyZombie
         string _wantKey, _wantText;
         Color _wantColor;
 
+        // THE WEAK TIER IS A ROW OF CHIPS (Marko Aug 11, the block law: "you
+        // can't put more information than one in one block... max 3 - but
+        // this is the extreme maximum"). Each Offer this frame becomes its
+        // own small pill — one key, one meaning — laid out by a layout
+        // group. Any Show() (a mode's own instruction, an urgent state)
+        // hides the whole row: focus beats navigation.
+        struct Chip { public string Key, Text; public Color Tint; }
+        readonly List<Chip> _chips = new List<Chip>();
+        int _chipFrame = -1;
+        RectTransform _chipRow;
+        string _chipSig = "";
+
+        /// One chip: a single fact behind a single key. Speaks only when no
+        /// Show() lands this frame; the fourth Offer of a frame is refused —
+        /// three blocks is Marko's extreme maximum, enforced here.
+        public static void Offer(string key, string text, Color? accent = null)
+        {
+            if (_i == null) Show(key, text, accent); // first call builds the UI
+            if (_i._chipFrame != Time.frameCount) { _i._chips.Clear(); _i._chipFrame = Time.frameCount; }
+            if (_i._chips.Count >= 3) return;
+            _i._chips.Add(new Chip { Key = key, Text = text, Tint = accent ?? UIKit.Parchment });
+        }
+
         void LateUpdate()
         {
             if (_group == null) return;
-            bool wanted = Time.frameCount <= _lastFrame; // someone asked this frame
-            if (_group.gameObject.activeSelf != wanted) _group.gameObject.SetActive(wanted);
-            if (!wanted) return;
+            bool strong = Time.frameCount <= _lastFrame;   // someone claimed the slot
+            bool chips = !strong && Time.frameCount <= _chipFrame + 1 && _chips.Count > 0;
 
-            if (_wantKey != _capKey || _cap == null) // == null: self-heal a dead cap
+            if (_group.gameObject.activeSelf != strong) _group.gameObject.SetActive(strong);
+            if (strong)
             {
-                UIKit.Retire(_cap); // corpse-proof — never re-adopted same frame
-                _cap = UIKit.Keycap(_group, _wantKey, 32f);
-                UIKit.Place(_cap, new Vector2(0f, 0.5f), new Vector2(28f, 0f), _cap.sizeDelta);
-                _capKey = _wantKey;
+                if (_wantKey != _capKey || _cap == null) // == null: self-heal a dead cap
+                {
+                    UIKit.Retire(_cap); // corpse-proof — never re-adopted same frame
+                    _cap = UIKit.Keycap(_group, _wantKey, 32f);
+                    UIKit.Place(_cap, new Vector2(0f, 0.5f), new Vector2(28f, 0f), _cap.sizeDelta);
+                    _capKey = _wantKey;
+                }
+                _label.text = _wantText;
+                _label.color = _wantColor;
             }
-            _label.text = _wantText;
-            _label.color = _wantColor;
+
+            if (_chipRow == null && chips) BuildChipRow();
+            if (_chipRow == null) return;
+            if (_chipRow.gameObject.activeSelf != chips) _chipRow.gameObject.SetActive(chips);
+            if (!chips) return;
+
+            string sig = "";
+            for (int i = 0; i < _chips.Count; i++)
+                sig += _chips[i].Key + "|" + _chips[i].Text + "|";
+            if (sig == _chipSig) return;
+            // CHURN GUARD (Marko: "my ui is changing non stop" + lag): two
+            // callers alternating chip sets frame-to-frame must not thrash
+            // Retire/rebuild/layout every frame — a change lands at most
+            // five times a second, invisible for honest changes, a wall
+            // against fights.
+            if (Time.unscaledTime < _chipRebuiltAt + 0.2f) return;
+            _chipRebuiltAt = Time.unscaledTime;
+            _chipSig = sig;
+            FillChips();
+        }
+
+        float _chipRebuiltAt;
+
+        void BuildChipRow()
+        {
+            _chipRow = UIKit.Group(UIKit.Root, "PromptChips");
+            UIKit.Place(_chipRow, new Vector2(0.5f, 0f), new Vector2(0f, 118f), new Vector2(10f, 46f));
+            if (UIKit.WasAdopted(_chipRow)) return; // Marko's row: his layout, his law
+            var lay = _chipRow.gameObject.AddComponent<HorizontalLayoutGroup>();
+            lay.spacing = 14f;
+            lay.childAlignment = TextAnchor.MiddleCenter;
+            lay.childControlWidth = true;
+            lay.childControlHeight = true;
+            lay.childForceExpandWidth = false;
+            lay.childForceExpandHeight = false;
+            var fit = _chipRow.gameObject.AddComponent<ContentSizeFitter>();
+            fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+
+        void FillChips()
+        {
+            for (int i = _chipRow.childCount - 1; i >= 0; i--)
+                UIKit.Retire((RectTransform)_chipRow.GetChild(i));
+
+            foreach (var c in _chips)
+            {
+                var pill = new GameObject("Chip", typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup));
+                pill.transform.SetParent(_chipRow, false);
+                var img = pill.GetComponent<Image>();
+                img.sprite = UISkin.I != null ? UISkin.I.PanelBrownDark : null;
+                img.type = img.sprite != null && img.sprite.border != Vector4.zero
+                    ? Image.Type.Sliced : Image.Type.Simple;
+                img.color = img.sprite != null ? Color.white : new Color(0f, 0f, 0f, 0.6f);
+                img.raycastTarget = false;
+                var lay = pill.GetComponent<HorizontalLayoutGroup>();
+                lay.padding = new RectOffset(8, 14, 6, 6);
+                lay.spacing = 9;
+                lay.childAlignment = TextAnchor.MiddleCenter;
+                lay.childControlWidth = true;
+                lay.childControlHeight = true;
+                lay.childForceExpandWidth = false;
+                lay.childForceExpandHeight = false;
+
+                var cap = UIKit.Keycap((RectTransform)pill.transform, c.Key, 30f);
+                var le = cap.gameObject.AddComponent<LayoutElement>();
+                le.preferredWidth = cap.sizeDelta.x;
+                le.preferredHeight = cap.sizeDelta.y;
+
+                var label = UIKit.Label((RectTransform)pill.transform, c.Text, 18, c.Tint,
+                    TextAnchor.MiddleCenter, true);
+                label.resizeTextForBestFit = false;         // preferredWidth sizes the pill
+                label.horizontalOverflow = HorizontalWrapMode.Overflow;
+                label.verticalOverflow = VerticalWrapMode.Overflow;
+            }
         }
     }
 }

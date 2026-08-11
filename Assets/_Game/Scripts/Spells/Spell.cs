@@ -111,6 +111,13 @@ namespace SpellyZombie
             {
                 if (g.Rune == RuneType.None || g.Strength <= 0.02f) continue;
                 float glyphHalf = g.WorldBounds().size.magnitude * 0.5f;
+                // THE THREE DIALS, re-ruled (Marko Aug 11 evening): SIZE is the
+                // rune's own drawn size (GlyphSize → SrcSize, unchanged in
+                // magnitude below); EFFECT RADIUS is the rune's size COMPARED
+                // TO ITS SEAL — so a big rune in a small seal reaches far, and
+                // growing the SEAL around the same rune pulls the reach IN
+                // without touching the thing itself. Power stays the shape's.
+                float reach = glyphHalf / SealRadius(seal);
                 var z = new Zone
                 {
                     Rune = g.Rune,
@@ -119,7 +126,7 @@ namespace SpellyZombie
                     // the floor is the NEUTRAL POINT — SpellParticle.SizeMul
                     // returns exactly 1 there, so a smallest rune is unchanged.
                     // Shared constant so the floor and the reference cannot drift.
-                    Radius = Mathf.Clamp(glyphHalf * DrawingConfig.ZoneRadiusScale,
+                    Radius = Mathf.Clamp(reach * DrawingConfig.RuneReachScale,
                         DrawingConfig.RuneSizeMin, 3.5f),
                     GlyphSize = glyphHalf,
                     Intensity = g.Strength,
@@ -160,10 +167,12 @@ namespace SpellyZombie
         static readonly System.Collections.Generic.List<ZombieBrain> _orderBuf =
             new System.Collections.Generic.List<ZombieBrain>();
 
-        /// One summon glyph: which kind it raises and how far its gas reaches.
-        /// Body size and strength are properties of the SEAL, not the glyph, so
-        /// they are read once per cast rather than stored per order.
-        struct SummonOrder { public bool Ranged; public float GasRadius; }
+        /// One summon glyph: which kind it raises, how big it stands, how far
+        /// its gas reaches. Body size is the GLYPH'S OWN (Marko's re-ruled
+        /// dial: "size — described by the rune size"), so three Solids of
+        /// three sizes raise three different zombies from one seal. Only
+        /// strength stays a property of the seal's shape.
+        struct SummonOrder { public bool Ranged; public float GasRadius; public float SizeMul; }
 
         /// The seal's equivalent RADIUS — commensurate with a glyph's
         /// half-diagonal. sqrt(Area) alone is an edge length and comparing the
@@ -171,13 +180,21 @@ namespace SpellyZombie
         static float SealRadius(Seal seal) =>
             Mathf.Sqrt(Mathf.Max(0.0004f, seal.Area) / Mathf.PI);
 
-        /// DIAL 1 for anything a seal raises or blows up. Two marked points, the
-        /// line runs through them and does NOT stop — draw past either end and
-        /// it keeps paying out. Floor is physics, not balance.
-        ///
-        /// Shared rather than re-derived: the summon and the detonation must
-        /// answer "how big was this seal" with the SAME number, or a zombie
-        /// would explode at a size it was never raised at.
+        /// SIZE FROM THE RUNE'S OWN DRAWN DIAMETER (Marko's re-ruled dial 2).
+        /// Two marked points, the line runs through them and does NOT stop —
+        /// draw past either end and it keeps paying out. Floor is physics.
+        static float RuneSizeMul(float glyphDiameter)
+        {
+            float range = Mathf.Max(0.001f,
+                DrawingConfig.SummonRuneMax - DrawingConfig.SummonRuneMin);
+            return Mathf.Max(DrawingConfig.SummonSizeFloor,
+                Mathf.LerpUnclamped(DrawingConfig.SummonSizeMin, DrawingConfig.SummonSizeMax,
+                    (glyphDiameter - DrawingConfig.SummonRuneMin) / range));
+        }
+
+        /// The DETONATION's size dial — a seal drawn on a zombie usually has no
+        /// rune inside it, so the loop itself is the drawing and its size is
+        /// the size. Summons no longer read this (their glyph sizes them).
         static float SealSizeMul(Seal seal)
         {
             float range = Mathf.Max(0.001f,
@@ -230,11 +247,12 @@ namespace SpellyZombie
 
         static Spell AcolyteSummon(Seal seal)
         {
-            // ONE ENTRY PER SUMMON GLYPH, carrying the radius of the gas it will
-            // breathe. THE RUNE-TO-SEAL RATIO IS THE AoE DIAL, NOT THE SIZE DIAL
-            // (Marko Aug 10, correcting a build that crossed the two): body size
-            // comes from the seal's OWN diameter, further down. What the rune's
-            // size relative to its seal buys is how far the cloud reaches.
+            // ONE ENTRY PER SUMMON GLYPH, carrying its body size AND its gas.
+            // THE THREE DIALS, re-ruled (Marko Aug 11 evening): body size =
+            // the glyph's OWN drawn size; gas reach = the glyph's size
+            // COMPARED TO ITS SEAL; strength = the seal's shape. So the same
+            // zombie icon in a tighter seal breathes further, and a bigger
+            // icon simply IS a bigger zombie.
             _summonBuf.Clear();
             bool hasArrow = false, scatter = false;
             Vector3 marchDir = Vector3.zero;
@@ -253,7 +271,8 @@ namespace SpellyZombie
                     _summonBuf.Add(new SummonOrder
                     {
                         Ranged = g.Rune == RuneType.StateLiquid,
-                        GasRadius = gas
+                        GasRadius = gas,
+                        SizeMul = RuneSizeMul(glyphSpan * 2f)
                     });
                 }
                 else if (g.Rune == RuneType.DirectionAway || g.Rune == RuneType.DirectionToward)
@@ -325,14 +344,14 @@ namespace SpellyZombie
             int total = _summonBuf.Count;
             float life = DrawingConfig.SummonedZombieLife;
 
-            // DIAL 1 (seal diameter → body) and DIAL 3 (lines → strength), read
-            // through the shared helpers so a summon and a detonation can never
-            // disagree about how big or how potent the same seal was.
-            float sizeMul = SealSizeMul(seal);
+            // DIAL 3 (lines → strength) belongs to the seal; each glyph now
+            // carries its OWN body size (re-ruled dial 2: the icon's drawn
+            // size IS the zombie's size — three icons, three sizes, one seal).
             float power = SealPower(seal);
             for (int i = 0; i < total; i++)
             {
                 bool isRanged = _summonBuf[i].Ranged;
+                float sizeMul = _summonBuf[i].SizeMul;
 
                 // stand them in a ring around the seal so they do not spawn
                 // inside each other and shove themselves apart
@@ -438,9 +457,11 @@ namespace SpellyZombie
                     Rune = rune,
                     Center = centers[i] + normal * 0.06f,
                     Normal = normal,
-                    // the floor is the NEUTRAL POINT — SpellParticle.SizeMul
-                    // returns exactly 1 there, so a smallest rune is unchanged.
-                    // Shared constant so the floor and the reference cannot drift.
+                    // ⛔ PARITY GAP (flagged, not silent): the payload ships no
+                    // seal radius, so a REMOTE body seal cannot compute the
+                    // rune-to-seal ratio that now drives reach locally. Old
+                    // absolute law stands here until the seal message grows a
+                    // sealRadius field — close it together with sides sync.
                     Radius = Mathf.Clamp(glyphHalf * DrawingConfig.ZoneRadiusScale,
                         DrawingConfig.RuneSizeMin, 3.5f),
                     GlyphSize = glyphHalf,
@@ -565,6 +586,11 @@ namespace SpellyZombie
                 var pilot = hits[i] ? hits[i].GetComponent<SimpleFPSController>() : null;
                 if (pilot != null)
                 {
+                    // NO caster immunity here either (Marko: "the user
+                    // doesn't need immunity at all") — the pressure system
+                    // is zone-driven and still live at cast, so a confined
+                    // density+heat combo CAN pop at the artist's feet until
+                    // zones join the dormant model in phase 2. Known, ruled.
                     Vector3 away2 = (pilot.transform.position - _pressureCenter).normalized;
                     pilot.TakeHit((dir * 2f + away2).normalized * kick, 8f);
                     pilot.KnockDown(1.2f); // blast off your feet
@@ -764,28 +790,41 @@ namespace SpellyZombie
             // Siblings of one drawing leave together, seek each other in
             // flight, and combine mid-air — the bolt.
             bool bodyCast = _bodyThrow; // remote body seals throw too (netcode §2)
-            Transform caster = _netCaster;
             var m0 = z.Glyph != null && z.Glyph.Members.Count > 0 ? z.Glyph.Members[0] : null;
             if (m0 != null && m0.Persistent && m0.First != null)
-            {
-                bodyCast = true;
-                caster = m0.First.transform.root;
-            }
+                bodyCast = true; // who threw it no longer matters — the 0.2s
+                                 // activation delay is universal, not personal
 
             for (int i = 0; i < count; i++)
             {
                 var p = SpellParticle.Emit(kind,
                     z.Center + z.Normal * 0.12f + Random.insideUnitSphere * z.Radius * 0.18f,
                     dir, z.Intensity);
-                p.SrcSize = z.Radius * bigMul; // drawn size rides the chain (demon sizing)
+                // SIZE IS THE RUNE'S OWN DRAWN SIZE (Marko's re-ruled dial 2) —
+                // NOT z.Radius, which now means REACH (the rune-to-seal ratio).
+                // ZoneRadiusScale keeps the magnitude exactly where the old
+                // tuning had it, so nothing shrinks in the swap.
+                p.SrcSize = z.GlyphSize * DrawingConfig.ZoneRadiusScale * bigMul;
                 p.Lineage = RuneGrammar.Bit(z.Rune); // GRAMMAR v4: ancestry starts here —
                                                      // all 12 in one chain = THE DEMON
                 p.SealId = GetHashCode();            // siblings of one DRAWING pair up first
+                p.OwnerId = _ownerId;                // dormant wake rules ask whose spell this is
                 if (i == 0) z.Tracked = p;           // sustain law: the rune WATCHES this one
                                                      // (powerup extras are untracked bonuses)
                 p.Vel *= speedMul;
+                // THE DORMANT SPLIT (Marko's ruling): GROUND seals cast
+                // previews — prepared, frozen, waiting for a hand or a
+                // trigger. BODY/WEAPON seals are the quick weapon: their
+                // cast is a THROW, and throwing activates (0.2s, universal).
                 if (bodyCast)
-                    p.ThrowFrom(caster, z.Normal * DrawingConfig.BodyCastThrowSpeed + p.Vel);
+                    p.ThrowFrom(z.Normal * DrawingConfig.BodyCastThrowSpeed + p.Vel);
+                else if (kind != ParticleKind.Push)
+                    // anchored to ITS rune's spot on the seal plane — wall
+                    // seals hover their previews OUT of the wall, floors up.
+                    // VECTORS SKIP THIS (Marko: "they are never dormant and
+                    // they work as they used to") — push/pull fly live and
+                    // waking-launching whatever they strike IS their job.
+                    p.Sleep(z.Center, z.Normal);
                 p.Temp *= potent;
                 p.Lum *= potent;
                 p.Density *= potent;
@@ -793,6 +832,45 @@ namespace SpellyZombie
                 p.Echo = buff.Echo;
                 if (bigMul > 1f) p.transform.localScale *= bigMul;
             }
+        }
+
+        /// GROUND combos become a WAITING GHOST instead of the real thing —
+        /// one dormant preview mote carries the conjure and casts it where it
+        /// wakes: walk it over, throw it, or leave it armed as a trap. Body
+        /// and weapon casts return false and fire the real thing instantly:
+        /// a skin cast is a throw, and throwing IS activation (his rule).
+        bool PreviewConjure(Zone z, ParticleKind ghostKind, float srcSize,
+            System.Action<Vector3> conjure, float realSize = 0f)
+        {
+            bool bodyCast = _bodyThrow;
+            var m0 = z.Glyph != null && z.Glyph.Members.Count > 0 ? z.Glyph.Members[0] : null;
+            if (m0 != null && m0.Persistent && m0.First != null) bodyCast = true;
+            if (bodyCast) return false;
+
+            var p = SpellParticle.Emit(ghostKind, z.Center + z.Normal * 0.15f, z.Normal, z.Intensity);
+            if (p == null) return false;
+            p.SrcSize = Mathf.Max(0.5f, srcSize);
+            p.OwnerId = _ownerId;
+            p.Lineage = RuneGrammar.Bit(z.Rune);
+            p.SealId = GetHashCode();
+            p.PendingConjure = conjure;
+            p.Sleep(z.Center, z.Normal);
+            // THE PREVIEW OBEYS THE SIZE LAW (Marko: "combined particles
+            // should always be larger than their parts", and the meteor
+            // ghost was smaller than a lone solid mote): when the caller
+            // names the REAL thing's size, the ghost is that at preview
+            // scale. Otherwise the plain 2x read-big tune applies.
+            if (realSize > 0f)
+                p.transform.localScale = Vector3.one
+                    * Mathf.Max(0.45f, realSize * DrawingConfig.DormantPreviewScale);
+            else
+                p.transform.localScale *= 2f;
+            // SUSTAIN LAW: the ghost IS the zone's live product. Without this
+            // the rune saw nothing tracked and manufactured AGAIN each beat —
+            // "meteor keeps spawning 1 solid rock and 1 meteor" was two
+            // conjure ghosts, one per re-emission.
+            z.Tracked = p;
+            return true;
         }
 
         // ONLY State runes spawn matter (once, at activation) — everything else modifies it.
@@ -914,15 +992,17 @@ namespace SpellyZombie
                 lightUp = false, lightDown = false, glue = false, slick = false;
             int sameForm = 0;
             ulong lineage = 0;
+            float heatUpG = 0f, heatDownG = 0f, denseG = 0f; // partner glyph sizes — combos must OUTGROW their parts
+            float heatUpR = 0f, heatDownR = 0f;              // partner zone RADII — combo AREA = the ingredients' reaches SUMMED
             foreach (var other in _zones)
             {
                 lineage |= RuneGrammar.Bit(other.Rune);
                 switch (other.Rune)
                 {
-                    case RuneType.DensityUp: denser = true; break;
+                    case RuneType.DensityUp: denser = true; denseG = Mathf.Max(denseG, other.GlyphSize); break;
                     case RuneType.DensityDown: thinner = true; break;
-                    case RuneType.HeatUp: heatUp = true; break;
-                    case RuneType.HeatDown: heatDown = true; break;
+                    case RuneType.HeatUp: heatUp = true; heatUpG = Mathf.Max(heatUpG, other.GlyphSize); heatUpR = Mathf.Max(heatUpR, other.Radius); break;
+                    case RuneType.HeatDown: heatDown = true; heatDownG = Mathf.Max(heatDownG, other.GlyphSize); heatDownR = Mathf.Max(heatDownR, other.Radius); break;
                     case RuneType.LuminanceUp: lightUp = true; break;
                     case RuneType.LuminanceDown: lightDown = true; break;
                     case RuneType.StickyUp: glue = true; break;
@@ -937,25 +1017,84 @@ namespace SpellyZombie
                 * Mathf.Lerp(0.75f, 1.15f, z.Intensity)
                 * (denser ? 1.7f : thinner ? 0.5f : 0.9f) * (1f + 0.25f * buff.Big);
 
+            // COMBINATIONS OUTGROW THEIR ELEMENTS (Marko: "all of the
+            // combinations should be larger than their elements... meteor
+            // cannot be smaller than solid + heat") — the partner rune's
+            // drawn size JOINS the form's, past the solo clamp.
+            float duoHeatUp = size + Mathf.Clamp(heatUpG * 0.5f, 0.05f, 0.9f);
+            float duoHeatDown = size + Mathf.Clamp(heatDownG * 0.5f, 0.05f, 0.9f);
+            float duoDense = size + Mathf.Clamp(denseG * 0.5f, 0.05f, 0.9f);
+            // AREA = the ingredients' effect radii SUMMED (Marko: "calculated
+            // the same way as particle area of effect — sum of the particles
+            // it's created of... same for all spells and combinations")
+            float reachHeatUp = z.Radius + heatUpR;
+            float reachHeatDown = z.Radius + heatDownR;
+
             // ---- FORM LEVELING: draw the State rune twice = lvl2 (grows /
             // spreads), three times = the AREA ultimate ----
             if (sameForm >= 3)
             {
-                if (solid) SolidAvalancheField.Open(z.Center, mat, z.Intensity, lineage);
-                else LiquidAreaField.Open(z.Center, mat, z.Intensity, lineage);
+                if (solid)
+                {
+                    if (!PreviewConjure(z, ParticleKind.Dense, z.Radius * 2f,
+                        at => SolidAvalancheField.Open(at, mat, z.Intensity, lineage)))
+                        SolidAvalancheField.Open(z.Center, mat, z.Intensity, lineage);
+                }
+                else if (!PreviewConjure(z, ParticleKind.Spread, z.Radius * 2f,
+                    at => LiquidAreaField.Open(at, mat, z.Intensity, lineage)))
+                    LiquidAreaField.Open(z.Center, mat, z.Intensity, lineage);
                 return;
             }
             int formLevel = Mathf.Min(2, sameForm);
             if (!solid && (thinner || lightDown)) formLevel = 2; // Liquid+Spread spreads — and DARK liquid spreads like darkness
 
-            // ---- HEAT × FORM — the showpieces ----
-            if (solid && heatUp) { FormConjures.Meteorite(z.Center, z.Normal, mat, size, 1 + buff.More, lineage); return; }
-            if (solid && heatDown) { FormConjures.IceSpikes(z.Center, z.Normal, mat, size, lineage, _ownerId); return; }
-            if (!solid && heatDown) { FormConjures.Glacier(z.Center, mat, z.Intensity, lineage); return; }
-            if (!solid && heatUp) { FormConjures.HotLiquid(z.Center, z.Normal, mat, size, z.Intensity, lineage); return; }
+            // ---- HEAT × FORM — the showpieces. GROUND casts preview first
+            // (Marko: "I created a meteor and it blew up in my face... all of
+            // the combinations need a static inactive version") — the ghost
+            // carries the conjure and casts it WHERE IT WAKES. ----
+            if (solid && heatUp)
+            {
+                // the waiting meteor reads as ROCK, not flame (his ruling:
+                // "it should just be there dormant until we grab it and
+                // throw it — then it can fly up to the sky and fall down to
+                // the location we threw it at")
+                if (!PreviewConjure(z, ParticleKind.Dense, duoHeatUp * 3f,
+                    at => FormConjures.Meteorite(at, z.Normal, mat, duoHeatUp, reachHeatUp,
+                        1 + buff.More, lineage, fromSky: true),
+                    realSize: duoHeatUp * 10f))
+                    FormConjures.Meteorite(z.Center, z.Normal, mat, duoHeatUp, reachHeatUp, 1 + buff.More, lineage);
+                return;
+            }
+            if (solid && heatDown)
+            {
+                if (!PreviewConjure(z, ParticleKind.Frost, duoHeatDown * 3f,
+                    at => FormConjures.IceSpikes(at, z.Normal, mat, duoHeatDown, reachHeatDown, lineage, _ownerId)))
+                    FormConjures.IceSpikes(z.Center, z.Normal, mat, duoHeatDown, reachHeatDown, lineage, _ownerId);
+                return;
+            }
+            if (!solid && heatDown)
+            {
+                if (!PreviewConjure(z, ParticleKind.Frost, z.Radius * 2f,
+                    at => FormConjures.Glacier(at, mat, z.Intensity, lineage)))
+                    FormConjures.Glacier(z.Center, mat, z.Intensity, lineage);
+                return;
+            }
+            if (!solid && heatUp)
+            {
+                if (!PreviewConjure(z, ParticleKind.Spark, duoHeatUp * 3f,
+                    at => FormConjures.HotLiquid(at, z.Normal, mat, duoHeatUp, reachHeatUp, z.Intensity, lineage)))
+                    FormConjures.HotLiquid(z.Center, z.Normal, mat, duoHeatUp, reachHeatUp, z.Intensity, lineage);
+                return;
+            }
 
             // ---- Liquid + Dense = PRESSURE JET along the seal's normal ----
-            if (!solid && denser) { FormConjures.PressureJet(z.Center, z.Normal, mat, size, z.Intensity, lineage); return; }
+            if (!solid && denser)
+            {
+                if (!PreviewConjure(z, ParticleKind.Dense, duoDense * 3f,
+                    at => FormConjures.PressureJet(at, z.Normal, mat, duoDense, z.Intensity, lineage)))
+                    FormConjures.PressureJet(z.Center, z.Normal, mat, duoDense, z.Intensity, lineage);
+                return;
+            }
 
             // (NO cross-form seal recipe — Marko: "why are you making
             // exceptions?" Solid and Liquid each emit their OWN blob and the

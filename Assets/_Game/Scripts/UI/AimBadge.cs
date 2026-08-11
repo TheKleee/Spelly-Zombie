@@ -25,6 +25,12 @@ namespace SpellyZombie
         /// Marko's simplification) — ShapeShift reads this on F.
         public static Transform ScanTarget { get; private set; }
 
+        /// True while the flying F is offering a SCAN — that moment owns the
+        /// screen alone (Marko Aug 11: "you don't need any other text there
+        /// while that text is there"): ModeGuide and the grimoire close-line
+        /// both stand down while this is up.
+        public static bool ScanOfferLive { get; private set; }
+
         const float Reach = 4.5f;
 
         RectTransform _ui;
@@ -52,7 +58,18 @@ namespace SpellyZombie
             UIKit.Stretch((RectTransform)_back.transform);
             _letter = UIKit.Label(_ui, "E", 20, new Color(0.15f, 0.1f, 0.2f), TextAnchor.MiddleCenter, true);
             UIKit.Stretch((RectTransform)_letter.transform);
+
+            // the one line under the flying F, spoken only at the scan moment
+            // (Marko: "you can have a text below saying to scan something...
+            // that text should only appear at that specific time")
+            _caption = UIKit.Label(_ui, "", 15, new Color(0.98f, 0.94f, 0.82f), TextAnchor.UpperCenter, true);
+            var cr = (RectTransform)_caption.transform;
+            UIKit.Place(cr, new Vector2(0.5f, 0f), new Vector2(0f, -6f), new Vector2(280f, 40f));
+            cr.pivot = new Vector2(0.5f, 1f); // hangs below the circle
+            _caption.gameObject.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.8f);
         }
+
+        Text _caption;
 
         Vector3 _anchor;
         bool _show;
@@ -61,6 +78,8 @@ namespace SpellyZombie
         {
             Aimed = null;
             ScanTarget = null;
+            ScanOfferLive = false;
+            if (_caption != null) _caption.text = "";
             _show = false;
             bool danger = false;
             var cam = Camera.main;
@@ -138,6 +157,8 @@ namespace SpellyZombie
                         var root = rb != null ? rb.transform : hit.collider.transform;
                         ScanTarget = root;
                         Point(hit.collider, root, hit, "F");
+                        ScanOfferLive = true;
+                        if (_caption != null) _caption.text = Loc.T("scan.aim");
                         return;
                     }
                 }

@@ -43,6 +43,14 @@ namespace SpellyZombie
         public void PaintHold(float seconds) =>
             _paintHoldUntil = Mathf.Max(_paintHoldUntil, Time.time + seconds);
 
+        /// Birth: crawl out of the ground — the StandUp clip the knockdown
+        /// recovery already owns, played from frame one. The stride matcher
+        /// leaves one-shots alone, so nothing stomps it mid-climb.
+        public void Rise()
+        {
+            if (_anim != null) _anim.SetTrigger("StandUp");
+        }
+
         // stride matching: the states by hash, and each clip's authored ground
         // speed (walking.fbx covers ~1.4 m/s, zombie running.fbx ~4.5)
         static readonly int HashWalk = Animator.StringToHash("Walk");

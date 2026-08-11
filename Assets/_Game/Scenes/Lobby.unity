@@ -239,6 +239,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &178656
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1042,6 +1043,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &13649275
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1506,6 +1508,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &18056994
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1684,6 +1687,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &19441082
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2305,6 +2309,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &23860638
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3651,6 +3656,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &41175688
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4267,6 +4273,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &45352840
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4441,6 +4448,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &49221959
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9473,6 +9481,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &51360807
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9850,6 +9859,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &59840910
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10050,6 +10060,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &61455830
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10460,6 +10471,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &67297819
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11549,6 +11561,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &85614899
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11885,6 +11898,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &87036758
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13032,6 +13046,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &107724404
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14464,6 +14479,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &118991665
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15039,6 +15055,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &128534276
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17282,6 +17299,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &172513803
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18016,6 +18034,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &188702484
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18209,6 +18228,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &189243717
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18569,6 +18589,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &191184486
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19052,6 +19073,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &199897475
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19248,6 +19270,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &201284796
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20258,6 +20281,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &220792671
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20458,6 +20482,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &221297881
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -23885,6 +23910,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &279883397
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25402,6 +25428,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &296316817
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -25730,6 +25757,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &299250461
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26036,6 +26064,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &301777772
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26594,6 +26623,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &313671980
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27045,6 +27075,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &324689243
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27377,6 +27408,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &325557430
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -27835,6 +27867,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &327289860
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31634,6 +31667,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &393471286
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31834,6 +31868,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &393896807
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32038,6 +32073,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &394437016
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32234,6 +32270,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &396506752
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32438,6 +32475,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &398428204
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -33265,34 +33303,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1826625633}
     m_Modifications:
-    - target: {fileID: 1952508419951018493, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 1952508419951018493, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -0.00178
-      objectReference: {fileID: 0}
-    - target: {fileID: 3238262640435899184, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 0.0055
-      objectReference: {fileID: 0}
-    - target: {fileID: 3238262640435899184, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 0.0055
-      objectReference: {fileID: 0}
-    - target: {fileID: 3238262640435899184, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 0.0055
-      objectReference: {fileID: 0}
-    - target: {fileID: 3238262640435899184, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 3238262640435899184, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 4884948637868380248, guid: 94493160583eac04db4af45e076ae652, type: 3}
       propertyPath: m_Name
       value: Cauldron
@@ -33336,54 +33346,6 @@ PrefabInstance:
     - target: {fileID: 5224459564016732898, guid: 94493160583eac04db4af45e076ae652, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5686128035653249214, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 5686128035653249214, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: -0.00352
-      objectReference: {fileID: 0}
-    - target: {fileID: 5686128035653249214, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0.00047
-      objectReference: {fileID: 0}
-    - target: {fileID: 6254981052445363444, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0.00357
-      objectReference: {fileID: 0}
-    - target: {fileID: 6254981052445363444, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6254981052445363444, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0.00018
-      objectReference: {fileID: 0}
-    - target: {fileID: 7524417194843468911, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0.00362
-      objectReference: {fileID: 0}
-    - target: {fileID: 7524417194843468911, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7524417194843468911, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0.00041
-      objectReference: {fileID: 0}
-    - target: {fileID: 8110452206522461891, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8110452206522461891, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.00379
-      objectReference: {fileID: 0}
-    - target: {fileID: 8110452206522461891, guid: 94493160583eac04db4af45e076ae652, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0.00041
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -33626,6 +33588,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &419085635
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -35174,6 +35137,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &452713229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -35614,6 +35578,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &455558251
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -35818,6 +35783,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &456135038
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -36416,6 +36382,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &469742833
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -37576,6 +37543,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &493740350
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -37772,6 +37740,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &496198259
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -38447,6 +38416,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &512846362
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -38862,6 +38832,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &513801972
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -39162,6 +39133,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &517032229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -39362,6 +39334,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &517256937
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -39562,6 +39535,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &518215896
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -39939,6 +39913,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &529115939
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -40399,6 +40374,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &531761839
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -41588,6 +41564,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &557142906
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -42027,6 +42004,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &565634343
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -43275,6 +43253,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &582735232
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -43653,6 +43632,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &584774298
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -43831,6 +43811,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &585936484
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -44479,6 +44460,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &591210032
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -46112,6 +46094,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &620503683
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -47627,6 +47610,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &638629544
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -47926,6 +47910,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &642781258
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -48130,6 +48115,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &645365158
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -48326,6 +48312,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &646496239
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -49116,6 +49103,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &666092400
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -49452,6 +49440,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &669070310
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -50093,6 +50082,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &673615572
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -50549,6 +50539,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &681345221
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -50828,6 +50819,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &681603993
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -51365,6 +51357,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &691616518
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -51761,6 +51754,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &698506994
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -52946,6 +52940,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &729591007
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -53747,6 +53742,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &747900213
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -54215,6 +54211,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &754324334
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -54638,6 +54635,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &756837578
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -54834,6 +54832,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &758218398
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -55170,6 +55169,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &759715136
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -55947,6 +55947,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &768177731
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -57136,6 +57137,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &787439197
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -58833,6 +58835,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &817668331
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -59033,6 +59036,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &818106639
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -59594,6 +59598,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &823402531
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60000,6 +60005,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &828279502
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60178,6 +60184,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &831419400
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60427,6 +60434,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &834470022
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60768,6 +60776,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &836868390
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -61356,6 +61365,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &844834092
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -61881,6 +61891,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &850579693
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -62138,6 +62149,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &851444692
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -62592,6 +62604,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &855804272
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -63742,6 +63755,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &877914586
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -64591,6 +64605,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &889915752
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -64870,6 +64885,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &890796179
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -65796,6 +65812,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &898158569
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -66226,6 +66243,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &909430919
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -66944,6 +66962,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &918754316
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67160,6 +67179,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &919209395
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -67673,6 +67693,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &924105944
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -68090,6 +68111,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &928231168
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -68290,6 +68312,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &928320678
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -68560,6 +68583,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &932215441
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -69135,6 +69159,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &937270036
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -69758,6 +69783,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &943949196
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -70659,6 +70685,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &959414734
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -70859,6 +70886,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &961151581
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -71162,6 +71190,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &961770415
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -72070,6 +72099,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &976117646
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -72270,6 +72300,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &976663560
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -72673,6 +72704,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &982905193
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -73264,6 +73296,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &996746265
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -76420,6 +76453,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1042970139
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -78360,6 +78394,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1083066376
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -78825,6 +78860,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1088108879
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -80086,6 +80122,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1110516926
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -80561,6 +80598,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1118484106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -82517,6 +82555,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1146270112
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -82923,6 +82962,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1153916619
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -83126,6 +83166,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1154656210
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -83923,6 +83964,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1161560775
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -84849,6 +84891,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1171759344
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -85222,6 +85265,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1175183559
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -85903,6 +85947,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1188073106
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -86309,6 +86354,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1192017711
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -86925,6 +86971,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1201852078
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -88312,6 +88359,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1225320750
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -88512,6 +88560,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1225581383
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -91425,6 +91474,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1278961263
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -91752,6 +91802,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1280219032
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -93102,6 +93153,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1293537933
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -93302,6 +93354,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1293843922
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -94114,6 +94167,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1314343346
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -94515,6 +94569,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1322550345
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -94974,6 +95029,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1324869831
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -95170,6 +95226,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1326405214
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -96187,6 +96244,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1344339092
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -96380,6 +96438,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1345167459
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -96793,6 +96852,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1346745172
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -96993,6 +97053,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1348500847
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -99838,6 +99899,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1392749638
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -100803,6 +100865,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1408917736
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -100999,6 +101062,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1409529347
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -101766,6 +101830,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1416017800
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -102045,6 +102110,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1416628860
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -102770,6 +102836,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1434247234
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -103201,6 +103268,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1437571561
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -103796,6 +103864,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1441321422
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -104099,6 +104168,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1442241905
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -104526,6 +104596,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1451394859
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -105416,6 +105487,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1462634362
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -106464,6 +106536,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1481077965
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -106869,6 +106942,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1494790944
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -107398,6 +107472,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1501923457
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -107742,6 +107817,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1510005293
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -108319,6 +108395,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1516415263
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -109370,6 +109447,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1526042669
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -109804,6 +109882,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1537829648
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -110581,6 +110660,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1551823902
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -110991,6 +111071,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1554668010
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -111373,6 +111454,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1559299623
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -111630,6 +111712,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1566996618
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -111808,6 +111891,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1568570838
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -112087,6 +112171,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1569850474
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -112344,6 +112429,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1570456808
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -112795,6 +112881,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1587036040
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -113935,6 +114022,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1601204817
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -114231,6 +114319,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1605437404
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -114435,6 +114524,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1605667554
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -115590,6 +115680,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1622743198
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -115783,6 +115874,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1623599140
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -116322,6 +116414,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1630003477
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -116522,6 +116615,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1630069537
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -117398,6 +117492,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1649178621
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -118150,6 +118245,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1667898167
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -119303,6 +119399,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1691087560
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -119602,6 +119699,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1692418878
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -120238,6 +120336,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1700386445
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -120641,6 +120740,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1706664479
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -121645,6 +121745,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1724454639
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -122080,6 +122181,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1732469510
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -122837,6 +122939,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1743550728
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -123143,6 +123246,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1748628638
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -123701,6 +123805,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1751656647
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -124513,6 +124618,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1760324698
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -126275,6 +126381,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1775113785
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -126699,6 +126806,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1777478097
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -127537,6 +127645,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1791896913
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -127960,6 +128069,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1794796412
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -128594,6 +128704,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1807506536
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -128798,6 +128909,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1808179862
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -132126,6 +132238,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1852888561
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -133016,6 +133129,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1870653902
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -133495,6 +133609,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1881173882
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -134259,6 +134374,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1886608232
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -134558,6 +134674,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1890049603
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -135650,6 +135767,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1906101110
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -136497,6 +136615,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1912805449
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -136760,6 +136879,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1915998904
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -137299,6 +137419,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1921165093
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -140523,6 +140644,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1976023690
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -140904,6 +141026,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1979498700
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -141904,6 +142027,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &1996103019
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -142674,6 +142798,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2010483390
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -142973,6 +143098,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2020407565
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -143469,6 +143595,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2027236191
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -143748,6 +143875,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2028003506
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -144801,6 +144929,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2043238765
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -145940,6 +146069,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2068367528
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -146995,6 +147125,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2086929003
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -147429,6 +147560,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2090309866
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -147918,6 +148050,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2094518141
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -148306,6 +148439,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2097253085
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -150328,6 +150462,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2119081320
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -150713,6 +150848,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2124385708
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -151734,6 +151870,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2132239248
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -152149,6 +152286,7 @@ MonoBehaviour:
   Standing: {fileID: 0}
   CodeSplinters: 1
   DefaultSound: 1
+  LobbyRespawnOverride: 0
 --- !u!114 &2134258619
 MonoBehaviour:
   m_ObjectHideFlags: 0

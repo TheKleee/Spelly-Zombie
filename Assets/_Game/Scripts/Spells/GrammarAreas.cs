@@ -475,6 +475,86 @@ namespace SpellyZombie
         }
     }
 
+    /// Heat lvl3 — THE FLAME VORTEX (Marko, Aug 12, replacing the table's
+    /// flame burst: "instead of flames bursting in the area let's make it a
+    /// flaming vortex, the equivalent" of the snow field). A standing fire
+    /// whirl: everything inside is dragged around the axis, heated hard and
+    /// lifted; fire climbs the column the whole time it lives.
+    public class FlameVortexField : GrammarField
+    {
+        float _fxTick;
+
+        protected override bool ShowDome => false; // the FIRE is the body
+
+        public static FlameVortexField Open(Vector3 at, float power, float size = 0f)
+        {
+            var f = Spawn<FlameVortexField>(at, power, DrawingConfig.UltimateRadius * 0.8f,
+                DrawingConfig.UltimateSeconds * 1.2f,
+                new Color(1f, 0.5f, 0.12f, 0.5f), MoteShade.Additive, size);
+            DrawingWorld.Instance?.LogEvent("the fire starts to SPIN");
+            ZombieBrain.ScareVisible(at, 20f, 5f);
+            return f;
+        }
+
+        float _spin;
+
+        /// One flame of the whirl: REVOLVES around the vortex axis and climbs
+        /// while it lives (Marko: "these balls don't move, they just pop in
+        /// and out of existence") — the fire travels the circle for real.
+        class Orbiter : MonoBehaviour
+        {
+            public Transform Axis;
+            void Update()
+            {
+                if (Axis == null) return;
+                transform.RotateAround(Axis.position, Vector3.up, 240f * Time.deltaTime);
+                transform.position += Vector3.up * 1.1f * Time.deltaTime;
+            }
+        }
+
+        protected override void Grow(float dt)
+        {
+            // A SPINNING CIRCLE OF FIRE: three arms of flame chase each other
+            // around the ring, placed by one advancing angle so the rotation
+            // is readable, and every flame keeps orbiting while it burns.
+            _spin += dt * 4.2f;
+            _fxTick -= dt;
+            if (_fxTick > 0f) return;
+            _fxTick = 0.09f;
+            for (int arm = 0; arm < 3; arm++)
+            {
+                float a = _spin + arm * (Mathf.PI * 2f / 3f);
+                float r = Radius * Random.Range(0.55f, 0.85f);
+                Vector3 at = transform.position + new Vector3(
+                    Mathf.Cos(a) * r, Random.Range(0.15f, 2.2f), Mathf.Sin(a) * r);
+                var flame = GrammarFX.FireMote(at, Random.Range(0.22f, 0.45f), 0.85f);
+                if (flame != null) flame.AddComponent<Orbiter>().Axis = transform;
+            }
+        }
+
+        protected override void Affect(Collider c, float dt)
+        {
+            // the whirl: around the axis, inward a touch, upward a little
+            Vector3 to = transform.position - c.transform.position;
+            to.y = 0f;
+            Vector3 spin = Vector3.Cross(Vector3.up, to).normalized;
+
+            var pl = c.GetComponent<SimpleFPSController>();
+            if (pl != null)
+            {
+                // fire only HEATS, the band does the hurting (the flame law)
+                BodyState.Of(pl)?.PushTemp(9f * Power);
+                pl.TakeHit((spin * 5f + to.normalized * 1.5f + Vector3.up * 2f) * Power, 0f);
+                return;
+            }
+            SpellParticle.GiveHeatTo(c, 55f * Power);
+            var rb = c.attachedRigidbody;
+            if (rb != null && !rb.isKinematic)
+                rb.AddForce((spin * 7f + to.normalized * 2f + Vector3.up * 3.2f) * Power,
+                    ForceMode.Acceleration);
+        }
+    }
+
     /// Light lvl3 — PLASMA: a small sun. Blinds, radiates heat, and touching
     /// it is a catastrophe. (Light+Light = lightning; feed the lightning more
     /// light and you have made a star.)

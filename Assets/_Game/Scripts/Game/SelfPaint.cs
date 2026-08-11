@@ -79,9 +79,52 @@ namespace SpellyZombie
             PosePicker(kb);
             Orbit();
 
+            // THE BOOK FLOATS AT THE EASEL (Marko Aug 11: "grimoire doesn't
+            // open and you can't list it" — it DID open, but it sat at the
+            // first-person read anchor, which the orbit camera cannot see).
+            // While painting, an open grimoire hangs beside the canvas facing
+            // the camera; pages and arrows keep working untouched.
+            if (_book == null) _book = GetComponentInChildren<GrimoirePages>(true);
+            if (_book != null && GrimoirePages.BookOpen && _cam != null)
+            {
+                if (!_bookFloated)
+                {
+                    _bookFloated = true;
+                    var bt = _book.transform;
+                    FloatingBook = bt; // the pen must not mistake it for skin
+                    _bookParent = bt.parent;
+                    _bookLocalPos = bt.localPosition;
+                    _bookLocalRot = bt.localRotation;
+                    _bookLocalScale = bt.localScale;
+                    // riding the CAMERA, not pinned per frame: the hand bone
+                    // (its real parent) keeps animating and would drag a
+                    // world-pose pin into one-frame jitter. Reparent once and
+                    // the orbit carries the book perfectly.
+                    var ct = _cam.transform;
+                    bt.SetParent(ct, true);
+                    bt.position = ct.position + ct.forward * 0.8f
+                        - ct.right * 0.4f - ct.up * 0.08f;
+                    // paper normal is the book's +Y (PageAnchor law: "+Y off
+                    // the paper, +Z toward the top edge") — aim the SPREAD at
+                    // the lens, top edge up, or you'd be reading the cover
+                    bt.rotation = Quaternion.LookRotation(ct.up, -ct.forward);
+                }
+            }
+            else if (_bookFloated) RestoreBook();
+
+            // THE WAY OUT LIVES ON SCREEN, NOT IN THE CONSOLE (Marko Aug 11:
+            // "when painting the body no one knows how to turn it off, or that
+            // clicking numbers will pose you") — as one-fact chips, three
+            // blocks, his stated extreme maximum for a mode this rich.
+            UIPrompt.Offer("R", Loc.T("paint.done"));
+            UIPrompt.Offer("1-9", Loc.T("paint.pose"));
+            UIPrompt.Offer("MMB", Loc.T("paint.orbit"));
+
             // I = DRINK THE BODY INK (Marko: sacrifice every drawing on your
             // body to regrow the wand — a deliberate, out-of-the-way key).
             // Enough ink = full wand, surplus wasted; less = a partial wand.
+            // (Shown AFTER the exit line so the rarer, more urgent state wins
+            // the single slot: a melted wand outranks the tour.)
             var wand = GetComponent<WandState>();
             if (wand != null && !wand.HasWand)
                 UIPrompt.Show("I", "drink body ink to regrow your wand",
@@ -262,8 +305,35 @@ namespace SpellyZombie
             Debug.Log("[SpellyZombie] Body paint: MMB-drag rotates, WASD moves the camera, scroll zooms, LMB ink / RMB erase, R done");
         }
 
+        /// The grimoire while it hangs at the easel (null otherwise) — the
+        /// paint ray skips this subtree so the book never soaks up a stroke.
+        public static Transform FloatingBook { get; private set; }
+
+        GrimoirePages _book;
+        bool _bookFloated;
+        Transform _bookParent;
+        Vector3 _bookLocalPos;
+        Quaternion _bookLocalRot;
+        Vector3 _bookLocalScale;
+
+        /// Hand the book back to its hand socket exactly as it sat. The full
+        /// local pose is restored (SetParent's world-stays math compensates
+        /// localScale on the way out, so scale must come back too).
+        void RestoreBook()
+        {
+            _bookFloated = false;
+            FloatingBook = null;
+            if (_book == null) return;
+            var bt = _book.transform;
+            bt.SetParent(_bookParent, true);
+            bt.localPosition = _bookLocalPos;
+            bt.localRotation = _bookLocalRot;
+            bt.localScale = _bookLocalScale;
+        }
+
         void Exit()
         {
+            RestoreBook();
             IsActive = false;
             _live = null;
             ActiveRoot = null;

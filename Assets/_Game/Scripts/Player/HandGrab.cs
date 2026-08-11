@@ -19,7 +19,11 @@ namespace SpellyZombie
     {
         const float GrabRange = 2.8f;
         const float AimCone = 0.78f;   // same cone as every other E interaction
-        public const float ThrowSpeed = 22f;  // particles: push, aimed down the cursor (host reuses — netcode §4). Marko Aug 9: "make my throw twice as strong"
+        // particles: push, aimed down the cursor (host reuses — netcode §4).
+        // Now a TUNING KNOB (Marko Aug 11: "a bit underwhelming... 1.5x
+        // stronger might be the sweet spot or 2x, need to test") — default
+        // 33 = 1.5x the old 22; try 44 in sz_tuning.json for the 2x feel.
+        public static float ThrowSpeed => DrawingConfig.ThrowSpeed;
         public const float ThrowImpulse = 14f; // rigidbodies: velocity change — doubled by the same ruling
         const float HandLerp = 14f;
         static readonly float TurnSensitivity = DrawingConfig.Overlay("GrabTurnSensitivity", 0.6f);

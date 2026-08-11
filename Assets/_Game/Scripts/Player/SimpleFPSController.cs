@@ -508,6 +508,7 @@ namespace SpellyZombie
             }
             bool precision = altPrecision || HeldWeapon.DrawMode || SelfPaint.IsActive
                 || PoseGrab.IsOpen || LobbyStand.PanelOpen  // book stand menu = real mouse (Marko approved this line)
+                || HatPillar.PanelOpen                      // hat color sliders = same law as the stand
                 || ShapeShift.PoseOpen;                     // acolyte shape posing = same precision cursor
             if (precision)
             {

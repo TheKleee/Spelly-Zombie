@@ -69,7 +69,7 @@ TextureImporter:
   platformSettings:
   - serializedVersion: 4
     buildTarget: DefaultTexturePlatform
-    maxTextureSize: 2048
+    maxTextureSize: 4096
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 1
@@ -433,12 +433,12 @@ TextureImporter:
       - key: SpriteEditor.SliceSettings
         value: '{"sliceOnImport":false,"gridCellCount":{"x":4.0,"y":4.0},"gridSpriteSize":{"x":512.0,"y":512.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":2,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
-      EmojiGrid_12: 1900000012
-      EmojiGrid_13: 1900000013
       EmojiGrid_0: -1340283112
       EmojiGrid_1: -1154862969
       EmojiGrid_10: 376043412
       EmojiGrid_11: -1344978682
+      EmojiGrid_12: 1900000012
+      EmojiGrid_13: 1900000013
       EmojiGrid_2: 1654896881
       EmojiGrid_3: 1747869519
       EmojiGrid_4: -159759779

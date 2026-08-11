@@ -31,10 +31,32 @@ namespace SpellyZombie
             ["perk.drink"] = "drink {0}",
             ["perk.brewed"] = "{0} is already brewed",
             ["grimoire.open"] = "open the grimoire",
-            ["grimoire.close"] = "close the grimoire  ·  ← → turn pages",
+            ["grimoire.close"] = "close the grimoire",
             ["pose.grab"] = "grab limbs · tap 1-9 = load · HOLD 1-9 = save · F = relax · R = done",
             ["pose.key"] = "pose mode · F = relax · X = reset this key",
             ["pose.enter"] = "pose mode: sculpt your wizard, save to keys 1-9",
+
+            // ---- one-fact chips (Marko's block law: one info per block,
+            // blocks may multiply, three on screen is the extreme max) ----
+            ["scan.aim"] = "scan it, become it",
+            ["chip.grimoire"] = "grimoire",
+            ["chip.paint"] = "paint your body",
+            ["chip.first"] = "first person",
+            ["chip.third"] = "third person",
+            ["chip.pose"] = "pose your wizard",
+            ["chip.watch"] = "watch your dead",
+            ["chip.become"] = "become the {0}",
+            ["chip.pages"] = "turn pages",
+            ["chip.melt"] = "melt back to idle",
+            ["paint.done"] = "done painting",
+            ["paint.pose"] = "strike a pose",
+            ["paint.orbit"] = "orbit",
+            ["hat.pillar"] = "pick your hat color",
+            ["hat.done"] = "done",
+            ["shape.back"] = "back to yourself",
+            ["shape.turn"] = "turns you",
+            ["shape.save"] = "saves",
+            ["shape.recall"] = "recalls",
         };
 
         static Dictionary<string, string> _active; // loaded translation (null = English)

@@ -247,6 +247,10 @@ namespace SpellyZombie
             for (int i = 0; i < _boneRbs.Length; i++)
             {
                 var rb = _boneRbs[i];
+                // a bone can die before the blob (impact debris, component
+                // cleanup order): skip it forever instead of spamming
+                // MissingReference 696 times (his console, Aug 12)
+                if (rb == null) continue;
                 Vector3 home = _boneRoot.TransformPoint(_boneRest[i]);
                 Vector3 off = rb.position - home;
                 // LEASH: a hard drop can slingshot a bone past its siblings and
@@ -335,8 +339,19 @@ namespace SpellyZombie
             float dt = Time.deltaTime;
             float liquidness = 1f - Mathf.InverseLerp(0.5f, 1f, _stateT);
             float gasness = 1f - Mathf.InverseLerp(0.1f, 0.5f, _stateT);
+
+            // A REAL SOLID IS RIGID (Marko: "objects that are really solid
+            // shouldn't deform at all... the bones inside shouldn't deform
+            // them. Muddy ones yes, and liquid, gas even more. Solid not.")
+            // The state slider melts continuously and never quite reaches 1,
+            // so a resting rock wore a permanent micro-slump. When the PHASE
+            // says solid and it is not mud, the bones pin to home, exactly.
+            bool rigid = !Muddy && _stateT > 0.9f
+                && (_matter == null || _matter.Phase == MatterPhase.Solid);
+
             for (int i = 0; i < Bones; i++)
             {
+                if (rigid) { _pos[i] = _home[i]; continue; }
                 Vector3 want = _home[i];
                 if (liquidness > 0.01f) // bones FALL — the skin slumps wide and low
                 {

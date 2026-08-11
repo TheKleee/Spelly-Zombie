@@ -44,6 +44,10 @@ namespace SpellyZombie
         /// cursor shows, and the look stops turning the body.
         public static bool PoseOpen => Local != null && Local._posing;
 
+        /// The last scan's name, for the ModeGuide's "become the barrel" line.
+        public static string StoredShapeName =>
+            Local != null && Local._storedShape != null ? Local._storedShape.name : null;
+
         /// BLOWN OUT OF THE POSE — a blast big enough ends shape posing so the
         /// body is free to be thrown (Marko Aug 10). Driven by Shove.
         public static void Blown() { if (Local != null && Local._posing) Local.SetPosing(false); }
@@ -118,12 +122,12 @@ namespace SpellyZombie
             // over with its own line below, so the two never fight for it.
             if (!_posing)
             {
-                // BOTH WAYS OUT ARE NAMED (Marko Aug 10: "now we see that the Tab
-                // will get you back to yourself but we have no idea that R allows
-                // you to rotate"). One prompt slot, so R rides the same line
-                // rather than fighting TAB for it.
-                UIPrompt.Show("TAB", "back to yourself  ·  R turns you",
-                    new Color(0.75f, 1f, 0.8f));
+                // BOTH WAYS OUT ARE NAMED — as one-fact chips (Marko's block
+                // law: one info per block, never a dotted line). ModeGuide
+                // stands down while shaped, so these two own the state alone.
+                var mint = new Color(0.75f, 1f, 0.8f);
+                UIPrompt.Offer("TAB", Loc.T("shape.back"), mint);
+                UIPrompt.Offer("R", Loc.T("shape.turn"), mint);
                 return;
             }
 
@@ -145,7 +149,11 @@ namespace SpellyZombie
             // eased with a slerp. The grabbed point follows your hand; it is
             // not an axis nudge, it is a hand on the object.
             if (mouse != null && _cam != null) DragRotate(mouse);
-            UIPrompt.Show("R", "RMB-drag turns you · MMB orbits · Ctrl+number saves, number recalls");
+            // one fact per block, three blocks = his extreme max (MMB-orbit
+            // is the shared easel language, already taught by the paint mode)
+            UIPrompt.Offer("RMB", Loc.T("shape.turn"));
+            UIPrompt.Offer("Ctrl+1-9", Loc.T("shape.save"));
+            UIPrompt.Offer("1-9", Loc.T("shape.recall"));
 
             bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
             for (int i = 0; i < 9; i++)

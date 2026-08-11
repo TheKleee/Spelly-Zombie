@@ -100,6 +100,22 @@ namespace SpellyZombie
             = new Dictionary<GameObject, GameObject>();
 
         /// Spawn an effect (null-safe, frame-budgeted, POOLED).
+        /// Spawn, then dress every particle system in the runtime color: the
+        /// ink splash wears the ink (Marko: "make the splash be the color of
+        /// the ink"). Pooled instances get re-dressed each spawn, so a green
+        /// splash never haunts a black pot.
+        public static GameObject SpawnTinted(GameObject prefab, Vector3 pos, Color c)
+        {
+            var go = Spawn(prefab, pos);
+            if (go != null)
+                foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
+                {
+                    var main = ps.main;
+                    main.startColor = c;
+                }
+            return go;
+        }
+
         public static GameObject Spawn(GameObject prefab, Vector3 pos, Transform parent = null, float life = 0f)
         {
             if (prefab == null) return null;

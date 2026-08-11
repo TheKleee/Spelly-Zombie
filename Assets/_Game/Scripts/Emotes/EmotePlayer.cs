@@ -55,17 +55,22 @@ namespace SpellyZombie
         /// keeps running and the pose overwrites its own joints here.
         void LateUpdate() => Animate();
 
-        /// Third person always tells you where poses are MADE — Marko: "while
-        /// in the poses there should be an option to set them".
+        /// While HOLDING a pose, the outs are one-fact chips (Marko's block
+        /// law). Idle third person says nothing here — ModeGuide's chips
+        /// cover the crossroads, one voice per state. Pose-grab keeps its
+        /// own instruction line untouched.
         void ShowPoseHint()
         {
             if (!SimpleFPSController.ThirdPersonActive) return;
             if (PoseStudio.IsOpen || SelfPaint.IsActive || Powerups.IsChoosing || GameMenu.IsOpen) return;
-            UIPrompt.Show("R", PoseGrab.IsOpen
-                ? Loc.T("pose.grab")
-                : ActiveSlot >= 0
-                    ? Loc.T("pose.key")
-                    : Loc.T("pose.enter"));
+            if (PoseGrab.IsOpen)
+            {
+                UIPrompt.Show("R", Loc.T("pose.grab"));
+                return;
+            }
+            if (ActiveSlot < 0) return;
+            UIPrompt.Offer("F", Loc.T("chip.melt"));
+            UIPrompt.Offer("TAB", Loc.T("chip.first"));
         }
 
         void ReadHotkeys()

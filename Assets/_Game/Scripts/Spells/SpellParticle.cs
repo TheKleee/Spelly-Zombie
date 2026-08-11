@@ -84,8 +84,9 @@ namespace SpellyZombie
         // re-emits: claiming is harvesting.
         public bool Claimed;
         public Transform Holder;      // whose hand it's in (null once released)
-        float _graceUntil;            // released: 0.2s where it spares the thrower
-        Transform _graceFor;
+        /// Whose cast this is — dormant wake rules ask which side the spell
+        /// serves (0 = unowned/unknown: treats everyone as a friend).
+        public int OwnerId;
 
         public void Claim(Transform holder)
         {
@@ -104,28 +105,413 @@ namespace SpellyZombie
         /// combines, seeks its kin mid-air and dies on its own clock.
         public void ReleaseHeld(Vector3 velocity)
         {
-            _graceFor = Holder;
-            _graceUntil = Time.time + 0.2f;
             Holder = null;
             Claimed = false;
             Vel = velocity;
             _settled = false; // brushing walls while held must not freeze the throw
+            // THROW/RELEASE ACTIVATES (Marko's dormant law): live 0.2s after
+            // leaving the hand — universal, so NOBODY carries immunity. A
+            // CONJURE ghost instead flies its whole arc and fires where it
+            // lands (his meteor: up to the sky, down onto the thrown spot).
+            if (!Dormant) return;
+            if (PendingConjure != null) _wakeOnLand = true;
+            else WakeIn(DrawingConfig.WakeDelaySeconds);
         }
 
-        bool Spares(Transform t) =>
-            t == Holder || (t == _graceFor && Time.time < _graceUntil);
-
         /// A BODY CAST IS A THROW (Marko: "the body can push the particles
-        /// as if they were thrown") — the particle leaves with real speed
-        /// and spares its caster on the way out, exactly like a hand-thrown
-        /// one spares the thrower. Siblings launched together fly together
-        /// and combine mid-air: the fire bolt.
-        public void ThrowFrom(Transform caster, Vector3 velocity, float grace = 0.35f)
+        /// as if they were thrown") — launched dormant, live 0.2s later, the
+        /// same universal activation delay every thrown spell gets. Siblings
+        /// launched together fly together and combine mid-air: the fire bolt.
+        public void ThrowFrom(Vector3 velocity)
         {
-            _graceFor = caster;
-            _graceUntil = Time.time + grace;
             Vel = velocity;
             _settled = false;
+            // VECTORS ARE NEVER DORMANT (Marko: "these 2 particles are
+            // special... they work as they used to") — push and pull fly
+            // live from birth; they are the delivery mechanism itself.
+            if (Kind == ParticleKind.Push) return;
+            if (!Dormant) Sleep();
+            WakeIn(DrawingConfig.WakeDelaySeconds);
+        }
+
+        // ---- DORMANT / ACTIVE (Marko Aug 11: spells spawn as inactive
+        // previews and only become real when activated) ----------------------
+        /// Inactive: 5x smaller, hologram-faint, chemistry clock FROZEN, no
+        /// effects of any kind. Wakes by throw/release (the 0.2s beat), by a
+        /// live particle touching it (contagion — in a holder's hand too),
+        /// by an ENEMY entering its area (a trap), or by a FRIENDLY inside
+        /// the area needing exactly what it offers.
+        /// ⛔ MP GAP (flagged): the dormant flag must ride the particle sync
+        /// with the other player-state fields — sides-sync family.
+        public bool Dormant { get; private set; }
+        float _wakeAt = -1f;
+        float _dormantLeft;
+        float _dormantScan;
+        bool _wakeOnLand;   // thrown conjure ghost: fly the full arc, fire at impact
+
+        /// A ZONE COMBO'S GHOST (Marko: "I created a meteor and it blew up in
+        /// my face... all of the combinations need a static inactive
+        /// version"): the real conjure waits inside this preview and fires
+        /// WHERE THE GHOST WAKES — walk it somewhere, throw it, or leave it
+        /// as a trap. The meteor falls where you activated it, never in the
+        /// artist's face.
+        public System.Action<Vector3> PendingConjure;
+
+        // a fused-but-unmade PAIR: one ghost holds both halves; waking
+        // re-births the partner live on the spot and nature runs the recipe
+        ParticleKind _pendingKind;
+        float _pendingPower, _pendingSrc;
+        ulong _pendingLin;
+        bool _hasPending;
+
+        Vector3 _anchorPos, _anchorNrm;
+        bool _hasAnchor;
+
+        /// A ground/wall preview remembers ITS SEAL's spot and surface normal
+        /// — the hover point is anchor + normal × hover range, so a wall
+        /// seal's preview floats OUT of the wall and a floor seal's floats up
+        /// (Marko: "seals determine the hover position... you can draw on
+        /// slanted objects as well"). The anchor outlives the seal's ink:
+        /// the drawing may burn away, the spot remains home.
+        public void Sleep(Vector3 sealAt, Vector3 sealNormal)
+        {
+            _anchorPos = sealAt;
+            _anchorNrm = sealNormal.sqrMagnitude > 0.001f ? sealNormal.normalized : Vector3.up;
+            _hasAnchor = true;
+            Sleep();
+            // BORN CALM (Marko: "they floated way above my head") — the zone
+            // emits with real launch velocity, and a preview must not ride
+            // it into the sky before the hover spring can catch it. Throws
+            // are untouched: ThrowFrom uses the base Sleep and sets Vel after.
+            Vel = Vector3.zero;
+        }
+
+        /// ALWAYS ALONG THE SEAL'S NORMAL (Marko, final: "what happens if you
+        /// draw it on a wall off a building? It must be normal to the seal")
+        /// — floor hovers up, wall hovers out, ceiling hovers down, slope
+        /// hovers slantwise. One rule, no special cases, same short distance.
+        Vector3 HoverPoint() => _anchorPos + _anchorNrm * DrawingConfig.DormantHoverRange;
+
+        /// One ghost swallows its partner UNMADE — the object-product
+        /// combinations (steam, white hole, tornado, lvl3 areas, exotics)
+        /// sleep as a pair; waking re-births the partner and the identical
+        /// recipe runs. The ghost wears both halves' colours and the fused
+        /// true size (authored miniatures are the phase-2 art pass).
+        static void StorePendingPair(SpellParticle a, SpellParticle b)
+        {
+            a._pendingKind = b.Kind;
+            a._pendingPower = b.Power;
+            a._pendingSrc = b.SrcSize;
+            a._pendingLin = b.Lineage;
+            a._hasPending = true;
+            a.SrcSize = FuseSize(a.SrcSize, b.SrcSize);
+            a.transform.localScale *= 1.25f;
+            a.InheritAnchor(b);
+            a.Vel = Vector3.zero;
+            a.GhostLook();
+            b.Die();
+        }
+
+        /// After a REAL merge ran asleep: the survivor re-anchors, settles,
+        /// and goes back to ghost dress — Absorb/LevelMerge dressed it in its
+        /// LIVE size and look, so the preview scale is re-applied on top.
+        static void SettleDormantSurvivor(SpellParticle a, SpellParticle b)
+        {
+            var live = a._dead ? b : a;
+            if (live._dead) return;
+            live.InheritAnchor(live == a ? b : a);
+            live.Vel = Vector3.zero;
+            if (!live.Dormant) return;
+            live.transform.localScale *= DrawingConfig.DormantPreviewScale;
+            live.GhostLook();
+        }
+
+        /// A fused preview hovers over the CLOSEST of its parent seals
+        /// (Marko: "when particles combine they should find a closest seal
+        /// and hover over it").
+        void InheritAnchor(SpellParticle other)
+        {
+            if (!other._hasAnchor) return;
+            if (!_hasAnchor
+                || (other._anchorPos - transform.position).sqrMagnitude
+                   < (_anchorPos - transform.position).sqrMagnitude)
+            {
+                _anchorPos = other._anchorPos;
+                _anchorNrm = other._anchorNrm;
+                _hasAnchor = true;
+            }
+        }
+
+        public void Sleep()
+        {
+            if (Dormant || _dead) return;
+            Dormant = true;
+            _dormantLeft = DrawingConfig.DormantLifeSeconds;
+            _wakeAt = -1f;
+            transform.localScale *= DrawingConfig.DormantPreviewScale;
+            GhostLook();
+        }
+
+        /// Schedule activation — the "it has left the hand" beat.
+        public void WakeIn(float seconds)
+        {
+            if (!Dormant) return;
+            if (_wakeAt < 0f || Time.time + seconds < _wakeAt)
+                _wakeAt = Time.time + seconds;
+        }
+
+        public void Wake()
+        {
+            if (!Dormant || _dead) return;
+            Dormant = false;
+            _wakeAt = -1f;
+            transform.localScale /= DrawingConfig.DormantPreviewScale;
+            _age = 0f; // the clock was FROZEN — a stockpiled spell wakes fresh
+            RefreshLook();
+            ImpactFx(); // the pop of becoming real
+
+            // a carried CONJURE becomes the real thing where it woke, and a
+            // MOVING ghost casts it where it was HEADING (Marko: "at the area
+            // where the ghost particle was heading, or where arrow was
+            // pushing it"): the flight line continues to the ground
+            if (PendingConjure != null)
+            {
+                var c = PendingConjure;
+                PendingConjure = null;
+                Vector3 at = transform.position;
+                if (Vel.sqrMagnitude > 4f)
+                {
+                    Vector3 dir = Vel.normalized;
+                    if (Physics.Raycast(at, dir, out var h1, 24f,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                        at = h1.point;
+                    else if (Physics.Raycast(at + dir * 12f, Vector3.down, out var h2, 80f,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                        at = h2.point;
+                }
+                Die();
+                c(at);
+                return;
+            }
+            // a carried PARTNER is re-born live beside it — contact runs the
+            // recipe (tornado, exotic, paradox) right here, right now
+            if (_hasPending)
+            {
+                _hasPending = false;
+                var mate = Emit(_pendingKind,
+                    transform.position + Random.insideUnitSphere * 0.15f,
+                    Vector3.up, Mathf.Max(0.2f, _pendingPower));
+                if (mate != null)
+                {
+                    mate.SrcSize = _pendingSrc;
+                    mate.Lineage = _pendingLin;
+                    mate.OwnerId = OwnerId;
+                }
+            }
+        }
+
+        /// The reach the spell will have live — the preview's visible area,
+        /// the trap's tripwire and the helper's range, all one number.
+        float AreaReach() => Mathf.Max(1.2f, 1.6f * Mathf.Clamp(SizeMul(SrcSize), 0.6f, 3f));
+
+        Transform _dormantSeek;   // a BODY the preview drifts toward (enemy/ally)
+        float _seekLift;          // aim at chest height for bodies
+        Vector3 _meetPoint;       // seal-mates converge on a FIXED spot — chasing
+        bool _meetAt;             // each other was a pursuit spiral that drifted UP
+
+        /// A PREVIEW WITH PURPOSE (Marko's dormant logic, in HIS order):
+        ///   1. an ENEMY its effect can touch → fly at it (the homing mine)
+        ///   2. an ALLY its effect can serve → fly to him (the loyal familiar)
+        ///   3. a SLEEPING KIN it can pool with → fly to it (the stockpile)
+        ///   4. nothing → float in place until it politely expires
+        /// Flying only CLOSES DISTANCE; waking still obeys the area rules —
+        /// an enemy inside AreaReach trips it, an ally's need calls it. The
+        /// "can affect" test sorts kinds by itself: a heal has no effect on
+        /// enemies, so it skips straight to serving allies.
+        void DormantTick(float dt)
+        {
+            if (_wakeAt > 0f && Time.time >= _wakeAt) { Wake(); return; }
+
+            if (Holder == null && !_settled)
+            {
+                // A THROWN mote mid-activation-beat (_wakeAt armed) is PURE
+                // BALLISTICS — no drag, no speed cap, or the throw dies in
+                // the 0.2s and the woken particle "stops in place" (Marko's
+                // bug): momentum must survive into the live particle.
+                bool inFlight = _wakeAt > 0f || _wakeOnLand;
+                if (_wakeOnLand)
+                    Vel += Physics.gravity * 0.6f * dt; // the thrown ghost ARCS to its landing
+                if (!inFlight)
+                {
+                    // NO buoyancy while dormant (Marko: "they shouldn't fly
+                    // out of reach") — a hologram has no weight and no lift.
+                    // With somewhere to be it drifts there; with nothing
+                    // calling, HOME is the hover point over its own seal.
+                    if (_dormantSeek != null)
+                        Vel += ((_dormantSeek.position + Vector3.up * _seekLift) - transform.position)
+                            .normalized * DrawingConfig.DormantSeekSpeed * 2f * dt;
+                    else if (_meetAt)
+                        // a FIXED rendezvous on the seal (Marko: "combining on
+                        // the place where they hover", never mid-air pursuit),
+                        // eager (his "combine way faster than they do")
+                        Vel += (_meetPoint - transform.position) * 6f * dt;
+                    else if (_hasAnchor)
+                        Vel += (HoverPoint() - transform.position) * 2.2f * dt;
+                    Vel *= Mathf.Max(0f, 1f - (_dormantSeek != null ? 1.2f : 3f) * dt);
+                    if (Vel.sqrMagnitude > DrawingConfig.DormantSeekSpeed * DrawingConfig.DormantSeekSpeed)
+                        Vel = Vel.normalized * DrawingConfig.DormantSeekSpeed;
+                }
+                transform.position += Vel * dt;
+
+                // THE LEASH IS LAW (Marko, thrice: ghosts kept drifting away
+                // from where they were drawn) — an anchored preview can never
+                // stray beyond a short radius of its seal, in ANY direction,
+                // on ANY surface, whatever momentum or merges try. Hard clamp.
+                // (a ghost CHASING a body — the homing mine, the helper — is
+                // allowed off its seal; everyone else stays home)
+                if (!inFlight && _hasAnchor && _dormantSeek == null)
+                {
+                    Vector3 off = transform.position - _anchorPos;
+                    float leash = DrawingConfig.DormantHoverRange * 1.8f;
+                    if (off.sqrMagnitude > leash * leash)
+                    {
+                        transform.position = _anchorPos + off.normalized * leash;
+                        Vel *= 0.2f; // arriving at the fence kills the escape speed
+                    }
+                }
+            }
+
+            // an unused preparation politely leaves (his fade ruling)
+            _dormantLeft -= dt;
+            if (_dormantLeft < 1.2f)
+                transform.localScale *= Mathf.Max(0.01f, 1f - dt / 1.2f);
+            if (_dormantLeft <= 0f || transform.localScale.x < 0.004f) { Die(); return; }
+
+            _dormantScan -= dt;
+            if (_dormantScan > 0f) return;
+            _dormantScan = 0.25f; // his tune: combining should feel eager
+            _dormantSeek = null;
+            _seekLift = 0f;
+            _meetAt = false;
+
+            float reach = AreaReach();
+            float r2 = reach * reach;
+            float seek2 = DrawingConfig.DormantSeekRange * DrawingConfig.DormantSeekRange;
+
+            // ---- 0. SIBLINGS OF ONE DRAWING COMBINE FIRST (Marko: "inactive
+            // particles want to combine the most if they're created inside of
+            // the same seal") — ANY kinds, same SealId: heat finds its chill,
+            // and the drawing pulls itself together into one combined preview.
+            // every seal-mate attracts every seal-mate (his order) — the only
+            // pair with nothing to gain is two FULL ghosts, both loaded
+            {
+                bool meLoaded = _hasPending || PendingConjure != null;
+                SpellParticle sib = null;
+                float bestSib = seek2;
+                foreach (var q in All)
+                {
+                    if (q == null || q == this || q._dead || !q.Dormant) continue;
+                    if (SealId == 0 || q.SealId != SealId) continue;
+                    if (meLoaded && (q._hasPending || q.PendingConjure != null)) continue;
+                    float d2q = (q.transform.position - transform.position).sqrMagnitude;
+                    if (d2q < bestSib) { bestSib = d2q; sib = q; }
+                }
+                if (sib != null)
+                {
+                    // meet at a FIXED spot between the two hover homes — both
+                    // sides compute the same point, arrive, touch, merge
+                    Vector3 mine = _hasAnchor ? HoverPoint() : transform.position;
+                    Vector3 theirs = sib._hasAnchor ? sib.HoverPoint() : sib.transform.position;
+                    _meetPoint = (mine + theirs) * 0.5f;
+                    _meetAt = true;
+                    return;
+                }
+            }
+
+            bool ownerAcolyte = Sides.IsAcolyte(OwnerId);
+            var lp = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
+            bool lpEnemy = lp != null && Sides.IsAcolytePlayer(lp) != ownerAcolyte;
+            float lpD2 = lp != null
+                ? (lp.transform.position - transform.position).sqrMagnitude : float.MaxValue;
+
+            // ---- 1. ENEMIES, if this kind can touch them (Dangerous = the
+            // same law zombies fear). Inside the area = wake; inside seek
+            // range = fly at it.
+            if (Dangerous())
+            {
+                Transform foe = null;
+                float best = seek2;
+                if (!ownerAcolyte)
+                    foreach (var z in Zombie.All) // the dead are the acolytes' hands
+                    {
+                        if (z == null) continue;
+                        float d2z = (z.transform.position - transform.position).sqrMagnitude;
+                        if (d2z <= r2) { Wake(); return; }
+                        if (d2z < best) { best = d2z; foe = z.transform; }
+                    }
+                if (lpEnemy)
+                {
+                    if (lpD2 <= r2) { Wake(); return; }
+                    if (lpD2 < best) foe = lp.transform;
+                }
+                if (foe != null) { _dormantSeek = foe; _seekLift = 0.5f; return; }
+            }
+
+            // ---- 2. ALLIES MISSING WHAT IT CARRIES (Marko's correction:
+            // "they carry what the ally is missing") — one need test, two
+            // radii: need inside the area WAKES it, need inside seek range
+            // DRAWS it over. No need = it stays put; nobody gets a clingy
+            // flame following them around warm and happy.
+            // ⛔ heal-wake waits for an identifiable heal lineage (phase 2).
+            if (lp != null && !lpEnemy)
+            {
+                var board = BodyState.Of(lp);
+                if (board != null)
+                {
+                    bool needsMe =
+                        (board.Temp < BodyState.TempBandLow + 3f && Temp > 30f)   // freezing + I am warm
+                        || (board.Temp > BodyState.TempBandHigh - 3f && Temp < 8f); // burning + I am chill
+                    if (needsMe && lpD2 <= r2) { Wake(); return; }
+                    if (needsMe && lpD2 <= seek2) { _dormantSeek = lp.transform; _seekLift = 0.5f; return; }
+                }
+            }
+
+            // ---- 3. SLEEPING KIN it can pool with (same kind — the fusions
+            // that would TRANSFORM wait for their phase-2 preview forms).
+            // Contact does the merge through the ordinary collision law.
+            foreach (var q in All)
+            {
+                if (q == null || q == this || q._dead || !q.Dormant) continue;
+                if (q.Kind != Kind || Kind == ParticleKind.Flame || Kind == ParticleKind.Push) continue;
+                float d2q = (q.transform.position - transform.position).sqrMagnitude;
+                if (d2q <= seek2) { _dormantSeek = q.transform; return; }
+            }
+
+            // ---- 4. nothing calls: hold position, wait, fade in due time
+        }
+
+        /// The dormant look: the kind's own colour at a whisper — instantly
+        /// read as not-yet-real (Marko: "a bit transparent like holograms").
+        /// His authored FX skins are left untouched; scale alone says preview.
+        void GhostLook()
+        {
+            if (_rend == null) _rend = GetComponent<Renderer>();
+            if (_rend == null || _customLook != null) return;
+            KindLook(out var c, out _);
+            // a PENDING PAIR wears both parents' colours mixed (Marko: "this
+            // is not what appears when we combine heat and chill") — the true
+            // authored miniature of each combination is the phase-2 art pass;
+            // until then the blend says "two halves, one spell" honestly.
+            if (_hasPending)
+            {
+                KindColor(_pendingKind, out var pc, out _);
+                c = Color.Lerp(c, pc, 0.5f);
+            }
+            // nearly solid (Marko: "alpha around 0.9 or 0.8 — enough to tell
+            // they are not the real particles"): the ghost reads clearly,
+            // the slight see-through is just the "not yet real" whisper
+            _rend.sharedMaterial = MatterFX.Particle(
+                new Color(c.r, c.g, c.b, 0.85f), MoteShade.Transparent, 0.02f, 0.25f);
         }
 
         float _impactFxAt; // juice throttle — repeats within the window are noise
@@ -276,8 +662,14 @@ namespace SpellyZombie
             BecameObj = null;
             Claimed = false;
             Holder = null;
-            _graceUntil = 0f;
-            _graceFor = null;
+            Dormant = false;      // pool reborn = live defaults; Sleep() re-arms
+            _wakeAt = -1f;
+            _dormantLeft = 0f;
+            _hasAnchor = false;
+            _hasPending = false;
+            _wakeOnLand = false;
+            PendingConjure = null;
+            OwnerId = 0;
             Temp = Lum = Density = Stick = 0f;
             Vel = Vector3.zero;
             // A POOLED PARTICLE KEPT ITS LAST LIFE (found Aug 10). SrcSize and
@@ -480,6 +872,11 @@ namespace SpellyZombie
             float dt = Time.deltaTime;
             _age += dt;
             EnsureVectorShape();
+
+            // A PREVIEW DOES NOTHING (Marko's dormant law): everything below
+            // this line — auras, strikes, lures, fear, chemistry, decay — is
+            // frozen wholesale by never being reached. Held or free alike.
+            if (Dormant) { DormantTick(dt); return; }
 
             // CLAIMED = object now (Marko's law): no combining, no lure. Held,
             // the hand drives the position (HandGrab); free, plain physics.
@@ -833,6 +1230,15 @@ namespace SpellyZombie
                 return;
             }
             if (other.isTrigger) return;
+            if (Dormant)
+            {
+                // a thrown CONJURE ghost fires where it LANDS (Marko: the
+                // meteor "can fly up to the sky and fall down to the location
+                // we threw it at") — anything else a preview touches, it
+                // ignores entirely.
+                if (_wakeOnLand) { _wakeOnLand = false; Wake(); }
+                return;
+            }
             if (_slamActive)
             {
                 // the slam lands: payload first (existing chemistry), then the
@@ -855,6 +1261,8 @@ namespace SpellyZombie
         void OnTriggerStay(Collider other)
         {
             if (_dead || other.isTrigger) return;
+            if (Dormant) return; // a preview touches NOTHING — physics
+                                 // callbacks bypass Update's gate, not this one
             if (other.GetComponent<SpellParticle>() != null) return;
             if (Persistent) Touch(other);
         }
@@ -883,6 +1291,84 @@ namespace SpellyZombie
         static void ResolveLaw(SpellParticle a, SpellParticle b)
         {
             if (a._dead || b._dead) return;
+
+            // DORMANT LAW (Marko): live is CONTAGIOUS — a live particle
+            // touching a sleeper wakes it on the spot, in a holder's hand
+            // too (your carried nuke is safe until someone lights it), and
+            // then the full law runs on the freshly woken pair. Two sleepers
+            // only POOL (same kind = a bigger preview); the transformative
+            // births (tornado, level-ups, paradoxes, exotics) need authored
+            // miniature forms and wait for phase 2 — those pairs drift
+            // apart, both still asleep.
+            if (a.Dormant != b.Dormant)
+            {
+                (a.Dormant ? a : b).Wake();
+                // a woken conjure-ghost DIED into its conjure just now — the
+                // law must not keep resolving a corpse against a live mote
+                if (a._dead || b._dead) return;
+            }
+            else if (a.Dormant)
+            {
+                // THE SAME LAW, ASLEEP (Marko: "the combinations should be
+                // the same as with normal spell particle combinations").
+                // Wherever the product is a PARTICLE, the ordinary chemistry
+                // runs for real and the survivor IS the true result, still
+                // dormant. Wherever the product is an OBJECT (steam, white
+                // hole, tornado, the lvl3 areas, exotics), the pair sleeps as
+                // one ghost — waking re-births the partner and the identical
+                // recipe runs where you activated it, never in your face.
+                bool aLoaded = a._hasPending || a.PendingConjure != null;
+                bool bLoaded = b._hasPending || b.PendingConjure != null;
+                if (aLoaded || bLoaded)
+                {
+                    // A LOADED GHOST EATS ITS SEAL-MATES (Marko: "make all of
+                    // the particles inside of the same seal be properly
+                    // attracted to one another") — the leftovers of a drawing
+                    // pour into the one ghost carrying the spell, so a meteor
+                    // seal ends as ONE waiting meteor, not a meteor and a
+                    // cloud of stray heat.
+                    if (aLoaded != bLoaded && a.SealId != 0 && a.SealId == b.SealId)
+                    {
+                        var host = aLoaded ? a : b;
+                        host.Absorb(host == a ? b : a);
+                        SettleDormantSurvivor(a, b);
+                        return;
+                    }
+                    BounceApart(a, b, 0.25f); // two full ghosts drift apart, gently
+                    return;
+                }
+
+                var dfa = RuneGrammar.Family(a.Kind);
+                var dfb = RuneGrammar.Family(b.Kind);
+                if (dfa == dfb)
+                {
+                    if (a.Kind == ParticleKind.Flame || b.Kind == ParticleKind.Flame)
+                    {
+                        var fl = a.Kind == ParticleKind.Flame ? a : b;
+                        fl.Absorb(fl == a ? b : a); // a flame eats its kin — the law
+                    }
+                    else if (dfa == ParticleKind.Push
+                        || Mathf.Max(EffLevel(a), EffLevel(b)) >= 2)
+                    { StorePendingPair(a, b); return; } // tornado / lvl3 AREA = objects, wait
+                    else LevelMerge(a, b); // heat+heat = a REAL lvl2, asleep
+                    SettleDormantSurvivor(a, b);
+                    return;
+                }
+                if (RuneGrammar.ParadoxOf(a.Kind, b.Kind) != ParadoxKind.None
+                    || RuneGrammar.ExoticOf(a.Kind, b.Kind) != RuneGrammar.ExoticKind.None)
+                { StorePendingPair(a, b); return; } // steam & friends form at wake, identically
+
+                int dla = Level(a.Kind), dlb = Level(b.Kind);
+                if (dla != dlb || dla == 2)
+                {
+                    var hi2 = dla >= dlb ? a : b;
+                    hi2.Absorb(hi2 == a ? b : a); // the substrate rule, asleep
+                    SettleDormantSurvivor(a, b);
+                    return;
+                }
+                BounceApart(a, b, 0.25f); // rock bounces off ice, asleep too
+                return;
+            }
 
             // an isolated particle refuses ALL chemistry — the barrier is the
             // system's insulator (and the only way to stop an accidental Demon)
@@ -1067,7 +1553,10 @@ namespace SpellyZombie
             RuneGrammar.TryDemon(lineage, at, srcSize);
             switch (family)
             {
-                case ParticleKind.Spark: GrammarFX.FlameBurst(at, power); return null;
+                case ParticleKind.Spark: return FlameVortexField.Open(at, power, srcSize);
+                    // (was the one-shot FlameBurst — Marko Aug 12: "make it a
+                    // flaming vortex, the equivalent" of the snow field. The
+                    // field returns, so the sustain law now waits on it too.)
                 case ParticleKind.Frost: return SnowField.Open(at, power, srcSize);
                 case ParticleKind.Light: return PlasmaField.Open(at, power, srcSize);
                 case ParticleKind.Dark: return BlackHoleField.Open(at, power, growing: true, size: srcSize);
@@ -1273,7 +1762,9 @@ namespace SpellyZombie
                 {
                     // limb capsules ride the same player — the ROOT pays, once
                     if (c.attachedRigidbody != null) continue;
-                    if (Spares(pl.transform)) continue; // the holder's own aura spares them
+                    // NO holder immunity (Marko: "the user doesn't need
+                    // immunity at all") — carrying a live radiant spell means
+                    // standing in its aura, and it treats you like anyone
                     // auras only push sliders — the board does the rest
                     var plBoard = BodyState.Of(pl);
                     if (Mathf.Abs(Temp) > 25f) plBoard?.PushTemp(Temp * 0.03f);
@@ -1494,9 +1985,11 @@ namespace SpellyZombie
 
         void TouchPlayer(SimpleFPSController pilot)
         {
-            // a held spell never bites its holder; a released one spares the
-            // thrower for 0.2s while it gets clear (Marko's rule)
-            if (Spares(pilot.transform)) return;
+            // A PREVIEW TOUCHES NOBODY. A LIVE particle bites EVERYONE —
+            // holder included (Marko: "the user doesn't need immunity at
+            // all"). Holding fire burns; when your carried spell wakes,
+            // drop it or wear it.
+            if (Dormant) return;
             if (Barrier.Protects(pilot)) // barriered player: nothing gets in
             {
                 Vel = Vector3.Reflect(Vel, (transform.position - pilot.transform.position).normalized) * 0.6f;
@@ -1813,15 +2306,13 @@ namespace SpellyZombie
             fx.transform.localScale *= scale; // *= keeps an authored prefab scale
         }
 
-        void RefreshLook()
+        /// The kind's identity colour — ONE switch, shared by the live look
+        /// and the dormant hologram (GhostLook), so they can never drift.
+        void KindLook(out Color c, out MoteShade shade) => KindColor(Kind, out c, out shade);
+
+        static void KindColor(ParticleKind Kind, out Color c, out MoteShade shade)
         {
-            if (_rend == null) _rend = GetComponent<Renderer>();
-            if (_rend == null) return;
-            EnsureCustomLook();   // resolve HIS art FIRST — AttachIdleFx checks it
-            AttachIdleFx();
-            if (_customLook != null) return; // your art owns the look now
-            Color c;
-            MoteShade shade = MoteShade.Additive;
+            shade = MoteShade.Additive;
             switch (Kind)
             {
                 case ParticleKind.Spark: c = new Color(1f, 0.55f, 0.12f); break;
@@ -1839,6 +2330,16 @@ namespace SpellyZombie
                 case ParticleKind.BarrierMote: c = new Color(0.6f, 0.9f, 1f, 0.7f); shade = MoteShade.Transparent; break;
                 default: c = Color.white; break;
             }
+        }
+
+        void RefreshLook()
+        {
+            if (_rend == null) _rend = GetComponent<Renderer>();
+            if (_rend == null) return;
+            EnsureCustomLook();   // resolve HIS art FIRST — AttachIdleFx checks it
+            AttachIdleFx();
+            if (_customLook != null) return; // your art owns the look now
+            KindLook(out Color c, out MoteShade shade);
             // carried darkness dims ANY particle — the invisible flame is also
             // hard for PLAYERS to see, which is only fair
             if (Lum < -0.2f && Kind != ParticleKind.Dark)

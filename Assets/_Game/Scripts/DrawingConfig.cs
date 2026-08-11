@@ -240,6 +240,13 @@ namespace SpellyZombie
         // THROUGH them and keeps going in both directions. Draw a circle around
         // the whole village and you get the kaiju you earned; draw a seal the
         // size of a coin and you get a zombie the size of a bug.
+        // RE-RULED DIAL 2 (Marko Aug 11 evening): body size follows the RUNE'S
+        // own drawn diameter, not the seal's. These anchor the line: a rune
+        // this small → SummonSizeMin, this big → SummonSizeMax, unclamped
+        // beyond both. Defaults assume a rune fills roughly half its seal, so
+        // yesterday's drawings raise roughly yesterday's zombies.
+        public static readonly float SummonRuneMin = O(nameof(SummonRuneMin), 0.04f);
+        public static readonly float SummonRuneMax = O(nameof(SummonRuneMax), 0.9f);
         public static readonly float SummonSealMin = O(nameof(SummonSealMin), 0.08f); // this seal...
         public static readonly float SummonSizeMin = O(nameof(SummonSizeMin), 0.152f); // ...makes this zombie (0.25m scout)
         public static readonly float SummonSealMax = O(nameof(SummonSealMax), 1.8f);   // and this seal...
@@ -408,6 +415,10 @@ namespace SpellyZombie
         // segment math and visually-touching barbs orphan again.
         public static readonly float RuneTouchDistance = O(nameof(RuneTouchDistance), 0.014f); // = InkTouchDistance: strokes whose INK MEETS read as ONE drawing. Same law as seals — his rule is one rule.
         public static readonly float BodyCastThrowSpeed = O(nameof(BodyCastThrowSpeed), 7f); // body/weapon seals THROW their particles outward at this speed (Marko: on-skin births activated instantly — thrown, siblings fly together and combine mid-air)
+        // The HAND throw (E). Was const 22 ("twice as strong", Aug 9); Aug 11:
+        // "a bit underwhelming... 1.5x might be the sweet spot or 2x, need to
+        // test" — 33 here, put ThrowSpeed: 44 in sz_tuning.json to feel 2x.
+        public static readonly float ThrowSpeed = O(nameof(ThrowSpeed), 33f);
         // (old zone-field Blob*/LiquidPool* knobs DELETED; overlay ignores stale keys.)
         // ---- soft body jiggle bones (Marko: "bones drive the shape and have their
         // own colliders to keep the distance from each other and the ground") ----
@@ -431,7 +442,35 @@ namespace SpellyZombie
         // union-find everywhere now. LoadOverlay ignores stale sz_tuning.json keys.
 
         // ---- Spell effects (rune zones) ----
-        public static readonly float ZoneRadiusScale = O(nameof(ZoneRadiusScale), 1.6f); // rune zone radius = drawn rune size × this
+        public static readonly float ZoneRadiusScale = O(nameof(ZoneRadiusScale), 1.6f); // SIZE dial: particle size seed = drawn rune size × this
+        // EFFECT-RADIUS dial (Marko Aug 11 re-rule): zone reach = (rune size /
+        // seal radius) × this. Ratio ~0.5 is a typical rune in a typical seal,
+        // so 1.0 here keeps yesterday's reach for yesterday's drawing.
+        public static readonly float RuneReachScale = O(nameof(RuneReachScale), 1.0f);
+        // DORMANT SPELLS (Marko Aug 11, superseding caster-grace the same day:
+        // "the user doesn't need immunity at all"): ground seals cast frozen
+        // hologram previews at this fraction of true size; anything thrown or
+        // released turns live after the universal delay — safety is a property
+        // of the THING, never of a person. An untouched preview politely
+        // fades out after its lifetime.
+        public static readonly float DormantPreviewScale = O(nameof(DormantPreviewScale), 0.4f); // his Aug 11 tune: 0.2 read too small
+        public static readonly float WakeDelaySeconds = O(nameof(WakeDelaySeconds), 0.2f);
+        public static readonly float DormantLifeSeconds = O(nameof(DormantLifeSeconds), 45f);
+        // A preview with purpose (his priority order: enemy > ally-in-need >
+        // sleeping kin > hold): how far it senses, and how fast it drifts.
+        public static readonly float DormantSeekRange = O(nameof(DormantSeekRange), 7f);
+        public static readonly float DormantSeekSpeed = O(nameof(DormantSeekSpeed), 3.4f); // his tune: combine way faster
+        // How far off its seal's surface a preview hovers, along the seal's
+        // normal — walls push previews OUT, floors push UP, slants slant.
+        // Marko, final: "not hover too far away from the seal... I'd rather
+        // look down than up" — waist height, one uniform ceiling for every
+        // floor preview (a hard clamp enforces it whatever physics tries).
+        public static readonly float DormantHoverRange = O(nameof(DormantHoverRange), 0.7f);
+        // Birth ritual: a fresh zombie plays its StandUp climb and the brain
+        // holds still this long — match it to the clip's real length.
+        public static readonly float ZombieRiseSeconds = O(nameof(ZombieRiseSeconds), 2f);
+        // The meteor's terminal dive (his "it should fall really fast").
+        public static readonly float MeteorFallSpeed = O(nameof(MeteorFallSpeed), 32f);
         public static readonly float BurnThreshold = O(nameof(BurnThreshold), 70f);    // above this °C an object takes burn damage
         // freeze point MIRRORS the burn point around ambient 18° (Marko: "it's
         // just a game") — freezing something costs the same number of frost
@@ -543,12 +582,12 @@ namespace SpellyZombie
         // enough that the creeping green gives wizards a fair alarm.
         public static readonly float PotZombieCorruptFactor = O(nameof(PotZombieCorruptFactor), 0.12f);
 
-        // THE HOP CYCLE (Marko Aug 11, with 2+ cauldrons in the scene): the ink
-        // lives in one pot, leaves with a sky-beam, and after a drought lands —
-        // beam down, splash — in a RANDOM pot, the same one allowed. The pool
-        // and its corruption ride along unchanged. During the gap wizards have
-        // no regen at all: "acolytes can have a breather."
-        public static readonly float PotHopLiveSeconds = O(nameof(PotHopLiveSeconds), 30f);
+        // THE FLEE (Marko Aug 11, superseding the same-day timed hop: "we
+        // essentially remove the timer and leave it to strategy instead"): ink
+        // moves ONLY when its pot is shattered — beam up, this many seconds of
+        // drought with no wizard regen anywhere, then beam down + splash in a
+        // random SURVIVING pot. Pool and corruption ride along unchanged.
+        // Broken stays broken; the last break grounds the ink at the InkGrave.
         public static readonly float PotHopGapSeconds = O(nameof(PotHopGapSeconds), 10f);
 
         // THE LOBBY FAILSAFE (Marko Aug 11): the lobby pot is the REAL pot —
