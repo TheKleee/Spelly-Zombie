@@ -20,7 +20,9 @@ namespace SpellyZombie
         public static bool IsPenActive { get; private set; }
 
         Stroke _current;
-        Vector3 _lastHitPoint;   // raw, for surface-jump detection
+        Vector3 _lastHitPoint;   // raw world fallback, for surface-jump detection
+        Transform _lastHitSurface; // the surface that hit landed on...
+        Vector3 _lastHitLocal;     // ...and where, in ITS space — so its motion cancels
         Vector3 _smoothedPoint;  // jitter-filtered, nodes are placed here
         bool _suppressUntilRelease;
         bool _erasing;           // crosshair feedback
@@ -238,8 +240,28 @@ namespace SpellyZombie
             // ZOMBIE ROOT instead: it rides the body, counts toward lifting it,
             // and a seal closed on it can detonate it. Same shape as the
             // player's shell→limb routing above.
+            // ANOTHER PLAYER'S BODY, hit through their BodyCanvas (Marko Aug 11:
+            // "make your body paintable by others cause it's funny") — the ink
+            // parents to their nearest LIMB, exactly the routing the self-paint
+            // shell uses, so it rides their animation and replicates through the
+            // existing mixamorig body-ink path.
+            if (surface.name == "BodyCanvas")
+            {
+                var victimRig = hit.collider.GetComponentInParent<CharacterRig>();
+                var victimLimb = victimRig != null ? victimRig.NearestLimbSurface(hit.point) : null;
+                if (victimLimb != null) surface = victimLimb;
+            }
+
             var zombieOwner = ZombieOwner.From(hit.collider);
-            if (zombieOwner != null) surface = zombieOwner.transform;
+            if (zombieOwner != null)
+            {
+                surface = zombieOwner.transform;
+                // THE PEN PINS IT (Marko Aug 11: "if you hit it, it enters the
+                // paint mode") — the body freezes into the shell's pose while
+                // ink is flowing onto it, and for a grace period after, so the
+                // seal's second stroke doesn't start on a walking target.
+                zombieOwner.PaintFreeze(DrawingConfig.ZombiePaintFreezeSeconds);
+            }
 
             // one stroke, ONE surface — crossing a joint ends it; SEAM WELD
             // (Marko: "nodes should be created at the point of separation") puts
@@ -255,13 +277,26 @@ namespace SpellyZombie
             // jump tolerance grows with distance: a small mouse flick sweeps a lot
             // of wall at 8m, and silent stroke splits break closing shapes
             float allowedJump = Mathf.Max(DrawingConfig.MaxStrokeJump, hit.distance * DrawingConfig.MaxStrokeJumpPerMeter);
-            if (_current != null && Vector3.Distance(hit.point, _lastHitPoint) > allowedJump)
+
+            // ⛔ THE JUMP IS MEASURED AGAINST THE SURFACE, NOT THE WORLD (Marko
+            // Aug 11, drawing on zombies: console full of "aim jumped 25cm").
+            // Two world points a frame apart confuse two different motions: the
+            // HAND flicking (a real split) and the SURFACE walking away under a
+            // steady hand (not a split — the ink should follow). Remembering
+            // the last hit in the surface's OWN space and re-projecting it
+            // through that surface's CURRENT transform cancels the surface's
+            // motion, leaving only what the hand actually did. On a wall the
+            // two are identical, so nothing changes for the world.
+            Vector3 lastPoint = _lastHitSurface != null
+                ? _lastHitSurface.TransformPoint(_lastHitLocal)
+                : _lastHitPoint;
+            if (_current != null && Vector3.Distance(hit.point, lastPoint) > allowedJump)
             {
                 // diagnostic: silent splits turn self-crossings into unbridgeable
                 // cross-stroke gaps — if this fires during honest circles, the
                 // pen-continuity weld gets built next
                 DrawingWorld.Instance.LogEvent(
-                    $"stroke split mid-draw: aim jumped {Vector3.Distance(hit.point, _lastHitPoint) * 100f:0}cm (limit {allowedJump * 100f:0}cm)");
+                    $"stroke split mid-draw: aim jumped {Vector3.Distance(hit.point, lastPoint) * 100f:0}cm (limit {allowedJump * 100f:0}cm)");
                 EndStroke(penLifted: false); // new stroke, but the pen never came up
             }
 
@@ -286,6 +321,10 @@ namespace SpellyZombie
             }
 
             _lastHitPoint = hit.point;
+            // and in the surface's own space, so a moving target carries the
+            // memory with it (null-safe: the surface can die mid-stroke)
+            _lastHitSurface = surface;
+            _lastHitLocal = surface != null ? surface.InverseTransformPoint(hit.point) : hit.point;
             WorldEvents.Report(WorldEventKind.Ink, _smoothedPoint, 0.5f); // eyes follow the pen — ink is a decoy
 
             var last = _current.Last;

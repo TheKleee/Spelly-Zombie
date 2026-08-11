@@ -119,6 +119,13 @@ namespace SpellyZombie
         float _airTime;    // seconds of continuous no-ground (slope-flicker filter)
         bool _airChecked, _hasAirParams, _hasCrouch; // which params the controller actually has
         SkinnedMeshRenderer _smr;
+
+        /// The rig's OWN answer to "which renderer is the body" — his
+        /// BodyRenderer slot first, the guarded search otherwise. BodyCanvas
+        /// reads this instead of running its own GetComponentInChildren, which
+        /// is the exact depth-first search that once crowned his grimoire "the
+        /// body" and cost a day.
+        public SkinnedMeshRenderer BodySmr => _smr;
         Transform _hips, _spine1, _head;
         Transform _armL, _armR, _foreL, _foreR, _handL, _handR;
         readonly List<Rigidbody> _ragdoll = new List<Rigidbody>();

@@ -395,8 +395,14 @@ namespace SpellyZombie
             Bounds b = FindObjectBounds(source);
             Vector3 from = new Vector3(b.center.x, b.max.y + 0.05f, b.center.z);
 
+            // NOT the ghost layers: the vessel-shell follower (the cauldron's
+            // true bowl, which is NOT a child of the pot and sits exactly under
+            // its centre — measuring to it planted a cauldron-disguise waist
+            // deep, Marko Aug 11) and the ink canvases. Neither is ground.
+            int mask = Physics.DefaultRaycastLayers
+                & ~(1 << VesselShell.Layer) & ~(1 << InkCanvasLayer.Layer);
             int n = Physics.RaycastNonAlloc(from, Vector3.down, _groundBuf, 12f,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                mask, QueryTriggerInteraction.Ignore);
             float best = float.NegativeInfinity;
             for (int i = 0; i < n; i++)
             {
@@ -439,9 +445,26 @@ namespace SpellyZombie
             if (_worn != null) Destroy(_worn);
             _worn = Instantiate(source.gameObject, transform);
             _worn.name = "WornShape";
+
+            // LIGHTS ARE NOT COPIED (Marko Aug 11: "since light sources cannot
+            // be copied... it should look for the lights inside of the object
+            // and not copy them"). The generic strip below hit the Light before
+            // URP's rider component and Unity refused: "Can't remove Light
+            // because UniversalAdditionalLightData depends on it". Dependents
+            // first, then the Light — and a disguised candlestick simply does
+            // not glow, which is its own honest tell.
+            foreach (var l in _worn.GetComponentsInChildren<Light>(true))
+            {
+                var rider = l.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>();
+                if (rider != null) Destroy(rider);
+                Destroy(l);
+            }
+
             foreach (var c in _worn.GetComponentsInChildren<Component>(true))
             {
                 if (c is Transform || c is Renderer || c is MeshFilter) continue;
+                if (c is Light) continue; // handled above, in dependency order
+                if (c is UnityEngine.Rendering.Universal.UniversalAdditionalLightData) continue;
                 Destroy(c);
             }
             _worn.transform.localScale = source.lossyScale;

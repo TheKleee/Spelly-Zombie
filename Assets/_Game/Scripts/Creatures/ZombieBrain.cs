@@ -63,9 +63,16 @@ namespace SpellyZombie
         public Transform AttackTarget; // player or a zombie it's mad at
 
         /// Ink flowing on/next to this zombie = bliss, full stop — drawing on zombies is a legit pinning tactic.
+        /// TrancedUntil is the DIRECT line (Marko Aug 11, the paint freeze): the
+        /// pen touching this zombie's own skin pins it explicitly, because the
+        /// 1.9m proximity test measures from the capsule CENTRE and a giant's
+        /// head is further away than that — painting a big one would not have
+        /// counted as "next to" it.
+        public float TrancedUntil;
         public bool Tranced =>
-            WorldEvents.InkIsFresh &&
-            Vector3.Distance(transform.position, WorldEvents.LatestInkPos) < 1.9f;
+            Time.time < TrancedUntil
+            || (WorldEvents.InkIsFresh &&
+                Vector3.Distance(transform.position, WorldEvents.LatestInkPos) < 1.9f);
 
         TextMesh _mumble;
         float _mumbleUntil, _gossipCooldown, _confusedUntil;
@@ -349,7 +356,32 @@ namespace SpellyZombie
             {
                 Vector3 toOrder = _orderTarget - transform.position; toOrder.y = 0f;
                 if (toOrder.sqrMagnitude < 2f * 2f) SetOrdered(false);   // arrived, think for yourself again
-                else { Head(_orderTarget, 1f); return; }
+                else
+                {
+                    // A PLAYER IN THE PATH GETS ATTACKED (Marko Aug 11:
+                    // "zombies usually run away from players, but when
+                    // commanded by the arrow, if a player is in the path
+                    // zombies will attack them"). The order already overrides
+                    // FEAR — this is the other half: it overrides FLIGHT too.
+                    // A marching zombie is the acolyte's will with legs, and a
+                    // wizard standing on the road is an obstacle to remove.
+                    // In the path = close AND roughly ahead, so a column does
+                    // not wheel around to maul bystanders behind it.
+                    Vector3 marchDir = toOrder.normalized;
+                    foreach (var p in SimpleFPSController.All)
+                    {
+                        if (p == null || p.IsDowned) continue;
+                        if (Sides.IsAcolytePlayer(p)) continue;   // never its master's side
+                        Vector3 to = p.transform.position - transform.position; to.y = 0f;
+                        if (to.sqrMagnitude > 3.2f * 3.2f) continue;
+                        if (Vector3.Dot(to.normalized, marchDir) < 0.35f) continue;
+                        Head(p.transform.position, 1.15f);
+                        AttackTarget = p.transform;
+                        Eyes?.SetMood(EyeMood.Mad, 0.3f);
+                        return;   // the march resumes by itself once the road is clear
+                    }
+                    Head(_orderTarget, 1f); return;
+                }
             }
 
             // 1. beef comes first — zombies have priorities

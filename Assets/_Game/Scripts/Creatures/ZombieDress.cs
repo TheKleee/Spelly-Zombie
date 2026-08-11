@@ -34,6 +34,15 @@ namespace SpellyZombie
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         static readonly int ColorId = Shader.PropertyToID("_Color");
 
+        // the paint freeze: bones settle to this while the pen is on the body
+        RestPose _rest;
+        float _paintHoldUntil;
+        bool _paintHeld;
+
+        /// The pen is on this body — hold the pose the shell was cast in.
+        public void PaintHold(float seconds) =>
+            _paintHoldUntil = Mathf.Max(_paintHoldUntil, Time.time + seconds);
+
         // stride matching: the states by hash, and each clip's authored ground
         // speed (walking.fbx covers ~1.4 m/s, zombie running.fbx ~4.5)
         static readonly int HashWalk = Animator.StringToHash("Walk");
@@ -141,6 +150,15 @@ namespace SpellyZombie
             // can re-derive both numbers from the capsule's LIVE scale.
             d._fitCapsuleY = z.transform.localScale.y;
             d._fitBodyScale = body.transform.localScale;
+
+            // THE REST POSE, remembered while it is still true: the body was
+            // just instantiated and no animator has run, so every bone sits
+            // where the prefab authored it — which is the pose the paint shell's
+            // sharedMesh describes. The paint freeze settles back to THIS, so
+            // shell and mesh agree while someone draws (Marko Aug 11).
+            // RestPose is the ONE spelling of capture-and-return — the player's
+            // three private copies migrate onto it when he says go.
+            d._rest = RestPose.Capture(body.transform);
 
             // EVERY skinned renderer, not just the first — a multi-material or
             // multi-piece body would otherwise leave the rest culling wrongly
@@ -348,6 +366,25 @@ namespace SpellyZombie
                 // (an occupied socket is never rolled over anyway).
                 Wardrobe.DressZombie(SocketSet.Build(_body, transform),
                     _customBody ? 0f : 0.35f, gameObject.GetInstanceID());
+            }
+
+            // THE PAINT FREEZE (Marko Aug 11). While the pen is on this body the
+            // animator is silenced and every bone settles into the captured rest
+            // pose — the pose the paint shell's mesh describes — so the ink
+            // lands exactly on the body you see. The trance already stopped the
+            // FEET (ZombieBrain); this stops the POSE. Released, the animator
+            // simply resumes.
+            bool held = Time.time < _paintHoldUntil;
+            if (held != _paintHeld)
+            {
+                _paintHeld = held;
+                if (_anim != null) _anim.enabled = !held;
+            }
+            if (held)
+            {
+                // a soft settle, not a snap — the magic taking hold
+                _rest?.Settle(Time.deltaTime);
+                return; // no stride matching, no fidget — it is a statue
             }
 
             if (_anim == null) return;

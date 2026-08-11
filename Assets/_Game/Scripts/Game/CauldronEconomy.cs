@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SpellyZombie
@@ -28,11 +29,29 @@ namespace SpellyZombie
     public class CauldronEconomy : MonoBehaviour
     {
         [Header("Marko's art — dragged in, never generated")]
-        [Tooltip("The liquid ink object inside your cauldron model. Its Y scale becomes the ink level; its colour becomes the owning team's (black/green). Leave empty and the pot still WORKS, it just shows nothing inside.")]
+        [Tooltip("The liquid ink object inside your cauldron model. Its Y scale becomes the ink level; its colour becomes the owning team's (black/green). Your weighted liquid ball works — it gets tinted and squashed like anything else. Leave empty and the pot still WORKS, it just shows nothing inside.")]
         public Transform InkSurface;
 
-        /// The lobby pot skips prep and never runs dry — it is the practice well.
+        [Tooltip("The BOWL mesh of your cauldron (the MeshFilter with the hollow). Needed so the liquid stays INSIDE once the pot has been lifted: lifting makes the main collider convex — a bowl with no hollow — and this spawns a follower carrying the true concave shape that only the liquid's physics feels. Leave empty and the pot behaves as before (fine until someone lifts it).")]
+        public MeshFilter Bowl;
+
+        [Tooltip("YOUR ink material (black). Start from MI_CauldronInk_SZ in Art/3D/Materials and edit freely — the code only ever swaps between these two assets, it never builds a material of its own.")]
+        public Material InkMaterial;
+        [Tooltip("YOUR corrupted ink material (green). MI_CauldronInkCorrupt_SZ is the starter. Empty = the black one gets a green tint via property block instead.")]
+        public Material CorruptInkMaterial;
+
+        VesselShell _shell;   // the true-bowl follower, when his Bowl slot is filled
+
+        Renderer[] _inkRends;   // the ink's renderers, found once
+
+        /// 0 = black, 1 = green, and the JOURNEY between them is the indicator:
+        /// rises while an acolyte's touch corrupts, falls while a defuse holds.
+        public float Greenness { get; private set; }
+
+        /// The lobby pot skips prep and rebrews on a 10s clock — the practice
+        /// well with real behaviour and a failsafe.
         bool _lobby;
+        float _lobbyRefreshIn;
 
         public static CauldronEconomy Active { get; private set; }
 
@@ -67,9 +86,19 @@ namespace SpellyZombie
         MaterialPropertyBlock _blk;
         float _pushTimer, _drinkBill, _billTimer;
 
+        /// Every pot in the scene. With ONE the game behaves exactly as before;
+        /// with TWO OR MORE the ink HOPS between them (Marko Aug 11: "the ink
+        /// disappears and the effect shows where it was... turn off from one
+        /// cauldron and turn on in another after 10 seconds") — and the cycle
+        /// runs in the lobby too, which is where players learn to read it.
+        public static readonly List<CauldronEconomy> All = new List<CauldronEconomy>();
+
         void OnEnable()
         {
-            Active = this;
+            All.Add(this);
+            // first pot awake holds the ink; later ones are dormant vessels
+            // until the hop chooses them
+            if (Active == null) Active = this;
 
             _prep = DrawingConfig.PotPrepSeconds;
             _open = false;
@@ -77,34 +106,35 @@ namespace SpellyZombie
             _ink = 0f;
             if (InkSurface != null) _surfaceScale0 = InkSurface.localScale;
             _blk = new MaterialPropertyBlock();
+
+            // the true-bowl follower (see VesselShell) — HIS mesh, dragged in.
+            // InkSurface rides along as the cargo the shell must keep cupping.
+            if (Bowl != null && _shell == null)
+                _shell = VesselShell.Attach(Bowl.transform, Bowl.sharedMesh, transform, InkSurface);
+
+            // NO BONE PHYSICS ON THE INK (Marko Aug 11, after trying it live:
+            // "either reduce the influence or remove it completely — I'll put
+            // the bones in place"). His posed bones ARE the shape, untouched.
+            // JiggleBones survives as an opt-in component with an Influence
+            // slider — add it to the Blob yourself if you ever want a whisper
+            // of slosh back; the code will never add it for you again.
         }
 
         void OnDisable()
         {
+            All.Remove(this);
             if (Active == this) Active = null;
+            if (All.Count == 0) { _cycleArmed = false; _hopGap = false; } // scene change resets the cycle
         }
 
         void Update()
         {
             float dt = Time.deltaTime;
 
-            // ⛔ ASKED EVERY FRAME, NOT ONCE AT ENABLE (Marko Aug 11: "we need to
-            // wake up the lobby cauldron cause wizards can't use spells in lobby
-            // unless cauldron is active"). RoundDirector.InLobby reads
-            // Instance._phase, and OnEnable can easily run BEFORE that Instance
-            // exists — so the pot cached "not lobby", sat through a 30-second
-            // prep, and then drained like a real round. Evaluated live it wakes
-            // the moment the director does.
-            //
-            // THE LOBBY POT IS ALWAYS OPEN AND ALWAYS FULL: it is the practice
-            // ground, so it can never be the reason you cannot test a spell.
+            // asked every frame, not cached at OnEnable — RoundDirector.Instance
+            // can be born after us, and a pot that cached "not lobby" sat
+            // through a 30s prep. The lobby BEHAVIOUR lives in Simulate now.
             _lobby = RoundDirector.InLobby;
-            if (_lobby)
-            {
-                _prep = 0f;
-                _open = true;
-                _ink = DrawingConfig.PotCapacityInk;
-            }
             if (NetGame.IsAuthority) Simulate(dt);
             LocalWandTick(dt);
 
@@ -116,9 +146,117 @@ namespace SpellyZombie
             FlowTick(dt);
         }
 
+        // ------------------------------------------- the hop cycle (2+ pots) --
+        static float _hopTimer;
+        static bool _hopGap;      // the 10s vacuum: no pot pours, wizards bleed
+        static bool _cycleArmed;
+
+        /// THE FULL CYCLE (Marko Aug 11): ink lives in one pot, the beam rises
+        /// where it LEFT, ten seconds of drought, then the beam falls and the
+        /// splash lands where it ARRIVES — "showing where it is across the
+        /// map" (his call: the landing IS telegraphed). Ink amount and
+        /// corruption ride along: it is the same ink, somewhere else.
+        void HopTick(float dt)
+        {
+            if (All.Count < 2) { _hopGap = false; _cycleArmed = false; return; }
+            if (this != All[0]) return;   // one conductor, not one per pot
+
+            if (!_cycleArmed)
+            {
+                _cycleArmed = true;
+                _hopTimer = DrawingConfig.PotHopLiveSeconds;
+            }
+
+            _hopTimer -= dt;
+            if (_hopTimer > 0f) return;
+
+            if (!_hopGap)
+            {
+                // the ink LEAVES — beam up where it was, then darkness
+                var old = Active;
+                if (old != null)
+                {
+                    SkyBeam.Up(old.transform.position,
+                        old._corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
+                    old._open = false;
+                }
+                _hopGap = true;
+                _hopTimer = DrawingConfig.PotHopGapSeconds;
+            }
+            else
+            {
+                // the ink ARRIVES — a different pot, the falling beam, the
+                // splash "as if it fell to the ground, just like liquid does"
+                // COMPLETELY RANDOM, same pot allowed (his rule: "it can fall
+                // back into the same cauldron it left") — the beam still rises
+                // and falls, so even a repeat reads as an event
+                var old = Active;
+                var next = All[Random.Range(0, All.Count)];
+
+                next._ink = old != null ? Mathf.Max(old._ink, 1f) : DrawingConfig.PotCapacityInk;
+                next._corrupt = old != null && old._corrupt;
+                next._defuse = 0f;
+                if (old != null) { old._ink = 0f; old._corrupt = false; }
+
+                Active = next;
+                next._open = true;
+                Color c = next._corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
+                SkyBeam.Down(next.transform.position, c);
+                if (FxLibrary.I != null)
+                    FxLibrary.Spawn(FxLibrary.I.Splash, next.transform.position + Vector3.up * 0.6f);
+                Juice.Chime(next.transform.position);
+
+                _hopGap = false;
+                _hopTimer = DrawingConfig.PotHopLiveSeconds;
+            }
+        }
+
         // ------------------------------------------------------- authority --
         void Simulate(float dt)
         {
+            HopTick(dt);
+
+            // A DORMANT VESSEL DOES NOTHING: no prep, no drains, no corruption.
+            // It is scenery holding a bowl until the ink chooses it.
+            if (Active != this) { _open = false; return; }
+
+            // THE VACUUM FREEZES EVERYTHING (Marko Aug 11: "during those 10
+            // seconds the ink size doesn't change. We keep track of how much
+            // ink is left so that the new cauldron regenerates the ink").
+            // Without this return the closed pot fell into the PREP path below,
+            // declared itself brewed, and resurrected at FULL capacity mid-gap
+            // — wiping the drought and the carried pool in one bug.
+            if (_hopGap) { PushNet(); return; }
+
+            // THE LOBBY POT IS THE REAL POT WITH A GUARDIAN (Marko Aug 11: "the
+            // lobby cauldron will automatically refill itself every 10 seconds
+            // => it cannot be deprived... but you can see it visually depriving.
+            // It can be corrupted normally but after the 10 second mark it will
+            // be refreshed completely and turned back into the black ink").
+            //
+            // So: no prep, open at once — and every rule below runs for real.
+            // It drains as wizards drink, turns green to an acolyte's touch,
+            // evaporates while green — and on the 10s mark the failsafe rebrews
+            // it: full, black, defuse clock cleared. Practice with real physics,
+            // stakes with a net.
+            if (_lobby && !_hopGap)   // the vacuum outranks the failsafe: the drought must be FELT, even here
+            {
+                _prep = 0f;
+                if (!_open) { _open = true; _ink = DrawingConfig.PotCapacityInk; }
+                _lobbyRefreshIn -= dt;
+                if (_lobbyRefreshIn <= 0f)
+                {
+                    _lobbyRefreshIn = DrawingConfig.LobbyPotRefreshSeconds;
+                    bool restored = _corrupt || _ink < DrawingConfig.PotCapacityInk - 0.5f;
+                    _ink = DrawingConfig.PotCapacityInk;
+                    _corrupt = false;
+                    _defuse = 0f;
+                    // NO opening wipe here — that beat belongs to a round's
+                    // brew-up, and a lobby full of test zombies must survive it
+                    if (restored) Juice.Chime(transform.position);
+                }
+            }
+
             if (!_open)
             {
                 _prep -= dt;
@@ -148,8 +286,25 @@ namespace SpellyZombie
 
             if (_corrupt)
             {
-                // the bomb ticking: green evaporates constantly
-                _ink -= DrawingConfig.PotCorruptDrainPerSec * dt;
+                // THE RITUAL IS VISIBLE (Marko Aug 11: "there needs to be a
+                // visual indicator that the cauldron is being corrupted or
+                // reformed") — greenness runs 1 → 0 as the defuse holds, and
+                // PaintSurface lerps the ink's colour by it, so both sides
+                // watch the reclaim happen instead of it snapping at the end.
+                Greenness = 1f - Mathf.Clamp01(_defuse / Mathf.Max(0.1f, DrawingConfig.PotDefuseSeconds));
+
+                // the bomb ticking: green evaporates constantly.
+                //
+                // ⛔ DIVIDED BY THE ACOLYTE HEADCOUNT (Marko Aug 11): the rates
+                // are authored PER ONE PLAYER and split across the team, so the
+                // pot's clock does not care how many hands are on it. This is
+                // his self-balancing law in one line — "if we played 1 vs 11,
+                // an acolyte that steals the cauldron can easily win due to the
+                // fact that stealing the cauldron is way harder": one acolyte's
+                // plant burns at FULL rate (the hard steal pays in full), while
+                // eleven acolytes' trivial plant burns at a crawl.
+                _ink -= DrawingConfig.PotCorruptDrainPerSec * dt
+                    / Mathf.Max(1, Sides.CountOn(Side.Acolyte));
 
                 float defusers = 0f, babysitters = 0f;
                 EachPlayer((side, pos) =>
@@ -159,9 +314,13 @@ namespace SpellyZombie
                     if (side == Side.Acolyte && d <= DrawingConfig.PotAcolyteFillRadius) babysitters += 1f;
                 });
 
-                // the babysitting tax: their corruption FILLS what they need empty
+                // the babysitting tax: their corruption FILLS what they need
+                // empty — normalized the same way (per-one-acolyte, split by
+                // the team), so a full team crowding its own pot refills it at
+                // exactly the authored rate, not team-size times it
                 if (babysitters > 0f)
-                    _ink += DrawingConfig.PotAcolyteFillPerSec * babysitters * dt;
+                    _ink += DrawingConfig.PotAcolyteFillPerSec * babysitters * dt
+                        / Mathf.Max(1, Sides.CountOn(Side.Acolyte));
 
                 if (defusers > 0f)
                 {
@@ -178,6 +337,9 @@ namespace SpellyZombie
             }
             else
             {
+                // ...and 0 → 1 while an acolyte's touch corrupts, the mirror
+                Greenness = Mathf.Clamp01(_corruptTouch / Mathf.Max(0.1f, DrawingConfig.PotCorruptSeconds));
+
                 // an acolyte at a black pot for the plant time turns it
                 float touching = 0f;
                 EachPlayer((side, pos) =>
@@ -186,19 +348,35 @@ namespace SpellyZombie
                         && Vector3.Distance(pos, transform.position) <= DrawingConfig.PotCloseRadius)
                         touching += 1f;
                 });
-                if (touching > 0f)
+                // THE DEAD CARRY THE CORRUPTION TOO (Marko Aug 11: "you can use
+                // the zombies to reach near the cauldron... zombies near the
+                // cauldron can corrupt it but many times slower than the actual
+                // Acolyte"). The arrow-march is the delivery system: send the
+                // horde, it loiters, the ink creeps green — and the greenness
+                // lerp makes the creep VISIBLE, so wizards learn that zombies
+                // at the pot are not a nuisance but a fuse. Presence-based like
+                // the acolyte's own touch (a horde plants no faster than one),
+                // demons excluded as everywhere.
+                bool zombieTouch = false;
+                foreach (var z in Zombie.All)
                 {
-                    _corruptTouch += dt;
-                    if (_corruptTouch >= DrawingConfig.PotCorruptSeconds)
-                    {
-                        _corrupt = true;
-                        _corruptTouch = 0f;
-                        _defuse = 0f;
-                        Juice.Thud(transform.position);
-                        DrawingWorld.Instance?.LogEvent("the cauldron turns GREEN");
-                    }
+                    if (z == null || z.IsDemon) continue;
+                    if (Vector3.Distance(z.transform.position, transform.position)
+                        <= DrawingConfig.PotCloseRadius) { zombieTouch = true; break; }
                 }
+
+                if (touching > 0f) _corruptTouch += dt;                    // the acolyte's own hand: full speed
+                else if (zombieTouch) _corruptTouch += dt * DrawingConfig.PotZombieCorruptFactor;
                 else _corruptTouch = 0f;
+
+                if (_corruptTouch >= DrawingConfig.PotCorruptSeconds)
+                {
+                    _corrupt = true;
+                    _corruptTouch = 0f;
+                    _defuse = 0f;
+                    Juice.Thud(transform.position);
+                    DrawingWorld.Instance?.LogEvent("the cauldron turns GREEN");
+                }
 
                 // the spill: the LOCAL wizard loitering with a full wand.
                 // (Remote wands' fullness is theirs to know — their machines
@@ -210,14 +388,13 @@ namespace SpellyZombie
                     if (ink != null && ink.Fraction >= 0.999f
                         && Vector3.Distance(p.transform.position, transform.position)
                             <= DrawingConfig.PotCloseRadius)
-                        _ink -= DrawingConfig.PotSpillPerSec * dt;
+                        _ink -= DrawingConfig.PotSpillPerSec * dt
+                            / Mathf.Max(1, Sides.CountOn(Side.Wizard)); // per-one-wizard, split by the team
                 }
             }
 
-            // IMMORTAL IN THE LOBBY: everything above may bill it, and then it
-            // is simply full again. One line rather than a bypass at every
-            // drain, so a drain added later cannot forget the rule.
-            if (_lobby) _ink = DrawingConfig.PotCapacityInk;
+            // (lobby immortality is the 10s refresh at the top now — a per-frame
+            // clamp here would hide the very depletion he wants seen)
             _ink = Mathf.Clamp(_ink, 0f, DrawingConfig.PotCapacityInk); // full = no rule, it clamps
             PushNet();
         }
@@ -241,6 +418,7 @@ namespace SpellyZombie
         // ------------------------------------------- every machine, own wand --
         void LocalWandTick(float dt)
         {
+            if (Active != this) return; // a dormant vessel pours nothing — only the ink's pot feeds wands
             if (PrepRemaining > 0f || IsCorrupt || Fill01 <= 0f) return; // closed/green/dry pours nothing
             var p = LocalPlayer();
             if (p == null || Sides.Of(Grimoire.LocalPlayerId) != Side.Wizard) return;
@@ -253,12 +431,30 @@ namespace SpellyZombie
             // a MELTED wand regrows only at the pot — the wandless terror stays real
             if (melted && d > DrawingConfig.PotCloseRadius) return;
 
+            // ⛔ EXCLUSIVE MODES (Marko Aug 11: "when you're using the ink it's
+            // not being added, only when you stop using it — unless of course
+            // you're too close to the cauldron"). A pen that drains while the
+            // pot pours made the wand "confused — trying to remove and add ink
+            // at the same time", and worse, drawing beside the pot was a net
+            // ink hose. So: pen down = SPENDING mode, no refill — except inside
+            // the close radius, where the pour overpowers everything (and
+            // WandState blocks the pen there anyway, so the modes never overlap).
+            if (SurfaceDrawer.IsPenActive && d > DrawingConfig.PotCloseRadius) return;
+
             float close = DrawingConfig.PotCloseRadius;
             float range = Mathf.Max(close + 1f, DrawingConfig.PotRefillRange);
             float t = Mathf.Clamp01((d - close) / (range - close));
             float falloff = (1f - t) * (1f - t); // near fast, far crawls
             float rate = Mathf.Lerp(DrawingConfig.PotRefillFloorPerSec,
                 DrawingConfig.PotRefillNearPerSec, falloff);
+
+            // ⛔ PER ONE WIZARD, SPLIT BY THE TEAM (Marko Aug 11: "so that 10
+            // wizards wouldn't instantly empty the cauldron"). Every machine
+            // runs this for its own wand, so each drinks 1/Nth and the POT
+            // feels the same total draw at any team size — while each wizard's
+            // personal regen slows as the team grows, which is its own
+            // pressure: a big team shares one well.
+            rate /= Mathf.Max(1, Sides.CountOn(Side.Wizard));
 
             float amount = rate * dt;
             ink.Award(amount);
@@ -298,6 +494,7 @@ namespace SpellyZombie
         // ---- THE POT SAYS WHICH WAY ITS INK IS GOING ------------------------
         FlowMotes _flow;
         float _lastFill = -1f;
+        float _flowShown;   // eased rate, so refresh jumps read as pours
 
         /// THE GREEN POT TELLS ACOLYTES WHAT IS HAPPENING (Marko Aug 11: "the
         /// green cauldron ink should also have an evaporation effect when
@@ -320,21 +517,33 @@ namespace SpellyZombie
 
             float rate = (fill - _lastFill) / Mathf.Max(0.0001f, dt);
             _lastFill = fill;
+            if (PrepRemaining > 0f) rate = 0f;
 
-            // only while it is THEIRS — a black pot is the wizards' business and
-            // its own HUD bar already covers it
-            if (!IsCorrupt || PrepRemaining > 0f) { rate = 0f; }
+            // eased, so the lobby's 10s rebrew (an instant jump to full) reads
+            // as a strong pour rather than a one-frame flicker
+            _flowShown = Mathf.MoveTowards(_flowShown, rate,
+                DrawingConfig.PotFlowFullRate * 6f * dt);
 
-            if (_flow == null) _flow = new FlowMotes(4, gameObject.layer);
+            // THE WAND'S LANGUAGE AT POT SCALE (Marko Aug 11: "use the same
+            // particle effect as on wands but larger for cauldron... and more
+            // balls... when filling/evaporating"). BOTH lives now, not only the
+            // green one: a black pot bleeding to ten drinking wizards shows
+            // black motes rising; a green pot evaporating shows green; filling
+            // runs the same path inward. Anyone who learned the wand reads it.
+            if (_flow == null) _flow = new FlowMotes(6, gameObject.layer);
 
-            // up off the surface. Rising = evaporating, falling in = refilling,
-            // so the sign is inverted against the wand's outward/inward.
+            // up off the surface — and the SAME sign convention as the wand,
+            // no inversion (Marko Aug 11 caught it backwards: a drinking wizard
+            // made the pot look like it was FILLING). Negative = losing =
+            // motes travel OUTWARD along up = rising away, evaporation.
+            // Positive = gaining = the same path inward = falling into the pot.
             Vector3 top = InkSurface.position + Vector3.up * 0.05f;
-            _flow.Tick(top, Vector3.up, -rate, DrawingConfig.CorruptInkColor,
-                reach: 0.55f, spread: 0.22f,
+            _flow.Tick(top, Vector3.up, _flowShown,
+                IsCorrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor,
+                reach: 0.9f, spread: 0.32f,
                 fullRate: DrawingConfig.PotFlowFullRate,
-                minSize: 0.03f, maxSize: 0.09f,
-                deadzone: DrawingConfig.PotFlowDeadzone, cycle: 0.9f);
+                minSize: 0.055f, maxSize: 0.16f,
+                deadzone: DrawingConfig.PotFlowDeadzone, cycle: 0.8f);
         }
 
         void OnDestroy() { _flow?.Dispose(); }
@@ -366,13 +575,60 @@ namespace SpellyZombie
             var s = _surfaceScale0;
             s.y *= f;
             InkSurface.localScale = s;
-            Color c = IsCorrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
-            foreach (var r in InkSurface.GetComponentsInChildren<Renderer>())
+            // THE INK WEARS THE LIVING LIQUID MATERIAL (Marko Aug 11: "why is
+            // it not deforming like a liquid would?") — the jelly is not
+            // physics, it is the SZParticle shader's vertex wobble, the exact
+            // material every conjured liquid blob already wears (Matter.cs uses
+            // 0.11/0.7 for liquids). So the answer to "do I need to add
+            // something to the blob?" is NO: the pot dresses its own ink, and
+            // MatterFX caches one material per colour, so this stays cheap.
+            // ⛔ HIS MATERIAL IS LAW (Marko Aug 11: "show me the material you're
+            // using and let me edit it myself. You cannot do this"). The code
+            // NEVER builds a material for the ink again — the runtime-generated
+            // one detonated at his pot's scale and could not be edited anyway.
+            // Three behaviours, all his to choose in the Inspector:
+            //   both slots filled  → swap between HIS black and HIS green asset
+            //   only black filled  → his asset, green property-block tint while corrupt
+            //   no slots           → whatever material HE authored on the blob
+            //                        stays untouched; corruption is the only
+            //                        thing painted over it (colour tint, MPB),
+            //                        cleared again the moment it is defused
+            // cached — GetComponentsInChildren allocated a fresh array EVERY
+            // FRAME per pot, garbage that stacks with several cauldrons placed
+            if (_inkRends == null) _inkRends = InkSurface.GetComponentsInChildren<Renderer>(true);
+            foreach (var r in _inkRends)
             {
-                r.GetPropertyBlock(_blk);
-                _blk.SetColor(BaseColorId, c);
-                _blk.SetColor(ColorId, c);
-                r.SetPropertyBlock(_blk);
+                if (r == null) continue;
+                var want = IsCorrupt && CorruptInkMaterial != null ? CorruptInkMaterial : InkMaterial;
+                if (want != null && r.sharedMaterial != want) r.sharedMaterial = want;
+
+                // MID-RITUAL, THE COLOUR IS THE PROGRESS BAR (Marko Aug 11):
+                // while greenness sits between the extremes the ink lerps
+                // black↔green over whichever material is on, so a plant is
+                // watched creeping in and a defuse watched draining out.
+                bool transitioning = Greenness > 0.02f && Greenness < 0.98f;
+                bool tintOverlay = IsCorrupt && CorruptInkMaterial == null;
+                if (transitioning)
+                {
+                    Color mid = Color.Lerp(DrawingConfig.InkColor,
+                        DrawingConfig.CorruptInkColor, Greenness);
+                    r.GetPropertyBlock(_blk);
+                    _blk.SetColor(BaseColorId, mid);
+                    _blk.SetColor(ColorId, mid);
+                    r.SetPropertyBlock(_blk);
+                }
+                else if (tintOverlay)
+                {
+                    r.GetPropertyBlock(_blk);
+                    _blk.SetColor(BaseColorId, DrawingConfig.CorruptInkColor);
+                    _blk.SetColor(ColorId, DrawingConfig.CorruptInkColor);
+                    r.SetPropertyBlock(_blk);
+                }
+                else
+                {
+                    _blk.Clear();
+                    r.SetPropertyBlock(_blk); // at rest = his exact authored look
+                }
             }
         }
     }

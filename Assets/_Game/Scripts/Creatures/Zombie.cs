@@ -246,6 +246,23 @@ namespace SpellyZombie
         /// The visual follower wearing this zombie's model (null in graybox).
         public ZombieDress Dress => _dress;
 
+        /// THE PAINT FREEZE (Marko Aug 11: "have zombie stop in place if someone
+        /// is painting on it as if it's frozen so that we can summon a dynamic
+        /// shell"). The pen touching this zombie pins it — SurfaceDrawer calls
+        /// this every inked frame — and the dress settles the body into the REST
+        /// POSE, which is the pose the paint shell was cast in: for the freeze's
+        /// duration the collider you draw on and the mesh you see are the same
+        /// shape, exactly the trick the player's body paint already plays.
+        ///
+        /// It is also gameplay, his words: the statue is the tell that an
+        /// acolyte is painting on it, and painting is how you stop one running.
+        public void PaintFreeze(float seconds)
+        {
+            if (_brain != null)
+                _brain.TrancedUntil = Mathf.Max(_brain.TrancedUntil, Time.time + seconds);
+            _dress?.PaintHold(seconds);
+        }
+
         static void AddHatPart(Transform body, Vector3 localPos, Vector3 localScale, float tiltZ)
         {
             var part = GameObject.CreatePrimitive(PrimitiveType.Cube);

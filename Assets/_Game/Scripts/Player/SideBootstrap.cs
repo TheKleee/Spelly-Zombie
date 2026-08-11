@@ -99,6 +99,8 @@ namespace SpellyZombie
                     // the acolyte's R overwatch belongs on this same list — a
                     // script nobody attaches is a key that does nothing
                     if (p.GetComponent<ZombieWatch>() == null) p.gameObject.AddComponent<ZombieWatch>();
+                    // every body is someone else's canvas (Marko Aug 11)
+                    if (p.GetComponent<BodyCanvas>() == null) p.gameObject.AddComponent<BodyCanvas>();
                 }
 
                 // push and pull, before anyone has absorbed anything

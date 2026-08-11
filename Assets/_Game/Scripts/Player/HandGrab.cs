@@ -364,7 +364,8 @@ namespace SpellyZombie
             // every facade that soak up wall ink by design; aiming at any
             // house met the canvas first and refused with world-scale spam.
             // Every world-purpose cast here masks them out; so does the grab.
-            int mask = Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer);
+            int mask = Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer)
+                & ~(1 << VesselShell.Layer); // the true-bowl follower is a kinematic ghost — grabbing must reach the POT behind it
             var along = Physics.RaycastAll(piv0.position, piv0.forward, LiftRangeMax, mask,
                 QueryTriggerInteraction.Collide);
             if (along.Length == 0) return;
@@ -464,9 +465,21 @@ namespace SpellyZombie
         /// anchor hold. Aiming at ground he had drawn seals on passed the
         /// lookalike and failed the real one. Two implementations of one rule is
         /// the bug; this is the one rule.
+        /// The pot's LIQUID is the economy, not a prop (Marko Aug 11: "the ink
+        /// in cauldron should not be liftable on its own") — the POT is
+        /// stealable, the ink inside it only pours. One test for both the
+        /// badge's promise and the keypress.
+        static bool IsPotInk(Collider c)
+        {
+            var pot = c != null ? c.GetComponentInParent<CauldronEconomy>() : null;
+            return pot != null && pot.InkSurface != null
+                && c.transform.IsChildOf(pot.InkSurface);
+        }
+
         public static bool CanAcquire(Collider aimedCollider, int ownerId)
         {
             if (aimedCollider == null) return false;
+            if (IsPotInk(aimedCollider)) return false;
             var hitRb = aimedCollider.attachedRigidbody;
 
             var zomb = aimedCollider.GetComponentInParent<Zombie>();
@@ -501,6 +514,11 @@ namespace SpellyZombie
 
         public static Rigidbody AcquireBody(Collider aimedCollider, int ownerId)
         {
+            if (IsPotInk(aimedCollider))
+            {
+                DrawingWorld.Instance?.LogEvent("the ink only pours. drink it at the pot");
+                return null;
+            }
             var hitRb = aimedCollider.attachedRigidbody;
 
             // NEVER a wizard, a creature or a held weapon — and the refusal

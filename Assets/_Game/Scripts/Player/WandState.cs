@@ -76,7 +76,28 @@ namespace SpellyZombie
                 DrawingWorld.Instance?.LogEvent("the ink reforms your wand");
             }
 
-            if (local) LocalCanDraw = HasWand && _ink.Ink > 0.5f;
+            // THE POUR IS TOO STRONG TO DRAW THROUGH (Marko Aug 11, his own
+            // question answered YES): inside the pot's close radius the refill
+            // is a firehose, so the pen is refused entirely — walk to the pot
+            // to DRINK, step away to FIGHT. This is the orbit he already
+            // designed ("empty → drift in, full → drift out") made physical,
+            // and it kills pot-camping as a firing position for free. Only a
+            // pouring pot blocks: a green, closed or dry one pours nothing.
+            bool hosed = false;
+            if (local && CauldronEconomy.Active != null
+                && !Sides.IsAcolytePlayer(_pilot)
+                && !CauldronEconomy.IsCorrupt
+                && CauldronEconomy.PrepRemaining <= 0f
+                && CauldronEconomy.Fill01 > 0f)
+            {
+                hosed = Vector3.Distance(transform.position,
+                    CauldronEconomy.Active.transform.position) <= DrawingConfig.PotCloseRadius;
+                if (hosed && HasWand)
+                    UIPrompt.Show("!", "the pour is too strong. step back to draw",
+                        new Color(1f, 0.85f, 0.4f));
+            }
+
+            if (local) LocalCanDraw = HasWand && _ink.Ink > 0.5f && !hosed;
         }
 
         // NO UI BAR (Marko: "we don't need any UI - the ink is always visibly

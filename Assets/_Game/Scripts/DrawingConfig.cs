@@ -537,6 +537,33 @@ namespace SpellyZombie
         public static readonly float PotFlowDeadzone = O(nameof(PotFlowDeadzone), 0.0006f);
         public static readonly float PotFlowFullRate = O(nameof(PotFlowFullRate), 0.02f);
 
+        // Zombies loitering at a black pot corrupt it too — "many times slower
+        // than the actual Acolyte" (Aug 11). 0.12 ≈ 8x slower: a plant by horde
+        // takes ~27s of undisturbed loitering vs the acolyte's ~3.2, long
+        // enough that the creeping green gives wizards a fair alarm.
+        public static readonly float PotZombieCorruptFactor = O(nameof(PotZombieCorruptFactor), 0.12f);
+
+        // THE HOP CYCLE (Marko Aug 11, with 2+ cauldrons in the scene): the ink
+        // lives in one pot, leaves with a sky-beam, and after a drought lands —
+        // beam down, splash — in a RANDOM pot, the same one allowed. The pool
+        // and its corruption ride along unchanged. During the gap wizards have
+        // no regen at all: "acolytes can have a breather."
+        public static readonly float PotHopLiveSeconds = O(nameof(PotHopLiveSeconds), 30f);
+        public static readonly float PotHopGapSeconds = O(nameof(PotHopGapSeconds), 10f);
+
+        // THE LOBBY FAILSAFE (Marko Aug 11): the lobby pot is the REAL pot —
+        // it drains visibly, corrupts, defuses — but every this-many seconds it
+        // rebrews itself full and black. Practice with real behaviour, stakes
+        // with a net. "It cannot be deprived... but you can see it depriving."
+        public static readonly float LobbyPotRefreshSeconds = O(nameof(LobbyPotRefreshSeconds), 10f);
+
+        // THE PAINT FREEZE (Marko Aug 11): ink touching a zombie pins it in the
+        // rest pose — the pose its paint shell describes — for this long past
+        // the last touch. Long enough to lift the pen between a seal's strokes
+        // without the canvas walking off; short enough that a single dab is a
+        // tease, not a stun-lock.
+        public static readonly float ZombiePaintFreezeSeconds = O(nameof(ZombiePaintFreezeSeconds), 2.5f);
+
         // How long a broken lobby prop stays gone before rebuilding itself.
         // Long enough that breaking things still reads as breaking them, short
         // enough that the courtyard is never stripped of things to scan.
