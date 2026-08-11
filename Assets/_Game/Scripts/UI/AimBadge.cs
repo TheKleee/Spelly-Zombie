@@ -125,6 +125,7 @@ namespace SpellyZombie
             {
                 bool person = hit.collider.GetComponentInParent<SimpleFPSController>() != null
                     || hit.collider.GetComponentInParent<Creature>() != null
+                    || ZombieOwner.From(hit.collider) != null   // the dressed skin resolves to nothing above
                     || hit.collider.GetComponentInParent<CauldronEconomy>() != null;
                 if (!person && hit.collider.GetComponentInParent<SpellParticle>() == null)
                 {

@@ -34,6 +34,13 @@ namespace SpellyZombie
         static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         static readonly int ColorId = Shader.PropertyToID("_Color");
 
+        // stride matching: the states by hash, and each clip's authored ground
+        // speed (walking.fbx covers ~1.4 m/s, zombie running.fbx ~4.5)
+        static readonly int HashWalk = Animator.StringToHash("Walk");
+        static readonly int HashRun = Animator.StringToHash("Run");
+        const float WalkClipSpeed = 1.4f;
+        const float RunClipSpeed = 4.5f;
+
         bool _customBody; // HIS prefab is dressing this zombie — hands off
 
         /// HIS prefab is wearing this body, so no code may recolour it. Read by
@@ -185,12 +192,27 @@ namespace SpellyZombie
                 shell.transform.localRotation = Quaternion.identity;
                 shell.transform.localScale = Vector3.one;
                 shell.AddComponent<MeshCollider>().sharedMesh = smr.sharedMesh;
-                // ink drawn here must RIDE the body and persist, same as a player's
-                shell.AddComponent<PersistentInkSurface>();
-                // and it must lead BACK to the zombie: the dress lives outside
-                // the zombie's hierarchy on purpose, so GetComponentInParent
-                // would never find it and a seal drawn on the skin could not
-                // detonate the thing it was drawn on.
+
+                // ⛔ THE SHELL LIVES ON THE INK-CANVAS LAYER, AND THIS LINE IS
+                // WHY ZOMBIES WERE "MEGA BUGGED" (Marko, end of Aug 11) when it
+                // was missing. On the Default layer this is a SOLID mesh wrapped
+                // around the zombie's own dynamic capsule: PhysX finds the
+                // capsule inside it every step and ejects it, the dress follows
+                // the capsule, the shell follows the dress — a feedback loop
+                // that flings the zombie across the map while the animator,
+                // seeing no ground speed of its own making, plays nothing.
+                //
+                // Layer 30 is the game's own answer, already carrying every
+                // wall canvas: Physics.IgnoreLayerCollision against ALL layers,
+                // but raycasts still hit — a pen target that physics cannot
+                // touch. The grab ray masks 30 out, so lifting still finds the
+                // capsule; the chew SphereCast masks it out too.
+                shell.layer = InkCanvasLayer.Layer;
+
+                // NO PersistentInkSurface here: ink routes to the ZOMBIE ROOT
+                // (SurfaceDrawer, via ZombieOwner below), which already carries
+                // one — so marks live where lift authority, detonation and the
+                // netcode guards have always looked for them.
                 d.gameObject.AddComponent<ZombieOwner>().Of = z;
             }
 
@@ -353,17 +375,34 @@ namespace SpellyZombie
             //   multiplied it by — so a giant covering 1.3 m/s is barely moving
             //   relative to its own legs and blends even further toward idle.
             //
-            // ⛔ REVERTED (Marko Aug 11: "he's not moving any animation, he's
-            // standing in place but is flying all over the place").
-            //
-            // Two things went out with this. Dividing by the body's scale meant
-            // an unclamped sizeMul fed the blend a wild number. And Animator.speed
-            // gates EVERY clip, not just locomotion — so one bad value there
-            // freezes the whole rig while physics keeps moving the capsule,
-            // which is exactly the symptom. Raw world speed, straight in, and
-            // the animator's own rate left alone.
+            // THE PROPER WALK (Marko Aug 11: "create proper zombie walk"). The
+            // flying was never this code — it was the paint shell's collider
+            // ejecting the capsule (see DressUp) — but with that fixed, the walk
+            // still had feet sliding: the walk clip is authored to cover
+            // 1.4 m/s and a wandering zombie moves at 0.72, so the cycle
+            // overran the ground by 2x. The stride is matched to the ground
+            // HERE, under three guards that each answer one past failure:
+            //   · playback rate touches LOCOMOTION STATES ONLY — Animator.speed
+            //     gates every clip, and a bad value froze attacks and standups
+            //   · the reference speed is the CURRENT state's own authored
+            //     ground speed, so Run is not judged against the walk clip
+            //   · clamped tight, so no input can produce slow-motion or
+            //     fast-forward, only honest stride matching
             _anim.SetFloat("Speed", speed);
-            _anim.speed = 1f;
+            var st = _anim.GetCurrentAnimatorStateInfo(0);
+            bool walking = st.shortNameHash == HashWalk;
+            bool running = st.shortNameHash == HashRun;
+            if ((walking || running) && speed > 0.05f)
+            {
+                float authored = running ? RunClipSpeed : WalkClipSpeed;
+                _anim.speed = Mathf.Clamp(speed / authored, 0.55f, 1.35f);
+            }
+            else
+            {
+                // idle, one-shots, and the OLD blend-tree controller (state
+                // "Shamble", which blends by Speed itself) all run untouched
+                _anim.speed = 1f;
+            }
 
             // struggled back to its feet — play the climb
             if (_creature != null)

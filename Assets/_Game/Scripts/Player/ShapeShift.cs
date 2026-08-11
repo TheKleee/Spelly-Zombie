@@ -312,6 +312,9 @@ namespace SpellyZombie
             // you invisible — a skinned creature cloned without its animator
             // collapses and culls itself). Props only.
             if (hit.collider.GetComponentInParent<Creature>() != null) return;
+            // the paint shell rides the DRESS, outside the zombie's hierarchy —
+            // without this a zombie was scannable again through its own skin
+            if (ZombieOwner.From(hit.collider) != null) return;
             if (hit.collider.GetComponentInChildren<Renderer>() == null) return;
 
             var root = hit.collider.attachedRigidbody != null

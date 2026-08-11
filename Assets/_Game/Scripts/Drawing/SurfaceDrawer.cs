@@ -231,6 +231,16 @@ namespace SpellyZombie
                 if (limb != null) surface = limb;
             }
 
+            // A ZOMBIE'S SKIN IS A CANVAS FOR ITS BODY (Marko Aug 10: "you
+            // can't draw on a zombie the same way you can draw on a player").
+            // The shell you hit is a raycast-only catcher on the DRESS, which
+            // lives outside the zombie's hierarchy — so the ink parents to the
+            // ZOMBIE ROOT instead: it rides the body, counts toward lifting it,
+            // and a seal closed on it can detonate it. Same shape as the
+            // player's shell→limb routing above.
+            var zombieOwner = ZombieOwner.From(hit.collider);
+            if (zombieOwner != null) surface = zombieOwner.transform;
+
             // one stroke, ONE surface — crossing a joint ends it; SEAM WELD
             // (Marko: "nodes should be created at the point of separation") puts
             // one last node AT the crossing so both sides keep kissing in every pose

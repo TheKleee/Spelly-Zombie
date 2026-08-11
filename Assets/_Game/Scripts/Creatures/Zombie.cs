@@ -280,11 +280,19 @@ namespace SpellyZombie
             if (desired.sqrMagnitude > 0.01f) desired = desired.normalized * speed;
             else desired = Vector3.zero;
 
-            // REVERTED to the fixed reach (Marko Aug 11). Scaling it off
-            // localScale.y was defensible on its own, but it is part of the same
-            // movement pass that broke, and known-good beats clever.
-            bool grounded = Physics.Raycast(transform.position, Vector3.down, 1.35f,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            // THE GROUND CHECK, done properly (Marko Aug 11: "create proper
+            // zombie walk"). Two requirements, each earned by a bug:
+            //   REACH SCALES WITH THE BODY — transform.position is the capsule
+            //   CENTRE and its half-height is localScale.y, so a fixed 1.35
+            //   never reached the floor for a summon drawn past ~1.6x: it was
+            //   permanently "airborne", grip 2, and drifted like it was on ice.
+            //   MASK OUT LAYER 30 — the paint shells (and every wall canvas)
+            //   live there. They are raycast-visible by design, and a zombie
+            //   must never mistake its buddy's skin for the floor.
+            bool grounded = Physics.Raycast(transform.position, Vector3.down,
+                transform.localScale.y + 0.53f,
+                Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer),
+                QueryTriggerInteraction.Ignore);
             float grip = grounded ? 14f : 2f;
 
             Vector3 blended = Vector3.MoveTowards(horiz, desired, grip * Time.fixedDeltaTime);
