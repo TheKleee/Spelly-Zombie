@@ -7,7 +7,7 @@ namespace SpellyZombie
     /// Menu-style pose setup (layout copied from Meccha Chameleon's menu):
     /// your character stands in front of the camera with visible grab points on
     /// its extremities. Grab one and drag the limb into place, drag the body to
-    /// spin the character, click Save — the pose lands in your pose list, and
+    /// spin the character, click Save - the pose lands in your pose list, and
     /// pressing 1-9 with a pose selected binds it to that key.
     ///
     /// Two modes:
@@ -225,7 +225,7 @@ namespace SpellyZombie
 
             if (_grabbed?.T == null) return;
 
-            // drag across a camera-facing plane THROUGH THE PIVOT — the
+            // drag across a camera-facing plane THROUGH THE PIVOT - the
             // handle tracks the mouse 1:1 for the whole swing. Constrain at
             // every write: what you sculpt is exactly what saves and loads.
             var dragRay = StudioCamera.ScreenPointToRay(mouse.position.ReadValue());

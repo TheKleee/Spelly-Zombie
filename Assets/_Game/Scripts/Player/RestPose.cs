@@ -2,20 +2,20 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A REMEMBERED POSE FOR A WHOLE HIERARCHY — capture once, come back to it
+    /// A REMEMBERED POSE FOR A WHOLE HIERARCHY - capture once, come back to it
     /// any time, softly or at once.
     ///
-    /// Extracted on Marko's standing order (Aug 11: "actually reuse the code
+    /// Extracted on the standing order (Aug 11: "actually reuse the code
     /// instead of writing a new one... who knows where we might need it again"),
     /// because the game had grown FOUR private copies of exactly this idea:
     /// CharacterRig's _boneHome, EmoteRig.CaptureRest, RelaxForPaint's settle,
     /// and the zombie paint freeze. Same concept, four spellings, drifting
     /// apart. This is the one spelling; the zombie freeze uses it today and the
-    /// player-side copies can migrate whenever he says go.
+    /// player-side copies can migrate whenever says go.
     ///
     /// `skip` lets a caller exclude subtrees that are NOT pose (props, sockets,
-    /// wands) — the exact lesson _boneHome learned the hard way when it
-    /// overwrote his attached props.
+    /// wands) - the exact lesson _boneHome learned the hard way when it
+    /// overwrote the attached props.
     public class RestPose
     {
         (Transform t, Vector3 pos, Quaternion rot)[] _bones;
@@ -32,7 +32,7 @@ namespace SpellyZombie
             return new RestPose { _bones = list.ToArray() };
         }
 
-        /// One frame of easing toward the captured pose — the magic taking
+        /// One frame of easing toward the captured pose - the magic taking
         /// hold, not a glitch snap. Call every frame while the pose should hold.
         public void Settle(float dt, float sharpness = 14f)
         {

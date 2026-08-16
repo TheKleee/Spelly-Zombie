@@ -12,7 +12,7 @@ namespace SpellyZombie
     ///    drifting together)
     ///  - BREAKS immediately if the ring opens: any node destroyed, or any adjacent
     ///    pair pulled beyond BreakDistance. Broken ink survives and can re-close.
-    ///  - EXPIRES when duration (1s per side, cap 10s — circle counts as 10) runs out.
+    ///  - EXPIRES when duration (1s per side, cap 10s - circle counts as 10) runs out.
     ///    Environment ink is consumed; ink on characters/weapons survives as
     ///    "spent" and re-arms once the loop physically opens — a body seal fires
     ///    again every time the emote/pose closes it.
@@ -24,12 +24,12 @@ namespace SpellyZombie
         public readonly List<SealDetector.LoopEntry> Boundary;
         public readonly List<Stroke> Payload = new List<Stroke>();
 
-        /// The runes read out of the payload at the moment of closing — this is
+        /// The runes read out of the payload at the moment of closing - this is
         /// what the spell system consumes. Recognition happens HERE, never before.
         public readonly List<RuneGlyph> Runes = new List<RuneGlyph>();
 
         readonly List<DrawNode> _loopNodes;
-        /// Ring-ordered boundary nodes — NetSync ships their positions to clients (netcode §2).
+        /// Ring-ordered boundary nodes - NetSync ships their positions to clients (netcode §2).
         public IReadOnlyList<DrawNode> LoopNodes => _loopNodes;
         readonly List<Vector2> _polygon2D;
         float[] _restGaps; // distance between each adjacent loop-node pair at activation
@@ -48,7 +48,7 @@ namespace SpellyZombie
         public float Remaining { get; private set; }
         public float Area { get; private set; }
 
-        /// Whoever drew on the loop LAST completed it and owns the cast — the
+        /// Whoever drew on the loop LAST completed it and owns the cast - the
         /// runes inside are read against THIS owner's grimoire. Close a zombie's
         /// half-drawn seal yourself and it casts with YOUR cards (and vice versa:
         /// a zombie circling your runes casts with the zombie's).
@@ -64,7 +64,7 @@ namespace SpellyZombie
                 if (e.Stroke.LastInkTime > newest) { newest = e.Stroke.LastInkTime; OwnerId = e.Stroke.OwnerId; }
 
             // rest gaps: a seal breaks when ink is PULLED APART from how it was
-            // drawn, not against a fixed distance — so a fast-drawn stroke with
+            // drawn, not against a fixed distance - so a fast-drawn stroke with
             // wide node spacing is valid and only breaks if a gap actually grows.
             _restGaps = new float[_loopNodes.Count];
             for (int i = 0; i < _loopNodes.Count; i++)
@@ -102,19 +102,19 @@ namespace SpellyZombie
             _polygon2D = GeometryUtil.ProjectToPlane(worldPts, PlaneOrigin, _u, _v);
 
             // ---- shape -> edges -> WHICH VARIANT (not how long) ----
-            // Marko Aug 6: side count picks the VARIANT of the spell, different
+            // side count picks the VARIANT of the spell, different
             // types of the same thing. Every seal produces for a flat 10s
             // regardless of shape. The old Edges x DurationPerEdge rule is gone.
             float radialCv = GeometryUtil.RadialVariation(_polygon2D);
             int corners = GeometryUtil.ClosedLoopCorners(_polygon2D);
             IsCircle = radialCv <= DrawingConfig.CircleMaxVariance && corners >= DrawingConfig.CircleMinCorners;
             Edges = IsCircle ? DrawingConfig.CircleEdges : corners;
-            // WORLD SEALS ARE CONSUMED, NOT FARMED (Marko Aug 8): "seals should
+            // WORLD SEALS ARE CONSUMED, NOT FARMED : "seals should
             // not re-emit but be consumed quickly after the spell is cast =>
             // you can't abuse the system by erasing a cast seal to re-spam the
             // spell (this is only allowed on your own body now as a wizard)."
             // A body seal keeps the full produce window and the spent/re-arm
-            // loop; everything else fires its spell and is gone in a breath —
+            // loop; everything else fires its spell and is gone in a breath -
             // cheaper to run, impossible to farm, and the ink is honestly SPENT.
             bool onBody = Boundary.Count > 0;
             foreach (var e in Boundary)
@@ -129,7 +129,7 @@ namespace SpellyZombie
                 e.Stroke.State = StrokeState.InSeal;
                 e.Stroke.SetColor(Stroke.SealColor);
             }
-            // a single-stroke seal renders as a closed ring — no floating gap
+            // a single-stroke seal renders as a closed ring - no floating gap
             if (Boundary.Count == 1)
                 Boundary[0].Stroke.SetLoop(true);
         }
@@ -155,13 +155,13 @@ namespace SpellyZombie
             // seal size, for scaling rune power by how big the rune is drawn
             float sealSize = Mathf.Max(0.01f, SealDiagonal());
 
-            // 2) segment the enclosed ink into runes BY RECOGNITION — stacked/nested
+            // 2) segment the enclosed ink into runes BY RECOGNITION - stacked/nested
             //    distinct runes stay separate, multi-line runes group as one
             foreach (var glyph in RuneGlyph.Segment(enclosed, OwnerId))
             {
                 // strength = match quality × size. RECOGNIZED means MEANINGFUL:
                 // match floors at 0.45 once past the gate (a readable rune is a
-                // working rune), and size SATURATES at normal proportions — a
+                // working rune), and size SATURATES at normal proportions - a
                 // rune ~1/3 of its seal is correct drawing, not a weak spell.
                 // (The old linear formulas gave "str 0.10": runes lit up but
                 // their effects were homeopathic.)
@@ -170,18 +170,18 @@ namespace SpellyZombie
                 float glyphSize = glyph.WorldBounds().size.magnitude;
                 glyph.SizeRatio = Mathf.Clamp01(glyphSize / sealSize);
                 float sizePower = Mathf.Lerp(DrawingConfig.MinSizePower, 1f, Mathf.Clamp01(glyph.SizeRatio * 3f));
-                // (the WRITING LEVEL never touches Strength — Marko's rule:
+                // (the WRITING LEVEL never touches Strength - the rule:
                 // "level doesn't improve the power of the rune or seal in any
                 // way, shape or form"; it's purely the recognition meter and
                 // only grimoire CORRECTIONS move it)
                 glyph.Strength = glyph.Rune != RuneType.None ? Mathf.Clamp01(match) * sizePower : 0f;
                 Runes.Add(glyph);
 
-                // INVISIBLE PROGRESSION (Marko: "as you play your character
+                // INVISIBLE PROGRESSION ("as you play your character
                 // becomes better at casting that rune naturally"): a CLEAN
                 // cast of your own quietly joins your handwriting pool, so
                 // recognition converges on how you actually draw. Throttled,
-                // sloppy-but-accepted casts never teach — and neither do
+                // sloppy-but-accepted casts never teach - and neither do
                 // DECLARED/stamped casts (their perfect score is a stamp,
                 // not a reading; re-posing a body rune must not flood the
                 // pool with the same drawing).
@@ -191,7 +191,7 @@ namespace SpellyZombie
                     && Time.time >= _nextHandLearn)
                 {
                     _nextHandLearn = Time.time + DrawingConfig.HandLearnCooldown;
-                    // QUIET: in-memory only — the file write is deferred so
+                    // QUIET: in-memory only - the file write is deferred so
                     // the cast frame never pays for the lesson
                     RuneLibrary.AddSample(glyph.Rune, RuneGlyph.RawStrokesOf(glyph.Members), quiet: true);
                 }
@@ -200,7 +200,7 @@ namespace SpellyZombie
                 {
                     Payload.Add(member);
                     member.State = StrokeState.InSeal;
-                    // BODY INK IS MARKED FOREVER (Marko: "first effect should
+                    // BODY INK IS MARKED FOREVER ("first effect should
                     // be final - drawings on body are permanent thus special,
                     // runes are already marked as to what they will be"): the
                     // first successful reading STAMPS the stroke; every
@@ -223,7 +223,7 @@ namespace SpellyZombie
             }
         }
 
-        /// Bounding diagonal of the boundary — the seal's characteristic size.
+        /// Bounding diagonal of the boundary - the seal's characteristic size.
         float SealDiagonal()
         {
             var b = new Bounds();
@@ -265,7 +265,7 @@ namespace SpellyZombie
         public bool Tick(float dt)
         {
             // integrity: the ring must stay closed. A gap breaks only if it GROWS
-            // past its drawn length by more than BreakDistance — so drawing speed
+            // past its drawn length by more than BreakDistance - so drawing speed
             // (wide node spacing) never falsely opens a seal, while ink being
             // erased or pulled apart still does.
             for (int i = 0; i < _loopNodes.Count; i++)
@@ -291,7 +291,7 @@ namespace SpellyZombie
             return true;
         }
 
-        /// The ring opened before the spell finished. Spell cancels, ink survives —
+        /// The ring opened before the spell finished. Spell cancels, ink survives -
         /// if the loop closes again (objects pushed back together) it re-activates.
         void Break(string reason)
         {
@@ -312,7 +312,7 @@ namespace SpellyZombie
         /// persistent (character/weapon) ink goes spent and re-arms when the loop opens.
         void Expire()
         {
-            // junction pairs between consecutive boundary strokes — the points where
+            // junction pairs between consecutive boundary strokes - the points where
             // the loop can physically open again. Collected before anything burns.
             var pairs = new List<(DrawNode a, DrawNode b)>();
             for (int i = 0; i < Boundary.Count; i++)
@@ -358,7 +358,7 @@ namespace SpellyZombie
             }
         }
 
-        // NO seal light — it washed out every rune effect near it. The gold
+        // NO seal light - it washed out every rune effect near it. The gold
         // ink color IS the "active seal" indicator; only the Light rune
         // actually produces light now. (The glow machinery was removed.)
     }

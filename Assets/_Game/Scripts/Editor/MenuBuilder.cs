@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Build Settings helper. (All scene-BUILDING code was deleted at Marko's
-    /// order — scenes are his, hand-made. This only registers them.)
+    /// Build Settings helper. (All scene-BUILDING code was deleted at 's
+    /// order - scenes are the, hand-made. This only registers them.)
     public static class MenuBuilder
     {
         [MenuItem("Spelly Zombie/Register Scenes In Build (Menu, Lobby, Game)")]

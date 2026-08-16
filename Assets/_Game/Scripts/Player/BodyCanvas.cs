@@ -2,25 +2,25 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// YOUR BODY IS SOMEONE ELSE'S CANVAS (Marko Aug 11: "make your body
+    /// YOUR BODY IS SOMEONE ELSE'S CANVAS ("make your body
     /// paintable by others cause it's funny").
     ///
-    /// Nothing here is new machinery — it is the zombie's paint shell worn by a
+    /// Nothing here is new machinery - it is the zombie's paint shell worn by a
     /// player, assembled from parts that already exist:
     ///   · the MOUNT is the axiom-approved one (sharedMesh at identity under
-    ///     the body renderer — CharacterRig's own accepted shell)
+    ///     the body renderer - CharacterRig's own accepted shell)
     ///   · the LAYER trick is the wall-canvas system: raycast-visible,
     ///     physics-invisible (InkCanvasLayer)
     ///   · the BODY is resolved through CharacterRig.BodySmr, never a fresh
     ///     depth-first search (the grimoire-as-body lesson)
     ///   · ink ROUTES TO THE LIMBS via the same NearestLimbSurface the
     ///     self-paint shell uses, so it rides the animation and replicates
-    ///     through the existing mixamorig body-ink path — MP parity for free
+    ///     through the existing mixamorig body-ink path - MP parity for free
     ///
     /// THE ONE TWIST: whose pen may see it. Your own pen must ignore your own
-    /// body (layer 2's whole job — a sprint-crossing forearm once won the aim),
+    /// body (layer 2's whole job - a sprint-crossing forearm once won the aim),
     /// but OTHER pens must hit it. Per machine, the LOCAL viewer's shell sits
-    /// on layer 2 and every remote player's sits on the ink-canvas layer — so
+    /// on layer 2 and every remote player's sits on the ink-canvas layer - so
     /// on your screen you can paint everyone but yourself, which is exactly
     /// the joke as ruled. Self-painting keeps its own easel (R), unchanged.
     public class BodyCanvas : MonoBehaviour
@@ -29,7 +29,7 @@ namespace SpellyZombie
 
         void Update()
         {
-            // the rig assembles over several frames — retry gently, then stop
+            // the rig assembles over several frames - retry gently, then stop
             if ((_retryIn -= Time.deltaTime) > 0f) return;
             _retryIn = 0.5f;
 

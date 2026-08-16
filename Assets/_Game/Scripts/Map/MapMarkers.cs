@@ -10,8 +10,8 @@ namespace SpellyZombie
 
     // Unknown is the fallback for anything not marked. Everything after Unknown
     // is a spell-made tier reached by transmutation (Density-up compresses a
-    // material into its stronger form: Wood→Coal→Diamond, Earth→Stone→Diamond,
-    // Metal→Gold, Flesh→Bone, Water→Slime). Appended so serialized tags keep
+    // material into its stronger form: WoodCoalDiamond, EarthStoneDiamond,
+    // MetalGold, FleshBone, WaterSlime). Appended so serialized tags keep
     // their values.
     public enum SurfaceMaterialType { Stone, Wood, Earth, Metal, Water, Flesh, Unknown, Coal, Diamond, Gold, Bone, Slime }
 
@@ -32,7 +32,7 @@ namespace SpellyZombie
     /// Where zombie waves come from (windows, alley gaps, cave mouths).
     public class ZombieEntryPoint : MonoBehaviour
     {
-        /// Live registry — spares the spawner a FindObjectsByType per spawn tick (Zombie.All pattern).
+        /// Live registry - spares the spawner a FindObjectsByType per spawn tick (Zombie.All pattern).
         public static readonly List<ZombieEntryPoint> All = new List<ZombieEntryPoint>();
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
@@ -57,7 +57,7 @@ namespace SpellyZombie
         public float BaselineTemperature = 18f;
     }
 
-    /// Ink cannot exist here — the pen refuses the surface, and (later) seals
+    /// Ink cannot exist here - the pen refuses the surface, and (later) seals
     /// touching water are destroyed. The fountain is the classic seal-killer.
     public class WaterSurface : MonoBehaviour
     {

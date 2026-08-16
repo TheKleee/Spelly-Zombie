@@ -2,17 +2,17 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// GRAMMAR v4 area effects — the lvl3 ULTIMATES and the paradox products
+    /// GRAMMAR v4 area effects - the lvl3 ULTIMATES and the paradox products
     /// (SPELL_PARTICLES.md). Each is a small self-contained field; numbers live
-    /// in DrawingConfig so Marko tunes them in one file.
+    /// in DrawingConfig so tunes them in one file.
     public static class GrammarFX
     {
         static readonly Collider[] _hits = new Collider[48];
 
         public static Collider[] ScanBuffer => _hits;
 
-        /// Shared soft-sphere visual for every field. The dome is kept FAINT —
-        /// from inside it must read as atmosphere, not a blindfold (Marko:
+        /// Shared soft-sphere visual for every field. The dome is kept FAINT -
+        /// from inside it must read as atmosphere, not a blindfold (
         /// "while inside you can't tell you're inside").
         public static Transform FieldBall(Vector3 at, float radius, Color c, MoteShade shade)
         {
@@ -27,7 +27,7 @@ namespace SpellyZombie
         }
 
         /// The BOUNDARY RING: a bright circle on the ground under a field, so
-        /// the area reads from inside and outside alike — no reading required.
+        /// the area reads from inside and outside alike - no reading required.
         public static Transform GroundRing(Transform parent, Color c)
         {
             var go = new GameObject("AreaRing");
@@ -70,7 +70,7 @@ namespace SpellyZombie
         }
 
         /// ONE fire mote (dedupe: Spell.SpawnBurst, FlameBurst and MeteorTrail
-        /// each hand-rolled this sphere — SpawnBurst even leaked a Material per
+        /// each hand-rolled this sphere - SpawnBurst even leaked a Material per
         /// mote via `new Material`; MatterFX.Get caches).
         public static GameObject FireMote(Vector3 at, float scale, float life)
         {
@@ -86,7 +86,7 @@ namespace SpellyZombie
             return f;
         }
 
-        /// A gravity-free fling of fire motes — the shared bloom look.
+        /// A gravity-free fling of fire motes - the shared bloom look.
         public static void FireBloom(Vector3 at, int count, float speed, float upKick)
         {
             for (int i = 0; i < count; i++)
@@ -99,7 +99,7 @@ namespace SpellyZombie
             }
         }
 
-        /// Spark lvl3 — FLAME BURST: flames burst across the area, once.
+        /// Spark lvl3 - FLAME BURST: flames burst across the area, once.
         public static void FlameBurst(Vector3 at, float power)
         {
             float r = DrawingConfig.UltimateRadius;
@@ -114,7 +114,7 @@ namespace SpellyZombie
                 if (c == null) continue;
                 var pl = c.GetComponent<SimpleFPSController>();
                 if (pl != null) { pl.TakeHit((pl.transform.position - at).normalized * 9f, 28f * power); continue; }
-                SpellParticle.GiveHeatTo(c, 200f * power); // combinations hit MANY times harder (Marko)
+                SpellParticle.GiveHeatTo(c, 200f * power); // combinations hit MANY times harder
                 var rb = c.attachedRigidbody;
                 if (rb != null) rb.AddForce((rb.worldCenterOfMass - at).normalized * 9f, ForceMode.VelocityChange);
             }
@@ -129,15 +129,15 @@ namespace SpellyZombie
         public float Power = 1f;
         public float Radius = 3.5f;
         public float Seconds = 5f;
-        public Color Tint;      // full-strength field colour — feeds the inside-HUD
+        public Color Tint;      // full-strength field colour - feeds the inside-HUD
 
         protected Transform Ball;
-        /// HIS FX_&lt;FieldClass&gt; skin, when he authored one (AXIOM: code must
+        /// the FX_&lt;FieldClass&gt; skin, when authored one (AXIOM: code must
         /// not build its own art inside it, and must not stomp its scale).
         [System.NonSerialized] public bool HasSkin;
         [System.NonSerialized] public Transform Skin;
         [System.NonSerialized] public Vector3 SkinBase = Vector3.one;
-        /// How his skin should scale with the field. Ball uses DIAMETER, so
+        /// How the skin should scale with the field. Ball uses DIAMETER, so
         /// the default matches the dome it replaces; fields may override.
         protected virtual Vector3 SkinShape => Vector3.one * Radius * 2f;
         Transform _ring;        // the ground boundary circle
@@ -151,7 +151,7 @@ namespace SpellyZombie
         protected virtual void ShapeBall() { if (Ball != null) Ball.localScale = Vector3.one * Radius * 2f; }
 
         /// A field whose look is carried entirely by particles turns the solid
-        /// dome off (Marko Aug 10: "the aura is ugly... keep the aura
+        /// dome off ("the aura is ugly... keep the aura
         /// invisible"). The zone, the ring and the inside-HUD all still work —
         /// only the coloured sphere goes.
         protected virtual bool ShowDome => true;
@@ -168,7 +168,7 @@ namespace SpellyZombie
         }
         protected virtual void OnExpire() { }
 
-        /// Top the clock back up — a field that keeps being fed keeps living,
+        /// Top the clock back up - a field that keeps being fed keeps living,
         /// and starts stabilising again the moment feeding stops.
         protected void Extend(float seconds)
         {
@@ -176,13 +176,13 @@ namespace SpellyZombie
             _age = 0f;
         }
 
-        /// ⛔ THE ONE PLACE A FIELD LEARNS HOW BIG ITS PARENTS WERE (Marko Aug
+        /// THE ONE PLACE A FIELD LEARNS HOW BIG ITS PARENTS WERE (
         /// 10: "if a particle has small aoe than the combined spell will have
         /// small aoe"). Every field's dome, ground ring and damage sphere all
         /// read f.Radius, so scaling it HERE makes fourteen fields inherit at
         /// once and none of them can drift apart later.
         ///
-        /// size defaults to 0, and SizeMul clamps 0 up to 1 — so every caller
+        /// size defaults to 0, and SizeMul clamps 0 up to 1 - so every caller
         /// that does not know a size (Demon.Calamity fires seven of these)
         /// behaves exactly as it does today.
         protected static T Spawn<T>(Vector3 at, float power, float radius, float seconds, Color c, MoteShade shade,
@@ -201,22 +201,22 @@ namespace SpellyZombie
             f.Ball.SetParent(go.transform, true);
             f._ring = GrammarFX.GroundRing(go.transform, c);
 
-            // MARKO'S FX OVERRIDE: a prefab named FX_<FieldClass> (FX_SnowField,
+            // the FX OVERRIDE: a prefab named FX_<FieldClass> (FX_SnowField,
             // FX_PlasmaField, FX_TornadoField, FX_HealingField…) in
-            // Resources/Custom replaces the code dome — ring + inside-HUD stay.
+            // Resources/Custom replaces the code dome - ring + inside-HUD stay.
             var skin = PrefabVault.Get("FX_" + typeof(T).Name);
             if (skin != null)
             {
                 f.Skin = Object.Instantiate(skin, go.transform, false).transform;
-                f.SkinBase = f.Skin.localScale;   // his authored size is HIS
+                f.SkinBase = f.Skin.localScale;   // the authored size is the
                 f.HasSkin = true;                 // fields must not build code art over it
                 var dome = f.Ball.GetComponent<Renderer>();
                 if (dome != null) dome.enabled = false;
             }
             else if (FxLibrary.I != null)
             {
-                // the JMO layer (Marko's mapping, Jul 22) rides the field for
-                // its whole life — his FX_<FieldClass> override still wins
+                // the JMO layer rides the field for
+                // its whole life - the FX_<FieldClass> override still wins
                 var jmo = FxLibrary.I.FieldFor(typeof(T).Name);
                 if (jmo != null) FxLibrary.Spawn(jmo, at, go.transform, seconds + 0.5f);
             }
@@ -236,7 +236,7 @@ namespace SpellyZombie
             Grow(dt);
             ShapeBall();
             if (_ring != null) _ring.localScale = Vector3.one * Radius; // grows with the field
-            // his skin grows WITH the field, scaled from what he authored
+            // the skin grows WITH the field, scaled from what authored
             // (a growing black hole used to leave a fixed-size prefab behind)
             if (Skin != null) Skin.localScale = Vector3.Scale(SkinBase, SkinShape);
 
@@ -261,11 +261,11 @@ namespace SpellyZombie
                         ?? (Component)c.GetComponent<Matter>()
                         ?? (Component)c.attachedRigidbody;
                     if (root != null && !_seenRoots.Add(root)) continue;
-                    // YOU ARE INSIDE and you can TELL (Marko's rule): standing
+                    // YOU ARE INSIDE and you can TELL : standing
                     // in any field pulses the screen edges in its colour
                     if (root is SimpleFPSController pilotRoot)
                     {
-                        // ONLY IF IT ACTUALLY TOUCHES YOU (Marko Aug 10: poison
+                        // ONLY IF IT ACTUALLY TOUCHES YOU (poison
                         // "is visually affecting them and I'm saying it
                         // shouldn't"). The edge pulse fired for every body
                         // inside regardless of whether the field would do
@@ -274,7 +274,7 @@ namespace SpellyZombie
                         // was lying.
                         if (!AffectsPlayer(pilotRoot)) continue;
                         GrammarFieldHUD.Inside(Tint);
-                        // the elected collider may be a LIMB BONE — fields test
+                        // the elected collider may be a LIMB BONE - fields test
                         // GetComponent on it, so hand them the pilot's own
                         // capsule or healing (and every player branch) misses
                         var pilotCC = pilotRoot.GetComponent<CharacterController>();
@@ -288,32 +288,32 @@ namespace SpellyZombie
         }
     }
 
-    /// Frost lvl3 — SNOW FIELD: freezing snow covers the area; ice damage,
+    /// Frost lvl3 - SNOW FIELD: freezing snow covers the area; ice damage,
     /// slow, and staying too long freezes you solid for a moment.
-    /// THE CORRUPTION, AS A ZONE (Marko Aug 10: "since all the other effects
+    /// THE CORRUPTION, AS A ZONE ("since all the other effects
     /// already work I believe if we focus on zone effects they will all always
     /// work. It's just about defining what area the zone is in").
     ///
     /// This was a bespoke GasAura with its own puff cadence, its own damage
-    /// tick and its own OverlapSphere — which is exactly how it shipped broken:
+    /// tick and its own OverlapSphere - which is exactly how it shipped broken:
     /// it queried with DefaultRaycastLayers while every player collider lives
     /// on layer 2. As a field it inherits the query that already works, the
-    /// one-body-one-tick dedupe, the ground ring, his FX_PoisonField skin hook,
+    /// one-body-one-tick dedupe, the ground ring, the FX_PoisonField skin hook,
     /// and the inside-HUD pulse that TELLS you that you are standing in it.
     ///
     /// One class covers all three uses: the cloud a zombie breathes, the bigger
     /// one a detonation leaves, and the one that CLINGS TO A BODY.
     public class PoisonField : GrammarField
     {
-        /// The body wearing this cloud. It never poisons its own host — you are
+        /// The body wearing this cloud. It never poisons its own host - you are
         /// already poisoned; what your cloud does is give it to everyone else.
         [System.NonSerialized] public Transform Wearer;
 
         static readonly Color Sick = new Color(0.55f, 0.85f, 0.25f);
 
-        /// NO SOLID SPHERE (Marko Aug 10: "the aura is ugly make it look like
+        /// NO SOLID SPHERE ("the aura is ugly make it look like
         /// the old particle effect. Keep the aura invisible"). Gas is drawn by
-        /// the CFXR poison cloud, the way it looked before this became a zone —
+        /// the CFXR poison cloud, the way it looked before this became a zone -
         /// the dome was only ever the default skin every field starts with.
         protected override bool ShowDome => false;
 
@@ -322,32 +322,40 @@ namespace SpellyZombie
         bool _firstPuff = true;
 
         /// How many poison zones exist right now. A horde must not cost a horde
-        /// of particle systems (Marko Aug 10: "what if we had 40 zombies?").
+        /// of particle systems .
         static int _liveFields;
         void OnEnable() => _liveFields++;
         void OnDisable() => _liveFields--;
 
         /// Grow() is the base class's own per-frame hook, so the cloud rides the
-        /// field's real Radius — it swells as a clinging cloud swells and thins
+        /// field's real Radius - it swells as a clinging cloud swells and thins
         /// out as the field stabilises, with no second clock to keep in sync.
         protected override void Grow(float dt)
         {
             if ((_puffIn -= dt) > 0f) return;
             if (FxLibrary.I == null) return;
 
-            // ⛔ ONE PUFF PER TICK, NEVER A BURST. FxLibrary drops everything
-            // past MaxPerFrame (8) spawns in a single frame — his own anti-lag
-            // budget — so a field asking for eight at once lost the race against
+            // a driven zombie holds its breath: the ghost must be able to see
+            // where it is going and the ink on its own ride
+            if (Wearer != null)
+            {
+                var host = Wearer.GetComponent<Zombie>();
+                if (host != null && host.Possessed) return;
+            }
+
+            // ONE PUFF PER TICK, NEVER A BURST. FxLibrary drops everything
+            // past MaxPerFrame (8) spawns in a single frame - the anti-lag
+            // budget - so a field asking for eight at once lost the race against
             // every other effect that frame and drew nothing but its ring. That
             // is why the cloud on the wizard was "once again just a circle".
             //
             // Emitted steadily instead: each puff lives PuffLife, so at this
             // cadence roughly ten are alive at once and the volume fills anyway.
-            // The count is not a dial — it falls out of life ÷ cadence.
+            // The count is not a dial - it falls out of life ÷ cadence.
             // THE CROWD PAYS FOR ITSELF. FxLibrary only POOLS 12 instances per
             // prefab and destroys the rest, so forty zombies each keeping ten
-            // clouds alive would sit in permanent Instantiate/Destroy churn —
-            // the lag his budget exists to stop. The cadence stretches as more
+            // clouds alive would sit in permanent Instantiate/Destroy churn -
+            // the lag the budget exists to stop. The cadence stretches as more
             // zones exist, so the TOTAL smoke stays roughly fixed no matter how
             // many are breathing it: one zombie is thick, a horde is a fog bank
             // made of the same number of particles.
@@ -378,8 +386,8 @@ namespace SpellyZombie
                     Mathf.Max(0.05f, Radius * DrawingConfig.PoisonFxScale);
         }
 
-        /// `ring` draws the ground circle. OFF for the gas a body carries — it
-        /// is a cloud, not a marked area — and ON for a detonation, where his
+        /// `ring` draws the ground circle. OFF for the gas a body carries - it
+        /// is a cloud, not a marked area - and ON for a detonation, where the
         /// ruling is that the circle "is fine for the explosion radius".
         public static PoisonField Open(Vector3 at, float radius, float seconds,
             Transform rideOn = null, bool ring = false)
@@ -397,7 +405,7 @@ namespace SpellyZombie
             return f;
         }
 
-        /// Corrupt ink does not choke the corrupted — and because the base asks
+        /// Corrupt ink does not choke the corrupted - and because the base asks
         /// this BEFORE the screen pulse, an acolyte gets no green edges either.
         protected override bool AffectsPlayer(SimpleFPSController p) =>
             !Sides.IsAcolytePlayer(p);
@@ -413,13 +421,13 @@ namespace SpellyZombie
             Cling(p, dt);
         }
 
-        /// IT STICKS TO YOU AND IT GROWS (his spec): "if you get poisoned it
+        /// IT STICKS TO YOU AND IT GROWS : "if you get poisoned it
         /// should appear on your head (small area) that disappears quickly but
         /// still is poisoning you... the longer you are in the poison the larger
         /// the gas on your body is and you can poison others as well with it."
         ///
         /// Because the thing clinging to you IS a PoisonField, spreading it
-        /// costs no new code — your cloud ticks on everyone else exactly the way
+        /// costs no new code - your cloud ticks on everyone else exactly the way
         /// the zombie's did on you. And it fades on its own, which is the world
         /// stabilising, same as every other field here.
         static void Cling(SimpleFPSController victim, float dt)
@@ -449,7 +457,7 @@ namespace SpellyZombie
 
         protected override void Grow(float dt)
         {
-            // ice bursts flurry across the area (Marko's JMO mapping)
+            // ice bursts flurry across the area
             _burstTick -= dt;
             if (_burstTick > 0f || FxLibrary.I == null) return;
             _burstTick = 0.9f;
@@ -460,7 +468,7 @@ namespace SpellyZombie
         protected override void Affect(Collider c, float dt)
         {
             var pl = c.GetComponent<SimpleFPSController>();
-            // snow only COOLS (Marko's derived law) — being cold does the rest
+            // snow only COOLS - being cold does the rest
             if (pl != null) { BodyState.Of(pl)?.PushTemp(-8f * Power); return; }
             var cr = c.GetComponentInParent<Creature>();
             if (cr != null)
@@ -475,7 +483,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Heat lvl3 — THE FLAME VORTEX (Marko, Aug 12, replacing the table's
+    /// Heat lvl3 - THE FLAME VORTEX (, replacing the table's
     /// flame burst: "instead of flames bursting in the area let's make it a
     /// flaming vortex, the equivalent" of the snow field). A standing fire
     /// whirl: everything inside is dragged around the axis, heated hard and
@@ -499,7 +507,7 @@ namespace SpellyZombie
         float _spin;
 
         /// One flame of the whirl: REVOLVES around the vortex axis and climbs
-        /// while it lives (Marko: "these balls don't move, they just pop in
+        /// while it lives ("these balls don't move, they just pop in
         /// and out of existence") — the fire travels the circle for real.
         class Orbiter : MonoBehaviour
         {
@@ -555,7 +563,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Light lvl3 — PLASMA: a small sun. Blinds, radiates heat, and touching
+    /// Light lvl3 - PLASMA: a small sun. Blinds, radiates heat, and touching
     /// it is a catastrophe. (Light+Light = lightning; feed the lightning more
     /// light and you have made a star.)
     public class PlasmaField : GrammarField
@@ -584,7 +592,7 @@ namespace SpellyZombie
             if (pl != null)
             {
                 var board = BodyState.Of(pl);
-                board?.PushLum(1f); // it IS a sun — the world whites out near it
+                board?.PushLum(1f); // it IS a sun - the world whites out near it
                 if (d < Radius * 1.6f)
                 {
                     board?.PushTemp(50f * Power); // touching it is still a catastrophe
@@ -608,8 +616,8 @@ namespace SpellyZombie
         }
     }
 
-    /// Dark lvl2/lvl3 — BLACK HOLE: pulls things in. The lvl3 version GROWS,
-    /// rapidly spreading until it has sucked as much as it can (Marko's rule).
+    /// Dark lvl2/lvl3 - BLACK HOLE: pulls things in. The lvl3 version GROWS,
+    /// rapidly spreading until it has sucked as much as it can .
     public class BlackHoleField : GrammarField
     {
         public bool Growing;
@@ -622,10 +630,10 @@ namespace SpellyZombie
                 DrawingConfig.UltimateSeconds * (growing ? 1.4f : 0.9f),
                 new Color(0.02f, 0.01f, 0.05f, 0.93f), MoteShade.Transparent, size);
             f.Growing = growing;
-            // a black hole you can SEE (Marko: "currently invisible") — an
+            // a black hole you can SEE — an
             // OPAQUE void core riding the Ball, so it grows with the hunger;
             // the transparent shell becomes its haze
-            if (!f.HasSkin) // AXIOM: never build code art inside HIS skin
+            if (!f.HasSkin) // AXIOM: never build code art inside the skin
             {
                 var core = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 core.name = "VoidCore";
@@ -667,7 +675,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Light+Dark paradox — WHITE HOLE: black hole strength, opposite sign.
+    /// Light+Dark paradox - WHITE HOLE: black hole strength, opposite sign.
     public class WhiteHoleField : GrammarField
     {
         public static WhiteHoleField Open(Vector3 at, float power, float size = 0f)
@@ -676,7 +684,7 @@ namespace SpellyZombie
                 new Color(1f, 1f, 0.97f, 0.75f), MoteShade.Additive, size);
             if (FxLibrary.I != null) // ignition flash; the stars ride the field
                 FxLibrary.Spawn(FxLibrary.I.Flash, at + Vector3.up * 0.8f);
-            // THE OPENING YEET (Marko: "it should yeet everything in all
+                // THE OPENING YEET ("it should yeet everything in all
             // directions around it") — one detonation the moment it ignites
             int n = Physics.OverlapSphereNonAlloc(at, f.Radius * 1.6f, GrammarFX.ScanBuffer,
                 ~0, QueryTriggerInteraction.Collide);
@@ -712,7 +720,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Glue lvl3 — TIME FREEZE: the area spreads and stops anything inside.
+    /// Glue lvl3 - TIME FREEZE: the area spreads and stops anything inside.
     public class TimeFreezeField : GrammarField
     {
         public static TimeFreezeField Open(Vector3 at, float power, float size = 0f)
@@ -727,7 +735,7 @@ namespace SpellyZombie
 
         protected override void Affect(Collider c, float dt)
         {
-            // it stops ANYTHING nearby (Marko) — wizards obey time too
+            // it stops ANYTHING nearby - wizards obey time too
             var pl = c.GetComponent<SimpleFPSController>();
             if (pl != null) { pl.StickFeet(0.7f); return; }
             var cr = c.GetComponentInParent<Creature>();
@@ -743,7 +751,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Repel lvl3 — INERTIA: nothing inside can stand in place.
+    /// Repel lvl3 - INERTIA: nothing inside can stand in place.
     public class InertiaField : GrammarField
     {
         public static InertiaField Open(Vector3 at, float power, float size = 0f)
@@ -773,11 +781,11 @@ namespace SpellyZombie
         }
     }
 
-    /// Arrow+Arrow — TORNADO (swirls, lifts, tosses out) · Y+Y — WHIRLPOOL
-    /// (swirls, drags DOWN, tosses out). Marko's vector laws, all of them:
+    /// Arrow+Arrow - TORNADO (swirls, lifts, tosses out) · Y+Y - WHIRLPOOL
+    /// (swirls, drags DOWN, tosses out). the vector laws, all of them:
     /// the storm CARRIES particles and stamps its lineage into them (spinning
     /// everything together is a Demon path), and another Arrow/Y thrown into
-    /// it STEERS it — the storm travels.
+    /// it STEERS it - the storm travels.
     public class TornadoField : GrammarField
     {
         public ulong FieldLineage;
@@ -792,12 +800,12 @@ namespace SpellyZombie
                 MoteShade.Transparent, size);
             f._down = down;
             f.FieldLineage = lineage;
-            // the storm WEARS its vectors (Marko: "visual arrows going around
+            // the storm WEARS its vectors ("visual arrows going around
             // it") — parented to the Ball, they ride its spin for free
-            if (!f.HasSkin) // AXIOM: his FX_TornadoField owns the look outright
+            if (!f.HasSkin) // AXIOM: the FX_TornadoField owns the look outright
             {
                 var vecMat = MatterFX.Get(down ? new Color(0.7f, 0.35f, 0.95f) : new Color(0.92f, 0.9f, 0.6f),
-                    MoteShade.Additive); // pull wears PURPLE (Marko), push stays gold
+                MoteShade.Additive); // pull wears PURPLE , push stays gold
                 for (int i = 0; i < 3; i++)
                 {
                     var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -813,7 +821,7 @@ namespace SpellyZombie
                 }
             }
             Juice.Whoosh(at);
-            var lib = FxLibrary.I; // wind wears trails, water wears rings (Marko's mapping)
+            var lib = FxLibrary.I; // wind wears trails, water wears rings
             if (lib != null)
                 FxLibrary.Spawn(down ? lib.Ripples : lib.WindTrails, f.transform.position, f.transform,
                     DrawingConfig.UltimateSeconds * 1.2f + 0.5f);
@@ -831,7 +839,7 @@ namespace SpellyZombie
 
         protected override void Grow(float dt)
         {
-            transform.position += _drift * dt; // steered by thrown Arrows/Ys (Marko's ruling)
+            transform.position += _drift * dt; // steered by thrown Arrows/Ys
             if (Ball != null) Ball.Rotate(0f, (_down ? -540f : 540f) * dt, 0f); // counter-spins the tornado
         }
 
@@ -840,11 +848,11 @@ namespace SpellyZombie
             Vector3 rel = c.bounds.center - transform.position;
             rel.y = 0f;
             if (rel.sqrMagnitude < 0.01f) rel = Random.insideUnitSphere;
-            // the whirlpool turns the OPPOSITE way to the tornado (Marko: the
-            // pull has its own specific direction — not the same spin re-used)
+            // the whirlpool turns the OPPOSITE way to the tornado (the
+            // pull has its own specific direction - not the same spin re-used)
             Vector3 tangent = Vector3.Cross(_down ? Vector3.down : Vector3.up, rel).normalized;
             Vector3 vertical = _down ? Vector3.down : Vector3.up;
-            Vector3 swirl = tangent * 11f + vertical * 6.5f - rel.normalized * 3f; // REAL winds (Marko: mayhem)
+            Vector3 swirl = tangent * 11f + vertical * 6.5f - rel.normalized * 3f; // REAL winds
 
             var p = c.GetComponent<SpellParticle>();
             if (p != null)
@@ -857,7 +865,7 @@ namespace SpellyZombie
                     Object.Destroy(p.gameObject);
                     return;
                 }
-                // carried — and the spin STAMPS the vector into its ancestry
+                // carried - and the spin STAMPS the vector into its ancestry
                 p.Lineage |= FieldLineage;
                 p.Pull(c.bounds.center + swirl, dt * 1.6f);
                 return;
@@ -868,8 +876,8 @@ namespace SpellyZombie
             {
                 pl.AddSpellForce(swirl * 3.2f * Power, dt);
                 var board = BodyState.Of(pl);
-                board?.PushMove((_down ? -0.5f : 0.5f) * dt); // ride it out buffed — or Y-owned
-                if (_down) // the Y-storm EATS your direction vector (Marko)
+                board?.PushMove((_down ? -0.5f : 0.5f) * dt); // ride it out buffed - or Y-owned
+                if (_down) // the Y-storm EATS your direction vector
                 {
                     Vector3 pv = pl.Velocity; pv.y = 0f;
                     pl.AddSpellForce(-pv * 1.8f, dt);
@@ -884,7 +892,7 @@ namespace SpellyZombie
                 rb.AddForce(swirl * 9f * Power, ForceMode.Acceleration);
         }
 
-        /// The storm dies the way Marko wrote it: it TOSSES everything out.
+        /// The storm dies the way wrote it: it TOSSES everything out.
         protected override void OnExpire()
         {
             Juice.Whoosh(transform.position);
@@ -908,7 +916,7 @@ namespace SpellyZombie
         }
     }
 
-    /// HeatDown + Light exotic — HEALING AREA (Marko's matrix): cold light is
+    /// HeatDown + Light exotic - HEALING AREA : cold light is
     /// MERCY, the only healing in the game. Walk in, mend over time.
     public class HealingField : GrammarField
     {
@@ -919,7 +927,7 @@ namespace SpellyZombie
                 new Color(0.85f, 1f, 0.8f, 0.4f), MoteShade.Additive, size);
             DrawingWorld.Instance?.LogEvent("cold light is MERCY, a healing ground");
             Juice.Chime(at);
-            if (FxLibrary.I != null) // the mercy ring — a runic circle on the ground
+            if (FxLibrary.I != null) // the mercy ring - a runic circle on the ground
                 FxLibrary.Spawn(FxLibrary.I.RunicAura, at + Vector3.up * 0.1f, f.transform,
                     DrawingConfig.UltimateSeconds * 1.4f + 0.5f);
             return f;
@@ -935,10 +943,10 @@ namespace SpellyZombie
         }
     }
 
-    /// Dense+Spread paradox — BARRIER (Marko's ruling): two-way ISOLATION.
+    /// Dense+Spread paradox - BARRIER : two-way ISOLATION.
     /// What's inside is protected from the environment AND cannot act on it.
     /// No particle donates through it, no combination happens inside it.
-    /// The system's insulator — and the only way to stop an accidental Demon.
+    /// The system's insulator - and the only way to stop an accidental Demon.
     public class Barrier : MonoBehaviour
     {
         float _left;
@@ -981,10 +989,10 @@ namespace SpellyZombie
         }
     }
 
-    /// "You are INSIDE something" — the screen answer (Marko: "make sure users
+    /// "You are INSIDE something" — the screen answer ("make sure users
     /// understand that they're inside, not just when they leave"). Any field
     /// standing on the local player pings this each tick; while pinged, the
-    /// screen edges glow and pulse in the field's colour. No words — the
+    /// screen edges glow and pulse in the field's colour. No words - the
     /// colour IS the message (localization rule: teach via images).
     public class GrammarFieldHUD : MonoBehaviour
     {
@@ -1001,7 +1009,7 @@ namespace SpellyZombie
                 _i = go.AddComponent<GrammarFieldHUD>();
             }
             _i._color = c;
-            _i._until = Time.time + 0.55f; // outlives one tick — no flicker
+            _i._until = Time.time + 0.55f; // outlives one tick - no flicker
         }
 
         void OnGUI()
@@ -1011,7 +1019,7 @@ namespace SpellyZombie
             float w = Screen.width, h = Screen.height;
             var c = _color;
 
-            // soft full-screen wash — presence, not blindness
+            // soft full-screen wash - presence, not blindness
             GUI.color = new Color(c.r, c.g, c.b, 0.05f + 0.03f * pulse);
             GUI.DrawTexture(new Rect(0f, 0f, w, h), Texture2D.whiteTexture);
 

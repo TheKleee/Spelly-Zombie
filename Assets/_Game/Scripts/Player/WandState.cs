@@ -2,8 +2,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE WAND TETHER (Phase 1 — Marko's spine): your wand IS your ink vessel.
-    /// Drawing wears it down, and it does NOT passively refill — the CAULDRON
+    /// THE WAND TETHER (Phase 1 - the spine): your wand IS your ink vessel.
+    /// Drawing wears it down, and it does NOT passively refill - the CAULDRON
     /// is the only well. Run it dry and the wand DISSOLVES after a short grace,
     /// leaving you WANDLESS: you can't draw (and, Phase 4, zombies stop fearing
     /// you). Refill at a cauldron to reform it. This is what pulls everyone
@@ -14,12 +14,12 @@ namespace SpellyZombie
     /// lands, this replaces the run-gated ink spend and kills passive regen.
     public class WandState : MonoBehaviour
     {
-        /// Drawing wears the wand down. A KNOB now, not a const — his "quickly
+        /// Drawing wears the wand down. A KNOB now, not a const — the "quickly
         /// gets used up when drawing" has to be tunable from sz_tuning.json, and
-        /// as a const it was the one drain in the game he could not reach.
+        /// as a const it was the one drain in the game could not reach.
         public static float DrainPerSec => DrawingConfig.WandDrainPerSec;
-        public const float DissolveGrace = 6f;  // empty this long → wandless
-        public const float ReformAt = 4f;       // refilled past this → wand returns
+        public const float DissolveGrace = 6f;  // empty this long  wandless
+        public const float ReformAt = 4f;       // refilled past this  wand returns
 
         PlayerInk _ink;
         SimpleFPSController _pilot;
@@ -29,7 +29,7 @@ namespace SpellyZombie
         /// Phase 4's fear/attack system will read this ("armed = has wand").
         public bool HasWand { get; private set; } = true;
 
-        /// The LOCAL player can draw only with ink in hand — SurfaceDrawer gates
+        /// The LOCAL player can draw only with ink in hand - SurfaceDrawer gates
         /// on this. Defaults true so scenes with no WandState (lobby, studio)
         /// keep free practice-drawing.
         public static bool LocalCanDraw = true;
@@ -42,16 +42,16 @@ namespace SpellyZombie
         }
 
         // leaving the tether behind (a scene with no WandState) restores free
-        // drawing — the static must never strand the lobby/studio pen
+        // drawing - the static must never strand the lobby/studio pen
         void OnDisable() => LocalCanDraw = true;
 
         void Update()
         {
             if (_ink == null) return;
             float dt = Time.deltaTime;
-            bool local = _pilot != null && _pilot.IsLocalViewer; // cached — no per-frame camera scan
+            bool local = _pilot != null && _pilot.IsLocalViewer; // cached - no per-frame camera scan
 
-            // drawing wears the wand (use it → lose it) — local pen only
+            // drawing wears the wand (use it  lose it) - local pen only
             if (local && HasWand && SurfaceDrawer.IsPenActive)
                 _ink.Ink = Mathf.Max(0f, _ink.Ink - DrainPerSec * dt);
 
@@ -76,10 +76,10 @@ namespace SpellyZombie
                 DrawingWorld.Instance?.LogEvent("the ink reforms your wand");
             }
 
-            // THE POUR IS TOO STRONG TO DRAW THROUGH (Marko Aug 11, his own
+            // THE POUR IS TOO STRONG TO DRAW THROUGH (, the
             // question answered YES): inside the pot's close radius the refill
-            // is a firehose, so the pen is refused entirely — walk to the pot
-            // to DRINK, step away to FIGHT. This is the orbit he already
+            // is a firehose, so the pen is refused entirely - walk to the pot
+            // to DRINK, step away to FIGHT. This is the orbit already
             // designed ("empty → drift in, full → drift out") made physical,
             // and it kills pot-camping as a firing position for free. Only a
             // pouring pot blocks: a green, closed or dry one pours nothing.
@@ -100,7 +100,7 @@ namespace SpellyZombie
             if (local) LocalCanDraw = HasWand && _ink.Ink > 0.5f && !hosed;
         }
 
-        // NO UI BAR (Marko: "we don't need any UI - the ink is always visibly
+        // NO UI BAR ("we don't need any UI - the ink is always visibly
         // decaying, cauldron or wand"). The wand ITSELF is the gauge now:
         // WandInk shrinks it with the ink and disintegrates it when wandless.
     }

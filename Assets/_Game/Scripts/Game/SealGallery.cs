@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Per-round record of every seal cast (projected ink points + label) — the
+    /// Per-round record of every seal cast (projected ink points + label) - the
     /// SealAutopsy replay reads it; the thumbnail gallery display was cut.
     public static class SealGallery
     {
@@ -46,7 +46,7 @@ namespace SpellyZombie
                     runes.Add(ProjectStroke(m, origin, right, up));
             }
 
-            // degenerate (no points at all) → nothing worth replaying
+            // degenerate (no points at all)  nothing worth replaying
             Vector2 min = new Vector2(float.MaxValue, float.MaxValue);
             Vector2 max = new Vector2(float.MinValue, float.MinValue);
             void Grow(List<List<Vector2>> set)

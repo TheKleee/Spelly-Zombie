@@ -34,17 +34,26 @@ namespace SpellyZombie
                 _canTint = true;
             }
             _dmg = GetComponent<Damageable>();
-            // cached once (cache-once law) — creatures wear their own flames
+            // cached once (cache-once law) - creatures wear their own flames
             _creatureLimb = GetComponentInParent<Creature>() != null;
         }
 
-        /// delta is raw heat energy; heavy/high-capacity materials change slower.
-        public void AddHeat(float delta) => Temperature += delta / Mathf.Max(0.25f, HeatCapacity);
+        /// delta is raw heat energy; heavy/high-capacity materials change
+        /// slower. Clamped: no dose can bank an hour of stored inferno.
+        public void AddHeat(float delta) => Temperature = Mathf.Clamp(
+            Temperature + delta / Mathf.Max(0.25f, HeatCapacity), -320f, 900f);
 
         void Update()
         {
             float dt = Time.deltaTime;
-            Temperature = Mathf.MoveTowards(Temperature, Ambient, DrawingConfig.AmbientDriftPerSec * dt);
+            // LAW 7 WITH TEETH ("the world determines the baseline
+            // where all naturally falls towards in time" — a meteor-baked
+            // object sat ablaze for MINUTES on the flat 6°/s crawl): cooling
+            // is PROPORTIONAL. The further from ambient, the faster the fall:
+            // infernos burn themselves out, a warm mug lingers.
+            float drift = DrawingConfig.AmbientDriftPerSec
+                + Mathf.Abs(Temperature - Ambient) * DrawingConfig.AmbientDriftFactor;
+            Temperature = Mathf.MoveTowards(Temperature, Ambient, drift * dt);
 
             if (_canTint)
             {
@@ -56,7 +65,7 @@ namespace SpellyZombie
                 _rend.SetPropertyBlock(_mpb);
             }
 
-            // one late look — GiveHeat adds the Damageable right AFTER this
+            // one late look - GiveHeat adds the Damageable right AFTER this
             // Thermal, so Awake missed it; re-probing every frame violated the
             // cache-once law (the null was never remembered)
             if (_dmg == null && !_dmgSearched)
@@ -72,7 +81,7 @@ namespace SpellyZombie
                     _dmg.TakeDamage(DrawingConfig.FreezeDamagePerSec * dt, "freezing");
             }
 
-            // burning WOOD visibly burns (cartoon flames) — creatures have
+            // burning WOOD visibly burns (cartoon flames) - creatures have
             // their own flame system, so they're skipped here
             bool ablaze = Temperature > DrawingConfig.BurnThreshold;
             if (ablaze && _flames == null && !_creatureLimb)
@@ -82,7 +91,7 @@ namespace SpellyZombie
                 {
                     _flames = Object.Instantiate(lib.Fire, transform);
                     _flames.transform.localPosition = Vector3.zero;
-                    // the flame at ITS authored size (Marko: "why is the fire
+                    // the flame at ITS authored size ("why is the fire
                     // so large?") — parenting inherits the object's scale, so
                     // a burning HOUSE was wearing house-sized flames. Undo it.
                     var ls = transform.lossyScale;

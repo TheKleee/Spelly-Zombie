@@ -3,7 +3,7 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// A single ink point stuck to a surface. Parented to whatever it was drawn on,
-    /// so it rides moving objects — seals form and break from live node positions.
+    /// so it rides moving objects - seals form and break from live node positions.
     /// No collider: pen raycasts pass straight through existing ink.
     public class DrawNode : MonoBehaviour
     {
@@ -13,13 +13,13 @@ namespace SpellyZombie
         /// Lasso split hands the tail nodes to a freshly created stroke.
         internal void SetStroke(Stroke stroke) => Stroke = stroke;
 
-        /// The surface normal at this node — LIVE: it turns with the surface.
+        /// The surface normal at this node - LIVE: it turns with the surface.
         public Vector3 SurfaceNormal => SurfaceDelta * _normalAtDraw;
 
         /// How this ink's surface has ROTATED since the ink was drawn. Ink on
         /// moving carriers (a tablet riding the camera, a posed body, a turned
-        /// zombie) takes its reference frame WITH it — a rune must read the
-        /// same no matter where its carrier now faces (Marko's consistency
+        /// zombie) takes its reference frame WITH it - a rune must read the
+        /// same no matter where its carrier now faces (the consistency
         /// rule: your orientation in the world never changes what a drawing
         /// is). Static world ink: identity, exactly the old behavior.
         public Quaternion SurfaceDelta =>
@@ -42,7 +42,7 @@ namespace SpellyZombie
         }
 
         /// True when the surface is a character or weapon (PersistentInkSurface in
-        /// the parent chain) — such ink is never consumed by spell resolution.
+        /// the parent chain) - such ink is never consumed by spell resolution.
         public bool OnPersistentSurface { get; private set; }
 
         public static DrawNode Create(Stroke stroke, int index, Vector3 position, Vector3 normal, Transform surface)
@@ -66,7 +66,7 @@ namespace SpellyZombie
 
         void OnDestroy()
         {
-            // plain field write only — safe during scene teardown
+            // plain field write only - safe during scene teardown
             Stroke?.MarkDirty();
         }
     }

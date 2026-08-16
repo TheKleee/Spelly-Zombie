@@ -3,15 +3,15 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// PHASE 1 TEST SCENE (Marko: "we'll test it in a separate scene"): the
-    /// wand tether in isolation — draw to drain the wand, watch it dissolve,
+    /// PHASE 1 TEST SCENE : the
+    /// wand tether in isolation - draw to drain the wand, watch it dissolve,
     /// refill at the cauldron to reform it. No RoundDirector, so nothing
     /// drains or regens except the WandState itself and the cauldron.
     ///
-    /// Build into a FRESH empty scene (File → New Scene), then press Play.
-    ///   • left-click to draw on the floor/wall → the wand-ink bar drops
+    /// Build into a FRESH empty scene (File  New Scene), then press Play.
+    /// • left-click to draw on the floor/wall  the wand-ink bar drops
     ///   • let it hit empty → "WAND DRYING" → after the grace → WANDLESS (can't draw)
-    ///   • walk onto the cauldron → it refills you → the wand reforms
+    /// • walk onto the cauldron  it refills you  the wand reforms
     public static class WandTestBuilder
     {
         [MenuItem("Spelly Zombie/Test/Build Wand Tether Test (empty scene)")]
@@ -41,7 +41,7 @@ namespace SpellyZombie
 
             var lit = Shader.Find("Universal Render Pipeline/Lit");
 
-            // floor — one big drawable stone surface
+            // floor - one big drawable stone surface
             var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
             floor.name = "Floor";
             floor.transform.SetParent(root, false);
@@ -60,7 +60,7 @@ namespace SpellyZombie
                 new Material(lit) { color = new Color(0.7f, 0.68f, 0.64f) };
             wall.AddComponent<SurfaceMaterialTag>().Material = SurfaceMaterialType.Stone;
 
-            // the CAULDRON — pre-filled so refill works instantly. NO ignition:
+            // the CAULDRON - pre-filled so refill works instantly. NO ignition:
             // heating is cut (Jul 25), and the old 400° start made the pot
             // burn-damage ITSELF to death, which killed the whole refill loop
             // (the "wand not working" bug).
@@ -81,7 +81,7 @@ namespace SpellyZombie
                 ore.AddComponent<InkRuneStone>();
             }
 
-            // the player — reuse the sandbox bean, then bolt on the tether
+            // the player - reuse the sandbox bean, then bolt on the tether
             TestSandboxBuilder.BuildBeanPlayer(root);
             var player = GameObject.Find("SZ_Player");
             if (player != null)

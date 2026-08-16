@@ -2,11 +2,11 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Chemistry for PAINTED terrain: Marko paints the ground with terrain
+    /// Chemistry for PAINTED terrain: paints the ground with terrain
     /// layers; this tells the spell system what each painted patch is made of.
     /// Put it on the Terrain and fill LayerMaterials in the same order as the
-    /// terrain's paint layers — e.g. layer 0 grass → Earth, layer 1
-    /// cobblestone → Stone, layer 2 dirt path → Earth. A seal drawn on the
+    /// terrain's paint layers - e.g. layer 0 grass  Earth, layer 1
+    /// cobblestone  Stone, layer 2 dirt path  Earth. A seal drawn on the
     /// ground resolves its surface through the DOMINANT painted layer beneath
     /// it, so State runes conjure stone on the plaza and mud on the meadow.
     [RequireComponent(typeof(Terrain))]

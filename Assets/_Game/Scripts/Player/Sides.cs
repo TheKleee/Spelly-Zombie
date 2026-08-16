@@ -19,7 +19,7 @@ namespace SpellyZombie
     /// Per-player side, keyed by owner id exactly like Grimoire's rune tables, so
     /// there is one identity scheme in the project rather than two.
     ///
-    /// DELIBERATELY NOT ON SimpleFPSController: that file is Marko's and off
+    /// DELIBERATELY NOT ON SimpleFPSController: that file is the and off
     /// limits. Keeping the side in its own registry also means anything can ask
     /// about any player without holding a reference to them, which is what the
     /// zombies, the cauldron and the HUD all need.
@@ -27,6 +27,12 @@ namespace SpellyZombie
     {
         /// Same id Grimoire uses, so a player's runes and their side always agree.
         public static int LocalPlayerId => Grimoire.LocalPlayerId;
+
+        /// Wizards are tankier than acolytes. Tune in sz_tuning.json.
+        public static float MaxHealthFor(int owner) =>
+            Of(owner) == Side.Acolyte
+                ? DrawingConfig.AcolyteMaxHealth
+                : DrawingConfig.WizardMaxHealth;
 
         static readonly Dictionary<int, Side> _byOwner = new Dictionary<int, Side>();
 
@@ -62,7 +68,7 @@ namespace SpellyZombie
         ///
         /// Only the local player can be resolved today: the owner id lives in
         /// Grimoire and nothing exposes a per-controller id, and SimpleFPSController
-        /// is Marko's file. Anyone unresolved counts as a WIZARD, which is the safe
+        /// is the file. Anyone unresolved counts as a WIZARD, which is the safe
         /// default: a zombie still hunts them, so the worst case is the old
         /// behaviour rather than a zombie standing around ignoring an enemy.
         /// When multiplayer gets tested this is the one seam to fill in.

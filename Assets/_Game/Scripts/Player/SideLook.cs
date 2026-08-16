@@ -6,7 +6,7 @@ namespace SpellyZombie
     /// WHAT CHANGING SIDES LOOKS LIKE. `Sides` records which team you are on;
     /// this is the only thing that makes it visible.
     ///
-    /// Marko's calls, in order of how much they matter:
+    /// the calls, in order of how much they matter:
     ///   - THE WAND IS THE IDENTITY SIGNAL. Green means corrupt, and it is the
     ///     one indicator that can also show a HALF-turned wizard later, which a
     ///     model swap never could.
@@ -18,7 +18,7 @@ namespace SpellyZombie
     /// Tints through a MaterialPropertyBlock rather than touching `.material`,
     /// which would instantiate a copy per player and quietly break batching.
     /// Reverting is therefore exact: clear the block and the original look is
-    /// back, whatever his art was.
+    /// back, whatever the art was.
     public class SideLook : MonoBehaviour
     {
         [Tooltip("How strongly an acolyte's robe takes the corrupt green. The WAND goes " +
@@ -93,15 +93,15 @@ namespace SpellyZombie
         }
 
         /// Cache the body's renderers once. THE ROBE IS NOT EVERYTHING YOU CARRY:
-        /// the wand is the signal (tinted fully, above) and the grimoire is his
+        /// the wand is the signal (tinted fully, above) and the grimoire is the
         /// art, so neither is robe.
         ///
-        /// AXIOM (Marko Aug 7, "why is grimoire from acolyte green? It looks
+        /// AXIOM (, "why is grimoire from acolyte green? It looks
         /// strange"): this used to exclude them by SOCKET LOOKUP, which silently
         /// stopped working on a baked player. Runtime-built props did not exist
         /// yet the first time this ran, so they were never collected. A BAKED
         /// prefab carries its book and wand from frame one, but the sockets do
-        /// not resolve until the rig's first LateUpdate — so the lookup was
+        /// not resolve until the rig's first LateUpdate - so the lookup was
         /// still null here and both got cached as body. The wand suffered too:
         /// the robe pass ran after the wand pass and diluted its full green
         /// down to a 45% mix.
@@ -120,7 +120,7 @@ namespace SpellyZombie
             }
         }
 
-        /// Held or worn by another system — not skin, not robe.
+        /// Held or worn by another system - not skin, not robe.
         bool IsCarried(Transform t)
         {
             for (var walk = t; walk != null && walk != transform; walk = walk.parent)
@@ -131,7 +131,7 @@ namespace SpellyZombie
             return false;
         }
 
-        /// `colour == null` clears the override and puts his art back exactly.
+        /// `colour == null` clears the override and puts the art back exactly.
         readonly System.Collections.Generic.HashSet<Renderer> _mine =
             new System.Collections.Generic.HashSet<Renderer>();
 

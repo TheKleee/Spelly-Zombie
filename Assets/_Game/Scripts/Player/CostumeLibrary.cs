@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// WEAPON SKINS ONLY (legacy costume duty retired — costumes live in the
+    /// WEAPON SKINS ONLY (legacy costume duty retired - costumes live in the
     /// three SocketWardrobe catalogs: SZ_WardrobePlayer / Zombie / Demon).
     /// Wired by the character wizard from Assets/_Game/Prefabs/Weapons.
     /// NAMING IS THE API: "Weapon_<Key>" — Weapon_Wand, Weapon_Grimoire,
@@ -11,7 +11,7 @@ namespace SpellyZombie
     /// BLENDER PIVOT CONVENTION (all weapons share it): pivot at the GRIP
     /// point, +Z along the weapon away from the holder, +Y up, real meters.
     /// Weapon skins may contain children named after functional parts
-    /// (Slide / Strip / Bridge / Plate / Grip / Ink) — those REPLACE the
+    /// (Slide / Strip / Bridge / Plate / Grip / Ink) - those REPLACE the
     /// primitive parts including drawable ink surfaces and moving-part duties.
     public class CostumeLibrary : ScriptableObject
     {

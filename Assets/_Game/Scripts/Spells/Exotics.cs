@@ -2,19 +2,19 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// GRAMMAR v4 P3 — the EXOTICS (Marko's cross matrix): authored products
+    /// GRAMMAR v4 P3 - the EXOTICS : authored products
     /// for specific essence×behavior pairs, dispatched from the exotics table.
     /// Every entity here is deliberately small; the grammar carries the rest.
     public static class Exotics
     {
         /// One doorway from the particle law: two particles combined into an
-        /// exotic — spawn its product and return the thing the runes should
+        /// exotic - spawn its product and return the thing the runes should
         /// WAIT on (sustain law). Null = instantaneous, runes re-arm at once.
         public static Object Cast(RuneGrammar.ExoticKind kind, SpellParticle a, SpellParticle b,
             Vector3 at, float power)
         {
             // BOTH PARENTS DECIDE HOW BIG THIS IS. Cast has always been handed
-            // a and b and never read them — so a fusion of two big runes made
+            // a and b and never read them - so a fusion of two big runes made
             // exactly the same exotic as two of the smallest ones.
             float size = a != null && b != null
                 ? SpellParticle.FuseSize(a.SrcSize, b.SrcSize)
@@ -50,14 +50,14 @@ namespace SpellyZombie
         }
     }
 
-    /// HeatUp + Light — LIGHT STRIKE (renamed Jul 22, Marko: Valve owns
+    /// HeatUp + Light - LIGHT STRIKE (renamed Jul 22, Valve owns
     /// "Sun Strike" territory and we ship on Steam): a telegraphed ring, a
     /// heartbeat to dodge, then the sky's judgment on that exact spot.
     public class LightStrike : MonoBehaviour
     {
         public float Power = 1f;
         const float ChannelSeconds = 1.7f;
-        // scaled by the fusion that made it (Marko Aug 10) - an instance
+        // scaled by the fusion that made it - an instance
         // value now, not a const, because two big runes must strike wider
         float BlastRadius = 2.4f;
         float _age;
@@ -94,7 +94,7 @@ namespace SpellyZombie
             if (_glow != null) _glow.intensity = Mathf.Lerp(0.5f, 9f, _age / ChannelSeconds);
             if (_age < ChannelSeconds) return;
 
-            // THE STRIKE — a column of sun on whoever stayed
+            // THE STRIKE - a column of sun on whoever stayed
             Juice.Boom(transform.position, 1f);
             ZombieBrain.ScareVisible(transform.position, 18f, 6f);
             int n = Physics.OverlapSphereNonAlloc(transform.position + Vector3.up * 0.8f, BlastRadius,
@@ -116,8 +116,8 @@ namespace SpellyZombie
         }
     }
 
-    /// HeatUp + Darkness — DARK FLAMES: near-black fire that hunts the
-    /// nearest MOVING thing (anything that moves — even an object).
+    /// HeatUp + Darkness - DARK FLAMES: near-black fire that hunts the
+    /// nearest MOVING thing (anything that moves - even an object).
     public class DarkFlame : MonoBehaviour
     {
         public float Power = 1f;
@@ -154,8 +154,8 @@ namespace SpellyZombie
                 float best = 14f * 14f;
                 _prey = Targets.Nearest(transform.position, ref best,
                     includePlayers: true, movingOnly: true); // moving zombies + wizards
-                // "anything that moves - EVEN AN OBJECT" (Marko): rolling
-                // crates, thrown ores, tumbling matter — all legitimate prey
+                    // "anything that moves - EVEN AN OBJECT" : rolling
+                // crates, thrown ores, tumbling matter - all legitimate prey
                 int n = Physics.OverlapSphereNonAlloc(transform.position, 14f,
                     GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
                 for (int i = 0; i < n; i++)
@@ -180,7 +180,7 @@ namespace SpellyZombie
         }
     }
 
-    /// HeatUp + Sticky — STICKY LAVA: a patch that slows and burns whoever
+    /// HeatUp + Sticky - STICKY LAVA: a patch that slows and burns whoever
     /// wades through it.
     public class StickyLavaField : GrammarField
     {
@@ -200,7 +200,7 @@ namespace SpellyZombie
             if (pl != null)
             {
                 var board = BodyState.Of(pl);
-                board?.PushGrip(0.85f * Power); // the tar GRIPS — grip does the slowing
+                board?.PushGrip(0.85f * Power); // the tar GRIPS - grip does the slowing
                 board?.PushTemp(9f * Power);    // and it burns, via the band
                 return;
             }
@@ -209,7 +209,7 @@ namespace SpellyZombie
         }
     }
 
-    /// HeatDown + Sticky — FROST GLUE (Marko Jul 22, the blade's replacement:
+    /// HeatDown + Sticky - FROST GLUE (, the blade's replacement:
     /// "a glue that freezes... sticky lava is just a glue that burns - chill
     /// and heat can have the same logic"): a patch that grips and CHILLS.
     /// Whatever stays stuck is freezing toward the ice-block.
@@ -231,7 +231,7 @@ namespace SpellyZombie
             if (pl != null)
             {
                 var board = BodyState.Of(pl);
-                board?.PushGrip(0.85f * Power); // the frost GRIPS — grip does the slowing
+                board?.PushGrip(0.85f * Power); // the frost GRIPS - grip does the slowing
                 board?.PushTemp(-9f * Power);   // and it bites cold, via the band
                 return;
             }
@@ -240,8 +240,8 @@ namespace SpellyZombie
         }
     }
 
-    /// Fire bolts / ice bolts — a volley with NO targeting: they fly where
-    /// they fly (Marko: "randomly flying off, not looking for a target").
+    /// Fire bolts / ice bolts - a volley with NO targeting: they fly where
+    /// they fly .
     public class ElementBolt : MonoBehaviour
     {
         public bool Hot = true;
@@ -294,7 +294,7 @@ namespace SpellyZombie
     }
 
 
-    /// HeatDown + Darkness — ABSOLUTE ZERO: everything inside freezes. Now.
+    /// HeatDown + Darkness - ABSOLUTE ZERO: everything inside freezes. Now.
     public class AbsoluteZeroField : GrammarField
     {
         public static AbsoluteZeroField Open(Vector3 at, float power, float size = 0f)
@@ -313,7 +313,7 @@ namespace SpellyZombie
             if (pl != null)
             {
                 var board = BodyState.Of(pl);
-                board?.PushTemp(-20f * Power); // races toward frozen-solid — the band and the ice do the rest
+                board?.PushTemp(-20f * Power); // races toward frozen-solid - the band and the ice do the rest
                 board?.PushLum(-0.6f);         // the dark of deep cold
                 return;
             }
@@ -321,7 +321,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Darkness + Dense — DARK MATTER: slow, heavy, deletes magic on contact
+    /// Darkness + Dense - DARK MATTER: slow, heavy, deletes magic on contact
     /// and hits like a falling star when it finally arrives.
     public class DarkMatterMote : MonoBehaviour
     {
@@ -378,7 +378,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Light + Sticky — STICKY LIGHT: stands perfectly still, holds what
+    /// Light + Sticky - STICKY LIGHT: stands perfectly still, holds what
     /// touches it, and zombies CANNOT resist coming to look (the lure).
     public class StickyLightMote : MonoBehaviour
     {
@@ -418,7 +418,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Light + Slick — SLICK LIGHT: an uncatchable glare ricocheting through
+    /// Light + Slick - SLICK LIGHT: an uncatchable glare ricocheting through
     /// the dark, blinding and bowling over whatever it clips.
     public class SlickLightMote : MonoBehaviour
     {
@@ -459,9 +459,9 @@ namespace SpellyZombie
         }
     }
 
-    /// Light + Dense — MULTIPLICATION: whatever magic it touches, there is
+    /// Light + Dense - MULTIPLICATION: whatever magic it touches, there is
     /// suddenly MORE of. It ignores its own kind (no infinite mirrors), and
-    /// yes — it can clone a zombie. Marko asked for mayhem.
+    /// yes - it can clone a zombie. asked for mayhem.
     public class MultiplicationMote : MonoBehaviour
     {
         float _age, _cooldown;
@@ -517,7 +517,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Slick + Dense — the TELEPORT PAIR: two linked motes fly apart; touch
+    /// Slick + Dense - the TELEPORT PAIR: two linked motes fly apart; touch
     /// one, arrive at the other. Doors are a suggestion now.
     public class TeleportMote : MonoBehaviour
     {

@@ -2,19 +2,19 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// SPELL-BORN RUBBLE IS TEMPORARY (Marko Aug 9: "debris should also break
+    /// SPELL-BORN RUBBLE IS TEMPORARY ("debris should also break
     /// apart in time. The overall spell effect should not last forever") and
-    /// it NEVER DEFORMS — a hard hit pops it into SMALLER debris instead
+    /// it NEVER DEFORMS - a hard hit pops it into SMALLER debris instead
     /// ("It should pop up more debris"), down to dust that simply expires.
     /// Merged debris keeps whichever body survives the merge, so the grown
-    /// stone he tossed stays covered: strike it and it shatters again.
+    /// stone tossed stays covered: strike it and it shatters again.
     public class SpellDebris : MonoBehaviour
     {
         SurfaceMaterialType _mat;
         MatterPhase _phase;
         float _size;
         float _life;
-        float _grace = 0.8f; // let the scatter LAND first — pops come later
+        float _grace = 0.8f; // let the scatter LAND first - pops come later
 
         public void Init(SurfaceMaterialType mat, MatterPhase phase, float size)
         {

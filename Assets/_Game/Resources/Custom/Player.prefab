@@ -447,6 +447,7 @@ GameObject:
   - component: {fileID: 2142871708808399578}
   - component: {fileID: 5782538154610294742}
   - component: {fileID: 642718068712635376}
+  - component: {fileID: 5286095120963518813}
   m_Layer: 2
   m_Name: Player
   m_TagString: Untagged
@@ -819,6 +820,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SideLook
   BodyTint: 0.45
+--- !u!114 &5286095120963518813
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 676864338733702432}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf73f200ea114804d8606831b2b13528, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.GhostState
+  GhostPrefab: {fileID: 2291259744126480636, guid: d42990d4f601507468326a1430233836, type: 3}
+  HomeRange: 2.5
+  LobbySeconds: 3
+  GhostSpeed: 6
+  ForwardOnly: 0
 --- !u!1 &874462140526772961
 GameObject:
   m_ObjectHideFlags: 0

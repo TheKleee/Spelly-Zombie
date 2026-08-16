@@ -3,21 +3,21 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// MAKE YOUR SCENERY BREAKABLE — in bulk, without giving up a single
-    /// decision (AXIOM, Marko Jul 25: "I create trees and colliders and I
+    /// MAKE YOUR SCENERY BREAKABLE - in bulk, without giving up a single
+    /// decision (AXIOM, "I create trees and colliders and I
     /// decide what log prefabs will look like").
     ///
-    /// Select your trees/rocks (or their parent) → run the menu item. It adds
+    /// Select your trees/rocks (or their parent)  run the menu item. It adds
     /// ONLY what is missing:
     ///   · Damageable (HP scaled to the object's size, if it has none)
-    ///   · Breakable  (with EMPTY prefab slots — you fill in your logs and FX)
+    ///   · Breakable  (with EMPTY prefab slots - you fill in your logs and FX)
     ///   · SurfaceMaterialTag (guessed from the name, only if absent)
     /// It NEVER adds or replaces a collider, never touches your materials,
     /// never re-tags something you already tagged, and never overwrites HP or
     /// prefab slots you have already set.
     ///
     /// PERFORMANCE: nothing it adds has an Update. A forest costs nothing
-    /// until something breaks. It warns about the two things that DO cost —
+    /// until something breaks. It warns about the two things that DO cost -
     /// mesh colliders and pre-attached Thermal.
     public static class SceneryTools
     {
@@ -36,7 +36,7 @@ namespace SpellyZombie
             foreach (var root in roots)
                 foreach (var rend in root.GetComponentsInChildren<MeshRenderer>(true))
                 {
-                    // the breakable unit is the object that owns a collider —
+                    // the breakable unit is the object that owns a collider -
                     // YOUR hierarchy decides that, not this tool
                     var go = rend.gameObject;
                     if (go.GetComponentInParent<Damageable>() != null

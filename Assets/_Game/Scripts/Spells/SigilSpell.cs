@@ -5,10 +5,10 @@ namespace SpellyZombie
     // NOTE: the sigil×sign combo-TABLE engine that lived here was removed after
     // the A/B verdict (July 2026): it read as random; the physics-rune engine
     // won, and named combinations now live in ComboBook. What remains is the
-    // Chicken (parked BY RULING — future Summon combo).
+    // Chicken (parked BY RULING - future Summon combo).
 
     /// A tiny white bean with googly eyes that seeks the nearest zombie and
-    /// pecks it. Not currently spawned by anything — waiting for its combo.
+    /// pecks it. Not currently spawned by anything - waiting for its combo.
     public class Chicken : MonoBehaviour
     {
         Rigidbody _rb;

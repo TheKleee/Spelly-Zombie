@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Marko's prefab tool: SELECT anything in a scene → it becomes a prefab
+    /// the prefab tool: SELECT anything in a scene it becomes a prefab
     /// in _Game/Prefabs, exactly as it looks. Scene-only materials (like the
     /// builder's *_SZ twins) are saved into _Game/Prefabs/Materials first, so
     /// the prefab carries its true look into ANY scene. The scene object

@@ -3,9 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// PIECE FACTORY for PrefabExporter — watchtowers, sky islands, crate
-    /// stacks, gravestones. (All map-BUILDING code was deleted at Marko's
-    /// order — he composes maps by hand from the exported prefabs.)
+    /// PIECE FACTORY for PrefabExporter - watchtowers, sky islands, crate
+    /// stacks, gravestones. (All map-BUILDING code was deleted at 's
+    /// order - composes maps by hand from the exported prefabs.)
     public static class GameMapBuilder
     {
         static Transform _root;

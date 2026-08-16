@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE LOBBY REBUILDS ITSELF (Marko Aug 10: "objects to spawn after being
-    /// destroyed — cause we need to allow acolytes to scan and people to test
+    /// THE LOBBY REBUILDS ITSELF ("objects to spawn after being
+    /// destroyed - cause we need to allow acolytes to scan and people to test
     /// spells out... we can't do that in leveled lobby map").
     ///
     /// The lobby is the practice ground, so it has to survive being practised
@@ -15,8 +15,8 @@ namespace SpellyZombie
     /// IT HIDES RATHER THAN DESTROYS, for a boring reason that matters: a
     /// destroyed GameObject cannot run the timer that would bring it back, and
     /// re-instantiating means knowing which prefab a hand-placed scene object
-    /// came from — which nothing records. Hiding keeps his exact object, his
-    /// materials and his Inspector settings, and puts them back untouched.
+    /// came from - which nothing records. Hiding keeps the exact object, the
+    /// materials and the Inspector settings, and puts them back untouched.
     ///
     /// LOBBY ONLY. In a real round, broken is broken.
     public class LobbyRespawn : MonoBehaviour
@@ -29,7 +29,7 @@ namespace SpellyZombie
         bool _wasKinematic;   // rooted scenery is kinematic; it must go back that way
 
         /// True while the object is in the graveyard (invisible, waiting).
-        /// The object stays ACTIVE the whole time — its scripts keep running —
+        /// The object stays ACTIVE the whole time - its scripts keep running -
         /// so anything timing itself against the comeback must ask this.
         public bool Hidden => _back > 0f;
 
@@ -39,7 +39,7 @@ namespace SpellyZombie
         void Awake()
         {
             // captured BEFORE anything can shove it: a prop that was lifted,
-            // thrown and then broken must return to where he PUT it, not to
+            // thrown and then broken must return to where PUT it, not to
             // wherever it happened to die
             _pos = transform.position;
             _rot = transform.rotation;
@@ -62,7 +62,7 @@ namespace SpellyZombie
         {
             if (_back > 0f) return;   // already gone; do not double-hide
 
-            // THE DRAWING DIES WITH THE CANVAS (Marko Aug 11: "when object is
+            // THE DRAWING DIES WITH THE CANVAS ("when object is
             // destroyed in the lobby the lines on the object need to be
             // destroyed with it") — no ink floating where the prop was, and
             // the rebuilt prop comes back factory-new, ready to be drawn on.
@@ -75,7 +75,7 @@ namespace SpellyZombie
                     if (s.Surface == transform || s.Surface.IsChildOf(transform)) s.Burn();
                 }
 
-            // Damageable would Destroy() us the moment OnDeath returns — this is
+            // Damageable would Destroy() us the moment OnDeath returns - this is
             // the one hook that stops it, and it is restored on the way back.
             var dmg = GetComponent<Damageable>();
             if (dmg != null) dmg.Destructible = false;
@@ -88,8 +88,8 @@ namespace SpellyZombie
             foreach (var col in GetComponentsInChildren<Collider>(true))
                 if (col.enabled) { col.enabled = false; _off.Add(col); }
 
-            // ⛔ REMEMBER WHAT IT WAS. Restoring isKinematic=false blindly turned
-            // rooted scenery into a DYNAMIC body — and his village props carry
+            // REMEMBER WHAT IT WAS. Restoring isKinematic=false blindly turned
+            // rooted scenery into a DYNAMIC body - and the village props carry
             // concave MeshColliders, which Unity refuses on a dynamic body:
             // "Concave Mesh Colliders are not supported... Scene hierarchy path
             // SZ_Village/Stall_Empty". The body then behaves undefined, and
@@ -111,7 +111,7 @@ namespace SpellyZombie
             if (_back > 0f) return;
             _back = -1f;
 
-            // back exactly where he placed it, at full health, whole
+            // back exactly where design it, at full health, whole
             transform.SetPositionAndRotation(_pos, _rot);
             transform.localScale = _scale;
 
@@ -119,8 +119,8 @@ namespace SpellyZombie
             if (rb != null)
             {
                 // back to what it WAS, and velocities only touched on a body
-                // that is actually dynamic — writing them to a kinematic one is
-                // the other warning that was flooding his console
+                // that is actually dynamic - writing them to a kinematic one is
+                // the other warning that was flooding the console
                 rb.isKinematic = _wasKinematic;
                 if (!_wasKinematic)
                 {

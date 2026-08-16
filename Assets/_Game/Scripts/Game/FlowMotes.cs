@@ -2,16 +2,16 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// INK GOING SOMEWHERE, DRAWN THE SAME WAY EVERYWHERE (Marko Aug 11).
+    /// INK GOING SOMEWHERE, DRAWN THE SAME WAY EVERYWHERE .
     ///
-    /// He designed this language on the wand — motes flying OUT mean you are
+    /// designed this language on the wand - motes flying OUT mean you are
     /// losing, motes flying IN mean you are gaining, and how BIG they are is how
     /// fast. It reads instantly, needs no text, and survives translation.
     ///
     /// The cauldron needs exactly the same sentence: "the green ink should have
     /// an evaporation effect when acolytes are not nearby and a regeneration
     /// effect when they are, to tell them what's happening." Same meaning, so
-    /// the same visual — a player who learned it on their wand already knows it
+    /// the same visual - a player who learned it on their wand already knows it
     /// on the pot, which is worth more than either effect being individually
     /// prettier.
     ///
@@ -67,7 +67,7 @@ namespace SpellyZombie
                 foreach (var r in _rends) if (r != null) r.sharedMaterial = mat;
             }
 
-            // HOW FAST DECIDES HOW BIG — the half of the language that turns a
+            // HOW FAST DECIDES HOW BIG - the half of the language that turns a
             // direction into a measurement, and on the wand into a compass.
             float hot = Mathf.Clamp01(mag / Mathf.Max(0.0001f, fullRate));
             float size = Mathf.Lerp(minSize, maxSize, hot);

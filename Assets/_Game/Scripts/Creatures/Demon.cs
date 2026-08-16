@@ -2,13 +2,13 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The void rift's summon (Marko's design): a black demon that rampages at
-    /// random — and ABSORBS whatever element touches it, BECOMING that element
-    /// until something else touches it or it expires. Touch fire → flaming
-    /// demon. Touch ice → ice demon. Eat a lava blob → lava demon. It leaks an
+    /// The void rift's summon : a black demon that rampages at
+    /// random - and ABSORBS whatever element touches it, BECOMING that element
+    /// until something else touches it or it expires. Touch fire  flaming
+    /// demon. Touch ice  ice demon. Eat a lava blob  lava demon. It leaks an
     /// aura of its current element (real SpellParticles, so a flame demon
     /// ignites the room just by walking through it), which means players can
-    /// RE-SPEC a rampaging demon by shooting elements at it — taming it into a
+    /// RE-SPEC a rampaging demon by shooting elements at it - taming it into a
     /// weapon, or watching a zombie scrawl turn it into a storm. Size comes
     /// from the rune that tore the rift open.
     public class Demon : MonoBehaviour
@@ -35,10 +35,10 @@ namespace SpellyZombie
             if (d == null) return null;
             d._grand = true;
             d._life = 42f;
-            d.transform.localScale = Vector3.one * 2.8f; // LARGE — reads across the map
+            d.transform.localScale = Vector3.one * 2.8f; // LARGE - reads across the map
             if (d._rb != null) { d._baseMass = 70f * 8f; d._rb.mass = d._baseMass; }
 
-            var lib = FxLibrary.I; // the arrival is an EVENT (Marko's JMO layer)
+            var lib = FxLibrary.I; // the arrival is an EVENT
             if (lib != null)
             {
                 FxLibrary.Spawn(lib.DemonBoom, pos);
@@ -46,12 +46,12 @@ namespace SpellyZombie
             }
 
             // UNKILLABLE from frame ZERO: it spawns into the epicentre of an
-            // all-12 chain — a meteor landing on it in the one frame before
+            // all-12 chain - a meteor landing on it in the one frame before
             // Update's refresh permanently killed the apocalypse (verified)
             d._grandDmg = d.GetComponent<Damageable>();
             if (d._grandDmg != null) d._grandDmg.Health = 999999f;
 
-            // and it fears NOTHING — its own calamities were writing Danger
+            // and it fears NOTHING - its own calamities were writing Danger
             // memories that froze it mid-rampage (it scared itself, verified)
             var brain = d.GetComponent<ZombieBrain>();
             if (brain != null) brain.Fearless = true;
@@ -61,7 +61,7 @@ namespace SpellyZombie
             return d;
         }
 
-        /// A random lvl2/lvl3 effect from the whole grammar, somewhere nearby —
+        /// A random lvl2/lvl3 effect from the whole grammar, somewhere nearby -
         /// the Demon casts the same magic the players do, just constantly.
         void Calamity()
         {
@@ -84,14 +84,14 @@ namespace SpellyZombie
         }
 
         /// Rift-side entry point. srcSize = the zone radius of the rune chain
-        /// that condensed into the rift — bigger drawing, bigger demon.
+        /// that condensed into the rift - bigger drawing, bigger demon.
         public static Demon Summon(Vector3 pos, float srcSize)
         {
             var z = Zombie.Spawn(pos, ZombieKind.Walker, 1.15f);
             if (z == null) return null;
             z.name = "Demon";
 
-            // A DEMON TOWERS (Marko: "it uses the same body as zombies...
+            // A DEMON TOWERS ("it uses the same body as zombies...
             // since it's destroying everything that thing should be large") —
             // the same rig, but never below twice a normal zombie, and a big
             // drawing raises a proper kaiju.
@@ -150,11 +150,11 @@ namespace SpellyZombie
                 case ParticleKind.Spread: Become("AIRY", new Color(0.75f, 1f, 0.85f), ParticleKind.Spread, false); break;
                 case ParticleKind.Push: Become("GALE", new Color(0.95f, 0.95f, 0.7f), ParticleKind.Push, false); break;
                 case ParticleKind.Lightning: Become("STORM", new Color(0.7f, 0.88f, 1f), ParticleKind.Lightning, true); break;
-                // GRAMMAR v4 condensed kinds — eating a FLAME (the most common
+                // GRAMMAR v4 condensed kinds - eating a FLAME (the most common
                 // manifest) silently did nothing before (verified)
                 case ParticleKind.Flame: Become("FLAME", new Color(1f, 0.45f, 0.08f), ParticleKind.Spark, true); break;
                 case ParticleKind.BlackHole: Become("VOID", new Color(0.03f, 0.01f, 0.06f), ParticleKind.Dark, false); break;
-                // a BarrierMote is just swallowed — isolating a demon from
+                // a BarrierMote is just swallowed - isolating a demon from
                 // itself is not a thing
             }
         }
@@ -215,12 +215,12 @@ namespace SpellyZombie
 
             if (_grand)
             {
-                // UNKILLABLE: whatever hurt it this frame, it doesn't care —
+                // UNKILLABLE: whatever hurt it this frame, it doesn't care -
                 // only the clock ends a grand demon
                 if (_grandDmg == null) _grandDmg = GetComponent<Damageable>();
                 if (_grandDmg != null) _grandDmg.Health = 999999f;
 
-                // unconditional terror — every zombie that exists nearby flees
+                // unconditional terror - every zombie that exists nearby flees
                 _grandFearTick -= dt;
                 if (_grandFearTick <= 0f)
                 {
@@ -236,7 +236,7 @@ namespace SpellyZombie
                 }
             }
 
-            // the aura: the demon LEAKS its element as real particles — its
+            // the aura: the demon LEAKS its element as real particles - its
             // element does whatever that element does, no special cases
             _auraTick -= dt;
             if (_auraTick <= 0f)
@@ -256,7 +256,7 @@ namespace SpellyZombie
         }
 
         /// Time's up: it bursts into its final element and is gone. No kill
-        /// credit — nothing killed it, it just went back.
+        /// credit - nothing killed it, it just went back.
         void Expire()
         {
             for (int i = 0; i < 4; i++)

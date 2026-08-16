@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Points at Marko's rigged character (the Mixamo T-pose FBX). Wired once
+    /// Points at the rigged character (the Mixamo T-pose FBX). Wired once
     /// by "Spelly Zombie/Build Character Rig"; loaded from Resources at
     /// runtime. No model wired = every player keeps the graybox bean.
     public class CharacterLibrary : ScriptableObject

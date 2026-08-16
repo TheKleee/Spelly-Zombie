@@ -3,8 +3,8 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// The menu's INTRO TESTING AREA (Marko's sketch): draw straight into the
-    /// cauldron's brew with the mouse — real strokes, real seals, real spells,
+    /// The menu's INTRO TESTING AREA : draw straight into the
+    /// cauldron's brew with the mouse - real strokes, real seals, real spells,
     /// with every rune unlocked so newcomers can try the whole alphabet while
     /// the glyph ring around the cauldron teaches the shapes. The camera orbit
     /// pauses while you draw and stays paused until 3 quiet seconds pass.
@@ -27,7 +27,7 @@ namespace SpellyZombie
         }
 
         /// Where does the mouse land on the brew? First a REAL surface hit on
-        /// the Canvas collider (works on a curved cauldron interior — assign
+        /// the Canvas collider (works on a curved cauldron interior - assign
         /// the cauldron's own MeshCollider as Canvas and draw right in it),
         /// then flat plane math as the fallback for thin invisible discs.
         bool AimAtBrew(Vector2 mousePos, out Vector3 point, out Vector3 normal)

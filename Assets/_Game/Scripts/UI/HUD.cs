@@ -3,16 +3,16 @@ using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// The survival HUD: NO health/ink bars (Marko's CoD-Zombies call) — red screen edges + the wand's reservoir; perk badges, round banner, downed overlay.
+    /// The survival HUD: no bars, red screen edges for hurt, perk badges,
+    /// round banner. Death has no UI at all.
     public class HUD : MonoBehaviour
     {
         static HUD _i;
 
         RectTransform _group;
-        UIKit.UIBar _bleed;
         Image _vignette;
-        Text _bannerText, _downText;
-        RectTransform _banner, _downGroup, _badgeRow;
+        Text _bannerText;
+        RectTransform _banner, _badgeRow;
         string _badgesShown = "";
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -33,7 +33,7 @@ namespace SpellyZombie
             UIKit.Stretch(_group);
             _group.SetAsFirstSibling(); // everything else draws over the HUD
 
-            // hurt vignette (no HP bar); stale baked copies die first — the runtime sprite can't serialize into the prefab
+            // hurt vignette (no HP bar); stale baked copies die first - the runtime sprite can't serialize into the prefab
             for (int i = _group.childCount - 1; i >= 0; i--)
             {
                 var stale = _group.GetChild(i);
@@ -48,7 +48,7 @@ namespace SpellyZombie
             _vignette.color = new Color(0.55f, 0f, 0f, 0f);
             _vignette.transform.SetAsFirstSibling(); // under everything in the HUD
 
-            // bottom-left: perk badges only — no riches, no XP line (Marko: "no UI indicators of any bar on the screen")
+            // bottom-left: perk badges only — no riches, no XP line
             var corner = UIKit.Group(_group, "Vitals");
             UIKit.Place(corner, new Vector2(0f, 0f), new Vector2(18f, 18f), new Vector2(320f, 96f));
 
@@ -56,7 +56,7 @@ namespace SpellyZombie
             UIKit.Place(_badgeRow, new Vector2(0f, 1f), new Vector2(0f, -58f), new Vector2(260f, 30f));
 
             // ---- top-center: the round banner (near native ribbon proportions
-            // — one line, generous side insets so text stays off the border art)
+            // - one line, generous side insets so text stays off the border art)
             _banner = UIKit.Group(_group, "RoundBanner");
             UIKit.Place(_banner, new Vector2(0.5f, 1f), new Vector2(0f, 2f), new Vector2(560f, 78f));
             var cloth = UIKit.Panel(_banner, skin != null ? skin.BannerHanging : null,
@@ -68,20 +68,7 @@ namespace SpellyZombie
             btr.offsetMin = new Vector2(70f, 20f); // off the tails
             btr.offsetMax = new Vector2(-70f, -16f);
 
-            // ---- center: downed overlay (above the gallery's parade line) ----
-            _downGroup = UIKit.Group(_group, "Downed");
-            UIKit.Place(_downGroup, new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(660f, 84f));
-            var downBack = UIKit.Panel(_downGroup, skin != null ? skin.PanelBrownDark : null,
-                skin != null ? new Color(1f, 1f, 1f, 0.96f) : new Color(0f, 0f, 0f, 0.7f));
-            UIKit.Stretch((RectTransform)downBack.transform);
-            _downText = UIKit.Label(_downGroup, "", 24, new Color(1f, 0.5f, 0.4f), TextAnchor.MiddleCenter, true);
-            var dtr = (RectTransform)_downText.transform;
-            UIKit.Stretch(dtr);
-            dtr.offsetMax = new Vector2(0f, -30f);
-            _bleed = UIKit.Bar(_downGroup, skin != null ? skin.ProgressRed : null, new Vector2(400f, 16f));
-            UIKit.Place(_bleed.Rt, new Vector2(0.5f, 0f), new Vector2(0f, 10f), _bleed.Rt.sizeDelta);
-            _downGroup.gameObject.SetActive(false);
-
+            // (no downed or death overlay: death has no UI, the world says it)
         }
 
         /// Radial blood-edge texture: clear center, red creeping in from the
@@ -96,7 +83,7 @@ namespace SpellyZombie
                 {
                     float dx = (x - size / 2f) / (size / 2f);
                     float dy = (y - size / 2f) / (size / 2f);
-                    float d = Mathf.Sqrt(dx * dx + dy * dy);       // 0 center → ~1.4 corner
+                    float d = Mathf.Sqrt(dx * dx + dy * dy);       // 0 center  ~1.4 corner
                     float a = Mathf.SmoothStep(0f, 1f, (d - 0.55f) / 0.75f);
                     px[y * size + x] = new Color(1f, 1f, 1f, a);   // tinted by Image.color
                 }
@@ -122,7 +109,7 @@ namespace SpellyZombie
             {
                 float f = Mathf.Clamp01(player.Health / Perks.MaxHealth);
                 float a = (1f - f) * (1f - f) * 0.85f;
-                // panic pulse only under 20% (Marko: "we shouldn't always be in panic mode just because we're damaged")
+                // panic pulse only under 20%
                 if (f < 0.2f && !player.IsDowned)
                     a += (Mathf.Sin(Time.time * 6f) * 0.5f + 0.5f) * 0.12f;
                 _vignette.color = new Color(0.55f, 0f, 0f, Mathf.Clamp01(a));
@@ -151,27 +138,14 @@ namespace SpellyZombie
                 }
             }
 
-            // round banner — the GAME's voice only; stale wipe/round text in the lobby just confuses (Marko)
+            // round banner - the GAME's voice only; stale wipe/round text in the lobby just confuses
             string status = ActiveScene.Name == "Lobby" ? "" : RoundDirector.HudStatus();
             if (_banner.gameObject.activeSelf != !string.IsNullOrEmpty(status))
                 _banner.gameObject.SetActive(!string.IsNullOrEmpty(status));
             _bannerText.text = status;
 
-            // downed overlay
-            bool downed = player != null && player.IsDowned;
-            if (_downGroup.gameObject.activeSelf != downed) _downGroup.gameObject.SetActive(downed);
-            if (downed)
-            {
-                _downText.text = player.IsDead ? "DEAD"
-                    : player.ReviveProgress > 0f ? $"REVIVING… {player.ReviveProgress * 100f:0}%"
-                    : $"DOWNED. bleeding out ({player.BleedOut:0}s). a teammate holds E";
-                _downText.color = player.IsDead ? Color.red : new Color(1f, 0.5f, 0.4f);
-                _bleed.Set(player.ReviveProgress > 0f
-                    ? player.ReviveProgress
-                    : player.BleedOut / DrawingConfig.BleedOutSeconds);
-            }
-
-            // between-rounds seal gallery CUT (Marko's call: never asked for, cluttered the screen)
+            // no downed or death text, ever: the vignette, the body and the
+            // revive glow carry all of it
         }
     }
 }

@@ -41,9 +41,9 @@ namespace SpellyZombie
     /// so a pose authored on the graybox mannequin plays unchanged on any future
     /// character whose EmoteRig registers the same joint names.
     ///
-    /// Slots resolve in two layers (Marko's spec): the player's own CUSTOM
+    /// Slots resolve in two layers : the player's own CUSTOM
     /// binding sits on top of the SYSTEM DEFAULT for that slot. Defaults are
-    /// built in code, load every game, and can never be deleted — X in third
+    /// built in code, load every game, and can never be deleted - X in third
     /// person clears the custom binding and the default shows through again.
     ///
     /// A pose emote is the somatic trigger of whatever seal the player drew
@@ -72,7 +72,7 @@ namespace SpellyZombie
             while (_data.slots.Count < SlotCount) _data.slots.Add(-1);
 
             // ONE-TIME MIGRATION: poses saved on the graybox bean target
-            // completely different bone axes — on the Mixamo rig they bend
+            // completely different bone axes - on the Mixamo rig they bend
             // backwards and, being CUSTOM bindings, they override the correct
             // baked defaults. Unbind them (the pose list itself is kept).
             const int currentRigVersion = 2;
@@ -115,7 +115,7 @@ namespace SpellyZombie
         }
 
         /// The character rig OVERRIDES the built-ins at runtime with poses
-        /// baked on the REAL skeleton — hardcoded eulers only fit the graybox
+        /// baked on the REAL skeleton - hardcoded eulers only fit the graybox
         /// bean's pivots; on Mixamo bones they bend the wrong way.
         public static void SetDefault(int slot, string name, EmoteKeyframe frame)
         {

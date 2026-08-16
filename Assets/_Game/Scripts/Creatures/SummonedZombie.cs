@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A ZOMBIE THAT CAME OUT OF A SEAL. Marko's rule: zombies are SPELLS, so they
+    /// A ZOMBIE THAT CAME OUT OF A SEAL. the rule: zombies are SPELLS, so they
     /// belong to whoever cast them and they expire.
     ///
     /// Kept as its own component rather than fields on Zombie, so the ordinary
@@ -20,7 +20,7 @@ namespace SpellyZombie
         /// Melee zombies got the Solid rune, ranged ones got Liquid.
         public bool Ranged;
 
-        /// The tight aura it breathes while alive — body-sized, not a fog bank.
+        /// The tight aura it breathes while alive - body-sized, not a fog bank.
         public PoisonField Gas => _gas;
         PoisonField _gas;
 
@@ -37,21 +37,25 @@ namespace SpellyZombie
             SummonedBy = owner;
             Ranged = ranged;
             _left = seconds;
-            // DIAL 2 IS THE DEATH CLOUD, NOT THE LIVING ONE (Marko Aug 10, after
-            // trying the fog-bank version). A permanent cloud cancelled his own
+            // DIAL 2 IS THE DEATH CLOUD, NOT THE LIVING ONE (, after
+            // trying the fog-bank version). A permanent cloud cancelled the
             // zombie design — they "flee whoever chases them" and "their role is
             // to be chased", and you cannot chase into gas you must not stand
             // in. Death-only inverts it into the better trade: chasing is
             // inviting, KILLING is punished, so the acolyte wants you to succeed.
-            // His frame for it is Deidara — the art is harmless until it goes off.
+            // the frame for it is Deidara - the art is harmless until it goes off.
             //
             // Alive, it keeps a TIGHT aura roughly its own body: the Warcraft 3
-            // abomination he actually referenced hugged its unit, it was never a
+            // abomination actually referenced hugged its unit, it was never a
             // fog bank. Close enough to bite, not wide enough to wall off a street.
             GasRadius = gasRadius;
             float bodyHeight = transform.localScale.y * 2f;
+            // the LIVING aura stays body-tight whatever size the seal bought;
+            // big radii belong to the death cloud, not to a fog you cannot
+            // draw or see through
             _gas = PoisonField.Open(transform.position + Vector3.up * bodyHeight * 0.35f,
-                bodyHeight * DrawingConfig.PoisonAuraBodyMul, seconds + 1f, transform);
+                Mathf.Min(bodyHeight * DrawingConfig.PoisonAuraBodyMul, 1.1f),
+                seconds + 1f, transform);
             Paint();
         }
 
@@ -65,8 +69,8 @@ namespace SpellyZombie
         /// the melee ones stayed brown. MatterFX caches one material per colour,
         /// so this stays batched for a crowd.
         ///
-        /// HIS PREFAB IS NEVER RECOLOURED. If a custom ZombieBody is dressing
-        /// this zombie, his materials stand, per his own axiom in ZombieDress.
+        /// the PREFAB IS NEVER RECOLOURED. If a custom ZombieBody is dressing
+        /// this zombie, the materials stand, per the axiom in ZombieDress.
         void Paint()
         {
             var rends = GetComponentsInChildren<Renderer>(true);
@@ -74,8 +78,8 @@ namespace SpellyZombie
 
             Color c = Ranged ? DrawingConfig.SummonRangedColor : DrawingConfig.SummonMeleeColor;
 
-            // HIS BAKED BODY GETS A PROPERTY BLOCK, not a new material: his
-            // shader and his maps survive, only the colour changes. The graybox
+            // the BAKED BODY GETS A PROPERTY BLOCK, not a new material: the
+            // shader and the maps survive, only the colour changes. The graybox
             // gets a MatterFX material, which is how it was coloured to begin with.
             var dress = GetComponent<ZombieDress>();
             bool his = dress != null && dress.IsCustomBody;

@@ -3,11 +3,11 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// MARKO'S SOCKET CATALOG: one asset per body family — SZ_WardrobePlayer,
-    /// SZ_WardrobeZombie, SZ_WardrobeDemon (created via Spelly Zombie →
-    /// Wardrobe → Create Wardrobe Catalogs). For every socket, an EXPANDABLE
-    /// list of prefabs he builds in Blender and adds by hand; OPTION 0 IS THE
-    /// DEFAULT LOOK. Pieces instantiate LOCKED to the socket at identity —
+    /// the SOCKET CATALOG: one asset per body family - SZ_WardrobePlayer,
+    /// SZ_WardrobeZombie, SZ_WardrobeDemon (created via Spelly Zombie
+    /// Wardrobe  Create Wardrobe Catalogs). For every socket, an EXPANDABLE
+    /// list of prefabs builds in Blender and adds by hand; OPTION 0 IS THE
+    /// DEFAULT LOOK. Pieces instantiate LOCKED to the socket at identity -
     /// model them in plain character space (+Z facing, +Y up, pivot at the
     /// attachment point). Renderers named "*_Team" take the team tint.
     public class SocketWardrobe : ScriptableObject
@@ -28,7 +28,7 @@ namespace SpellyZombie
     }
 
     /// Runtime side: loads the three catalogs, remembers the LOCAL player's
-    /// outfit choices (PlayerPrefs — the lobby outfit picker drives SetChoice
+    /// outfit choices (PlayerPrefs - the lobby outfit picker drives SetChoice
     /// later; the demo wears option 0 everywhere), and locks pieces onto
     /// sockets. Zombies/demons draw random options for variety.
     public static class SocketManager
@@ -57,7 +57,7 @@ namespace SpellyZombie
         public static void SetChoice(string socket, int index)
             => PlayerPrefs.SetInt("sz_outfit_" + socket, index);
 
-        // AXIOM (Marko Jul 25): a catalog slot HE filled used to be skipped in
+            // AXIOM : a catalog slot filled used to be skipped in
         // total silence when the socket name didn't resolve (a typo, a trailing
         // space, or a rig whose bone SocketSet couldn't find). Say it once, and
         // list the sockets this body DOES have so the fix is obvious.
@@ -95,7 +95,7 @@ namespace SpellyZombie
             return pieces;
         }
 
-        /// A RANDOM option per filled slot, each with `chance` to appear —
+        /// A RANDOM option per filled slot, each with `chance` to appear -
         /// zombie/demon variety without choices. A non-zero SEED makes the
         /// rolls DETERMINISTIC: host and clients feeding the same creature id
         /// dress it identically without sending a single byte about looks.

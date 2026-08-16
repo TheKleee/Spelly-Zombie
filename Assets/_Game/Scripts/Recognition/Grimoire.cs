@@ -2,8 +2,8 @@ using System.Collections.Generic;
 
 namespace SpellyZombie
 {
-    /// Who knows which runes. EVERY caster has an entry — players and zombies
-    /// alike — keyed by owner id (instance id of their GameObject). A seal is
+    /// Who knows which runes. EVERY caster has an entry - players and zombies
+    /// alike - keyed by owner id (instance id of their GameObject). A seal is
     /// owned by whoever drew on it LAST (they "completed" it), and it casts with
     /// THAT owner's cards. This is what makes zombie-completed spells use the
     /// zombie's runes, and why baiting a zombie into circling your rune is a way
@@ -16,8 +16,8 @@ namespace SpellyZombie
         static readonly Dictionary<int, HashSet<RuneCardType>> _byOwner =
             new Dictionary<int, HashSet<RuneCardType>>();
 
-        /// ONE PAGE = ONE RUNE (Marko's ruling: all 12 collected individually,
-        /// no pairs). Absorbing a flame teaches HeatUp — NOT its opposite.
+            /// ONE PAGE = ONE RUNE (the ruling: all 12 collected individually,
+        /// no pairs). Absorbing a flame teaches HeatUp - NOT its opposite.
         /// The card set above stays as the coarse "family" record, so every
         /// older path (menu cauldron, zombie loot, powerups) keeps working:
         /// unlocking a CARD wholesale still grants both of its runes.
@@ -68,7 +68,7 @@ namespace SpellyZombie
         }
 
         /// Connecting swaps the machine-local instance id for the stable FishNet
-        /// ClientId — carry everything already learned across (netcode §0).
+        /// ClientId - carry everything already learned across (netcode §0).
         public static void Rekey(int oldId, int newId)
         {
             if (oldId == newId) return;
@@ -94,21 +94,21 @@ namespace SpellyZombie
             _dropScratch.Clear();
         }
 
-        // ---- WRITING LEVEL — Marko's three laws, verified with him:
+        // ---- WRITING LEVEL - the three laws, verified with him:
         //   1) it increases ONLY when you CORRECT a drawing at the grimoire
-        //      (rune pages, and the seal page — the seal's ramp lives on
+        //      (rune pages, and the seal page - the seal's ramp lives on
         //      RuneType.None),
-        //   2) it represents ONLY how well the book has learned your hand —
+        //   2) it represents ONLY how well the book has learned your hand -
         //      recognition help, nothing else,
         //   3) it NEVER touches the power of any rune or seal.
         // 0..1 per rune, this run, local player only. Purely a meter.
         static readonly Dictionary<(int owner, RuneType rune), float> _writing =
             new Dictionary<(int, RuneType), float>();
 
-        /// Bumped on every real change — the book page redraws its bar off it.
+        /// Bumped on every real change - the book page redraws its bar off it.
         public static int WritingVersion { get; private set; }
 
-        /// 0 fresh … 1 fully corrected-in. 0 when no ramp exists yet — this
+        /// 0 fresh … 1 fully corrected-in. 0 when no ramp exists yet - this
         /// is a display meter, nothing reads it for gameplay.
         public static float WritingLevelOf(int owner, RuneType rune) =>
             _writing.TryGetValue((owner, rune), out var v) ? v : 0f;
@@ -120,12 +120,12 @@ namespace SpellyZombie
         static void SeedWriting(int owner, RuneType rune)
         {
             if (_writing.ContainsKey((owner, rune))) return;
-            _writing[(owner, rune)] = 0f; // minimum — the whole point
+            _writing[(owner, rune)] = 0f; // minimum - the whole point
             WritingVersion++;
         }
 
-        /// A CORRECTION happened — the only thing that moves the meter
-        /// (Marko's law 1). Creates the ramp if this is the first one, so a
+        /// A CORRECTION happened - the only thing that moves the meter
+        /// . Creates the ramp if this is the first one, so a
         /// correction always counts, free-play grounds included.
         public static void BumpWriting(int owner, RuneType rune, float amount)
         {
@@ -140,9 +140,9 @@ namespace SpellyZombie
             _byOwner.TryGetValue(owner, out var set) && set.Contains(card);
 
         /// Does this owner know THIS rune specifically?
-        ///   • learned it directly            → yes
-        ///   • learned its SIBLING directly   → no (that's the point of per-rune)
-        ///   • has the card, learned neither  → yes (an older wholesale grant:
+        /// • learned it directly             yes
+        /// • learned its SIBLING directly    no (that's the point of per-rune)
+        /// • has the card, learned neither   yes (an older wholesale grant:
         ///                                      menu cauldron, zombie drop, tests)
         public static bool HasRune(int owner, RuneType rune)
         {
@@ -166,7 +166,7 @@ namespace SpellyZombie
         public static IReadOnlyCollection<RuneCardType> CardsOf(int owner) =>
             _byOwner.TryGetValue(owner, out var set) ? (IReadOnlyCollection<RuneCardType>)set : System.Array.Empty<RuneCardType>();
 
-        /// Owner is gone (zombie died) — its knowledge dies with it.
+        /// Owner is gone (zombie died) - its knowledge dies with it.
         ///
         /// ALL THREE TABLES, not just the card set. Dropping only _byOwner left
         /// the per-rune grants behind, and HasRune answers from _runesByOwner
@@ -174,7 +174,7 @@ namespace SpellyZombie
         /// individually, and since RuneLibrary.IsUnlocked now asks HasRune, its
         /// knowledge did not die with it at all. The writing meters leaked the
         /// same way, one entry per (owner, rune) for the whole session.
-        /// SWITCHING SIDES REBUILDS THE BOOK. Marko: converting hands you a
+        /// SWITCHING SIDES REBUILDS THE BOOK. converting hands you a
         /// "different grimoire mostly empty as when you start the game on that
         /// team". An acolyte's whole kit is Solid and Liquid; a wizard starts
         /// with nothing and earns everything.
@@ -203,7 +203,7 @@ namespace SpellyZombie
             WritingVersion++;
         }
 
-        /// Reused by Drop — a dictionary can't be edited while it is enumerated.
+        /// Reused by Drop - a dictionary can't be edited while it is enumerated.
         static readonly List<(int owner, RuneType rune)> _dropScratch =
             new List<(int owner, RuneType rune)>();
     }

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// The round economy: ink is life. Strokes drain it by drawn length, kills
-    /// refill it (shared — co-op, not competition), intermissions trickle.
+    /// refill it (shared - co-op, not competition), intermissions trickle.
     /// Outside an active run drawing is free (sandbox/testing).
     /// This is the draw-fast-vs-draw-well tension: a sloppy seal wastes ink AND
     /// casts worse.
@@ -17,12 +17,12 @@ namespace SpellyZombie
         void Awake()
         {
             All.Add(this);
-            // EVERYONE STARTS WITH A WAND (Marko Aug 11, reversing his own Aug 9
+            // EVERYONE STARTS WITH A WAND (, reversing the Aug 9
             // wandless-start rule: "it's boring if we start the game with no
             // wands"). Losing a wand still costs you; being handed an empty one
             // just makes the first minute a chore.
             //
-            // Assigned HERE rather than by editing his prefab: Player.prefab
+            // Assigned HERE rather than by editing the prefab: Player.prefab
             // serializes Ink: 100, so the field initializer above never runs for
             // the real player. Setting it in Awake beats the bake, and taking a
             // FRACTION of Perks.InkMax means it follows the ceiling instead of
@@ -33,16 +33,16 @@ namespace SpellyZombie
 
         SimpleFPSController _pilot;
 
-        /// ⛔ NO FREE INK FOR ANYONE (Marko Aug 10). This used to Award() every
-        /// frame, unconditionally, to every player of both sides — a SECOND
+        /// NO FREE INK FOR ANYONE . This used to Award() every
+        /// frame, unconditionally, to every player of both sides - a SECOND
         /// passive regen sitting on top of CauldronEconomy's distance-scaled
         /// one. WandState's own header has said since the day it was written
         /// that it "kills passive regen" once the real map lands; this is that.
         ///
-        /// His rule, split by side:
-        ///   WIZARD  — nothing passive at all. The pot is the only well, and
+        /// the rule, split by side:
+        ///   WIZARD  - nothing passive at all. The pot is the only well, and
         ///             CauldronEconomy.LocalWandTick already pours it.
-        ///   ACOLYTE — ink EVAPORATES. Corrupt ink does not keep, which is what
+        ///   ACOLYTE - ink EVAPORATES. Corrupt ink does not keep, which is what
         ///             forces them to keep moving and keep scanning.
         void Update()
         {
@@ -51,11 +51,11 @@ namespace SpellyZombie
             Ink = Mathf.Max(0f, Ink - DrawingConfig.AcolyteInkEvaporatePerSec * Time.deltaTime);
         }
 
-        // the Drawing perk deepens the well (Perks.InkMax) — no perk = old value
+        // the Drawing perk deepens the well (Perks.InkMax) - no perk = old value
         public float Fraction => Ink / Perks.InkMax;
 
         /// Spend ink for drawn line length. THE LOBBY IS NOT A FREE RIDE any
-        /// more (Marko: "the game should not be played differently than normal
+        /// more ("the game should not be played differently than normal
         /// just cause it's lobby - same rules should apply"). Ink used to cost
         /// nothing outside a run, which is why the wand never shrank there.
         /// The Lobby cauldron refills itself forever, so you can still test.

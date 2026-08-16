@@ -4,13 +4,13 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// THE ACOLYTE'S OVERWATCH — his spec, the mirror of the wizard's R body
+    /// THE ACOLYTE'S OVERWATCH - the spec, the mirror of the wizard's R body
     /// painting. From FIRST PERSON, R looks out through your own dead: the
     /// camera swings to whichever zombie you name and you watch what it sees.
     ///
-    /// His rules, kept exactly:
+    /// the rules, kept exactly:
     ///   · ENTER with R in first person. Nothing happens if you own no zombies.
-    ///   · 1..9 then 0 pick a zombie — TEN keys, which is why the cap is ten.
+    ///   · 1..9 then 0 pick a zombie - TEN keys, which is why the cap is ten.
     ///     "The cap IS the UI."
     ///   · YOU CANNOT STEER IT. You see where it is, that is all.
     ///   · LEAVE with R, TAB or F.
@@ -32,8 +32,8 @@ namespace SpellyZombie
 
         static ZombieWatch Local;
 
-        /// BLOWN OUT OF OVERWATCH — a blast big enough drops you back into your
-        /// own eyes so your body can be thrown (Marko Aug 10). Driven by Shove.
+        /// BLOWN OUT OF OVERWATCH - a blast big enough drops you back into your
+        /// own eyes so your body can be thrown . Driven by Shove.
         public static void Blown() { if (Local != null && Local._open) Local.Close(); }
 
         readonly List<SummonedZombie> _mine = new List<SummonedZombie>();
@@ -42,8 +42,8 @@ namespace SpellyZombie
         Vector3 _pin;
         SimpleFPSController _pilot;
 
-        /// The camera lifecycle lives in EaselOrbit now — borrow, orbit,
-        /// release — instead of a private fourth copy of it here.
+        /// The camera lifecycle lives in EaselOrbit now - borrow, orbit,
+        /// release - instead of a private fourth copy of it here.
         readonly EaselOrbit.Borrowed _view = new EaselOrbit.Borrowed();
 
         SummonedZombie Current =>
@@ -52,8 +52,8 @@ namespace SpellyZombie
         void Awake() => Local = this;
         void OnDisable() { if (_open) Close(); }
 
-        /// Every living zombie this acolyte raised, capped at his ten. Rebuilt
-        /// each frame because they expire on their own clock — a watched zombie
+        /// Every living zombie this acolyte raised, capped at the ten. Rebuilt
+        /// each frame because they expire on their own clock - a watched zombie
         /// that dies mid-look must not leave the camera staring at nothing.
         void Gather()
         {
@@ -81,7 +81,7 @@ namespace SpellyZombie
             if (_pilot == null || !_pilot.IsLocalViewer) { if (_open) Close(); return; }
 
             // ACOLYTES ONLY, AND ONLY FROM FIRST PERSON. While transformed R is
-            // the pose mode and ShapeShift owns it — the two never overlap.
+            // the pose mode and ShapeShift owns it - the two never overlap.
             if (Sides.Of(Grimoire.LocalPlayerId) != Side.Acolyte
                 || ShapeShift.LocalIsShaped
                 || SimpleFPSController.ThirdPersonActive)
@@ -111,7 +111,7 @@ namespace SpellyZombie
             if (kb.tabKey.wasPressedThisFrame || kb.fKey.wasPressedThisFrame
                 || kb.escapeKey.wasPressedThisFrame) { Close(); return; }
 
-            // 1..9 then 0 — ten keys for his ten zombies
+            // 1..9 then 0 - ten keys for the ten zombies
             for (int i = 0; i < 9; i++)
             {
                 var key = kb[(Key)((int)Key.Digit1 + i)];
@@ -155,15 +155,15 @@ namespace SpellyZombie
             if (!_open) return;
 
             // YOUR BODY STAYS PUT. Overwatch is a place you stand still and
-            // look from, not a way to walk blind — and pinning it here rather
-            // than asking his controller to freeze keeps this out of his file.
+            // look from, not a way to walk blind - and pinning it here rather
+            // than asking the controller to freeze keeps this out of the file.
             transform.position = _pin;
 
             var z = Current;
             if (z == null || !_view.Held) return;
 
-            // A PEEPHOLE, NOT A DRONE (Marko Aug 10: "the Acolyte has better
-            // navigation info than the wizard"). His spec is "you cannot steer
+            // A PEEPHOLE, NOT A DRONE ("the Acolyte has better
+            // navigation info than the wizard"). the spec is "you cannot steer
             // it, but you see where it is" — my first pass gave free orbit out
             // to 9m, which made each of ten zombies a scouting camera pointed
             // wherever the wizards are, since zombies flee whoever chases them.

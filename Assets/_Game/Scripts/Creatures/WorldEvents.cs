@@ -6,7 +6,7 @@ namespace SpellyZombie
 
     /// Tiny perception bus: anything noteworthy reports itself here, and googly
     /// eyes / zombie brains READ it instead of having wires into every system.
-    /// This is what makes eyes follow fresh ink and zombies gawk at explosions —
+    /// This is what makes eyes follow fresh ink and zombies gawk at explosions -
     /// and because zombies perceive through it, drawing ink somewhere IS a decoy.
     public static class WorldEvents
     {
@@ -31,7 +31,7 @@ namespace SpellyZombie
             {
                 LatestInkPos = pos;
                 LatestInkTime = Time.time;
-                return; // ink is continuous — tracked separately, not ring-buffered
+                return; // ink is continuous - tracked separately, not ring-buffered
             }
             _ring[_head] = new Evt { Kind = kind, Pos = pos, Intensity = intensity, Time = Time.time };
             _head = (_head + 1) % Cap;

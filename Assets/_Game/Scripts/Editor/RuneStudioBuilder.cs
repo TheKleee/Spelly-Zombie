@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE RUNE STUDIO (Marko's recording design): a quiet gallery with 12
+    /// THE RUNE STUDIO : a quiet gallery with 12
     /// walls, one per rune. Draw samples on a wall, E saves the wall, the
     /// eraser deletes mistakes, and every scene load repaints what's saved.
     /// Replaces the F-key recording entirely.
@@ -12,7 +12,7 @@ namespace SpellyZombie
     {
         const string ScenePath = "Assets/_Game/Scenes/RuneStudio.unity";
 
-        /// Marko: "can we remove all but the first drawing on each wall?"
+        /// "can we remove all but the first drawing on each wall?"
         /// Trims every rune's recorded pool to its first drawing. Works in or
         /// out of play mode; the walls redraw on the next Rune Studio load.
         [MenuItem("Spelly Zombie/Runes - Keep ONLY the first drawing per rune")]
@@ -25,8 +25,8 @@ namespace SpellyZombie
             RuneLibrary.KeepOnlyFirstSample();
         }
 
-        /// The audit is O(samples²) — measured at 26-41 SECONDS on a full
-        /// library — so it no longer runs on scene load. Run it here after
+        /// The audit is O(samples²) - measured at 26-41 SECONDS on a full
+        /// library - so it no longer runs on scene load. Run it here after
         /// re-recording, and the result is cached for the game to read.
         [MenuItem("Spelly Zombie/Runes - Re-audit templates (health check)")]
         public static void ReAuditTemplates() => RuneLibrary.ReAudit();
@@ -34,7 +34,7 @@ namespace SpellyZombie
         [MenuItem("Spelly Zombie/Build Rune Studio Scene (replaces the open scene)")]
         public static void Build()
         {
-            // AXIOM: NewScene does NOT prompt — this used to silently discard
+            // AXIOM: NewScene does NOT prompt - this used to silently discard
             // every unsaved edit in whatever scene was open (Village included).
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
@@ -50,7 +50,7 @@ namespace SpellyZombie
 
             var lit = Shader.Find("Universal Render Pipeline/Lit");
 
-            // calm, even light — this is a study, not a dungeon
+            // calm, even light - this is a study, not a dungeon
             var sunGo = new GameObject("Sun");
             var sun = sunGo.AddComponent<Light>();
             sun.type = LightType.Directional;

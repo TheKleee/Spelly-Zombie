@@ -3,26 +3,26 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// MARKO'S ULTIMATE-CONTROL LAYER for the runtime-built character. His
+    /// the ULTIMATE-CONTROL LAYER for the runtime-built character. the
     /// ruling (July 17): "I must be in full control of all creative decisions
     /// anywhere" — and prefabbing the runtime player can NEVER work (the rig
     /// is assembled at runtime; runtime-added components serialize broken:
     /// that's the "managed part missing" error, by design not by bug).
     ///
     /// THE WORKFLOW INSTEAD:
-    ///   Play → Hierarchy → SZ_Player → select any FIXABLE piece (wand,
+    /// Play  Hierarchy  SZ_Player  select any FIXABLE piece (wand,
     ///   grimoire, eyes, anything under a Socket.*, any IKAnchor_* stance
-    ///   target) → move/rotate/scale it in the Inspector until it looks
+    /// target)  move/rotate/scale it in the Inspector until it looks
     ///   right → menu "Spelly Zombie → Save CHARACTER Fix (play mode)" →
     ///   stop play. The edit re-applies on every rig build, forever.
     ///
     /// SCOPE (deliberate): held props, worn socket pieces, the googly-eye
-    /// rig, and the IK stance anchors (where the wand/book HOVER in view —
+    /// rig, and the IK stance anchors (where the wand/book HOVER in view -
     /// raise IKAnchor_ReadSupport and the open book rides higher). Animated
     /// BONES are excluded on purpose: poses and emotes own those.
     ///
     /// Storage: Assets/_Game/Resources/sz_character_fix.json, path-keyed.
-    /// LimbFit lesson applies: renaming rig pieces in code orphans keys —
+    /// LimbFit lesson applies: renaming rig pieces in code orphans keys -
     /// check the json after prop refactors.
     public class CharacterFix : MonoBehaviour
     {
@@ -48,7 +48,7 @@ namespace SpellyZombie
         void OnEnable()
         {
             Active.Add(this);
-            _nextScan = 0f; // rescan forever at 2 Hz — pieces appear late and get rebuilt
+            _nextScan = 0f; // rescan forever at 2 Hz - pieces appear late and get rebuilt
             var saved = Resources.Load<TextAsset>("sz_character_fix");
             _table = saved != null ? JsonUtility.FromJson<Table>(saved.text) : null;
             if (_table == null) _table = new Table();
@@ -56,7 +56,7 @@ namespace SpellyZombie
 
         void OnDisable() => Active.Remove(this);
 
-        /// A transform Marko may claim: itself or any ancestor (below the
+        /// A transform may claim: itself or any ancestor (below the
         /// player root) named like a prop/socket/anchor. Bones are not.
         bool IsFixable(Transform t)
         {
@@ -82,7 +82,7 @@ namespace SpellyZombie
             // AXIOM: pieces that appear (or get rebuilt) after the old 8-second
             // window used to be invisible to the fix table forever. Keep
             // rescanning at ~2 Hz, and re-apply when a path's Transform was
-            // replaced — a rebuilt piece must get its saved offset back.
+            // replaced - a rebuilt piece must get its saved offset back.
             if (Time.time < _nextScan) return;
             _nextScan = Time.time + 0.5f;
             foreach (var t in GetComponentsInChildren<Transform>(true))
@@ -104,12 +104,12 @@ namespace SpellyZombie
 
 #if UNITY_EDITOR
         /// Called by the editor menu in play mode: every fixable piece's
-        /// CURRENT local transform becomes law. Simple and total — what you
+        /// CURRENT local transform becomes law. Simple and total - what you
         /// see when you save is what every future session shows.
         public static int SaveNow()
         {
-            // AXIOM (Marko Jul 25): this used to rebuild the file from an EMPTY
-            // table containing only pieces seen in this session — so every
+            // AXIOM : this used to rebuild the file from an EMPTY
+            // table containing only pieces seen in this session - so every
             // adjustment saved in an earlier session was silently deleted, and
             // saving from a scene with no rig wrote "{}" and called it success.
             // Now it MERGES onto what is already saved, and refuses to write
@@ -121,7 +121,7 @@ namespace SpellyZombie
                 return -1;
             }
 
-            // seed from what's on disk — ONCE, outside the instance loop
+            // seed from what's on disk - ONCE, outside the instance loop
             var merged = new Dictionary<string, Entry>();
             var loaded = Resources.Load<TextAsset>("sz_character_fix");
             var prior = loaded != null ? JsonUtility.FromJson<Table>(loaded.text) : null;

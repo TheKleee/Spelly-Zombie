@@ -11,12 +11,12 @@ namespace SpellyZombie
     {
         SawPlayer,      // 4–10s  spotted you with its own googly eyes
         HeardDanger,    // 4–10s  explosion / buddy died / spell went off nearby
-        BigSpectacle,   // 2–5s   something huge far away — stops to watch
-        ShinyInk,       // 1–3s   fresh ink being drawn — decoy stare
+        BigSpectacle,   // 2–5s   something huge far away - stops to watch
+        ShinyInk,       // 1–3s   fresh ink being drawn - decoy stare
         GossipDanger,   // 3–8s   a buddy warned it (secondhand panic)
         GossipPlayer,   // 3–8s   a buddy snitched your position
         StrategyPact,   // 5–14s  agreed on a plan with a buddy
-        Grudge,         // 5–12s  got knocked over / hit — personal now
+        Grudge,         // 5–12s  got knocked over / hit - personal now
     }
 
     /// FIFO memory slots with random forget-timers; capacity IS intelligence (Charger 1 / Walker 3 / Scribbler 5); perception goes through the googly eyes, fresh ink is a decoy.
@@ -62,11 +62,11 @@ namespace SpellyZombie
         public float SpeedScale;       // 0 = stand
         public Transform AttackTarget; // player or a zombie it's mad at
 
-        /// Ink flowing on/next to this zombie = bliss, full stop — drawing on zombies is a legit pinning tactic.
-        /// TrancedUntil is the DIRECT line (Marko Aug 11, the paint freeze): the
+        /// Ink flowing on/next to this zombie = bliss, full stop - drawing on zombies is a legit pinning tactic.
+        /// TrancedUntil is the DIRECT line : the
         /// pen touching this zombie's own skin pins it explicitly, because the
         /// 1.9m proximity test measures from the capsule CENTRE and a giant's
-        /// head is further away than that — painting a big one would not have
+        /// head is further away than that - painting a big one would not have
         /// counted as "next to" it.
         public float TrancedUntil;
         public bool Tranced =>
@@ -78,7 +78,7 @@ namespace SpellyZombie
         float _mumbleUntil, _gossipCooldown, _confusedUntil;
         Creature _creature;
 
-        // patrol: nothing in the head → roam the map, bounce off walls
+        // patrol: nothing in the head  roam the map, bounce off walls
         Vector3 _patrolTarget, _lastPatrolPos;
         bool _hasPatrol;
         float _patrolPause, _stuckCheck, _stuckTime;
@@ -110,7 +110,7 @@ namespace SpellyZombie
                 b.Remember(MemKind.Danger, MemEvent.HeardDanger, pos);
                 b.Eyes?.SetMood(EyeMood.Scared, 1.5f);
                 if (Random.value < 0.25f) b.Mumble("BLEH! BLEH!", 1.2f);
-                else if (Random.value < 0.12f && FxLibrary.I != null) // comic beat (Marko's texts)
+                else if (Random.value < 0.12f && FxLibrary.I != null) // comic beat
                     FxLibrary.Spawn(FxLibrary.I.TextWow, b.transform.position + Vector3.up * 1.7f, null, 2.5f);
             }
         }
@@ -134,7 +134,7 @@ namespace SpellyZombie
             while (Memories.Count >= Capacity) // oldest is simply gone (FIFO)
             {
                 // the 1-slot charger visibly loses its train of thought when a
-                // new event bumps out a DIFFERENT old one — instant distraction
+                // new event bumps out a DIFFERENT old one - instant distraction
                 if (Capacity == 1 && Memories[0].Kind != kind) Mumble("OOH!", 1.2f);
                 Memories.RemoveAt(0);
             }
@@ -160,8 +160,15 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------------------- think --
+        Zombie _host;
+
         void Update()
         {
+            // a possessing ghost writes MoveDir itself; the brain's own
+            // decisions would overwrite it every frame
+            if (_host == null) _host = GetComponent<Zombie>();
+            if (_host != null && _host.Possessed) return;
+
             float now = Time.time;
 
             // forgetting: when a memory lapses the zombie is briefly CONFUSED
@@ -221,7 +228,7 @@ namespace SpellyZombie
                 else if (evt.Intensity >= 1.2f && evt.Intensity < 2f && dist < SightRange)
                 {
                     // a gentle glow below the fear line is a LURE (sticky light):
-                    // stare — and shuffle over to look. moths, all of them.
+                    // stare - and shuffle over to look. moths, all of them.
                     Remember(MemKind.Stare, MemEvent.BigSpectacle, evt.Pos);
                     Eyes?.SetMood(EyeMood.Wowed, 2f);
                     for (int i = 0; i < Memories.Count; i++)
@@ -238,11 +245,11 @@ namespace SpellyZombie
             if (WorldEvents.InkIsFresh)
             {
                 float inkDist = Vector3.Distance(transform.position, WorldEvents.LatestInkPos);
-                // ink ON its own body (or right at its feet) is imperceptible — a
+                // ink ON its own body (or right at its feet) is imperceptible - a
                 // zombie cannot see its own back, so sneaking up to draw on one works
                 if (inkDist > 1.6f && inkDist < SightRange)
                 {
-                    // ooh, shiny moving ink — stare at it instead of hunting you;
+                    // ooh, shiny moving ink - stare at it instead of hunting you;
                     // sometimes (close by, dice willing) it shuffles OVER to look.
                     // Wasted sub-40% scribbles are genuine zombie bait.
                     Remember(MemKind.Stare, MemEvent.ShinyInk, WorldEvents.LatestInkPos);
@@ -255,7 +262,7 @@ namespace SpellyZombie
             }
 
             // actually seeing the player: FOV + line of sight through the eyes.
-            // Downed players don't register — the horde loses interest in you
+            // Downed players don't register - the horde loses interest in you
             // the moment you hit the floor (three memory slots, none for pity).
             foreach (var p in SimpleFPSController.All)
             {
@@ -269,7 +276,7 @@ namespace SpellyZombie
                 if (Physics.Raycast(transform.position + Vector3.up * 1.4f, to.normalized,
                         out var hit, SightRange) && hit.collider.GetComponentInParent<SimpleFPSController>() == null)
                     continue; // wall in the way
-                // THE WAND IS YOUR AUTHORITY (Marko's standing law, and until now
+                    // THE WAND IS YOUR AUTHORITY (the standing law, and until now
                 // never actually built: WandState.HasWand carried a comment saying
                 // "Phase 4's fear/attack system will read this" and nothing ever
                 // did). Zombies feared fireballs and shrugged at the person
@@ -341,7 +348,7 @@ namespace SpellyZombie
             // so a commanded zombie marches even while it has forgotten why.
             if (Time.time < _confusedUntil && !_hasOrder) { LookAround(); return; }
 
-            // 0. AN ORDER OVERRIDES EVERYTHING (Marko, Aug 6: "Zombies should
+            // 0. AN ORDER OVERRIDES EVERYTHING ("Zombies should
             // listen to our command as it should override their brain. So if we
             // say walk there they walk there even if attacked or spells are
             // nearby or they are fighting each other or destroying things... it
@@ -358,11 +365,11 @@ namespace SpellyZombie
                 if (toOrder.sqrMagnitude < 2f * 2f) SetOrdered(false);   // arrived, think for yourself again
                 else
                 {
-                    // A PLAYER IN THE PATH GETS ATTACKED (Marko Aug 11:
+                    // A PLAYER IN THE PATH GETS ATTACKED (
                     // "zombies usually run away from players, but when
                     // commanded by the arrow, if a player is in the path
                     // zombies will attack them"). The order already overrides
-                    // FEAR — this is the other half: it overrides FLIGHT too.
+                    // FEAR - this is the other half: it overrides FLIGHT too.
                     // A marching zombie is the acolyte's will with legs, and a
                     // wizard standing on the road is an obstacle to remove.
                     // In the path = close AND roughly ahead, so a column does
@@ -384,7 +391,7 @@ namespace SpellyZombie
                 }
             }
 
-            // 1. beef comes first — zombies have priorities
+            // 1. beef comes first - zombies have priorities
             if (TryGet(MemKind.MadAt, out var mad) && mad.Who != null)
             {
                 Head(mad.Who.position, 1.15f);
@@ -395,7 +402,7 @@ namespace SpellyZombie
 
             // 1.5 THEIR BACK IS TURNED. Fear is the rule; this is the exception.
             // A zombie will not face a wizard, but it will absolutely jump one who
-            // has stopped looking. Marko: "they want to be chased, that's their
+            // has stopped looking. "they want to be chased, that's their
             // role" — a struck player turns around, and a player turning around is
             // a player not doing something else.
             if (StrikesTurnedBacks)
@@ -410,7 +417,7 @@ namespace SpellyZombie
                 }
             }
 
-            // 2. run AWAY from remembered danger — but FEAR IS REACTIVE. They flee
+            // 2. run AWAY from remembered danger - but FEAR IS REACTIVE. They flee
             // whoever is actually coming for them and stop the moment nobody is,
             // rather than panicking on a timer. Without this they sprint away from
             // a wizard who left thirty seconds ago, which reads as broken and
@@ -429,7 +436,7 @@ namespace SpellyZombie
                 }
             }
 
-            // 3. gawk — or, if curious, shuffle over for a closer look
+            // 3. gawk - or, if curious, shuffle over for a closer look
             if (TryGet(MemKind.Stare, out var stare))
             {
                 if (Eyes != null) Eyes.LookTarget = stare.Where;
@@ -478,7 +485,7 @@ namespace SpellyZombie
         Vector3 _orderTarget;
         bool _hasOrder;
 
-        /// GO THERE. Marko's rule: the acolyte draws an arrow inside the summoning
+        /// GO THERE. the rule: the acolyte draws an arrow inside the summoning
         /// seal and that one drawing is the whole order, how many and which way.
         /// Cleared on arrival, so a commanded zombie goes back to being a zombie
         /// rather than standing on a spot forever.
@@ -496,7 +503,7 @@ namespace SpellyZombie
             Eyes?.SetPupilTint(on ? DrawingConfig.MindControlEyeColor : (Color?)null);
         }
 
-        /// Holding a working wand. Marko's rule is "armed = holding a wand OR a
+        /// Holding a working wand. the rule is "armed = holding a wand OR a
         /// grabbed spell"; the wand half is what exists today, so that is what
         /// this reads. The grabbed-spell half is the disarmed player's recovery
         /// move and belongs with the rest of the levitation work.
@@ -508,7 +515,7 @@ namespace SpellyZombie
         }
 
         /// Closest live player within ZombieChaseRange, and whether they are facing
-        /// this zombie. One scan answers both of Marko's rules: someone facing me
+        /// this zombie. One scan answers both of the rules: someone facing me
         /// and close is CHASING me, someone close with their back to me is PREY.
         /// Downed players count for neither, same as everywhere else in this file.
         Transform NearbyPlayer(out bool facingMe)
@@ -544,12 +551,12 @@ namespace SpellyZombie
             return best;
         }
 
-        // (Forget(MemKind) already exists above — no duplicate needed)
+        // (Forget(MemKind) already exists above - no duplicate needed)
 
         // ------------------------------------------------ navigation ------
         // Decide() picks a DIRECTION it wants. It has no idea there is a wall in
         // the way. This layer sits between that decision and the body, and only
-        // ever bends MoveDir — every behaviour above (fear, hunting, gossip,
+        // ever bends MoveDir - every behaviour above (fear, hunting, gossip,
         // patrol, trance) keeps working exactly as written.
         //
         // Two rules, in order:
@@ -681,7 +688,7 @@ namespace SpellyZombie
             if (!_hasPatrol) { PickPatrolPoint(); return; }
 
             Vector3 to = _patrolTarget - transform.position; to.y = 0f;
-            if (to.magnitude < 1.2f) // arrived — pause, then wander on
+            if (to.magnitude < 1.2f) // arrived - pause, then wander on
             {
                 _hasPatrol = false;
                 _patrolPause = Random.Range(0.8f, 2.5f);
@@ -692,7 +699,7 @@ namespace SpellyZombie
             SpeedScale = 0.55f;
             if (Eyes != null) Eyes.LookTarget = transform.position + MoveDir * 6f + Vector3.up * 1.2f;
 
-            // going nowhere? (walked into something) — pick a new destination
+            // going nowhere? (walked into something) - pick a new destination
             _stuckCheck -= dt;
             if (_stuckCheck <= 0f)
             {

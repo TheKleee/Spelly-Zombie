@@ -3,9 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// GRAMMAR v4 (SPELL_PARTICLES.md, Marko's ruleset 2026-07-19).
+    /// GRAMMAR v4 (SPELL_PARTICLES.md, the ruleset 2026-07-19).
     ///
-    /// Every rune plays exactly one ROLE, and every law operates on ROLES —
+    /// Every rune plays exactly one ROLE, and every law operates on ROLES -
     /// no law anywhere names a rune id. That's the extensibility contract:
     /// a post-release rune ships ONE registry entry (role, opposite, paradox)
     /// plus its payload, and leveling, synthesis, lineage and the fallback
@@ -13,20 +13,20 @@ namespace SpellyZombie
     public enum RuneRole
     {
         Essence,  // WHAT the effect is (burn / freeze / judge / consume)
-        Form,     // the SHAPE — identity of the other ingredient is preserved
+        Form,     // the SHAPE - identity of the other ingredient is preserved
         Behavior, // HOW it acts: anchor · chaos · manifest · multiply
         Vector    // pure motion, no effects of its own, ever
     }
 
-    /// What two OPPOSITE particles synthesize into (annihilation is repealed —
+    /// What two OPPOSITE particles synthesize into (annihilation is repealed -
     /// opposites make PARADOX objects now; each pair declares its own).
     public enum ParadoxKind
     {
         None,
-        Steam,      // hot + cold — burning steam (lvl2×lvl2 = hot steam area)
-        WhiteHole,  // light + dark — pushes everything away (black hole strength, opposite sign)
-        ChaosGrip,  // grip + slip — sticks to everything, cannot be controlled
-        Barrier     // compress + expand — two-way isolation, the system's insulator
+        Steam,      // hot + cold - burning steam (lvl2×lvl2 = hot steam area)
+        WhiteHole,  // light + dark - pushes everything away (black hole strength, opposite sign)
+        ChaosGrip,  // grip + slip - sticks to everything, cannot be controlled
+        Barrier     // compress + expand - two-way isolation, the system's insulator
     }
 
     public class RuneDef
@@ -37,22 +37,22 @@ namespace SpellyZombie
         public ParadoxKind Paradox;   // what this pair synthesizes (same on both halves)
         public ParticleKind Emits;    // which particle carries it (None-ish runes: State emits Matter)
         public bool Core = true;      // counts toward the Demon's all-12 completeness
-        public ulong Bit;             // lineage bit — assigned at registration, never hardcode
+        public ulong Bit;             // lineage bit - assigned at registration, never hardcode
     }
 
     public static class RuneGrammar
     {
         static readonly Dictionary<RuneType, RuneDef> _defs = new Dictionary<RuneType, RuneDef>();
-        // paradox pairs precomputed at registration, keyed by particle FAMILY —
+        // paradox pairs precomputed at registration, keyed by particle FAMILY -
         // ParadoxOf used to O(defs)-scan the registry on every particle collision
         static readonly Dictionary<(ParticleKind, ParticleKind), ParadoxKind> _paradoxes =
             new Dictionary<(ParticleKind, ParticleKind), ParadoxKind>();
         static int _nextBit;
 
-        /// All core runes' lineage bits — a chain carrying every one becomes THE DEMON.
+        /// All core runes' lineage bits - a chain carrying every one becomes THE DEMON.
         public static ulong CoreMask { get; private set; }
 
-        /// New runes (post-release) call this — the whole grammar lights up for them.
+        /// New runes (post-release) call this - the whole grammar lights up for them.
         public static void Register(RuneDef def)
         {
             def.Bit = 1UL << _nextBit++;
@@ -68,7 +68,7 @@ namespace SpellyZombie
 
         static RuneGrammar()
         {
-            // the core 12 — every law reads THESE fields, never the ids
+            // the core 12 - every law reads THESE fields, never the ids
             void Pair(RuneType up, RuneType down, RuneRole role, ParadoxKind paradox,
                 ParticleKind upEmits, ParticleKind downEmits)
             {
@@ -83,14 +83,14 @@ namespace SpellyZombie
                 ParticleKind.Glue, ParticleKind.Repel);
             Pair(RuneType.DensityUp, RuneType.DensityDown, RuneRole.Behavior, ParadoxKind.Barrier,
                 ParticleKind.Dense, ParticleKind.Spread);
-            // State emits MATTER, not particles (its leveling lives in Matter — P2)
+            // State emits MATTER, not particles (its leveling lives in Matter - P2)
             Pair(RuneType.StateSolid, RuneType.StateLiquid, RuneRole.Form, ParadoxKind.None,
                 ParticleKind.Push /*unused*/, ParticleKind.Push /*unused*/);
             // vectors: pure movers; their paradox (Arrow+Y) is undefined on purpose
             Pair(RuneType.DirectionAway, RuneType.DirectionToward, RuneRole.Vector, ParadoxKind.None,
                 ParticleKind.Push, ParticleKind.Push);
 
-            // THE EXOTICS TABLE — Marko's cross matrix, complete (P3 built):
+                // THE EXOTICS TABLE - the cross matrix, complete (P3 built):
             RegisterExotic(ParticleKind.Frost, ParticleKind.Light, ExoticKind.Healing);      // cold light = MERCY
             RegisterExotic(ParticleKind.Spark, ParticleKind.Light, ExoticKind.LightStrike);  // hot light = JUDGMENT
             RegisterExotic(ParticleKind.Spark, ParticleKind.Dark, ExoticKind.DarkFlames);    // hungry fire
@@ -99,7 +99,7 @@ namespace SpellyZombie
             RegisterExotic(ParticleKind.Frost, ParticleKind.Repel, ExoticKind.IceBolts);
             // (Obsidian blade removed Jul 22 — "beats the purpose of drawing".)
             // Its slot refilled the same day: chill and heat share one logic
-            // on glue — the burn patch has a freeze twin.
+            // on glue - the burn patch has a freeze twin.
             RegisterExotic(ParticleKind.Frost, ParticleKind.Glue, ExoticKind.FrostGlue); // glue that freezes
             RegisterExotic(ParticleKind.Frost, ParticleKind.Dark, ExoticKind.AbsoluteZero);
             RegisterExotic(ParticleKind.Dark, ParticleKind.Dense, ExoticKind.DarkMatter);
@@ -114,7 +114,7 @@ namespace SpellyZombie
 
         // ------------------------------------------------------------ exotics --
         /// The EXOTICS TABLE (SPELL_PARTICLES.md): sparse, data-registered
-        /// overrides for specific cross-family pairs — Light Strike, Healing,
+        /// overrides for specific cross-family pairs - Light Strike, Healing,
         /// Teleport… The grammar computes the default; an entry here WINS.
         /// This is data, not code branches: a new rune's exotics are one
         /// RegisterExotic call each.
@@ -132,7 +132,7 @@ namespace SpellyZombie
 
         public static void RegisterExotic(ParticleKind a, ParticleKind b, ExoticKind kind)
         {
-            a = Family(a); b = Family(b); // lookups probe family keys — register the same way
+            a = Family(a); b = Family(b); // lookups probe family keys - register the same way
             var key = (int)a <= (int)b ? (a, b) : (b, a);
             _exotics[key] = kind;
         }
@@ -144,7 +144,7 @@ namespace SpellyZombie
             return _exotics.TryGetValue(key, out var k) ? k : ExoticKind.None;
         }
 
-        /// Lineage bit for a rune — stamped on every particle its zone emits.
+        /// Lineage bit for a rune - stamped on every particle its zone emits.
         public static ulong Bit(RuneType r) => _defs.TryGetValue(r, out var d) ? d.Bit : 0UL;
 
         // ---------------------------------------------------------- families --
@@ -162,7 +162,7 @@ namespace SpellyZombie
         }
 
         /// What an opposite pair synthesizes (None = fall back to the substrate).
-        /// A registration-time lookup — the answer is fixed the moment a pair
+        /// A registration-time lookup - the answer is fixed the moment a pair
         /// registers, exactly like _exotics.
         public static ParadoxKind ParadoxOf(ParticleKind a, ParticleKind b)
         {
@@ -174,8 +174,8 @@ namespace SpellyZombie
         // ------------------------------------------------------------- demon --
         static float _lastDemon = -999f;
 
-        /// ALL core runes combined into one chain, any order, any route —
-        /// THE DEMON appears (Marko's rule). One at a time, with a cooldown so
+        /// ALL core runes combined into one chain, any order, any route -
+        /// THE DEMON appears . One at a time, with a cooldown so
         /// a lingering complete chain can't machine-gun apocalypses.
         public static bool TryDemon(ulong lineage, Vector3 at, float srcSize)
         {

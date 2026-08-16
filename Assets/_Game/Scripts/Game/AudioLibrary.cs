@@ -3,24 +3,24 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE SOUND OF A PROPERTY CHANGING, NOT THE SOUND OF A SPELL (Marko Aug 11:
+    /// THE SOUND OF A PROPERTY CHANGING, NOT THE SOUND OF A SPELL (
     /// "each increase in something can have its own sound => we don't need a
     /// sound for all spells as they all just change some parameters and those
     /// parameters can create sounds").
     ///
-    /// This is the audio half of his master law — state is DERIVED from
+    /// This is the audio half of the master law - state is DERIVED from
     /// properties, so audio is too. Twelve clips cover the entire grammar
     /// instead of one per spell, and combinations layer themselves for free:
     /// Steam plays heat-up and heat-down together because that is exactly what
     /// Steam IS. A new rune pair invented next year needs no new audio.
     ///
-    /// HIS CLIPS WIN, ALWAYS. Every slot is empty by default and the game keeps
-    /// using Juice's synthesised placeholders until he drops a file in — nothing
+    /// the CLIPS WIN, ALWAYS. Every slot is empty by default and the game keeps
+    /// using Juice's synthesised placeholders until drops a file in - nothing
     /// ever goes silent waiting for art. Drop this component on one object in
     /// the scene (or let PrefabVault load an "AudioLibrary" prefab) and fill in
     /// whatever you have.
     ///
-    /// USE `Spelly Zombie ▸ Audio ▸ What Needs A Sound` to print the checklist
+    /// USE `Spelly Zombie  Audio  What Needs A Sound` to print the checklist
     /// of every slot still empty — that is the "find what we're missing" tool.
     public class AudioLibrary : MonoBehaviour
     {

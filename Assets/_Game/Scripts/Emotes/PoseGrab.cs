@@ -3,19 +3,19 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// POSE MODE (Marko's spec, reworked Jul 22): in THIRD person press R —
+    /// POSE MODE : in THIRD person press R
     /// the camera becomes an orbiting easel around your frozen wizard:
     ///
-    ///   LMB-drag a limb — the WHOLE extremity follows your cursor from
+    ///   LMB-drag a limb - the WHOLE extremity follows your cursor from
     ///     wherever you grabbed it (two-bone reach, elbows/knees obey hinges);
     ///     a click that misses the body still grabs the nearest limb on screen
-    ///   SHIFT+LMB — THAT BONE ONLY, on an arcball: drag inside the invisible
+    ///   SHIFT+LMB - THAT BONE ONLY, on an arcball: drag inside the invisible
     ///     ball to tumble it in ANY direction, drag around the ball's rim to
-    ///     TWIST it (Marko's sketch: "Allow for twisting as well!")
+    /// TWIST it
     ///   scroll twists what you hold · WASD / MMB-drag orbit · wheel zooms
     ///   1-9 load a pose to start from · hold/Ctrl+1-9 SAVE · F relax · R done
     ///
-    /// (Body DRAWING stays on R in first person with the wand — this is the
+    /// (Body DRAWING stays on R in first person with the wand - this is the
     /// posing counterpart, same camera language.)
     public class PoseGrab : MonoBehaviour
     {
@@ -32,7 +32,7 @@ namespace SpellyZombie
         float _yaw, _pitch, _dist;
         Vector3 _pan;
 
-        // grab state — SHIFT rotates one bone; plain drag reaches a whole limb
+        // grab state - SHIFT rotates one bone; plain drag reaches a whole limb
         EmoteRig.JointEntry _grabbed;          // shift mode: the bone being rotated
         bool _rotateMode;                      // true = shift bone-rotate
         EmoteRig.JointEntry _ikRoot, _ikMid;   // limb mode: shoulder/hip + elbow/knee
@@ -56,7 +56,7 @@ namespace SpellyZombie
 
         void Awake() => _pilot = GetComponent<SimpleFPSController>();
 
-        // the static must NEVER outlive the component (Marko: entering a
+        // the static must NEVER outlive the component (entering a
         // pose in plain third person moved the camera "as if it was in the
         // pose mode" — a stuck IsOpen makes the controller skip its camera
         // block forever, since only Close() ever clears it)
@@ -88,7 +88,7 @@ namespace SpellyZombie
             if (_cam == null) _cam = GetComponentInChildren<Camera>();
             if (_rig == null || _cam == null) return;
 
-            // ACOLYTES NEVER POSE-SCULPT (Marko Aug 10: their third person is
+            // ACOLYTES NEVER POSE-SCULPT (their third person is
             // ONLY the transformation view; R there is the shape pose mode)
             if (Sides.Of(Grimoire.LocalPlayerId) == Side.Acolyte || ShapeShift.LocalIsShaped)
             {
@@ -104,7 +104,7 @@ namespace SpellyZombie
             if (!IsOpen) return;
             if (kb.escapeKey.wasPressedThisFrame) { Close(); return; }
 
-            // F melts the sculpt back to rest — unless the grimoire has a
+            // F melts the sculpt back to rest - unless the grimoire has a
             // target (declare/absorb owns F for that press)
             if (kb.fKey.wasPressedThisFrame
                 && !GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach)
@@ -117,7 +117,7 @@ namespace SpellyZombie
 
             // numbers: TAP loads a pose to start from, HOLD (0.6s) SAVES the
             // current shape to that key. (Ctrl+number saves instantly too, but
-            // the Unity editor eats Ctrl+numbers — holding works everywhere.)
+            // the Unity editor eats Ctrl+numbers - holding works everywhere.)
             bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
             for (int slot = 1; slot <= 9; slot++)
             {
@@ -152,7 +152,7 @@ namespace SpellyZombie
 
         static PoseGrab _live;
 
-        /// BLOWN OFF THE EASEL — same rule as SelfPaint, driven from Shove.
+        /// BLOWN OFF THE EASEL - same rule as SelfPaint, driven from Shove.
         public static void Blown() { if (IsOpen && _live != null) _live.Close(); }
 
         void Open()
@@ -179,7 +179,7 @@ namespace SpellyZombie
                 _cam.transform.localPosition = _camLocalPos;
                 _cam.transform.localRotation = _camLocalRot;
             }
-            // unsaved sculpts relax when the animator resumes — Ctrl+number
+            // unsaved sculpts relax when the animator resumes - Ctrl+number
             // is the save button, and the prompt says so
         }
 
@@ -202,7 +202,7 @@ namespace SpellyZombie
             {
                 Vector2 mp = mouse.position.ReadValue();
                 var ray = _cam.ScreenPointToRay(mp);
-                // the limbs live on Ignore Raycast — include it explicitly
+                // the limbs live on Ignore Raycast - include it explicitly
                 int mask = Physics.DefaultRaycastLayers | (1 << 2);
                 var kb = Keyboard.current;
                 bool fine = kb != null && (kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed);
@@ -210,9 +210,9 @@ namespace SpellyZombie
 
                 if (fine)
                 {
-                    // SHIFT = THE BONE, ONLY THE BONE (Marko: "I only want to
+                    // SHIFT = THE BONE, ONLY THE BONE ("I only want to
                     // be selecting the bone"): the one you clicked, or the one
-                    // whose pivot is nearest the cursor — within a tight
+                    // whose pivot is nearest the cursor - within a tight
                     // radius, so a far click never grabs something surprising.
                     var joint = hitBody ? _rig.JointAtOrAbove(hit.transform) : null;
                     if (joint == null) joint = NearestJointScreen(mp, 60f);
@@ -226,7 +226,7 @@ namespace SpellyZombie
                 }
                 else
                 {
-                    // plain click: the clicked extremity — or, on a miss, the
+                    // plain click: the clicked extremity - or, on a miss, the
                     // limb whose tip is nearest on screen (thin arms are hard
                     // to hit and that was the whole frustration)
                     bool got = (hitBody && ResolveLimb(hit.transform, out _ikRoot, out _ikMid, out _ikEnd))
@@ -235,10 +235,10 @@ namespace SpellyZombie
                     {
                         _rotateMode = false;
                         _grabbed = null;
-                        // NO-TELEPORT GRAB (Marko: clicking after orbiting
+                        // NO-TELEPORT GRAB (clicking after orbiting
                         // teleported the limb): capture the offset ON THE
                         // DRAG PLANE itself, so frame one's target IS the
-                        // tip's current spot — every drag moves the limb
+                        // tip's current spot - every drag moves the limb
                         // from where it stands, from any camera angle.
                         var plane = new Plane(-_cam.transform.forward, _ikRoot.T.position);
                         _ikOffset = plane.Raycast(ray, out float d0)
@@ -254,10 +254,10 @@ namespace SpellyZombie
             else DragLimb(mouse);
         }
 
-        /// SHIFT drag: ARCBALL — the bone sits inside an invisible trackball
+        /// SHIFT drag: ARCBALL - the bone sits inside an invisible trackball
         /// under your cursor. Dragging across the middle tumbles it in any
-        /// direction; dragging around the RIM rolls it — that's the twist
-        /// (Marko's sketch: "Allow for twisting as well!"). Continuous by
+        /// direction; dragging around the RIM rolls it - that's the twist
+        /// . Continuous by
         /// construction: no plane crossings, no direction flips, no
         /// spaghetti. Scroll still twists around the bone's own axis.
         void DragRotate(Mouse mouse)
@@ -308,7 +308,7 @@ namespace SpellyZombie
                     ? (HandleTip(j) - j.T.position).normalized
                     : _cam.transform.forward;
 
-        /// Plain drag: the whole limb REACHES — the tip chases the cursor
+        /// Plain drag: the whole limb REACHES - the tip chases the cursor
         /// (offset by where you grabbed, so nothing snaps) and a short CCD
         /// pass swings shoulder+elbow (hip+knee) to get it there. Constrain
         /// runs inside the loop, so anatomy holds while the limb finds a way.
@@ -316,7 +316,7 @@ namespace SpellyZombie
         {
             if (_ikRoot?.T == null || _ikEnd == null) return;
             var dragRay = _cam.ScreenPointToRay(mouse.position.ReadValue());
-            // plane through the limb ROOT — cursor motion maps 1:1 onto the
+            // plane through the limb ROOT - cursor motion maps 1:1 onto the
             // limb's reach all the way through the drag
             var plane = new Plane(-_cam.transform.forward, _ikRoot.T.position);
             if (plane.Raycast(dragRay, out float d))
@@ -324,7 +324,7 @@ namespace SpellyZombie
                 Vector3 target = dragRay.GetPoint(d) + _ikOffset;
                 // PARTIAL steps (0.6 per iteration, ×3 ≈ 95%): full-strength
                 // FromToRotation snapped 180° when the cursor crossed the
-                // root — that was the spaghetti. Damped pursuit can't flip.
+                // root - that was the spaghetti. Damped pursuit can't flip.
                 for (int i = 0; i < 3; i++)
                 {
                     if (_ikMid?.T != null)
@@ -372,7 +372,7 @@ namespace SpellyZombie
              : j.T.position;
 
         /// The joint whose PIVOT is nearest the cursor on screen, within
-        /// maxPx — the bone you meant, never a surprise across the body.
+        /// maxPx - the bone you meant, never a surprise across the body.
         EmoteRig.JointEntry NearestJointScreen(Vector2 mp, float maxPx)
         {
             EmoteRig.JointEntry best = null;
@@ -417,7 +417,7 @@ namespace SpellyZombie
             return true;
         }
 
-        /// Plain click: resolve the whole extremity — walk up remembering any
+        /// Plain click: resolve the whole extremity - walk up remembering any
         /// hinge passed (elbow/knee = mid) until the un-hinged limb joint
         /// (shoulder/hip = root). The tip is the joint's GrabHint (the hand or
         /// foot marker) when set, else the deepest thing you actually clicked.
@@ -448,7 +448,7 @@ namespace SpellyZombie
         }
     }
 
-    /// THE easel orbit — MMB rotates, WASD pans (clamped 2.2 so the body is
+    /// THE easel orbit - MMB rotates, WASD pans (clamped 2.2 so the body is
     /// never lost), scroll zooms. PoseGrab and SelfPaint share this one
     /// camera language (it was implemented twice, drifting apart).
     public static class EaselOrbit
@@ -488,9 +488,9 @@ namespace SpellyZombie
             cam.transform.rotation = rot;
         }
 
-        /// THE WHOLE BORROWED-CAMERA MODE, not just its maths (Marko Aug 10:
+        /// THE WHOLE BORROWED-CAMERA MODE, not just its maths (
         /// "you need to reuse the code more often"). EaselOrbit owned the orbit
-        /// but every mode that USED it re-wrote the same lifecycle privately —
+        /// but every mode that USED it re-wrote the same lifecycle privately -
         /// remember the camera's local pose, keep yaw/pitch/dist/pan, hand it
         /// back on close. PoseGrab, SelfPaint and ShapeShift each carry their
         /// own copy of exactly that, and ZombieWatch was about to be the fourth.
@@ -531,8 +531,8 @@ namespace SpellyZombie
                 Apply(_cam, focus + Pan, rot, Dist);
             }
 
-            /// Always safe to call twice — a mode that closes from more than one
-            /// path (his R / Tab / F) must not have to track whether it already did.
+            /// Always safe to call twice - a mode that closes from more than one
+            /// path must not have to track whether it already did.
             public void Release()
             {
                 if (_cam == null) return;

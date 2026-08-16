@@ -2,9 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A SPELL PAGE dropped by a slain zombie (design rule 4) — walk over it
-    /// to learn that rune family. Marko's rule: dropped pages look EXACTLY
-    /// like the pages in the grimoire — his page art if he's authored it
+    /// A SPELL PAGE dropped by a slain zombie (design rule 4) - walk over it
+    /// to learn that rune family. the rule: dropped pages look EXACTLY
+    /// like the pages in the grimoire - the page art if he's authored it
     /// (Resources/Custom/GrimoirePage_&lt;Family&gt;, or Custom/SpellPage as the
     /// generic sheet), parchment placeholder otherwise, with the family's two
     /// runes stamped on in the player's recorded handwriting. A soft gold
@@ -23,7 +23,7 @@ namespace SpellyZombie
             var go = new GameObject("RuneCard_" + card);
             go.transform.position = pos;
 
-            // Marko's whole-pickup override: Resources/Custom/SpellPage prefab
+            // the whole-pickup override: Resources/Custom/SpellPage prefab
             // replaces the generated page entirely (spin/bob/collect stay)
             var skin = PrefabVault.Get("SpellPage");
             if (skin != null)

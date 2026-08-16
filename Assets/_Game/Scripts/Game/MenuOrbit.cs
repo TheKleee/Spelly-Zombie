@@ -2,8 +2,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Marko's menu staging v2: the WORLD stays put (it's a real terrain
-    /// now) and the CAMERA circles it the way a turntable used to feel —
+    /// the menu staging v2: the WORLD stays put (it's a real terrain
+    /// now) and the CAMERA circles it the way a turntable used to feel -
     /// same relative motion, zero moving geometry. Spinning pauses the
     /// moment ink flows and resumes after 3 consecutive quiet seconds.
     public class MenuOrbit : MonoBehaviour

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The save button for Marko's character edits (see CharacterFix.cs):
+    /// The save button for the character edits (see CharacterFix.cs):
     /// play, nudge the wand/book/eyes/sockets/IK anchors, save, stop.
     public static class CharacterFixMenu
     {

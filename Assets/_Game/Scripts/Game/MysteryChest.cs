@@ -9,10 +9,10 @@ namespace SpellyZombie
     /// MysteryChestSpawnPoint per scene. Pay riches, press E, the lid creaks
     /// open with a light show, and out comes:
     ///
-    ///   60%  a rune card — weighted toward families you DON'T own yet
+    ///   60%  a rune card - weighted toward families you DON'T own yet
     ///   20%  a weapon pickup
     ///   10%  full ink for the whole team
-    ///   10%  THE BEAR — the chest slams shut and MOVES to another spawn
+    ///   10%  THE BEAR - the chest slams shut and MOVES to another spawn
     ///        point (half refund). Classic.
     ///
     /// Local-sim like Perks/Powerups until B4 host authority (accepted
@@ -44,9 +44,9 @@ namespace SpellyZombie
             Build(points[Random.Range(0, points.Length)].transform.position);
         }
 
-        /// Marko's prefab first (Resources/Custom/Chest) — a child named
+        /// the prefab first (Resources/Custom/Chest) - a child named
         /// "Lid" (pivot on the hinge edge, authored CLOSED at identity
-        /// rotation) swings open. Primitives fill in until his exists.
+        /// rotation) swings open. Primitives fill in until the exists.
         static void Build(Vector3 at)
         {
             GameObject root;
@@ -56,8 +56,8 @@ namespace SpellyZombie
             {
                 root = Object.Instantiate(customChest, at, Quaternion.identity);
                 root.name = "SZ_MysteryChest";
-                // AXIOM (Marko Jul 25): exact "Lid" only meant any other name
-                // → the chest never opens, silently. Exact first, then a TOKEN
+                // AXIOM : exact "Lid" only meant any other name
+                // the chest never opens, silently. Exact first, then a TOKEN
                 // match (a raw Contains("lid") would grab "Collider"/"Solid").
                 foreach (var t in root.GetComponentsInChildren<Transform>(true))
                     if (t.name == "Lid") { lidT = t; break; }
@@ -75,7 +75,7 @@ namespace SpellyZombie
                         "\"Lid\". It spawns, glows and pays out fine, it just won't SWING OPEN. Name the " +
                         "hinge child Lid, pivot it on the hinge edge, and author it CLOSED.", root);
 
-                // a Blender export without colliders would be a ghost — the
+                // a Blender export without colliders would be a ghost - the
                 // pen, spells and zombies would pass straight through it
                 if (root.GetComponentInChildren<Collider>() == null)
                 {
@@ -156,7 +156,7 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             if (kb == null || !kb.eKey.wasPressedThisFrame) return;
 
-            StartCoroutine(Roll()); // no currency gate — riches are gone
+            StartCoroutine(Roll()); // no currency gate - riches are gone
         }
 
         IEnumerator Roll()
@@ -165,7 +165,7 @@ namespace SpellyZombie
             _lidOpen = 1f;
             Juice.Crackle(transform.position);
 
-            // the light show — hope rises with the pitch of the flicker
+            // the light show - hope rises with the pitch of the flicker
             float t = 0f;
             while (t < 2.1f)
             {
@@ -179,7 +179,7 @@ namespace SpellyZombie
                 yield return null;
             }
 
-            // NO WEAPONS (Marko Aug 8: "remove weapons from the game completely...
+            // NO WEAPONS ("remove weapons from the game completely...
             // they do not belong to this game at all right now") — the chest was
             // the last live spawner; its 20% weapon slice folds into ink
             float roll = Random.value;

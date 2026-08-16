@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// The clip generator: after a kill burst near a seal (or a wipe), a 5s overlay replays the seal being drawn; P saves a PNG — manufactures the shareable moment.
+    /// The clip generator: after a kill burst near a seal (or a wipe), a 5s overlay replays the seal being drawn; P saves a PNG - manufactures the shareable moment.
     public class SealAutopsy : MonoBehaviour
     {
         const int Size = 256;

@@ -3,19 +3,19 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// AN OBJECT THAT TEACHES RUNES, IN ORDER (Marko Aug 10): "a flame can be
+    /// AN OBJECT THAT TEACHES RUNES, IN ORDER : "a flame can be
     /// absorbed to learn heat, but next time it's absorbed it'll teach you
     /// spread and luminance respectively. Solid object can teach you solid but
     /// it can also teach you density and darkness... in that order as darkness
     /// is more powerful so it needs to be taught later."
     ///
-    /// HE ADDS THIS to his absorbable objects and FILLS THE LIST HIMSELF —
+    /// ADDS THIS to the absorbable objects and FILLS THE LIST HIMSELF -
     /// the order is authored, never inferred. Each absorb grants the next
     /// rune the wizard is missing; a source with nothing left to teach
     /// refuses. INFINITE sources (training elements in the lobby) survive
-    /// every absorb; a normal one is CONSUMED by it — the wizard's trail.
+    /// every absorb; a normal one is CONSUMED by it - the wizard's trail.
     ///
-    /// Wizards only — acolytes SCAN, they never absorb. F absorbs while the
+    /// Wizards only - acolytes SCAN, they never absorb. F absorbs while the
     /// aim badge is on this object.
     public class AbsorbSource : MonoBehaviour
     {
@@ -28,7 +28,7 @@ namespace SpellyZombie
         [Tooltip("How close the wizard must stand for the absorb to work, meters.")]
         public float Range = 3.5f;
 
-        /// The next rune this would teach the owner — None when it is spent.
+        /// The next rune this would teach the owner - None when it is spent.
         public RuneType NextFor(int owner)
         {
             if (Teaches == null) return RuneType.None;
@@ -60,8 +60,8 @@ namespace SpellyZombie
             Grimoire.UnlockRune(me, rune);
             Juice.Chime(transform.position);
             DrawingWorld.Instance?.LogEvent($"absorbed: it teaches {RuneLibrary.Icon(rune)}");
-            // consumption is the trail (Marko Aug 8: absorbing destroys the
-            // object) — unless this is one of his infinite training elements
+            // consumption is the trail (absorbing destroys the
+            // object) - unless this is one of the infinite training elements
             if (!Infinite) Destroy(gameObject);
         }
     }

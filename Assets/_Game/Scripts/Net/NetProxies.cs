@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// Client stand-in for a HOST-simulated matter blob (netcode §3): kinematic,
-    /// lerped to snapshots, no chemistry — but it keeps a real (disabled) Matter
+    /// lerped to snapshots, no chemistry - but it keeps a real (disabled) Matter
     /// so grabs read the state rule and the LiquidVolume shell still wades you.
     public class NetMatterProxy : MonoBehaviour
     {
@@ -12,7 +12,7 @@ namespace SpellyZombie
         public SurfaceMaterialType Mat;
         public MatterPhase Phase;
 
-        Matter _matter;   // disabled — fields feed LiquidVolume, Update never runs
+        Matter _matter;   // disabled - fields feed LiquidVolume, Update never runs
         Renderer _rend;
         Vector3 _tp, _tscale;
         Quaternion _trot;
@@ -95,7 +95,7 @@ namespace SpellyZombie
     }
 
     /// Client stand-in for a HOST-simulated spell particle (netcode §3): pure
-    /// visual — no triggers, no chemistry. The grab aims at these and ships a
+    /// visual - no triggers, no chemistry. The grab aims at these and ships a
     /// ClaimIntent instead of touching physics.
     public class NetMoteProxy : MonoBehaviour
     {
@@ -112,11 +112,11 @@ namespace SpellyZombie
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             go.name = "NetMote_" + kind;
-            Object.Destroy(go.GetComponent<Collider>()); // visual only — never blocks a ray
+            Object.Destroy(go.GetComponent<Collider>()); // visual only - never blocks a ray
             go.transform.position = pos;
             go.transform.localScale = Vector3.one * (kind == ParticleKind.Push ? 0.09f : 0.14f);
 
-            // SpellParticle.RefreshLook's palette, condensed — one look per kind
+            // SpellParticle.RefreshLook's palette, condensed - one look per kind
             Color c;
             MoteShade shade = MoteShade.Additive;
             switch (kind)
@@ -197,7 +197,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Client display of a HOST seal (netcode §2): the gold ring, nothing else —
+    /// Client display of a HOST seal (netcode §2): the gold ring, nothing else -
     /// no detection, no spell, no payload. Dies with SealEndMsg (or a timeout,
     /// in case the end packet is never seen).
     public class NetSealRing : MonoBehaviour

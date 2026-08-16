@@ -7,7 +7,7 @@ namespace SpellyZombie
     // Zones run, physics composes, nothing announces or nudges. Only the
     // generic banner component below survives (round announcements use it).
 
-    /// Big centered announcement on the curtain banner that fades and rises —
+    /// Big centered announcement on the curtain banner that fades and rises -
     /// used by the RoundDirector for round starts, wipes, and victories.
     public class ComboBanner : MonoBehaviour
     {
@@ -27,7 +27,7 @@ namespace SpellyZombie
                 Destroy(_live.gameObject);
             }
             var go = new GameObject("ComboBanner");
-            DontDestroyOnLoad(go); // its group lives on the persistent canvas —
+            DontDestroyOnLoad(go); // its group lives on the persistent canvas -
                                    // dying with the scene stranded a frozen
                                    // banner there showing the OLD text forever
             var b = go.AddComponent<ComboBanner>();
@@ -48,7 +48,7 @@ namespace SpellyZombie
 
             var label = UIKit.Label(_ui, text, 40, color, TextAnchor.MiddleCenter, true);
             label.text = text;   // an ADOPTED prefab label keeps its authored
-            label.color = color; // words — a live banner must say ITS line
+            label.color = color; // words - a live banner must say ITS line
             var lr = (RectTransform)label.transform;
             UIKit.Stretch(lr);
             lr.offsetMin = new Vector2(60f, 8f);

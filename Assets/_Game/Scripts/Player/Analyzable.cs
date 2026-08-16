@@ -4,19 +4,22 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// THE WORLD TEACHES (Marko Jul 25): you don't find floating runes — you
+    /// The four world sources and what they teach, in order, one per absorb.
+    public enum AbsorbKind { Single, Flame, Puddle, Mud, Rock }
+
+    /// THE WORLD TEACHES : you don't find floating runes - you
     /// find a FLAME, a PUDDLE, a LOG, and absorb it into the grimoire. The
     /// thing you absorb IS the lesson: fire teaches Heat, water teaches Liquid,
     /// a log teaches Solid.
     ///
-    /// ABSORBING CONSUMES THE SOURCE (his ruling): the torch goes out, so that
+    /// ABSORBING CONSUMES THE SOURCE : the torch goes out, so that
     /// one torch teaches exactly ONE player. Everyone else must find their own
-    /// fire — which is what keeps kits different and forces you to combine
+    /// fire - which is what keeps kits different and forces you to combine
     /// spells instead of all owning the same ones.
     ///
     /// SPELL-BORN THINGS CAN NEVER BE ANALYZED — not "isn't currently a spell"
     /// but PROVENANCE: anything a spell created is permanently ineligible, even
-    /// after the touch law turns it into an object. Otherwise conjure → touch →
+    /// after the touch law turns it into an object. Otherwise conjure  touch
     /// analyze is a free rune printer.
     ///
     /// AXIOM: everything here is yours. Put this on your torch/puddle/log
@@ -29,12 +32,18 @@ namespace SpellyZombie
                  "(all 12 collected individually). A flame teaches HeatUp, not its opposite.")]
         public RuneType Teaches = RuneType.HeatUp;
 
+        [Tooltip("Single teaches the one rune above. The four world sources teach three " +
+                 "runes each in a fixed order, one per absorb: Flame = Heat, Light, Expand. " +
+                 "Puddle = Liquid, Chill, Slick. Mud = Liquid, Sticky, Solid. " +
+                 "Rock = Solid, Dark, Compress. In the lobby a source returns after 3s.")]
+        public AbsorbKind Kind = AbsorbKind.Single;
+
         [Header("WHAT HAPPENS WHEN IT'S ABSORBED (your call)")]
         [Tooltip("Your effect at the moment of absorbing. Empty = the default poof.")]
         public GameObject AbsorbFx;
         [Tooltip("What's left behind: a spent torch, a dry basin. Empty = see Consume below.")]
         public GameObject Remains;
-        [Tooltip("ON (his ruling): the source is used up, so only ONE player can learn from it. " +
+        [Tooltip("ON : the source is used up, so only ONE player can learn from it. " +
                  "Turn OFF for a teaching object you want everyone to be able to read.")]
         public bool Consume = true;
         [Tooltip("With Consume on and no Remains prefab: destroy the whole object, or just " +
@@ -46,7 +55,7 @@ namespace SpellyZombie
         [Header("Reach")]
         public float Range = 2.6f;
 
-        /// Set by the spell systems on anything they create — such a thing can
+        /// Set by the spell systems on anything they create - such a thing can
         /// NEVER teach a rune, however many times it changes hands.
         [System.NonSerialized] public bool SpellBorn;
 
@@ -56,49 +65,132 @@ namespace SpellyZombie
         void OnEnable() { All.Add(this); }
         void OnDisable() { All.Remove(this); }
 
-        /// The one live registry the grimoire scans — no per-object Update.
+        /// The one live registry the grimoire scans - no per-object Update.
         public static IReadOnlyList<Analyzable> Living => All;
 
         public bool CanTeach => !Spent && !SpellBorn;
+
+        static readonly RuneType[] FlameOrder = { RuneType.HeatUp, RuneType.LuminanceUp, RuneType.DensityDown };
+        static readonly RuneType[] PuddleOrder = { RuneType.StateLiquid, RuneType.HeatDown, RuneType.StickyDown };
+        static readonly RuneType[] MudOrder = { RuneType.StateLiquid, RuneType.StickyUp, RuneType.StateSolid };
+        static readonly RuneType[] RockOrder = { RuneType.StateSolid, RuneType.LuminanceDown, RuneType.DensityUp };
+
+        RuneType[] Order()
+        {
+            switch (Kind)
+            {
+                case AbsorbKind.Flame: return FlameOrder;
+                case AbsorbKind.Puddle: return PuddleOrder;
+                case AbsorbKind.Mud: return MudOrder;
+                case AbsorbKind.Rock: return RockOrder;
+                default: return null;
+            }
+        }
+
+        /// The rune this source would grant `owner` next; None = nothing left.
+        public RuneType NextFor(int ownerId)
+        {
+            if (!CanTeach) return RuneType.None;
+            var order = Order();
+            if (order == null)
+                return Grimoire.HasRune(ownerId, Teaches) ? RuneType.None : Teaches;
+            foreach (var r in order)
+                if (!Grimoire.HasRune(ownerId, r)) return r;
+            return RuneType.None;
+        }
 
         /// Absorb into `owner`'s grimoire. Returns false when there was
         /// nothing to learn (already known, spent, or spell-born).
         public bool AbsorbInto(int ownerId)
         {
-            if (!CanTeach) return false;
-            if (Grimoire.HasRune(ownerId, Teaches)) return false;   // already in the book
+            var rune = NextFor(ownerId);
+            if (rune == RuneType.None) return false;
 
-            Grimoire.UnlockRune(ownerId, Teaches);
+            Grimoire.UnlockRune(ownerId, rune);
             Spent = true;
 
             if (AbsorbFx != null) Instantiate(AbsorbFx, transform.position, Quaternion.identity);
             else if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, transform.position);
             Juice.Chime(transform.position);
-            DrawingWorld.Instance?.LogEvent($"the grimoire absorbs it. {Teaches} is yours");
+            DrawingWorld.Instance?.LogEvent($"the grimoire absorbs it. {rune} is yours");
+            NetSync.SendAbsorb(this);
 
-            if (!Consume) return true;
+            Depart();
+            return true;
+        }
 
-            if (Remains != null)
+        /// A remote player absorbed this: the world effect only, no rune here.
+        public void VanishRemote()
+        {
+            if (Spent) return;
+            Spent = true;
+            if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, transform.position);
+            Depart();
+        }
+
+        readonly List<GameObject> _hidObjects = new List<GameObject>();
+        readonly List<Renderer> _hidRenderers = new List<Renderer>();
+        readonly List<Light> _hidLights = new List<Light>();
+        readonly List<Collider> _hidColliders = new List<Collider>();
+
+        void Depart()
+        {
+            if (!Consume) { Spent = false; return; } // a teaching object everyone can read
+
+            // the lobby is the training yard: sources always come back there,
+            // so Remains/Destroy only apply on real maps
+            bool lobby = ActiveScene.Name == "Lobby";
+            if (!lobby && Remains != null)
             {
                 Instantiate(Remains, transform.position, transform.rotation, transform.parent);
                 Destroy(gameObject);
-                return true;
+                return;
             }
-            if (DestroyOnAbsorb) { Destroy(gameObject); return true; }
+            if (!lobby && DestroyOnAbsorb) { Destroy(gameObject); return; }
 
-            // it goes OUT but stays standing — the spent torch
+            Vanish();
+            if (lobby) Invoke(nameof(Respawn), 3f);
+        }
+
+        void Vanish()
+        {
+            _hidObjects.Clear(); _hidRenderers.Clear(); _hidLights.Clear(); _hidColliders.Clear();
+
             if (Extinguish != null && Extinguish.Length > 0)
             {
-                foreach (var go in Extinguish) if (go != null) go.SetActive(false);
+                foreach (var go in Extinguish)
+                    if (go != null && go.activeSelf) { go.SetActive(false); _hidObjects.Add(go); }
+                return;
             }
-            else
+
+            if (Kind == AbsorbKind.Single)
             {
+                // it goes OUT but stays standing - the spent torch
                 foreach (var r in GetComponentsInChildren<Renderer>(true))
-                    if (r is ParticleSystemRenderer) r.gameObject.SetActive(false);
-                foreach (var l in GetComponentsInChildren<Light>(true)) l.enabled = false;
+                    if (r is ParticleSystemRenderer && r.gameObject.activeSelf)
+                    { r.gameObject.SetActive(false); _hidObjects.Add(r.gameObject); }
+                foreach (var l in GetComponentsInChildren<Light>(true))
+                    if (l.enabled) { l.enabled = false; _hidLights.Add(l); }
+                return;
             }
-            return true;
+
+            // a world source vanishes whole: look, light and collision
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+                if (r.enabled) { r.enabled = false; _hidRenderers.Add(r); }
+            foreach (var l in GetComponentsInChildren<Light>(true))
+                if (l.enabled) { l.enabled = false; _hidLights.Add(l); }
+            foreach (var c in GetComponentsInChildren<Collider>(true))
+                if (c.enabled) { c.enabled = false; _hidColliders.Add(c); }
+        }
+
+        void Respawn()
+        {
+            foreach (var go in _hidObjects) if (go != null) go.SetActive(true);
+            foreach (var r in _hidRenderers) if (r != null) r.enabled = true;
+            foreach (var l in _hidLights) if (l != null) l.enabled = true;
+            foreach (var c in _hidColliders) if (c != null) c.enabled = true;
+            _hidObjects.Clear(); _hidRenderers.Clear(); _hidLights.Clear(); _hidColliders.Clear();
+            Spent = false;
         }
     }
-
 }

@@ -40,7 +40,7 @@ namespace SpellyZombie
 
         /// WHAT EACH SIDE KNOWS BEFORE IT LEARNS ANYTHING.
         ///
-        /// PUSH AND PULL ARE UNIVERSAL (Marko: "push and pull is something regular
+        /// PUSH AND PULL ARE UNIVERSAL ("push and pull is something regular
         /// wizard starts with as well even without absorbing any rune"). Both
         /// sides need them from second zero: a wizard to shove the world around,
         /// an acolyte because the ARROW is how they command their dead, and an
@@ -86,9 +86,15 @@ namespace SpellyZombie
 
         void Update()
         {
-            // broken-pot ink must land even when ZERO pots remain to Update —
+            // broken-pot ink must land even when ZERO pots remain to Update -
             // dead objects can't conduct their own hop (CauldronEconomy.GapTick)
             CauldronEconomy.GapTick(Time.deltaTime);
+
+            // immersive mode: no HUD at all, except screens you opened
+            UIKit.TickImmersive();
+
+            // lobby: aim at a player, floating I, name card + Steam add
+            LobbyInspect.Tick();
 
             // keep every player wearing the two side components
             _sweep -= Time.deltaTime;
@@ -100,17 +106,26 @@ namespace SpellyZombie
                     if (p == null) continue;
                     if (p.GetComponent<ShapeShift>() == null) p.gameObject.AddComponent<ShapeShift>();
                     if (p.GetComponent<SideLook>() == null) p.gameObject.AddComponent<SideLook>();
-                    // the acolyte's R overwatch belongs on this same list — a
+                    // the acolyte's R overwatch belongs on this same list - a
                     // script nobody attaches is a key that does nothing
                     if (p.GetComponent<ZombieWatch>() == null) p.gameObject.AddComponent<ZombieWatch>();
-                    // every body is someone else's canvas (Marko Aug 11)
+                    // every body is someone else's canvas
                     if (p.GetComponent<BodyCanvas>() == null) p.gameObject.AddComponent<BodyCanvas>();
                     // and your own body ink follows you across scenes and sessions
                     if (p.GetComponent<BodyInkKeeper>() == null) p.gameObject.AddComponent<BodyInkKeeper>();
+                    // death is a mode, not a menu: the ghost and the rescue
+                    if (p.GetComponent<GhostState>() == null) p.gameObject.AddComponent<GhostState>();
                     // the crossroads line: what TAB and R do from here, both sides
                     if (p.GetComponent<ModeGuide>() == null) p.gameObject.AddComponent<ModeGuide>();
                     // the chosen hat color survives scene loads and sessions
                     HatColor.Dress(p);
+
+                    // health ceiling follows the current side
+                    if (!p.IsDowned)
+                    {
+                        float cap = Sides.MaxHealthFor(Grimoire.LocalPlayerId);
+                        if (p.Health > cap || p.Health <= 0f) p.Health = cap;
+                    }
                 }
 
                 // push and pull, before anyone has absorbed anything
@@ -121,19 +136,8 @@ namespace SpellyZombie
                 }
             }
 
-            var kb = Keyboard.current;
-            if (kb == null || GameMenu.IsOpen) return;
-            if (ActiveScene.Name != "Lobby") return;   // lobby only: in a round you get corrupted, not a key
-            if (!kb.cKey.wasPressedThisFrame) return;
-
-            Sides.Toggle(Sides.LocalPlayerId);
-
-            bool acolyte = Sides.LocalIsAcolyte;
-            DrawingWorld.Instance?.LogEvent(acolyte
-                ? "you are an acolyte now" : "you are a wizard now");
-
-            var me = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
-            if (me != null) Juice.Chime(me.transform.position);
+            // (the C key is GONE - side switching lives on the SIDE PILLAR,
+            // the lobby-gate ruling: diegetic controls, not hotkeys)
         }
     }
 }

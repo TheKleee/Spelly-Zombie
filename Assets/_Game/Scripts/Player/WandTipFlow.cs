@@ -2,22 +2,22 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE WAND SAYS WHICH WAY ITS INK IS GOING (Marko Aug 10, with his sketch):
+    /// THE WAND SAYS WHICH WAY ITS INK IS GOING :
     /// "3 particles going away from the wand => deteriorating.
     ///  3 particles going towards the wand => regenerating.
     ///  Same but green effect for the acolyte."
     ///
-    /// The wand already shrinks and grows, but SILENTLY — you had to watch its
+    /// The wand already shrinks and grows, but SILENTLY - you had to watch its
     /// length for a second to work out which way it was going, and by then the
     /// thing you wanted to know (am I gaining or bleeding?) had already been
     /// decided for you. Three motes at the TIP answer it instantly, and the
     /// DIRECTION carries the whole meaning: outward is loss, inward is gain.
     /// No text, no bar, readable at a glance and in any language.
     ///
-    /// MARKO'S CONTRACT, same shape as WandInk's: name a child "Tip" inside the
+    /// the CONTRACT, same shape as WandInk's: name a child "Tip" inside the
     /// wand and the motes play there. No "Tip" child and it measures the far end
-    /// of the wand's own bounds instead — a fallback for geometry, not for a
-    /// decision, so nothing he authored is being guessed at.
+    /// of the wand's own bounds instead - a fallback for geometry, not for a
+    /// decision, so nothing authored is being guessed at.
     [RequireComponent(typeof(WandInk))]
     public class WandTipFlow : MonoBehaviour
     {
@@ -43,8 +43,8 @@ namespace SpellyZombie
 
             if (_tip == null)
             {
-                // ⛔ A GUESS, AND IT SAYS SO. His art knows where the tip is and
-                // this does not — the honest fix is one empty child, not better
+                // A GUESS, AND IT SAYS SO. the art knows where the tip is and
+                // this does not - the honest fix is one empty child, not better
                 // maths. Measured in LOCAL space: the earlier version pushed a
                 // WORLD bounds point through InverseTransformPoint, which at the
                 // wand's scale threw the motes over a metre off the model.
@@ -71,18 +71,18 @@ namespace SpellyZombie
                     "it is used instead, permanently.", this);
             }
 
-            // ⛔ THE MOTES ARE NOT CHILDREN OF THE TIP (Marko Aug 11: "I added a
+            // THE MOTES ARE NOT CHILDREN OF THE TIP ("I added a
             // tip and the effect no longer exists").
             //
             // They used to be, which meant they inherited whatever scale the Tip
-            // sat under. Parent it beneath a stretched Shaft — a cylinder at
-            // 0.01 x 0.05 x 0.01, entirely normal for wand geometry — and motes
+            // sat under. Parent it beneath a stretched Shaft - a cylinder at
+            // 0.01 x 0.05 x 0.01, entirely normal for wand geometry - and motes
             // sized 0.012 come out at a ten-thousandth of a metre. Invisible.
-            // His placement was correct; the code had no business depending on
-            // where in the hierarchy he put it.
+            // the placement was correct; the code had no business depending on
+            // where in the hierarchy put it.
             //
-            // So the Tip is read as a POSE REFERENCE ONLY — position and
-            // forward — and the motes live unparented in world space, sized in
+            // So the Tip is read as a POSE REFERENCE ONLY - position and
+            // forward - and the motes live unparented in world space, sized in
             // real metres. Put the Tip anywhere, under anything, at any scale.
             _motes = new Transform[Motes];
             _rends = new Renderer[Motes];
@@ -102,14 +102,14 @@ namespace SpellyZombie
         }
 
         /// Called by WandInk with the ink fraction's rate of change per second.
-        /// THE MAGNITUDE MATTERS AS MUCH AS THE SIGN (Marko Aug 11): it is not
+        /// THE MAGNITUDE MATTERS AS MUCH AS THE SIGN : it is not
         /// just "am I gaining or losing", it is HOW FAST — which is what turns
-        /// this into his dowsing rod.
+        /// this into the dowsing rod.
         public void Report(float deltaPerSec) => _rate = deltaPerSec;
 
         void OnDestroy()
         {
-            // unparented, so they do not die with the wand — clean them up
+            // unparented, so they do not die with the wand - clean them up
             if (_motes == null) return;
             foreach (var m in _motes) if (m != null) Destroy(m.gameObject);
         }
@@ -128,7 +128,7 @@ namespace SpellyZombie
                     _motes[i].gameObject.SetActive(on);
             if (!on) return;
 
-            // HIS COLOURS: a wizard's ink is black, an acolyte's is corrupt
+            // the COLOURS: a wizard's ink is black, an acolyte's is corrupt
             // green. Asked per body so a second player's wand is right too.
             Color want = Sides.IsAcolytePlayer(_pilot)
                 ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
@@ -139,7 +139,7 @@ namespace SpellyZombie
                 foreach (var r in _rends) if (r != null) r.sharedMaterial = mat;
             }
 
-            // ⛔ HOW FAST DECIDES HOW BIG (Marko Aug 11). Two rules in one
+            // HOW FAST DECIDES HOW BIG . Two rules in one
             // number, because they are the same number:
             //   "deteriorating when drawing should create a larger effect" —
             //   drawing is a fast drain, so it reads loud.
@@ -157,7 +157,7 @@ namespace SpellyZombie
             _phase += Time.deltaTime / Mathf.Lerp(Cycle, Cycle * 0.45f, hot);
             if (_phase > 1f) _phase -= 1f;
 
-            // read purely as a pose — where the point is and which way it faces
+            // read purely as a pose - where the point is and which way it faces
             Vector3 origin = _tip.position;
             Vector3 fwd = _tip.forward, right = _tip.right, up = _tip.up;
 
@@ -166,11 +166,11 @@ namespace SpellyZombie
                 if (_motes[i] == null) continue;
                 float t = Mathf.Repeat(_phase + i / (float)Motes, 1f);
 
-                // OUTWARD when losing, INWARD when gaining — the direction IS
+                // OUTWARD when losing, INWARD when gaining - the direction IS
                 // the message, so it simply runs the same path backwards.
                 float along = _shown < 0f ? t : 1f - t;
 
-                // fanned like his sketch: three motes leaving on their own arcs
+                // fanned like the sketch: three motes leaving on their own arcs
                 float a = (i / (float)Motes) * Mathf.PI * 2f;
                 // the fan and the run both grow with the flow, so a strong
                 // one is a wide spray and a trickle is a thin wisp

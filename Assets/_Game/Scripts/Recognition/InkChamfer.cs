@@ -3,20 +3,20 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE RECOGNIZER — oriented chamfer matching, chosen by MEASUREMENT.
+    /// THE RECOGNIZER - oriented chamfer matching, chosen by MEASUREMENT.
     ///
     /// Every candidate (the old $P cloud, the 7×7 scan matrix, plain and
-    /// oriented chamfer) raced offline against Marko's real recorded
-    /// templates under GAME-REALISTIC distortion — hand jitter PLUS the
+    /// oriented chamfer) raced offline against the real recorded
+    /// templates under GAME-REALISTIC distortion - hand jitter PLUS the
     /// oblique-view foreshortening and shear that ground drawings actually
     /// suffer (the first race modeled only mild jitter; its winner passed
     /// the lab and failed the street, same as the matrix before it).
-    /// Winner: STRETCH-FILL oriented chamfer on a 32×32 distance field —
+    /// Winner: STRETCH-FILL oriented chamfer on a 32×32 distance field -
     /// 99.4% correct, 0.0% wrong rune, 1.4% scribbles accepted. Old $P
     /// under the same distortion: 52-73% correct with misfires, and up to
     /// HALF of scribbles firing.
     ///
-    /// How it works — the ink is compared AS INK, no segment anchors, no
+    /// How it works - the ink is compared AS INK, no segment anchors, no
     /// signatures, no flips (orientation is meaning: Heat-up ≠ Heat-down):
     ///   1. rasterize the drawing upright (the frame the player saw) into a
     ///      32×32 occupancy mask, each cell keeping its dominant stroke
@@ -24,11 +24,11 @@ namespace SpellyZombie
     ///   2. build a distance field per direction channel;
     ///   3. similarity = symmetric mean distance from each drawing cell to
     ///      the template's compatible ink (same direction free, adjacent
-    ///      direction +1 cell) and back — so a wobble costs millimetres,
+    ///      direction +1 cell) and back - so a wobble costs millimetres,
     ///      not a flipped signature;
     ///   4. ±9° readings of both sides absorb hand tilt;
     ///   5. accept only when the best rune clears RuneChamferFloor AND
-    ///      beats the runner-up by RuneChamferMargin — the right rune or
+    ///      beats the runner-up by RuneChamferMargin - the right rune or
     ///      none, enforced by construction.
     public static class InkChamfer
     {
@@ -85,7 +85,7 @@ namespace SpellyZombie
             Debug.Log(report.ToString());
         }
 
-        /// The public entry: strokes → the rune they draw, or None (fizzle).
+        /// The public entry: strokes  the rune they draw, or None (fizzle).
         /// ownerId gates to the player's unlocked runes.
         public static RuneType Recognize(int? ownerId,
             IReadOnlyList<IReadOnlyList<Vector2>> strokes)
@@ -201,8 +201,8 @@ namespace SpellyZombie
             float w = Mathf.Max(maxx - minx, 1e-4f), h = Mathf.Max(maxy - miny, 1e-4f);
             float size = Mathf.Max(w, h);
             // STRETCH-FILL both axes (the fix that survived the field): ink
-            // drawn on the ground is FORESHORTENED by the view angle — up to
-            // 2× squash — which uniform scale-fit faithfully preserved and
+            // drawn on the ground is FORESHORTENED by the view angle - up to
+            // 2× squash - which uniform scale-fit faithfully preserved and
             // then failed to match. Filling the grid on both axes makes
             // aspect a non-signal on BOTH sides, template and drawing alike.
             // Sliver guard: nearly-1D marks keep uniform fit so a straight
@@ -228,7 +228,7 @@ namespace SpellyZombie
                     Vector2 d = b - a;
                     float len = d.magnitude;
                     if (len < 1e-6f) continue;
-                    // orientation from the GRID-SPACE direction — a squashed
+                    // orientation from the GRID-SPACE direction - a squashed
                     // diagonal reads as what it looks like after the fit
                     byte code = Orient(new Vector2(d.x * scaleX, d.y * scaleY));
                     int n = Mathf.Max(1, Mathf.CeilToInt(len / step));
@@ -262,7 +262,7 @@ namespace SpellyZombie
             return reading;
         }
 
-        /// Direction from raw components — sign/compare only, no trig, so the
+        /// Direction from raw components - sign/compare only, no trig, so the
         /// same strokes read the same on every client.
         static byte Orient(Vector2 d)
         {
@@ -309,7 +309,7 @@ namespace SpellyZombie
 
         /// Mean distance from a's ink to b's COMPATIBLE ink: same direction
         /// channel free, adjacent channel (V or H vs a diagonal) one cell
-        /// extra. V never matches H, \ never matches / — orientation is
+        /// extra. V never matches H, \ never matches / - orientation is
         /// meaning, but a hand wobble between neighbours is cheap.
         static float Half(Reading a, Reading b)
         {

@@ -3,12 +3,12 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// The default cursor, in-world: a wizard's QUILL with a gold nib and a
-    /// falling rune-cyan ink drop — the OS arrow doesn't belong in a game
+    /// falling rune-cyan ink drop - the OS arrow doesn't belong in a game
     /// about drawing. Procedural like PrecisionCursor (no asset files);
     /// applied once at load and re-applied whenever precision mode hands the
-    /// cursor back. Marko overrides it by dropping a Texture2D at
-    /// Resources/Custom/Cursor (import: Read/Write ON, compression None) —
-    /// his art wins without touching code.
+    /// cursor back. overrides it by dropping a Texture2D at
+    /// Resources/Custom/Cursor (import: Read/Write ON, compression None) -
+    /// the art wins without touching code.
     public static class InkCursor
     {
         static Texture2D _tex;
@@ -27,7 +27,7 @@ namespace SpellyZombie
             if (custom != null)
             {
                 _tex = custom;
-                _hotspot = new Vector2(4f, 4f); // his art: tip at top-left
+                _hotspot = new Vector2(4f, 4f); // the art: tip at top-left
                 return;
             }
 
@@ -35,7 +35,7 @@ namespace SpellyZombie
             _tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
             var px = new Color[S * S];
 
-            // strongest-alpha-wins painter — shadow first, art over it
+            // strongest-alpha-wins painter - shadow first, art over it
             void Dot(float cx, float cy, float r, Color c)
             {
                 for (int y = Mathf.Max(0, (int)(cy - r - 1f)); y <= Mathf.Min(S - 1, (int)(cy + r + 1f)); y++)

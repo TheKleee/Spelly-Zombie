@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// YOUR CLAIM ON A THING (Marko's lifting rules): you don't grab, you
+    /// YOUR CLAIM ON A THING : you don't grab, you
     /// LEVITATE what you MARKED — and "the more ink you spend on something the
     /// higher your levitational power".
     ///
@@ -12,7 +12,7 @@ namespace SpellyZombie
     /// and the wand shrinks exactly as it always did.
     ///
     /// Control is SHARED BY SHARE: two wizards on one crate each steer it in
-    /// proportion to the ink they poured in, resolved into ONE vector — never
+    /// proportion to the ink they poured in, resolved into ONE vector - never
     /// winner-takes-all, so nobody can freeze an objective by pulling back.
     public class InkMark : MonoBehaviour
     {
@@ -22,7 +22,7 @@ namespace SpellyZombie
         public float Total { get; private set; }
 
         /// FULL-WAND OWNERSHIP: a thing YOU conjured answers to you as if you
-        /// had poured a WHOLE wand into it — a full one, not your current
+        /// had poured a WHOLE wand into it - a full one, not your current
         /// stub, because you need the advantage on your own spells. Ink ores
         /// set FreeForAll so anyone can lift them with no wand at all, and
         /// extra ink on top still buffs you for a tug-of-war.
@@ -44,7 +44,7 @@ namespace SpellyZombie
             Total += ink;
         }
 
-        /// Scrubbing your ink off returns it to the wand — and with it goes
+        /// Scrubbing your ink off returns it to the wand - and with it goes
         /// your hold.
         public float Remove(int ownerId, float ink)
         {
@@ -59,7 +59,7 @@ namespace SpellyZombie
         public IEnumerable<KeyValuePair<int, float>> Stakes => _byOwner;
 
         /// ALL your ink anywhere under this object. Strokes land on whichever
-        /// collider they hit, which may be a child, a sibling or the root —
+        /// collider they hit, which may be a child, a sibling or the root -
         /// so the lift must look at the whole thing, not one exact transform.
         /// Getting this wrong made ink you'd clearly drawn count as zero.
         public static float AuthorityIn(Transform root, int ownerId)
@@ -68,9 +68,9 @@ namespace SpellyZombie
             return AuthorityIn(root.GetComponentsInChildren<InkMark>(true), ownerId);
         }
 
-        /// Same law over a pre-fetched ledger set — HandGrab caches the held
+        /// Same law over a pre-fetched ledger set - HandGrab caches the held
         /// subtree once at grab time (no per-frame GetComponentsInChildren).
-        /// LIVE INK ONLY (Marko, Aug 5: "you can only lift based on how much
+        /// LIVE INK ONLY ("you can only lift based on how much
         /// of your ink it has THE MOMENT you try to lift it"). The ledger
         /// remembered every stroke ever drawn, so ERASED ink kept granting
         /// lift. Authority is now counted from the strokes actually alive on
@@ -108,7 +108,7 @@ namespace SpellyZombie
         }
 
         /// The thing the ink belongs to: a rigidbody if there is one, else the
-        /// collider's own object — NOT t.root, which on static scenery walks
+        /// collider's own object - NOT t.root, which on static scenery walks
         /// up to the map root and would mark the entire level.
         public static Transform Host(Transform t)
         {
@@ -120,9 +120,9 @@ namespace SpellyZombie
 
         /// WHAT HOLDS IT DOWN: static scenery is rooted, and you must overpower
         /// that before it will ever float. Estimated from its size so no
-        /// per-prop authoring is needed — a bench yields, a house doesn't.
+        /// per-prop authoring is needed - a bench yields, a house doesn't.
         /// Once torn free it stays free.
-        /// ROOT IS NEVER STRONGER THAN THE LIFT (Marko: "root should never be
+        /// ROOT IS NEVER STRONGER THAN THE LIFT ("root should never be
         /// that strong - the moment you can easily lift it you should be able
         /// to unroot it"). So there is no second gate: tearing a thing out of
         /// the ground costs exactly what holding it up costs. If you can carry
@@ -134,19 +134,19 @@ namespace SpellyZombie
 
         /// The weight of a prop nobody has authored a mass on.
         ///
-        /// GUESSING FROM SIZE WAS NONSENSE (Marko: "this is making the chair
+        /// GUESSING FROM SIZE WAS NONSENSE ("this is making the chair
         /// somehow heavier than the cauldron and books as well"). Bounding
         /// boxes are world-space and axis-aligned, so a chair's splayed legs
         /// and tall back inflate its box far past the real object while a
-        /// compact cauldron measures small — the number tracked a shape's
+        /// compact cauldron measures small - the number tracked a shape's
         /// bounding box, not its heft, and no amount of tuning fixes that.
         ///
         /// So: everything unauthored weighs the SAME, and it's light. If a
         /// specific thing should be heavy, put a Liftable on it and type a
-        /// Mass — one number, in your hands, doing exactly what it says.
-        /// WEIGHT = WHAT IT'S MADE OF × HOW BIG IT IS (Marko's rule). This is
+        /// Mass - one number, in your hands, doing exactly what it says.
+        /// WEIGHT = WHAT IT'S MADE OF × HOW BIG IT IS . This is
         /// the first half: the base weight of a small object in that material.
-        /// Bounding boxes never enter into it — a chair outweighing a cauldron
+        /// Bounding boxes never enter into it - a chair outweighing a cauldron
         /// was the whole problem with measuring shapes.
         public static float MaterialBaseKg(Transform host)
         {

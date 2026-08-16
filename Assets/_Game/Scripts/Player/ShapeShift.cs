@@ -4,13 +4,13 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// THE REWORKED TRANSFORMATION (Marko Aug 8, built Aug 10): scanning
-    /// something TURNS YOU INTO IT INSTANTLY — no menu, no roster. TAB
+    /// THE REWORKED TRANSFORMATION : scanning
+    /// something TURNS YOU INTO IT INSTANTLY - no menu, no roster. TAB
     /// returns you to yourself; TAB again wears the last scan. R rotates the
     /// worn shape; Ctrl+1..9 saves the angle, 1..9 recalls it (the game's own
     /// save convention, same as poses). No scan limit at all.
     ///
-    /// WHAT COUNTS (his simplification, Aug 10): "acolyte should simply be
+    /// WHAT COUNTS : "acolyte should simply be
     /// able to transform into anything that's LIFT-ABLE anyway" — the same
     /// LiftMaxDimension law the grab uses, no Scannable marker required.
     /// Scanning leaves the instance MARKED GREEN forever (the trail wizards
@@ -19,27 +19,27 @@ namespace SpellyZombie
     ///
     /// WHILE SHAPED YOU CANNOT DRAW. That is the whole trade: hiding is safe
     /// and powerless (SurfaceDrawer reads LocalIsShaped).
-    [DefaultExecutionOrder(220)] // camera override must land AFTER his controller
+    [DefaultExecutionOrder(220)] // camera override must land AFTER the controller
     public class ShapeShift : MonoBehaviour
     {
         /// Shaped acolytes cannot draw (SurfaceDrawer reads this).
         public static bool LocalIsShaped { get; private set; }
 
-        /// ACOLYTES HAVE NO PLAIN THIRD PERSON (Marko Aug 10: "before you scan
+        /// ACOLYTES HAVE NO PLAIN THIRD PERSON ("before you scan
         /// anything you cannot tab out into the 3rd person mode as acolyte
         /// cause that's just the transformation view"). Their third person IS
-        /// the disguise camera, owned here — the controller's Tab toggle
+        /// the disguise camera, owned here - the controller's Tab toggle
         /// should consult this and refuse them.
-        /// TAB is refused for an acolyte with NOTHING STORED (his rule): their
+        /// TAB is refused for an acolyte with NOTHING STORED : their
         /// third person IS the transformation view, so with no shape there is
-        /// nothing to switch into. His controller's Tab consults this.
+        /// nothing to switch into. the controller's Tab consults this.
         public static bool ThirdPersonAllowed =>
             Sides.Of(Grimoire.LocalPlayerId) != Side.Acolyte
             || (Local != null && Local._storedShape != null);
 
         static ShapeShift Local;
 
-        /// True while the acolyte's shape pose mode is open — his controller
+        /// True while the acolyte's shape pose mode is open - the controller
         /// reads this as a precision mode, so the cursor frees, the brush
         /// cursor shows, and the look stops turning the body.
         public static bool PoseOpen => Local != null && Local._posing;
@@ -48,15 +48,15 @@ namespace SpellyZombie
         public static string StoredShapeName =>
             Local != null && Local._storedShape != null ? Local._storedShape.name : null;
 
-        /// BLOWN OUT OF THE POSE — a blast big enough ends shape posing so the
-        /// body is free to be thrown (Marko Aug 10). Driven by Shove.
+        /// BLOWN OUT OF THE POSE - a blast big enough ends shape posing so the
+        /// body is free to be thrown . Driven by Shove.
         public static void Blown() { if (Local != null && Local._posing) Local.SetPosing(false); }
 
         [Tooltip("Scan reach in meters.")]
         public float LearnRange = 2.6f;
 
         GameObject _worn;          // the disguise, kept alive across TABs
-        Quaternion _wornRot = Quaternion.identity; // WORLD rotation — a barrel must not spin when you strafe
+        Quaternion _wornRot = Quaternion.identity; // WORLD rotation - a barrel must not spin when you strafe
         readonly Quaternion[] _slots = new Quaternion[10];
         readonly bool[] _slotUsed = new bool[10];
         readonly List<Renderer> _hidden = new List<Renderer>();
@@ -86,11 +86,11 @@ namespace SpellyZombie
             if (_pilot.IsDowned) { if (LocalIsShaped) Unwear(); return; }
 
             // F = the whole scan, in ONE method that checks first and returns
-            // if it cannot run (his order, Aug 10)
+            // if it cannot run
             if (kb.fKey.wasPressedThisFrame) TryScan();
 
-            // TAB as an acolyte only works if you HAVE a stored shape (his
-            // rule): no shape, no third person — that view IS the disguise.
+            // TAB as an acolyte only works if you HAVE a stored shape (the
+            // rule): no shape, no third person - that view IS the disguise.
             if (kb.tabKey.wasPressedThisFrame && _storedShape == null
                 && !SimpleFPSController.ThirdPersonActive)
                 DrawingWorld.Instance?.LogEvent("nothing to become yet. F on an object first");
@@ -98,7 +98,7 @@ namespace SpellyZombie
             // Tab brought us back to first person = back to yourself
             if (LocalIsShaped && !SimpleFPSController.ThirdPersonActive) Unwear();
             // Tab into third person with a shape stored = wear it again.
-            // RE-WEAR THE CLONE WE ALREADY HAVE (his bug, Aug 10: "I get the
+            // RE-WEAR THE CLONE WE ALREADY HAVE (the bug, Aug 10: "I get the
             // green tint which I didn't have before") — re-cloning the source
             // would copy the green the scan just painted onto it.
             else if (!LocalIsShaped && SimpleFPSController.ThirdPersonActive && _storedShape != null)
@@ -109,20 +109,20 @@ namespace SpellyZombie
 
             if (!LocalIsShaped) { if (_posing) SetPosing(false); return; }
 
-            // R while TRANSFORMED = the POSE MODE (his spec): you stop moving,
+            // R while TRANSFORMED = the POSE MODE : you stop moving,
             // the camera becomes an easel orbit, and dragging turns the shape.
             // R or Esc leaves.
             if (kb.rKey.wasPressedThisFrame) SetPosing(!_posing);
             if (_posing && kb.escapeKey.wasPressedThisFrame) SetPosing(false);
 
-            // THE WAY OUT IS NAMED (Marko Aug 10: "There's no indicator anywhere
+            // THE WAY OUT IS NAMED ("There's no indicator anywhere
             // that Tab will turn you back"). Worn-but-not-posing was the one
-            // acolyte state with no prompt at all — you were a barrel with no
+            // acolyte state with no prompt at all - you were a barrel with no
             // way to learn you could stop being one. Pose mode takes the slot
             // over with its own line below, so the two never fight for it.
             if (!_posing)
             {
-                // BOTH WAYS OUT ARE NAMED — as one-fact chips (Marko's block
+                // BOTH WAYS OUT ARE NAMED - as one-fact chips (the block
                 // law: one info per block, never a dotted line). ModeGuide
                 // stands down while shaped, so these two own the state alone.
                 var mint = new Color(0.75f, 1f, 0.8f);
@@ -142,18 +142,17 @@ namespace SpellyZombie
                 EaselOrbit.Apply(_cam, TargetCenterWorld() + _posePan, camRot, _poseDist);
             }
 
-            // PHYSICALLY DRAGGING IT (his method, Aug 10): RMB grabs a point on
+            // PHYSICALLY DRAGGING IT : RMB grabs a point on
             // the shape and draws a line from the centre to it. Move the mouse
             // and a NEW line is drawn from the centre to where the cursor now
-            // is — then the shape turns so the old line lands on the new one,
+            // is - then the shape turns so the old line lands on the new one,
             // eased with a slerp. The grabbed point follows your hand; it is
             // not an axis nudge, it is a hand on the object.
             if (mouse != null && _cam != null) DragRotate(mouse);
-            // one fact per block, three blocks = his extreme max (MMB-orbit
-            // is the shared easel language, already taught by the paint mode)
-            UIPrompt.Offer("RMB", Loc.T("shape.turn"));
+            // ONLY THE UNDISCOVERABLE SPEAKS (dragging teaches
+            // itself, recall follows from the save chip — "let them discover
+            // things on their own sometimes")
             UIPrompt.Offer("Ctrl+1-9", Loc.T("shape.save"));
-            UIPrompt.Offer("1-9", Loc.T("shape.recall"));
 
             bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
             for (int i = 0; i < 9; i++)
@@ -182,10 +181,10 @@ namespace SpellyZombie
         Vector3 _wornCenterLocal;
 
         bool _dragging;
-        Vector3 _grabLocalDir;   // centre → grabbed point, in the shape's own space
+        Vector3 _grabLocalDir;   // centre  grabbed point, in the shape's own space
         float _grabRadius;
 
-        /// His drag model, shared with lifted cargo — see ArcballDrag. LMB.
+        /// the drag model, shared with lifted cargo - see ArcballDrag. LMB.
         void DragRotate(Mouse mouse)
         {
             if (_worn == null) return;
@@ -213,7 +212,7 @@ namespace SpellyZombie
         /// height above your feet that it rode above its own ground.
         Vector3 TargetCenterWorld()
         {
-            // THE SKIN WIDTH IS WHY IT STILL FLOATS (his "not as much but
+            // THE SKIN WIDTH IS WHY IT STILL FLOATS (the "not as much but
             // clearly floating"): a CharacterController rests with its capsule
             // that far ABOVE the ground, so the true contact point is one skin
             // width below the capsule's bottom.
@@ -250,7 +249,7 @@ namespace SpellyZombie
             Vector3 c = _worn.transform.TransformPoint(_wornCenterLocal);
             _worn.transform.position += TargetCenterWorld() - c;
 
-            // pose mode: frozen body, free cursor — this write runs after the
+            // pose mode: frozen body, free cursor - this write runs after the
             // controller, so it is the one that sticks
             if (_posing)
             {
@@ -260,7 +259,7 @@ namespace SpellyZombie
             }
         }
 
-        /// THE POSE MODE IS ITS OWN THING (Marko: "I don't need held weapon at
+        /// THE POSE MODE IS ITS OWN THING ("I don't need held weapon at
         /// all. This is a pose mode"): the body is PINNED where it stood, the
         /// camera becomes an easel orbit, and the cursor is freed. No borrowed
         /// states, no weapon code.
@@ -272,7 +271,7 @@ namespace SpellyZombie
             if (on)
             {
                 _posePin = transform.position;
-                // the PRECISION cursor, not the menu arrow (his note, Aug 10) —
+                // the PRECISION cursor, not the menu arrow -
                 // the same brush circle Alt gives in first person
                 PrecisionCursor.Apply();
                 if (_cam != null)
@@ -296,15 +295,15 @@ namespace SpellyZombie
             }
         }
 
-        /// THE ONE F METHOD (his order, Aug 10): check whether the scan can
-        /// run AT ALL and RETURN if not — aiming at nothing must never flip
+        /// THE ONE F METHOD : check whether the scan can
+        /// run AT ALL and RETURN if not - aiming at nothing must never flip
         /// the view. Only when a real target is found do the three calls fire,
-        /// in his order: view, tint, become.
+        /// in the order: view, tint, become.
         void TryScan()
         {
             if (SimpleFPSController.ThirdPersonActive) return; // already over there
             if (HandGrab.LocalHolding) return;                // full hands
-            // THE BOOK MUST BE OPEN ON THE SCAN PAGE (his rule, Aug 10):
+            // THE BOOK MUST BE OPEN ON THE SCAN PAGE :
             // scanning is a thing the grimoire does, not a free keypress
             if (!GrimoirePages.BookOpen || !GrimoirePages.ScanPageOpen)
             {
@@ -316,11 +315,11 @@ namespace SpellyZombie
             if (!Physics.Raycast(_cam.transform.position, _cam.transform.forward,
                     out var hit, LearnRange * 1.6f)) return;  // aiming at nothing
             if (hit.collider.GetComponentInParent<SimpleFPSController>() != null) return;
-            // NO LIVING THINGS (his bug, Aug 10: scanning your own zombie made
-            // you invisible — a skinned creature cloned without its animator
+            // NO LIVING THINGS (the bug, Aug 10: scanning your own zombie made
+            // you invisible - a skinned creature cloned without its animator
             // collapses and culls itself). Props only.
             if (hit.collider.GetComponentInParent<Creature>() != null) return;
-            // the paint shell rides the DRESS, outside the zombie's hierarchy —
+            // the paint shell rides the DRESS, outside the zombie's hierarchy -
             // without this a zombie was scannable again through its own skin
             if (ZombieOwner.From(hit.collider) != null) return;
             if (hit.collider.GetComponentInChildren<Renderer>() == null) return;
@@ -332,10 +331,10 @@ namespace SpellyZombie
             _storedShape = root; // the last shape, remembered for TAB
             _storedGroundOffset = CenterHeightAboveGround(root);
 
-            // ⛔ INK FIRST, THEN THE MODE (his order, Aug 10: "first give them
+            // INK FIRST, THEN THE MODE (the order, Aug 10: "first give them
             // the ink then make them go to the third person mode").
             //
-            // Scanning is the acolyte's ONLY well — a wizard has the cauldron,
+            // Scanning is the acolyte's ONLY well - a wizard has the cauldron,
             // an acolyte has this and nothing else. The award used to live in
             // Scan(), which the 1-by-1 rebuild PARKED, so the live path granted
             // nothing and an acolyte could never get a wand at all. Invisible
@@ -351,28 +350,28 @@ namespace SpellyZombie
                 DrawingWorld.Instance?.LogEvent("the shape fills your wand");
             }
 
-            _pilot.EnterThirdPerson();   // the mode by name — scanning always ENTERS it
-            // BECOME IT FIRST, TINT IT AFTER (his order, Aug 10): the clone
+            _pilot.EnterThirdPerson();   // the mode by name - scanning always ENTERS it
+            // BECOME IT FIRST, TINT IT AFTER : the clone
             // must be taken BEFORE the green goes on, or the disguise itself
             // would be born tinted and give the acolyte away instantly.
             BecomeObject(root);
             TintScanGreen(root);
         }
 
-        /// His step 3: null until the first F, then the last scanned shape —
+        /// the step 3: null until the first F, then the last scanned shape -
         /// TAB reads this to decide whether it may switch at all.
         Transform _storedShape;
         float _storedGroundOffset;
         static readonly RaycastHit[] _groundBuf = new RaycastHit[16];
 
-        /// HOW THE OBJECT ACTUALLY SITS (his idea, Aug 10): raycast down from
+        /// HOW THE OBJECT ACTUALLY SITS : raycast down from
         /// its PIVOT to the ground it rests on and keep that distance. Worn,
-        /// the shape is placed the same distance above YOUR feet — so a
+        /// the shape is placed the same distance above YOUR feet - so a
         /// half-buried post stays buried and a pivot anywhere in the mesh
         /// lands right, which a bounds guess could never do.
-        /// THE OBJECT'S NATURAL CENTRE, in world space — the middle of
+        /// THE OBJECT'S NATURAL CENTRE, in world space - the middle of
         /// everything it draws. Pivots lie: they sit at a corner, at the base,
-        /// buried under the floor, or off in empty space. Shared on purpose —
+        /// buried under the floor, or off in empty space. Shared on purpose -
         /// the ground measurement uses it, and rotation will too, since a
         /// shape must turn around its own middle and not around some arbitrary
         /// point an artist left behind.
@@ -385,17 +384,17 @@ namespace SpellyZombie
             return b;
         }
 
-        /// THE ONE CENTRE METHOD, and it is LOCAL (his ruling, Aug 10):
+        /// THE ONE CENTRE METHOD, and it is LOCAL :
         /// objects move, so a world centre is stale the moment it is taken.
         /// The local one stays true relative to its parent, which is the only
-        /// form rotation can use — we turn the shape locally, and bounds are
+        /// form rotation can use - we turn the shape locally, and bounds are
         /// simply how the centre gets found in the first place.
         public static Vector3 FindObjectCenterLocal(Transform t) =>
             t.InverseTransformPoint(FindObjectBounds(t).center);
 
         /// How high the object's CENTRE rides above the ground it rests on.
-        /// Measured from the centre, cast from the centre — the pivot is not
-        /// consulted anywhere (his ruling, Aug 10). The ray starts above the
+        /// Measured from the centre, cast from the centre - the pivot is not
+        /// consulted anywhere. The ray starts above the
         /// object's top so a sunk object still finds the surface overhead,
         /// which makes the answer legitimately negative when it is buried.
         float CenterHeightAboveGround(Transform source)
@@ -405,8 +404,8 @@ namespace SpellyZombie
 
             // NOT the ghost layers: the vessel-shell follower (the cauldron's
             // true bowl, which is NOT a child of the pot and sits exactly under
-            // its centre — measuring to it planted a cauldron-disguise waist
-            // deep, Marko Aug 11) and the ink canvases. Neither is ground.
+            // its centre - measuring to it planted a cauldron-disguise waist
+            // deep, ) and the ink canvases. Neither is ground.
             int mask = Physics.DefaultRaycastLayers
                 & ~(1 << VesselShell.Layer) & ~(1 << InkCanvasLayer.Layer);
             int n = Physics.RaycastNonAlloc(from, Vector3.down, _groundBuf, 12f,
@@ -420,15 +419,15 @@ namespace SpellyZombie
                 if (h.collider.GetComponentInParent<SimpleFPSController>() != null) continue;
                 if (h.point.y > best) best = h.point.y;  // the surface it rests on or in
             }
-            if (float.IsNegativeInfinity(best)) return 0f; // nothing under it — sit at the feet
+            if (float.IsNegativeInfinity(best)) return 0f; // nothing under it - sit at the feet
             // clamped both ways: a hanging lamp cannot strand the disguise in
             // the sky, a deeply sunk centre cannot drop it out of the world
             return Mathf.Clamp(b.center.y - best, -3f, 2.5f);
         }
 
-        /// His step 2.1: the scanned object turns SLIGHTLY GREENER on EVERY
-        /// scan — repeat scans stack visibly, so wizards can read how often a
-        /// thing was used. His approach followed exactly: the material is
+        /// the step 2.1: the scanned object turns SLIGHTLY GREENER on EVERY
+        /// scan - repeat scans stack visibly, so wizards can read how often a
+        /// thing was used. the approach followed exactly: the material is
         /// cloned on first touch (renderer.material does that by itself) and
         /// nudged toward the corrupt green each time.
         void TintScanGreen(Transform source)
@@ -436,7 +435,7 @@ namespace SpellyZombie
             foreach (var r in source.GetComponentsInChildren<Renderer>())
             {
                 if (r == null) continue;
-                var m = r.material; // instance — cloned here if it wasn't yet
+                var m = r.material; // instance - cloned here if it wasn't yet
                 if (m.HasProperty("_BaseColor"))
                     m.SetColor("_BaseColor",
                         Color.Lerp(m.GetColor("_BaseColor"), DrawingConfig.CorruptInkColor, 0.22f));
@@ -445,8 +444,8 @@ namespace SpellyZombie
             }
         }
 
-        /// His step 2.2: turn INTO the object exactly as it is — its shape,
-        /// its rotation — with a POOF on the swap: the anti-spam tell wizards
+        /// the step 2.2: turn INTO the object exactly as it is - its shape,
+        /// its rotation - with a POOF on the swap: the anti-spam tell wizards
         /// can see, and a breath of smoke to change behind when cornered.
         void BecomeObject(Transform source)
         {
@@ -454,12 +453,12 @@ namespace SpellyZombie
             _worn = Instantiate(source.gameObject, transform);
             _worn.name = "WornShape";
 
-            // LIGHTS ARE NOT COPIED (Marko Aug 11: "since light sources cannot
+            // LIGHTS ARE NOT COPIED ("since light sources cannot
             // be copied... it should look for the lights inside of the object
             // and not copy them"). The generic strip below hit the Light before
             // URP's rider component and Unity refused: "Can't remove Light
             // because UniversalAdditionalLightData depends on it". Dependents
-            // first, then the Light — and a disguised candlestick simply does
+            // first, then the Light - and a disguised candlestick simply does
             // not glow, which is its own honest tell.
             foreach (var l in _worn.GetComponentsInChildren<Light>(true))
             {
@@ -479,11 +478,11 @@ namespace SpellyZombie
             _wornRot = source.rotation; // exactly as it stood
             _worn.transform.rotation = _wornRot;
 
-            // PLACED BY ITS CENTRE, never by its pivot (his ruling): put the
+            // PLACED BY ITS CENTRE, never by its pivot : put the
             // shape's natural centre on your own axis, at the same height
             // above your feet that it rode above its own ground.
             _worn.transform.localPosition = Vector3.zero;
-            // the centre, measured ONCE and kept — bounds are world-aligned, so
+            // the centre, measured ONCE and kept - bounds are world-aligned, so
             // re-measuring a rotated shape would let the centre creep
             _wornCenterLocal = FindObjectCenterLocal(_worn.transform);
             _worn.transform.position +=
@@ -519,13 +518,13 @@ namespace SpellyZombie
         }
 
 
-        /// Shaped but still in first person (before the first TAB): his
-        /// controller owns the camera and would sit INSIDE the disguise — this
+        /// Shaped but still in first person (before the first TAB): the
+        /// controller owns the camera and would sit INSIDE the disguise - this
         /// runs after it (execution order) and pulls the view out to third
-        /// person until his own Tab toggle takes over.
+        /// person until the Tab toggle takes over.
     }
 
-    /// The permanent green mark a scan leaves on an instance — the trail
+    /// The permanent green mark a scan leaves on an instance - the trail
     /// wizards read, and the once-only ink receipt.
     public class ScannedMark : MonoBehaviour
     {

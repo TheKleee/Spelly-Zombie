@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// B4: client-side stand-in for a HOST-simulated zombie — no brain, lerps to snapshots, valid spell target, damage RELAYED to the host; vanishes when snapshots stop listing it.
+    /// B4: client-side stand-in for a HOST-simulated zombie - no brain, lerps to snapshots, valid spell target, damage RELAYED to the host; vanishes when snapshots stop listing it.
     public class NetZombieProxy : MonoBehaviour
     {
         Vector3 _targetPos;
@@ -13,7 +13,7 @@ namespace SpellyZombie
             var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             go.name = "NetZombie_" + kind;
             go.transform.position = pos;
-            go.transform.localScale = Zombie.KindScale(kind); // shared table — host/client looks can't drift
+            go.transform.localScale = Zombie.KindScale(kind); // shared table - host/client looks can't drift
             Color skin = Zombie.KindSkin(kind);
             go.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(skin, MoteShade.Opaque);
 
@@ -37,7 +37,7 @@ namespace SpellyZombie
 
             var dmg = go.AddComponent<Damageable>();
             dmg.Health = 100000f;      // the HOST owns real health
-            dmg.Destructible = false;  // never dies locally — snapshots decide
+            dmg.Destructible = false;  // never dies locally - snapshots decide
 
             var proxy = go.AddComponent<NetZombieProxy>();
             proxy._targetPos = pos;

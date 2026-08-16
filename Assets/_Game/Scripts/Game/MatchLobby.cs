@@ -4,39 +4,48 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Pre-match lobby: PURE CO-OP, NO PILLARS (Marko: "remove the team pillars from code"); color = join order, ENTER readies, NO auto-start (his call), host picks the map with M.
-    /// (TeamNames/TeamColors/LocalTeam keep their names — they're the player-COLOR api and wire byte now, renaming would churn net + saves.)
+    /// Pre-match lobby: PURE CO-OP, NO PILLARS; color = join order, ENTER readies, NO auto-start, host picks the map with M.
+    /// (TeamNames/TeamColors/LocalTeam keep their names - they're the player-COLOR api and wire byte now, renaming would churn net + saves.)
     public class MatchLobby : MonoBehaviour
     {
         public static MatchLobby Instance { get; private set; }
 
-        public const float AllReadyStart = 10f;
+        /// Host-set match settings, mirrored to clients through LobbyMsg.
+        public static int Seed;
+        public static int AcolytePercent = 50; // minimum share, 10..90
+        public static int DurationMin = 10;    // match length, minutes
+
+        /// True while a ready call is on screen (B = ready, C = not ready).
+        public static bool CallActive => Instance != null && Time.unscaledTime < Instance._callUntil;
+        float _callUntil = -1f;
 
         /// The scene the ready-up loads — host's pick ("Game" until more maps
         /// exist; any non-Menu/Lobby scene in Build Settings is offered).
         public static string SelectedMap { get; private set; } = "Game";
 
-        /// The map a CLIENT should ride along to when the host starts — the
+        /// The map a CLIENT should ride along to when the host starts - the
         /// host's own pick locally, the mirrored net value when joined.
         public static string HostMap =>
             Instance != null && !string.IsNullOrEmpty(Instance._netMap)
                 ? Instance._netMap : SelectedMap;
 
-        /// The game MODE (Marko Aug 8: the book stand picks "not just maps but
+                /// The game MODE (the book stand picks "not just maps but
         /// game modes as well => if we decide to put in more game modes"). One
-        /// exists today — Wizards vs Acolytes — so this is the named slot the
+        /// exists today - Wizards vs Acolytes - so this is the named slot the
         /// second mode will drop into, not a menu yet.
         public static string SelectedMode { get; private set; } = "Acolytes";
 
-        /// HOST cycles the map — same rule as the M key (Among Us style: host
+        /// HOST cycles the map - same rule as the M key (Among Us style: host
         /// picks, everyone sees the pick on the board). Public so the BOOK
         /// STAND menu is the same action, not a second implementation.
-        public static void CycleMap()
+        public static void CycleMap() => CycleMap(1);
+
+        public static void CycleMap(int dir)
         {
             if (NetGame.Connected && !NetGame.IsHost) return; // host-only pick
             var maps = MapList();
             int i = Mathf.Max(0, maps.IndexOf(SelectedMap));
-            SelectedMap = maps[(i + 1) % maps.Count];
+            SelectedMap = maps[(i + dir + maps.Count) % maps.Count];
             DrawingWorld.Instance?.LogEvent($"map: {SelectedMap}");
         }
 
@@ -58,7 +67,7 @@ namespace SpellyZombie
         }
 
         /// Local player's COLOR (index into TeamColors), assigned by join
-        /// order — never picked. Host/offline = RED.
+        /// order - never picked. Host/offline = RED.
         public static byte LocalTeam;
         bool _colorSet; // client color locks once, at connect
 
@@ -98,13 +107,98 @@ namespace SpellyZombie
             else Instance._remoteReady.Remove(id);
         }
 
-        public static void NetLobby(byte ready, byte total, float countdown, string map)
+        public static void NetLobby(byte ready, byte total, float countdown, string map,
+            int seed, byte acolytePct, byte durationMin)
         {
             if (Instance == null) return;
             Instance._netReady = ready;
             Instance._netTotal = total;
             Instance._netCountdown = countdown;
             Instance._netMap = map;
+            Seed = seed;
+            if (acolytePct >= 10) AcolytePercent = acolytePct;
+            if (durationMin > 0) DurationMin = durationMin;
+        }
+
+        /// The host asked everyone to ready up.
+        public static void OnReadyCall()
+        {
+            if (Instance != null) Instance._callUntil = Time.unscaledTime + 20f;
+        }
+
+        public static bool IsReady(int clientId) =>
+            Instance != null && Instance._remoteReady.Contains(clientId);
+
+        public static bool LocalReady => Instance != null && Instance._readyLocal;
+
+        /// Start gate: everyone ready and at least 2 players.
+        public static bool CanStart
+        {
+            get
+            {
+                if (Instance == null || !NetGame.Connected) return false;
+                int total = 1 + NetSync.RemoteCount;
+                int ready = (Instance._readyLocal ? 1 : 0) + Instance._remoteReady.Count;
+                return total >= 2 && ready >= total;
+            }
+        }
+
+        /// Host (or solo, vs the bot) starts the match. Fills the acolyte
+        /// quota first: pillar volunteers keep their side, the rest is drawn
+        /// at random, always at least 1 acolyte and 1 wizard.
+        public static void StartMatch()
+        {
+            if (NetGame.Connected)
+            {
+                if (!NetGame.IsHost || !CanStart) return;
+                AssignSides();
+                SteamLobby.SetInGame(true); // browser rows show "game in progress"
+            }
+            else
+            {
+                BotPlayer.QueueForNextMatch();
+            }
+            RoundDirector.ForceStart();
+        }
+
+        static void AssignSides()
+        {
+            var owners = new List<int> { NetSync.LocalOwnerId >= 0 ? NetSync.LocalOwnerId : Grimoire.LocalPlayerId };
+            foreach (var id in NetSync.RemoteIds) owners.Add(NetSync.OwnerIdOf(id));
+
+            int total = owners.Count;
+            int want = Mathf.Clamp(Mathf.RoundToInt(total * AcolytePercent / 100f), 1, total - 1);
+
+            var acolytes = new List<int>();
+            foreach (var o in owners) if (Sides.IsAcolyte(o)) acolytes.Add(o);
+
+            // volunteers stay (the share is a minimum), but never ALL acolytes
+            while (acolytes.Count >= total && acolytes.Count > 1)
+                acolytes.RemoveAt(Random.Range(0, acolytes.Count));
+
+            var pool = new List<int>();
+            foreach (var o in owners) if (!acolytes.Contains(o)) pool.Add(o);
+            while (acolytes.Count < want && pool.Count > 1)
+            {
+                int pick = Random.Range(0, pool.Count);
+                acolytes.Add(pool[pick]);
+                pool.RemoveAt(pick);
+            }
+
+            ApplySideAssign(acolytes.ToArray());
+            NetSync.PushSideAssign(acolytes.ToArray());
+        }
+
+        public static void ApplySideAssign(int[] acolyteOwners)
+        {
+            var set = new HashSet<int>(acolyteOwners);
+            int me = Grimoire.LocalPlayerId;
+            Sides.Set(me, set.Contains(me) ? Side.Acolyte : Side.Wizard);
+            foreach (var id in NetSync.RemoteIds)
+            {
+                int o = NetSync.OwnerIdOf(id);
+                Sides.Set(o, set.Contains(o) ? Side.Acolyte : Side.Wizard);
+            }
         }
 
         // ------------------------------------------------------------ tick --
@@ -134,41 +228,34 @@ namespace SpellyZombie
             }
 
             if (player != null && kb != null && !GameMenu.IsOpen && !PoseStudio.IsOpen
-                && !UIKit.Typing) // ENTER while typing an IP must not ready you up
+                && !UIKit.Typing)
             {
-                // ENTER = ready toggle
-                if (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)
+                // B toggles ready, hosted lobbies only (alone = sandbox).
+                // During a ready call C answers "not ready".
+                if (NetGame.Connected)
                 {
-                    _readyLocal = !_readyLocal;
-                    if (client) NetSync.SendReady(_readyLocal);
+                    if (kb.bKey.wasPressedThisFrame)
+                    {
+                        _readyLocal = !_readyLocal;
+                        if (client) NetSync.SendReady(_readyLocal);
+                        Juice.Chime(player.transform.position);
+                    }
+                    if (CallActive && kb.cKey.wasPressedThisFrame)
+                    {
+                        _readyLocal = false;
+                        if (client) NetSync.SendReady(false);
+                        _callUntil = -1f;
+                    }
+                    if (CallActive && _readyLocal) _callUntil = -1f; // answered
                 }
 
-                // (C switches side, and it lives in SideBootstrap, NOT here. This
-                // input block sits behind RoundDirector.InLobby, the scene name, a
-                // non-null player and UIKit.Typing, and any one of those silently
-                // eats the key. The board below still shows which side you are on.)
-
-                // M = the HOST cycles the map (Among Us style — host picks,
-                // everyone sees the pick on the board)
-                if (!client && kb.mKey.wasPressedThisFrame)
-                {
-                    CycleMap(); // one implementation — the book stand calls the same
-                    Juice.Chime(player.transform.position);
-                }
+                // (the M map hotkey is gone: the book stand owns map picking)
             }
 
-            if (client) return; // the host owns the clocks
+            if (CallActive)
+                UIPrompt.Show("B", Loc.T("lobby.readycall"), new Color(0.6f, 1f, 0.65f));
 
-            int total = 1 + NetSync.RemoteCount;
-            int ready = (_readyLocal ? 1 : 0) + _remoteReady.Count;
-            bool all = ready >= total && ready > 0;
-
-            if (all)
-            {
-                if (_countdown < 0f) _countdown = AllReadyStart;
-                _countdown -= Time.deltaTime;
-            }
-            else _countdown = -1f;
+            if (client) return;
 
             if (NetGame.IsHost)
             {
@@ -176,20 +263,21 @@ namespace SpellyZombie
                 if (_pushTimer <= 0f)
                 {
                     _pushTimer = 0.5f;
-                    NetSync.PushLobby((byte)ready, (byte)total, _countdown, SelectedMap);
+                    int total = 1 + NetSync.RemoteCount;
+                    int ready = (_readyLocal ? 1 : 0) + _remoteReady.Count;
+                    NetSync.PushLobby((byte)ready, (byte)total, -1f, SelectedMap,
+                        Seed, (byte)AcolytePercent, (byte)DurationMin);
                 }
             }
-
-            // no auto-start timer — the lobby waits until everyone readies up
-            if (all && _countdown <= 0f)
-            {
-                RoundDirector.ForceStart();
-                if (RoundDirector.InLobby) _countdown = -1f; // no map scene yet — retry
-            }
+            // no clocks: the host presses START at the book stand
         }
 
         // ------------------------------------------------------ lobby state --
-        void Build() => _built = true;
+        void Build()
+        {
+            _built = true;
+            SteamLobby.SetInGame(false); // back in the lobby: joinable again
+        }
 
         void Teardown()
         {
@@ -202,23 +290,21 @@ namespace SpellyZombie
 
         // -------------------------------------------------------------- HUD --
         RectTransform _ui, _uiBoard;
-        UnityEngine.UI.Text _uiStatus, _uiTeam, _uiReady, _uiMap;
+        UnityEngine.UI.Text _uiReady;
 
-        // label caches — rebuild the strings only when a shown value changes, not per frame
+        // label caches - rebuild the strings only when a shown value changes, not per frame
         int _shownCountdown = int.MinValue, _shownReady = -1, _shownTotal = -1;
-        byte _shownTeam = 255;
-        bool _shownReadyLocal, _shownClient;
-        string _shownMap;
+        bool _shownReadyLocal;
 
         void LateUpdate()
         {
-            // InLobby (phase Idle) is also true on the MENU screen — the
+            // InLobby (phase Idle) is also true on the MENU screen - the
             // ribbon and ready-board belong to the Lobby SCENE alone
             bool show = RoundDirector.InLobby && !GameMenu.IsOpen && !PoseStudio.IsOpen
                 && ActiveScene.Name == "Lobby";
             if (!show)
             {
-                // HIDE, never destroy — prefab-adopted UI must survive cycles
+                // HIDE, never destroy - prefab-adopted UI must survive cycles
                 if (_ui != null && _ui.gameObject.activeSelf) _ui.gameObject.SetActive(false);
                 if (_uiBoard != null && _uiBoard.gameObject.activeSelf) _uiBoard.gameObject.SetActive(false);
                 return;
@@ -228,78 +314,35 @@ namespace SpellyZombie
             if (_ui == null) BuildLobbyUI();
 
             bool client = NetGame.Connected && !NetGame.IsHost;
-            float countdown = client ? _netCountdown : _countdown;
             int ready = client ? _netReady : (_readyLocal ? 1 : 0) + _remoteReady.Count;
             int total = client ? Mathf.Max(1, _netTotal) : 1 + NetSync.RemoteCount;
-            string map = client && !string.IsNullOrEmpty(_netMap) ? _netMap : SelectedMap;
 
-            int cd = countdown >= 0f ? Mathf.CeilToInt(Mathf.Max(0f, countdown)) : -1;
-            if (cd != _shownCountdown)
-            {
-                _shownCountdown = cd;
-                _uiStatus.text = cd >= 0 ? $"STARTING IN {cd}…" : "READY UP TO START";
-            }
-            if (LocalTeam != _shownTeam)
-            {
-                _shownTeam = LocalTeam;
-                // your colour, plus which side you are practising as
-                _uiTeam.text = $"■ {TeamNames[LocalTeam]}  ·  "
-                    + (Sides.LocalIsAcolyte ? "ACOLYTE" : "WIZARD") + "  ·  C to switch";
-                _uiTeam.color = TeamColors[Mathf.Min(LocalTeam, (byte)(TeamColors.Length - 1))];
-            }
             if (ready != _shownReady || total != _shownTotal || _readyLocal != _shownReadyLocal)
             {
                 _shownReady = ready; _shownTotal = total; _shownReadyLocal = _readyLocal;
-                _uiReady.text = $"READY {ready}/{total}, ENTER to ready up"
-                    + (_readyLocal ? "  (you are READY)" : "");
+                // the ready marker exists only in a hosted lobby; alone this
+                // is a sandbox and stays quiet
+                _uiReady.text = !NetGame.Connected ? ""
+                    : _readyLocal
+                        ? Loc.F("lobby.ready.on", ready, total)
+                        : Loc.F("lobby.ready.off", ready, total);
             }
-            if (map != _shownMap || client != _shownClient)
-            {
-                _shownMap = map; _shownClient = client;
-                _uiMap.text = client
-                    ? $"MAP: {map} (the host picks)"
-                    : $"MAP: {map} (M to change)";
-            }
+            // (no map line: the book stand is the one map picker)
         }
 
+        // floating lines bottom-right, no ribbon and no panel box
         void BuildLobbyUI()
         {
-            var skin = UISkin.I;
-            _ui = UIKit.Group(UIKit.Root, "LobbyBanner");
-            UIKit.Place(_ui, new Vector2(0.5f, 1f), new Vector2(0f, -4f), new Vector2(560f, 190f));
-
-            // the curtain ribbon is a ONE-LINE title sprite — headline only,
-            // near its native proportions so the border art doesn't smear
-            var ribbon = UIKit.Group(_ui, "Ribbon");
-            UIKit.Place(ribbon, new Vector2(0.5f, 1f), Vector2.zero, new Vector2(560f, 76f));
-            var cloth = UIKit.Panel(ribbon, skin != null ? skin.BannerCurtain : null,
-                skin != null ? Color.white : new Color(0f, 0f, 0f, 0.6f));
-            UIKit.Stretch((RectTransform)cloth.transform);
-            _uiStatus = UIKit.Label(ribbon, "", 22, UIKit.Ink, TextAnchor.MiddleCenter, true);
-            var sr = (RectTransform)_uiStatus.transform;
-            UIKit.Stretch(sr);
-            sr.offsetMin = new Vector2(70f, 16f);  // keep off the tails and trim
-            sr.offsetMax = new Vector2(-70f, -14f);
-
-            // the details live on a plain panel in the BOTTOM-RIGHT corner —
-            // Marko: "on top of your head is really annoying"
             var board = UIKit.Group(UIKit.Root, "LobbyBoard");
+            _ui = board;
             _uiBoard = board;
-            UIKit.Place(board, new Vector2(1f, 0f), new Vector2(-14f, 14f), new Vector2(470f, 128f));
-            var back = UIKit.Panel(board, skin != null ? skin.PanelBrown : null,
-                skin != null ? Color.white : new Color(0.22f, 0.17f, 0.12f, 0.92f));
-            UIKit.Stretch((RectTransform)back.transform);
+            UIKit.Place(board, new Vector2(1f, 0f), new Vector2(-14f, 14f), new Vector2(470f, 100f));
 
-            _uiTeam = UIKit.Label(board, "", 16, Color.white, TextAnchor.MiddleCenter, true);
-            UIKit.Place((RectTransform)_uiTeam.transform, new Vector2(0.5f, 1f), new Vector2(0f, -20f), new Vector2(430f, 20f));
-            _uiReady = UIKit.Label(board, "", 16, UIKit.Ink, TextAnchor.MiddleCenter, true);
-            UIKit.Place((RectTransform)_uiReady.transform, new Vector2(0.5f, 1f), new Vector2(0f, -46f), new Vector2(430f, 20f));
-            _uiMap = UIKit.Label(board, "", 16, UIKit.Ink, TextAnchor.MiddleCenter, true);
-            UIKit.Place((RectTransform)_uiMap.transform, new Vector2(0.5f, 1f), new Vector2(0f, -72f), new Vector2(430f, 20f));
+            _uiReady = UIKit.Label(board, "", 18, UIKit.Parchment, TextAnchor.MiddleRight, true);
+            UIKit.Place((RectTransform)_uiReady.transform, new Vector2(0.5f, 1f), new Vector2(0f, -14f), new Vector2(430f, 22f));
 
-            // fresh labels start empty — invalidate the caches so they repopulate
-            _shownCountdown = int.MinValue; _shownTeam = 255;
-            _shownReady = -1; _shownTotal = -1; _shownMap = null;
+            _shownCountdown = int.MinValue;
+            _shownReady = -1; _shownTotal = -1;
         }
 
         void OnDestroy()

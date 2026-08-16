@@ -5,14 +5,14 @@ namespace SpellyZombie
     /// The safety net under the world. The trigger slab (placed by the map
     /// builders) catches falls over the map itself; the controller ALSO
     /// checks KillY every frame, so a player flung past the slab's edges is
-    /// caught anyway — nobody falls forever, no matter how far they went.
+    /// caught anyway - nobody falls forever, no matter how far they went.
     ///
-    /// The catch has a price mid-run (Marko's rule): back at the map middle
-    /// but DOWNED — a teammate's E picks you up, the bleed-out or the horde
+    /// The catch has a price mid-run : back at the map middle
+    /// but DOWNED - a teammate's E picks you up, the bleed-out or the horde
     /// finishes you. In the lobby it's a free ride home.
     public class FallCatcher : MonoBehaviour
     {
-        /// The world's absolute floor — below this you're caught, always.
+        /// The world's absolute floor - below this you're caught, always.
         public const float KillY = -12f;
 
         public Vector3 RespawnPoint = new Vector3(0f, 2f, 5f);
@@ -27,7 +27,7 @@ namespace SpellyZombie
         {
             if (pilot == null) return;
             Vector3 home = _placed != null ? _placed.RespawnPoint : new Vector3(0f, 2f, 0f);
-            // drop onto the ACTUAL ground — terrain maps aren't flat
+            // drop onto the ACTUAL ground - terrain maps aren't flat
             if (Physics.Raycast(home + Vector3.up * 40f, Vector3.down, out var hit, 100f,
                     Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
                 home = hit.point + Vector3.up * 1.5f;
@@ -53,7 +53,7 @@ namespace SpellyZombie
         {
             // PARENT lookup, not GetComponent: every player BONE carries a
             // rigidbody+collider (ragdoll/ink), and a falling body's bones
-            // enter the net before the capsule does — the junk branch below
+            // enter the net before the capsule does - the junk branch below
             // was DELETING the player's skeleton ("my body vanished").
             var pilot = other.GetComponentInParent<SimpleFPSController>();
             if (pilot != null)
@@ -62,7 +62,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // creatures die PROPERLY in the void (drops + kill credit fire —
+            // creatures die PROPERLY in the void (drops + kill credit fire -
             // the silent Destroy used to eat the death, so a shoved zombie
             // dropped nothing and made no sound). Matter and junk still just
             // vanish quietly.
@@ -83,7 +83,7 @@ namespace SpellyZombie
     /// Layer 30 = INK CANVASES: flat drawable planes spanning whole facades so
     /// strokes never split at wall-module seams. Nothing collides with them
     /// (players walk through the doorways they span; particles fly through to
-    /// hit the real walls) — but raycasts still hit them, which is the point:
+    /// hit the real walls) - but raycasts still hit them, which is the point:
     /// the pen sees one perfect surface.
     public static class InkCanvasLayer
     {

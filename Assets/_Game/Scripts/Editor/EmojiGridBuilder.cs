@@ -8,21 +8,21 @@ using UnityEngine.TextCore;
 
 namespace SpellyZombie
 {
-    /// REBUILDS EmojiGrid FROM THE sz-emoji FOLDER — the atlas was built by
+    /// REBUILDS EmojiGrid FROM THE sz-emoji FOLDER - the atlas was built by
     /// hand once (Noto Emoji, no attribution owed) and then drifted: the
     /// folder gained sprites the grid never learned. Now the folder IS the
     /// truth: drop any Noto png (emoji_u<hex>[_<hex>...].png) into
     /// Assets/_Game/Fonts/sz-emoji and the grid rebuilds itself on the next
-    /// editor load — same asset, same GUID, so the material and every
+    /// editor load - same asset, same GUID, so the material and every
     /// reference keep holding.
     ///
-    /// The metrics are Marko-fixed law (see RuneLibrary: BearingX 0,
-    /// BearingY 462.3, advance 512 — icons sit ON the baseline, flush with
+    /// The metrics are -fixed law (see RuneLibrary: BearingX 0,
+    /// BearingY 462.3, advance 512 - icons sit ON the baseline, flush with
     /// words) and every glyph gets exactly those values.
     ///
     /// Names: each sprite is named its file stem (emoji_u1f4d6). Single
     /// codepoints also carry their unicode so raw emoji characters in
-    /// strings just work; ZWJ sequences (👁‍🗨) can't fit one uint, so they
+    /// strings just work; ZWJ sequences (‍) can't fit one uint, so they
     /// are name-only (0xFFFE) and Emo speaks them as <sprite name=...> tags.
     [InitializeOnLoad]
     public static class EmojiGridBuilder
@@ -31,14 +31,14 @@ namespace SpellyZombie
         const string PngPath = "Assets/_Game/Fonts/EmojiGrid.png";
         const string AssetPath = "Assets/_Game/Fonts/EmojiGrid.asset";
         const int Cell = 512;
-        const int Atlas = 4096; // 8x8 cells — room for years of emojis
+        const int Atlas = 4096; // 8x8 cells - room for years of emojis
 
         static EmojiGridBuilder()
         {
             EditorApplication.delayCall += AutoCheck;
         }
 
-        /// The folder and the grid must agree — if a png exists that the
+        /// The folder and the grid must agree - if a png exists that the
         /// asset doesn't carry (or one was removed), rebuild without asking.
         static void AutoCheck()
         {
@@ -130,14 +130,14 @@ namespace SpellyZombie
                 var glyph = new TMP_SpriteGlyph
                 {
                     index = (uint)i,
-                    metrics = new GlyphMetrics(Cell, Cell, 0f, 462.3f, Cell), // Marko-fixed
+                    metrics = new GlyphMetrics(Cell, Cell, 0f, 462.3f, Cell), // -fixed
                     glyphRect = rects[i],
                     scale = 1f,
                     atlasIndex = 0,
                 };
                 asset.spriteGlyphTable.Add(glyph);
 
-                // emoji_u1f441_200d_1f5e8 → codepoints; one = unicode entry,
+                // emoji_u1f441_200d_1f5e8  codepoints; one = unicode entry,
                 // several = name-only (0xFFFE is TMP's "no unicode")
                 var parts = stems[i].Substring("emoji_u".Length).Split('_');
                 uint unicode = parts.Length == 1

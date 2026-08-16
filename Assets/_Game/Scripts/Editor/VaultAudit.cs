@@ -5,9 +5,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE SILENT-FAILURE KILLER (AXIOM, Marko Jul 25). Dropping a prefab into
+    /// THE SILENT-FAILURE KILLER (AXIOM, ). Dropping a prefab into
     /// Resources/Custom with a name no hook asks for loads NOTHING and says
-    /// nothing — his GooglyEyes.prefab sat unused for weeks because the hook
+    /// nothing - the GooglyEyes.prefab sat unused for weeks because the hook
     /// wanted "Eyes". This warns the moment a file lands, names the closest
     /// valid hook, and costs the shipped build exactly nothing (editor-only).
     class VaultAudit : AssetPostprocessor

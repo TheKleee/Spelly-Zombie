@@ -2,21 +2,21 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// GRAMMAR v4 P2 — the FORM recipes (SPELL_PARTICLES.md cross matrix).
+    /// GRAMMAR v4 P2 - the FORM recipes (SPELL_PARTICLES.md cross matrix).
     /// State runes conjure ONCE per activation, so form combos resolve at
-    /// CONJURE TIME from the seal's rune list — the drawing is the recipe.
+    /// CONJURE TIME from the seal's rune list - the drawing is the recipe.
     /// Identity is preserved throughout (a light-liquid counts as Light):
     /// every conjure carries the seal's LINEAGE, so matter chains toward the
     /// Demon exactly like particles do.
     public static class FormConjures
     {
-        /// STEAM IS BORN HERE AND ONLY HERE (Marko: "one substance, one
+        /// STEAM IS BORN HERE AND ONLY HERE ("one substance, one
         /// behavior - no ambiguity"): the heat+chill paradox and hot water
         /// both call this, so the scalding numbers can never drift apart.
         public static Matter SpawnSteam(Vector3 at, float size, ulong lineage)
         {
             var steam = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas, size, at);
-            steam.Temperature = 130f; // scalding — hot gas bites waders
+            steam.Temperature = 130f; // scalding - hot gas bites waders
             steam.Density = 0.3f;
             steam.Lineage = lineage;
             return steam;
@@ -24,17 +24,17 @@ namespace SpellyZombie
 
         // ---------------------------------------------------- HeatUp + Solid --
         /// METEORITE: the block materializes HIGH overhead, born glowing hot,
-        /// and falls — crush is momentum (existing law), the burning trail
+        /// and falls - crush is momentum (existing law), the burning trail
         /// marks the sky, and what it lands on catches the heat.
         public static void Meteorite(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
             float size, float reach, int count, ulong lineage, bool fromSky = false)
         {
             // RELEASED FROM A DORMANT GHOST: no rise story, the rock appears
-            // OVERHEAD at full grown size and slams down (Marko: "when I
+            // OVERHEAD at full grown size and slams down ("when I
             // release the dormant meteor it should fall from the sky").
             if (fromSky)
             {
-                // MADARA'S METEOR (his framing): it appears COLOSSAL high in
+                // MADARA'S METEOR : it appears COLOSSAL high in
                 // the sky, grows even bigger on the way down, and the shadow
                 // arrives before the rock does.
                 DrawingWorld.Instance?.LogEvent("the sky delivers");
@@ -52,8 +52,8 @@ namespace SpellyZombie
                 }
                 return;
             }
-            // ⛔ IT ERUPTS AND LEAPS — IT DOES NOT FALL OUT OF THE SKY.
-            // This used to spawn 12m overhead and drop, which broke his Aug 9
+            // IT ERUPTS AND LEAPS - IT DOES NOT FALL OUT OF THE SKY.
+            // This used to spawn 12m overhead and drop, which broke the Aug 9
             // no-sky-drop law and hid the cause: a boulder just appeared. Now
             // the stone is born at the seal, catches the heat, and is THROWN
             // upward while swelling, so the whole chain reads from the ground.
@@ -62,11 +62,11 @@ namespace SpellyZombie
             {
                 Vector3 spawn = at + normal * (size * 0.7f) + Random.insideUnitSphere * 0.2f;
                 var m = Matter.Spawn(mat, MatterPhase.Solid, size, spawn);
-                m.Temperature = 420f; // glowing — ignites what it grazes
+                m.Temperature = 420f; // glowing - ignites what it grazes
                 m.Lineage = lineage;
                 m.gameObject.AddComponent<MeteorTrail>();
 
-                // born at the drawn size, grows tenfold on the way up (his
+                // born at the drawn size, grows tenfold on the way up (the
                 // "10x larger"); reach stays the dial for the impact area
                 var rise = m.gameObject.AddComponent<MeteorRise>();
                 rise.Grow = 10f;
@@ -85,7 +85,7 @@ namespace SpellyZombie
 
         // -------------------------------------------------- HeatDown + Solid --
         /// ICE SPIKES: frozen shards of the surface's material erupt from the
-        /// ground in a ring — standing terrain that chills whatever touches it.
+        /// ground in a ring - standing terrain that chills whatever touches it.
         public static void IceSpikes(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
             float size, float reach, ulong lineage, int owner = -1)
         {
@@ -95,7 +95,7 @@ namespace SpellyZombie
             for (int i = 0; i < spikes; i++)
             {
                 float a = i / (float)spikes * Mathf.PI * 2f;
-                // the RING is the area dial — summed ingredient reach, not size
+                // the RING is the area dial - summed ingredient reach, not size
                 Vector3 ring = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * (0.35f + reach * 0.5f);
                 var m = Matter.Spawn(mat, MatterPhase.Solid, size, at + ring + normal * size * 0.8f);
                 m.Temperature = -60f;
@@ -105,12 +105,12 @@ namespace SpellyZombie
                 m.transform.rotation = Quaternion.FromToRotation(Vector3.up, normal)
                     * Quaternion.Euler(Random.Range(-12f, 12f), Random.value * 360f, Random.Range(-12f, 12f));
 
-                // ⛔ THEY HUNT, THEY DO NOT SIT (Marko Aug 10: "some useless ice
+                    // THEY HUNT, THEY DO NOT SIT ("some useless ice
                 // shards... they do absolutely nothing. If they were floating
                 // and attacking like spikes they'd be nice but just being on
                 // the ground is worthless").
                 //
-                // They were planted KINEMATIC — literally terrain, in a game
+                // They were planted KINEMATIC - literally terrain, in a game
                 // whose spell law is that everything erupts, leaps and slams.
                 // MatterStrike is that law, already written and already used by
                 // the plain solid conjure: float, lock a target, jump, hit with
@@ -123,7 +123,7 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------- HeatDown + Liquid --
-        /// GLACIER: the liquid freezes into a growing mass, CHANNELING — then
+        /// GLACIER: the liquid freezes into a growing mass, CHANNELING - then
         /// bursts in a frost explosion: knockover, deep cold, damage.
         public static void Glacier(Vector3 at, SurfaceMaterialType mat, float power, ulong lineage)
         {
@@ -136,7 +136,7 @@ namespace SpellyZombie
         }
 
         // --------------------------------------------------- HeatUp + Liquid --
-        /// The liquid decides (Marko's rule): water flashes to a hot steam
+        /// The liquid decides : water flashes to a hot steam
         /// area · meltable stone ERUPTS lava · burnable sap pours out already
         /// aflame and spreading.
         public static void HotLiquid(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
@@ -146,7 +146,7 @@ namespace SpellyZombie
             if (mat == SurfaceMaterialType.Water)
             {
                 // hot water = the same GAS SUBSTANCE as the heat+chill paradox;
-                // sized by the SUMMED ingredient reach (his area law)
+                // sized by the SUMMED ingredient reach
                 SpawnSteam(at + normal * 0.5f, Mathf.Max(0.9f, reach), lineage);
                 return;
             }
@@ -174,7 +174,7 @@ namespace SpellyZombie
 
         // -------------------------------------------------- Liquid + Density --
         /// PRESSURE JET: the conjured liquid fires out along the seal's normal
-        /// as a stream of heavy blobs — a water cannon; the damage is momentum.
+        /// as a stream of heavy blobs - a water cannon; the damage is momentum.
         public static void PressureJet(Vector3 at, Vector3 normal, SurfaceMaterialType mat,
             float size, float power, ulong lineage)
         {
@@ -190,7 +190,7 @@ namespace SpellyZombie
         }
     }
 
-    /// A falling meteor sheds burning motes — the trail IS the warning.
+    /// A falling meteor sheds burning motes - the trail IS the warning.
     public class MeteorTrail : MonoBehaviour
     {
         // pure spectacle now: sheds burning motes while the rock flies. The
@@ -198,7 +198,7 @@ namespace SpellyZombie
         // a stopped-velocity guess that a hover could fake).
         void Start()
         {
-            // THE CAULDRON COMET'S RIBBON, IN FIRE (his "the trail for the
+            // THE CAULDRON COMET'S RIBBON, IN FIRE (the "the trail for the
             // cauldron is perfect"): one long bright streak riding the rock,
             // width scaled to the rock, and the shed motes burn beside it.
             var ribbon = gameObject.AddComponent<TrailRenderer>();
@@ -223,7 +223,7 @@ namespace SpellyZombie
         }
     }
 
-    /// The glacier: grows for a beat (channeling — the telegraph), then the
+    /// The glacier: grows for a beat (channeling - the telegraph), then the
     /// frost explosion: knockover + deep cold + damage, and shards remain.
     public class GlacierChannel : MonoBehaviour
     {
@@ -269,13 +269,13 @@ namespace SpellyZombie
                 }
                 var cr = c.GetComponentInParent<Creature>();
                 if (cr != null) cr.KnockDown(1.6f);
-                SpellParticle.GiveHeatTo(c, -70f * Power); // deep cold — freezes the close ones
+                SpellParticle.GiveHeatTo(c, -70f * Power); // deep cold - freezes the close ones
                 var rb = c.attachedRigidbody;
                 if (rb != null && !rb.isKinematic)
                     rb.AddForce((rb.worldCenterOfMass - transform.position).normalized * 6f,
                         ForceMode.VelocityChange);
             }
-            for (int i = 0; i < 6; i++) // shards remain — ice to pick up or slip on
+            for (int i = 0; i < 6; i++) // shards remain - ice to pick up or slip on
             {
                 var m = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Solid, 0.18f,
                     transform.position + Vector3.up * 0.4f + Random.insideUnitSphere * 0.4f);
@@ -289,7 +289,7 @@ namespace SpellyZombie
     }
 
     /// The pressure jet: fires heavy liquid blobs along the normal for a few
-    /// seconds — pure momentum weaponry, no magic numbers on top.
+    /// seconds - pure momentum weaponry, no magic numbers on top.
     public class PressureJetSource : MonoBehaviour
     {
         public Vector3 Normal = Vector3.up;
@@ -308,14 +308,14 @@ namespace SpellyZombie
             _tick = 0.22f;
             var m = Matter.Spawn(Mat, MatterPhase.Liquid, Size, transform.position + Normal * 0.3f);
             m.Lineage = Lineage;
-            m.AddDensity(1.2f); // heavy — the punch is the mass (2.5 would snap-freeze it, verified)
+            m.AddDensity(1.2f); // heavy - the punch is the mass (2.5 would snap-freeze it, verified)
             if (m.TryGetComponent<Rigidbody>(out var rb))
                 rb.linearVelocity = Normal * (13f * Mathf.Max(0.6f, Power))
                     + Random.insideUnitSphere * 0.8f;
         }
     }
 
-    /// Solid × 3 — SOLID AVALANCHE (Marko's lvl3): the area births growing
+    /// Solid × 3 - SOLID AVALANCHE : the area births growing
     /// lvl2 solids that roll outward, spreading.
     public class SolidAvalancheField : GrammarField
     {
@@ -352,7 +352,7 @@ namespace SpellyZombie
         protected override void Affect(Collider c, float dt) { } // the boulders do the affecting
     }
 
-    /// Liquid × 3 — LIQUID AREA (Marko's lvl3): a floating bubble of the
+    /// Liquid × 3 - LIQUID AREA : a floating bubble of the
     /// liquid. Walk in and you WADE mid-air; stay too long and you DROWN.
     /// Carries the liquid's own coating (oil slips, slime sticks…).
     public class LiquidAreaField : GrammarField

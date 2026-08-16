@@ -3,15 +3,15 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// ONE WALL = ONE RUNE (Marko's Rune Studio design): the ink on the wall
-    /// IS the rune's saved sample pool — nothing hidden, no buttons.
+    /// ONE WALL = ONE RUNE : the ink on the wall
+    /// IS the rune's saved sample pool - nothing hidden, no buttons.
     ///
-    ///   · draw samples of the rune anywhere on the wall — ALL of them count
+    ///   · draw samples of the rune anywhere on the wall - ALL of them count
     ///   · STOPPING THE SCENE saves automatically: whatever is on the wall at
-    ///     that moment is that rune's memory (Marko: "I don't wanna press
+    /// that moment is that rune's memory ("I don't wanna press
     ///     anything")
-    ///   · erased a drawing? stop the scene — it's deleted from memory too
-    ///   · scene load repaints everything saved, laid out in a grid — what
+    ///   · erased a drawing? stop the scene - it's deleted from memory too
+    ///   · scene load repaints everything saved, laid out in a grid - what
     ///     you see is exactly what the recognizer knows
     public class RuneWall : MonoBehaviour
     {
@@ -22,7 +22,7 @@ namespace SpellyZombie
         TMPro.TextMeshPro _label;
         float _timer;
         int _shownCount = -1;
-        bool _loadFailed;  // repaint blew up — this session must NOT save
+        bool _loadFailed;  // repaint blew up - this session must NOT save
         bool _sawInk;      // the census saw ink at least once this session
         bool _firstCensus = true;
         int _prevSig = int.MinValue;      // last census signature (settle detector)
@@ -48,7 +48,7 @@ namespace SpellyZombie
                     // A PARTIAL REPAINT IS A FAILED REPAINT. The guard used to
                     // fire only at painted == 0: with 3 of 12 samples on the
                     // wall it stayed silent, the first census adopted those 3 as
-                    // "what's on disk", and the next stroke he drew saved 4 —
+                    // "what's on disk", and the next stroke drew saved 4 —
                     // PERMANENTLY DELETING the 9 that never made it back. Any
                     // shortfall now disables saving for the session, exactly as
                     // a total failure does.
@@ -64,7 +64,7 @@ namespace SpellyZombie
                 }
                 else
                 {
-                    _loadFailed = savedCount > 0; // no world to paint into — protect
+                    _loadFailed = savedCount > 0; // no world to paint into - protect
                 }
             }
             catch (System.Exception e)
@@ -75,10 +75,10 @@ namespace SpellyZombie
             RefreshLabel(Mathf.Max(0, _shownCount));
         }
 
-        /// INSTANT SAVE (Marko: "if a wall can tell when I drew something on
+        /// INSTANT SAVE ("if a wall can tell when I drew something on
         /// it, it can also save immediately - and override the old ones, so
         /// deleting saves what's on the wall now"): the census runs on a
-        /// beat; the moment the wall's ink SETTLES (two identical censuses —
+        /// beat; the moment the wall's ink SETTLES (two identical censuses -
         /// so mid-stroke churn doesn't spam saves) and differs from what's on
         /// disk, the wall IS the rune. No buttons, no scene-stop, WYSIWYG.
         /// The recognizer rebuilds from the new pool on its next call, so
@@ -90,7 +90,7 @@ namespace SpellyZombie
             _timer = SnapshotPeriod;
 
             // ONLY THE WALL BEING DRAWN ON pays the census every beat
-            // (Marko: "it's starting to lag a lot") — the last-drawn stroke
+            // — the last-drawn stroke
             // names the active wall. Idle walls check on a slow, staggered
             // heartbeat so erases over there still get noticed eventually.
             var last = DrawingWorld.Instance != null ? DrawingWorld.Instance.LastInk : null;
@@ -124,7 +124,7 @@ namespace SpellyZombie
             if (!settled || sig == _lastSavedSig || _loadFailed) return;
 
             // FAIL-SAFE stays: an empty census on a wall that has recordings
-            // but never showed ink means "loading broke", not "he erased it"
+            // but never showed ink means "loading broke", not "erased it"
             if (snap.Count == 0 && !_sawInk && RuneLibrary.AllSamples(Rune).Count > 0)
                 return;
 
@@ -133,7 +133,7 @@ namespace SpellyZombie
         }
 
         /// Cheap census identity: drawing count + total ink points + a coarse
-        /// positional checksum — any add, erase, or redraw changes it.
+        /// positional checksum - any add, erase, or redraw changes it.
         static int CensusSignature(List<List<List<Vector2>>> samples)
         {
             unchecked
@@ -165,14 +165,14 @@ namespace SpellyZombie
             foreach (var s in world.Strokes)
             {
                 if (s == null || !s.Alive || s.State != StrokeState.Open) continue;
-                // SHORT STROKES ARE THE POINT (Marko, Jul 31). MinStrokeNodes
+                // SHORT STROKES ARE THE POINT . MinStrokeNodes
                 // was lowered to 2 the same day precisely so an arrowhead's
-                // barb or a LIGHT ray can exist as a line at all — and this
+                // barb or a LIGHT ray can exist as a line at all - and this
                 // census was still hard-coded to 3, so those limbs rendered on
                 // the wall, stayed visible, and were invisible to the save. The
                 // signature never changed, the stored sample was a barbless
                 // shaft, and next session the wall repainted without them: the
-                // wall silently editing his drawing, 20 lines above the comment
+                // wall silently editing the drawing, 20 lines above the comment
                 // promising it never does.
                 if (s.Nodes.Count < DrawingConfig.MinStrokeNodes
                     || !s.ChainIntact() || s.Hidden()) continue;
@@ -188,13 +188,13 @@ namespace SpellyZombie
                 var raw = glyph.BuildRawStrokes();
                 if (raw != null && raw.Count > 0) samples.Add(raw);
             }
-            // THE WALL NEVER TOUCHES HIS DRAWINGS (Marko, Jul 31: "I never
+            // THE WALL NEVER TOUCHES the DRAWINGS ("I never
             // drew any of these... you flipped heat and chill on the Y axis,
             // flipped liquid and solid, flipped dark upside down. When I enter
             // into the game again I don't want to see any changes from what I
             // drew on the wall.")
             //
-            // The flip he saw was NOT this method — it was the repaint frame,
+            // The flip saw was NOT this method - it was the repaint frame,
             // fixed in LoadSaved below; read that comment before touching
             // anything here. But this method is the other half of the round
             // trip, so the rule stands: the census reports the wall EXACTLY as
@@ -204,17 +204,17 @@ namespace SpellyZombie
             // A rotation-snapper used to live here (AlignToFirst: rotate every
             // sample to match the first drawing's orientation). It was already
             // unwired; it is now DELETED, helpers and all, because dead code
-            // that flips his ink is a loaded gun. It was pointless anyway — he
+            // that flips the ink is a loaded gun. It was pointless anyway - he
             // designed the alphabet so no glyph resembles any other under any
             // rotation or reflection, which is precisely why matching can be
-            // rotation-free. Storing what he drew, untouched, costs nothing and
+            // rotation-free. Storing what drew, untouched, costs nothing and
             // is the only honest thing to do.
             return samples;
         }
 
         // ------------------------------------------------------ loading ----
         /// Repaint the saved pool as REAL ink (same pipeline as the pen), on
-        /// an adaptive grid — however many drawings there are, they all fit.
+        /// an adaptive grid - however many drawings there are, they all fit.
         int LoadSaved()
         {
             var samples = RuneLibrary.AllSamples(Rune);
@@ -227,32 +227,32 @@ namespace SpellyZombie
             if (col == null) return 0;
 
             // ---- REPAINT IN THE FRAME THE INK WAS SAVED IN ----
-            // Marko, Jul 31: "I never drew any of these... you flipped heat and
+            // "I never drew any of these... you flipped heat and
             // chill on the Y axis, flipped liquid and solid, flipped dark upside
             // down. When I enter into the game again I don't want to see any
             // changes from what I drew on the wall."
             //
-            // He was right, and it was never AlignToFirst. SAVING
+            // was right, and it was never AlignToFirst. SAVING
             // (RuneGlyph.RawStrokesOf) builds its 2D basis with
             //     up = Cross(right, normal)          =>  Cross(right, up) == -normal
             // where `normal` is the PEN'S hit.normal, so it points out of the
             // face toward whoever drew it: a stored (x,y) is literally the
             // drawer's screen coordinates. Repainting used to grab the raw
-            // transform basis instead — and for ANY Unity transform
+            // transform basis instead - and for ANY Unity transform
             //     Cross(transform.right, transform.up) == +transform.forward
             // the OPPOSITE handedness. Two frames differing by a reflection, so
             // every repaint came back mirrored. It got worse from there:
             // PaintSample stamps its basis onto the repainted strokes, the next
             // census re-read them through that flipped frame and ReplaceSamples
-            // wrote the flipped version to disk — the pool alternated
-            // mirrored / upside-down with every cycle and was NEVER what he drew.
+            // wrote the flipped version to disk - the pool alternated
+            // mirrored / upside-down with every cycle and was NEVER what drew.
             // Those corrupted samples then WERE the templates the matcher scores
-            // against, widening every pool with shapes that, by his own law, are
+            // against, widening every pool with shapes that, by the law, are
             // not that rune.
             //
             // Fix: derive the repaint frame from the SAME law, off the same face.
             // PlaneBasis also ends with up = Cross(right, normal), and returns
-            // the frame of someone standing in front of the face — `right` is the
+            // the frame of someone standing in front of the face - `right` is the
             // VIEWER's right, not the wall's (they are opposite; a viewer of the
             // +forward face has screen-right -transform.right). The round trip is
             // then the identity: paint lays x along `right`, the census
@@ -262,7 +262,7 @@ namespace SpellyZombie
             //
             // DO NOT ever "fix" a future flip by negating the samples on load.
             // That hides a frame mismatch and leaves the census still writing the
-            // wrong thing back to disk — which is how this bug survived so long.
+            // wrong thing back to disk - which is how this bug survived so long.
             Vector3 normal = transform.forward;                         // the face Place() raycasts onto
             ZombieScribe.PlaneBasis(normal, out var right, out var up); // SAME law as RuneGlyph.RawStrokesOf
             // THE WALL'S REAL SIZE, never a floor. These used to be
@@ -307,19 +307,19 @@ namespace SpellyZombie
                     max = Vector2.Max(max, p);
                 }
             Vector2 span = Vector2.Max(max - min, Vector2.one * 0.001f);
-            // NEVER MAGNIFY (Marko: "I don't want to see any changes from what
+            // NEVER MAGNIFY ("I don't want to see any changes from what
             // I drew on the wall"). The stored coordinates are already in
-            // metres, exactly as his hand laid them down, so scale 1 repaints
-            // his drawing at its true size. This used to scale EVERY sample up
-            // to fill its grid cell — on the studio slab with two samples that
-            // was a 3.4x magnification of a 40cm rune — and the blow-up was not
+            // metres, exactly as the hand laid them down, so scale 1 repaints
+            // the drawing at its true size. This used to scale EVERY sample up
+            // to fill its grid cell - on the studio slab with two samples that
+            // was a 3.4x magnification of a 40cm rune - and the blow-up was not
             // cosmetic: the census regroups strokes by RuneTouchDistance, so a
             // 2cm pen-lift gap inside one drawing came back 7cm wide and the
             // drawing was split into TWO samples, which were then written back
             // as two. Repaint and census stopped being inverses of each other
             // and the pool drifted every cycle. Shrinking to fit is still
-            // allowed — a drawing that no longer fits its cell has to go
-            // somewhere — but the common case is now the identity.
+            // allowed - a drawing that no longer fits its cell has to go
+            // somewhere - but the common case is now the identity.
             float scale = Mathf.Min(1f, size / Mathf.Max(span.x, span.y));
             Vector2 mid = (min + max) * 0.5f;
 
@@ -334,7 +334,7 @@ namespace SpellyZombie
                     // (RuneGlyph.RawStrokesOf: right = ProjectOnPlane(BasisRight,
                     // hit.normal), up = Cross(right, hit.normal)) it recovers the
                     // stored coordinates unchanged. Hand a mismatched basis in
-                    // here and the wall starts rewriting his drawings again.
+                    // here and the wall starts rewriting the drawings again.
                     BasisRight = right,
                     BasisUp = up,
                     Surface = transform,
@@ -348,7 +348,7 @@ namespace SpellyZombie
                     // FILL THE GAP TO NODE SPACING, AND NO FURTHER. Repainted
                     // ink has to be dense enough that the strokes read as
                     // connected, but this used to insert ONE midpoint per
-                    // segment unconditionally — so an N-point sample repainted
+                    // segment unconditionally - so an N-point sample repainted
                     // as 2N-1 nodes, the census wrote 2N-1 back, and every
                     // editing session DOUBLED the point count of every drawing
                     // already on the wall (HEAT's older sample is at 184 points
@@ -372,7 +372,7 @@ namespace SpellyZombie
                     has = true;
                 }
                 if (s.Nodes.Count >= 2) any = true;
-                // a picture on a wall — don't recognise it, don't network it,
+                // a picture on a wall - don't recognise it, don't network it,
                 // don't claim ink with it (this was ~150ms PER SAMPLE at load)
                 DrawingWorld.Instance.CompleteStroke(s, silent: true);
             }

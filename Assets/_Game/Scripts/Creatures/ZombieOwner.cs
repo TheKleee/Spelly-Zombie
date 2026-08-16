@@ -4,7 +4,7 @@ namespace SpellyZombie
 {
     /// THE WAY BACK FROM THE SKIN TO THE ZOMBIE.
     ///
-    /// ZombieDress deliberately lives OUTSIDE the zombie's hierarchy — the
+    /// ZombieDress deliberately lives OUTSIDE the zombie's hierarchy - the
     /// capsule's per-kind scale is non-uniform and skinned bones rotating under
     /// a non-uniform parent shear, so the outfit is a world-space follower
     /// instead of a child. That is the right call for the rig and a trap for
@@ -12,7 +12,7 @@ namespace SpellyZombie
     /// GetComponentInParent&lt;Zombie&gt;() gets NOTHING, because there is no Zombie
     /// above the dress.
     ///
-    /// Which bites exactly where it matters — a seal drawn on a zombie's actual
+    /// Which bites exactly where it matters - a seal drawn on a zombie's actual
     /// skin could not detonate the zombie it was drawn on, since the detonation
     /// resolves its target by walking up from the collider it hit.
     ///

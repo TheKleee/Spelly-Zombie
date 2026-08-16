@@ -3,33 +3,33 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Marko's wizard body, integrated (auto-added to every player): swaps the
-    /// graybox bean for the Mixamo-rigged model at runtime — his scenes never
+    /// the wizard body, integrated (auto-added to every player): swaps the
+    /// graybox bean for the Mixamo-rigged model at runtime - the scenes never
     /// change, and without the wired asset the bean quietly stays.
     ///
     /// What the swap does:
     ///  · faces the model the way the player faces (the FBX imports backwards)
     ///  · lowers the arms out of the T-pose — THAT relaxed stance is "rest"
-    ///  · fits capsule/camera/crouch to the model (slim capsule — the body
+    ///  · fits capsule/camera/crouch to the model (slim capsule - the body
     ///    must be the thing you draw on, not an invisible balloon around it)
-    ///  · rebuilds the EmoteRig on real bones, same ids as the bean — saved
+    ///  · rebuilds the EmoteRig on real bones, same ids as the bean - saved
     ///    poses carry over; adds spine + leg.L/.R for full-body posing
     ///  · per-limb colliders: ragdoll segments AND body-paint ink surfaces
     ///  · first person: body stays visible, only the HEAD hides (camera lives
-    ///    inside it) — look down and you see yourself; arms REACH for the held
+    ///    inside it) - look down and you see yourself; arms REACH for the held
     ///    weapon procedurally, so weapon-holding reads without authored anims
     ///  · googly eyes on the head bone; hat/cape sockets await the art
     public class CharacterRig : MonoBehaviour
     {
-        // ---- MARKO'S KNOBS — tweak freely, everything reads from here ------
+        // ---- the KNOBS - tweak freely, everything reads from here ------
         /// Eye fit in HEAD-BONE local space. Used by players, remote avatars
         /// and zombies alike (one edit fixes all three).
-        // Marko's inspector fit, VERBATIM (July 13). Do not drift, do not hide.
+        // the inspector fit, VERBATIM (July 13). Do not drift, do not hide.
         public static Vector3 EyeLocalPos = new Vector3(0f, 0.125f, -0.02f);
         public static float EyeScale = 0.8f;    // googly rig's internal scale
-        public static float EyeRigScale = 0.8f; // his transform-scale on top
+        public static float EyeRigScale = 0.8f; // the transform-scale on top
         /// First-person camera sits this × body-height IN FRONT of the body
-        /// axis — far enough that the head/torso stay behind the near plane
+        /// axis - far enough that the head/torso stay behind the near plane
         /// while the hands holding the weapon stay in view.
         public static float EyeForwardFactor = 0.18f;
         /// Head-follows-aim: how much of the look pitch the head and spine
@@ -38,16 +38,16 @@ namespace SpellyZombie
         public static float HeadFollowPitch = 0.55f;
         public static float SpineFollowPitch = 0.25f;
         public static float FollowPitchCap = 60f;
-        /// Hinge direction for the limited joints — flip a sign if a test bend
+        /// Hinge direction for the limited joints - flip a sign if a test bend
         /// folds the wrong way on the real rig (one-knob tradition).
         public static float ElbowHingeSign = -1f; // forearms swing FORWARD/up
         public static float KneeHingeSign = 1f;   // shins fold BACKWARD
         // ---------------------------------------------------------------------
 
-        // sockets live in the ONE socket system (SocketSet) — duplicate rig
-        // empties confused Marko's hierarchy ("Socket.Cape twice")
-        /// Weapons glue themselves into this (the standard HandR socket —
-        /// plain character space, so Marko's grip-pivot weapons drop in).
+        // sockets live in the ONE socket system (SocketSet) - duplicate rig
+        // empties confused the hierarchy ("Socket.Cape twice")
+        /// Weapons glue themselves into this (the standard HandR socket -
+        /// plain character space, so the grip-pivot weapons drop in).
         public Transform GripSocketR => _sockets != null ? _sockets.Get("HandR") : null;
 
         /// True once the real model is worn (SelfPaint then skips the fat
@@ -58,7 +58,7 @@ namespace SpellyZombie
         public GameObject ModelGO => _model;
 
         /// The hips/chest capsules are deliberately fat (they sit just OUTSIDE
-        /// the mesh) — SelfPaint's fallback must not slim them under the skin.
+        /// the mesh) - SelfPaint's fallback must not slim them under the skin.
         public bool IsTorsoBone(Transform t) => t == _hips || t == _spine1;
 
         [Header("His body — drag it in and the code stops guessing")]
@@ -69,16 +69,16 @@ namespace SpellyZombie
                  "arm, where a depth-first search reaches it before the body.")]
         public SkinnedMeshRenderer BodyRenderer;
 
-        static readonly Color SkinColor = new Color(0.93f, 0.87f, 0.72f); // temp — Marko restyles materials
+        static readonly Color SkinColor = new Color(0.93f, 0.87f, 0.72f); // temp - restyles materials
 
-        [Header("Natural stride (Marko's root-motion experiment)")]
+        [Header("Natural stride ")]
         [Tooltip("ON: damped blending + cycle playback synced to actual ground speed (the in-place-clip substitute for root motion). OFF: the old raw feel. Flip live to compare.")]
         public bool NaturalStride = true;
         [Tooltip("Ground speed (m/s) the WALK cycle naturally covers. If feet slide at no-shift speed, LOWER this (faster playback). ~2.4 grips a 4.5 m/s stroll.")]
         public float WalkClipSpeed = 2.4f;
-        [Tooltip("Ground speed (m/s) the RUN cycle naturally covers. If feet slide at sprint speed, nudge this one. (4.5 = Marko's tuned value.)")]
+        [Tooltip("Ground speed (m/s) the RUN cycle naturally covers. If feet slide at sprint speed, nudge this one. (4.5 = the tuned value.)")]
         public float RunClipSpeed = 4.5f;
-        [Tooltip("Mixamo crouch clips sneak at an angle baked into the pose. This yaw (degrees) turns the crouched body back to face its travel. Dial live while crouch-walking until he faces forward; 0 = off.")]
+        [Tooltip("Mixamo crouch clips sneak at an angle baked into the pose. This yaw (degrees) turns the crouched body back to face its travel. Dial live while crouch-walking until faces forward; 0 = off.")]
         public float CrouchYawFix = 38f;
 
         [Tooltip("While posing, the shoulder (clavicle) bone carries this share of the upper arm's travel, a real shoulder girdle instead of a dead one. 0 = old behavior.")]
@@ -90,11 +90,11 @@ namespace SpellyZombie
         Animator _anim;
         Transform _clavL, _clavR;
         Quaternion _clavLRest, _clavRRest, _armLRest, _armRRest;
-        Quaternion _armLWritten, _armRWritten; // what WE last wrote — held poses must not re-redistribute
-        float _crouchYawW; // crouch yaw-fix blend weight (0 standing → 1 crouched)
+        Quaternion _armLWritten, _armRWritten; // what WE last wrote - held poses must not re-redistribute
+        float _crouchYawW; // crouch yaw-fix blend weight (0 standing  1 crouched)
 
         /// Redistribute the arm's pose rotation: the clavicle takes
-        /// ClavicleFollow of it, the arm keeps the remainder — the TOTAL
+        /// ClavicleFollow of it, the arm keeps the remainder - the TOTAL
         /// reach stays what the pose asked for, but the girdle participates.
         /// Only acts when something NEW wrote the arm (a held pose that nobody
         /// rewrites must not be re-eaten frame after frame).
@@ -105,10 +105,10 @@ namespace SpellyZombie
             Quaternion full = arm.localRotation;
             if (Quaternion.Angle(full, lastWritten) < 0.05f) return;
             Quaternion delta = full * Quaternion.Inverse(armRest);
-            // ADDITIVE ONLY (Marko: a loaded pose "must be exactly the same
+            // ADDITIVE ONLY (a loaded pose "must be exactly the same
             // as the pose I saved"): the clavicle DERIVES its share from the
             // arm, the arm keeps precisely what the pose system wrote.
-            // Deriving is repeatable — save→load→save can't drift. The old
+            // Deriving is repeatable - saveloadsave can't drift. The old
             // split reduced the arm on every write, so a saved pose (which
             // stores the reduced arm) got reduced AGAIN on load and every
             // loaded pose bent less than the sculpt.
@@ -120,10 +120,10 @@ namespace SpellyZombie
         bool _airChecked, _hasAirParams, _hasCrouch; // which params the controller actually has
         SkinnedMeshRenderer _smr;
 
-        /// The rig's OWN answer to "which renderer is the body" — his
+        /// The rig's OWN answer to "which renderer is the body" — the
         /// BodyRenderer slot first, the guarded search otherwise. BodyCanvas
         /// reads this instead of running its own GetComponentInChildren, which
-        /// is the exact depth-first search that once crowned his grimoire "the
+        /// is the exact depth-first search that once crowned the grimoire "the
         /// body" and cost a day.
         public SkinnedMeshRenderer BodySmr => _smr;
         Transform _hips, _spine1, _head;
@@ -144,30 +144,30 @@ namespace SpellyZombie
         {
             _pilot = GetComponent<SimpleFPSController>();
             _slots = GetComponent<WeaponSlots>();
-            // MARKO'S PLAYER, HIS WAY: a prefab at Resources/Custom/PlayerBody
-            // replaces the wired model — his mesh, his materials (the code
+            // the PLAYER, the WAY: a prefab at Resources/Custom/PlayerBody
+            // replaces the wired model - the mesh, the materials (the code
             // skin tint stands down). Same Mixamo skeleton = everything works.
             var custom = PrefabVault.Get("PlayerBody");
             _customBody = custom != null;
             var prefab = _customBody ? custom : CharacterLibrary.Model;
 
-            // A player he prefabbed already carries its Body, so it needs NO
+            // A player prefabbed already carries its Body, so it needs NO
             // source prefab at all. Only a bodiless player needs one to build from.
             bool hasBody = transform.Find("Body") != null;
             if (_pilot == null || (prefab == null && !hasBody)) return; // bean life continues
-            if (hasBody) _customBody = true;   // his baked body keeps HIS materials
+            if (hasBody) _customBody = true;   // the baked body keeps the materials
 
             RemovePlaceholder();
             BuildBody(prefab);
 
-            // Marko's play-mode edits to props/sockets/eyes/IK anchors
-            // re-apply here on every build (see CharacterFix — the runtime
-            // player CAN now be prefabbed — BuildBody adopts an existing Body —
-            // but CharacterFix still re-applies his play-mode prop/socket edits)
+            // the play-mode edits to props/sockets/eyes/IK anchors
+            // re-apply here on every build (see CharacterFix - the runtime
+            // player CAN now be prefabbed - BuildBody adopts an existing Body -
+            // but CharacterFix still re-applies the play-mode prop/socket edits)
             if (GetComponent<CharacterFix>() == null) gameObject.AddComponent<CharacterFix>();
         }
 
-        /// Only the KNOWN graybox parts — anything Marko added by hand survives.
+        /// Only the KNOWN graybox parts - anything added by hand survives.
         void RemovePlaceholder()
         {
             // "GooglyEyes" here is the BEAN-ERA pair: SimpleFPSController attaches
@@ -189,14 +189,14 @@ namespace SpellyZombie
             var cc = GetComponent<CharacterController>();
             float bottom = cc != null ? cc.center.y - cc.height * 0.5f : -0.9f;
 
-            // ---- HIS PREFABBED PLAYER ---------------------------------------
+            // ---- the PREFABBED PLAYER ---------------------------------------
             // Drag the player out of the Hierarchy and it comes with a "Body"
             // child already on it. Instantiating a second one on top is what
-            // broke every prefab he ever made: two bodies, one of them unwired,
+            // broke every prefab ever made: two bodies, one of them unwired,
             // animation on the wrong skeleton.
             //
             // If a Body is already here, ADOPT it. Everything below wires it
-            // identically, and his placement stands rather than being reset.
+            // identically, and the placement stands rather than being reset.
             var already = transform.Find("Body");
             bool adopted = already != null;
             var model = adopted ? already.gameObject : Instantiate(prefab, transform);
@@ -212,30 +212,30 @@ namespace SpellyZombie
 
             // THE BODY'S RENDERER, NOT THE FIRST SKINNED MESH IN THE TREE.
             //
-            // AXIOM (Marko Aug 8, "we're drawing on capsules... the mesh collider
+            // AXIOM (, "we're drawing on capsules... the mesh collider
             // that's supposed to be on the body doesn't exist"): this was
-            // GetComponentInChildren, a DEPTH-FIRST search. His Blender grimoire
+            // GetComponentInChildren, a DEPTH-FIRST search. the Blender grimoire
             // is itself a skinned mesh (bones Page_Left/Page_Right) and it hangs
-            // in Socket.HandL, deep inside the arm — which the search reaches
+            // in Socket.HandL, deep inside the arm - which the search reaches
             // BEFORE SZ_Body. So _smr became the BOOK: rootBone 'Page_Right',
             // a flat 0.34 x 0.25 x 0.04 mesh at scale 1 instead of the body's
             // 100. Body paint then baked its canvas from the grimoire, got a
             // book-shaped blob, rejected it every time, and fell through to the
-            // capsules — which is ink under the skin.
+            // capsules - which is ink under the skin.
             //
             // Runtime never hit this because it built the body BEFORE the props
-            // existed. His baked prefab carries them from frame one. Skip
+            // existed. the baked prefab carries them from frame one. Skip
             // anything worn or held; the body is what is left.
-            // ON HIS BODY, HIS SLOT IS THE ONLY ANSWER (Marko Aug 8: "you keep
+            // ON the BODY, the SLOT IS THE ONLY ANSWER ("you keep
             // making code that works without my input and that's not allowed").
-            // The auto-search IS what broke this: it picked his grimoire, which
+            // The auto-search IS what broke this: it picked the grimoire, which
             // is a skinned mesh living inside the arm, and body paint spent the
             // day building its canvas out of a book. A guess that silently
             // succeeds is worse than no guess at all.
             //
-            // So: a body HE authored must be pointed at. A body CODE built keeps
+            // So: a body authored must be pointed at. A body CODE built keeps
             // the search, because it has no props yet and nobody exists to fill
-            // the slot. Empty slot on his body = a loud stop, never a guess.
+            // the slot. Empty slot on the body = a loud stop, never a guess.
             _smr = BodyRenderer;
             if (_smr == null && !adopted)
                 foreach (var skin in model.GetComponentsInChildren<SkinnedMeshRenderer>(true))
@@ -249,7 +249,7 @@ namespace SpellyZombie
                     + "guessing picked the grimoire.", gameObject);
             if (_smr != null)
             {
-                if (!_customBody) // his PlayerBody prefab keeps HIS materials
+                if (!_customBody) // the PlayerBody prefab keeps the materials
                     _smr.sharedMaterial = MatterFX.Get(SkinColor, MoteShade.Opaque);
                 _smr.updateWhenOffscreen = true; // bones move it; bounds lie
             }
@@ -283,11 +283,11 @@ namespace SpellyZombie
 
             // (facing is decided AFTER the animator wiring below: a HUMANOID
             // animator re-poses the skeleton to face the model root's +Z, so
-            // with animations the root must stay at identity — the toe-based
+            // with animations the root must stay at identity - the toe-based
             // alignment only applies to the animator-less bind pose)
 
             // ---- fit the gameplay body: bones are truthful at Start (skinned
-            // bounds aren't). SLIM capsule — the body itself is the canvas.
+            // bounds aren't). SLIM capsule - the body itself is the canvas.
             // Camera sits just IN FRONT of the face: the head stays whole (no
             // headless shadows) yet never blocks the first-person view.
             float feetY = transform.TransformPoint(new Vector3(0f, bottom, 0f)).y;
@@ -301,7 +301,7 @@ namespace SpellyZombie
             LowerArm(_armL, _handL, 0.75f);
             LowerArm(_armR, _handR, 0.75f);
 
-            // the clavicles — the REAL shoulder bones (Marko: "we do not even
+            // the clavicles — the REAL shoulder bones ("we do not even
             // grab the shoulder") — follow the arms while posing; remember
             // their rest alongside the arms' rest
             _clavL = Bone("LeftShoulder");
@@ -333,7 +333,7 @@ namespace SpellyZombie
             Joint("leg.L", upLegL, footL);
             Joint("leg.R", upLegR, footR);
 
-            // elbows and knees: HINGE-LIMITED (Marko's rule — constrained
+            // elbows and knees: HINGE-LIMITED (the rule - constrained
             // joints make body-seal placement a puzzle: an inner-elbow seal
             // fires on a curl, an outer-knee one only mid-squat). The hinge
             // axis is the bind pose's side axis expressed in each joint's own
@@ -356,7 +356,7 @@ namespace SpellyZombie
             Hinge("knee.R", legR, footR, KneeHingeSign, 135f);
             if (GetComponent<EmotePlayer>() == null) gameObject.AddComponent<EmotePlayer>();
 
-            // the bake runs on the raw BIND pose — the animator only turns the
+            // the bake runs on the raw BIND pose - the animator only turns the
             // body to face root-forward at its FIRST frame, later. Derive the
             // bind pose's true facing from the toes, or "right" is the body's
             // LEFT and every baked pose comes out mirrored/backwards.
@@ -386,7 +386,7 @@ namespace SpellyZombie
             var rbLegR = Limb(upLegR, legR, r * 1.1f, 5f, rbHips);
             Limb(legR, footR, r * 0.9f, 4f, rbLegR);
 
-            // the limbs live INSIDE the controller capsule — they must never
+            // the limbs live INSIDE the controller capsule - they must never
             // collide with it or the ragdoll detonates on activation
             if (cc != null)
                 foreach (var rb in _ragdoll)
@@ -399,35 +399,35 @@ namespace SpellyZombie
             if (_spine1 != null) _bindSpine1 = _spine1.localRotation;
             _bindHead = _head.localRotation;
 
-            // EVERY bone's local position is structural (only the hips move) —
+            // EVERY bone's local position is structural (only the hips move) -
             // cache the WHOLE skeleton for the runaway-limb guard.
             //
-            // AXIOM (Marko Aug 7): this used to sweep EVERYTHING under the hips
+            // AXIOM : this used to sweep EVERYTHING under the hips
             // on the assumption that "at Start the hierarchy is pure bone —
             // props and sockets attach later". A BAKED PLAYER PREFAB BREAKS
-            // THAT: his Socket.HandL/Grimoire, the wand, the hat and the eyes
+            // THAT: the Socket.HandL/Grimoire, the wand, the hat and the eyes
             // are all present at Start, so the guard adopted them as bones and
-            // then rewrote their localPosition EVERY FRAME. He moved the book
+            // then rewrote their localPosition EVERY FRAME. moved the book
             // into the hand, the guard snapped it back, and the book read as
             // floating loose in the world ("your braindead code that moves
             // things instead of keeping them where I left them").
             //
-            // The guard exists for BONES ONLY — a ragdoll shove blowing a limb
-            // out of its socket. His props are HIS. Skip anything at or under a
+            // The guard exists for BONES ONLY - a ragdoll shove blowing a limb
+            // out of its socket. the props are the. Skip anything at or under a
             // Socket.*, and the named props, exactly like CharacterFix.IsFixable.
             _boneHome.Clear();
             foreach (var t in _hips.GetComponentsInChildren<Transform>(true))
                 if (t != _hips && !IsHisProp(t)) _boneHome.Add((t, t.localPosition));
 
             // ---- the face and the wardrobe: a BAKED body brings its own
-            // eyes (Marko's edit is law); otherwise build them at his
+            // eyes; otherwise build them at the
             // hand-tuned fit, in HEAD-LOCAL space
             var eyes = model.GetComponentInChildren<GooglyEyes>(true);
             if (eyes != null && (!eyes.IsAlive || !eyes.enabled || !eyes.gameObject.activeSelf))
             {
                 // the bake carried a DEAD eye rig (wiring lost, no usable
-                // Eye→Pupil pair, or baked disabled) — frozen decoration that
-                // can never react. Marko: "make it work normally" — rebuild.
+                // EyePupil pair, or baked disabled) - frozen decoration that
+                // can never react. "make it work normally" — rebuild.
                 Debug.LogWarning("[SpellyZombie] Baked body's eyes are not a working " +
                     "Eye→Pupil pair, rebuilding fresh googly eyes in their place. " +
                     "(Re-bake to keep custom eye placement.)", model);
@@ -437,13 +437,13 @@ namespace SpellyZombie
             if (eyes == null)
             {
                 eyes = GooglyEyes.Attach(_head, 0f, EyeScale);
-                eyes.transform.localPosition = EyeLocalPos; // ← the knobs up top
+                eyes.transform.localPosition = EyeLocalPos; // the knobs up top
                 eyes.transform.localRotation = Quaternion.identity;
                 eyes.transform.localScale = Vector3.one * EyeRigScale;
             }
             _pilot.ReplaceEyes(eyes);
 
-            // (sockets — hat/cape included — and pen props are built in the
+            // (sockets - hat/cape included - and pen props are built in the
             // first LateUpdate by SocketSet: the bind pose faces backwards
             // until the animator's first frame, and building before that puts
             // everything in the wrong hands)
@@ -462,11 +462,11 @@ namespace SpellyZombie
             }
             else
             {
-                _anim = null; // no clips wired yet — procedural Reach fills in
+                _anim = null; // no clips wired yet - procedural Reach fills in
             }
 
             // facing: WITH a humanoid animator the retarget faces the model
-            // root's +Z — identity is correct by construction. WITHOUT one,
+            // root's +Z - identity is correct by construction. WITHOUT one,
             // the bind pose is what you see, so align it by the toes.
             if (_anim == null)
                 FaceForward(model.transform, footL, Bone("LeftToeBase"), transform.forward);
@@ -474,11 +474,11 @@ namespace SpellyZombie
             _lastPos = transform.position;
         }
 
-        /// HIS, not ours: a socket, anything worn or held inside one, or a
-        /// named prop. The runaway-limb guard must never write to these — he
+        /// the, not ours: a socket, anything worn or held inside one, or a
+        /// named prop. The runaway-limb guard must never write to these - he
         /// places them by hand on the prefab and in play mode, and a snapshot
         /// taken at Start would overrule him for the rest of the session.
-        /// Same test CharacterFix.IsFixable uses, so "what Marko may move" and
+        /// Same test CharacterFix.IsFixable uses, so "what may move" and
         /// "what code may not move" are ONE definition, not two that drift.
         static bool IsHisProp(Transform t)
         {
@@ -505,7 +505,7 @@ namespace SpellyZombie
         bool _capeStamped;
 
         /// Slot 1's hands are never empty: a wand in the right, the grimoire
-        /// in the left. Uses Marko's Weapon_Wand / Weapon_Grimoire skins when
+        /// in the left. Uses the Weapon_Wand / Weapon_Grimoire skins when
         /// they exist (grip-pivot convention: drop in at identity); primitives
         /// stand in until then. Everything lives in the standard hand sockets.
         void BuildPenProps()
@@ -514,9 +514,9 @@ namespace SpellyZombie
             var palmL = _sockets != null ? _sockets.Get("HandL") : null;
             if (gripR == null || palmL == null) return;
 
-            // a BAKED body may already hold its wand and/or grimoire (Marko
-            // edited them on the prefab) — adopt EACH independently; anything
-            // his prefab lacks gets the normal build below
+            // a BAKED body may already hold its wand and/or grimoire (
+            // edited them on the prefab) - adopt EACH independently; anything
+            // the prefab lacks gets the normal build below
             var bakedWand = gripR.Find("Wand");
             var bakedBook = palmL.Find("Grimoire");
             if (bakedWand != null)
@@ -531,13 +531,13 @@ namespace SpellyZombie
             }
             if (_wand != null && _book != null) return;
 
-            // Marko's prefab first (Resources/Custom/Wand), then the weapon
+            // the prefab first (Resources/Custom/Wand), then the weapon
             // skin library, then the primitive placeholder
             var wandSkin = _wand != null ? null : PrefabVault.Get("Wand");
             if (wandSkin == null && _wand == null) wandSkin = Wardrobe.WeaponSkin("Wand");
             if (_wand != null)
             {
-                // adopted from the baked body above — nothing to build
+                // adopted from the baked body above - nothing to build
             }
             else if (wandSkin != null)
             {
@@ -557,7 +557,7 @@ namespace SpellyZombie
                 shaft.transform.localPosition = new Vector3(0f, 0.02f, 0.07f);
                 shaft.transform.localRotation = Quaternion.Euler(70f, 0f, 0f); // tip forward-up
                 shaft.transform.localScale = new Vector3(0.022f, 0.15f, 0.022f);
-                // THE WAND IS INK, SO IT IS BLACK (Marko, twice: "the wand needs
+                // THE WAND IS INK, SO IT IS BLACK (, twice: "the wand needs
                 // to be the same color as the ink => both black, not brown and
                 // blue", and Aug 7 "black and green, not brown and green"). This
                 // line was still the old brown, so the placeholder wand argued
@@ -570,7 +570,7 @@ namespace SpellyZombie
             if (bookSkin == null && _book == null) bookSkin = Wardrobe.WeaponSkin("Grimoire");
             if (_book != null)
             {
-                // adopted from the baked body above — nothing to build
+                // adopted from the baked body above - nothing to build
             }
             else if (bookSkin != null)
             {
@@ -581,7 +581,7 @@ namespace SpellyZombie
             {
                 _book = new GameObject("Grimoire");
                 _book.transform.SetParent(palmL, false);
-                // rides ON TOP of the palm — the hand must never cover the pages
+                // rides ON TOP of the palm - the hand must never cover the pages
                 _book.transform.localPosition = new Vector3(0f, 0.055f, 0.03f);
                 _book.transform.localRotation = Quaternion.Euler(-20f, 8f, 0f);
                 _book.transform.localScale = Vector3.one * 0.8f; // placeholder hogged the view
@@ -608,19 +608,24 @@ namespace SpellyZombie
                 t.gameObject.layer = 2;
 
             // seal lesson + rune spreads (G opens, , . turn) / the wand IS the
-            // mana bar — guarded: adopted pieces may already carry them
+            // mana bar - guarded: adopted pieces may already carry them
             if (_book.GetComponent<GrimoirePages>() == null) _book.AddComponent<GrimoirePages>();
             if (_wand.GetComponent<WandInk>() == null) _wand.AddComponent<WandInk>();
         }
 
         // ------------------------------------------------------- body paint --
         Transform _paintShell;
+        // the audition's winning mount, remembered so the easel's per-pose
+        // re-bake builds ONE candidate instead of five ("It's lagging
+        // when I'm switching poses with drawings on my body" — five cooks of
+        // the whole body mesh per pose switch was the spike)
+        string _shellMountTag;
         Vector3 _camHeadLocal;  // the eye point in head-bone space (calibrated)
         bool _camCalibrated;
 
         /// Body paint's canvas pose: the animator goes quiet RIGHT NOW (the
         /// doll gate keeps it down, but it would still rewrite this frame),
-        /// then the emote joints ease to REST — shoulders out, legs apart.
+        /// then the emote joints ease to REST - shoulders out, legs apart.
         /// Rest was captured AFTER the animator's first frame, so every value
         /// lives in the animator's own basis: no mixed-space snapping, no
         /// smeared skin. The animator resumes by itself when the mode ends.
@@ -633,18 +638,18 @@ namespace SpellyZombie
                     if (j.T != null) j.T.localRotation = j.Rest;
         }
 
-        /// THE CANVAS IS THE SKIN (Marko: "why can't we just use the mesh
+        /// THE CANVAS IS THE SKIN ("why can't we just use the mesh
         /// collider?" — we do): the skinned mesh, frozen in the relaxed pose,
         /// baked into an invisible MeshCollider shell glued over the visible
         /// body. Import transforms LIE (SZ_Body ships rotated -90° at scale
         /// 100), so nothing is trusted: both bake variants are measured
         /// against the renderer's real on-screen bounds and only a shell that
         /// matches reality is accepted. Returns false when no honest shell
-        /// can be made (mesh not readable → the wizard fixes that) — the
+        /// can be made (mesh not readable  the wizard fixes that) - the
         /// limb capsules then catch the pen instead.
         /// Free a mesh WE created, never one that came off disk. The shell can
         /// legitimately be _smr.sharedMesh, and destroying that is an attempt on
-        /// his SZ_Body asset (Unity refuses with "Destroying assets is not
+        /// the SZ_Body asset (Unity refuses with "Destroying assets is not
         /// permitted to avoid data loss" — the refusal is the safety net, not
         /// the design).
         void DestroyBake(Mesh m)
@@ -664,19 +669,27 @@ namespace SpellyZombie
             }
             try
             {
-                // BakeMesh semantics differ per import (Marko's rig bakes
-                // useScale:false at WORLD size already) — so no more theory:
+                // BakeMesh semantics differ per import (the rig bakes
+                // useScale:false at WORLD size already) - so no more theory:
                 // build EVERY plausible mount and let the physics engine
                 // report where each collider actually sits (collider.bounds,
-                // a measurement) — keep the one covering the visible mesh.
-                var meshLocal = new Mesh();
-                _smr.BakeMesh(meshLocal, false);
-                var meshScaled = new Mesh();
-                _smr.BakeMesh(meshScaled, true);
-                if (meshLocal.vertexCount < 3)
+                // a measurement) - keep the one covering the visible mesh.
+                // THE AUDITION RUNS ONCE: after a winner is measured in, only
+                // that mount is rebuilt on later bakes (the easel re-bakes per
+                // pose load); it still passes the same measurement below, and
+                // if it ever stops fitting the full audition runs again.
+                string only = _shellMountTag;
+                bool Want(string tag) => only == null || only == tag;
+                bool needLocal = Want("local-bake/child") || Want("local-bake/world");
+                bool needScaled = Want("scale-bake/child") || Want("scale-bake/world");
+                Mesh meshLocal = null, meshScaled = null;
+                if (needLocal) { meshLocal = new Mesh(); _smr.BakeMesh(meshLocal, false); }
+                if (needScaled) { meshScaled = new Mesh(); _smr.BakeMesh(meshScaled, true); }
+                var probe = meshLocal != null ? meshLocal : meshScaled;
+                if (probe != null && probe.vertexCount < 3)
                 {
-                    Destroy(meshLocal);
-                    Destroy(meshScaled);
+                    if (meshLocal != null) Destroy(meshLocal);
+                    if (meshScaled != null) Destroy(meshScaled);
                     Debug.LogError("[SpellyZombie] Body paint: bake produced no vertices. Capsules catch the pen.");
                     return false;
                 }
@@ -698,29 +711,29 @@ namespace SpellyZombie
                     c.sharedMesh = m;
                     candidates.Add((go, c, tag));
                 }
-                Mount(meshLocal, true, "local-bake/child");
-                Mount(meshLocal, false, "local-bake/world");
-                Mount(meshScaled, true, "scale-bake/child");
-                Mount(meshScaled, false, "scale-bake/world");
+                if (Want("local-bake/child")) Mount(meshLocal, true, "local-bake/child");
+                if (Want("local-bake/world")) Mount(meshLocal, false, "local-bake/world");
+                if (Want("scale-bake/child")) Mount(meshScaled, true, "scale-bake/child");
+                if (Want("scale-bake/world")) Mount(meshScaled, false, "scale-bake/world");
 
-                // THE MESH ITSELF, NOT A BAKE OF IT (Marko Aug 8: "turn the
+                // THE MESH ITSELF, NOT A BAKE OF IT ("turn the
                 // capsules off and turn the mesh on").
                 //
-                // AXIOM: BakeMesh is unusable on his rig. Measured from his own
+                // AXIOM: BakeMesh is unusable on the rig. Measured from the
                 // console: smr.transform.lossyScale is 1 while the mesh's
                 // bindposes were authored at scale 100, so BOTH bakes return the
                 // SAME 0.18 x 0.26 x 0.15 blob against a 0.73 x 1.46 x 0.54 body
-                // — and because useScale true/false stop differing at scale 1,
+                // - and because useScale true/false stop differing at scale 1,
                 // all four mounts above collapse into one measurement. No mount
                 // maths can rescue a bake that is the wrong SHAPE.
                 //
                 // sharedMesh is the authored asset in the renderer's own space,
-                // which is exactly where Unity draws the body at bind pose — and
+                // which is exactly where Unity draws the body at bind pose - and
                 // RelaxForPaint has just put the bones at rest, which is that
                 // pose. Mounted at identity under the renderer it needs no
                 // guessing at all. It still goes through the same measurement
                 // below, so if it is wrong it loses like any other candidate.
-                if (_smr.sharedMesh != null)
+                if (Want("sharedMesh/renderer") && _smr.sharedMesh != null)
                 {
                     var go = new GameObject("PaintShellCandidate");
                     go.transform.SetParent(_smr.transform, false);
@@ -731,11 +744,20 @@ namespace SpellyZombie
                     c.sharedMesh = _smr.sharedMesh;
                     candidates.Add((go, c, "sharedMesh/renderer"));
                 }
+                if (candidates.Count == 0)
+                {
+                    // the remembered mount cannot be built any more (its mesh
+                    // is gone) - forget it and audition everything again
+                    _shellMountTag = null;
+                    if (meshLocal != null) Destroy(meshLocal);
+                    if (meshScaled != null) Destroy(meshScaled);
+                    return only != null && BeginBodyPaint();
+                }
                 Physics.SyncTransforms(); // make collider.bounds tell the truth NOW
 
                 // TRUTH = the limb capsules' union: they sit ON the bones, so
                 // they follow the pose RelaxForPaint just set. The renderer's
-                // bounds are a frame STALE here (the arms moved this frame) —
+                // bounds are a frame STALE here (the arms moved this frame) -
                 // scoring fresh bakes against yesterday's pose called every
                 // honest shell "2x too wide" and broke body drawing.
                 Bounds truth = _smr.bounds; // fallback only (rig without capsules)
@@ -753,7 +775,7 @@ namespace SpellyZombie
                 var report = new List<string>(); // spoken only if the pick smells wrong
                 // RAW NUMBERS, not just ratios. A ratio cannot tell you WHICH of
                 // the two boxes is wrong, and four mounts that differ by 100x
-                // once reported one identical ratio — which is only possible if
+                // once reported one identical ratio - which is only possible if
                 // the mounts collapsed together. Print what was actually measured.
                 report.Add($"  TRUTH (capsule union): size {truth.size} center {truth.center}");
                 // WHO IS _smr, EXACTLY. The bake comes out a different SHAPE, not
@@ -765,8 +787,10 @@ namespace SpellyZombie
                 report.Add($"  CHAIN: {chain}");
                 report.Add($"  smr: name '{_smr.name}' rootBone '{(_smr.rootBone != null ? _smr.rootBone.name : "NULL")}'"
                     + $" | renderer WORLD bounds {_smr.bounds.size} center {_smr.bounds.center}");
-                report.Add($"  sharedMesh bounds {_smr.sharedMesh.bounds.size} verts {_smr.sharedMesh.vertexCount}"
-                    + $" | bakeLocal {meshLocal.bounds.size} | bakeScaled {meshScaled.bounds.size}");
+                report.Add($"  sharedMesh bounds {(_smr.sharedMesh != null ? _smr.sharedMesh.bounds.size.ToString() : "NULL")}"
+                    + $" verts {(_smr.sharedMesh != null ? _smr.sharedMesh.vertexCount : 0)}"
+                    + $" | bakeLocal {(meshLocal != null ? meshLocal.bounds.size.ToString() : "not baked")}"
+                    + $" | bakeScaled {(meshScaled != null ? meshScaled.bounds.size.ToString() : "not baked")}");
                 foreach (var cand in candidates)
                 {
                     var b = cand.col.bounds;
@@ -788,7 +812,7 @@ namespace SpellyZombie
                         cand.go.SetActive(false); // collider off this frame
                         Destroy(cand.go);
                     }
-                // destroy the bakes we made and NEVER the shared asset — the
+                // destroy the bakes we made and NEVER the shared asset - the
                 // sharedMesh candidate hands back _smr.sharedMesh itself, and
                 // Destroy on that is "Destroying assets is not permitted to
                 // avoid data loss" (Unity refuses, but we must not ask)
@@ -800,22 +824,30 @@ namespace SpellyZombie
                 bool good = finalSize < 1.3f && finalCenter < height * 0.35f;
 
                 // a shell that doesn't cover the visible body is WORSE than no
-                // shell — the pen inks thin air around you. Reject it and let
+                // shell - the pen inks thin air around you. Reject it and let
                 // the limb capsules catch the pen (drawing always works).
                 if (finalSize >= 1.6f || finalCenter >= height * 0.5f)
                 {
                     DestroyBake(best.col.sharedMesh);
                     Destroy(best.go);
+                    if (only != null)
+                    {
+                        // the remembered winner stopped fitting (a pose it
+                        // can't cover, a changed rig): run the full audition
+                        _shellMountTag = null;
+                        return BeginBodyPaint();
+                    }
                     Debug.LogWarning($"[SpellyZombie] Paint shell REJECTED ({best.tag}). Capsules catch the pen:\n"
                         + string.Join("\n", report));
                     return false;
                 }
 
                 // the shell is INVISIBLE in game (the debug ghost served its
-                // purpose during bring-up) — the Console keeps the diagnosis
+                // purpose during bring-up) - the Console keeps the diagnosis
                 best.go.name = "PaintShell";
                 _paintShell = best.go.transform;
-                if (!good) // the healthy path stays silent — no console spam
+                _shellMountTag = best.tag; // next bake builds this mount alone
+                if (!good) // the healthy path stays silent - no console spam
                     Debug.LogWarning($"[SpellyZombie] Paint shell SUSPICIOUS ({best.tag}):\n"
                         + string.Join("\n", report));
                 return true;
@@ -849,7 +881,7 @@ namespace SpellyZombie
         }
 
         /// The limb (ragdoll bone) whose collider surface is closest to a
-        /// world point — body ink parents HERE at creation now (Marko: "the
+        /// world point — body ink parents HERE at creation now ("the
         /// drawing is floating in air and is not linked with the arms"), so
         /// it rides the pose from its first frame instead of hanging on the
         /// static shell until an end-of-session rebase.
@@ -876,7 +908,7 @@ namespace SpellyZombie
             foreach (var node in _paintShell.GetComponentsInChildren<DrawNode>(true))
             {
                 // nearest LIMB SURFACE, not nearest bone origin (see
-                // NearestLimbSurface — chest ink must not orbit a shoulder)
+                // NearestLimbSurface - chest ink must not orbit a shoulder)
                 Transform best = NearestLimbSurface(node.transform.position);
                 if (best != null) node.Rebase(best);
             }
@@ -921,7 +953,7 @@ namespace SpellyZombie
             });
             // NO POSE 4. The old "Bow" bent the spine — and players have no
             // spine control, so a default no one can recreate or undo is a
-            // trap (Marko ordered it removed; key 4 now honestly says "no
+            // trap (ordered it removed; key 4 now honestly says "no
             // pose, make one in the Pose Studio").
         }
 
@@ -958,19 +990,19 @@ namespace SpellyZombie
         Rigidbody Limb(Transform bone, Transform child, float radius, float mass, Rigidbody parent)
         {
             if (bone == null) return null;
-            // AXIOM (Marko Jul 25): ADOPT what his rig already carries. A
-            // Rigidbody or Collider he authored used to make AddComponent
-            // return null → NullReferenceException → the body was left
+            // AXIOM : ADOPT what the rig already carries. A
+            // Rigidbody or Collider authored used to make AddComponent
+            // return null  NullReferenceException  the body was left
             // half-built (no eyes, no sockets, no animator) for the session.
             var rb = Adopt.Component<Rigidbody>(bone.gameObject, out bool madeRb);
             if (!madeRb)
                 Debug.LogWarning($"[SpellyZombie] Bone '{bone.name}' brought its own Rigidbody " +
                                  $"(mass {rb.mass}), keeping it.", bone);
             else rb.mass = mass;
-            rb.isKinematic = true; // ALWAYS — SetRagdoll owns this; an adopted
+            rb.isKinematic = true; // ALWAYS - SetRagdoll owns this; an adopted
                                    // non-kinematic body collapses the skeleton on frame 1
             // grippy limbs: a downed doll STOPS where it lands instead of
-            // ice-skating away from its rescuer (spell forces still move it —
+            // ice-skating away from its rescuer (spell forces still move it -
             // friction only fights sliding, not pushes)
             if (_limbGrip == null)
                 _limbGrip = new PhysicsMaterial("SZ_LimbGrip")
@@ -981,21 +1013,21 @@ namespace SpellyZombie
                     bounceCombine = PhysicsMaterialCombine.Minimum,
                 };
             // big falls fired ragdoll bones straight through the floor
-            // (discrete checks skip thin geometry at speed) — the body then
+            // (discrete checks skip thin geometry at speed) - the body then
             // "vanished" under the map. Speculative sweeps stop that.
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
-            // SMOOTH BONES BETWEEN PHYSICS STEPS (Marko: "camera doesn't
+            // SMOOTH BONES BETWEEN PHYSICS STEPS ("camera doesn't
             // follow it exactly"): without interpolation a ragdolling bone
-            // only moves 50×/s while the game renders faster — the camera
+            // only moves 50×/s while the game renders faster - the camera
             // rides the head bone, so the whole view stepped with it.
             // HandGrab already does this for held objects; the doll gets it too.
-            rb.interpolation = RigidbodyInterpolation.None; // kinematic bones ride the parent — SetRagdoll turns smoothing on when physics takes over
+            rb.interpolation = RigidbodyInterpolation.None; // kinematic bones ride the parent - SetRagdoll turns smoothing on when physics takes over
 
             Vector3 local = child != null
                 ? bone.InverseTransformPoint(child.position)
                 : Vector3.up * radius * 2f;
             float len = Mathf.Max(local.magnitude, radius * 1.6f);
-            // his collider wins — only fit one when the bone has none
+            // the collider wins - only fit one when the bone has none
             if (bone.GetComponent<Collider>() == null)
             {
                 var col = bone.gameObject.AddComponent<CapsuleCollider>();
@@ -1035,14 +1067,14 @@ namespace SpellyZombie
             if (_smr == null || _pilot == null) return;
 
             // first LateUpdate = the animator has evaluated once, the body
-            // faces forward, the hands are where hands live — NOW glue props,
+            // faces forward, the hands are where hands live - NOW glue props,
             // build the costume sockets, and put on the team outfit
             if (!_propsBuilt)
             {
                 _propsBuilt = true;
                 if (_model != null)
                 {
-                    _sockets = SocketSet.Build(_model, transform); // sockets first —
+                    _sockets = SocketSet.Build(_model, transform); // sockets first -
                     BuildPenProps();                               // the props live in them
                     // NOW the pose is real: the animator has evaluated once and
                     // the body faces forward. A baked prefab's EmoteRig already
@@ -1051,7 +1083,7 @@ namespace SpellyZombie
                     GetComponent<EmoteRig>()?.CaptureRest();
                     _teamShown = MatchLobby.LocalTeam;
                     _capeStamped = StartingRuneChooser.HasChosen;
-                    // CLOTH RETIRED (Marko) — capes are rigid pieces, no
+                    // CLOTH RETIRED - capes are rigid pieces, no
                     // collider bundle to hand the dresser any more
                     _costume = Wardrobe.DressPlayer(_sockets, TeamColor(_teamShown),
                         _capeStamped ? StartingRuneChooser.ChosenCard : (RuneCardType?)null);
@@ -1076,17 +1108,17 @@ namespace SpellyZombie
                 }
             }
 
-            // the head stays whole in every mode (shadows included) — the
+            // the head stays whole in every mode (shadows included) - the
             // camera rides just in front of the face, so it never blocks view
             bool firstPerson = !SimpleFPSController.ThirdPersonActive && !SelfPaint.IsActive;
 
             // ---- who owns the doll? emotes, the studio, body paint and R
-            // pose mode all FREEZE the pose — the animator stands down
+            // pose mode all FREEZE the pose - the animator stands down
             if (_emotes == null) _emotes = GetComponent<EmotePlayer>();
             bool doll = (_emotes != null && _emotes.IsPosing)
                 || PoseStudio.IsOpen || SelfPaint.IsActive || PoseGrab.IsOpen;
 
-            // slot 1 shows its tools in FIRST person only — Marko's rule: no
+                // slot 1 shows its tools in FIRST person only - the rule: no
             // weapon of any kind visible in third person, that's the tell
             if (_wand != null && _slots != null)
             {
@@ -1094,7 +1126,7 @@ namespace SpellyZombie
                     && (!SimpleFPSController.ThirdPersonActive && !SelfPaint.IsActive);
                 if (_wand.activeSelf != showPen) _wand.SetActive(showPen);
 
-                // THE BOOK STAYS ALIVE ON THE EASEL (Marko: "I need to open
+                // THE BOOK STAYS ALIVE ON THE EASEL ("I need to open
                 // grimoire in character drawing mode - invisible, but I can
                 // still see the UI showing what page we're at"). Deactivating
                 // the object killed GrimoirePages outright, so G could never
@@ -1105,14 +1137,21 @@ namespace SpellyZombie
                 if (_book != null)
                 {
                     if (_book.activeSelf != bookAlive) _book.SetActive(bookAlive);
-                    // reused buffer, not a fresh array per frame — page content
+                    // reused buffer, not a fresh array per frame - page content
                     // spawns at runtime (GrimoirePages rebuilds, page-flip fx),
                     // so a one-time renderer cache would go stale
                     if (bookAlive)
                     {
+                        // VISIBLE WHEN OPEN AT THE EASEL ("no
+                        // way to turn on grimoire manually in drawing mode" —
+                        // G worked all along, but this loop blanked the
+                        // renderers every frame, so the floating easel book
+                        // opened INVISIBLY). Closed = stowed; open = shown.
+                        bool bookVisible = showPen
+                            || (SelfPaint.IsActive && GrimoirePages.BookOpen);
                         _book.GetComponentsInChildren(true, _bookRenderers);
                         foreach (var r in _bookRenderers)
-                            if (r.enabled != showPen) r.enabled = showPen;
+                            if (r.enabled != bookVisible) r.enabled = bookVisible;
                     }
                 }
             }
@@ -1123,23 +1162,28 @@ namespace SpellyZombie
             if (_anim != null) _anim.enabled = !doll && !_ragdolling;
             if (_ragdolling)
             {
-                // first person rides the DOLL'S face — the camera used to sit
-                // at capsule height inside your own collapsed torso (Marko's
+                // first person rides the DOLL'S face - the camera used to sit
+                // at capsule height inside your own collapsed torso ('s
                 // beige-screen downed bug); anchored to the head bone you see
                 // the world from the floor, not your own insides
                 if (firstPerson && _head != null && _camCalibrated)
                     _pilot.SetEyeAnchor(_head.TransformPoint(_camHeadLocal));
 
                 // downed = keep settling: without this a shoved doll slides
-                // across the courtyard and nobody can hold E on it
-                if (_pilot.IsDowned)
+                // across the courtyard and nobody can hold E on it.
+                // GROUND ONLY: braking an airborne corpse fought gravity and
+                // parked it in the sky, falling at a crawl.
+                bool dollLow = _hips == null || Physics.Raycast(_hips.position, Vector3.down,
+                    1.2f, Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer),
+                    QueryTriggerInteraction.Ignore);
+                if (_pilot.IsDowned && dollLow)
                     foreach (var rb in _ragdoll)
                         if (rb != null && !rb.isKinematic)
                         {
                             // re-assert the heavy downed drag: if we ragdolled from
                             // an air-tumble (light 0.12 flight drag) and THEN got
                             // downed, SetRagdoll never re-ran, so the corpse kept
-                            // gliding — SetRagdoll only fires on the on/off edge
+                            // gliding - SetRagdoll only fires on the on/off edge
                             if (rb.linearDamping < 2.2f) rb.linearDamping = 2.2f;
                             rb.linearVelocity = Vector3.MoveTowards(
                                 rb.linearVelocity, Vector3.zero, 6f * Time.deltaTime);
@@ -1172,15 +1216,15 @@ namespace SpellyZombie
             Vector3 lv = transform.InverseTransformDirection(vel);
             bool animated = _anim != null && _anim.enabled;
 
-            // death/respawn can destroy the model out from under us — a dead
+            // death/respawn can destroy the model out from under us - a dead
             // bone reference throws on the next line, so stop puppeteering
             if (_head == null) return;
 
             // ---- runaway-limb guard: a shove that wedges a limb into
             // geometry can blow a bone's LOCAL POSITION out during the
-            // ragdoll — and humanoid animation only writes ROTATIONS (+ hips),
+            // ragdoll - and humanoid animation only writes ROTATIONS (+ hips),
             // so the drift never heals and the skin smears into a beam.
-            // Covers the ENTIRE skeleton (hands and toes included — the
+            // Covers the ENTIRE skeleton (hands and toes included - the
             // ragdoll-bones-only version let a hand escape and noodle an arm).
             foreach (var (t, pos) in _boneHome)
             {
@@ -1189,22 +1233,22 @@ namespace SpellyZombie
                     t.localPosition = pos;
             }
 
-            // locomotion: the 2D blend reads LOCAL velocity — forward, back
+            // locomotion: the 2D blend reads LOCAL velocity - forward, back
             // and strafes each get their own clip; crouch is its own state.
             //
-            // NATURAL STRIDE (Marko's root-motion experiment): the clips are
-            // in-place, so true root motion has nothing to pull from — this
+            // NATURAL STRIDE : the clips are
+            // in-place, so true root motion has nothing to pull from - this
             // is the standard substitute. (1) The blend values are DAMPED so
             // direction changes glide instead of snapping ("intentional low
             // fps" reads = raw per-frame jumps). (2) The cycle's PLAYBACK
             // SPEED follows the actual ground speed, so the feet cover the
-            // ground they pass — no treadmill slide, movement looks OWNED by
+            // ground they pass - no treadmill slide, movement looks OWNED by
             // the legs. Toggle off to compare with the old feel live.
             if (animated)
             {
                 // the Animator's own "Apply Root Motion" checkbox is a trap on
-                // this rig (in-place clips with root wiggle → the body turns
-                // sideways and folds on crouch) — Marko hit it hunting for
+                // this rig (in-place clips with root wiggle  the body turns
+                // sideways and folds on crouch) - hit it hunting for
                 // Natural Stride, so it now heals itself instead of biting
                 if (_anim.applyRootMotion) _anim.applyRootMotion = false;
 
@@ -1212,13 +1256,13 @@ namespace SpellyZombie
 
                 // AIRBORNE, smoothed: a jump reads instantly (upward speed),
                 // but stepping off a stair needs 0.12s of real air before the
-                // legs leave the run cycle — no slope flicker
+                // legs leave the run cycle - no slope flicker
                 bool rawAir = !_pilot.IsGrounded;
                 _airTime = rawAir ? _airTime + Time.deltaTime : 0f;
                 bool airborne = rawAir && (_pilot.Velocity.y > 1.2f || _airTime > 0.12f);
 
-                // SHIFT DECIDES THE LOOK (Marko: no shift must never show the
-                // run cycle): the animator doesn't see true m/s — it sees
+                // SHIFT DECIDES THE LOOK (no shift must never show the
+                // run cycle): the animator doesn't see true m/s - it sees
                 // speed SHAPED onto the ring the sprint state owns. Walking
                 // at full no-shift speed sits exactly on the walk ring; shift
                 // glides the same input up to the run ring.
@@ -1248,7 +1292,7 @@ namespace SpellyZombie
                     _anim.speed = 1f;
                 }
                 // params exist only when the controller was built with the
-                // matching clips — probe once so mismatched/older controller
+                // matching clips - probe once so mismatched/older controller
                 // assets stay silent instead of spamming warnings
                 if (!_airChecked)
                 {
@@ -1275,11 +1319,11 @@ namespace SpellyZombie
                     Quaternion.Euler(0f, CrouchYawFix * _crouchYawW, 0f);
             }
 
-            // ---- THE SHOULDER FOLLOWS THE ARM (Marko's diagnosis: "we do
+            // ---- THE SHOULDER FOLLOWS THE ARM (the diagnosis: "we do
             // not even grab the shoulder and that's why the arm looks so
             // ridiculous and shoulders so low"): whenever a pose system owns
             // the arms, the clavicle takes a share of the upper arm's travel
-            // and the arm keeps the rest — a shoulder girdle that lifts with
+            // and the arm keeps the rest - a shoulder girdle that lifts with
             // the arm instead of hanging dead. Off during plain animation
             // (the clips animate clavicles themselves).
             bool posing = PoseGrab.IsOpen || PoseStudio.IsOpen
@@ -1294,24 +1338,24 @@ namespace SpellyZombie
             // composed OVER the animation when it runs (the animator rewrites
             // the pose every frame, so per-frame multiply never accumulates);
             // over the bind pose when it doesn't. NOT while the doll is
-            // FROZEN (body paint, emote statues, pose mode) — a held pose
+            // FROZEN (body paint, emote statues, pose mode) - a held pose
             // holds perfectly still, no wobble, no head-follow
             if (doll) return;
             _bob += Time.deltaTime * (2f + vel.magnitude * 1.1f);
             float lean = Mathf.Clamp(lv.z * 3.4f, -16f, 16f);
             float roll = Mathf.Clamp(-lv.x * 2.8f, -13f, 13f);
-            // SHAKE BUDGET (Marko: "shaking a bit is fine - funny moments -
+            // SHAKE BUDGET ("shaking a bit is fine - funny moments
             // but this is too much, many people wouldn't be able to draw").
             // The camera rides the head bone, so the head's idle bob WAS the
             // nonstop view shake: now idle keeps a gentle breath, the full
             // drunk-noodle returns with real movement, and drawing steadies
-            // the head down to a tremble (never fully still — comedy law).
+            // the head down to a tremble (never fully still - comedy law).
             float movement = Mathf.Clamp01(vel.magnitude / 2f);
             float calm = Mathf.Lerp(0.3f, 1f, movement);
             if (HeldWeapon.DrawMode || SelfPaint.IsActive)
                 calm *= SurfaceDrawer.IsPenActive ? 0.25f : 0.5f;
             float bob = Mathf.Sin(_bob * 2f) * 2.8f * calm;
-            // side-to-side waggle only while moving — the drunk-noodle walk
+            // side-to-side waggle only while moving - the drunk-noodle walk
             float sway = Mathf.Sin(_bob * 1.3f) * Mathf.Min(vel.magnitude * 1.4f, 7f);
             var spineWobble = Quaternion.Euler(lean + bob * 0.5f, sway, roll);
             var headWobble = Quaternion.Euler(-lean * 0.6f + bob * 1.4f, -sway * 0.7f, -roll * 0.8f);
@@ -1319,8 +1363,8 @@ namespace SpellyZombie
                 _spine1.localRotation = (animated ? _spine1.localRotation : _bindSpine1) * spineWobble;
             _head.localRotation = (animated ? _head.localRotation : _bindHead) * headWobble;
 
-            // ---- the head follows your AIM (Marko: friends should SEE what
-            // you're studying — and it's funnier). Neck bends a little, head
+            // ---- the head follows your AIM (friends should SEE what
+            // you're studying - and it's funnier). Neck bends a little, head
             // does the rest; composed after the animator so it never
             // accumulates. NetSync ships the pitch so remote heads match.
             // EASED toward LookPitch (0 in third person) so the bend relaxes
@@ -1351,7 +1395,7 @@ namespace SpellyZombie
 
             // ---- weapon holding without an animator: procedural reach.
             // (With the animator, HandIK does this properly through the IK pass
-            // — upper body grips while the legs keep running.)
+            // - upper body grips while the legs keep running.)
             if (!animated && _slots != null)
             {
                 // carrying overrides everything: both bean-arms hug the load
@@ -1384,10 +1428,10 @@ namespace SpellyZombie
             TrackBoneVelocities();
         }
 
-        /// RAGDOLL RECOVERY (Marko: "doesn't interpolate in getting up" /
+        /// RAGDOLL RECOVERY ("doesn't interpolate in getting up" /
         /// "gradually move ... and back"): for a beat after physics lets go,
         /// whatever the animator (or the procedural layers) wrote this frame
-        /// is eased in FROM the doll's last real pose — rotations AND the
+        /// is eased in FROM the doll's last real pose - rotations AND the
         /// hips' height, so the body climbs to its feet instead of popping
         /// upright off the floor. Runs LAST in LateUpdate so it composes
         /// over every other writer.
@@ -1407,7 +1451,7 @@ namespace SpellyZombie
             if (a >= 1f) _recoverT = -1f;
         }
 
-        /// While ANIMATED, remember where every ragdoll bone was this frame —
+        /// While ANIMATED, remember where every ragdoll bone was this frame -
         /// the moment physics takes over, each bone inherits its OWN motion.
         void TrackBoneVelocities()
         {
@@ -1420,7 +1464,7 @@ namespace SpellyZombie
             _bonePrevValid = true;
         }
 
-        /// One cheap FromToRotation step per frame — converges into a natural
+        /// One cheap FromToRotation step per frame - converges into a natural
         /// "reaching" pose without an IK system.
         static void Reach(Transform bone, Transform tip, Vector3 target)
         {
@@ -1441,18 +1485,18 @@ namespace SpellyZombie
                 if (_anim != null) _anim.enabled = false; // physics owns the doll now
                 GetComponent<EmotePlayer>()?.Interrupt();
                 Vector3 vel = (transform.position - _lastPos) / Mathf.Max(Time.deltaTime, 1e-4f);
-                // MOMENTUM-TRUE (Marko's final ruling: "simply take your
+                // MOMENTUM-TRUE (the final ruling: "simply take your
                 // current momentum - standing falls in place, running falls
                 // WHILE running"): full velocity inheritance, no artificial
                 // topple, no cut. Downed dolls alone settle fast, so rescuers
                 // can catch you.
                 float drag = _pilot != null && _pilot.IsDowned ? 2.2f : 0.12f;
-                // MOMENTUM-TRUE PER BONE (Marko: "gradually move from the
+                // MOMENTUM-TRUE PER BONE ("gradually move from the
                 // current animation to ragdoll"): each bone inherits its OWN
-                // last-frame motion — an arm mid-swing keeps swinging, a
+                // last-frame motion - an arm mid-swing keeps swinging, a
                 // kicking leg keeps kicking. Pose AND velocity are continuous
                 // at the handover, so nothing pops. Root velocity remains the
-                // fallback (and the sanity clamp — a hitch frame must not
+                // fallback (and the sanity clamp - a hitch frame must not
                 // become a cannon).
                 float pdt = Mathf.Max(_bonePrevDt, 1e-4f);
                 for (int i = 0; i < _ragdoll.Count; i++)
@@ -1460,6 +1504,7 @@ namespace SpellyZombie
                     var rb = _ragdoll[i];
                     if (rb == null) continue;
                     rb.isKinematic = false;
+                    rb.useGravity = true; // a flying doll must actually fall
                     Vector3 v = vel;
                     if (_bonePrevValid && _bonePrev != null && i < _bonePrev.Length)
                         v = Vector3.ClampMagnitude(
@@ -1467,20 +1512,19 @@ namespace SpellyZombie
                             vel.magnitude + 9f);
                     rb.linearVelocity = v;
                     rb.linearDamping = drag;
-                    rb.angularDamping = 3f; // calmer spin — less flail, same slide
+                    rb.angularDamping = 3f; // calmer spin - less flail, same slide
                     // smoothing belongs to PHYSICS-driven bones only (see the
-                    // matching None below) — this is where it's earned
+                    // matching None below) - this is where it's earned
                     rb.interpolation = RigidbodyInterpolation.Interpolate;
                 }
-                // the capsule (and camera) now CHASES the doll — you watch
+                // the capsule (and camera) now CHASES the doll - you watch
                 // your own body sail off and land, instead of losing it
                 _pilot.SetRagdollFollow(_hips != null ? _hips.GetComponent<Rigidbody>() : null);
                 return;
             }
             _pilot.SetRagdollFollow(null);
-            // remember the doll's FINAL pose before anything moves — the
+            // remember the doll's FINAL pose before anything moves - the
             // recovery blend in LateUpdate eases the animation in from here
-            // (Marko: "my character doesn't interpolate in getting up")
             _recoverFrom.Clear();
             foreach (var (t, pos, rot) in _bind)
                 if (t != null) _recoverFrom.Add((t, t.localRotation));
@@ -1488,9 +1532,9 @@ namespace SpellyZombie
             _recoverT = 0f;
             // INTERPOLATION OFF THE MOMENT PHYSICS LETS GO. An interpolated
             // KINEMATIC bone is smoothed toward its own last physics pose in
-            // WORLD space — so when the CharacterController walks the root
+            // WORLD space - so when the CharacterController walks the root
             // away, the bones lag and fight it, and the body reads as pinned
-            // to the spot (Marko: "I do want the body to follow the
+            // to the spot ("I do want the body to follow the
             // CharacterController"). Parent-following needs no smoothing.
             foreach (var rb in _ragdoll)
                 if (rb != null)
@@ -1507,14 +1551,14 @@ namespace SpellyZombie
         }
 
         /// Seconds the get-up eases from the doll's last pose into the
-        /// animation — the climb reads as a climb, not a teleport.
+        /// animation - the climb reads as a climb, not a teleport.
         public float RagdollRecoverBlend = 0.35f;
         float _recoverT = -1f;
-        Vector3 _recoverHipsFrom; // lying hips height → standing, eased too
+        Vector3 _recoverHipsFrom; // lying hips height  standing, eased too
         readonly List<(Transform t, Quaternion rot)> _recoverFrom =
             new List<(Transform, Quaternion)>();
 
-        // last ANIMATED world position of every ragdoll bone — the entry
+        // last ANIMATED world position of every ragdoll bone - the entry
         // handover reads per-bone velocity from these
         Vector3[] _bonePrev;
         float _bonePrevDt;

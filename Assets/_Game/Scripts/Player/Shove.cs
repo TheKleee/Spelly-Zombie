@@ -2,19 +2,19 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A BLOW BIG ENOUGH BREAKS YOUR CONCENTRATION (Marko Aug 10: "when the
+    /// A BLOW BIG ENOUGH BREAKS YOUR CONCENTRATION ("when the
     /// force is strong enough it should push you out of the draw mode into the
     /// first person mode").
     ///
-    /// His controller drops `_shove` to zero while a draw or easel mode is open
-    /// — the easel is an anchor, or the body slides out from under a detached
+    /// the controller drops `_shove` to zero while a draw or easel mode is open
+    /// - the easel is an anchor, or the body slides out from under a detached
     /// camera. That is right for the gentle stuff, and it is why a detonation in
     /// your face moved you nowhere: you detonate BY drawing, so the impulse was
     /// deleted the frame it landed.
     ///
-    /// His answer is better than removing the anchor. A light knock leaves you
+    /// the answer is better than removing the anchor. A light knock leaves you
     /// drawing; a real blast throws you OUT of the mode first, and then the
-    /// shove lands on a body that is free to move. His controller already does
+    /// shove lands on a body that is free to move. the controller already does
     /// exactly this when you get floored ("getting floored kicks you out of the
     /// mode") — this is the same rule, keyed on force instead of on ragdolling.
     ///
@@ -30,11 +30,11 @@ namespace SpellyZombie
         {
             if (player == null) return;
 
-            // EVERY MODE, NOT JUST DRAWING (Marko Aug 10: "whenever you're in
+            // EVERY MODE, NOT JUST DRAWING ("whenever you're in
             // any mode like posing or shapeshift mode... you drop into either
             // first person or third person mode so that your body can ragdoll").
             // Each of these pins the body, detaches the camera, or eats the
-            // shove — so a hit big enough has to END them before the impulse can
+            // shove - so a hit big enough has to END them before the impulse can
             // mean anything. One list here rather than each mode inventing its
             // own "am I being blown up" test.
             if (impulse.magnitude < DrawingConfig.ShoveBreaksDrawing)
@@ -43,7 +43,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // WHERE YOU LAND WHEN A BLAST RAGDOLLS YOU — his table, Aug 10.
+            // WHERE YOU LAND WHEN A BLAST RAGDOLLS YOU - the table, Aug 10.
             // The shorthand is: YOUR CAMERA DOES NOT CHANGE UNLESS A MODE FORCED
             // IT, and body POSE is the single mode whose third-person view
             // survives, because that is the one where watching your own wizard
@@ -68,25 +68,25 @@ namespace SpellyZombie
             ShapeShift.Blown();
             ZombieWatch.Blown();
 
-            // ASKED FOR BY NAME, never toggled — a toggle here would land the
+            // ASKED FOR BY NAME, never toggled - a toggle here would land the
             // blast victim in whichever mode they were NOT in.
             if (wasPose)
             {
-                // body pose keeps him looking at himself while he is thrown
+                // body pose keeps him looking at himself while is thrown
                 player.EnterThirdPerson();
             }
             else if (wasAcolyteMode || wasPaint)
             {
                 // BACK INTO YOUR OWN EYES, wand and grimoire and all. For a
                 // SHAPED acolyte this also strips the disguise, and that is
-                // deliberate (he confirmed it): losing first person while
+                // deliberate (confirmed it): losing first person while
                 // wearing something is already ShapeShift's own rule — "Tab
                 // brought us back to first person = back to yourself" — so its
                 // Update unwears on the next frame without a second copy of that
                 // law living here. A blast exposes a hider.
                 player.EnterFirstPerson();
             }
-            // nothing forced a camera → leave the mode exactly as it was
+            // nothing forced a camera  leave the mode exactly as it was
 
             if (wasInAMode)
                 DrawingWorld.Instance?.LogEvent("the blast throws you out of it");

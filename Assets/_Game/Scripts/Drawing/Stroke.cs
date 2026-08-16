@@ -8,12 +8,12 @@ namespace SpellyZombie
         Drawing, // pen is still down
         Open,    // completed, available as a rune or as future seal boundary
         InSeal,  // currently boundary or payload of an active seal
-        Spent,   // persistent ink whose spell resolved — re-arms when the loop opens
+        Spent,   // persistent ink whose spell resolved - re-arms when the loop opens
         Burned   // consumed by a resolved spell (or discarded); ink is gone
     }
 
     /// One continuous drawn line: an ordered chain of DrawNodes plus a flattened
-    /// 2D shape used for rune recognition. A stroke is always an open path —
+    /// 2D shape used for rune recognition. A stroke is always an open path -
     /// closure into a seal is detected by the SealDetector (a stroke whose two
     /// endpoints meet counts as a single-stroke loop).
     public class Stroke
@@ -29,7 +29,7 @@ namespace SpellyZombie
 
         public Vector3 BasisRight; // camera right at stroke start
         public Vector3 BasisUp;    // camera up at stroke start
-        public Transform Surface;  // the collider this stroke lives on — one stroke, one surface
+        public Transform Surface;  // the collider this stroke lives on - one stroke, one surface
 
         /// Who drew this ink (player or zombie GameObject id). A seal belongs to
         /// the owner of the most recently drawn stroke in its loop.
@@ -40,11 +40,11 @@ namespace SpellyZombie
 
         public StrokeState State = StrokeState.Drawing;
 
-        // (the seal-stamped Rune/RuneScore fields are DELETED — write-only;
+        // (the seal-stamped Rune/RuneScore fields are DELETED - write-only;
         // seals read glyphs, stroke logic reads DeclaredRune)
 
         /// The rune this stroke IS, declared at draw time (stamped by the
-        /// player's choice or a zombie scribe). Seals trust this outright —
+        /// player's choice or a zombie scribe). Seals trust this outright -
         /// no recognition, no guessing. None = plain ink.
         public RuneType DeclaredRune = RuneType.None;
 
@@ -52,22 +52,22 @@ namespace SpellyZombie
         /// every machine; 0 = never replicated. Split pieces inherit it (netcode §0).
         public int NetId;
 
-        /// Every node sits on a character/weapon — ink survives spell resolution.
+        /// Every node sits on a character/weapon - ink survives spell resolution.
         public bool Persistent { get; private set; }
 
         /// Spans more than one surface, so the middle can move while the
-        /// endpoints stand still — its line must refresh every frame.
+        /// endpoints stand still - its line must refresh every frame.
         public bool MultiSurface { get; private set; }
 
         /// Leftover piece of a closing gesture (lead-in before the loop, hook
         /// tail after it, outer pieces of split ink). Still visible ink, but
-        /// NEVER read as rune content inside a seal — a closing hook is not a
+        /// NEVER read as rune content inside a seal - a closing hook is not a
         /// glyph stroke, and reading it caused phantom-rune misfires.
         public bool SealResidue;
 
-        /// When this ink appeared in the world — the evaporation clock
+        /// When this ink appeared in the world - the evaporation clock
         /// (loose world ink thins out and vanishes after a minute; body ink
-        /// and seal ink are exempt — see DrawingWorld's sweep).
+        /// and seal ink are exempt - see DrawingWorld's sweep).
         public float BornAt;
 
         LineRenderer _line;
@@ -76,7 +76,10 @@ namespace SpellyZombie
         bool _loop;
         Color _color = InkColor;
         bool _dirty = true; // set when nodes are added/destroyed
-        Vector3 _lastFirstPos, _lastLastPos;
+        // sampled node positions from the last line rebuild - the held-still
+        // early-out below (first/last alone missed multi-limb middles, so
+        // multi-surface body ink rebuilt EVERY frame even on a frozen body)
+        readonly List<Vector3> _stillSnap = new List<Vector3>();
         readonly List<Vector3> _pts = new List<Vector3>();
         readonly List<int> _runStarts = new List<int>();
 
@@ -84,12 +87,12 @@ namespace SpellyZombie
         public DrawNode Last => Nodes.Count > 0 ? Nodes[Nodes.Count - 1] : null;
         public bool Alive => State != StrokeState.Burned;
 
-        // deep luminous navy — reads near-black in lit scenes, but the unlit
+        // deep luminous navy - reads near-black in lit scenes, but the unlit
         // line material lets it GLOW faintly in a pitch-dark cave, so ink
-        // path-marks on walls work as wayfinding (Marko's ruling, Jul 20)
+        // path-marks on walls work as wayfinding
         public static readonly Color InkColor = new Color(0.16f, 0.19f, 0.33f);
 
-        /// WHAT COLOUR THIS HAND DRAWS IN. Marko, Aug 6: "when corrupted part of
+        /// WHAT COLOUR THIS HAND DRAWS IN. "when corrupted part of
         /// the wand is drawing the ink should be green not black", and "wands get
         /// corrupted or cured from the tip downwards".
         ///
@@ -159,7 +162,7 @@ namespace SpellyZombie
         public void MarkDirty() => _dirty = true;
 
         /// Call once the node list is final (stroke completed or closed into a seal).
-        /// PERSISTENCE IS A MAJORITY VOTE (Marko: body drawings "should never
+        /// PERSISTENCE IS A MAJORITY VOTE (body drawings "should never
         /// expire completely") — the old all-nodes rule let ONE stray node
         /// (pen clipping past a limb onto the floor for a frame) demote a
         /// whole body drawing to world ink, which the next cast then BURNED.
@@ -192,7 +195,7 @@ namespace SpellyZombie
             return f != null && !f.gameObject.activeInHierarchy;
         }
 
-        /// True when the ink still exists — i.e. no node has been erased/destroyed.
+        /// True when the ink still exists - i.e. no node has been erased/destroyed.
         /// NOT a distance test: leftover pieces from a split, fast strokes with
         /// wide node spacing, and ink stretched across separating surfaces are all
         /// still valid ink that may join seals (active-seal breaking is handled
@@ -280,7 +283,7 @@ namespace SpellyZombie
             SetColor(InkColorFor(OwnerId));   // green if this hand is corrupt
         }
 
-        /// What colour this ink is showing right now — so a temporary highlight
+        /// What colour this ink is showing right now - so a temporary highlight
         /// (the grimoire tinting the drawing you're aiming at) can put back
         /// exactly what it found instead of guessing at InkColor.
         public Color Color => _color;
@@ -301,44 +304,32 @@ namespace SpellyZombie
                 }
         }
 
-        /// Nodes ride moving surfaces, so the line refreshes from live positions —
-        /// but the vast majority of ink sits on static surfaces, so skip the mesh
-        /// rebuild unless something actually moved or changed.
+        /// Nodes ride moving surfaces, so the line refreshes from live positions -
+        /// but ink that held still (all world ink, and body ink whenever the
+        /// pose is frozen: the easel, a held emote) skips the rebuild. The
+        /// check samples up to seven nodes so a multi-limb middle is watched
+        /// too - first/last alone let a middle bone move a line unseen, and
+        /// guarding only single-surface ink made body strokes rebuild EVERY
+        /// frame regardless .
         public void UpdateLine()
         {
             if (_line == null) return;
 
-            // the line GO lives in world space, not under the surface — sync its
+            // the line GO lives in world space, not under the surface - sync its
             // visibility by hand or stowed-weapon ink floats in mid-air
             bool hidden = Hidden();
             if (_lineGo != null && _lineGo.activeSelf == hidden) _lineGo.SetActive(!hidden);
             if (hidden) return;
 
-            if (!_dirty && State != StrokeState.Drawing && !MultiSurface)
-            {
-                var f = First;
-                var l = Last;
-                if (f != null && l != null)
-                {
-                    Vector3 fp = f.transform.position;
-                    Vector3 lp = l.transform.position;
-                    if ((fp - _lastFirstPos).sqrMagnitude < 1e-8f && (lp - _lastLastPos).sqrMagnitude < 1e-8f)
-                        return; // nothing moved — keep last frame's line
-                    _lastFirstPos = fp;
-                    _lastLastPos = lp;
-                }
-            }
-            else
-            {
-                if (First != null) _lastFirstPos = First.transform.position;
-                if (Last != null) _lastLastPos = Last.transform.position;
-            }
+            if (!_dirty && State != StrokeState.Drawing && SamplesHeldStill())
+                return; // nothing moved - keep last frame's line
+            SnapSamples();
             _dirty = false;
 
             // ---- split the polyline into visual RUNS: a segment that has
             // STRETCHED far past its drawn length (ink riding two separating
-            // bones) is simply not rendered. The ink IS its nodes — runes and
-            // seals compute from live positions (Marko's rule); the line is
+            // bones) is simply not rendered. The ink IS its nodes - runes and
+            // seals compute from live positions ; the line is
             // cosmetics and must never rubber-band across the body.
             _pts.Clear();
             _runStarts.Clear();
@@ -353,7 +344,7 @@ namespace SpellyZombie
                     float drawn = SegmentDrawnLength(lastIdx, i);
                     float breakLen = Mathf.Max(drawn * 2.5f, DrawingConfig.NodeSpacing * 3f);
                     if ((pos - _pts[_pts.Count - 1]).sqrMagnitude > breakLen * breakLen)
-                        _runStarts.Add(_pts.Count); // stretched — start a new piece
+                        _runStarts.Add(_pts.Count); // stretched - start a new piece
                 }
                 _pts.Add(pos);
                 lastIdx = i;
@@ -369,6 +360,43 @@ namespace SpellyZombie
             }
             for (int r = runCount - 1; r < _extra.Count; r++) // park unused pieces
                 if (r >= 0 && _extra[r] != null) _extra[r].positionCount = 0;
+        }
+
+        /// Half a millimetre: a line lagging its skin by less than ink width
+        /// is invisible, while any real motion (sway, sculpt, pose) clears it.
+        const float StillEps2 = 0.0005f * 0.0005f;
+
+        int SampleStep() => Mathf.Max(1, Nodes.Count / 6);
+
+        bool SamplesHeldStill()
+        {
+            int step = SampleStep();
+            int k = 0;
+            for (int i = 0; i < Nodes.Count; i += step)
+            {
+                if (k >= _stillSnap.Count) return false;
+                var n = Nodes[i];
+                Vector3 p = n != null ? n.transform.position : Vector3.zero;
+                if ((p - _stillSnap[k++]).sqrMagnitude > StillEps2) return false;
+            }
+            if (k >= _stillSnap.Count) return false;
+            var l = Last;
+            Vector3 lp = l != null ? l.transform.position : Vector3.zero;
+            if ((lp - _stillSnap[k++]).sqrMagnitude > StillEps2) return false;
+            return k == _stillSnap.Count;
+        }
+
+        void SnapSamples()
+        {
+            _stillSnap.Clear();
+            int step = SampleStep();
+            for (int i = 0; i < Nodes.Count; i += step)
+            {
+                var n = Nodes[i];
+                _stillSnap.Add(n != null ? n.transform.position : Vector3.zero);
+            }
+            var l = Last;
+            _stillSnap.Add(l != null ? l.transform.position : Vector3.zero);
         }
 
         /// Drawing-time length of the segment between two node indices; falls
@@ -425,10 +453,10 @@ namespace SpellyZombie
         }
 
         /// Evaporation: thin the drawn line toward nothing (k = 1 full … 0
-        /// gone). Purely visual — Burn() does the actual removal.
+        /// gone). Purely visual - Burn() does the actual removal.
         public void SetEvaporation(float k)
         {
-            // _line + _extra already hold every renderer — no hierarchy walk
+            // _line + _extra already hold every renderer - no hierarchy walk
             // (no-GetComponentsInChildren law; this ran once/sec per fading stroke)
             float w = DrawingConfig.InkWidth * Mathf.Clamp01(k);
             if (_line != null) _line.widthMultiplier = w;
@@ -442,13 +470,13 @@ namespace SpellyZombie
             State = StrokeState.Burned;
             foreach (var n in Nodes)
                 if (n != null) Object.Destroy(n.gameObject);
-            if (_lineGo != null) Object.Destroy(_lineGo); // parts are children — they go too
+            if (_lineGo != null) Object.Destroy(_lineGo); // parts are children - they go too
             _line = null;
             _lineGo = null;
             _extra.Clear();
         }
 
-        /// Kill this stroke WITHOUT destroying its nodes — used when erasing
+        /// Kill this stroke WITHOUT destroying its nodes - used when erasing
         /// splits it and the surviving nodes get adopted by new strokes.
         public void Retire()
         {

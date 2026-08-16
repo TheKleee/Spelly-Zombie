@@ -2,9 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// DRAGGING A THING BY A POINT ON IT (Marko's model, Aug 10): "take the
+    /// DRAGGING A THING BY A POINT ON IT : "take the
     /// point, draw a line from the centre to that point, and when the mouse
-    /// moves draw a new line from the centre — then rotate so the original
+    /// moves draw a new line from the centre - then rotate so the original
     /// line aligns with the new one," slerped. It reads as a hand on the
     /// object rather than an axis nudge.
     ///

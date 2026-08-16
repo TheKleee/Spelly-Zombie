@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Status-effect carrier for anything alive — every state is chemistry meeting biology (frozen/burning/stuck/slipping); movers read CanMove/SpeedMultiplier.
+    /// Status-effect carrier for anything alive - every state is chemistry meeting biology (frozen/burning/stuck/slipping); movers read CanMove/SpeedMultiplier.
     public class Creature : MonoBehaviour
     {
         public bool Frozen { get; private set; }
@@ -12,8 +12,8 @@ namespace SpellyZombie
 
         public bool GettingUp => _getUpLeft > 0f;
         public bool CanMove => !Frozen && !Stuck;
-        /// NEGATIVE while a Y owns this body (Marko: "per animation negative")
-        /// — the walk plays forward, the zombie slides BACKWARD. Moonwalk.
+        /// NEGATIVE while a Y owns this body
+        /// - the walk plays forward, the zombie slides BACKWARD. Moonwalk.
         public float SpeedMultiplier =>
             (Frozen || Stuck || GettingUp ? 0f : Slipping ? 0.15f : Burning ? 1.8f : 1f)
             * (Board != null ? Board.SpeedMul * Board.InputSign : 1f);
@@ -36,7 +36,7 @@ namespace SpellyZombie
             if (_rb != null) _normalConstraints = _rb.constraints;
         }
 
-        /// Thermal is added on demand — it hands itself over in its Awake, so Update needn't poll GetComponent every frame.
+        /// Thermal is added on demand - it hands itself over in its Awake, so Update needn't poll GetComponent every frame.
         public void BindThermal(Thermal t) => _thermal = t;
 
         public void ApplyStuck(float seconds) { if (!Frozen) _stuckLeft = Mathf.Max(_stuckLeft, seconds); }
@@ -62,7 +62,7 @@ namespace SpellyZombie
         public void ApplySlip(float seconds)
         {
             _slipLeft = Mathf.Max(_slipLeft, seconds);
-            _getUpLeft = 0f; // knocked back down mid-rise — classic
+            _getUpLeft = 0f; // knocked back down mid-rise - classic
             // lose your footing for real: let physics tip the body over
             if (_rb != null && !Frozen)
             {
@@ -71,7 +71,7 @@ namespace SpellyZombie
             }
         }
 
-        /// A frozen creature is brittle — a solid hit shatters the shell for big
+        /// A frozen creature is brittle - a solid hit shatters the shell for big
         /// bonus damage. Called by impacting Matter.
         public bool TryShatter(float impactDamage)
         {
@@ -91,7 +91,7 @@ namespace SpellyZombie
             {
                 _slipLeft -= dt;
                 if (_slipLeft <= 0f && !Frozen)
-                    _getUpLeft = 0.7f; // ragdoll over — now the struggle to stand
+                    _getUpLeft = 0.7f; // ragdoll over - now the struggle to stand
             }
 
             // getting up: visibly right itself over ~0.7s instead of snapping
@@ -114,7 +114,7 @@ namespace SpellyZombie
 
             if (_thermal == null) return;
 
-            // IGNITION IS STICKY: crossing the threshold burns for a real duration — leaving the heat zone does not save you
+            // IGNITION IS STICKY: crossing the threshold burns for a real duration - leaving the heat zone does not save you
             if (!Frozen && _thermal.Temperature > DrawingConfig.BurnThreshold && _burnLeft <= 0f)
             {
                 _burnLeft = 5f;
@@ -134,9 +134,9 @@ namespace SpellyZombie
             _burnLeft -= dt;
             if (_thermal != null)
             {
-                // the fire feeds itself — but as a PUSH, not a pin: sustained
+                // the fire feeds itself - but as a PUSH, not a pin: sustained
                 // cold (frost hits, a snow field) can WIN the tug-of-war and
-                // put you out (Marko's rule: an opposing area FREES you)
+                // put you out
                 _thermal.Temperature += 30f * dt;
                 if (_thermal.Temperature < DrawingConfig.BurnThreshold - 15f)
                 {
@@ -149,7 +149,7 @@ namespace SpellyZombie
             }
             if (_dmg != null) _dmg.TakeDamage(15f * dt, "on fire");
 
-            // FLAMES — the part that was missing. Orange blobs boil off the body.
+            // FLAMES - the part that was missing. Orange blobs boil off the body.
             _flameTimer -= dt;
             if (_flameTimer <= 0f)
             {
@@ -192,7 +192,7 @@ namespace SpellyZombie
             if (_iceShell != null) Destroy(_iceShell);
         }
 
-        /// Burning creatures pass fire on contact, and PHYSICS HURTS (Marko: being FLUNG is the weapon) — fast collisions deal impact damage, falls included.
+        /// Burning creatures pass fire on contact, and PHYSICS HURTS - fast collisions deal impact damage, falls included.
         void OnCollisionEnter(Collision col)
         {
             if (Burning)

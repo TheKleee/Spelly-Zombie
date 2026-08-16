@@ -3,18 +3,18 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// MARKO'S CONTINUE-FROM-HERE BUTTON (his ruling: "let me copy the
+    /// the CONTINUE-FROM-HERE BUTTON (the ruling: "let me copy the
     /// CURRENT zombie and player, edit them, and never have your system
     /// recreate them wrongly again").
     ///
-    /// In play mode, one click clones the LIVE assembled body — mesh, runtime
+    /// In play mode, one click clones the LIVE assembled body - mesh, runtime
     /// materials (saved as real .mat assets), googly eyes, mouth, sockets,
-    /// worn pieces, wand and grimoire — strips only the components the game
+    /// worn pieces, wand and grimoire - strips only the components the game
     /// must own (physics rigs, cloth, flavor scripts), and saves it as
     /// Resources/Custom/ZombieBody.prefab or PlayerBody.prefab.
     ///
     /// From then on the game ADOPTS the prefab instead of rebuilding those
-    /// parts: his edits to it are law. Bake again anytime to re-capture.
+    /// parts: the edits to it are law. Bake again anytime to re-capture.
     public static class CharacterBaker
     {
         const string Dir = "Assets/_Game/Resources/Custom";
@@ -53,9 +53,9 @@ namespace SpellyZombie
             Bake(rig.ModelGO, "PlayerBody");
         }
 
-        /// THE WHOLE PLAYER, NOT JUST THE BODY. Marko, Aug 6: "I don't want
+        /// THE WHOLE PLAYER, NOT JUST THE BODY. "I don't want
         /// scripts to be created at run time... I feel like in multiplayer this
-        /// would be felt even more. So having a prefab is a must." He is right:
+        /// would be felt even more. So having a prefab is a must." is right:
         /// FishNet wants registered prefabs, and a player assembled by code at
         /// spawn is awkward to replicate and impossible to inspect.
         ///
@@ -167,17 +167,17 @@ namespace SpellyZombie
             // THE BAKE MUST NOT WELD THE FIT INTO THE SPECIES: the runtime
             // MULTIPLIES the per-kind width (charger 1.25 / runner 0.72) and
             // the flavor jitter onto the prefab's authored scale. Baking a
-            // charger and re-baking would compound it (1.25 → 1.56 → …) and
+            // charger and re-baking would compound it (1.25  1.56  …) and
             // every walker would inherit it. Root scale returns to neutral;
-            // his own authored scale inside the prefab is untouched.
+            // the authored scale inside the prefab is untouched.
             clone.transform.localScale = Vector3.one;
 
-            // the game OWNS these — they re-add (or re-adopt) at runtime, and
+            // the game OWNS these - they re-add (or re-adopt) at runtime, and
             // baked copies would double up or serialize broken
             Strip<CharacterJoint>(clone);   // joints before their rigidbodies
             Strip<Cloth>(clone);
             // COLLIDERS/BODIES: the PLAYER rig re-adopts them at runtime, but
-            // nothing rebuilds them on a zombie — stripping there would eat
+            // nothing rebuilds them on a zombie - stripping there would eat
             // hand-authored physics on every re-bake, permanently.
             if (bakeName != "ZombieBody")
             {
@@ -206,8 +206,8 @@ namespace SpellyZombie
             }
 
             string path = $"{Dir}/{bakeName}.prefab";
-            // AXIOM (Marko Jul 25): NEVER delete his asset before the new one
-            // exists — a failed save used to mean the prefab was simply GONE.
+            // AXIOM : NEVER delete the asset before the new one
+            // exists - a failed save used to mean the prefab was simply GONE.
             // SaveAsPrefabAsset overwrites in place and keeps the GUID, so
             // every scene reference survives. Back up the old one first.
             if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)

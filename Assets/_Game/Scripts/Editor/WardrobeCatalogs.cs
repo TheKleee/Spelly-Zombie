@@ -6,8 +6,8 @@ namespace SpellyZombie
 {
     /// "Spelly Zombie → Wardrobe → Create Wardrobe Catalogs": makes the three
     /// SocketWardrobe assets (Player / Zombie / Demon) in _Game/Resources,
-    /// pre-filled with empty slot rows for every socket so Marko only drags
-    /// his Blender prefabs into the lists. Safe to re-run — existing assets
+    /// pre-filled with empty slot rows for every socket so only drags
+    /// the Blender prefabs into the lists. Safe to re-run - existing assets
     /// are left untouched.
     public static class WardrobeCatalogs
     {
@@ -45,10 +45,10 @@ namespace SpellyZombie
             return 1;
         }
 
-        // ---- one-click: selected scene object → prefab → catalog slot -------
-        // Select Marko's model(s) in the scene (or prefabs in the Project),
-        // pick a catalog; the socket is read from the NAME (WizardHat → Hat,
-        // WizardCape → Cape...). Scene objects are saved into
+        // ---- one-click: selected scene object  prefab  catalog slot -------
+        // Select the model(s) in the scene (or prefabs in the Project),
+        // pick a catalog; the socket is read from the NAME (WizardHat  Hat,
+        // WizardCape  Cape...). Scene objects are saved into
         // _Game/Prefabs/Costume with their rotation/scale kept and their
         // stray scene position cleared so they sit ON the socket pivot.
 
@@ -145,7 +145,7 @@ namespace SpellyZombie
 
             if (PrefabUtility.IsPartOfNonAssetPrefabInstance(go))
             {
-                // a child inside an instance can't be saved on its own —
+                // a child inside an instance can't be saved on its own -
                 // take the whole piece instead of throwing mid-batch
                 var outer = PrefabUtility.GetOutermostPrefabInstanceRoot(go);
                 if (outer != null && outer != go)
@@ -180,8 +180,8 @@ namespace SpellyZombie
         }
 
         /// The asset root's transform is what Lock() instantiates at the
-        /// socket: rotation and scale are Marko's orientation fixes and come
-        /// from the scene object; position is just where it sat in the level —
+        /// socket: rotation and scale are the orientation fixes and come
+        /// from the scene object; position is just where it sat in the level -
         /// junk once the piece locks on, so it's cleared.
         static void SyncRoot(string path, Transform sceneRoot)
         {
@@ -199,7 +199,7 @@ namespace SpellyZombie
             PrefabUtility.UnloadPrefabContents(contents);
         }
 
-        /// Cloth and on-body ink READ VERTICES at runtime — Blender exports
+        /// Cloth and on-body ink READ VERTICES at runtime - Blender exports
         /// default to Read/Write OFF and would throw mid-dressing. Flip the
         /// source model's import setting once, here, automatically.
         static void EnsureReadable(GameObject prefab)
@@ -223,7 +223,7 @@ namespace SpellyZombie
             }
         }
 
-        /// Cloth pins the TOP 15% of verts by local Y — a cape authored lying
+        /// Cloth pins the TOP 15% of verts by local Y - a cape authored lying
         /// flat has its whole surface inside that band and turns into a rigid
         /// board. Catch it at import time instead of in-game.
         static void WarnIfFlat(GameObject prefab)

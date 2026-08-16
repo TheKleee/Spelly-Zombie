@@ -3,12 +3,12 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// MARKO'S UI WORKFLOW: the UI is code-built once, then becomes HIS.
+    /// the UI WORKFLOW: the UI is code-built once, then becomes the.
     ///
     ///   1. Play. Visit the MENU and then the LOBBY so every surface has
     ///      been built at least once (hidden ones stay on the canvas).
-    ///   2. Spelly Zombie → UI → Save UI As Prefab.
-    ///   3. Stop playing. Edit Assets/_Game/Resources/SZ_UI.prefab freely —
+    /// 2. Spelly Zombie  UI  Save UI As Prefab.
+    ///   3. Stop playing. Edit Assets/_Game/Resources/SZ_UI.prefab freely -
     ///      move things, resize, recolor, change fonts.
     ///
     /// From then on the game INSTANTIATES the prefab and the code only wires

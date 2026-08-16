@@ -3,21 +3,21 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Match start: you're offered THREE random rune families and pick ONE —
-    /// that's your primary rune for the whole match (Marko's rule). Everything
-    /// else is out there — carried by zombies, dropped when they die.
+    /// Match start: you're offered THREE random rune families and pick ONE -
+    /// that's your primary rune for the whole match . Everything
+    /// else is out there - carried by zombies, dropped when they die.
     /// Bootstraps itself; shows until the local player owns at least one card.
     public class StartingRuneChooser : MonoBehaviour
     {
         static readonly RuneCardType[] AllCards =
             (RuneCardType[])System.Enum.GetValues(typeof(RuneCardType));
 
-        /// The pick — the cape's back icon reads this later.
+        /// The pick - the cape's back icon reads this later.
         public static RuneCardType ChosenCard { get; private set; }
         public static bool HasChosen { get; private set; }
 
         RuneCardType[] _offers;
-        float _pollAt; // idle poll gate — this bootstrap lives in EVERY scene forever
+        float _pollAt; // idle poll gate - this bootstrap lives in EVERY scene forever
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -28,7 +28,7 @@ namespace SpellyZombie
         }
 
         bool NeedsChoice =>
-            RuneLibrary.RestrictedArena && // the pick happens IN THE GAME — the lobby is free practice
+            RuneLibrary.RestrictedArena && // the pick happens IN THE GAME - the lobby is free practice
             !RuneLibrary.AllRunesUnlockedForTesting &&
             Grimoire.LocalPlayerId != 0 &&
             !Grimoire.HasAny(Grimoire.LocalPlayerId);
@@ -133,8 +133,8 @@ namespace SpellyZombie
 
                 // LIVE DATA overrides adopted prefab text: cards baked into
                 // SZ_UI keep their words verbatim, so this run's ACTUAL offers
-                // must be written explicitly (Marko: "I'm getting wrong runes
-                // on selection" — he was reading last bake's labels)
+                // must be written explicitly ("I'm getting wrong runes
+                // on selection" — was reading last bake's labels)
                 name.text = _offers[i].ToString().ToUpper();
                 desc.text = RuneLibrary.CardDescription(_offers[i]);
                 desc.horizontalOverflow = HorizontalWrapMode.Wrap;

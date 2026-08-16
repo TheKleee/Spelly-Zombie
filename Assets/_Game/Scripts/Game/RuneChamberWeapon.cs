@@ -9,13 +9,13 @@ namespace SpellyZombie
     ///
     /// A magazine STRIP with four engraving slots slides under a fixed WINDOW.
     /// Around the window sits a factory-engraved seal loop with a gap, and a
-    /// BRIDGE bar that closes it — the same mechanically-closed-loop trick as
+    /// BRIDGE bar that closes it - the same mechanically-closed-loop trick as
     /// the slide tablet:
     ///
-    ///   R           → raise it and engrave a rune on each strip slot
-    ///   HOLD Q/LMB  → the bridge snaps in, the loop closes around whichever
-    ///                 rune sits in the window — that seal FIRES
-    ///   RELEASE     → the loop opens (ink re-arms) and the strip ADVANCES,
+    /// R            raise it and engrave a rune on each strip slot
+    /// HOLD Q/LMB   the bridge snaps in, the loop closes around whichever
+    ///                 rune sits in the window - that seal FIRES
+    /// RELEASE      the loop opens (ink re-arms) and the strip ADVANCES,
     ///                 cycling the next rune into the window
     ///
     /// Four slots = a drawn firing sequence: fire-fire-ice-push, repeat. The
@@ -40,7 +40,7 @@ namespace SpellyZombie
 
         protected override Vector3 DrawPose => new Vector3(0f, -0.1f, 0.5f); // it's chunkier
 
-        /// Build the pickup from primitives (temp look — Marko restyles later).
+        /// Build the pickup from primitives (temp look - restyles later).
         public static GameObject CreatePickup(Vector3 pos)
         {
             var root = new GameObject("RuneChamberWeapon");
@@ -77,7 +77,7 @@ namespace SpellyZombie
             Bar("Bezel_L", new Vector3(-0.085f, 0.055f, 0f), new Vector3(0.02f, 0.02f, 0.19f));
             Bar("Bezel_R", new Vector3(0.085f, 0.055f, 0f), new Vector3(0.02f, 0.02f, 0.19f));
             Bar("Bezel_Back", new Vector3(0f, 0.055f, 0.085f), new Vector3(0.19f, 0.02f, 0.02f));
-            // front bezel has the GAP — its two stubs flank the bridge's berth
+            // front bezel has the GAP - its two stubs flank the bridge's berth
             Bar("Bezel_FL", new Vector3(-0.0725f, 0.055f, -0.085f), new Vector3(0.045f, 0.02f, 0.02f));
             Bar("Bezel_FR", new Vector3(0.0725f, 0.055f, -0.085f), new Vector3(0.045f, 0.02f, 0.02f));
 
@@ -88,7 +88,7 @@ namespace SpellyZombie
             bridge.transform.localPosition = BridgeOpen;
             bridge.transform.localScale = new Vector3(0.14f, 0.02f, 0.025f);
             bridge.GetComponent<Renderer>().sharedMaterial =
-                MatterFX.Get(new Color(0.85f, 0.5f, 0.25f), MoteShade.Opaque); // copper — THE moving bit
+                MatterFX.Get(new Color(0.85f, 0.5f, 0.25f), MoteShade.Opaque); // copper - THE moving bit
             bridge.AddComponent<PersistentInkSurface>();
 
             var weapon = root.AddComponent<RuneChamberWeapon>();
@@ -102,7 +102,7 @@ namespace SpellyZombie
 
         void Awake()
         {
-            // prefab-instantiated copies lose the private references — recover
+            // prefab-instantiated copies lose the private references - recover
             if (_strip == null) _strip = transform.Find("Strip");
             if (_bridge == null) _bridge = transform.Find("Bridge");
             if (_frame == null) _frame = transform.Find("Frame");
@@ -112,8 +112,8 @@ namespace SpellyZombie
 
         protected override void OnSkinApplied(Transform skin)
         {
-            // Marko's parts take over: the strip is the drawable magazine, the
-            // bridge is the closing bar — re-point before the factory ink lands
+            // the parts take over: the strip is the drawable magazine, the
+            // bridge is the closing bar - re-point before the factory ink lands
             var strip = FindPart("Strip");
             if (strip != null)
             {
@@ -133,21 +133,21 @@ namespace SpellyZombie
 
         protected override void Start()
         {
-            base.Start(); // skin first, so the loop engraves onto HIS parts
+            base.Start(); // skin first, so the loop engraves onto the parts
             if (!_inked && DrawingWorld.Instance != null) EngraveFactoryLoop();
         }
 
         /// The pre-engraved seal machinery: a C-shaped loop around the window
         /// (on the frame) and the short closing segment (on the bridge). Drawn
         /// with the bridge in its CLOSED berth so the ends align exactly, then
-        /// the bridge springs open — 0.13 apart, safely past re-arm distance.
+        /// the bridge springs open - 0.13 apart, safely past re-arm distance.
         /// allowCloseOntoInk:false keeps it from sealing itself while inking.
         void EngraveFactoryLoop()
         {
             _inked = true;
             if (_frame == null || _bridge == null) return;
 
-            // ALL coordinates live in weapon-ROOT local space (scale 1) — going
+            // ALL coordinates live in weapon-ROOT local space (scale 1) - going
             // through the scaled primitive transforms would crush them. Nodes
             // still PARENT to their moving part (worldPositionStays), so the
             // bridge carries its ink and the frame keeps the ring.
@@ -190,7 +190,7 @@ namespace SpellyZombie
             return s;
         }
 
-        /// The loop must cast with ITS WIELDER's cards — the seal belongs to
+        /// The loop must cast with ITS WIELDER's cards - the seal belongs to
         /// whoever last drew on the boundary, and the boundary is factory ink.
         public override void EquipTo(SimpleFPSController player)
         {
@@ -222,7 +222,7 @@ namespace SpellyZombie
                 }
                 else
                 {
-                    // release complete → CYCLE: next slot glides into the window
+                    // release complete  CYCLE: next slot glides into the window
                     _slot = (_slot + 1) % Slots;
                     if (_slot == 0) Juice.Chime(transform.position); // carriage return
                 }

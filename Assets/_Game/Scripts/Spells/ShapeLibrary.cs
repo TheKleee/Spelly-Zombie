@@ -3,18 +3,18 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE SHAPE SHELF (Marko's design): what a conjured SOLID looks like is
-    /// decided by how many lines the seal was drawn with — and YOU decide what
+    /// THE SHAPE SHELF : what a conjured SOLID looks like is
+    /// decided by how many lines the seal was drawn with - and YOU decide what
     /// each number means, by dropping a prefab into a slot. Nothing about
     /// shapes lives in code.
     ///
     ///   Assets/_Game/Resources/ShapeLibrary.asset
-    ///   (Create ▸ Spelly Zombie ▸ Shape Library — it MUST sit in a Resources
+    /// (Create  Spelly Zombie  Shape Library - it MUST sit in a Resources
     ///    folder so the game can find it.)
     ///
     /// Add a row per material you care about. Each row has:
-    ///   Default   — this material, any seal that has no slot filled
-    ///   By Lines  — one slot per line count. Element 3 = a 3-line seal,
+    ///   Default   - this material, any seal that has no slot filled
+    ///   By Lines  - one slot per line count. Element 3 = a 3-line seal,
     ///               Element 10 = a circle. Leave any slot empty and it falls
     ///               through to Default; leave Default empty too and the
     ///               soft-body blob takes over, exactly as before.
@@ -23,7 +23,7 @@ namespace SpellyZombie
     /// no row at all simply behaves the way it does today.
     ///
     /// Your prefab is used AS AUTHORED: your mesh, your collider (mesh for a
-    /// wheel, box for a plank — your call), your rigidbody settings. Code only
+    /// wheel, box for a plank - your call), your rigidbody settings. Code only
     /// adds what is missing, and scales your proportions by how big the rune
     /// was drawn.
     [CreateAssetMenu(fileName = "ShapeLibrary", menuName = "Spelly Zombie/Shape Library")]
@@ -52,7 +52,7 @@ namespace SpellyZombie
         static bool _searched;
 
         /// MOD SHELVES, ON TOP (Steam Workshop): a custom map ships its own
-        /// ShapeLibrary and pushes it while it's loaded — its filled slots win,
+        /// ShapeLibrary and pushes it while it's loaded - its filled slots win,
         /// anything it leaves empty falls through to the base game's shelf,
         /// so a modder overrides only what they made. Pushing is additive and
         /// ordered: last pushed is checked first.
@@ -71,7 +71,7 @@ namespace SpellyZombie
             if (lib != null) _overrides.Remove(lib);
         }
 
-        /// Drop every mod shelf — call on returning to the menu.
+        /// Drop every mod shelf - call on returning to the menu.
         public static void ClearMods() => _overrides.Clear();
 
         public static ShapeLibrary Base
@@ -87,7 +87,7 @@ namespace SpellyZombie
             }
         }
 
-        /// True when anything at all can answer — base shelf or a mod's.
+        /// True when anything at all can answer - base shelf or a mod's.
         public static bool Any => Base != null || _overrides.Count > 0;
 
         /// Editor convenience: pick the asset up again after it's created or
@@ -117,9 +117,9 @@ namespace SpellyZombie
                 if (row.ByLines != null && lines >= 0 && lines < row.ByLines.Length
                     && row.ByLines[lines] != null)
                     return row.ByLines[lines];
-                return row.Default;   // slot empty → this material's default
+                return row.Default;   // slot empty  this material's default
             }
-            return null;              // no row → let the next shelf answer
+            return null;              // no row  let the next shelf answer
         }
     }
 }

@@ -3,15 +3,15 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE FABLE GATE (Marko's design): a barrier that demands a SPECIFIC
-    /// spell — draw a seal ON the gate containing every demanded rune and it
+    /// THE FABLE GATE : a barrier that demands a SPECIFIC
+    /// spell - draw a seal ON the gate containing every demanded rune and it
     /// opens. The demanded glyphs hover in front of it in the player's own
-    /// handwriting (no words — the localization rule), so the door SHOWS you
+    /// handwriting (no words - the localization rule), so the door SHOWS you
     /// the spell it hungers for. Zombies drop rune cards, so a player who
     /// lacks the runes farms the horde until it coughs them up.
     ///
-    /// MARKO'S SIDE: put this component on any blocking object (door, rubble,
-    /// portcullis — anything with a collider so it's drawable), pick the
+    /// the SIDE: put this component on any blocking object (door, rubble,
+    /// portcullis - anything with a collider so it's drawable), pick the
     /// demanded runes in the inspector. Opened gates sink into the ground.
     /// When a map contains gates, the DEMO WIN becomes: open them all, then
     /// clear the round (RoundDirector checks AllOpen).
@@ -53,7 +53,7 @@ namespace SpellyZombie
             BuildSigils();
         }
 
-        /// The demanded glyphs, floating in a row before the gate — dim ember
+        /// The demanded glyphs, floating in a row before the gate - dim ember
         /// sigils in the player's own recorded handwriting.
         void BuildSigils()
         {
@@ -67,7 +67,7 @@ namespace SpellyZombie
                 quad.name = "LockSigil_" + name;
                 Destroy(quad.GetComponent<Collider>()); // never catches the pen
                 // UNPARENTED on purpose: gates built from kit pieces carry
-                // ~x121 import scale fixes — a local 0.34 under that parent
+                // ~x121 import scale fixes - a local 0.34 under that parent
                 // made 40-meter sky glyphs over the workshop, and the parent's
                 // non-uniform stretch would skew the billboard. Update() owns
                 // their world pose every frame; Open() destroys them by hand.
@@ -85,7 +85,7 @@ namespace SpellyZombie
         {
             if (Opened || _sigils.Count == 0) return;
 
-            // sigils hover, bob, and face the nearest player — readable from
+            // sigils hover, bob, and face the nearest player - readable from
             // whichever side the wizard approaches
             _bob += Time.deltaTime;
             var p = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
@@ -108,7 +108,7 @@ namespace SpellyZombie
             }
         }
 
-        /// DrawingWorld calls this for every activated seal — each gate checks
+        /// DrawingWorld calls this for every activated seal - each gate checks
         /// "was that ON me, and does it contain everything I demand?"
         public static void NotifySeal(Seal seal)
         {

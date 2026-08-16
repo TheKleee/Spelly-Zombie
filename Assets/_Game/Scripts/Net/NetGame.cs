@@ -3,15 +3,15 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Connection front door (B1): whatever transport the scene's NetworkManager has active — Tugboat for LAN now, FishySteamworks later.
+    /// Connection front door (B1): whatever transport the scene's NetworkManager has active - Tugboat for LAN now, FishySteamworks later.
     ///
-    /// THE BOOK STAND RULE (Marko Aug 8): "I don't want multiplayer to be
+    /// THE BOOK STAND RULE : "I don't want multiplayer to be
     /// controlled via a floating permanent ui in the lobby but rather by
     /// walking towards the book stand" — the control panel exists ONLY while
-    /// the local player stands at a LobbyStand he placed, with the cursor
+    /// the local player stands at a LobbyStand design, with the cursor
     /// freed for real mouse use. Create/join with an optional PASSWORD, the
     /// HOST picks the map (and one day the mode); everyone else leaves a LIKE
-    /// on the map they want. The tiny top-right status line stays always —
+    /// on the map they want. The tiny top-right status line stays always -
     /// it is a readout, not a control.
     public class NetGame : MonoBehaviour
     {
@@ -26,7 +26,7 @@ namespace SpellyZombie
         public static bool IsAuthority => !Connected || IsHost;
 
         /// The password this lobby demands (host side; empty = open lobby) and
-        /// the one we typed to get in (client side) — NetSync's join handshake
+        /// the one we typed to get in (client side) - NetSync's join handshake
         /// reads both at the book stand's word.
         public static string HostPassword = "";
         public static string JoinPassword = "";
@@ -50,19 +50,30 @@ namespace SpellyZombie
         UnityEngine.UI.Text _status, _statusCorner, _mapLabel;
         UnityEngine.UI.InputField _addrField, _passField;
 
-        // status-line cache — rebuild the string only when a shown value changes, not per frame
+        // status-line cache - rebuild the string only when a shown value changes, not per frame
         int _shownPlayers = -1;
         bool _shownHost;
         string _shownCode, _shownMap;
         int _shownLikes = -1;
+        int _rosterStamp = -1;
+        string _codeEdit = "", _seedEdit = "";
+
+        static int ReadyCountStamp()
+        {
+            int n = 0;
+            foreach (var id in NetSync.RemoteIds)
+                if (MatchLobby.IsReady(id)) n++;
+            return n;
+        }
 
         void LateUpdate()
         {
             bool sceneOk = InstanceFinder.NetworkManager != null
                 && !GameMenu.IsOpen && !PoseStudio.IsOpen
-                // the MAIN MENU has its own Create/Find Server buttons — this panel belongs to lobby + game
+                // the MAIN MENU has its own Create/Find Server buttons - this panel belongs to lobby + game
                 && ActiveScene.Name != "Menu";
-            bool near = sceneOk && LobbyStand.NearLocal;
+            // only the host interacts with the book stand; clients use ESC
+            bool near = sceneOk && LobbyStand.NearLocal && (!Connected || IsHost);
 
             // ---- the always-on readout (top-right, connected only) ----
             bool corner = sceneOk && Connected;
@@ -71,14 +82,19 @@ namespace SpellyZombie
             if (corner && _uiStatus == null) BuildCorner();
             if (corner && _statusCorner != null) RefreshStatus(_statusCorner);
 
-            // ---- the stand panel (control — exists only AT the stand) ----
+            // ---- the stand panel (control - exists only AT the stand) ----
             if (!near)
             {
                 if (_ui != null && _ui.gameObject.activeSelf) _ui.gameObject.SetActive(false);
                 LobbyStand.HoldPanel(false);
+                _uiNear = false; // next arrival rebuilds and refreshes the list
                 return;
             }
-            if (_ui == null || _uiConnected != Connected || !_uiNear) BuildUI();
+            if (_ui == null || _uiConnected != Connected || !_uiNear)
+            {
+                if (!Connected) SteamLobby.RefreshList(); // arriving at the stand refreshes the list
+                BuildUI();
+            }
             else if (!_ui.gameObject.activeSelf) _ui.gameObject.SetActive(true);
             _uiNear = true;
             LobbyStand.HoldPanel(true); // keeps the cursor free for the mouse
@@ -87,6 +103,21 @@ namespace SpellyZombie
             {
                 if (_status != null) RefreshStatus(_status);
                 RefreshMapRow();
+
+                // the roster redraws when players, readiness or bans change
+                int stamp = NetSync.RemoteCount * 100
+                    + (MatchLobby.LocalReady ? 1 : 0) + ReadyCountStamp() * 7
+                    + BanList.All.Count * 1000;
+                if (stamp != _rosterStamp) { _rosterStamp = stamp; BuildUI(); }
+            }
+            else
+            {
+                // the browser redraws when the list or the search changes
+                if (LobbyBrowserUI.Stamp != _rosterStamp)
+                {
+                    _rosterStamp = LobbyBrowserUI.Stamp;
+                    BuildUI();
+                }
             }
 
             // keyboard stays first-class at the stand: H hosts, J joins,
@@ -106,11 +137,9 @@ namespace SpellyZombie
         void RefreshStatus(UnityEngine.UI.Text into)
         {
             int players = NetSync.RemoteCount + 1;
-            string code = SteamLobby.CurrentCode;
-            if (players == _shownPlayers && IsHost == _shownHost && code == _shownCode) return;
-            _shownPlayers = players; _shownHost = IsHost; _shownCode = code;
-            string line = $"● {(IsHost ? "HOSTING" : "CONNECTED")}, {players} player(s)"
-                + (string.IsNullOrEmpty(code) ? "" : $" · CODE {code}");
+            if (players == _shownPlayers && IsHost == _shownHost) return;
+            _shownPlayers = players; _shownHost = IsHost;
+            string line = $"● {(IsHost ? "HOSTING" : "CONNECTED")}, {players} player(s)";
             if (_status != null) _status.text = line;
             if (_statusCorner != null) _statusCorner.text = line;
         }
@@ -150,89 +179,168 @@ namespace SpellyZombie
 
         void BuildUI()
         {
-            UIKit.Retire(_ui); // rebuild is same-frame — never adopt the corpse
+            UIKit.Retire(_ui); // rebuild is same-frame - never adopt the corpse
             _uiConnected = Connected;
-            _shownPlayers = -1; // fresh labels — invalidate the caches
+            _shownPlayers = -1; // fresh labels - invalidate the caches
             _shownMap = null; _shownLikes = -1;
             var skin = UISkin.I;
             _ui = UIKit.Group(UIKit.Root, "BookStandPanel");
 
-            // the stand menu sits mid-screen: it is a MOUSE surface now, not a
-            // corner widget (Marko: "use the menu with their mouse normally")
+            // floating elements over the world, no container box
             if (Connected)
             {
-                UIKit.Place(_ui, new Vector2(0.5f, 0.5f), new Vector2(-160f, 90f), new Vector2(320f, 150f));
-                var backC = UIKit.Panel(_ui, skin != null ? skin.PanelGreyDark : null,
-                    skin != null ? Color.white : new Color(0.12f, 0.12f, 0.15f, 0.85f));
-                UIKit.Stretch((RectTransform)backC.transform);
-
-                var titleC = UIKit.Label(_ui, "BOOK STAND", 15, UIKit.Parchment, TextAnchor.MiddleCenter, true);
-                UIKit.Place((RectTransform)titleC.transform, new Vector2(0.5f, 1f), new Vector2(0f, -6f), new Vector2(280f, 20f));
-
-                _status = UIKit.Label(_ui, "", 14, new Color(0.5f, 1f, 0.6f), TextAnchor.MiddleCenter);
-                UIKit.Place((RectTransform)_status.transform, new Vector2(0.5f, 1f), new Vector2(0f, -30f), new Vector2(300f, 18f));
-
-                var mode = UIKit.Label(_ui, $"MODE: {MatchLobby.SelectedMode}", 14, UIKit.Parchment, TextAnchor.MiddleLeft);
-                UIKit.Place((RectTransform)mode.transform, new Vector2(0f, 1f), new Vector2(16f, -56f), new Vector2(200f, 18f));
-
-                _mapLabel = UIKit.Label(_ui, "", 14, UIKit.Parchment, TextAnchor.MiddleLeft);
-                UIKit.Place((RectTransform)_mapLabel.transform, new Vector2(0f, 1f), new Vector2(16f, -82f), new Vector2(200f, 18f));
-
-                if (IsHost)
-                {
-                    // the host PICKS (Marko: "you have to be the host of the lobby to chose the map")
-                    var change = UIKit.Button(_ui, "CHANGE", MatchLobby.CycleMap,
-                        skin != null ? skin.ButtonBrown : null, 13);
-                    UIKit.Place((RectTransform)change.transform, new Vector2(1f, 1f), new Vector2(-98f, -78f), new Vector2(84f, 26f));
-                }
-                else
-                {
-                    // everyone else LIKES the map they want to play
-                    var like = UIKit.Button(_ui, "♥ LIKE",
-                        () => NetSync.SendMapLike(MatchLobby.HostMap),
-                        skin != null ? skin.ButtonGrey : null, 13);
-                    UIKit.Place((RectTransform)like.transform, new Vector2(1f, 1f), new Vector2(-98f, -78f), new Vector2(84f, 26f));
-                }
-
-                var hintC = UIKit.Label(_ui, "ENTER = ready up · walk away to close", 12,
-                    new Color(0.7f, 0.7f, 0.75f), TextAnchor.MiddleCenter);
-                UIKit.Place((RectTransform)hintC.transform, new Vector2(0.5f, 0f), new Vector2(0f, 6f), new Vector2(300f, 16f));
+                BuildHostPanel(skin);
                 return;
             }
+            BuildOfflinePanel(skin);
+        }
 
-            UIKit.Place(_ui, new Vector2(0.5f, 0.5f), new Vector2(-160f, 105f), new Vector2(320f, 210f));
-            var back = UIKit.Panel(_ui, skin != null ? skin.PanelGreyDark : null,
-                skin != null ? Color.white : new Color(0.12f, 0.12f, 0.15f, 0.85f));
+        // ---- the host controller: same visual system as the tab screen ----
+        void BuildHostPanel(UISkin skin)
+        {
+            UIKit.Place(_ui, new Vector2(0.5f, 0.5f), new Vector2(-215f, 10f), new Vector2(600f, 620f));
+            var back = UIKit.Panel(_ui, null, new Color(0.05f, 0.06f, 0.09f, 0.86f));
             UIKit.Stretch((RectTransform)back.transform);
 
-            var title = UIKit.Label(_ui, "BOOK STAND · CO-OP", 15, UIKit.Parchment, TextAnchor.MiddleCenter, true);
-            UIKit.Place((RectTransform)title.transform, new Vector2(0.5f, 1f), new Vector2(0f, -6f), new Vector2(280f, 20f));
+            var title = UIKit.Label(_ui, Loc.T("stand.hosting"), 19,
+                new Color(0.55f, 1f, 0.62f), TextAnchor.MiddleCenter, true);
+            UIKit.Place((RectTransform)title.transform, new Vector2(0.5f, 1f), new Vector2(0f, -10f), new Vector2(560f, 26f));
+            _status = UIKit.Label(_ui, "", 13, new Color(0.5f, 1f, 0.6f), TextAnchor.MiddleCenter);
+            UIKit.Place((RectTransform)_status.transform, new Vector2(0.5f, 1f), new Vector2(0f, -36f), new Vector2(560f, 18f));
 
-            var capH = UIKit.Keycap(_ui, "H", 26f);
-            UIKit.Place(capH, new Vector2(0f, 1f), new Vector2(20f, -38f), capH.sizeDelta);
-            var host = UIKit.Button(_ui, "HOST", Host, skin != null ? skin.ButtonBrown : null, 15);
-            UIKit.Place((RectTransform)host.transform, new Vector2(0f, 1f), new Vector2(58f, -38f), new Vector2(90f, 28f));
+            // left: who is here, ready ticks, kick and ban
+            var ph = UIKit.Label(_ui, Loc.T("stand.players"), 15, new Color(1f, 0.92f, 0.75f), TextAnchor.MiddleLeft, true);
+            UIKit.Place((RectTransform)ph.transform, new Vector2(0f, 1f), new Vector2(16f, -64f), new Vector2(200f, 20f));
+            float y = -90f;
+            RosterRow(SteamLobby.SteamReady ? Steamworks.SteamFriends.GetPersonaName() + " (you)" : "you",
+                MatchLobby.LocalReady, -1, 0UL, ref y);
+            foreach (var id in NetSync.RemoteIds)
+            {
+                NetSync.IdentityOf(id, out string pname, out ulong sid);
+                RosterRow(string.IsNullOrEmpty(pname) ? $"player {id}" : pname,
+                    MatchLobby.IsReady(id), id, sid, ref y);
+            }
+            y -= 8f;
+            foreach (var ban in BanList.All)
+            {
+                if (y < -520f) break;
+                var lbl = UIKit.Label(_ui, Loc.F("stand.banned", ban.Value), 12,
+                    new Color(1f, 0.55f, 0.5f), TextAnchor.MiddleLeft);
+                UIKit.Place((RectTransform)lbl.transform, new Vector2(0f, 1f), new Vector2(16f, y - 2f), new Vector2(170f, 18f));
+                ulong sid = ban.Key;
+                LobbyBrowserUI.Chip(_ui, 192f, y, 88f, Loc.T("stand.unban"), false,
+                    () => { BanList.Unban(sid); BuildUI(); });
+                y -= 28f;
+            }
 
-            var capJ = UIKit.Keycap(_ui, "J", 26f);
-            UIKit.Place(capJ, new Vector2(0f, 1f), new Vector2(162f, -38f), capJ.sizeDelta);
-            var join = UIKit.Button(_ui, "JOIN", Join, skin != null ? skin.ButtonGrey : null, 15);
-            UIKit.Place((RectTransform)join.transform, new Vector2(0f, 1f), new Vector2(200f, -38f), new Vector2(90f, 28f));
+            // right: the match settings and the big verbs
+            float rx = 310f, ry = -64f;
+            LobbyBrowserUI.ArrowRow(_ui, rx, ry, 270f, $"MAP: {MatchLobby.SelectedMap}",
+                () => { MatchLobby.CycleMap(-1); BuildUI(); },
+                () => { MatchLobby.CycleMap(1); BuildUI(); });
+            ry -= 30f;
+            LobbyBrowserUI.ArrowRow(_ui, rx, ry, 270f, Loc.F("stand.duration", MatchLobby.DurationMin),
+                () => { MatchLobby.DurationMin = Mathf.Max(5, MatchLobby.DurationMin - 5); BuildUI(); },
+                () => { MatchLobby.DurationMin = Mathf.Min(15, MatchLobby.DurationMin + 5); BuildUI(); },
+                MatchLobby.DurationMin > 5, MatchLobby.DurationMin < 15);
+            ry -= 30f;
+            LobbyBrowserUI.ArrowRow(_ui, rx, ry, 270f, Loc.F("stand.share", MatchLobby.AcolytePercent),
+                () => { MatchLobby.AcolytePercent = Mathf.Max(10, MatchLobby.AcolytePercent - 10); BuildUI(); },
+                () => { MatchLobby.AcolytePercent = Mathf.Min(90, MatchLobby.AcolytePercent + 10); BuildUI(); },
+                MatchLobby.AcolytePercent > 10, MatchLobby.AcolytePercent < 90);
+            ry -= 34f;
 
-            var capI = UIKit.Keycap(_ui, "I", 26f);
-            UIKit.Place(capI, new Vector2(0f, 1f), new Vector2(20f, -76f), capI.sizeDelta);
+            var seed = UIKit.Input(_ui, MatchLobby.Seed == 0 ? "" : MatchLobby.Seed.ToString(),
+                v => MatchLobby.Seed = int.TryParse(v, out var s) ? s : 0);
+            UIKit.Place((RectTransform)seed.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(120f, 26f));
+            var seedLbl = UIKit.Label(_ui, Loc.T("stand.seed"), 12, new Color(0.85f, 0.85f, 0.9f), TextAnchor.MiddleLeft);
+            UIKit.Place((RectTransform)seedLbl.transform, new Vector2(0f, 1f), new Vector2(rx + 128f, ry - 4f), new Vector2(90f, 18f));
+            ry -= 32f;
+
+            var pwField = UIKit.Input(_ui, _codeEdit, v => _codeEdit = v);
+            pwField.contentType = UnityEngine.UI.InputField.ContentType.Password;
+            UIKit.Place((RectTransform)pwField.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(120f, 26f));
+            LobbyBrowserUI.Chip(_ui, rx + 128f, ry, 110f, Loc.T("stand.setpw"), false,
+                () => SteamLobby.SetPassword(_codeEdit));
+            ry -= 38f;
+
+            LobbyBrowserUI.Chip(_ui, rx, ry, 130f, Loc.T("stand.readycall"), false, () =>
+            {
+                NetSync.PushReadyCall();
+                MatchLobby.OnReadyCall();
+            });
+            LobbyBrowserUI.Chip(_ui, rx + 140f, ry, 130f, Loc.T("stand.invite"), false,
+                SteamLobby.OpenInviteOverlay);
+            ry -= 44f;
+
+            bool can = MatchLobby.CanStart;
+            var startBtn = UIKit.Button(_ui, can ? Loc.T("stand.start") : Loc.T("stand.waiting"),
+                MatchLobby.StartMatch,
+                skin != null ? (can ? skin.ButtonBrown : skin.ButtonGrey) : null, 16);
+            UIKit.Place((RectTransform)startBtn.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(270f, 40f));
+            ry -= 48f;
+            var closeBtn = UIKit.Button(_ui, Loc.T("stand.delete"), SteamLobby.DeleteLobby,
+                skin != null ? skin.ButtonRed : null, 14);
+            UIKit.Place((RectTransform)closeBtn.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(270f, 36f));
+        }
+
+        void RosterRow(string name, bool ready, int clientId, ulong steamId, ref float y)
+        {
+            var lbl = UIKit.Label(_ui, (ready ? "OK " : "-- ") + name, 14,
+                ready ? new Color(0.6f, 1f, 0.65f) : new Color(0.95f, 0.93f, 0.85f), TextAnchor.MiddleLeft);
+            UIKit.Place((RectTransform)lbl.transform, new Vector2(0f, 1f), new Vector2(16f, y - 2f), new Vector2(150f, 18f));
+            if (clientId >= 0)
+            {
+                int cid = clientId;
+                ulong sid = steamId;
+                string pname = name;
+                LobbyBrowserUI.Chip(_ui, 170f, y, 54f, Loc.T("stand.kick"), false, () => NetSync.Kick(cid));
+                LobbyBrowserUI.Chip(_ui, 230f, y, 50f, Loc.T("stand.ban"), false, () =>
+                {
+                    BanList.Ban(sid, pname);
+                    NetSync.Kick(cid);
+                });
+            }
+            y -= 28f;
+        }
+
+        // ---- alone at the stand: the two-tab screen from the sketch ----
+        void BuildOfflinePanel(UISkin skin)
+        {
+            UIKit.Place(_ui, new Vector2(0.5f, 0.5f), new Vector2(-215f, 10f), new Vector2(600f, 620f));
+            var back = UIKit.Panel(_ui, null, new Color(0.05f, 0.06f, 0.09f, 0.86f));
+            UIKit.Stretch((RectTransform)back.transform);
+            LobbyBrowserUI.Changed = BuildUI;
+
+            void Tab(float x, string key, bool active, System.Action click)
+            {
+                var b = UIKit.Button(_ui, Loc.T(key), click, null, 17,
+                    active ? Color.white : new Color(0.6f, 0.6f, 0.66f));
+                var img = b.GetComponent<UnityEngine.UI.Image>();
+                if (img != null)
+                    img.color = active ? new Color(0.72f, 0.48f, 0.18f, 0.96f)
+                        : new Color(0.10f, 0.11f, 0.15f, 0.92f);
+                UIKit.Place((RectTransform)b.transform, new Vector2(0.5f, 1f), new Vector2(x, -10f), new Vector2(120f, 30f));
+            }
+            Tab(-64f, "stand.tab.host", LobbyBrowserUI.TabHost,
+                () => { LobbyBrowserUI.TabHost = true; BuildUI(); });
+            Tab(64f, "stand.tab.join", !LobbyBrowserUI.TabHost,
+                () => { LobbyBrowserUI.TabHost = false; BuildUI(); });
+
+            if (LobbyBrowserUI.TabHost)
+                LobbyBrowserUI.BuildHostView(_ui, 20f, -56f, 560f);
+            else
+                LobbyBrowserUI.BuildJoinView(_ui, 20f, -56f, 560f, 6);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // dev LAN row: never in release builds
             _addrField = UIKit.Input(_ui, _address, v => _address = v);
-            UIKit.Place((RectTransform)_addrField.transform, new Vector2(0f, 1f), new Vector2(58f, -76f), new Vector2(232f, 28f));
-
-            var passLbl = UIKit.Label(_ui, "password (optional)", 12,
-                new Color(0.7f, 0.7f, 0.75f), TextAnchor.MiddleLeft);
-            UIKit.Place((RectTransform)passLbl.transform, new Vector2(0f, 1f), new Vector2(20f, -112f), new Vector2(160f, 16f));
-            _passField = UIKit.Input(_ui, _password, v => _password = v);
-            UIKit.Place((RectTransform)_passField.transform, new Vector2(0f, 1f), new Vector2(20f, -132f), new Vector2(270f, 28f));
-            _passField.contentType = UnityEngine.UI.InputField.ContentType.Password;
-
-            var hint = UIKit.Label(_ui, "host sets the password · joiners must match it", 12,
-                new Color(0.7f, 0.7f, 0.75f), TextAnchor.MiddleCenter);
-            UIKit.Place((RectTransform)hint.transform, new Vector2(0.5f, 0f), new Vector2(0f, 6f), new Vector2(300f, 16f));
+            UIKit.Place((RectTransform)_addrField.transform, new Vector2(0f, 1f), new Vector2(20f, -590f), new Vector2(140f, 22f));
+            var lanH = UIKit.Button(_ui, "LAN H", Host, skin != null ? skin.ButtonGrey : null, 11);
+            UIKit.Place((RectTransform)lanH.transform, new Vector2(0f, 1f), new Vector2(168f, -588f), new Vector2(56f, 22f));
+            var lanJ = UIKit.Button(_ui, "LAN J", Join, skin != null ? skin.ButtonGrey : null, 11);
+            UIKit.Place((RectTransform)lanJ.transform, new Vector2(0f, 1f), new Vector2(230f, -588f), new Vector2(56f, 22f));
+#endif
         }
     }
 }

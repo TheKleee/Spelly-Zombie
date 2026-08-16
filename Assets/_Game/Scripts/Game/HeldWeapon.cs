@@ -4,19 +4,19 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Everything a carryable weapon shares — the SLIDE TABLET and the RUNE
+    /// Everything a carryable weapon shares - the SLIDE TABLET and the RUNE
     /// CHAMBER both wear this. Loose: shop-window bob until E (WeaponSlots).
     /// Held: holster pose, R raises it into DRAW MODE (free brush cursor,
     /// MMB-drag spins it, WASD slides the view, scroll zooms), F drops it.
-    /// Subclasses implement UpdateArmed() — the trigger mechanics.
+    /// Subclasses implement UpdateArmed() - the trigger mechanics.
     public abstract class HeldWeapon : MonoBehaviour
     {
         /// One weapon at a time can be raised for engraving (it's the SELECTED
-        /// one — WeaponSlots hides the others, so the key can't be stolen).
+        /// one - WeaponSlots hides the others, so the key can't be stolen).
         public static bool DrawMode { get; protected set; }
         public static void CancelDrawMode() => DrawMode = false;
 
-        /// Every weapon in the scene — WeaponSlots scans this for E-pickups.
+        /// Every weapon in the scene - WeaponSlots scans this for E-pickups.
         public static readonly List<HeldWeapon> All = new List<HeldWeapon>();
 
         public bool Held { get; private set; }
@@ -32,16 +32,16 @@ namespace SpellyZombie
         Vector2 _drawPan; // WASD view slide (weapon shifts opposite, camera-style)
 
         Transform _pivot;              // the camera (aim space / draw mode)
-        Transform _hand;               // the grip socket — the weapon lives HERE
+        Transform _hand;               // the grip socket - the weapon lives HERE
         Vector3 _handLocalPos;         // glue pose captured at equip
         Quaternion _handLocalRot;
 
         protected virtual void OnEnable() => All.Add(this);
         protected virtual void OnDisable() => All.Remove(this);
 
-        /// Marko's Blender look for this weapon ("Weapon_<SkinName>" in the
+        /// the Blender look for this weapon ("Weapon_<SkinName>" in the
         /// library). Pivot convention: at the grip, +Z away from the holder,
-        /// +Y up, meters — drop-in, no per-weapon tuning.
+        /// +Y up, meters - drop-in, no per-weapon tuning.
         protected virtual string SkinName => null;
 
         /// After the skin lands, subclasses re-point moving parts (slide,
@@ -52,7 +52,7 @@ namespace SpellyZombie
 
         /// Instantiates the skin at the root and hands over the duties of any
         /// primitive part with a matching child name: drawable ink surface,
-        /// collider, and the moving-part role — then the primitive is gone.
+        /// collider, and the moving-part role - then the primitive is gone.
         void ApplySkin()
         {
             if (SkinName == null) return;
@@ -81,7 +81,7 @@ namespace SpellyZombie
             OnSkinApplied(skin);
         }
 
-        /// Shared primitive grip + pickup trigger bubble for the code-built pickups (temp look — Marko restyles later).
+        /// Shared primitive grip + pickup trigger bubble for the code-built pickups (temp look - restyles later).
         protected static void BuildGripAndBubble(GameObject root, Color gripColor)
         {
             var grip = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -97,7 +97,7 @@ namespace SpellyZombie
             bubble.radius = 0.9f;
         }
 
-        /// Deep search — parts may live at the root or inside the skin.
+        /// Deep search - parts may live at the root or inside the skin.
         protected Transform FindPart(string partName)
         {
             foreach (var t in GetComponentsInChildren<Transform>(true))
@@ -132,7 +132,7 @@ namespace SpellyZombie
             }
 
             // R = engrave mode (WeaponSlots hides this weapon unless selected).
-            // Not while floored or flying — the controller would cancel it a
+            // Not while floored or flying - the controller would cancel it a
             // frame later anyway; refusing at the door kills the cursor flicker
             var pilot = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             bool floored = pilot != null
@@ -153,7 +153,7 @@ namespace SpellyZombie
             if (DrawMode)
             {
                 // MMB-drag spins the weapon; WASD MOVES the camera view (the
-                // camera can't leave your head, so the weapon slides opposite —
+                // camera can't leave your head, so the weapon slides opposite -
                 // reads the same); scroll zooms
                 if (mouse != null && mouse.middleButton.isPressed)
                 {
@@ -213,15 +213,15 @@ namespace SpellyZombie
                 UpdateArmed(kb, mouse);
         }
 
-        /// The weapon's own mechanics — trigger, moving parts, seal nudges.
+        /// The weapon's own mechanics - trigger, moving parts, seal nudges.
         protected abstract void UpdateArmed(Keyboard kb, Mouse mouse);
 
-        /// Whoever holds the weapon — trigger gates read their state.
+        /// Whoever holds the weapon - trigger gates read their state.
         protected SimpleFPSController Wielder { get; private set; }
 
         /// WeaponSlots hands the weapon to a player (E). With the real body,
         /// the weapon is GLUED INTO THE HAND: struck into its camera-space aim
-        /// pose first, then parented to the grip socket keeping that pose —
+        /// pose first, then parented to the grip socket keeping that pose -
         /// hand IK holds the aim, animation adds the life.
         public virtual void EquipTo(SimpleFPSController player)
         {
@@ -237,7 +237,7 @@ namespace SpellyZombie
 
             transform.SetParent(_pivot, false);
             transform.localPosition = HolsterPos;
-            transform.localRotation = HolsterRot; // notepad tilt — plates face you
+            transform.localRotation = HolsterRot; // notepad tilt - plates face you
             if (_hand != null)
             {
                 transform.SetParent(_hand, true); // glue, keeping the aim pose

@@ -2,13 +2,13 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE WORKSHOP HOOK (Marko: "make sure it's mod-able so people can make
+    /// THE WORKSHOP HOOK ("make sure it's mod-able so people can make
     /// their custom stuff in modded maps - via Steam Workshop").
     ///
     /// A map maker drops this component anywhere in their scene, hooks up
     /// their own ShapeLibrary asset, and their shapes are live for as long as
     /// that map is loaded. Nothing else to wire, no code to write, no name to
-    /// get right — the map itself carries its content.
+    /// get right - the map itself carries its content.
     ///
     /// Slots they leave EMPTY fall through to the base game, so a mod that
     /// only makes a new wooden wheel gets every other shape for free. Two

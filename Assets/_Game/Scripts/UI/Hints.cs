@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// ONE-SHOT HINTS (Marko: "our players don't know that they can click alt
+    /// ONE-SHOT HINTS ("our players don't know that they can click alt
     /// to use a free-hand tool... hints should tell you about every available
     /// option when it arises - once, when you do it the hint disappears").
     ///
@@ -16,8 +16,8 @@ namespace SpellyZombie
         public enum Id
         {
             FreeHand, // hold Alt = free cursor, draw fast
-            Erase,    // right-drag rubs ink out — and scoops it back into the wand
-            Pages,    // ← → flip the book's pages
+            Erase,    // right-drag rubs ink out - and scoops it back into the wand
+            Pages,    // flip the book's pages
             Absorb,   // F learns a rune off the world
         }
 
@@ -42,14 +42,18 @@ namespace SpellyZombie
         }
 
         /// Call every frame this option is actually available to the player.
+        /// Renders as a ONE-FACT CHIP in the shared row ("users
+        /// have no idea that by clicking ALT they can draw more accurately" —
+        /// the old faint OnGUI sentence was the last prompt outside the chip
+        /// language, shown mid-stroke where nobody reads screen bottoms).
         public static void Offer(Id id)
         {
             Load();
             if (!Enabled || _done.Contains(id)) return;
-            HintDraw.Show(Text(id));
+            UIPrompt.Offer(KeyFor(id), Label(id));
         }
 
-        /// The player just did it — the hint is finished, for good.
+        /// The player just did it - the hint is finished, for good.
         public static void Retire(Id id)
         {
             Load();
@@ -68,54 +72,30 @@ namespace SpellyZombie
             PlayerPrefs.Save();
         }
 
-        static string Text(Id id)
+        static string KeyFor(Id id)
         {
             switch (id)
             {
-                case Id.FreeHand: return "hold Alt to free the cursor and draw fast";
-                case Id.Erase: return "right-drag erases ink and returns it to your wand";
-                case Id.Pages: return "← and → turn the pages";
-                case Id.Absorb: return "F absorbs it into your grimoire";
+                case Id.FreeHand: return "ALT";
+                case Id.Erase: return "RMB";
+                case Id.Pages: return "← →"; // matches the book's own chip, dedups into it
+                case Id.Absorb: return "F";
+                default: return "?";
+            }
+        }
+
+        /// The benefit, not the mechanics (the framing: ALT = "draw more
+        /// accurately", never "free the cursor").
+        static string Label(Id id)
+        {
+            switch (id)
+            {
+                case Id.FreeHand: return Loc.T("chip.precise");
+                case Id.Erase: return Loc.T("chip.erase");
+                case Id.Pages: return Loc.T("chip.pages");
+                case Id.Absorb: return Loc.T("chip.absorb");
                 default: return "";
             }
-        }
-    }
-
-    /// The hint line itself — one short faded sentence above the key prompt.
-    /// Self-spawning; no scene setup.
-    public class HintDraw : MonoBehaviour
-    {
-        static HintDraw _i;
-        static string _text;
-        static int _frame = -1;
-
-        public static void Show(string text)
-        {
-            if (_i == null)
-            {
-                var go = new GameObject("Hint");
-                DontDestroyOnLoad(go);
-                _i = go.AddComponent<HintDraw>();
-            }
-            _text = text;
-            _frame = Time.frameCount;
-        }
-
-        static GUIStyle _style;
-
-        void OnGUI()
-        {
-            if (Time.frameCount - _frame > 1 || string.IsNullOrEmpty(_text)) return;
-            if (_style == null)
-                _style = new GUIStyle(GUI.skin.label)
-                {
-                    alignment = TextAnchor.MiddleCenter,
-                    fontSize = 15
-                };
-            var prev = GUI.color;
-            GUI.color = new Color(1f, 0.96f, 0.85f, 0.75f);
-            GUI.Label(new Rect(0f, Screen.height - 150f, Screen.width, 24f), _text, _style);
-            GUI.color = prev;
         }
     }
 }

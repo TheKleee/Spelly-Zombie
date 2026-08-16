@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The feel layer: camera shake, hit-stop, and PROCEDURAL sound — every
+    /// The feel layer: camera shake, hit-stop, and PROCEDURAL sound - every
     /// clip is synthesized at runtime (sine/noise/sweeps), so the game has full
     /// audio with zero asset files. Replace with real SFX later; the hook
     /// points stay identical.
@@ -163,7 +163,7 @@ namespace SpellyZombie
         static float[] SynthSting()
         {
             var d = Buf(0.7f);
-            float[] notes = { 392f, 311f, 233f }; // descending — bad news
+            float[] notes = { 392f, 311f, 233f }; // descending - bad news
             for (int i = 0; i < d.Length; i++)
             {
                 float t = i / (float)d.Length;
@@ -190,7 +190,7 @@ namespace SpellyZombie
 
     }
 
-    /// Positional camera shake — offsets the camera's LOCAL position with
+    /// Positional camera shake - offsets the camera's LOCAL position with
     /// decaying noise, never touching rotation (the look controls own that).
     public class CameraShaker : MonoBehaviour
     {

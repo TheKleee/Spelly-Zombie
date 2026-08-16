@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE CAULDRON (Marko Jul 23/25): ores are DESTROYED into ink, the pool is the meter, standing close refills the wand; HEATING CUT Jul 25 — put ore in, get ink, one rule.
-    /// (Class name kept — rename to InkCauldron in a calm moment, it touches saved scenes.)
+    /// THE CAULDRON : ores are DESTROYED into ink, the pool is the meter, standing close refills the wand; HEATING CUT Jul 25 - put ore in, get ink, one rule.
+    /// (Class name kept - rename to InkCauldron in a calm moment, it touches saved scenes.)
     public class CaveCauldron : MonoBehaviour
     {
         public static readonly List<CaveCauldron> All = new List<CaveCauldron>();
@@ -31,11 +31,11 @@ namespace SpellyZombie
             pot.GetComponent<Renderer>().sharedMaterial =
                 MatterFX.Get(new Color(0.16f, 0.15f, 0.17f), MoteShade.Opaque);
 
-            // the visible INK POOL — rises as ores are fed (no bars, no text)
+            // the visible INK POOL - rises as ores are fed (no bars, no text)
             var pool = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             pool.name = "InkPool";
             // Conjure also runs from the EDITOR build menu, where Destroy is
-            // illegal (logs an error, destroys nothing — the ghost collider
+            // illegal (logs an error, destroys nothing - the ghost collider
             // then blocked the pen above the pot)
             var poolCol = pool.GetComponent<Collider>();
             if (Application.isPlaying) Object.Destroy(poolCol);
@@ -56,7 +56,7 @@ namespace SpellyZombie
             fire.color = new Color(1f, 0.55f, 0.2f);
 
             var rb = root.AddComponent<Rigidbody>();
-            rb.isKinematic = true; // particles DONATE to rigidbodies — sparks can heat it
+            rb.isKinematic = true; // particles DONATE to rigidbodies - sparks can heat it
 
             root.AddComponent<SurfaceMaterialTag>().Material = SurfaceMaterialType.Metal;
             var dmg = root.AddComponent<Damageable>();
@@ -80,7 +80,7 @@ namespace SpellyZombie
         {
             float dt = Time.deltaTime;
 
-            // THE LOBBY WELL NEVER RUNS DRY (Marko: "the central cauldron… automatically refilled in the lobby") — only the SOURCE is bottomless
+            // THE LOBBY WELL NEVER RUNS DRY — only the SOURCE is bottomless
             if (!RoundDirector.RunActive) Fill = Capacity;
 
             // the fire under the pot is pure flavour since the heating cut
@@ -113,7 +113,7 @@ namespace SpellyZombie
                 }
         }
 
-        /// A carried ore meets the pot: the ore DIES, the ink LIVES. HEATING CUT (Marko Jul 25) — one rule: put ore in, get ink.
+        /// A carried ore meets the pot: the ore DIES, the ink LIVES. HEATING CUT - one rule: put ore in, get ink.
         public void FeedOre(InkRuneStone ore)
         {
             if (ore == null) return;
@@ -124,16 +124,16 @@ namespace SpellyZombie
         }
     }
 
-    /// A fuel stone: WHITE and glowing until fed to the cauldron, then BLACK (Marko's economy); PICKABLE (Marko's ruling): E takes, E drops.
+    /// A fuel stone: WHITE and glowing until fed to the cauldron, then BLACK ; PICKABLE : E takes, E drops.
     public class InkRuneStone : MonoBehaviour
     {
         public bool Spent { get; private set; }
 
-        /// The ore the local player is holding (one pair of hands, one ore) —
+        /// The ore the local player is holding (one pair of hands, one ore) -
         /// the cauldron feed will read this and call Blacken().
         public static InkRuneStone Carried { get; private set; }
 
-        /// Live registry — one manager scan replaces N per-stone Update pollers (WeaponSlots.FindPickup pattern).
+        /// Live registry - one manager scan replaces N per-stone Update pollers (WeaponSlots.FindPickup pattern).
         public static readonly List<InkRuneStone> All = new List<InkRuneStone>();
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
@@ -167,7 +167,7 @@ namespace SpellyZombie
 
             if (Carried != null) { Carried.TickCarried(UnityEngine.InputSystem.Keyboard.current, player); return; }
 
-            // AIM, NOT PROXIMITY (Marko's rule): you take the ore you're LOOKING at — most centred wins
+            // AIM, NOT PROXIMITY : you take the ore you're LOOKING at - most centred wins
             InkRuneStone best = null;
             float bestAim = 0f;
             foreach (var s in All)
@@ -190,7 +190,7 @@ namespace SpellyZombie
 
         void TickCarried(UnityEngine.InputSystem.Keyboard kb, SimpleFPSController player)
         {
-            // ride in front of the chest — visible in first and third person
+            // ride in front of the chest - visible in first and third person
             var t = player.transform;
             transform.position = t.position + t.forward * 0.65f + Vector3.up * 0.35f;
 
@@ -231,7 +231,7 @@ namespace SpellyZombie
             rb.linearVelocity = forward * 2.2f + Vector3.up * 1.2f; // a gentle toss
 
             // TOUCH = WORLD: a handled ore is an object now (and can never
-            // have been spell-born — ores only spawn from the map)
+            // have been spell-born - ores only spawn from the map)
         }
 
         void OnDestroy()

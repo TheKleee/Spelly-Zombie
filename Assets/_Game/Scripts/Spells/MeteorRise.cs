@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE METEOR'S WHOLE ARC (Marko Aug 10 + re-ruled Aug 11 night): born at
+    /// THE METEOR'S WHOLE ARC : born at
     /// the seal, thrown upward, SWELLS as it climbs, then a TERMINAL DIVE and
     /// an EXPLOSION ON IMPACT. "It should explode on impact and it should
     /// fall really fast."
@@ -24,7 +24,7 @@ namespace SpellyZombie
         public float Reach = 1f;
 
         /// Released from a dormant ghost: no rise story, it FALLS FROM THE
-        /// SKY at full size (Marko: "when I release the dormant meteor it
+        /// SKY at full size ("when I release the dormant meteor it
         /// should fall from the sky"). The seal-cast keeps its erupt-and-rise.
         public bool SkyDrop;
 
@@ -44,7 +44,7 @@ namespace SpellyZombie
             if (TryGetComponent<MatterStrike>(out var strike)) strike.enabled = false;
 
             // NOTE: StateBlob stays ENABLED. Disabling it killed the skin it
-            // builds and the giant rock rendered as a raw black slab (his
+            // builds and the giant rock rendered as a raw black slab (the
             // "flat out invisible" meteor). Rigidity is already law for true
             // solids inside StateBlob itself: phase Solid pins the bones.
 
@@ -67,13 +67,13 @@ namespace SpellyZombie
                 return;
             }
 
-            // TERMINAL DIVE (his "it should fall really fast"): straight down,
+            // TERMINAL DIVE : straight down,
             // held at the dive speed, drift damped so it lands where it hung
             var v = rb.linearVelocity;
             rb.linearVelocity = new Vector3(v.x * 0.96f,
                 Mathf.Min(v.y, -DrawingConfig.MeteorFallSpeed), v.z * 0.96f);
 
-            // a SKY DROP keeps swelling on the way DOWN (his Madara framing:
+            // a SKY DROP keeps swelling on the way DOWN (the Madara framing:
             // "starts off big and becomes bigger and falls from really high")
             if (SkyDrop && _t < 1f)
             {
@@ -92,12 +92,12 @@ namespace SpellyZombie
             Juice.Boom(at, 0.95f);
             DrawingWorld.Instance?.LogEvent("METEOR IMPACT");
 
-            // FULL ULTIMATE POWER RESTORED (Marko: "bring back the power of
+            // FULL ULTIMATE POWER RESTORED ("bring back the power of
             // the meteor... you removed effects I never said you should").
             // Same numbers the FlameBurst ultimate carries: heavy hit, real
             // ignition heat on everything, hard shove. Only the FLAMES stay
-            // modest, per his separate ruling that the fires were too large.
-            // damage to EVERYONE in the area, no exceptions (his rule: "the
+            // modest, per the separate ruling that the fires were too large.
+            // damage to EVERYONE in the area, no exceptions (the rule: "the
             // meteor is the kind of a spell that just deals damage to
             // everyone in the area") — players, zombies, anything alive
             float r = DrawingConfig.UltimateRadius;
@@ -122,13 +122,13 @@ namespace SpellyZombie
                         ForceMode.VelocityChange);
             }
 
-            // THE ROCK SHATTERS (his "it should blow into smaller chunks so
+            // THE ROCK SHATTERS (the "it should blow into smaller chunks so
             // that we feel the pressure and power"): glowing debris hurled
             // out of the crater, each chunk a real hot solid that ignites
             // whatever it lands on and can be grabbed once it cools
             var tag = GetComponentInChildren<SurfaceMaterialTag>();
             var mt = tag != null ? tag.Material : SurfaceMaterialType.Stone;
-            // PUSHED FROM THE INSIDE (his spec): shards burst radially out of
+            // PUSHED FROM THE INSIDE : shards burst radially out of
             // the rock's core at high force, splatter across the square, and
             // EACH ONE EXPLODES where it lands, leaving that spot hotter
             float rockR = Mathf.Max(0.5f, transform.lossyScale.x);
@@ -143,7 +143,7 @@ namespace SpellyZombie
                 ch.gameObject.AddComponent<MeteorShard>();
                 if (ch.TryGetComponent<Rigidbody>(out var crb))
                 {
-                    // HIS SKETCH: a fountain. Shards leap mostly UP in tall
+                    // the SKETCH: a fountain. Shards leap mostly UP in tall
                     // arcs, fan outward, and rain down far across the square,
                     // each little comet landing on its own spot.
                     Vector3 side = (shell - core);
@@ -153,12 +153,12 @@ namespace SpellyZombie
                         + Vector3.up * Random.Range(1.3f, 2.3f)).normalized;
                     // fast enough to still splatter WIDE under the shard's
                     // heavy gravity: the whole fountain plays at whipcrack
-                    // speed (his "10x faster like real dangerous things")
+                    // speed
                     crb.linearVelocity = dir * Random.Range(36f, 58f);
                 }
             }
 
-            // fires: reach-scaled, a notch wider now (his "increase the aoe
+            // fires: reach-scaled, a notch wider now (the "increase the aoe
             // effect a bit... too small right now")
             GrammarFX.FireBloom(at, 8, Mathf.Max(1.7f, Reach * 2f), 2f);
 
@@ -167,7 +167,7 @@ namespace SpellyZombie
     }
 
     /// A shard of the shattered meteor: flies hot, and EXPLODES where it
-    /// lands (his spec: "each exploding and leaving the area hotter, more
+    /// lands (the spec: "each exploding and leaving the area hotter, more
     /// burning") — a small burst of fire and heat, then the shard is spent.
     public class MeteorShard : MonoBehaviour
     {
@@ -185,7 +185,7 @@ namespace SpellyZombie
 
         void FixedUpdate()
         {
-            // REAL DANGEROUS THINGS (his words: falling "slowly and
+            // REAL DANGEROUS THINGS (the words: falling "slowly and
             // anticlimactically"): shrapnel slams down under heavy gravity,
             // the arc is a whipcrack, never a drift
             if (TryGetComponent<Rigidbody>(out var rb))

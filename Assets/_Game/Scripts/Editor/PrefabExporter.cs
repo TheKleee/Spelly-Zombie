@@ -4,14 +4,14 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// Exports the map-building vocabulary as PREFABS into _Game/Prefabs so
-    /// Marko composes the world BY HAND — houses, towers, sky islands, props,
+    /// composes the world BY HAND - houses, towers, sky islands, props,
     /// story clusters. Each prefab is fully wired: colliders, chemistry tags,
     /// ink canvases, breakables, lights. Drag, place, done.
     public static class PrefabExporter
     {
         const string Dir = "Assets/_Game/Prefabs";
 
-        // AXIOM (Marko Jul 25): these are prefabs he OWNS and hand-edits. The
+        // AXIOM : these are prefabs OWNS and hand-edits. The
         // export used to replace all 20 at fixed paths with no dialog, no
         // backup and no undo. Default is now "only create the missing ones".
         static bool _replaceExisting;
@@ -143,8 +143,8 @@ namespace SpellyZombie
 
         static void Save(string name, System.Action build)
         {
-            // check the PATH FIRST — the old order built the whole hierarchy
-            // and then threw it away, and overwrote his prefab regardless
+            // check the PATH FIRST - the old order built the whole hierarchy
+            // and then threw it away, and overwrote the prefab regardless
             string path = $"{Dir}/{name}.prefab";
             bool exists = AssetDatabase.LoadAssetAtPath<GameObject>(path) != null;
             if (exists && !_replaceExisting) { _kept.Add(name); return; }

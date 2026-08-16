@@ -6,10 +6,10 @@ namespace SpellyZombie
     /// THE SLIDE WEAPON (temp look, real mechanism): a rune TABLET made of a
     /// grip, a fixed plate, and a SLIDING plate with a 13cm gap between them.
     ///
-    ///   HOLD Q / LMB → the slide racks shut (plates butt together)
+    /// HOLD Q / LMB  the slide racks shut (plates butt together)
     ///   Draw your runes + a loop ACROSS both plates while it's shut
-    ///   RELEASE      → the slide opens, the loop is pulled apart, ink re-arms
-    ///   PRESS again  → the plates meet, the loop closes, the seal FIRES
+    /// RELEASE       the slide opens, the loop is pulled apart, ink re-arms
+    /// PRESS again   the plates meet, the loop closes, the seal FIRES
     ///
     /// This is the body-joint re-fire mechanic wearing a trigger: the moving
     /// part mechanically closes the seal, so one engraving casts forever.
@@ -22,7 +22,7 @@ namespace SpellyZombie
         static readonly Vector3 SlideOpen = new Vector3(0f, 0.012f, 0.40f);
         static readonly Vector3 SlideShut = new Vector3(0f, 0.012f, 0.265f);
 
-        /// Build the pickup from primitives (temp look — Marko restyles later).
+        /// Build the pickup from primitives (temp look - restyles later).
         public static GameObject CreatePickup(Vector3 pos)
         {
             var root = new GameObject("SealWeapon");
@@ -57,7 +57,7 @@ namespace SpellyZombie
 
         void Awake()
         {
-            // prefab-instantiated copies lose the private reference — recover it
+            // prefab-instantiated copies lose the private reference - recover it
             if (_slide == null) _slide = transform.Find("Slide");
         }
 
@@ -65,13 +65,13 @@ namespace SpellyZombie
 
         protected override void OnSkinApplied(Transform skin)
         {
-            var slide = FindPart("Slide"); // Marko's slide takes over the racking
+            var slide = FindPart("Slide"); // the slide takes over the racking
             if (slide != null) _slide = slide;
         }
 
         protected override void UpdateArmed(Keyboard kb, Mouse mouse)
         {
-            // the slide racks shut while Q — or this weapon's own LEFT CLICK —
+            // the slide racks shut while Q - or this weapon's own LEFT CLICK -
             // is held, and springs open on release. (In draw mode LMB is the
             // pen, so only Q racks it there.)
             bool pressing = kb.qKey.isPressed

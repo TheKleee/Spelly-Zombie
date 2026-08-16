@@ -3,26 +3,26 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The little truth-teller (Marko's spec): finish a stroke and a small
-    /// label floats over the ink saying what the game READS it as — keep
+    /// The little truth-teller : finish a stroke and a small
+    /// label floats over the ink saying what the game READS it as - keep
     /// editing and the label updates (each new reading replaces the old), so
     /// you always know what a seal will fire before you close one.
     public class RunePreview : MonoBehaviour
     {
-        static RunePreview _current; // one at a time — the newest reading wins
+        static RunePreview _current; // one at a time - the newest reading wins
 
-        TextMeshPro _tm;   // TMP, not legacy TextMesh — emoji are sprites
+        TextMeshPro _tm;   // TMP, not legacy TextMesh - emoji are sprites
         float _age;
         Color _color;
         const float Hold = 1.1f; // fully visible…
         const float Fade = 1.8f; // …then fades away slowly
 
-        /// POOLED — ONE label for the whole session (Marko Aug 8: "those tmp's
+        /// POOLED — ONE label for the whole session ("those tmp's
         /// should be pooled like all effects"). It used to Destroy the old label
         /// and `new GameObject` + AddComponent<TextMeshPro> a fresh one on every
         /// reading, and building a TMP is not cheap: mesh, material and font
         /// atlas work each time. Harmless on the floor, where one drag is one
-        /// reading — brutal on the BODY, where the pen crosses a bone every few
+        /// reading - brutal on the BODY, where the pen crosses a bone every few
         /// centimetres and each crossing used to end a stroke and read again.
         /// (That second half is fixed at the source in SurfaceDrawer.)
         public static void Show(Vector3 worldPos, string text, Color color)
@@ -42,7 +42,7 @@ namespace SpellyZombie
         void BuildOnce()
         {
             // legacy TextMesh has ONE font atlas and no sprite support, so a
-            // rune's emoji could only ever be a tofu box (only ❄ survived —
+            // rune's emoji could only ever be a tofu box (only  survived -
             // it's the one glyph of the twelve that lives in a normal font)
             _tm = gameObject.AddComponent<TextMeshPro>();
             // Midline = centred BOTH ways. TMP's "Center" is horizontal-only
@@ -66,7 +66,7 @@ namespace SpellyZombie
             _tm.text = Ghost(text);
         }
 
-        /// A reading is a HINT, not a billboard — the icon sits back so the
+        /// A reading is a HINT, not a billboard - the icon sits back so the
         /// ink stays the loudest thing on screen. Sprites ignore the label's
         /// colour (TMP tints sprites only if "Tint All Sprites" is on), so
         /// the alpha tag is what actually softens them.
@@ -84,7 +84,7 @@ namespace SpellyZombie
             float a = _age < Hold ? 1f : 1f - (_age - Hold) / Fade;
             if (a <= 0f)
             {
-                gameObject.SetActive(false); // parked, not destroyed — Show reuses it
+                gameObject.SetActive(false); // parked, not destroyed - Show reuses it
                 return;
             }
             var c = _color;

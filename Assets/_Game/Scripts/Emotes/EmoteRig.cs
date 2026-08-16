@@ -5,7 +5,7 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// Declares which transforms on a character can be posed by emotes.
-    /// Works on anything — graybox pivots today, Mixamo bones later — as long as
+    /// Works on anything - graybox pivots today, Mixamo bones later - as long as
     /// the joint ids stay consistent ("shoulder.L", "shoulder.R", "neck", ...).
     /// Saved emotes reference joints only by id; unknown ids are skipped, so
     /// emotes survive a character swap.
@@ -21,7 +21,7 @@ namespace SpellyZombie
             public Transform GrabHint;
             [NonSerialized] public Quaternion Rest;
 
-            /// HINGE limit (elbows/knees — Marko's rule: constrained joints make
+            /// HINGE limit (elbows/knees - the rule: constrained joints make
             /// body-seal PLACEMENT a puzzle). Axis lives in the joint's rest
             /// frame; the allowed pose is Rest rotated [MinDeg..MaxDeg] around
             /// it, nothing else. Unlimited joints leave Limited false.
@@ -57,7 +57,7 @@ namespace SpellyZombie
         /// REST IS RUNTIME-ONLY and must be read AFTER the animator's first
         /// frame, or every value lives in the wrong basis.
         ///
-        /// AXIOM (Marko Aug 7, "drawing on the body doesn't work properly
+        /// AXIOM (, "drawing on the body doesn't work properly
         /// again... probably something happened cause of the prefab"): this
         /// used to be captured in Awake and never again. That was safe only
         /// while EmoteRig was ADDED AT RUNTIME, after the model was worn and
@@ -82,7 +82,7 @@ namespace SpellyZombie
         }
 
         /// The first registered joint at or above a clicked transform (walk up,
-        /// stop at the rig root) — the ONE limb-resolve both PoseStudio and
+        /// stop at the rig root) - the ONE limb-resolve both PoseStudio and
         /// PoseGrab use.
         public JointEntry JointAtOrAbove(Transform t)
         {

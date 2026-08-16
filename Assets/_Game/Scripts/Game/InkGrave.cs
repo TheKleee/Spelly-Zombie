@@ -2,8 +2,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE MAP'S HEART — where the ink falls when every cauldron is rubble
-    /// (Marko Aug 11: "ink falls at the center of the map flat on the floor
+    /// THE MAP'S HEART - where the ink falls when every cauldron is rubble
+    /// ("ink falls at the center of the map flat on the floor
     /// and can no longer be lifted... turning what was hide and seek into a
     /// base defense game"). Drop this on an empty at the arena center, one
     /// per gameplay map; the lobby never needs it. No marker on a map = a

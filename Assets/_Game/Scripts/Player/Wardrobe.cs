@@ -3,19 +3,19 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    // (CostumeLibrary moved to its own file — Unity refuses to bind
+    // (CostumeLibrary moved to its own file - Unity refuses to bind
     //  ScriptableObject assets whose class hides in a mismatched filename.
     //  It serves WEAPON SKINS only now; costumes live in the three
     //  SocketWardrobe catalogs.)
 
-    /// Dresses bodies: library pieces when Marko has made them, placeholder
+    /// Dresses bodies: library pieces when has made them, placeholder
     /// hat + cloak until then. Demo look = team-colored hat and cloak; the
     /// cloak's back carries your STARTING RUNE icon (the locked cape design).
     public static class Wardrobe
     {
         // ------------------------------------------------------- attaching --
 
-        /// Player outfit. Marko's SocketWardrobe catalog dresses FIRST — the
+        /// Player outfit. the SocketWardrobe catalog dresses FIRST - the
         /// local player wears their saved choices, remote avatars wear the
         /// outfitCode that arrived over the wire; hat/cape placeholders only
         /// fill sockets the catalog left bare. Returns the pieces so callers
@@ -27,9 +27,9 @@ namespace SpellyZombie
                 outfitCode != null ? SocketManager.ChooserFromCode(outfitCode)
                                    : SocketManager.GetChoice);
 
-            // THE CATALOG IS LAW (Marko's control rule): once SZ_WardrobePlayer
-            // exists, an EMPTY slot means "he wants nothing there" — no
-            // placeholder sneaks in behind his back. Delete the WizardCape
+                                   // THE CATALOG IS LAW : once SZ_WardrobePlayer
+            // exists, an EMPTY slot means "design nothing there" — no
+            // placeholder sneaks in behind the back. Delete the WizardCape
             // option from the Cape slot and the cape is gone, permanently.
             bool catalogRules = SocketManager.Player != null;
 
@@ -50,25 +50,25 @@ namespace SpellyZombie
                 if (cape == null) cape = PlaceholderCloak(capeSocket);
                 if (cape != null) pieces.Add(cape);
             }
-            // CLOTH RETIRED (Marko, after three rounds of Unity Cloth
-            // misbehaving: stiff board → fell off → wrapped the neck).
+            // CLOTH RETIRED (, after three rounds of Unity Cloth
+            // misbehaving: stiff board  fell off  wrapped the neck).
             // Capes are RIGID pieces that inherit the body's clumsy wobble
-            // through the spine socket — life without simulation.
+            // through the spine socket - life without simulation.
 
             Retint(pieces, team);
             if (cape != null && capeIcon.HasValue) StampRune(cape.transform, capeIcon.Value);
 
             // any worn piece with "Wiggle"-named children comes alive (the
-            // scarf-tail contract — see ScarfWiggle)
+            // scarf-tail contract - see ScarfWiggle)
             ScarfWiggle.AttachAll(set.gameObject);
             return pieces;
         }
 
-        // (MakeCloth DELETED with the cloth retirement — see the CLOTH RETIRED
+        // (MakeCloth DELETED with the cloth retirement - see the CLOTH RETIRED
         //  ruling above; capes are rigid pieces now, nothing converts them.)
 
-        /// Zombies: Marko's zombie catalog rolls RANDOM pieces per socket (a
-        /// non-zero seed makes the roll deterministic — host and clients dress
+        /// Zombies: the zombie catalog rolls RANDOM pieces per socket (a
+        /// non-zero seed makes the roll deterministic - host and clients dress
         /// the same zombie identically from its id); the legacy Z-name pool
         /// fills any socket the catalog left bare.
         public static void DressZombie(SocketSet set, float chance = 0.35f, int seed = 0)
@@ -92,7 +92,7 @@ namespace SpellyZombie
             ScarfWiggle.AttachAll(set.gameObject);
         }
 
-        /// The demon (summoned from the darkness — zombie moves, darker look):
+        /// The demon (summoned from the darkness - zombie moves, darker look):
         /// EVERY filled slot of the demon catalog rolls a random piece. Call
         /// wherever the demon's rigged body is built, with its id as seed.
         public static List<GameObject> DressDemon(SocketSet set, int seed = 0)
@@ -136,10 +136,10 @@ namespace SpellyZombie
 
         // --------------------------------------------------------- tinting --
 
-        /// "_Team"-named renderers take the color. AXIOM (Marko Jul 25): a
-        /// piece with NO _Team renderer KEEPS HIS MATERIALS — the old fallback
-        /// blanket-replaced sharedMaterial on every renderer of his authored
-        /// costume (his WizardHat lost its look on every player, silently).
+        /// "_Team"-named renderers take the color. AXIOM : a
+        /// piece with NO _Team renderer KEEPS the MATERIALS - the old fallback
+        /// blanket-replaced sharedMaterial on every renderer of the authored
+        /// costume.
         /// Only empty material slots get filled, so code-built placeholders
         /// (which ship with none) still show up.
         static readonly HashSet<string> _untinted = new HashSet<string>();
@@ -162,7 +162,7 @@ namespace SpellyZombie
                     continue;
                 }
 
-                // his art, untouched — fill only slots that would draw nothing
+                // the art, untouched - fill only slots that would draw nothing
                 foreach (var r in all)
                     if (!(r is LineRenderer) && r.sharedMaterial == null)
                         r.sharedMaterial = MatterFX.Get(team, MoteShade.Opaque);
@@ -180,7 +180,7 @@ namespace SpellyZombie
         {
             if (socket == null) return null;
             var hat = new GameObject("Hat_Placeholder");
-            hat.transform.SetParent(socket, false); // sits ON the crown — it was right before
+            hat.transform.SetParent(socket, false); // sits ON the crown - it was right before
             void Part(string partName, Vector3 pos, Vector3 scale, float tilt)
             {
                 var p = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -200,9 +200,9 @@ namespace SpellyZombie
             return hat;
         }
 
-        /// A subdivided plane hanging from the shoulder line — RIGID, like all
+        /// A subdivided plane hanging from the shoulder line - RIGID, like all
         /// capes since the CLOTH RETIRED ruling (it wobbles with the body
-        /// through the spine socket; his art replaces it wholesale).
+        /// through the spine socket; the art replaces it wholesale).
         static GameObject PlaceholderCloak(Transform socket)
         {
             if (socket == null) return null;
@@ -232,7 +232,7 @@ namespace SpellyZombie
                 {
                     int i = r * (cols + 1) + c;
                     int below = i + cols + 1;
-                    // both windings — a cape is seen from both sides
+                    // both windings - a cape is seen from both sides
                     tris.AddRange(new[] { i, i + 1, below, i + 1, below + 1, below });
                     tris.AddRange(new[] { i, below, i + 1, i + 1, below, below + 1 });
                 }
@@ -275,7 +275,7 @@ namespace SpellyZombie
         }
 
         /// A rune glyph as a texture (grimoire pages, cape icons, cards…).
-        /// Prefers YOUR recorded handwriting (the F-key templates) — the book
+        /// Prefers YOUR recorded handwriting (the F-key templates) - the book
         /// shows the alphabet you actually taught the game, not the seed shapes.
         public static Texture2D RuneIcon(RuneType rune, Color ink)
         {
@@ -302,12 +302,12 @@ namespace SpellyZombie
         static Texture2D Rasterize(IReadOnlyList<Vector2> poly, Color ink)
             => Rasterize(new IReadOnlyList<Vector2>[] { poly }, ink);
 
-        /// Arbitrary strokes as a texture — the grimoire's diagrams (seal
+        /// Arbitrary strokes as a texture - the grimoire's diagrams (seal
         /// lesson etc.) draw with the same pen the rune icons use.
         public static Texture2D InkTexture(IReadOnlyList<IReadOnlyList<Vector2>> strokes, Color ink)
             => Rasterize(strokes, ink);
 
-        /// Multi-stroke rasterizer — recorded handwriting keeps its pen lifts.
+        /// Multi-stroke rasterizer - recorded handwriting keeps its pen lifts.
         static Texture2D Rasterize(IReadOnlyList<IReadOnlyList<Vector2>> strokes, Color ink)
         {
             const int size = 64;

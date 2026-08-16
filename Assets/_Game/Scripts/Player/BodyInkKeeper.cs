@@ -3,31 +3,31 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// YOUR BODY INK TRAVELS WITH YOU — WITHIN ONE SITTING (Marko Aug 11:
+    /// YOUR BODY INK TRAVELS WITH YOU - WITHIN ONE SITTING (
     /// "when you draw ink on your body I want it to come with you to the
     /// game mode... persistent in the multiplayer as well"). Prep combos in
     /// the lobby; they are on your skin in the match.
     ///
     /// NO DISK. The first version also saved to a file and restored at boot,
-    /// and Marko hit both failure modes the same day: ghost ink from an old
+    /// and hit both failure modes the same day: ghost ink from an old
     /// session appearing uninvited, and unerasable strokes (a boot-time
     /// restore can run before Grimoire.LocalPlayerId exists, so the ink
-    /// belonged to player 0 — nobody — and the eraser refused it). Ink now
+    /// belonged to player 0 - nobody - and the eraser refused it). Ink now
     /// lives exactly as long as the play session.
     ///
-    /// Nothing new is invented here — this is the NETCODE'S OWN BODY-INK
+    /// Nothing new is invented here - this is the NETCODE'S OWN BODY-INK
     /// CODEC held in memory: strokes are kept in BONE-LOCAL space keyed by
     /// bone name (exactly what StrokeMsg ships), and the restore is
     /// ApplyBodyStroke's recipe run on your own skeleton with YOUR owner id.
     /// Because the restore completes strokes through DrawingWorld like any
-    /// local pen-up, NetSync.OnLocalStrokeFinished fires on its own — so in
+    /// local pen-up, NetSync.OnLocalStrokeFinished fires on its own - so in
     /// multiplayer the restored ink replicates to everyone through the same
     /// pipe fresh ink uses. Persistence and parity from one code path.
     ///
     /// THE RUNE GATE COSTS NOTHING: recognition only reads runes the owner
     /// has UNLOCKED (unknown glyphs score None and build no zone), so a body
     /// seal drawn in the lobby simply does nothing until the wizard collects
-    /// those runes — his "not before you have the runes", already enforced
+    /// those runes — the "not before you have the runes", already enforced
     /// where recognition lives.
     public class BodyInkKeeper : MonoBehaviour
     {
@@ -93,17 +93,17 @@ namespace SpellyZombie
         void TryRestore()
         {
             // no owner yet = strokes would belong to player 0 and refuse the
-            // eraser forever — wait until the pilot has an identity
+            // eraser forever - wait until the pilot has an identity
             if (Grimoire.LocalPlayerId == 0) return;
 
             // ink already on my body (drawn this scene, or an earlier restore)
-            // = nothing to do — restoring over it would double every stroke
+            // = nothing to do - restoring over it would double every stroke
             foreach (var s in DrawingWorld.Instance.Strokes)
                 if (MineOnBone(s)) { _restored = true; return; }
 
             if (_kept.Count == 0) { _restored = true; return; }
 
-            // the rig assembles over several frames — wait until the bones exist
+            // the rig assembles over several frames - wait until the bones exist
             var bones = new Dictionary<string, Transform>();
             foreach (var t in GetComponentsInChildren<Transform>(true))
                 if (t.name.StartsWith("mixamorig:") && !bones.ContainsKey(t.name))
@@ -129,7 +129,7 @@ namespace SpellyZombie
                 for (int i = 0; i < saved.Pts.Length; i++)
                     s.AddNode(DrawNode.Create(s, i,
                         bone.TransformPoint(saved.Pts[i]), normal, bone));
-                // completes like any local pen-up — which is what makes the
+                // completes like any local pen-up - which is what makes the
                 // netcode broadcast it to everyone, unprompted
                 DrawingWorld.Instance.CompleteStroke(s,
                     allowCloseOntoInk: false, silent: true, preview: false);

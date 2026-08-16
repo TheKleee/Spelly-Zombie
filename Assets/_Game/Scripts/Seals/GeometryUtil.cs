@@ -23,7 +23,7 @@ namespace SpellyZombie
             return t > 1e-4f && t < 1f - 1e-4f && u > 1e-4f && u < 1f - 1e-4f;
         }
 
-        /// Newell's method — robust polygon normal for a (possibly wobbly, non-planar) loop.
+        /// Newell's method - robust polygon normal for a (possibly wobbly, non-planar) loop.
         public static Vector3 NewellNormal(IReadOnlyList<Vector3> pts)
         {
             Vector3 n = Vector3.zero;
@@ -56,7 +56,7 @@ namespace SpellyZombie
         }
 
         /// Allocation-free variant: projects into a caller-owned buffer
-        /// (CrossingFinder's 8 Hz scan — the no-per-frame-alloc law).
+        /// (CrossingFinder's 8 Hz scan - the no-per-frame-alloc law).
         public static void ProjectToPlane(IReadOnlyList<Vector3> pts, Vector3 origin, Vector3 u, Vector3 v,
             List<Vector2> into)
         {
@@ -74,7 +74,7 @@ namespace SpellyZombie
             return new Vector2(Vector3.Dot(d, u), Vector3.Dot(d, v));
         }
 
-        // (Perimeter DELETED — zero callers; SealDetector.LoopPerimeter and
+        // (Perimeter DELETED - zero callers; SealDetector.LoopPerimeter and
         // CrossingFinder.PolyLength are the live length measures.)
 
         /// Shoelace formula, absolute area of the projected loop.
@@ -126,7 +126,7 @@ namespace SpellyZombie
 
         /// Corner count of a closed loop: split the ring at the point farthest from
         /// the start, simplify both halves with the project's ONE simplifier
-        /// (RuneGraph.SimplifyIndices — the second recursive RDP that lived here
+        /// (RuneGraph.SimplifyIndices - the second recursive RDP that lived here
         /// is deleted), then drop "corners" whose direction change is too shallow
         /// to count as a real edge.
         public static int ClosedLoopCorners(IReadOnlyList<Vector2> pts)

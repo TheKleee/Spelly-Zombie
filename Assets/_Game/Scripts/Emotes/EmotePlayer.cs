@@ -4,10 +4,10 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Plays emotes on an EmoteRig — THIRD PERSON ONLY (in first person the
+    /// Plays emotes on an EmoteRig - THIRD PERSON ONLY (in first person the
     /// number keys select weapons). Press a slot to strike the pose: the
     /// ANIMATION sticks doll-like in it while you keep walking around freely
-    /// (Marko's rule — pose freezes the rig, never the character). F melts
+    /// . F melts
     /// back to the regular idle; X forgets your custom pose on that slot so
     /// the system default returns. A held pose is also a spell trigger: it
     /// closes a body seal, the spell runs and goes spent, and releasing the
@@ -35,10 +35,10 @@ namespace SpellyZombie
 
         void Update()
         {
-            // FIRST PERSON NEVER HOLDS A POSE (Marko): posing exists to sculpt
+            // FIRST PERSON NEVER HOLDS A POSE : posing exists to sculpt
             // in third person and to reach skin in the draw modes. The moment
             // you're back in plain first person, regular animations resume.
-            // (Open draw modes keep their pose — that's what it was for.)
+            // (Open draw modes keep their pose - that's what it was for.)
             if (IsPosing && !SimpleFPSController.ThirdPersonActive
                 && !SelfPaint.IsActive && !HeldWeapon.DrawMode)
                 StopToRest();
@@ -48,15 +48,15 @@ namespace SpellyZombie
         }
 
         /// THE POSE IS STAMPED AFTER THE ANIMATOR, EVERY FRAME. It used to
-        /// run in Update and only write during a frame's transition — so a
+        /// run in Update and only write during a frame's transition - so a
         /// held pose was just RESIDUE that survived because the animator had
         /// been switched off. That killed locomotion (and left the hips, the
         /// one bone no emote owns, frozen by omission). Now the animator
         /// keeps running and the pose overwrites its own joints here.
         void LateUpdate() => Animate();
 
-        /// While HOLDING a pose, the outs are one-fact chips (Marko's block
-        /// law). Idle third person says nothing here — ModeGuide's chips
+        /// While HOLDING a pose, the outs are one-fact chips (the block
+        /// law). Idle third person says nothing here - ModeGuide's chips
         /// cover the crossroads, one voice per state. Pose-grab keeps its
         /// own instruction line untouched.
         void ShowPoseHint()
@@ -65,19 +65,32 @@ namespace SpellyZombie
             if (PoseStudio.IsOpen || SelfPaint.IsActive || Powerups.IsChoosing || GameMenu.IsOpen) return;
             if (PoseGrab.IsOpen)
             {
-                UIPrompt.Show("R", Loc.T("pose.grab"));
+                // ONLY WHAT CANNOT BE DISCOVERED ("They only
+                // need info they can't figure out such as Hold 1, 2, 3 to
+                // save the pose... Even pressing 1, 2, 3 to pose will be
+                // figured out from the hold to save indicator"). Dragging
+                // limbs teaches itself; tap-to-recall follows from the hold
+                // chip; only the hold itself is invisible.
+                UIPrompt.Offer("R", Loc.T("chip.done"));
+                UIPrompt.Offer("HOLD 1-9", Loc.T("shape.save"));
                 return;
             }
             if (ActiveSlot < 0) return;
+            // holding a pose is a state of its own, so ITS row carries the
+            // crossroads too ("It should have an R to pose mode there
+            // somewhere") — ModeGuide stands down while IsPosing, one voice.
+            // R sculpting is the WIZARD's (acolyte R belongs to the shape).
             UIPrompt.Offer("F", Loc.T("chip.melt"));
             UIPrompt.Offer("TAB", Loc.T("chip.first"));
+            if (Sides.Of(Grimoire.LocalPlayerId) != Side.Acolyte)
+                UIPrompt.Offer("R", Loc.T("chip.pose"));
         }
 
         void ReadHotkeys()
         {
             var kb = Keyboard.current;
             if (kb == null) return;
-            // emotes live in THIRD person — first person numbers are weapon slots
+            // emotes live in THIRD person - first person numbers are weapon slots
             if (!SimpleFPSController.ThirdPersonActive) return;
             // brush out: the doll must hold still for the painter
             if (SelfPaint.IsActive) return;
@@ -89,7 +102,7 @@ namespace SpellyZombie
             if (Powerups.IsChoosing) return;
             if (kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed) return;
 
-            // F melts the doll back into the regular idle — unless the
+            // F melts the doll back into the regular idle - unless the
             // grimoire has a target (declare/absorb owns F for that press)
             if (kb.fKey.wasPressedThisFrame && ActiveSlot >= 0
                 && !GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach)
@@ -98,7 +111,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // X forgets YOUR pose on the active slot — the built-in returns
+            // X forgets YOUR pose on the active slot - the built-in returns
             if (kb.xKey.wasPressedThisFrame && ActiveSlot >= 0)
             {
                 ClearActiveToDefault();
@@ -164,7 +177,7 @@ namespace SpellyZombie
             CaptureBlendFrom();
         }
 
-        /// The pose editor grabbed a joint — stop animating so we don't fight it.
+        /// The pose editor grabbed a joint - stop animating so we don't fight it.
         public void Interrupt()
         {
             ActiveSlot = -1;
@@ -220,7 +233,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // TRANSITION DONE — KEEP STAMPING IT. Returning here is what made
+            // TRANSITION DONE - KEEP STAMPING IT. Returning here is what made
             // a held pose depend on the animator being dead: nothing wrote
             // the bones, so the pose was only the last transition's leftovers.
             foreach (var p in frame.poses)
@@ -231,7 +244,7 @@ namespace SpellyZombie
                 EmoteRig.Constrain(j);
             }
 
-            // frame reached — hold, then advance / loop / stay on the pose
+            // frame reached - hold, then advance / loop / stay on the pose
             if (_frame >= _emote.frames.Count - 1)
             {
                 if (_emote.loop && _emote.frames.Count > 1)

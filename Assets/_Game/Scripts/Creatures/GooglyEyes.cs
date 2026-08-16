@@ -16,30 +16,30 @@ namespace SpellyZombie
         Vector3 _lVel, _rVel, _lPos, _rPos;         // pupil spring state (local)
         Vector3 _lastHeadPos;
         float _moodHold, _scale = 1f, _dizzyPhase;
-        float _pupilBase = 0.45f;  // Marko's Eyes prefab keeps its own pupil size
+        float _pupilBase = 0.45f; // the Eyes prefab keeps its own pupil size
         float _pupilDepth = 0.4f;  // ...and its own pupil-forward offset
 
-        /// True when HIS prefab supplied the eyes — callers must not then
+        /// True when the prefab supplied the eyes - callers must not then
         /// re-position/re-scale them as if they were the code-built pair.
         public bool IsCustom { get; private set; }
 
         /// A fully wired pair: two eyeballs, two pupils, ready to animate.
         /// False = this component is dead decoration (bake lost the wiring
-        /// and self-wire found no usable pair) — callers should rebuild.
+        /// and self-wire found no usable pair) - callers should rebuild.
         public bool IsAlive => _leftEye != null && _rightEye != null
             && _leftPupil != null && _rightPupil != null;
 
         Material _pupilMatL, _pupilMatR;   // whatever the pupils wore before a tint
         bool _tinted;
 
-        /// MIND CONTROL SHOWS IN THE EYES (Marko, Aug 6). A zombie under an
+        /// MIND CONTROL SHOWS IN THE EYES . A zombie under an
         /// acolyte's order gets red pupils, so a wizard can tell across a
         /// courtyard which of them are being driven and which are just wandering.
         /// That makes the acolyte's command visible in the world, the same way
         /// their green ink and their spent props already are.
         ///
         /// Passing null restores EXACTLY what the pupils wore before, including
-        /// his own materials if these are his custom eyes, so this borrows the
+        /// the materials if these are the custom eyes, so this borrows the
         /// look rather than overwriting it.
         public void SetPupilTint(Color? c)
         {
@@ -72,7 +72,7 @@ namespace SpellyZombie
         /// scale ≈ creature size (1 = human).
         public static GooglyEyes Attach(Transform body, float headHeight, float scale)
         {
-            // Marko's prefab first, both names, component ADOPTED, offset/scale composed (Marko Jul 25 axiom)
+            // the prefab first, both names, component ADOPTED, offset/scale composed
             var custom = PrefabVault.Spawn("Eyes", body) ?? PrefabVault.Spawn("GooglyEyes", body);
             if (custom != null)
             {
@@ -84,17 +84,17 @@ namespace SpellyZombie
                 e._scale = scale;
                 if (e.WireEyeballs(out var pupil))
                 {
-                    // pupil DEPTH is his styling; RATIO is behavior — bakes froze mid-dilation saucers
+                    // pupil DEPTH is the styling; RATIO is behavior - bakes froze mid-dilation saucers
                     e._pupilDepth = pupil.localPosition.z;
 
                     // DO NOT adopt the pupil's authored localScale as _pupilBase.
-                    // Tried it Aug 6 and reverted the same minute: his Eyes prefab
+                    // Tried it Aug 6 and reverted the same minute: the Eyes prefab
                     // authors pupils at a local scale near 1 (sized by the MESH,
                     // not by the transform), so using it drove them to full eye
                     // size at rest and every character stared like a saucer.
                     // The hardcoded 0.45 is not an oversight, it NORMALISES any
                     // eyes to a known ratio so dilation behaves the same on all of
-                    // them. Respecting his authored size would mean measuring the
+                    // them. Respecting the authored size would mean measuring the
                     // pupil against the EYE in world space, not reading localScale.
                 }
                 else
@@ -135,7 +135,7 @@ namespace SpellyZombie
             return eye.transform;
         }
 
-        /// Baked bodies lose the private wiring (Marko's "eyes always too large" bug) — re-wire; baked pupil scale resets to neutral ratio.
+        /// Baked bodies lose the private wiring — re-wire; baked pupil scale resets to neutral ratio.
         void Awake()
         {
             if (_leftEye != null && _leftPupil != null) return; // Attach wired us
@@ -195,7 +195,7 @@ namespace SpellyZombie
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
             // a custom Eyes prefab without the Eye/Pupil naming contract is
-            // pure decoration — it rides the head, nothing to animate
+            // pure decoration - it rides the head, nothing to animate
             if (_leftEye == null || _rightEye == null
                 || _leftPupil == null || _rightPupil == null) return;
 

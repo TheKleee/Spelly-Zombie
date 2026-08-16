@@ -12,7 +12,7 @@ namespace SpellyZombie
     /// atmosphere on top. Placement is BOUNDS-DRIVEN (pieces are measured at
     /// build time and dropped so their render bounds sit on the ground), so
     /// it adapts to the kit's real dimensions instead of guessing a grid.
-    /// Every placed piece gets mesh colliders (ink is a raycast — everything
+    /// Every placed piece gets mesh colliders (ink is a raycast - everything
     /// must be drawable) and a SurfaceMaterialTag (the village joins the
     /// chemistry: plaster/wood burns, brick melts).
     /// Rebuild-safe: everything lives under one "SZ_Village" root.
@@ -22,7 +22,7 @@ namespace SpellyZombie
         const string PropsFbx = "Assets/Fantasy Props/Exports/FBX/";
 
         // Polytope nature prefab folders (used by House doorstep grass and
-        // NatureCluster — both alive for PrefabExporter)
+        // NatureCluster - both alive for PrefabExporter)
         const string PTTrees = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/";
         const string PTPlants = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs/Plants/";
         const string PTFlowers = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs/Flowers/";
@@ -49,11 +49,11 @@ namespace SpellyZombie
 
         public static float WallW => _wallW;
         public static float WallH => _wallH;
-        /// The kit's measured wall-axis correction — external builders must
+        /// The kit's measured wall-axis correction - external builders must
         /// compose it into wall yaws exactly like House() does.
         public static float WallYawAuto => _wallYawAuto;
 
-        /// Point the placement toolkit at a root and measure the kit — the
+        /// Point the placement toolkit at a root and measure the kit - the
         /// GameMapBuilder shares all of this (Place/House/lights/materials).
         public static void BeginPlacement(Transform root)
         {
@@ -80,9 +80,9 @@ namespace SpellyZombie
                 if (probe2 != null) // re-measure WITH the fix applied
                 {
                     var s = BoundsOf(probe2).size;
-                    _wallH = s.y;                     // authored 3.12 — exact stacking
-                    _wallW = Mathf.Max(s.x, s.z);     // authored 2.00 — exact snapping
-                    _wallYawAuto = s.z > s.x ? 90f : 0f; // authored: walls run along X → expect 0
+                    _wallH = s.y;                     // authored 3.12 - exact stacking
+                    _wallW = Mathf.Max(s.x, s.z);     // authored 2.00 - exact snapping
+                    _wallYawAuto = s.z > s.x ? 90f : 0f; // authored: walls run along X  expect 0
                     Debug.Log($"[SpellyZombie] wall probe (fixed): {s.x:0.00} × {s.y:0.00} × {s.z:0.00}, yawAuto {_wallYawAuto}°");
                     Object.DestroyImmediate(probe2);
                 }
@@ -106,7 +106,7 @@ namespace SpellyZombie
             _fromVillage.Contains(model) ? _villageFix : _propsFix;
 
         // the props kit has PER-FILE export scales (barrel needed ×114, chest
-        // was already true size → the kit multiplier made it a building).
+        // was already true size  the kit multiplier made it a building).
         // Expected real-world size of each piece's LARGEST dimension; pieces
         // more than 2× off after the kit fix get normalized to this.
         static readonly Dictionary<string, float> ExpectedMax = new Dictionary<string, float>
@@ -135,11 +135,11 @@ namespace SpellyZombie
             float maxDim = Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z));
             if (maxDim < 0.001f) return;
             float ratio = maxDim / target;
-            if (ratio > 2f || ratio < 0.5f) // way off → trust the table, not the file
+            if (ratio > 2f || ratio < 0.5f) // way off  trust the table, not the file
                 inst.transform.localScale *= target / maxDim;
         }
 
-        // NOTE: all scene-BUILDING code was deleted at Marko's order — he
+        // NOTE: all scene-BUILDING code was deleted at the order - he
         // composes scenes by hand. The helpers below exist for PrefabExporter.
 
         /// A floating slide-weapon pickup (temp look, real mechanism).
@@ -183,7 +183,7 @@ namespace SpellyZombie
                         if (Random.value < 0.55f)
                             PlacePivot("WindowShutters_Wide_Flat_Open", frontWall.transform.position,
                                 frontWall.transform.rotation, SurfaceMaterialType.Wood);
-                        // upper-floor windows sometimes grow BALCONIES — flyers
+                        // upper-floor windows sometimes grow BALCONIES - flyers
                         // and crouch-jumpers get perches (verticality!)
                         if (f > 0 && Random.value < 0.45f)
                             PlacePivot("Balcony_Simple_Straight", frontWall.transform.position,
@@ -209,7 +209,7 @@ namespace SpellyZombie
                 }
             }
 
-            // a chimney poking through most roofs — houses read as LIVED IN
+            // a chimney poking through most roofs - houses read as LIVED IN
             if (Random.value < 0.7f)
                 PlaceFloat("Prop_Chimney",
                     center + right * (halfW * 0.45f) + Vector3.up * (floors * _wallH + 2.3f),
@@ -226,7 +226,7 @@ namespace SpellyZombie
             if (furnish) Interior(center, fwd, right, wide, deep, facingDeg);
 
             // one seamless drawing plane per facade (plaza-canvas fix, but
-            // for walls — big seals across a house front never split again)
+            // for walls - big seals across a house front never split again)
             float canvasH = floors * _wallH;
             AddCanvas(center + fwd * (halfD + 0.24f), facingDeg, wide * _wallW, canvasH, wallTag);
             AddCanvas(center - fwd * (halfD + 0.24f), facingDeg + 180f, wide * _wallW, canvasH, wallTag);
@@ -324,7 +324,7 @@ namespace SpellyZombie
 
         /// A wall plus its DETAIL: window walls get the actual window insert
         /// (glass frame) and often open shutters; door walls get a door leaf.
-        /// Inserts are placed at the WALL'S OWN PIVOT with its exact rotation —
+        /// Inserts are placed at the WALL'S OWN PIVOT with its exact rotation -
         /// the kit's pieces are authored to slot together that way.
         static void PlaceWallDetailed(string wallPiece, Vector3 groundPos, float yaw, SurfaceMaterialType tag)
         {
@@ -346,7 +346,7 @@ namespace SpellyZombie
         }
 
         /// Door frame + a breakable leaf, BOUNDS-centered in the doorway
-        /// (hinge-pivot math kept flipping with import axes — bounds can't
+        /// (hinge-pivot math kept flipping with import axes - bounds can't
         /// lie), widened to fill the 1.4m arch (local X stays a world
         /// horizontal here, so the stretch can't shear).
         static void PlaceWallDoorDetail(GameObject wall, float yaw)
@@ -364,7 +364,7 @@ namespace SpellyZombie
                 leaf.transform.position += new Vector3(
                     wall.transform.position.x - lb.center.x, 0f,
                     wall.transform.position.z - lb.center.z);
-                // Marko's rules: doors BREAK (burn/smash) — or open politely
+                    // the rules: doors BREAK (burn/smash) - or open politely
                 // with E when you're close
                 MakeBreakable(leaf, 45f);
                 leaf.AddComponent<DoorInteract>();
@@ -372,7 +372,7 @@ namespace SpellyZombie
         }
 
         /// Kinematic body + health: heat particles can ignite it (Thermal grows
-        /// on the rigidbody), thrown matter crushes it, and at 0 HP it's gone —
+        /// on the rigidbody), thrown matter crushes it, and at 0 HP it's gone -
         /// the doorway stands open.
         public static void MakeBreakable(GameObject go, float health)
         {
@@ -380,7 +380,7 @@ namespace SpellyZombie
             var rb = go.AddComponent<Rigidbody>();
             rb.isKinematic = true;
             go.AddComponent<Damageable>().Health = health;
-            go.AddComponent<Breakable>(); // death → chunks + splinters + poof
+            go.AddComponent<Breakable>(); // death  chunks + splinters + poof
         }
 
         public static void StripColliders(GameObject inst)
@@ -406,7 +406,7 @@ namespace SpellyZombie
         }
 
         /// Exact-pivot placement for kit pieces that slot into other pieces
-        /// (window inserts, door leaves) — no bounds-dropping, the author's
+        /// (window inserts, door leaves) - no bounds-dropping, the author's
         /// pivots line up by design. (Public: WorkshopBuilder slots inserts too.)
         public static GameObject PlacePivot(string model, Vector3 pivotPos, Quaternion rotation, SurfaceMaterialType tag)
         {
@@ -427,10 +427,10 @@ namespace SpellyZombie
             // the pivot so the eaves hug the wall top. Pick the SMALLEST kit
             // roof that covers the footprint from the sizes that actually
             // exist (asking for a 16m roof got the hall a 4×6 hat and a sky
-            // view) — never invent names, never scale.
+            // view) - never invent names, never scale.
             int w = Mathf.RoundToInt(footW), d = Mathf.RoundToInt(footD);
             int lo = Mathf.Min(w, d), hi = Mathf.Max(w, d);
-            Vector2Int[] roofSizes = // (A, B) as named — A is the X extent
+            Vector2Int[] roofSizes = // (A, B) as named - A is the X extent
             {
                 new Vector2Int(4, 4), new Vector2Int(4, 6), new Vector2Int(4, 8),
                 new Vector2Int(6, 4), new Vector2Int(6, 6), new Vector2Int(6, 8),
@@ -454,7 +454,7 @@ namespace SpellyZombie
             var inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab, _root);
             inst.transform.localScale = Vector3.one * _villageFix;
             // roof local X must land on the house axis its name-number covers:
-            // yaw=facing maps local X onto the house DEPTH axis? No — onto
+            // yaw=facing maps local X onto the house DEPTH axis? No - onto
             // 'right' (width). If the name's X-cover is the depth, turn 90°.
             float yaw = coverXisD ? facingDeg + 90f : facingDeg;
             inst.transform.rotation = Quaternion.Euler(0f, yaw, 0f) * inst.transform.rotation;
@@ -486,7 +486,7 @@ namespace SpellyZombie
                     Random.Range(0f, 360f), Random.Range(0.8f, 1.1f), SurfaceMaterialType.Wood);
         }
 
-        /// Polytope prefabs come correctly scaled with their own materials —
+        /// Polytope prefabs come correctly scaled with their own materials -
         /// instantiate, bounds-drop, tag. No kit fixes, no material surgery.
         public static GameObject PlacePT(string path, Vector3 groundPos, float yRot, float scale,
             SurfaceMaterialType tag, bool keepColliders = true)
@@ -530,7 +530,7 @@ namespace SpellyZombie
             var prefab = Load(model);
             if (prefab == null) return null;
             var inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab, _root);
-            // COMPOSE the yaw on top of the import rotation — Blender FBX
+            // COMPOSE the yaw on top of the import rotation - Blender FBX
             // stands up via a baked -90° root rotation; overwriting it laid
             // every wall flat on its back (the "nothing changed" build)
             inst.transform.rotation = Quaternion.Euler(0f, yRot, 0f) * inst.transform.rotation;
@@ -576,7 +576,7 @@ namespace SpellyZombie
             if (tag != SurfaceMaterialType.Unknown && inst.GetComponent<SurfaceMaterialTag>() == null)
                 inst.AddComponent<SurfaceMaterialTag>().Material = tag;
 
-            // THE CoD-ZOMBIES RULE (Marko): wooden PROPS burn and break —
+                // THE CoD-ZOMBIES RULE : wooden PROPS burn and break
             // fences, window inserts, shutters, doors, crates, stalls, benches.
             // Structure itself (walls/roofs/floors) stays standing.
             if (tag == SurfaceMaterialType.Wood && !IsStructural(inst.name))
@@ -620,7 +620,7 @@ namespace SpellyZombie
 
         /// Keep the packs' own look, guarantee URP + hooked-up textures:
         /// each source material gets one cached URP Lit twin (same texture,
-        /// same tint, matte) — fixes pink Standard imports and missing atlases.
+        /// same tint, matte) - fixes pink Standard imports and missing atlases.
         static void FixMaterials(GameObject inst)
         {
             foreach (var rend in inst.GetComponentsInChildren<Renderer>())

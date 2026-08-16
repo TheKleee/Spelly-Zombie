@@ -1654,6 +1654,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
       insertIndex: -1
       addedObject: {fileID: 19441081}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 19441086}
   m_SourcePrefab: {fileID: 100100000, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
 --- !u!4 &19441079 stripped
 Transform:
@@ -1700,7 +1703,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 56.69233
+  Health: 60
   Destructible: 1
 --- !u!54 &19441083
 Rigidbody:
@@ -1764,6 +1767,21 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 5404920284901014290, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+--- !u!114 &19441086
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 19441080}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef7765ce81e9298468fd01b1c7a93f87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.DoorInteract
+  FreezeRotX: 1
+  FreezeRotY: 1
+  FreezeRotZ: 0
 --- !u!1001 &21553075
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -28526,6 +28544,79 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
   Material: 1
+--- !u!1001 &345122228
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 2132239245}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.011129161
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.011129173
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.011129173
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.00014
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.00079
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.01192
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.3649689
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.9310198
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.00000024769435
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.0000005513024
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 42.811
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: -180
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 180
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_Name
+      value: Lobby Book
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 23be1013ad504514d8d18c17bc156546, type: 2}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
 --- !u!1001 &346879007
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -39502,6 +39593,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
       insertIndex: -1
       addedObject: {fileID: 518215895}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 518215900}
   m_SourcePrefab: {fileID: 100100000, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
 --- !u!4 &518215893 stripped
 Transform:
@@ -39548,7 +39642,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 56.692333
+  Health: 60
   Destructible: 1
 --- !u!54 &518215897
 Rigidbody:
@@ -39612,6 +39706,21 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 5404920284901014290, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+--- !u!114 &518215900
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 518215894}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef7765ce81e9298468fd01b1c7a93f87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.DoorInteract
+  FreezeRotX: 1
+  FreezeRotY: 1
+  FreezeRotZ: 0
 --- !u!1001 &518998201
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -50506,6 +50615,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
       insertIndex: -1
       addedObject: {fileID: 681345220}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 681345225}
   m_SourcePrefab: {fileID: 100100000, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
 --- !u!4 &681345218 stripped
 Transform:
@@ -50552,7 +50664,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 56.69233
+  Health: 60
   Destructible: 1
 --- !u!54 &681345222
 Rigidbody:
@@ -50616,6 +50728,21 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 5404920284901014290, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+--- !u!114 &681345225
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 681345219}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef7765ce81e9298468fd01b1c7a93f87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.DoorInteract
+  FreezeRotX: 1
+  FreezeRotY: 1
+  FreezeRotZ: 0
 --- !u!1001 &681603983
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -77025,6 +77152,39 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 2765029961918457010, guid: a94f1163702b8b947b289e280c48de6f, type: 3}
+--- !u!1 &1054368623
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1054368624}
+  m_Layer: 0
+  m_Name: SZ_LobbyPillars
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1054368624
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1054368623}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1448500300}
+  - {fileID: 1598993417}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1055950442
 GameObject:
   m_ObjectHideFlags: 0
@@ -82522,6 +82682,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1146270111}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1146270116}
   m_SourcePrefab: {fileID: 100100000, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
 --- !u!4 &1146270109 stripped
 Transform:
@@ -82568,7 +82731,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 56.69233
+  Health: 60
   Destructible: 1
 --- !u!54 &1146270113
 Rigidbody:
@@ -82632,6 +82795,21 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 5404920284901014290, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+--- !u!114 &1146270116
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1146270110}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef7765ce81e9298468fd01b1c7a93f87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.DoorInteract
+  FreezeRotX: 1
+  FreezeRotY: 1
+  FreezeRotZ: 0
 --- !u!1001 &1151432028
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -104476,6 +104654,51 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -6241732939888743250, guid: fddfac6983d49254cbdec30cf766bdd2, type: 3}
+--- !u!1 &1448500299
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1448500300}
+  - component: {fileID: 1448500301}
+  m_Layer: 0
+  m_Name: 'HatPillar (E: hat color)'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1448500300
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1448500299}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 3, y: 0.058, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1054368624}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1448500301
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1448500299}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91753683ffa3f0648928931efaa9fd17, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.HatPillar
+  Range: 2.8
 --- !u!1001 &1451394855
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -113510,6 +113733,52 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
   Material: 0
+--- !u!1 &1598993416
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1598993417}
+  - component: {fileID: 1598993418}
+  m_Layer: 0
+  m_Name: 'SidePillar (E: change side)'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1598993417
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1598993416}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3, y: 0.058, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1054368624}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1598993418
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1598993416}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2195b4b87a9946d4eb26f2dd916c2a9a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SidePillar
+  Range: 2.8
+  Emblem: {fileID: 0}
 --- !u!1001 &1599133213
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -118425,6 +118694,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
   Material: 0
+--- !u!95 &1673121028 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+  m_PrefabInstance: {fileID: 345122228}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1673121029 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
+  m_PrefabInstance: {fileID: 345122228}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1677864455
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -122906,6 +123185,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1743550727}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1743550732}
   m_SourcePrefab: {fileID: 100100000, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
 --- !u!4 &1743550725 stripped
 Transform:
@@ -122952,7 +123234,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 56.692326
+  Health: 60
   Destructible: 1
 --- !u!54 &1743550729
 Rigidbody:
@@ -123016,6 +123298,21 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 5404920284901014290, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+--- !u!114 &1743550732
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1743550726}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef7765ce81e9298468fd01b1c7a93f87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.DoorInteract
+  FreezeRotX: 1
+  FreezeRotY: 1
+  FreezeRotZ: 0
 --- !u!1001 &1747074659
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -124585,6 +124882,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1760324697}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1760324702}
   m_SourcePrefab: {fileID: 100100000, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
 --- !u!4 &1760324695 stripped
 Transform:
@@ -124631,7 +124931,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 56.69233
+  Health: 60
   Destructible: 1
 --- !u!54 &1760324699
 Rigidbody:
@@ -124695,6 +124995,21 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 5404920284901014290, guid: 6cf33fb09c0577c418bfad7682ca3d22, type: 3}
+--- !u!114 &1760324702
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1760324696}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef7765ce81e9298468fd01b1c7a93f87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.DoorInteract
+  FreezeRotX: 1
+  FreezeRotY: 1
+  FreezeRotZ: 0
 --- !u!21 &1760347778
 Material:
   serializedVersion: 8
@@ -130826,7 +131141,6 @@ Transform:
   - {fileID: 142712332}
   - {fileID: 1176106706}
   - {fileID: 399461153}
-  - {fileID: 2132239245}
   - {fileID: 1890049600}
   - {fileID: 1623599137}
   - {fileID: 1053482842}
@@ -148948,6 +149262,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 152043504208903764, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
+      propertyPath: m_TextStyleHashCode
+      value: -1183493901
+      objectReference: {fileID: 0}
     - target: {fileID: 676864338733702432, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
       propertyPath: m_Name
       value: Player
@@ -148995,7 +149313,13 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 2261207436441210924, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 0}
+    - targetCorrespondingSourceObject: {fileID: 4577041763165878703, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 0}
   m_SourcePrefab: {fileID: 100100000, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
 --- !u!1001 &2104735642
 PrefabInstance:
@@ -151756,11 +152080,11 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 1826625633}
+    m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalScale.x
-      value: 89.853935
+      value: 89.85398
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       propertyPath: m_LocalScale.y
@@ -151820,7 +152144,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1673121029}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       insertIndex: -1
@@ -151837,6 +152164,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2132239247}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2132239254}
   m_SourcePrefab: {fileID: 100100000, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
 --- !u!4 &2132239245 stripped
 Transform:
@@ -151947,6 +152277,21 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -2273217527633707236, guid: 3e8caf26f42ceb94ea163a923b1b229f, type: 3}
+--- !u!114 &2132239254
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2132239246}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 84795029f3d41e54aa361a9be2a38230, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.LobbyStand
+  Range: 1.25
+  Toughness: 600
+  Book: {fileID: 1673121028}
 --- !u!1001 &2134163392
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -152781,3 +153126,5 @@ SceneRoots:
   - {fileID: 298850717}
   - {fileID: 1826625633}
   - {fileID: 1006359749}
+  - {fileID: 1054368624}
+  - {fileID: 2132239244}

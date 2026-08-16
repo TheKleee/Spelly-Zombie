@@ -7,7 +7,7 @@ namespace SpellyZombie
     /// PERK CAULDRONS (CoD perk machines wearing witch hats): walk up, press E,
     /// drink the brew. One perk per cauldron type, they last the
     /// whole run and vanish on run end (wipe or victory). Effects are LOCAL
-    /// buffs consulted by the systems they touch — same accepted-divergence
+    /// buffs consulted by the systems they touch - same accepted-divergence
     /// model as Powerups until B4 host authority lands.
     ///
     ///   SURVIVAL — "Iron Gut":    max health 160, faster regen, +60 hp now
@@ -49,7 +49,7 @@ namespace SpellyZombie
                 DrawingWorld.Instance?.LogEvent($"{NameOf(t)} is already in your blood");
                 return false;
             }
-            // riches REMOVED (Marko: "idk why are they here") — brews are simply taken, no currency gate
+            // riches REMOVED — brews are simply taken, no currency gate
             _owned.Add(t);
             RebuildHudTag();
             if (t == CauldronType.Survival && buyer != null)
@@ -70,7 +70,7 @@ namespace SpellyZombie
             }
         }
 
-        /// A one-letter badge per owned perk for the HUD (cached — the HUD polls per frame; rebuilt on buy/reset).
+        /// A one-letter badge per owned perk for the HUD (cached - the HUD polls per frame; rebuilt on buy/reset).
         static string _hudTag = "";
         public static string HudTag() => _hudTag;
 
@@ -81,7 +81,7 @@ namespace SpellyZombie
                 if (Has(t)) _hudTag += NameOf(t)[0];
         }
 
-        /// Wipe or victory — the brews wear off with the run.
+        /// Wipe or victory - the brews wear off with the run.
         public static void ResetRun()
         {
             _owned.Clear();
@@ -89,8 +89,8 @@ namespace SpellyZombie
         }
     }
 
-    /// Attached automatically to every CauldronMarker when a scene loads —
-    /// Marko's hand-placed cauldrons become shops with zero re-wiring.
+    /// Attached automatically to every CauldronMarker when a scene loads -
+    /// the hand-placed cauldrons become shops with zero re-wiring.
     public class PerkCauldron : MonoBehaviour
     {
         const float Reach = 2.4f;
@@ -122,8 +122,8 @@ namespace SpellyZombie
             if (player == null || player.IsDowned) return;
             if ((player.transform.position - transform.position).sqrMagnitude > Reach * Reach) return;
 
-            // the cauldron is the INK WELL (Marko's ship rule): standing at
-            // the pot refills the wand fast — the anchor you keep returning
+            // the cauldron is the INK WELL : standing at
+            // the pot refills the wand fast - the anchor you keep returning
             // to, in any camera mode, prompt or no prompt
             var ink = player.GetComponent<PlayerInk>();
             if (ink != null) ink.Award(DrawingConfig.CauldronInkPerSec * Time.deltaTime);
@@ -131,7 +131,7 @@ namespace SpellyZombie
             if (PoseStudio.IsOpen || GameMenu.IsOpen) return;
             if (SimpleFPSController.ThirdPersonActive || SelfPaint.IsActive) return;
 
-            // one quiet CoD-style purchase prompt — only while standing at the pot
+            // one quiet CoD-style purchase prompt - only while standing at the pot
             UIPrompt.Show("E", Loc.F(Perks.Has(_marker.Type) ? "perk.brewed" : "perk.drink",
                 Perks.NameOf(_marker.Type)));
 

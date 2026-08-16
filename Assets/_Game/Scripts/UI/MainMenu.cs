@@ -8,7 +8,7 @@ namespace SpellyZombie
     /// a pedestal right-of-center (PoseStudio in AlwaysOpen mode handles that).
     ///
     /// Create Server starts a local match until EOS lands; Find Server is the
-    /// future server browser. Poses are saved HERE — drawing on your character
+    /// future server browser. Poses are saved HERE - drawing on your character
     /// happens pre-match in the lobby, never in the menu.
     public class MainMenu : MonoBehaviour
     {
@@ -30,8 +30,8 @@ namespace SpellyZombie
 
         void OnDestroy()
         {
-            // the canvas persists across scenes — the menu HIDES (never
-            // destroys: prefab-adopted UI must survive Menu→Lobby→Menu)
+            // the canvas persists across scenes - the menu HIDES (never
+            // destroys: prefab-adopted UI must survive MenuLobbyMenu)
             if (_ui != null) _ui.gameObject.SetActive(false);
         }
 
@@ -41,7 +41,7 @@ namespace SpellyZombie
             _ui = UIKit.Group(UIKit.Root, "MainMenu");
             UIKit.Stretch(_ui);
 
-            // title top-left, button column on the left — Marko's Meccha layout
+            // title top-left, button column on the left - the Meccha layout
             var title = UIKit.Label(_ui, "Spelly Zombie", 58, UIKit.Parchment, TextAnchor.MiddleLeft, true);
             UIKit.Place((RectTransform)title.transform, new Vector2(0f, 1f), new Vector2(46f, -66f), new Vector2(700f, 80f));
             var tag = UIKit.Label(_ui, "draw fast. die funny.", 20, UIKit.Gold, TextAnchor.MiddleLeft);
@@ -56,18 +56,15 @@ namespace SpellyZombie
                 y -= 60f;
             }
 
-            // menu → LOBBY (pick team, ready up) — Marko's two modes:
-            // Create Server = host a FRIENDS lobby (code + Steam invites);
-            // Find Server = join by code / Quick Join a public lobby.
-            // No Steam running = plain offline village (LAN panel still works).
-            MenuButton("Create Server", () =>
+            // one door: the lobby is the sandbox AND the control room, so the
+            // menu needs exactly one verb
+            MenuButton(Loc.T("menu.play"), () =>
             {
-                if (SteamLobby.SteamReady) SteamLobby.HostFriends();
-                else SceneManager.LoadScene("Lobby");
+                LoadingHints.Show();
+                SceneManager.LoadScene("Lobby");
             });
-            MenuButton("Find Server", ToggleJoin);
-            MenuButton("Settings", ToggleSettings, skin != null ? skin.ButtonGrey : null);
-            MenuButton("Quit Game", GameMenu.QuitGame, skin != null ? skin.ButtonRed : null);
+            MenuButton(Loc.T("menu.options"), ToggleSettings, skin != null ? skin.ButtonGrey : null);
+            MenuButton(Loc.T("menu.quit"), GameMenu.QuitGame, skin != null ? skin.ButtonRed : null);
 
             _statusLabel = UIKit.Label(_ui, _status, 15, UIKit.Parchment, TextAnchor.UpperLeft);
             _statusLabel.horizontalOverflow = HorizontalWrapMode.Wrap;
@@ -80,47 +77,7 @@ namespace SpellyZombie
             // "Steam not running") — the status corner is its mouth
             if (_statusLabel != null && !string.IsNullOrEmpty(SteamLobby.Status))
                 _statusLabel.text = SteamLobby.Status;
-        }
 
-        RectTransform _joinUi;
-        string _code = "";
-
-        /// Marko's join flow: type a friend's CODE, or Quick Join a public
-        /// lobby (none open = you host one and randoms find you).
-        void ToggleJoin()
-        {
-            if (_joinUi != null)
-            {
-                Destroy(_joinUi.gameObject);
-                _joinUi = null;
-                return;
-            }
-            if (!SteamLobby.SteamReady)
-            {
-                _statusLabel.text = "Steam isn't running. Start Steam to host or join online. (Offline: Create Server opens the village solo.)";
-                return;
-            }
-
-            var skin = UISkin.I;
-            _joinUi = UIKit.Group(_ui, "JoinPanel");
-            UIKit.Place(_joinUi, new Vector2(0f, 0.5f), new Vector2(330f, -80f), new Vector2(320f, 168f));
-            var back = UIKit.Panel(_joinUi, skin != null ? skin.PanelBrown : null,
-                skin != null ? Color.white : new Color(0.22f, 0.17f, 0.12f, 0.95f));
-            UIKit.Stretch((RectTransform)back.transform);
-
-            var label = UIKit.Label(_joinUi, "Friend's lobby code:", 16, UIKit.Ink, TextAnchor.MiddleLeft, true);
-            UIKit.Place((RectTransform)label.transform, new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(270f, 22f));
-
-            var codeField = UIKit.Input(_joinUi, _code, v => _code = v);
-            UIKit.Place((RectTransform)codeField.transform, new Vector2(0.5f, 1f), new Vector2(-40f, -52f), new Vector2(180f, 30f));
-
-            var joinBtn = UIKit.Button(_joinUi, "JOIN", () => SteamLobby.JoinByCode(_code),
-                skin != null ? skin.ButtonBrown : null, 15);
-            UIKit.Place((RectTransform)joinBtn.transform, new Vector2(0.5f, 1f), new Vector2(100f, -52f), new Vector2(76f, 30f));
-
-            var quick = UIKit.Button(_joinUi, "QUICK JOIN A PUBLIC LOBBY", () => SteamLobby.QuickJoin(),
-                skin != null ? skin.ButtonGrey : null, 15);
-            UIKit.Place((RectTransform)quick.transform, new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(270f, 36f));
         }
 
         void ToggleSettings()
