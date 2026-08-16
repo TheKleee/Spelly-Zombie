@@ -22,11 +22,16 @@ namespace SpellyZombie
 
         Rigidbody _body;
 
+        // authored scene furniture (present at load) is what the lobby
+        // rebuilds; runtime spawns - zombies, matter, debris - die for real
+        bool _authored;
+
         void Awake()
         {
             // dynamic props can be destroyed; static geometry shouldn't vanish
             _body = GetComponent<Rigidbody>();
             Destructible = _body != null;
+            _authored = Time.timeSinceLevelLoad < 1f;
         }
 
         // ================================================ IMPACT HURTS ====
@@ -110,7 +115,17 @@ namespace SpellyZombie
                 _dead = true;
                 Debug.Log($"[SpellyZombie] {name} destroyed by {cause}");
                 OnDeath?.Invoke(cause);
-                if (Destructible) Destroy(gameObject);
+                if (!Destructible) return;
+                // THE LOBBY LAW, enforced at the source: authored things
+                // disappear and reappear, ALL of them, whatever components
+                // they carry - nothing authored is ever gone for good in the
+                // sandbox. Creatures and runtime spawns still die for real.
+                if (RoundDirector.InLobby && _authored
+                    && GetComponent<Creature>() == null
+                    && GetComponent<SimpleFPSController>() == null)
+                    LobbyRespawn.Take(gameObject, DrawingConfig.LobbyRespawnSeconds);
+                else
+                    Destroy(gameObject);
             }
         }
     }

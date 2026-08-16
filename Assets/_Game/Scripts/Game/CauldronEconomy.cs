@@ -51,7 +51,6 @@ namespace SpellyZombie
         /// The lobby pot skips prep and rebrews on a 10s clock - the practice
         /// well with real behaviour and a failsafe.
         bool _lobby;
-        float _lobbyRefreshIn;
         float _lobbySkyIn = -1f;  // lobby: seconds until the ink falls from the sky
         bool _cometSent;          // the courier left the sky; ink lands WITH it
         bool _warnedMortal;
@@ -60,14 +59,28 @@ namespace SpellyZombie
         /// Ground() when every real cauldron is rubble. Same rules, no hiding.
         [System.NonSerialized] public bool Grounded;
 
+        Damageable _hp;
+
         void Awake()
         {
             // THE POT DIES LIKE ANYTHING ELSE : the Damageable carries
             // the durability, the Breakable makes the debris - we only listen.
             // Subscribed once for the object's lifetime; lobby SetActive
-            // cycles must not stack handlers.
-            var dmg = GetComponent<Damageable>();
-            if (dmg != null) dmg.OnDeath += _ => OnPotBroken();
+            // cycles must not stack handlers. ALL Damageables under the pot
+            // count - authored pots carry theirs on the bowl child, and a
+            // root-only lookup silently missed it.
+            _hp = GetComponentInChildren<Damageable>(true);
+            var mine = new System.Collections.Generic.HashSet<Damageable>(
+                GetComponentsInChildren<Damageable>(true));
+            foreach (var d in mine)
+                d.OnDeath += _ => OnPotBroken();
+            // the Damageable may also sit ABOVE this component in his prefab
+            var above = GetComponentInParent<Damageable>();
+            if (above != null && !mine.Contains(above))
+            {
+                if (_hp == null) _hp = above;
+                above.OnDeath += _ => OnPotBroken();
+            }
         }
 
         public static CauldronEconomy Active { get; private set; }
@@ -174,7 +187,7 @@ namespace SpellyZombie
             if (!_lobby && !Grounded && !_warnedMortal)
             {
                 _warnedMortal = true;
-                if (GetComponent<Damageable>() == null)
+                if (_hp == null)
                     Debug.LogWarning($"[SpellyZombie] Cauldron '{name}' has no Damageable — it can never " +
                         "shatter, the ink can never flee, and the InkGrave endgame can never happen. Add " +
                         "Damageable (big HP — 'more durable') + Breakable to the prefab.", this);
@@ -248,11 +261,20 @@ namespace SpellyZombie
         /// already-served pot just resets the cycle for the next fall.
         void LandLobbyInk()
         {
-            if (this == null || !isActiveAndEnabled) return;
+            if (this == null) return;
             _cometSent = false;
             _lobbySkyIn = -1f;
             var grave = GetComponent<LobbyRespawn>();
-            if ((grave != null && grave.Hidden) || _open) return;
+            if ((grave != null && grave.Hidden) || !isActiveAndEnabled)
+            {
+                // the pot died while its ink was falling: the ink lands
+                // anyway, pooled at the map center with no vessel
+                _fleeInk = DrawingConfig.PotCapacityInk;
+                _fleeCorrupt = false;
+                Ground();
+                return;
+            }
+            if (_open) return;
             _open = true;
             _ink = DrawingConfig.PotCapacityInk;
             _corrupt = false;
@@ -289,6 +311,15 @@ namespace SpellyZombie
             pool._prep = 0f;
             Active = pool;
 
+            // the authored blob at the grave IS the pool's body: the same
+            // paint pipeline that runs a pot's ink now scales and tints it
+            if (InkGrave.I != null)
+            {
+                InkGrave.I.Reveal();
+                pool.InkSurface = InkGrave.I.transform;
+                pool._surfaceScale0 = InkGrave.I.transform.localScale;
+            }
+
             Color c = pool._corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
             SkyBeam.Down(at, c);
             if (FxLibrary.I != null) FxLibrary.SpawnTinted(FxLibrary.I.Splash, at + Vector3.up * 0.3f, c);
@@ -312,12 +343,17 @@ namespace SpellyZombie
                 // destroyed") — then LobbyRespawn rebuilds the OBJECT (3s,
                 // the number on the Breakable) and the ink falls back 10s
                 // after the pot stands again
+                // only ink that EXISTS can flee - an empty pot just breaks
                 if (_open && _ink > 0.5f)
                     SkyBeam.Up(transform.position,
                         _corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
                 _open = false; _ink = 0f; _corrupt = false;
                 _defuse = 0f; _corruptTouch = 0f;
                 _lobbySkyIn = -1f;
+                // the pot itself survives the lobby even WITHOUT a Breakable:
+                // only Breakable's shatter used to route here, so a plain
+                // Damageable death deleted the pot for good
+                LobbyRespawn.Take(gameObject, DrawingConfig.LobbyRespawnSeconds);
                 return;
             }
             if (!NetGame.IsAuthority) return; // clients mirror via PushNet
@@ -397,17 +433,20 @@ namespace SpellyZombie
                     PushNet();
                     return; // an empty vessel until the comet actually lands
                 }
-                _lobbyRefreshIn -= dt;
-                if (_lobbyRefreshIn <= 0f)
+                // NO periodic refresh: the pot refills ONLY once its ink is
+                // truly gone - drunk dry or evaporated green - and then from
+                // the sky, the same beat a real match teaches
+                // half a unit counts as dry - trailing fractions the wand
+                // cannot sip must never hold the pot hostage
+                if (_ink <= 0.5f)
                 {
-                    _lobbyRefreshIn = DrawingConfig.LobbyPotRefreshSeconds;
-                    bool restored = _corrupt || _ink < DrawingConfig.PotCapacityInk - 0.5f;
-                    _ink = DrawingConfig.PotCapacityInk;
+                    _ink = 0f;
+                    _open = false;
                     _corrupt = false;
                     _defuse = 0f;
-                    // NO opening wipe here - that beat belongs to a round's
-                    // brew-up, and a lobby full of test zombies must survive it
-                    if (restored) Juice.Chime(transform.position);
+                    Greenness = 0f;
+                    _lobbySkyIn = -1f; // the empty-vessel path arms the comet
+                    DrawingWorld.Instance?.LogEvent("the pot ran dry. new ink will fall from the sky");
                 }
             }
 
@@ -735,10 +774,11 @@ namespace SpellyZombie
 
         void PaintSurface()
         {
-            // the grounded puddle has no vessel and no authored liquid - the
-            // disc stands in, and the loud no-InkSurface error stays for REAL
-            // pots only (a puddle without a bowl is correct, not a mistake)
-            if (Grounded) { PaintGroundPool(); return; }
+            // the grounded puddle: the authored InkGrave blob when one exists
+            // (assigned by Ground, painted below like any pot ink), else the
+            // placeholder disc - and the loud no-InkSurface error stays for
+            // REAL pots only (a puddle without a bowl is correct, not a mistake)
+            if (Grounded && InkSurface == null) { PaintGroundPool(); return; }
 
             // FAIL LOUDLY, NEVER SILENTLY. An unassigned
             // InkSurface meant the pot had ink mechanically and showed nothing,
@@ -760,9 +800,10 @@ namespace SpellyZombie
             bool show = f > 0.01f;
             if (InkSurface.gameObject.activeSelf != show) InkSurface.gameObject.SetActive(show);
             if (!show) return;
-            var s = _surfaceScale0;
-            s.y *= f;
-            InkSurface.localScale = s;
+            // the ink SHRINKS as it is spent - whole-body scale, not a flat
+            // squash, all the way down to a speck so near-empty reads as
+            // nearly gone, never as stuck
+            InkSurface.localScale = _surfaceScale0 * Mathf.Lerp(0.05f, 1f, f);
             // THE INK WEARS THE LIVING LIQUID MATERIAL ("why is
             // it not deforming like a liquid would?") — the jelly is not
             // physics, it is the SZParticle shader's vertex wobble, the exact

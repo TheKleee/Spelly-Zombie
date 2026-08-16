@@ -302,6 +302,13 @@ namespace SpellyZombie
                     l.startColor = c;
                     l.endColor = c;
                 }
+            if (_ribbon != null && _ribbon.vertexCount > 0)
+            {
+                _rc.Clear();
+                Color vc = c.linear; // same conversion the bake applies
+                for (int i = 0; i < _ribbon.vertexCount; i++) _rc.Add(vc);
+                _ribbon.SetColors(_rc);
+            }
         }
 
         /// Nodes ride moving surfaces, so the line refreshes from live positions -
@@ -320,6 +327,27 @@ namespace SpellyZombie
             bool hidden = Hidden();
             if (_lineGo != null && _lineGo.activeSelf == hidden) _lineGo.SetActive(!hidden);
             if (hidden) return;
+
+            // ONE RIGID CARRIER = the line rides it for free: parented under
+            // the surface, filled in LOCAL space only when the ink changes.
+            // Lifting an inked cauldron used to rebuild every stroke every
+            // frame; an anchored line costs nothing while riding. Body and
+            // weapon ink stays on the live path: its nodes get rebased onto
+            // several bones after baking, and bones move relative to each other.
+            bool anchorable = !MultiSurface && !Persistent && State != StrokeState.Drawing
+                && First != null && First.transform.parent != null;
+            if (anchorable)
+            {
+                var carrier = First.transform.parent;
+                if (_anchor != carrier) Anchor(carrier);
+                if (_ribbonGo != null && _ribbonGo.activeSelf == hidden)
+                    _ribbonGo.SetActive(!hidden);
+                if (!_dirty) return;
+                _dirty = false;
+                BuildRibbon();
+                return;
+            }
+            if (_anchor != null) Unanchor();
 
             if (!_dirty && State != StrokeState.Drawing && SamplesHeldStill())
                 return; // nothing moved - keep last frame's line
@@ -360,6 +388,134 @@ namespace SpellyZombie
             }
             for (int r = runCount - 1; r < _extra.Count; r++) // park unused pieces
                 if (r >= 0 && _extra[r] != null) _extra[r].positionCount = 0;
+        }
+
+        Transform _anchor;
+        float _widthFix = 1f; // local-space width is scaled by the carrier
+        GameObject _ribbonGo;
+        Mesh _ribbon;
+        float _evapK = 1f;
+
+        void Anchor(Transform carrier)
+        {
+            _anchor = carrier;
+            Vector3 s = carrier.lossyScale;
+            float avg = (Mathf.Abs(s.x) + Mathf.Abs(s.y) + Mathf.Abs(s.z)) / 3f;
+            _widthFix = avg > 0.0001f ? 1f / avg : 1f;
+            _line.positionCount = 0; // the ribbon takes over rendering
+            foreach (var lr in _extra)
+                if (lr != null) lr.positionCount = 0;
+            _dirty = true;
+        }
+
+        void Unanchor()
+        {
+            _anchor = null;
+            _widthFix = 1f;
+            if (_ribbonGo != null) Object.Destroy(_ribbonGo);
+            _ribbonGo = null;
+            _ribbon = null;
+            _dirty = true;
+        }
+
+        static readonly List<Vector3> _rv = new List<Vector3>();
+        static readonly List<Color> _rc = new List<Color>();
+        static readonly List<int> _rt = new List<int>();
+        static readonly List<int> _run = new List<int>();
+
+        /// The ink as a baked ribbon lying IN the surface plane, parented to
+        /// the carrier: built only when the ink itself changes, zero cost
+        /// while riding, and no camera alignment to break.
+        void BuildRibbon()
+        {
+            if (_anchor == null) return;
+            if (_ribbonGo == null)
+            {
+                _ribbonGo = new GameObject($"StrokeRibbon_{Id}");
+                _ribbonGo.transform.SetParent(_anchor, false);
+                _ribbonGo.transform.localPosition = Vector3.zero;
+                _ribbonGo.transform.localRotation = Quaternion.identity;
+                _ribbonGo.transform.localScale = Vector3.one;
+                var mf = _ribbonGo.AddComponent<MeshFilter>();
+                var mr = _ribbonGo.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = _line.sharedMaterial;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                _ribbon = new Mesh { name = $"InkRibbon_{Id}" };
+                mf.sharedMesh = _ribbon;
+            }
+
+            float half = DrawingConfig.InkWidth * _widthFix * Mathf.Clamp01(_evapK) * 0.5f;
+            _rv.Clear(); _rc.Clear(); _rt.Clear();
+
+            int i = 0;
+            while (i < Nodes.Count)
+            {
+                if (Nodes[i] == null) { i++; continue; }
+                _run.Clear();
+                while (i < Nodes.Count && Nodes[i] != null) _run.Add(i++);
+                EmitRun(half);
+            }
+
+            _ribbon.Clear();
+            _ribbon.SetVertices(_rv);
+            _ribbon.SetColors(_rc);
+            _ribbon.SetTriangles(_rt, 0);
+            _ribbon.RecalculateBounds();
+        }
+
+        /// One unbroken run of nodes becomes one quad strip. A lone node
+        /// still shows as an ink dot.
+        void EmitRun(float half)
+        {
+            // mesh vertex colors skip the sRGB conversion line colors get:
+            // convert by hand or the navy ink renders bright blue
+            Color vc = _color.linear;
+            int first = -1, prev = -1;
+            for (int k = 0; k < _run.Count; k++)
+            {
+                var n = Nodes[_run[k]];
+                Vector3 p = n.transform.localPosition;
+                Vector3 nrm = _anchor.InverseTransformDirection(n.SurfaceNormal);
+                if (nrm.sqrMagnitude < 1e-6f) nrm = Vector3.up;
+                nrm.Normalize();
+
+                Vector3 tan = Vector3.zero;
+                if (k > 0) tan += p - Nodes[_run[k - 1]].transform.localPosition;
+                if (k + 1 < _run.Count) tan += Nodes[_run[k + 1]].transform.localPosition - p;
+                if (tan.sqrMagnitude < 1e-10f) tan = Vector3.Cross(nrm, Vector3.up);
+                if (tan.sqrMagnitude < 1e-10f) tan = Vector3.Cross(nrm, Vector3.right);
+                tan.Normalize();
+                Vector3 side = Vector3.Cross(nrm, tan).normalized * half;
+
+                _rv.Add(p - side); _rv.Add(p + side);
+                _rc.Add(vc); _rc.Add(vc);
+                int pair = _rv.Count - 2;
+                if (prev >= 0)
+                {
+                    _rt.Add(prev); _rt.Add(prev + 1); _rt.Add(pair);
+                    _rt.Add(pair); _rt.Add(prev + 1); _rt.Add(pair + 1);
+                }
+                if (first < 0) first = pair;
+                prev = pair;
+
+                if (_run.Count == 1)
+                {
+                    // the dot: a small quad along the fallback tangent
+                    Vector3 tip = p + tan * half;
+                    _rv.Add(tip - side); _rv.Add(tip + side);
+                    _rc.Add(vc); _rc.Add(vc);
+                    int pair2 = _rv.Count - 2;
+                    _rt.Add(pair); _rt.Add(pair + 1); _rt.Add(pair2);
+                    _rt.Add(pair2); _rt.Add(pair + 1); _rt.Add(pair2 + 1);
+                }
+            }
+
+            // a closed ring joins its ends (only when the whole stroke is one run)
+            if (_loop && first == 0 && prev > 0 && _run.Count == Nodes.Count)
+            {
+                _rt.Add(prev); _rt.Add(prev + 1); _rt.Add(0);
+                _rt.Add(0); _rt.Add(prev + 1); _rt.Add(1);
+            }
         }
 
         /// Half a millimetre: a line lagging its skin by less than ink width
@@ -462,6 +618,8 @@ namespace SpellyZombie
             if (_line != null) _line.widthMultiplier = w;
             foreach (var lr in _extra)
                 if (lr != null) lr.widthMultiplier = w;
+            _evapK = Mathf.Clamp01(k);
+            if (_anchor != null) BuildRibbon(); // thinning rebake, once per tick
         }
 
         /// Destroy all ink belonging to this stroke.
@@ -471,6 +629,9 @@ namespace SpellyZombie
             foreach (var n in Nodes)
                 if (n != null) Object.Destroy(n.gameObject);
             if (_lineGo != null) Object.Destroy(_lineGo); // parts are children - they go too
+            if (_ribbonGo != null) Object.Destroy(_ribbonGo);
+            _ribbonGo = null;
+            _ribbon = null;
             _line = null;
             _lineGo = null;
             _extra.Clear();
@@ -484,6 +645,9 @@ namespace SpellyZombie
             Nodes.Clear();
             _runningLength.Clear();
             if (_lineGo != null) Object.Destroy(_lineGo);
+            if (_ribbonGo != null) Object.Destroy(_ribbonGo);
+            _ribbonGo = null;
+            _ribbon = null;
             _line = null;
             _lineGo = null;
             _extra.Clear();

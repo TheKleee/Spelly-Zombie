@@ -75,10 +75,12 @@ namespace SpellyZombie
                     if (s.Surface == transform || s.Surface.IsChildOf(transform)) s.Burn();
                 }
 
-            // Damageable would Destroy() us the moment OnDeath returns - this is
-            // the one hook that stops it, and it is restored on the way back.
-            var dmg = GetComponent<Damageable>();
-            if (dmg != null) dmg.Destructible = false;
+            // Damageable would Destroy() its object the moment OnDeath returns -
+            // this is the one hook that stops it, restored on the way back.
+            // EVERY Damageable under the object counts: authored props carry
+            // theirs on mesh children, and a root-only flip let the child die.
+            foreach (var d in GetComponentsInChildren<Damageable>(true))
+                if (d != null) d.Destructible = false;
 
             _hidden.Clear();
             foreach (var rend in GetComponentsInChildren<Renderer>(true))
@@ -134,14 +136,15 @@ namespace SpellyZombie
             _hidden.Clear();
             _off.Clear();
 
-            var dmg = GetComponent<Damageable>();
-            if (dmg != null)
-            {
-                // Revive, not just heal: the private dead-flag must drop too,
-                // or the prop comes back IMMORTAL (breakable exactly once)
-                dmg.Revive(_health0 > 0f ? _health0 : 100f);
-                dmg.Destructible = true;
-            }
+            // Revive, not just heal: the private dead-flag must drop too,
+            // or the prop comes back IMMORTAL (breakable exactly once).
+            // Every Damageable under the object, same reach as the Vanish.
+            foreach (var d in GetComponentsInChildren<Damageable>(true))
+                if (d != null)
+                {
+                    d.Revive(_health0 > 0f ? _health0 : 100f);
+                    d.Destructible = true;
+                }
 
             // the ink an acolyte's scan left on it goes too, so the same prop
             // can be scanned again by the next person practising

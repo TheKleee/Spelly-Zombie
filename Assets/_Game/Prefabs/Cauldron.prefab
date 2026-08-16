@@ -137,15 +137,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: f733b049c55c08d4197918191beda3ba, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.0055
+      value: 0.55
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f733b049c55c08d4197918191beda3ba, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.0055
+      value: 0.55
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f733b049c55c08d4197918191beda3ba, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.0055
+      value: 0.55
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f733b049c55c08d4197918191beda3ba, type: 3}
       propertyPath: m_LocalPosition.x
@@ -249,7 +249,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: f733b049c55c08d4197918191beda3ba, type: 3}
       propertyPath: m_Name
-      value: Blob
+      value: Ink Blob
       objectReference: {fileID: 0}
     - target: {fileID: 7319203276566864997, guid: f733b049c55c08d4197918191beda3ba, type: 3}
       propertyPath: m_LocalPosition.x
@@ -363,6 +363,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2c05615ec5a453648a17e74199905892, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4561452000465318016}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2c05615ec5a453648a17e74199905892, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4578565329807404185}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2c05615ec5a453648a17e74199905892, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 914704546402020679}
   m_SourcePrefab: {fileID: 100100000, guid: 2c05615ec5a453648a17e74199905892, type: 3}
 --- !u!1 &4884948637868380248 stripped
 GameObject:
@@ -440,6 +446,43 @@ MonoBehaviour:
   Bowl: {fileID: 9164501840569763143}
   InkMaterial: {fileID: 2100000, guid: 72ac58ce19768f945ada656a1f6eae50, type: 2}
   CorruptInkMaterial: {fileID: 2100000, guid: a6347889594dac0469c138f127bd7863, type: 2}
+--- !u!114 &4578565329807404185
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4884948637868380248}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 3
+  DebrisMax: 6
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 8
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
+  LobbyRespawnOverride: 3
+--- !u!114 &914704546402020679
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4884948637868380248}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
+  Health: 400
+  Destructible: 1
 --- !u!4 &5224459564016732898 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2c05615ec5a453648a17e74199905892, type: 3}

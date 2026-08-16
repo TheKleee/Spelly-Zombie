@@ -2,16 +2,31 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE MAP'S HEART - where the ink falls when every cauldron is rubble
-    /// ("ink falls at the center of the map flat on the floor
-    /// and can no longer be lifted... turning what was hide and seek into a
-    /// base defense game"). Drop this on an empty at the arena center, one
-    /// per gameplay map; the lobby never needs it. No marker on a map = a
-    /// LOUD error at the moment it matters, and the last broken pot's
-    /// position stands in so the round can still finish.
+    /// The map-center marker where vessel-less ink pools. Put this component
+    /// ON the authored ink blob placed at the center: the blob stays hidden
+    /// until ink actually grounds here, then the pot pipeline drives its
+    /// size and colour like any pot's ink.
     public class InkGrave : MonoBehaviour
     {
         public static InkGrave I { get; private set; }
+
+        Renderer[] _rends;
+
+        void Awake()
+        {
+            _rends = GetComponentsInChildren<Renderer>(true);
+            foreach (var r in _rends)
+                if (r != null) r.enabled = false;
+        }
+
+        /// The ink has landed: the authored blob becomes visible.
+        public void Reveal()
+        {
+            if (_rends == null) return;
+            foreach (var r in _rends)
+                if (r != null) r.enabled = true;
+        }
+
         void OnEnable() { I = this; }
         void OnDisable() { if (I == this) I = null; }
     }

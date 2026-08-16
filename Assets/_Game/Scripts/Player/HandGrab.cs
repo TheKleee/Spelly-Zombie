@@ -428,6 +428,16 @@ namespace SpellyZombie
             _slotAtGrab = _slots != null ? _slots.Current : 1;
             _spinRot = Quaternion.identity;
             var pv1 = _pilot.CameraPivot;
+            // a body whose own colliders are parked (the pot rides a shell)
+            // reports its PIVOT as the center of mass - re-teach it the true
+            // middle once, by the same bounds law everything else lifts with
+            bool hasBody = false;
+            foreach (var c in bestB.GetComponentsInChildren<Collider>(true))
+                if (c != null && c.enabled && !c.isTrigger) { hasBody = true; break; }
+            if (!hasBody)
+                bestB.centerOfMass = bestB.transform.InverseTransformPoint(
+                    ShapeShift.FindObjectBounds(bestB.transform).center);
+
             // clamp to the RAY's reach, not GrabRange - the ray grabs out to
             // LiftRangeMax, and "it stays where you grabbed it" (the rule
             // above) forbids yanking a 9m grab in to arm's length
