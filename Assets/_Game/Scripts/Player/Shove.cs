@@ -93,5 +93,44 @@ namespace SpellyZombie
 
             player.TakeHit(impulse, damage, cause);
         }
+
+        static readonly Collider[] _blastHits = new Collider[48];
+
+        /// A radial blast: players shoved with distance falloff (acolytes
+        /// shoved but never damaged - poison is corruption, blasts are
+        /// physics), loose props thrown. One implementation for the zombie
+        /// detonation and the acolyte death burst.
+        public static void Blast(Vector3 at, float radius, float power,
+            float baseDamage, string cause, Rigidbody except = null)
+        {
+            Juice.Thud(at);
+
+            foreach (var p in SimpleFPSController.All)
+            {
+                if (p == null || p.IsDowned) continue;
+                Vector3 away = p.transform.position - at;
+                away.y = 0f;
+                float dist = away.magnitude;
+                if (dist > radius) continue;
+                if (away.sqrMagnitude < 0.01f) away = Random.insideUnitSphere;
+
+                float t = 1f - Mathf.Clamp01(dist / Mathf.Max(0.1f, radius));
+                bool corrupted = Sides.IsAcolytePlayer(p);
+                Hit(p,
+                    away.normalized * power * t + Vector3.up * power * 0.3f * t,
+                    corrupted ? 0f : baseDamage * t,
+                    cause);
+            }
+
+            int n = Physics.OverlapSphereNonAlloc(at, radius, _blastHits,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                if (_blastHits[i] == null) continue;
+                var rb = _blastHits[i].attachedRigidbody;
+                if (rb != null && !rb.isKinematic && rb != except)
+                    rb.AddExplosionForce(power * 18f, at, radius, 0.4f, ForceMode.Impulse);
+            }
+        }
     }
 }

@@ -277,6 +277,23 @@ namespace SpellyZombie
         {
             _built = true;
             SteamLobby.SetInGame(false); // back in the lobby: joinable again
+
+            // roll the match seed from the DAILY POOL - authority only;
+            // clients mirror the host's roll through PushLobby (no clock skew)
+            if (!NetGame.Connected || NetGame.IsHost) Seed = DailyRoll();
+        }
+
+        /// Pool base = the UTC date hashed, one of DailySeedPool rolls on top.
+        /// The date includes the year, so pools never repeat annually.
+        static int DailyRoll()
+        {
+            var d = System.DateTime.UtcNow;
+            int day = d.Year * 10000 + d.Month * 100 + d.Day;
+            unchecked
+            {
+                int poolBase = (int)((uint)day * 2654435761u) ^ 0x5A113E;
+                return poolBase + Random.Range(0, Mathf.Max(1, (int)DrawingConfig.DailySeedPool));
+            }
         }
 
         void Teardown()

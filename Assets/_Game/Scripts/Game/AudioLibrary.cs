@@ -76,6 +76,7 @@ namespace SpellyZombie
         public AudioClip Scan;            // becoming an object
         public AudioClip Unshape;         // back to yourself
         public AudioClip GasTick;         // choking in the corruption
+        public AudioClip AcolyteWhistle;  // their zombie popped; the owner tells on themselves
 
         [Header("THE CAULDRON")]
         public AudioClip PotRefill;       // your wand drinking

@@ -994,7 +994,6 @@ namespace SpellyZombie
             }
         }
 
-        static readonly Collider[] _boomHits = new Collider[48];
 
         /// THE CURSED INK GOING OFF . A seal closed on a zombie by
         /// an acolyte blows it: the same gas it was already breathing, at
@@ -1031,59 +1030,12 @@ namespace SpellyZombie
             // and skin and fades on its own clock, so there is nothing here to
             // hand-roll: no puff cadence, no sprite scaling, no lifetime timer.
             PoisonField.Open(at, radius, DrawingConfig.DetonateFieldSeconds);
-            Juice.Thud(at);
 
-            float shove = DrawingConfig.DetonateShove * potency;
-
-            // PLAYERS BY LIST, PROPS BY QUERY - and this split IS the fix.
-            // The old single OverlapSphere used Physics.DefaultRaycastLayers,
-            // which is ~(1 << 2), while every player collider lives on layer 2
-            // on purpose ("the pen ignores our own body"). So the player branch
-            // below was unreachable code: only furniture ever flew, and the
-            // blast in your face moved you nowhere. Same root cause as the gas.
-            foreach (var p in SimpleFPSController.All)
-            {
-                if (p == null || p.IsDowned) continue;
-                Vector3 away = p.transform.position - at;
-                away.y = 0f;
-                float dist = away.magnitude;
-                if (dist > radius) continue;
-                if (away.sqrMagnitude < 0.01f) away = Random.insideUnitSphere;
-
-                // falls off with distance, so standing at the edge shoves you
-                // rather than deleting you
-                float t = 1f - Mathf.Clamp01(dist / Mathf.Max(0.1f, radius));
-
-                // THE BLAST IS PHYSICS, THE POISON IS CORRUPTION (
-                // "it shouldn't deal damage to Acolytes[,] the explosion itself
-                // should push acolytes away if caught in the blast as well").
-                // The shove reaches EVERYONE - an acolyte who stands too close
-                // to their own trick still gets thrown - while the poison passes
-                // through their corrupted body. Asked PER VICTIM, so this stays
-                // right when the other side is a different player.
-                bool corrupted = Sides.IsAcolytePlayer(p);
-
-                // through Shove, not TakeHit - a blast this size has to break
-                // your drawing before the push can land, or the controller
-                // zeroes it the same frame
-                Shove.Hit(p,
-                    away.normalized * shove * t + Vector3.up * shove * 0.3f * t,
-                    corrupted ? 0f : DrawingConfig.DetonateDamage * potency * t,
-                    "a zombie went off");
-            }
-
-            // loose props ride the blast too - the cloud you cannot see through
-            // plus furniture in the air is the escape window. Props sit on
-            // ordinary layers, so the query mask is fine for them.
-            int n = Physics.OverlapSphereNonAlloc(at, radius, _boomHits,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-            for (int i = 0; i < n; i++)
-            {
-                if (_boomHits[i] == null) continue;
-                var rb = _boomHits[i].attachedRigidbody;
-                if (rb != null && !rb.isKinematic && rb != _rb)
-                    rb.AddExplosionForce(shove * 18f, at, radius, 0.4f, ForceMode.Impulse);
-            }
+            // players shoved with falloff, acolytes pushed but never damaged,
+            // props thrown - the shared blast (Shove.Blast, also the acolyte
+            // death burst). Own body excluded from the prop throw.
+            Shove.Blast(at, radius, DrawingConfig.DetonateShove * potency,
+                DrawingConfig.DetonateDamage * potency, "a zombie went off", _rb);
 
             // it was a spell; spells end. OnDeath adds its own small puff on top,
             // which reads as the corpse gassing off inside the bigger blast.
@@ -1115,11 +1067,43 @@ namespace SpellyZombie
                 mine != null ? mine.GasRadius : DrawingConfig.SummonGasRadiusMin,
                 DrawingConfig.ZombieDeathCloudSeconds);
 
+            // pop the puppet, hear the puppeteer: the summoner whistles at
+            // their own position. 3D falloff means only wizards in earshot
+            // learn anything - commanding from distance stays safe.
+            if (mine != null) WhistleOwner(mine.SummonedBy);
+
             // NO CARD DROPS. Runes are learned by ANALYZING NATURAL OBJECTS with
             // the grimoire, not by picking loot off a
             // corpse. Floating pickups were replaced long ago and this drop was
             // the last place still spawning them.
             Grimoire.Drop(OwnerId);
+        }
+
+        static void WhistleOwner(int ownerId)
+        {
+            if (ownerId < 0) return;
+            Vector3 at;
+            if (Grimoire.LocalPlayerId == ownerId)
+            {
+                SimpleFPSController me = null;
+                foreach (var p in SimpleFPSController.All)
+                    if (p != null && p.IsLocalViewer) { me = p; break; }
+                if (me == null || me.IsDowned) return;   // no living body, no tell
+                at = me.transform.position;
+            }
+            else
+            {
+                // avatars key by CLIENT id; owner ids are client+1 (netcode §0)
+                NetAvatar owner = null;
+                foreach (var a in NetAvatar.All)
+                    if (a != null && a.Id == ownerId - 1) { owner = a; break; }
+                if (owner == null || owner.Downed) return;
+                at = owner.transform.position;
+            }
+            at += Vector3.up * 1.4f;
+            var clip = AudioLibrary.I != null ? AudioLibrary.I.AcolyteWhistle : null;
+            if (clip != null) Juice.PlayClip(clip, at, 0.85f, Random.Range(0.95f, 1.05f));
+            else Juice.Whistle(at);
         }
     }
 }

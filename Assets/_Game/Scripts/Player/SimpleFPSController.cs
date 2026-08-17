@@ -177,6 +177,17 @@ namespace SpellyZombie
             if (_heartFx != null) { Destroy(_heartFx); _heartFx = null; }
             if (FxLibrary.I != null) // the soul leaves the body
                 FxLibrary.Spawn(FxLibrary.I.SoulsOut, transform.position + Vector3.up * 1.2f);
+
+            // a corrupt body gasses off like a detonated zombie, shove and
+            // all - poison damages only wizards, the push throws everyone.
+            if (Sides.IsAcolytePlayer(this))
+            {
+                Vector3 at = transform.position + Vector3.up * 0.9f;
+                PoisonField.Open(at, DrawingConfig.PoisonDeathRadius,
+                    DrawingConfig.PoisonDeathSeconds);
+                Shove.Blast(at, DrawingConfig.PoisonDeathRadius,
+                    DrawingConfig.DetonateShove, 0f, "a dying acolyte burst");
+            }
         }
 
         /// Physical hits shove the player and chip health. At 0 HP the ghost
@@ -683,6 +694,9 @@ namespace SpellyZombie
             bool sprint = kb.leftShiftKey.isPressed || (gp != null && gp.leftStickButton.isPressed);
             if (_body != null && !_body.CanSprint) sprint = false; // too heavy to run
             IsSprinting = sprint && !IsDowned && !IsCrouched && mv.sqrMagnitude > 0.01f;
+
+            // inside a liquid volume: no drowning (no mouths), just slow
+            var swimIn = LiquidBiome.At(transform.position + Vector3.up * 0.9f);
             float speed = IsDead ? 0f
                 : IsDowned ? MoveSpeed * 0.25f // crawl
                 : IsSprawled ? 0f              // flat on your face - momentum owns you
@@ -696,6 +710,7 @@ namespace SpellyZombie
                 if (_body.CrawlOnly && !IsCrouched)
                     speed = Mathf.Min(speed, MoveSpeed * 0.5f); // too heavy: crouch pace is all you have
             }
+            if (swimIn != null) speed *= 0.6f; // water wastes your time, never your air
             Vector3 planar = (transform.right * mv.x + transform.forward * mv.y) * speed;
 
             if (_cc.isGrounded)
@@ -737,6 +752,21 @@ namespace SpellyZombie
                 if (jump && !IsDowned && !IsSprawled && !IsAirTumbling && !drawingMode && !FeetStuck)
                     _verticalVelocity = (IsCrouched ? JumpSpeed * 1.15f : JumpSpeed)
                         * (_body != null ? _body.JumpMul : 1f); // light wizards spring higher
+            }
+            else if (swimIn != null)
+            {
+                // SWIMMING: the ruled mechanic - you sink slowly (buoyancy
+                // eats most of gravity) and every jump press is a stroke.
+                // No air, no drowning, no tumble clock: water is just time.
+                _wasGrounded = false;
+                _airTime = 0f;
+                float sink = Gravity * (1f - Mathf.Clamp01(swimIn.Buoyancy));
+                _verticalVelocity = Mathf.Max(_verticalVelocity + sink * Time.deltaTime, -1.6f);
+                bool stroke = kb.spaceKey.wasPressedThisFrame
+                    || (gp != null && gp.buttonSouth.wasPressedThisFrame);
+                if (stroke && !IsDowned && !IsSprawled && !drawingMode)
+                    _verticalVelocity = JumpSpeed * 0.65f
+                        * (_body != null ? _body.JumpMul : 1f);
             }
             else
             {

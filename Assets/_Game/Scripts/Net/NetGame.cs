@@ -56,7 +56,7 @@ namespace SpellyZombie
         string _shownCode, _shownMap;
         int _shownLikes = -1;
         int _rosterStamp = -1;
-        string _codeEdit = "", _seedEdit = "";
+        string _codeEdit = "";
 
         static int ReadyCountStamp()
         {
@@ -250,13 +250,8 @@ namespace SpellyZombie
                 MatchLobby.AcolytePercent > 10, MatchLobby.AcolytePercent < 90);
             ry -= 34f;
 
-            var seed = UIKit.Input(_ui, MatchLobby.Seed == 0 ? "" : MatchLobby.Seed.ToString(),
-                v => MatchLobby.Seed = int.TryParse(v, out var s) ? s : 0);
-            UIKit.Place((RectTransform)seed.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(120f, 26f));
-            var seedLbl = UIKit.Label(_ui, Loc.T("stand.seed"), 12, new Color(0.85f, 0.85f, 0.9f), TextAnchor.MiddleLeft);
-            UIKit.Place((RectTransform)seedLbl.transform, new Vector2(0f, 1f), new Vector2(rx + 128f, ry - 4f), new Vector2(90f, 18f));
-            ry -= 32f;
-
+            // (no seed control: seeds come from the daily pool, rolled by
+            // MatchLobby - "host doesn't know what seed does")
             var pwField = UIKit.Input(_ui, _codeEdit, v => _codeEdit = v);
             pwField.contentType = UnityEngine.UI.InputField.ContentType.Password;
             UIKit.Place((RectTransform)pwField.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(120f, 26f));

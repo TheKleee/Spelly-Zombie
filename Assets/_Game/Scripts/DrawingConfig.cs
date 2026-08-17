@@ -316,6 +316,22 @@ namespace SpellyZombie
         public static readonly float PoisonClingMax = O(nameof(PoisonClingMax), 3.2f);
         public static readonly float PoisonClingSeconds = O(nameof(PoisonClingSeconds), 4f);
 
+        // THE EXIT PUFF: an acolyte leaving their disguise breathes out the
+        // same zombie poison - escape smoke and ambush in one. Body-tight on
+        // purpose ("not too large so you need to get really close").
+        public static readonly float PoisonExitRadius = O(nameof(PoisonExitRadius), 1.1f);
+        public static readonly float PoisonExitSeconds = O(nameof(PoisonExitSeconds), 2.5f);
+        public static readonly float PoisonExitCooldown = O(nameof(PoisonExitCooldown), 4f);
+
+        // THE DEATH BURST: a dying acolyte gasses off like a detonated zombie
+        // ("a lot more poison like detonating the zombie"). Poison only, no shove.
+        public static readonly float PoisonDeathRadius = O(nameof(PoisonDeathRadius), 3f);
+        public static readonly float PoisonDeathSeconds = O(nameof(PoisonDeathSeconds), 8f);
+
+        // Seeds come from a DAILY POOL (PEAK-style, ranged): this many map
+        // variants exist per UTC day; the host rolls one per lobby.
+        public static readonly float DailySeedPool = O(nameof(DailySeedPool), 16f);
+
         // THE DETONATION. Both scale with the seal's line count (potency), so a
         // triangle drawn on a zombie really is the potent one. Shove is the
         // headline — "how you steal the cauldron" — and the damage is the tax

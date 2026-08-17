@@ -40,6 +40,14 @@ namespace SpellyZombie
             Play(Clip("sting", SynthSting), at, 0.7f, 1f);
         public static void Drum(Vector3 at) =>
             Play(Clip("drum", SynthDrum), at, 0.65f, 1f);
+        public static void Whistle(Vector3 at) =>
+            Play(Clip("whistle", SynthWhistle), at, 0.75f, Random.Range(0.95f, 1.08f));
+
+        /// A real clip through the same 3D one-shot path the synths use.
+        public static void PlayClip(AudioClip clip, Vector3 at, float volume = 0.8f, float pitch = 1f)
+        {
+            if (clip != null) Play(clip, at, volume, pitch);
+        }
 
         // ------------------------------------------------------- internals --
         const int Rate = 44100;
@@ -171,6 +179,26 @@ namespace SpellyZombie
                 float local = (t * 3f) - n;
                 d[i] = Mathf.Sin(2f * Mathf.PI * notes[n] * i / Rate)
                      * Mathf.Exp(-3f * local) * 0.8f;
+            }
+            return d;
+        }
+
+        static float[] SynthWhistle()
+        {
+            var d = Buf(0.6f);
+            float phase = 0f;
+            for (int i = 0; i < d.Length; i++)
+            {
+                float t = i / (float)d.Length;
+                float sec = i / (float)Rate;
+                bool first = t < 0.42f;
+                if (!first && t < 0.48f) continue;             // the breath between notes
+                float seg = first ? t / 0.42f : (t - 0.48f) / 0.52f;
+                float freq = first ? Mathf.Lerp(980f, 1480f, seg)   // rise...
+                                   : Mathf.Lerp(1420f, 780f, seg);  // ...guilty fall
+                freq += Mathf.Sin(2f * Mathf.PI * 5.5f * sec) * 14f; // human wobble
+                phase += 2f * Mathf.PI * freq / Rate;
+                d[i] = Mathf.Sin(phase) * Mathf.Sin(Mathf.Clamp01(seg) * Mathf.PI) * 0.55f;
             }
             return d;
         }

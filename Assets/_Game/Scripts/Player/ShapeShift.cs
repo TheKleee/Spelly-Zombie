@@ -69,7 +69,7 @@ namespace SpellyZombie
             Local = this;
         }
 
-        void OnDisable() => Unwear();
+        void OnDisable() => Unwear(false);
 
         void Update()
         {
@@ -507,14 +507,28 @@ namespace SpellyZombie
             LocalIsShaped = true;
         }
 
-        void Unwear()
+        float _puffAt = -999f;
+
+        void Unwear(bool puff = true)
         {
+            bool wasShaped = LocalIsShaped;
             foreach (var r in _hidden)
                 if (r != null) r.enabled = true;
             _hidden.Clear();
             if (_worn != null) _worn.SetActive(false);
             _posing = false;
             LocalIsShaped = false;
+
+            // leaving the disguise breathes out zombie poison: the escape
+            // smoke and the ambush. Poison never touches acolytes, so it
+            // only bites wizards standing really close.
+            if (puff && wasShaped
+                && Time.time >= _puffAt + DrawingConfig.PoisonExitCooldown)
+            {
+                _puffAt = Time.time;
+                PoisonField.Open(transform.position + Vector3.up * 0.9f,
+                    DrawingConfig.PoisonExitRadius, DrawingConfig.PoisonExitSeconds);
+            }
         }
 
 
