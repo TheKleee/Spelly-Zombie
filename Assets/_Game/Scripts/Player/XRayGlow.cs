@@ -18,7 +18,7 @@ namespace SpellyZombie
         const float MaxRange = 10f;    // window off beyond this camera-to-body distance
         const float HalfWidth = 0.7f;  // minimum world half width of the window
         const float Soft = 0.3f;       // window edge softness
-        const int Downscale = 2;       // render at half resolution, reads soft
+        const int Downscale = 1;       // full resolution, must match the scene
 
         Camera _main, _cam;
         RenderTexture _rt;
@@ -142,6 +142,7 @@ namespace SpellyZombie
             if (_rt == null)
             {
                 _rt = new RenderTexture(w, h, 24);
+                _rt.antiAliasing = Mathf.Max(1, QualitySettings.antiAliasing);
                 _cam.targetTexture = _rt;
                 _img.texture = _rt;
             }
