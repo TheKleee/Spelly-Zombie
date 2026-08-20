@@ -51,17 +51,9 @@ namespace SpellyZombie
         /// override in Resources/Custom always wins over this.
         public GameObject FieldFor(string fieldClass)
         {
-            switch (fieldClass)
-            {
-                case "SnowField": return IceHit;
-                case "PlasmaField": return Sun;
-                case "BlackHoleField": return SoulsOut;
-                case "WhiteHoleField": return Stars;
-                case "TimeFreezeField": return TimeDome;
-                case "InertiaField": return Scuffle;
-                case "HealingField": return HealShine;
-                default: return null; // TornadoField picks per spin in its Open
-            }
+            // poison keeps its own CFXR cloud path; everything else that used
+            // to live here died with the old combination fields
+            return null;
         }
 
         static FxLibrary _instance;

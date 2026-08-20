@@ -53,6 +53,17 @@ namespace SpellyZombie
             public bool Open;
         }
 
+        public struct SpawnAskMsg : IBroadcast // client → host: where do I stand?
+        {
+            public int Owner;
+        }
+
+        public struct SpawnGiveMsg : IBroadcast // host → all: stand HERE
+        {
+            public int Owner;
+            public Vector3 Point;
+        }
+
         public struct StrokeMsg : IBroadcast
         {
             public int Owner;
@@ -760,6 +771,8 @@ namespace SpellyZombie
             InstanceFinder.ClientManager.RegisterBroadcast<ReadyCallMsg>(OnReadyCallClient);
             InstanceFinder.ClientManager.RegisterBroadcast<SideAssignMsg>(OnSideAssignClient);
             InstanceFinder.ClientManager.RegisterBroadcast<StandMsg>(OnStandClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<SpawnAskMsg>(OnSpawnAskServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<SpawnGiveMsg>(OnSpawnGiveClient);
 
             // host-authoritative channels (netcode §1-§4)
             InstanceFinder.ServerManager.RegisterBroadcast<UnlockMsg>(OnUnlockServer);
@@ -1003,6 +1016,14 @@ namespace SpellyZombie
         {
             if (!NetGame.IsHost) return;
             InstanceFinder.ServerManager.Broadcast(new SideAssignMsg { AcolyteOwners = acolyteOwners });
+        }
+
+        /// Ask the host for a spawn point. Safe to call when offline - it just
+        /// does nothing, and SpawnPlan picks locally.
+        public static void AskSpawn(int owner)
+        {
+            if (_instance == null || !NetGame.Connected) return;
+            InstanceFinder.ClientManager.Broadcast(new SpawnAskMsg { Owner = owner });
         }
 
         public static void PushStandOpen(bool open)
@@ -1620,6 +1641,23 @@ namespace SpellyZombie
             LobbyStand.HostMenuOpen = msg.Open;
         }
 
+        /// Anybody may ask where to stand; the HOST decides, so no two players
+        /// are handed the same tile. Its own copy is recorded here too - the
+        /// host never hears its own broadcast come back.
+        void OnSpawnAskServer(NetworkConnection conn, SpawnAskMsg msg, Channel channel)
+        {
+            if (!SpawnPlan.IssueFor(msg.Owner, out var at)) return; // asker picks its own
+            SpawnPlan.TakeAssigned(msg.Owner, at);
+            InstanceFinder.ServerManager.Broadcast(
+                new SpawnGiveMsg { Owner = msg.Owner, Point = at });
+        }
+
+        void OnSpawnGiveClient(SpawnGiveMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            SpawnPlan.TakeAssigned(msg.Owner, msg.Point);
+        }
+
         // ------------------- client applying: seals/matter/particles (netcode §2/§3) --
         void OnSealClient(SealMsg msg, Channel channel)
         {
@@ -2011,7 +2049,9 @@ namespace SpellyZombie
             GameObject go;
             System.Collections.Generic.List<GameObject> costume = null;
             SocketSet sockets = null;
-            var prefab = CharacterLibrary.Model;
+            // the SAME body the local player wears - what exists in the game
+            // exists for everyone, so a friend is never a different model
+            var prefab = CollectionManager.PlayerBody;
             if (prefab != null)
             {
                 // no pose sync yet - the prefab's T-pose arms are eased down
@@ -2021,12 +2061,12 @@ namespace SpellyZombie
                 go.AddComponent<PersistentInkSurface>();
                 var body = Object.Instantiate(prefab, go.transform);
                 body.name = "Body";
-                body.transform.localPosition = new Vector3(0f, -0.9f, 0f); // avatar anchor is mid-body
+                body.transform.localPosition = Vector3.zero;   // set from its own height below
                 // their grimoire stays fully visible; its page arrows do not
                 foreach (var pages in body.GetComponentsInChildren<GrimoirePages>(true))
                     pages.HideForRemote();
                 Transform armL = null, armR = null, handL = null, handR = null, head = null;
-                Transform footL = null, toeL = null;
+                Transform footL = null, toeL = null, headTop = null;
                 foreach (var t in body.GetComponentsInChildren<Transform>(true))
                 {
                     if (t.name.EndsWith("LeftArm")) armL = t;
@@ -2036,7 +2076,20 @@ namespace SpellyZombie
                     else if (t.name.EndsWith("LeftToeBase")) toeL = t;
                     else if (t.name.EndsWith("LeftFoot")) footL = t;
                     else if (t.name.EndsWith(":Head")) head = t;
+                    else if (t.name.Contains("HeadTop")) headTop = t;
                 }
+
+                // THE NETWORKED POINT IS MID-BODY, so the model hangs half its
+                // own height below it. Measured off the bones the same way the
+                // local rig measures - a hardcoded drop fits one body height
+                // and sinks or floats every other.
+                var crown = headTop != null ? headTop : head;
+                if (footL != null && crown != null)
+                {
+                    float bodyH = Mathf.Clamp(crown.position.y - footL.position.y, 0.8f, 3f);
+                    body.transform.localPosition = new Vector3(0f, -bodyH * 0.5f, 0f);
+                }
+
                 CharacterRig.FaceForward(body.transform, footL, toeL, go.transform.forward);
                 LowerArm(armL, handL);
                 LowerArm(armR, handR);
@@ -2053,16 +2106,24 @@ namespace SpellyZombie
                     smr.sharedMaterial = MatterFX.Get(new Color(0.93f, 0.87f, 0.72f), MoteShade.Opaque);
                     smr.updateWhenOffscreen = true;
                 }
-                var faceEyes = GooglyEyes.Attach(head != null ? head : go.transform,
-                    head != null ? 0f : 0.6f, CharacterRig.EyeScale);
-                if (head != null)
+                // an authored body brings its OWN eyes; attaching a second
+                // pair on top of them is the baked-prefab trap
+                var faceEyes = body.GetComponentInChildren<GooglyEyes>(true);
+                bool authoredEyes = faceEyes != null;
+                if (!authoredEyes)
+                    faceEyes = GooglyEyes.Attach(head != null ? head : go.transform,
+                        head != null ? 0f : 0.6f, CharacterRig.EyeScale);
+
+                // only a code-built pair gets placed by the shared knobs; a
+                // pair that came with the body stays exactly where it was put
+                if (!authoredEyes && head != null && faceEyes != null)
                 {
                     // one knob for all eyes: CharacterRig.EyeLocalPos
                     faceEyes.transform.localPosition = CharacterRig.EyeLocalPos;
                     faceEyes.transform.localRotation = Quaternion.identity;
                     faceEyes.transform.localScale = Vector3.one * CharacterRig.EyeRigScale;
                 }
-                faceEyes.SetVisible(true);
+                faceEyes?.SetVisible(true);
             }
             else
             {

@@ -26,12 +26,9 @@ namespace SpellyZombie
 
         static void Spawn()
         {
-            var model = CharacterLibrary.Model;
-            if (model == null)
-            {
-                Debug.LogError("[SpellyZombie] Bot needs CharacterLibrary.Model assigned. No bot without your character.");
-                return;
-            }
+            // a bot stands in for a player, so it wears the player's body
+            var model = CollectionManager.PlayerBody;
+            if (model == null) return;   // the slot's own error already said so
 
             var player = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             Vector3 at = player != null

@@ -37,7 +37,22 @@ namespace SpellyZombie
         [Tooltip("Scan reach in meters.")]
         public float LearnRange = 2.6f;
 
+        /// The one scan distance: the badge offers F only inside it and TryScan
+        /// only reaches inside it, so the key never lies.
+        public static float ScanReach => (Local != null ? Local.LearnRange : 2.6f) * 1.6f;
+
         GameObject _worn;          // the disguise, kept alive across TABs
+
+        /// True when this transform IS the local player's disguise (or part of
+        /// it). The thing you are wearing must never read as a target.
+        public static bool IsLocalShape(Transform t)
+        {
+            var s = Local;
+            if (t == null || s == null) return false;
+            if (s._worn != null
+                && (t == s._worn.transform || t.IsChildOf(s._worn.transform))) return true;
+            return s._storedShape != null && t == s._storedShape;
+        }
         Quaternion _wornRot = Quaternion.identity; // WORLD rotation - a barrel must not spin when you strafe
         readonly Quaternion[] _slots = new Quaternion[10];
         readonly bool[] _slotUsed = new bool[10];
@@ -284,8 +299,11 @@ namespace SpellyZombie
             }
             if (_cam == null) _cam = GetComponentInChildren<Camera>();
             if (_cam == null) return;
+            // the same ray the badge drew its promise with - same reach, same
+            // mask, or F offers on things the scan cannot reach or resolve
             if (!Physics.Raycast(_cam.transform.position, _cam.transform.forward,
-                    out var hit, LearnRange * 1.6f)) return;  // aiming at nothing
+                    out var hit, ScanReach, AimBadge.AimMask,
+                    QueryTriggerInteraction.Collide)) return;  // aiming at nothing
             if (!CanScan(hit.collider, out var root)) return;
 
             _storedShape = root; // the last shape, remembered for TAB
@@ -296,7 +314,9 @@ namespace SpellyZombie
             var ink = GetComponent<PlayerInk>();
             if (ink != null)
             {
-                ink.Award(DrawingConfig.InkMax);   // full, not a trickle
+                // a scan fills the RESERVE, invisible until you are yourself
+                // again - the wand you had is the wand you keep wearing
+                ink.Store(DrawingConfig.InkMax);
                 Juice.Chime(transform.position);
                 DrawingWorld.Instance?.LogEvent("the shape fills your wand");
             }

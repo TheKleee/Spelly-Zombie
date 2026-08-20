@@ -1,0 +1,211 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace SpellyZombie
+{
+    /// The selection marker. Wizard with the absorb page open: every source
+    /// still holding a rune for them, because finding them IS the job.
+    /// Acolyte with the scan page open: ONLY the one under the crosshair, and
+    /// never the shape they are already wearing.
+    ///
+    /// The rim is a COPY of the object drawn just before it, pulled toward the
+    /// eye in the shader so it comes out bigger; the real object then covers
+    /// the middle and leaves the edge. Nothing rides on normals, so a bench or
+    /// a crate outlines as cleanly as a sphere.
+    public class RevealOutline : MonoBehaviour
+    {
+        static RevealOutline _me;
+
+        class Ghost
+        {
+            public GameObject Root;
+            public Renderer[] From;     // source renderers
+            public MeshRenderer[] To;   // their twins
+            public Material Mat;        // its own, so the centre gets through
+        }
+
+        static readonly int CenterId = Shader.PropertyToID("_CenterWS");
+
+        readonly Dictionary<Transform, Ghost> _lit = new Dictionary<Transform, Ghost>();
+        readonly HashSet<Transform> _next = new HashSet<Transform>();
+        readonly List<Transform> _drop = new List<Transform>();
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void Boot()
+        {
+            if (_me != null) return;
+            var go = new GameObject("~RevealOutline");
+            DontDestroyOnLoad(go);
+            _me = go.AddComponent<RevealOutline>();
+        }
+
+        void LateUpdate()
+        {
+            _next.Clear();
+
+            bool wizard = GrimoirePages.BookOpen && GrimoirePages.AbsorbPageOpen;
+            bool acolyte = GrimoirePages.BookOpen && GrimoirePages.ScanPageOpen;
+            Color c = wizard ? DrawingConfig.OutlineWizardColor
+                             : DrawingConfig.OutlineAcolyteColor;
+
+            if (wizard) GatherSources();
+            else if (acolyte) GatherShapes();
+
+            Sync(c);
+            Follow();
+        }
+
+        /// Wizard: anything still holding a rune for me.
+        void GatherSources()
+        {
+            int me = Grimoire.LocalPlayerId;
+            foreach (var a in Analyzable.Living)
+            {
+                if (a == null || !a.CanTeach) continue;
+                if (a.NextFor(me) == RuneType.None) continue;
+                _next.Add(a.transform);
+            }
+        }
+
+        /// Acolyte: ONLY what the crosshair is on - it marks a choice, and
+        /// lighting up everything scannable would mark nothing.
+        void GatherShapes()
+        {
+            var target = AimBadge.ScanTarget;
+            if (target == null) return;
+            if (ShapeShift.IsLocalShape(target)) return;   // never the thing you ARE
+            _next.Add(target);
+        }
+
+        /// Build a ghost for anything newly marked, drop the ones that left.
+        void Sync(Color c)
+        {
+            _drop.Clear();
+            foreach (var kv in _lit)
+                if (kv.Key == null || !_next.Contains(kv.Key)) _drop.Add(kv.Key);
+            foreach (var t in _drop)
+            {
+                if (_lit.TryGetValue(t, out var g)) Scrap(g);
+                _lit.Remove(t);
+            }
+
+            foreach (var t in _next)
+            {
+                if (t == null || _lit.ContainsKey(t)) continue;
+                var g = Build(t, c);
+                if (g != null) _lit[t] = g;
+            }
+        }
+
+        /// Twins wear their source's world transform every frame, so a marked
+        /// thing that is lifted, spun or resized by a spell keeps its rim.
+        /// The whole ghost slides toward the eye along ONE centre - its own,
+        /// not each mesh's - or a bench's legs would drift off its seat.
+        void Follow()
+        {
+            foreach (var kv in _lit)
+            {
+                var g = kv.Value;
+                if (kv.Key == null || g == null || g.Root == null) continue;
+
+                bool haveBox = false;
+                Bounds box = default;
+
+                for (int i = 0; i < g.From.Length; i++)
+                {
+                    var from = g.From[i]; var to = g.To[i];
+                    if (from == null || to == null) continue;
+
+                    // a source that switched LOD or went inactive takes its
+                    // twin with it, rather than leaving a rim around nothing
+                    bool live = from.enabled && from.gameObject.activeInHierarchy;
+                    if (to.enabled != live) to.enabled = live;
+                    if (!live) continue;
+
+                    to.transform.SetPositionAndRotation(from.transform.position,
+                        from.transform.rotation);
+                    to.transform.localScale = from.transform.lossyScale;
+
+                    if (haveBox) box.Encapsulate(from.bounds);
+                    else { box = from.bounds; haveBox = true; }
+                }
+
+                if (haveBox && g.Mat != null) g.Mat.SetVector(CenterId, box.center);
+            }
+        }
+
+        /// One material per GHOST, not one shared by all of them: the centre it
+        /// slides toward is per-object, and a property block cannot carry that
+        /// - the SRP Batcher ignores block overrides of material properties,
+        /// which left every ghost sliding toward the world origin instead.
+        /// Destroyed with its ghost, since a GameObject does not free them.
+        static Material NewMat(Color c)
+        {
+            var sh = Shader.Find("SpellyZombie/SZOutline");
+            if (sh == null)
+            {
+                Debug.LogError("[SpellyZombie] The SZOutline shader is missing, so nothing "
+                    + "can be highlighted. Add it under Graphics > Always Included Shaders "
+                    + "or a build will strip it.");
+                return null;
+            }
+            var m = new Material(sh) { hideFlags = HideFlags.HideAndDontSave };
+            m.SetColor("_Color", c);
+            m.SetFloat("_Grow", DrawingConfig.OutlineCloseness);
+            m.SetFloat("_Bias", DrawingConfig.OutlineDepthPush);
+            return m;
+        }
+
+        /// A render-only twin: meshes and nothing else - no colliders, no
+        /// scripts, no rigidbody. It is never parented to the source, so a
+        /// clone of that source (a disguise) can never carry the rim with it.
+        static Ghost Build(Transform src, Color c)
+        {
+            var mat = NewMat(c);
+            if (mat == null) return null;
+
+            var root = new GameObject("~OutlineGhost") { hideFlags = HideFlags.HideAndDontSave };
+            var from = new List<Renderer>();
+            var to = new List<MeshRenderer>();
+
+            // every renderer, live or not - Follow() matches their state each
+            // frame, so an LOD swap mid-aim does not leave the rim behind
+            foreach (var r in src.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null) continue;
+                // a pot's ink is a ball its own shader clips flat; drawn plain
+                // it would balloon out of the cauldron instead of rimming it
+                if (CauldronEconomy.IsInk(r.transform)) continue;
+
+                var smr = r as SkinnedMeshRenderer;
+                var mf = smr == null ? r.GetComponent<MeshFilter>() : null;
+                Mesh mesh = smr != null ? smr.sharedMesh : mf != null ? mf.sharedMesh : null;
+                if (mesh == null) continue;
+
+                var piece = new GameObject(r.name);
+                piece.transform.SetParent(root.transform, true);
+                piece.AddComponent<MeshFilter>().sharedMesh = mesh;
+
+                var mr = piece.AddComponent<MeshRenderer>();
+                var slots = new Material[Mathf.Max(1, mesh.subMeshCount)];
+                for (int i = 0; i < slots.Length; i++) slots[i] = mat;
+                mr.sharedMaterials = slots;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows = false;
+
+                from.Add(r);
+                to.Add(mr);
+            }
+
+            if (from.Count == 0) { Destroy(root); Destroy(mat); return null; }
+            return new Ghost { Root = root, Mat = mat, From = from.ToArray(), To = to.ToArray() };
+        }
+
+        void OnDisable()
+        {
+            foreach (var kv in _lit)
+                if (kv.Value != null && kv.Value.Root != null) Destroy(kv.Value.Root);
+            _lit.Clear();
+        }
+    }
+}

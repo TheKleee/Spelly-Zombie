@@ -123,9 +123,10 @@ namespace SpellyZombie
         {
             _pilot = GetComponent<SimpleFPSController>();
             _slots = GetComponent<WeaponSlots>();
-            // a prefab at Resources/Custom/PlayerBody replaces the wired
-            // model, materials included (the code skin tint stands down)
-            var custom = PrefabVault.Get("PlayerBody");
+            // the CollectionManager's Player Body slot IS the body, materials
+            // included (the code skin tint stands down). It used to come from
+            // Resources, where nothing was, so everyone wore the shared model.
+            var custom = CollectionManager.PlayerBody;
             _customBody = custom != null;
             var prefab = _customBody ? custom : CharacterLibrary.Model;
 

@@ -168,6 +168,20 @@ namespace SpellyZombie
         // Physics floor, not balance: Unity's solver tunnels colliders under
         // ~1-2cm through the ground. 0.012 is a ~2cm zombie.
         public static readonly float SummonSizeFloor = O(nameof(SummonSizeFloor), 0.012f);
+        // Size drives strength at a 1.6 power, so the small end of the ladder
+        // collapses: a 0.15 summon works out to 3 strength and dies to the
+        // first thing it touches. Small still means weak, above these.
+        public static readonly float SummonMinStrength = O(nameof(SummonMinStrength), 30f);
+        public static readonly float SummonMinMass = O(nameof(SummonMinMass), 8f);
+
+        // How far players scatter from the scene anchor when a map has no
+        // biomes to place them - the lobby. Wide enough that nobody starts
+        // inside anybody.
+        public static readonly float LobbyScatterRadius = O(nameof(LobbyScatterRadius), 12f);
+        // The host divides the ground: how far apart two spawns must be, and
+        // how long a client waits for its point before picking one itself.
+        public static readonly float SpawnApartMeters = O(nameof(SpawnApartMeters), 4f);
+        public static readonly float SpawnAssignWaitSeconds = O(nameof(SpawnAssignWaitSeconds), 4f);
 
 
         // Dial 2: rune size relative to the seal (already 0..1) to gas radius.
@@ -321,12 +335,9 @@ namespace SpellyZombie
         public static readonly float ZombieRiseSeconds = O(nameof(ZombieRiseSeconds), 2f);
         // The meteor's terminal dive.
         public static readonly float MeteorFallSpeed = O(nameof(MeteorFallSpeed), 32f);
-        // The reveal outline: what a wizard sees on absorb sources and an
-        // acolyte on wearable shapes while the matching page is open.
-        public static readonly float OutlineWidth = O(nameof(OutlineWidth), 4f);   // screen px at 1080p
-        public static readonly float OutlineRange = O(nameof(OutlineRange), 14f);  // acolyte sweep radius
-        public static readonly Color OutlineWizardColor = new Color(1f, 0.85f, 0.35f, 1f);
-        public static readonly Color OutlineAcolyteColor = new Color(0.45f, 1f, 0.45f, 1f);
+        // a scan fills a hidden reserve; it bleeds into the wand at this rate
+        // once you are back in your own body, and is thrown away when full
+        public static readonly float ReserveFlowPerSec = O(nameof(ReserveFlowPerSec), 18f);
 
         // a standing flame (HeatEmitter): raw heat/s at its centre. Wood ignites
         // at 200°C, so ~2s of direct contact sets a tossed log alight.
@@ -342,6 +353,11 @@ namespace SpellyZombie
         public static readonly float ForceAccel = O(nameof(ForceAccel), 25f);         // m/s² a full-strength Density rune applies - beats gravity with room to spare
         public static readonly float DirectionForce = O(nameof(DirectionForce), 40f); // m/s² a Direction rune applies along its arrow - the main mover, and the flight engine
         public static readonly float ArrowZoneDrift = O(nameof(ArrowZoneDrift), 1.1f); // m/s a drawing's zones travel along an enclosed arrow or Y
+        // THE TWO VECTORS (Spells V2). Arrow = ATTRACT: drags the target along
+        // where the glyph POINTED. Y = REPEL: reverses what the target was
+        // doing AND pushes against the Y's heading - the force goes negative.
+        public static readonly float VectorPull = O(nameof(VectorPull), 15f);      // the drag/shove along the drawn heading
+        public static readonly float VectorReverse = O(nameof(VectorReverse), 1.8f); // how hard Y flips existing momentum
         public static readonly float MusicDangerRange = O(nameof(MusicDangerRange), 14f); // meters: enemy inside this = action music
         // (matter spawning is one block per State zone per activation - size and
         // behaviour live in SurfaceMaterialDB / Matter, not here)
@@ -487,14 +503,47 @@ namespace SpellyZombie
         public static readonly float BodyStrengthSizePower = O(nameof(BodyStrengthSizePower), 1.6f);
         public static readonly float BodyStrengthPerKg = O(nameof(BodyStrengthPerKg), 0.05f);
 
+        // ---- THE THRESHOLD ENGINE (Spells V2) ----
+        // an axis counts toward a fusion once its magnitude passes this
+        public static readonly float FusionAt = O(nameof(FusionAt), 0.8f);
+        // a lvl3 spell is a temporary biome: how long the rewritten nature lasts
+        public static readonly float SpellBiomeSeconds = O(nameof(SpellBiomeSeconds), 10f);
+        // trap/closed biomes: the affinity force at full axis strength
+        public static readonly float AffinityForce = O(nameof(AffinityForce), 9f);
+
         // ---- the charge (golems and zombies share ChargeAttack) ----
         // The tell is the fairness: you get this long to read the hop and move.
         // The direction locks when the tell starts, so a charge NEVER homes.
         public static readonly float ChargeTellSeconds = O(nameof(ChargeTellSeconds), 0.7f);
+        // how wide the eyes go on the tell, as a multiple of the size they
+        // were AUTHORED at. 1 = they do not move.
+        public static readonly float ChargeTellEyeSwell = O(nameof(ChargeTellEyeSwell), 1.25f);
         public static readonly float ChargeTellHop = O(nameof(ChargeTellHop), 3.2f);
         public static readonly float ChargeRunSeconds = O(nameof(ChargeRunSeconds), 1.3f);
         public static readonly float ChargeSpeed = O(nameof(ChargeSpeed), 11f);
         public static readonly float ChargeShove = O(nameof(ChargeShove), 12f);
+        // dazed after the hit: it stands there a beat, then walks, and only
+        // after the cooldown lines another one up
+        public static readonly float ChargeRecoverSeconds = O(nameof(ChargeRecoverSeconds), 1.1f);
+        // matter size -> golem scale. Merges add volume, so two blobs raise a
+        // bigger golem than one, and it keeps growing as more join. The floor
+        // matters: a golem must always be a creature you can fight, never a
+        // paper pebble that dies before it reaches you.
+        public static readonly float GolemSizePerMatter = O(nameof(GolemSizePerMatter), 2f);
+        public static readonly float GolemMinScale = O(nameof(GolemMinScale), 0.12f);
+        public static readonly float GolemMaxScale = O(nameof(GolemMaxScale), 3f);
+        public static readonly float GolemBaseMass = O(nameof(GolemBaseMass), 45f); // at scale 1
+        // SIZE AND TOUGHNESS ARE SEPARATE for golems. A small one should still
+        // be worth fighting, so strength never falls below this however little
+        // matter raised it - bigger still means stronger, it just starts here.
+        public static readonly float GolemMinStrength = O(nameof(GolemMinStrength), 90f);
+        public static readonly float GolemMinMass = O(nameof(GolemMinMass), 12f);
+        // below this height it is under the world: kill it there so it dies
+        // visibly instead of falling out of sight forever
+        public static readonly float GolemFloorY = O(nameof(GolemFloorY), -25f);
+        // it cannot be finished off while rising - a golem always gets to take
+        // its first step, however hard the ground it was raised on is fought over
+        public static readonly float GolemBirthShield = O(nameof(GolemBirthShield), 2f);
         // golems walk by skipping - a hop every so often instead of a glide
         public static readonly float GolemSkipEvery = O(nameof(GolemSkipEvery), 0.55f);
         public static readonly float GolemSkipHop = O(nameof(GolemSkipHop), 2.1f);

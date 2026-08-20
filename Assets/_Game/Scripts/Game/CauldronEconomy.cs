@@ -12,6 +12,16 @@ namespace SpellyZombie
         [Tooltip("The liquid ink object inside your cauldron model. Its Y scale becomes the ink level; its colour becomes the owning team's (black/green). Your weighted liquid ball works — it gets tinted and squashed like anything else. Leave empty and the pot still WORKS, it just shows nothing inside.")]
         public Transform InkSurface;
 
+        /// True for anything inside a pot's liquid. The ink is part of the pot
+        /// for aiming and for the rune it teaches, but it is its own thing for
+        /// grabbing (it pours) and for drawing (its shader clips the ball).
+        public static bool IsInk(Transform t)
+        {
+            if (t == null) return false;
+            var pot = t.GetComponentInParent<CauldronEconomy>();
+            return pot != null && pot.InkSurface != null && t.IsChildOf(pot.InkSurface);
+        }
+
         [Tooltip("The BOWL mesh of your cauldron (the MeshFilter with the hollow). Needed so the liquid stays INSIDE once the pot has been lifted: lifting makes the main collider convex — a bowl with no hollow — and this spawns a follower carrying the true concave shape that only the liquid's physics feels. Leave empty and the pot behaves as before (fine until someone lifts it).")]
         public MeshFilter Bowl;
 

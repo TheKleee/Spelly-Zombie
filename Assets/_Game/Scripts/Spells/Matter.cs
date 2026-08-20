@@ -646,7 +646,12 @@ namespace SpellyZombie
         /// alone) when there is no golem prefab to raise.
         bool RiseAsGolem(float mergedSize, Matter eaten)
         {
-            var g = Golem.Spawn(transform.position, mergedSize);
+            // TWO BECOMING ONE STILL ADDS UP: mergedSize is the volume-summed
+            // size of both halves, so a golem raised from two blobs is bigger
+            // than one raised from either - the same growth every other
+            // particle gets, just standing on legs.
+            var g = Golem.Spawn(transform.position,
+                mergedSize * DrawingConfig.GolemSizePerMatter);
             if (g == null) return false;
 
             var view = g.GetComponent<StateView>();

@@ -205,7 +205,6 @@ namespace SpellyZombie
 
         public void TakeHit(Vector3 impulse, float damage, string cause = null)
         {
-            if (Barrier.Protects(this)) return; // isolated - NOTHING gets in
             if (IsDowned)
             {
                 _bleedOut -= 1.5f; // hits while downed accelerate the bleed-out

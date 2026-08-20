@@ -423,11 +423,7 @@ namespace SpellyZombie
         /// CanAcquire = AcquireBody with mutations and logs stripped; AcquireBody
         /// returns the freed body or null. Pot ink only pours - the pot is stealable.
         static bool IsPotInk(Collider c)
-        {
-            var pot = c != null ? c.GetComponentInParent<CauldronEconomy>() : null;
-            return pot != null && pot.InkSurface != null
-                && c.transform.IsChildOf(pot.InkSurface);
-        }
+            => c != null && CauldronEconomy.IsInk(c.transform);
 
         public static bool CanAcquire(Collider aimedCollider, int ownerId)
         {

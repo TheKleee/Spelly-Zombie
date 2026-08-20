@@ -209,6 +209,12 @@ namespace SpellyZombie
 
             float speed = col.relativeVelocity.magnitude;
             if (speed < DrawingConfig.ImpactDamageSpeed) return;
+
+            // A CHARGE IS AN ATTACK, NOT AN ACCIDENT. Without this the charger
+            // pays its own impact damage for the hit it aimed at, so ramming
+            // anything was suicide. Being thrown into a wall still hurts.
+            var mine = GetComponent<ChargeAttack>();
+            if (mine != null && mine.Busy) return;
             float dmg = (speed - DrawingConfig.ImpactDamageSpeed) * DrawingConfig.ImpactDamagePerSpeed;
 
             // a flung zombie is a projectile: whoever it lands on feels it too

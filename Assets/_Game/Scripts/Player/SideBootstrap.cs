@@ -61,6 +61,12 @@ namespace SpellyZombie
             // lobby: aim at a player, floating I, name card + Steam add
             LobbyInspect.Tick();
 
+            // players are SPAWNED from the prefab, not assumed to be sitting
+            // in the scene - then stood at their start: a biome on a real map,
+            // scattered ground in the lobby.
+            PlayerSpawner.Tick();
+            SpawnPlan.PlaceLocals();
+
             // keep every player wearing the side components
             _sweep -= Time.deltaTime;
             if (_sweep <= 0f)

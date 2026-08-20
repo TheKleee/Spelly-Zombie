@@ -22,13 +22,47 @@ namespace SpellyZombie
 
         SimpleFPSController _pilot;
 
+        /// What a scan gave you that has not become wand yet. Invisible: it
+        /// shows only as the wand slowly growing back once you are yourself.
+        public float Reserve { get; private set; }
+
+        /// A scan fills the RESERVE, not the wand. The wand you had stays the
+        /// wand you have - the shape you wore has no wand to feed.
+        public void Store(float amount) => Reserve += Mathf.Max(0f, amount);
+
         /// No passive regen. Wizards: the pot is the only well
-        /// (CauldronEconomy.LocalWandTick). Acolytes: ink evaporates.
+        /// (CauldronEconomy.LocalWandTick). Acolytes: ink evaporates, except
+        /// while worn - a disguise has no wand to dry out.
         void Update()
         {
             if (_pilot == null) _pilot = GetComponent<SimpleFPSController>();
             if (!Sides.IsAcolytePlayer(_pilot)) return;   // wizards: the pot, or nothing
-            Ink = Mathf.Max(0f, Ink - DrawingConfig.AcolyteInkEvaporatePerSec * Time.deltaTime);
+
+            float dt = Time.deltaTime;
+            bool shaped = ShapeShift.LocalIsShaped;
+
+            // WHILE WORN: nothing moves. No evaporation, no refill - you are
+            // an object, and objects do not hold wands.
+            if (shaped) return;
+
+            // BACK IN YOUR BODY: the reserve bleeds into the wand until the
+            // wand is full, and the moment it IS full whatever is left is
+            // thrown away - a scan you did not spend is a scan you wasted.
+            if (Reserve > 0f)
+            {
+                if (Ink >= DrawingConfig.InkMax - 0.01f) Reserve = 0f;
+                else
+                {
+                    float move = Mathf.Min(Reserve,
+                        DrawingConfig.ReserveFlowPerSec * dt,
+                        DrawingConfig.InkMax - Ink);
+                    Ink += move;
+                    Reserve -= move;
+                    return;   // refilling holds evaporation off
+                }
+            }
+
+            Ink = Mathf.Max(0f, Ink - DrawingConfig.AcolyteInkEvaporatePerSec * dt);
         }
 
         public float Fraction => Ink / DrawingConfig.InkMax;

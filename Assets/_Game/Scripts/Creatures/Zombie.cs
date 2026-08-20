@@ -80,16 +80,17 @@ namespace SpellyZombie
             Color skin = KindSkin(kind);
             GameObject go, head;
 
-            // prefab override: Zombie_<kind> checked first, then Zombie; the kind
-            // scale multiplies the authored scale, components below fill gaps only
-            var custom = PrefabVault.Get("Zombie_" + kind) ?? PrefabVault.Get("Zombie");
+            // ONE authored body, from the CollectionManager slot - kind is a
+            // shape applied on top of it, not a separate prefab. It used to
+            // come from Resources, where a stale copy quietly won.
+            var custom = CollectionManager.ZombieBody;
             bool graybox = custom == null;
 
             if (!graybox)
             {
                 go = Instantiate(custom);
                 go.name = "Zombie_" + kind;
-                go.transform.position = pos + Vector3.up * 1.1f;
+                go.transform.position = pos;
 
                 // kind shape relative to a Walker, applied on top of the authored scale
                 Vector3 rel = RawKindScale(kind);
@@ -104,7 +105,7 @@ namespace SpellyZombie
             {
                 go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
                 go.name = "Zombie_" + kind;
-                go.transform.position = pos + Vector3.up * 1.1f;
+                go.transform.position = pos;
                 go.transform.localScale = KindScale(kind);
                 go.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(skin, MoteShade.Opaque);
 
@@ -135,6 +136,12 @@ namespace SpellyZombie
                 }
             }
 
+            // A BODY WITH NO COLLIDER FALLS STRAIGHT THROUGH THE WORLD. The
+            // graybox capsule brought its own; an authored prefab need not, so
+            // one is fitted to the mesh. Put a collider on the prefab and this
+            // never runs - yours is always the one that is used.
+            if (go.GetComponentInChildren<Collider>(true) == null) FitCollider(go);
+
             // components are added only if missing; per-kind stats apply only to code-created ones
             var rb = Adopt.Component<Rigidbody>(go, out bool rbNew);
             if (rbNew)
@@ -150,6 +157,7 @@ namespace SpellyZombie
                     : kind == ZombieKind.Swarm ? 12f : 60f;
 
             var creature = Adopt.Component<Creature>(go);
+            Adopt.Component<WeightSag>(go);   // weight you can see before it crushes
             var tag = Adopt.Component<SurfaceMaterialTag>(go, out bool tagNew);
             if (tagNew) tag.Material = SurfaceMaterialType.Flesh;
             Adopt.Component<PersistentInkSurface>(go); // runes drawn ON zombies ride them and persist
@@ -207,6 +215,12 @@ namespace SpellyZombie
                 Debug.Log($"[SpellyZombie] Scribbler spawned (hat, purple) carrying: {string.Join(", ", z.Cards)}");
             }
 
+            // AN AUTHORED BODY NEVER GOES THROUGH THE WARDROBE, and the paint
+            // shell used to be built in there - so drawing on one had nothing
+            // to land on. It carries its own now, inside its own hierarchy.
+            if (!graybox)
+                ZombieDress.AttachPaintShell(go.GetComponentInChildren<SkinnedMeshRenderer>(true));
+
             // wardrobe: shared model follows the capsule; a prefab body is already dressed
             if (graybox)
             {
@@ -237,13 +251,7 @@ namespace SpellyZombie
             _rising = true;
             if (_rb == null) _rb = GetComponent<Rigidbody>();
 
-            // probe from just above the feet; accept only floor-like hits
-            if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down,
-                    out var hit, 40f,
-                    Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer),
-                    QueryTriggerInteraction.Ignore)
-                && hit.normal.y > 0.55f)
-                transform.position = hit.point;
+            if (FindFloor(out var floor)) StandOn(floor);
 
             Vector3 surface = transform.position;
             float depth = Mathf.Max(0.8f, transform.localScale.y * 2.2f);
@@ -274,11 +282,113 @@ namespace SpellyZombie
                 transform.position = surface - Vector3.up * (depth * (1f - k));
                 yield return null;
             }
-            transform.position = surface;
-
             foreach (var c in cols) if (c != null) c.enabled = true;
+
+            // stand it again at the end: the summon sets the body's real size
+            // AFTER Spawn returns, so the offset measured on the way down is
+            // stale by the time it climbs out
+            if (FindFloor(out var settled)) StandOn(settled);
+            else transform.position = surface;
+
             if (_rb != null) _rb.isKinematic = wasKinematic;
             _rising = false;
+        }
+
+        static readonly RaycastHit[] _standBuf = new RaycastHit[16];
+
+        /// The highest floor under this zombie. Every hit is considered, not
+        /// just the first: a ray that starts inside the body can open on the
+        /// zombie's own paint shell, and taking that one hit and rejecting it
+        /// for not being floor-like is what left them hanging in mid-air.
+        bool FindFloor(out Vector3 point)
+        {
+            point = default;
+            Bounds box = Body();
+            Vector3 from = new Vector3(transform.position.x, box.max.y + 0.5f,
+                transform.position.z);
+
+            int mask = Physics.DefaultRaycastLayers
+                & ~(1 << InkCanvasLayer.Layer) & ~(1 << VesselShell.Layer);
+            int n = Physics.RaycastNonAlloc(from, Vector3.down, _standBuf, 40f, mask,
+                QueryTriggerInteraction.Ignore);
+
+            float best = float.NegativeInfinity;
+            for (int i = 0; i < n; i++)
+            {
+                var h = _standBuf[i];
+                if (h.collider == null) continue;
+                // itself - and its paint shell, which lives outside the
+                // hierarchy, so a plain parent check would miss it and let the
+                // zombie stand on top of its own skin
+                if (ZombieOwner.From(h.collider) == this) continue;
+                if (h.normal.y <= 0.55f) continue;             // a wall, not a floor
+                // a surface up past its waist is something it is standing
+                // BESIDE, not on; without this a zombie raised next to a table
+                // hops onto the table
+                if (h.point.y > box.center.y) continue;
+                if (h.point.y > best) { best = h.point.y; point = h.point; }
+            }
+            return best > float.NegativeInfinity;
+        }
+
+        /// Rests the body's LOWEST point on a spot. The pivot of an authored
+        /// prefab sits wherever the artist left it, so placing the pivot on the
+        /// ground buries some bodies and floats others.
+        void StandOn(Vector3 ground)
+        {
+            float lift = transform.position.y - Body().min.y;
+            transform.position = new Vector3(ground.x, ground.y + lift, ground.z);
+        }
+
+        /// What the zombie occupies: its colliders, or its meshes when the
+        /// colliders are off mid-rise.
+        Bounds Body()
+        {
+            bool any = false;
+            Bounds b = new Bounds(transform.position, Vector3.zero);
+
+            foreach (var c in GetComponentsInChildren<Collider>())
+            {
+                if (c == null || !c.enabled || c.isTrigger) continue;
+                if (any) b.Encapsulate(c.bounds); else { b = c.bounds; any = true; }
+            }
+            if (!any)
+                foreach (var r in GetComponentsInChildren<Renderer>())
+                {
+                    if (r == null || !r.enabled) continue;
+                    if (any) b.Encapsulate(r.bounds); else { b = r.bounds; any = true; }
+                }
+            return b;
+        }
+
+        static bool _warnedNoCollider;
+
+        /// Wraps whatever the body draws in an upright capsule, so a prefab
+        /// that ships without one still has something to stand on.
+        static void FitCollider(GameObject go)
+        {
+            bool any = false;
+            Bounds b = new Bounds(go.transform.position, Vector3.zero);
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null) continue;
+                if (any) b.Encapsulate(r.bounds); else { b = r.bounds; any = true; }
+            }
+            if (!any) return;
+
+            Vector3 s = go.transform.lossyScale;
+            var cap = go.AddComponent<CapsuleCollider>();
+            cap.direction = 1;   // upright
+            cap.center = go.transform.InverseTransformPoint(b.center);
+            cap.height = b.size.y / Mathf.Max(0.0001f, Mathf.Abs(s.y));
+            cap.radius = Mathf.Max(0.05f, 0.5f * Mathf.Min(
+                b.size.x / Mathf.Max(0.0001f, Mathf.Abs(s.x)),
+                b.size.z / Mathf.Max(0.0001f, Mathf.Abs(s.z))));
+
+            if (_warnedNoCollider) return;
+            _warnedNoCollider = true;
+            Debug.Log("[SpellyZombie] The zombie body has no collider, so one was fitted to "
+                + "its mesh. Add a Capsule Collider to the prefab to shape it yourself.");
         }
 
         /// First child whose name contains `name`, case-insensitive.
@@ -303,6 +413,26 @@ namespace SpellyZombie
             if (_brain != null)
                 _brain.TrancedUntil = Mathf.Max(_brain.TrancedUntil, Time.time + seconds);
             _dress?.PaintHold(seconds);
+            HoldPose(seconds);
+        }
+
+        Animator _anim;
+        float _poseHeldUntil;
+
+        /// An authored body has no dress to settle, so IT holds still: the
+        /// shell is cast in the bind pose, and ink lands where the mesh is not
+        /// if the body keeps animating out from under it.
+        void HoldPose(float seconds)
+        {
+            if (_dress != null) return;   // the dress does its own settling
+            if (_anim == null) _anim = GetComponentInChildren<Animator>(true);
+            if (_anim == null) return;
+            if (_poseHeldUntil <= Time.time)
+            {
+                _anim.enabled = false;
+                _anim.Rebind();           // back to the pose the shell was cast in
+            }
+            _poseHeldUntil = Mathf.Max(_poseHeldUntil, Time.time + seconds);
         }
 
         static void AddHatPart(Transform body, Vector3 localPos, Vector3 localScale, float tiltZ)
@@ -450,6 +580,13 @@ namespace SpellyZombie
 
         void FixedUpdate()
         {
+            // the pen let go: the body may move again
+            if (_poseHeldUntil > 0f && Time.time >= _poseHeldUntil)
+            {
+                _poseHeldUntil = 0f;
+                if (_anim != null) _anim.enabled = true;
+            }
+
             if (_creature == null || _brain == null) return;
 
             // below KillY it dies where it fell (drops and kill credit, no teleport)
@@ -979,7 +1116,7 @@ namespace SpellyZombie
         {
             WorldEvents.Report(WorldEventKind.Death, transform.position, 2f); // nearby zombies hear it
             RoundDirector.NotifyKill(this); // round economy
-            Juice.Pop(transform.position);
+            DeathPoof(cause);
 
             // death releases the gas cloud at GasRadius, unscaled;
             // detonation is the SummonGasDetonateMul version
@@ -995,6 +1132,25 @@ namespace SpellyZombie
 
             // no card drops; runes are learned by analyzing objects with the grimoire
             Grimoire.Drop(OwnerId);
+        }
+
+        /// It never just vanishes: a burst in its own colour, a thud, and a
+        /// line naming what did it - killed or timed out, the same tell.
+        public void DeathPoof(string cause)
+        {
+            Color c = KindSkin(Kind);
+            var view = GetComponent<StateView>();
+            if (view != null && view.DriveTint) c = view.Tint;
+
+            Vector3 at = transform.position + Vector3.up * transform.localScale.y * 0.4f;
+            GrammarFX.PuffBurst(at, c, 7);
+            if (FxLibrary.I != null) FxLibrary.SpawnTinted(FxLibrary.I.Poof, at, c);
+            Juice.Pop(transform.position);
+            Juice.Thud(transform.position);
+
+            DrawingWorld.Instance?.LogEvent(string.IsNullOrEmpty(cause)
+                ? $"{name} falls apart"
+                : $"{name} falls apart: {cause}");
         }
 
         static void WhistleOwner(int ownerId)

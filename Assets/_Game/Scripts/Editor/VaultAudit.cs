@@ -50,12 +50,10 @@ namespace SpellyZombie
             };
             foreach (ParticleKind k in System.Enum.GetValues(typeof(ParticleKind)))
                 set.Add("FX_" + k);
-            // every GrammarField subclass, wherever it lives
+            // every GrammarField subclass, wherever it lives (poison etc.)
             var fieldBase = typeof(GrammarField);
             foreach (var t in fieldBase.Assembly.GetTypes())
                 if (t.IsSubclassOf(fieldBase)) set.Add("FX_" + t.Name);
-            foreach (RuneGrammar.ExoticKind e in System.Enum.GetValues(typeof(RuneGrammar.ExoticKind)))
-                set.Add("FX_" + e);
             return set;
         }
 

@@ -27,10 +27,14 @@ namespace SpellyZombie
         /// stronger. Size counts more than mass (a big light thing is still
         /// strong), and the biome it was raised in caps the result.
         /// One definition, used by zombies and golems alike.
+        /// Mass is taken as a ROOT, not straight: a body eight times heavier is
+        /// a few times tougher, not eight. Linear mass ran away the moment
+        /// something heavy existed - a scale-2 golem massing 360 came out with
+        /// thousands of strength.
         public static float StrengthFromBody(float sizeMul, float massKg) =>
             DrawingConfig.BodyStrengthBase
             * Mathf.Pow(Mathf.Max(0.05f, sizeMul), DrawingConfig.BodyStrengthSizePower)
-            * (1f + Mathf.Max(0f, massKg) * DrawingConfig.BodyStrengthPerKg);
+            * (1f + Mathf.Sqrt(Mathf.Max(0f, massKg)) * DrawingConfig.BodyStrengthPerKg);
 
         /// Set the ceiling from the body and fill it. Call once, after the
         /// thing has its final scale and mass.
@@ -38,6 +42,7 @@ namespace SpellyZombie
         {
             MaxStrength = Mathf.Max(1f, StrengthFromBody(sizeMul, massKg));
             Health = MaxStrength;
+            NaturalMass = massKg;   // this IS its own weight from here on
         }
 
         /// The multiplier the world uses: never 0, so a nearly-dead thing is
@@ -68,6 +73,26 @@ namespace SpellyZombie
             _authored = Time.timeSinceLevelLoad < 1f;
             // born full: whatever health it was given IS its ceiling
             if (MaxStrength <= 0f) MaxStrength = Mathf.Max(1f, Health);
+            if (_body != null) NaturalMass = _body.mass;
+        }
+
+        /// What this body weighed when it was born, or when its strength was
+        /// last set from its body. Anything past this is weight it is CARRYING.
+        public float NaturalMass { get; private set; }
+
+        /// 0 = carrying nothing but itself, 1 = at the point where it starts
+        /// buckling. Views read this to show the strain before it kills.
+        public float Burden01
+        {
+            get
+            {
+                if (_body == null || _body.isKinematic) return 0f;
+                float extra = Mathf.Max(0f, _body.mass - NaturalMass);
+                if (extra <= 0f) return 0f;
+                float strength = Mathf.Max(1f, Health > 0f ? Health : MaxStrength);
+                return Mathf.Clamp01(extra * DrawingConfig.PropWeightPerKg
+                    / (strength * DrawingConfig.PropCrushLoad));
+            }
         }
 
         // impact damage: a prop with a Rigidbody takes damage scaled by how hard it hit
@@ -117,8 +142,13 @@ namespace SpellyZombie
             if (_dead || _body == null || _body.isKinematic) return;
             if (MaxStrength <= 0f) return;
 
+            // WEIGHT AGAINST STRENGTH, not against a health fraction. Dividing
+            // by StrengthMul (0.35..1) measured mass against nothing, so a
+            // healthy 110kg charger buckled just for being a charger.
+            // A hurt thing still holds itself up worse: strength IS health.
             float carried = _body.mass * DrawingConfig.PropWeightPerKg;
-            float load = carried / Mathf.Max(0.05f, StrengthMul);
+            float strength = Mathf.Max(1f, Health > 0f ? Health : MaxStrength);
+            float load = carried / strength;
             if (load < DrawingConfig.PropCrushLoad) return;
 
             _crushCarry += (load - DrawingConfig.PropCrushLoad)
@@ -134,7 +164,6 @@ namespace SpellyZombie
         public void TakeDamage(float amount, string cause)
         {
             if (amount <= 0f || _dead) return;
-            if (Barrier.Protects(this)) return; // two-way isolation holds for everything
 
             // damage on a limb bone forwards to the owning being; never Destroy() a skeleton bone
             var pilot = GetComponentInParent<SimpleFPSController>();

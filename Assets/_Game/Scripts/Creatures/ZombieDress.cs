@@ -37,6 +37,33 @@ namespace SpellyZombie
         public void PaintHold(float seconds) =>
             _paintHoldUntil = Mathf.Max(_paintHoldUntil, Time.time + seconds);
 
+        /// The pen must hit the VISIBLE mesh, not the physics capsule, so every
+        /// zombie carries a shell of its own mesh to draw on. BakeMesh is
+        /// unusable on the rig (see CharacterRig), so the shell is the shared
+        /// mesh mounted at identity - one collider, built once.
+        /// Used by the dressed graybox AND by an authored body, which never
+        /// goes through the wardrobe at all.
+        public static bool AttachPaintShell(SkinnedMeshRenderer smr)
+        {
+            if (smr == null || smr.sharedMesh == null) return false;
+            foreach (Transform t in smr.transform)
+                if (t.name == "PaintShell") return false;   // already wearing one
+
+            var shell = new GameObject("PaintShell");
+            shell.transform.SetParent(smr.transform, false);
+            shell.transform.localPosition = Vector3.zero;
+            shell.transform.localRotation = Quaternion.identity;
+            shell.transform.localScale = Vector3.one;
+            shell.AddComponent<MeshCollider>().sharedMesh = smr.sharedMesh;
+
+            // MUST stay on the ink-canvas layer: on Default this solid mesh
+            // wraps the zombie's own capsule and PhysX ejects it, flinging the
+            // zombie. Layer 30 ignores collisions with every layer but stays
+            // raycast-visible; the grab ray and chew SphereCast mask it out.
+            shell.layer = InkCanvasLayer.Layer;
+            return true;
+        }
+
         /// Spawn rise: plays the StandUp clip.
         public void Rise()
         {
@@ -65,7 +92,7 @@ namespace SpellyZombie
         {
             // ZombieBody prefab replaces the shared model, materials untouched;
             // rigged on the same skeleton, the zombie animation set plays as-is
-            var custom = PrefabVault.Get("ZombieBody");
+            var custom = CollectionManager.ZombieBody;
             var prefab = custom != null ? custom : CharacterLibrary.Model;
             var ctrl = CharacterLibrary.ZombieAnim;
             if (prefab == null || z == null) return null;
@@ -159,28 +186,11 @@ namespace SpellyZombie
                 }
                 sk.updateWhenOffscreen = true;
             }
-            // paint shell: the pen must hit the visible mesh, not the capsule.
-            // BakeMesh is unusable on the rig (see CharacterRig), so the shell is
-            // the shared mesh mounted at identity - one collider, built once.
-            if (smr != null && smr.sharedMesh != null)
-            {
-                var shell = new GameObject("PaintShell");
-                shell.transform.SetParent(smr.transform, false);
-                shell.transform.localPosition = Vector3.zero;
-                shell.transform.localRotation = Quaternion.identity;
-                shell.transform.localScale = Vector3.one;
-                shell.AddComponent<MeshCollider>().sharedMesh = smr.sharedMesh;
-
-                // MUST stay on the ink-canvas layer: on Default this solid mesh
-                // wraps the zombie's own capsule and PhysX ejects it, flinging the
-                // zombie. Layer 30 ignores collisions with every layer but stays
-                // raycast-visible; the grab ray and chew SphereCast mask it out.
-                shell.layer = InkCanvasLayer.Layer;
-
-                // no PersistentInkSurface here: ink routes to the zombie root via
-                // ZombieOwner, where detonation and the netcode guards look for it
+            if (AttachPaintShell(smr))
+                // the dress rides OUTSIDE the zombie's hierarchy, so ink landing
+                // on the shell needs this to find its way back to the zombie.
+                // An authored body carries its shell inside, and resolves directly.
                 d.gameObject.AddComponent<ZombieOwner>().Of = z;
-            }
 
             if (skins.Length == 0 && _warnedNoSkin.Add(prefab.GetInstanceID()))
                 Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no SkinnedMeshRenderer. " +

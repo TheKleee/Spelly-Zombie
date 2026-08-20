@@ -10,6 +10,14 @@ namespace SpellyZombie
         public EyeMood Mood { get; private set; }
         public Vector3 LookTarget;
 
+        /// Whose "forward" idle gaze follows. Eyes mounted on a BONE inherit
+        /// that bone's axes, which rarely point where the body faces - a blob
+        /// bone often points straight down. Set this to the body root and the
+        /// eyes look where the creature is going. Null = this object's own.
+        public Transform Facing;
+
+        Transform Face => Facing != null ? Facing : transform;
+
         const float Spring = 60f, Damp = 8f;
 
         Transform _leftEye, _rightEye, _leftPupil, _rightPupil;
@@ -37,17 +45,25 @@ namespace SpellyZombie
         /// channel: pupil COLOUR carries buffs, so the two never collide.
         public void Swell(float seconds, float amount)
         {
-            _swellUntil = Time.time + Mathf.Max(0.01f, seconds);
+            _swellSpan = Mathf.Max(0.01f, seconds);
+            _swellUntil = Time.time + _swellSpan;
             _swellAmount = Mathf.Max(1f, amount);
         }
 
-        float _swellUntil, _swellAmount = 1f, _swellShown = 1f;
+        float _swellUntil, _swellSpan = 1f, _swellAmount = 1f, _swellShown = 1f;
+        Vector3 _restEyeL, _restEyeR;   // the scale they were placed at
 
         /// 1 = resting, above = wide. Applied on top of the built scale.
+        /// ONE swell: open fast, settle back. It used to ride an 18Hz sine,
+        /// which read as the eyes flickering rather than going wide.
         float SwellNow()
         {
-            if (Time.time >= _swellUntil) return 1f;
-            return Mathf.Lerp(1f, _swellAmount, 0.6f + 0.4f * Mathf.Sin(Time.time * 18f));
+            float left = _swellUntil - Time.time;
+            if (left <= 0f) return 1f;
+            float gone = 1f - Mathf.Clamp01(left / _swellSpan);   // 0 at the start
+            float k = gone < 0.15f ? gone / 0.15f                  // snap open
+                                   : 1f - (gone - 0.15f) / 0.85f;  // then ease shut
+            return Mathf.Lerp(1f, _swellAmount, Mathf.Clamp01(k));
         }
 
         /// Red pupils mark a mind-controlled zombie. Passing null restores
@@ -203,14 +219,21 @@ namespace SpellyZombie
             if (_leftEye == null || _rightEye == null
                 || _leftPupil == null || _rightPupil == null) return;
 
-            // wide eyes: the charge tell now, voice volume later
+            // Wide eyes: the charge tell now, voice volume later. MULTIPLIES
+            // whatever the eyes were built or authored at - it must never
+            // recompute a size, or a prefab's own eyes get moved and resized
+            // out from under whoever placed them.
             float swell = SwellNow();
             if (!Mathf.Approximately(swell, _swellShown))
             {
                 _swellShown = swell;
-                Vector3 s = Vector3.one * (0.16f * _scale * swell);
-                _leftEye.localScale = s;
-                _rightEye.localScale = s;
+                if (_restEyeL == Vector3.zero)
+                {
+                    _restEyeL = _leftEye.localScale;
+                    _restEyeR = _rightEye.localScale;
+                }
+                _leftEye.localScale = _restEyeL * swell;
+                _rightEye.localScale = _restEyeR * swell;
             }
 
             // ---- auto behavior unless a brain is holding a mood ----
@@ -249,7 +272,7 @@ namespace SpellyZombie
             }
             else
             {
-                LookTarget = transform.position + transform.forward * 5f;
+                LookTarget = transform.position + Face.forward * 5f;
                 Mood = EyeMood.Neutral;
             }
         }

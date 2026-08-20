@@ -16,22 +16,35 @@ namespace SpellyZombie
         void OnEnable() => _placed = this;
         void OnDisable() { if (_placed == this) _placed = null; }
 
+        /// The scene's own anchor - where a body belongs when nothing else
+        /// says otherwise. SpawnPlan scatters around this in the lobby.
+        public static Vector3 Home =>
+            _placed != null ? _placed.RespawnPoint : new Vector3(0f, 2f, 0f);
+
+        /// Move a player without the CharacterController dragging them back.
+        /// One recipe, so every teleport in the game behaves the same.
+        public static void Teleport(SimpleFPSController pilot, Vector3 to)
+        {
+            if (pilot == null) return;
+            var cc = pilot.GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = false; // CharacterController fights teleports
+            pilot.transform.position = to;
+            if (cc != null) cc.enabled = true;
+            pilot.CancelMomentum();
+        }
+
         /// Bring a fallen player home: middle of the map, on real ground,
         /// momentum wiped. During a run they arrive FLOORED (revivable).
         public static void Catch(SimpleFPSController pilot)
         {
             if (pilot == null) return;
-            Vector3 home = _placed != null ? _placed.RespawnPoint : new Vector3(0f, 2f, 0f);
+            Vector3 home = Home;
             // drop onto the ACTUAL ground - terrain maps aren't flat
             if (Physics.Raycast(home + Vector3.up * 40f, Vector3.down, out var hit, 100f,
                     Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
                 home = hit.point + Vector3.up * 1.5f;
 
-            var cc = pilot.GetComponent<CharacterController>();
-            if (cc != null) cc.enabled = false; // CharacterController fights teleports
-            pilot.transform.position = home;
-            if (cc != null) cc.enabled = true;
-            pilot.CancelMomentum();
+            Teleport(pilot, home);
 
             if (RoundDirector.RunActive && !pilot.IsDowned)
             {

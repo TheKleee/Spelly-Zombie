@@ -84,8 +84,9 @@ namespace SpellyZombie
             _left -= Time.deltaTime;
             if (_left > 0f) return;
 
-            // expires with no corpse and no drops
-            if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, transform.position);
+            // expires with no corpse and no drops - but it still shows, or a
+            // summon just blinks out of existence with nothing to read
+            GetComponent<Zombie>()?.DeathPoof("its time ran out");
             Destroy(gameObject);
         }
     }

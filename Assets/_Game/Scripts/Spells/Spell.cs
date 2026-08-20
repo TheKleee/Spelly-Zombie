@@ -318,6 +318,18 @@ namespace SpellyZombie
                     + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * (0.6f + total * 0.12f)
                     + Vector3.up * 0.2f;
 
+                // THEY RISE FROM THE GROUND, NOT OUT OF THE AIR. The ring can
+                // step off the edge of whatever the seal was drawn on. Zombie
+                // does the standing itself; this only settles the spot the
+                // BIOME is read from, so it must land on floor, not on a wall
+                // or on the ink of the seal that raised them.
+                int floorMask = Physics.DefaultRaycastLayers
+                    & ~(1 << InkCanvasLayer.Layer) & ~(1 << VesselShell.Layer);
+                if (Physics.Raycast(spot + Vector3.up * 2.5f, Vector3.down,
+                        out var stand, 12f, floorMask, QueryTriggerInteraction.Ignore)
+                    && stand.normal.y > 0.55f)
+                    spot = stand.point + Vector3.up * 0.15f;
+
                 // Charger is the brute; ranged uses Walker for now (Scribbler
                 // can cast, and zombies never cast)
                 var z = Zombie.Spawn(spot, isRanged ? ZombieKind.Walker : ZombieKind.Charger);
@@ -330,7 +342,9 @@ namespace SpellyZombie
                 // mass is cubic (volume); combat stats are linear in size,
                 // then take the line bonus
                 var srb = z.GetComponent<Rigidbody>();
-                if (srb != null) srb.mass *= sizeMul * sizeMul * sizeMul;
+                if (srb != null)
+                    srb.mass = Mathf.Max(DrawingConfig.SummonMinMass,
+                        srb.mass * sizeMul * sizeMul * sizeMul);
 
                 // strength IS health, and a body's strength comes from its own
                 // size and weight - a giant is strong because it is big. The
@@ -340,7 +354,8 @@ namespace SpellyZombie
                 {
                     float kg = srb != null ? srb.mass : 0f;
                     sdmg.SetStrengthFromBody(sizeMul, kg);
-                    sdmg.MaxStrength *= power;
+                    sdmg.MaxStrength = Mathf.Max(DrawingConfig.SummonMinStrength,
+                        sdmg.MaxStrength * power);
                     sdmg.Health = sdmg.MaxStrength;
                 }
                 z.AttackDamage *= sizeMul * power;
@@ -707,11 +722,8 @@ namespace SpellyZombie
         {
             if (ProducesMatter(z.Rune)) { SpawnMatter(z); return; }
 
-            // rune-to-particle reads the one registry (RuneDef.Emits).
             // State runes never reach here - ProducesMatter caught them above.
-            var def = RuneGrammar.Def(z.Rune);
-            if (def == null) return;
-            ParticleKind kind = def.Emits;
+            ParticleKind kind = SpellParticle.KindOf(z.Rune);
 
             // the caster's powerups shape the burst (per rune family);
             // the Spell perk (local player only, like Powerups) tops it up
@@ -746,6 +758,10 @@ namespace SpellyZombie
                 p.Lineage = RuneGrammar.Bit(z.Rune); // GRAMMAR v4: ancestry starts here -
                                                      // all 12 in one chain = THE DEMON
                 p.SealId = GetHashCode();            // siblings of one DRAWING pair up first
+                // the vectors remember WHERE THE GLYPH POINTED - the arrow
+                // drags along this, the Y reverses against it. Kept apart
+                // from the mote's own drift, which changes as it flies.
+                if (kind == ParticleKind.Push) p._aimDir = z.PushDir;
                 p.OwnerId = _ownerId;                // dormant wake rules ask whose spell this is
                 if (i == 0) z.Tracked = p;           // sustain law: the rune WATCHES this one
                                                      // (powerup extras are untracked bonuses)
@@ -896,108 +912,17 @@ namespace SpellyZombie
             foreach (var o in _zones)
                 if (o.Rune == z.Rune) { if (o != z) return; break; }
 
-            // ---- read the recipe: every rune enclosed in this seal ----
-            bool denser = false, thinner = false, heatUp = false, heatDown = false,
-                lightUp = false, lightDown = false, glue = false, slick = false;
-            int sameForm = 0;
+            // ---- THE THRESHOLD DOCTRINE: no seal recipes. The State rune
+            // conjures its matter and NOTHING else - sibling runes emit their
+            // own particles, and whatever they become together is decided by
+            // payload addition against the table, in the world, in order.
             ulong lineage = 0;
-            float heatUpG = 0f, heatDownG = 0f, denseG = 0f; // partner glyph sizes - combos must OUTGROW their parts
-            float heatUpR = 0f, heatDownR = 0f;              // partner zone RADII - combo AREA = the ingredients' reaches SUMMED
-            foreach (var other in _zones)
-            {
-                lineage |= RuneGrammar.Bit(other.Rune);
-                switch (other.Rune)
-                {
-                    case RuneType.DensityUp: denser = true; denseG = Mathf.Max(denseG, other.GlyphSize); break;
-                    case RuneType.DensityDown: thinner = true; break;
-                    case RuneType.HeatUp: heatUp = true; heatUpG = Mathf.Max(heatUpG, other.GlyphSize); heatUpR = Mathf.Max(heatUpR, other.Radius); break;
-                    case RuneType.HeatDown: heatDown = true; heatDownG = Mathf.Max(heatDownG, other.GlyphSize); heatDownR = Mathf.Max(heatDownR, other.Radius); break;
-                    case RuneType.LuminanceUp: lightUp = true; break;
-                    case RuneType.LuminanceDown: lightDown = true; break;
-                    case RuneType.StickyUp: glue = true; break;
-                    case RuneType.StickyDown: slick = true; break;
-                }
-                if (other.Rune == z.Rune) sameForm++;
-            }
+            foreach (var other in _zones) lineage |= RuneGrammar.Bit(other.Rune);
             RuneGrammar.TryDemon(lineage, z.Center, z.Radius); // a full drawing IS a chain
 
             var buff = Powerups.For(_ownerId, z.Rune);
             float size = Mathf.Clamp(z.GlyphSize * 0.5f, 0.08f, 0.45f)
-                * Mathf.Lerp(0.75f, 1.15f, z.Intensity)
-                * (denser ? 1.7f : thinner ? 0.5f : 0.9f) * (1f + 0.25f * buff.Big);
-
-            // combinations outgrow their elements: the partner rune's drawn
-            // size joins the form's, past the solo clamp
-            float duoHeatUp = size + Mathf.Clamp(heatUpG * 0.5f, 0.05f, 0.9f);
-            float duoHeatDown = size + Mathf.Clamp(heatDownG * 0.5f, 0.05f, 0.9f);
-            float duoDense = size + Mathf.Clamp(denseG * 0.5f, 0.05f, 0.9f);
-            // area = the ingredients' effect radii summed
-            float reachHeatUp = z.Radius + heatUpR;
-            float reachHeatDown = z.Radius + heatDownR;
-
-            // ---- FORM LEVELING: draw the State rune twice = lvl2 (grows /
-            // spreads), three times = the AREA ultimate ----
-            if (sameForm >= 3)
-            {
-                if (solid)
-                {
-                    if (!PreviewConjure(z, ParticleKind.Dense, z.Radius * 2f,
-                        at => SolidAvalancheField.Open(at, mat, z.Intensity, lineage)))
-                        SolidAvalancheField.Open(z.Center, mat, z.Intensity, lineage);
-                }
-                else if (!PreviewConjure(z, ParticleKind.Spread, z.Radius * 2f,
-                    at => LiquidAreaField.Open(at, mat, z.Intensity, lineage)))
-                    LiquidAreaField.Open(z.Center, mat, z.Intensity, lineage);
-                return;
-            }
-            int formLevel = Mathf.Min(2, sameForm);
-            if (!solid && (thinner || lightDown)) formLevel = 2; // Liquid+Spread spreads - and DARK liquid spreads like darkness
-
-            // ---- heat × form. Ground casts preview first: the ghost carries
-            // the conjure and casts it where it wakes. ----
-            if (solid && heatUp)
-            {
-                // the waiting meteor reads as rock, not flame
-                if (!PreviewConjure(z, ParticleKind.Dense, duoHeatUp * 3f,
-                    at => FormConjures.Meteorite(at, z.Normal, mat, duoHeatUp, reachHeatUp,
-                        1 + buff.More, lineage, fromSky: true),
-                    realSize: duoHeatUp * 10f))
-                    FormConjures.Meteorite(z.Center, z.Normal, mat, duoHeatUp, reachHeatUp, 1 + buff.More, lineage);
-                return;
-            }
-            if (solid && heatDown)
-            {
-                if (!PreviewConjure(z, ParticleKind.Frost, duoHeatDown * 3f,
-                    at => FormConjures.IceSpikes(at, z.Normal, mat, duoHeatDown, reachHeatDown, lineage, _ownerId)))
-                    FormConjures.IceSpikes(z.Center, z.Normal, mat, duoHeatDown, reachHeatDown, lineage, _ownerId);
-                return;
-            }
-            if (!solid && heatDown)
-            {
-                if (!PreviewConjure(z, ParticleKind.Frost, z.Radius * 2f,
-                    at => FormConjures.Glacier(at, mat, z.Intensity, lineage)))
-                    FormConjures.Glacier(z.Center, mat, z.Intensity, lineage);
-                return;
-            }
-            if (!solid && heatUp)
-            {
-                if (!PreviewConjure(z, ParticleKind.Spark, duoHeatUp * 3f,
-                    at => FormConjures.HotLiquid(at, z.Normal, mat, duoHeatUp, reachHeatUp, z.Intensity, lineage)))
-                    FormConjures.HotLiquid(z.Center, z.Normal, mat, duoHeatUp, reachHeatUp, z.Intensity, lineage);
-                return;
-            }
-
-            // ---- Liquid + Dense = PRESSURE JET along the seal's normal ----
-            if (!solid && denser)
-            {
-                if (!PreviewConjure(z, ParticleKind.Dense, duoDense * 3f,
-                    at => FormConjures.PressureJet(at, z.Normal, mat, duoDense, z.Intensity, lineage)))
-                    FormConjures.PressureJet(z.Center, z.Normal, mat, duoDense, z.Intensity, lineage);
-                return;
-            }
-
-            // no cross-form seal recipe: Solid and Liquid each emit their own
-            // blob and the blobs combine on contact
+                * Mathf.Lerp(0.75f, 1.15f, z.Intensity) * (1f + 0.25f * buff.Big);
 
             // one conjure per cast; density buffs change the size, never the
             // count
@@ -1021,20 +946,9 @@ namespace SpellyZombie
                 foreach (var an in conjured.GetComponentsInChildren<Analyzable>(true))
                     an.SpellBorn = true;
                 conjured.Lineage = lineage;
-                conjured.FormLevel = formLevel;
                 if (buff.Bond > 0) conjured.AddStickiness(0.2f * buff.Bond); // gooier conjures
-
-                // ---- STICKY / SLICK / LIGHT / DARK forms (identity preserved) ----
-                if (glue) conjured.AddStickiness(0.65f);   // sticky solid: carry things stuck to it
-                if (slick) conjured.AddStickiness(-1f);    // slick solid: the frictionless plow
-                if (lightUp) // solid/liquid LIGHT - carriable lantern
-                {
-                    var l = new GameObject("FormGlow").AddComponent<Light>();
-                    l.transform.SetParent(conjured.transform, false);
-                    l.type = LightType.Point; l.range = 6f; l.intensity = 3.2f;
-                    l.color = new Color(1f, 0.95f, 0.75f);
-                }
-                if (lightDown) conjured.DarkAura = true;   // solid/liquid DARKNESS - blinds on touch
+                // NO seal-side dressing: sibling particles land on the blob in
+                // the world and change it there - that is the one law
             }
         }
 

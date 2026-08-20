@@ -181,10 +181,21 @@ namespace SpellyZombie
 
         Damageable _dmg;
 
-        /// WEIGHT MEASURED AGAINST STRENGTH. Every movement gate reads this
-        /// instead of raw weight, so the SAME load crushes a wounded body and
-        /// is carried by a healthy one. Wounds make the world heavier.
-        public float Load => TotalWeight / Mathf.Max(0.05f, StrengthMul);
+        /// WEIGHT MEASURED AGAINST STRENGTH. The same load crushes a wounded
+        /// body and is carried by a healthy one - wounds make the world
+        /// heavier.
+        /// A BODY AT ITS NATURAL WEIGHT IS NEVER CRUSHED BY ITSELF, however
+        /// hurt it is: only weight ABOVE natural is measured against strength.
+        /// Without that, being nearly dead was enough to buckle a zombie that
+        /// was carrying nothing at all.
+        public float Load
+        {
+            get
+            {
+                float excess = Mathf.Max(0f, TotalWeight - 1f);
+                return 1f + excess / Mathf.Max(0.05f, StrengthMul);
+            }
+        }
 
         /// THE DENSITY OF WHAT YOU ARE STANDING IN. A biome is normally gas,
         /// sometimes liquid, and its phase sets the base while its

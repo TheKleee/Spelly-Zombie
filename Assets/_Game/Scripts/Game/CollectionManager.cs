@@ -14,7 +14,10 @@ namespace SpellyZombie
         public static CollectionManager I { get; private set; }
 
         [Header("BODIES")]
-        [Tooltip("The player body - ONE prefab for both sides. Side is worn, not modelled.")]
+        [Tooltip("The WHOLE player - controller, camera, scripts. Scenes do not need one sitting in them; every local player is spawned from this. A split-screen or co-op mode just asks for more.")]
+        [SerializeField] GameObject _player;
+
+        [Tooltip("The player body - ONE prefab for both sides. Side is worn, not modelled. This is the MODEL only: no controller, no camera.")]
         [SerializeField] GameObject _playerBody;
 
         [Tooltip("The zombie body. Moving this here is what gets it out of Resources.")]
@@ -50,6 +53,7 @@ namespace SpellyZombie
 
         void OnDestroy() { if (I == this) I = null; }
 
+        public static GameObject Player => Slot(I?._player, "Player");
         public static GameObject PlayerBody => Slot(I?._playerBody, "Player Body");
         public static GameObject ZombieBody => Slot(I?._zombieBody, "Zombie Body");
         public static GameObject Golem => Slot(I?._golem, "Golem");

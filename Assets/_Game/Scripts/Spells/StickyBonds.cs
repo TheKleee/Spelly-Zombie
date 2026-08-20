@@ -3,7 +3,7 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// Stickiness is bond strength: one scalar for grabbing, gluing, building.
-    /// Ladder: hands < Sticky rune < Sticky lvl2 << lvl3 (the TimeFreezeField).
+    /// Ladder: hands < Sticky rune < Sticky lvl2 << lvl3 (the precision biome).
     /// Slick is the same axis negative: bonds refuse to form, grips tear early.
     public static class StickyBonds
     {

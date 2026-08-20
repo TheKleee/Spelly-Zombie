@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SpellyZombie
@@ -50,7 +51,14 @@ namespace SpellyZombie
         /// Call after the art changes underneath (a dressed body, a new skin).
         public void Rescan()
         {
-            _rends = GetComponentsInChildren<Renderer>(true);
+            // THE EYES ARE THEIR OWN CHANNEL. Body colour says what a thing is
+            // made of; pupils say who is driving it and what buff it carries.
+            // Tinting the eyes with the body erases the face and the tell.
+            var all = GetComponentsInChildren<Renderer>(true);
+            var keep = new List<Renderer>(all.Length);
+            foreach (var r in all)
+                if (r != null && r.GetComponentInParent<GooglyEyes>() == null) keep.Add(r);
+            _rends = keep.ToArray();
             _anim = GetComponentInChildren<Animator>();
             _hasAnimParam = false;
             if (_anim != null)

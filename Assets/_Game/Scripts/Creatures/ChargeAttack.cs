@@ -24,8 +24,12 @@ namespace SpellyZombie
         Creature _me;
         GooglyEyes _eyes;
 
-        /// True while it is telling or running - the brain must not steer then.
-        public bool Busy => _beat == Beat.Tell || _beat == Beat.Run;
+        /// True while it is telling, running or shaking it off - the brain
+        /// must not steer, and its own impact must not wound it.
+        public bool Busy => _beat != Beat.Idle;
+
+        /// Dazed after a hit: it stands, then walks, before lining up another.
+        public bool Recovering => _beat == Beat.Recover;
 
         void Awake()
         {
@@ -52,7 +56,13 @@ namespace SpellyZombie
             // the tell: a hop in place and wide angry eyes
             if (_rb != null && !_rb.isKinematic)
                 _rb.AddForce(Vector3.up * DrawingConfig.ChargeTellHop, ForceMode.VelocityChange);
-            if (_eyes != null) _eyes.Swell(DrawingConfig.ChargeTellSeconds, 1.6f);
+            if (_eyes != null)
+            {
+                _eyes.Swell(DrawingConfig.ChargeTellSeconds, DrawingConfig.ChargeTellEyeSwell);
+                _eyes.SetMood(EyeMood.Mad, DrawingConfig.ChargeTellSeconds
+                    + DrawingConfig.ChargeRunSeconds);   // it looks angry, then goes
+                _eyes.LookTarget = targetPos + Vector3.up * 1.2f;
+            }
             return true;
         }
 
@@ -68,6 +78,7 @@ namespace SpellyZombie
                     _beat = Beat.Run;
                     _until = Time.time + DrawingConfig.ChargeRunSeconds;
                 }
+                else if (_beat == Beat.Recover) { _beat = Beat.Idle; return; }
                 else { Stop(); return; }
             }
 
@@ -84,7 +95,20 @@ namespace SpellyZombie
         void Stop()
         {
             if (_beat == Beat.Run || _beat == Beat.Tell)
+            {
+                // it spent itself: a beat of standing there dazed, then it
+                // walks again, and only later does it line another one up
                 _readyAt = Time.time + Cooldown;
+                _beat = Beat.Recover;
+                _until = Time.time + DrawingConfig.ChargeRecoverSeconds;
+                if (_rb != null && !_rb.isKinematic)
+                {
+                    var v = _rb.linearVelocity;
+                    _rb.linearVelocity = new Vector3(v.x * 0.2f, v.y, v.z * 0.2f);
+                }
+                if (_eyes != null) _eyes.SetMood(EyeMood.Dizzy, DrawingConfig.ChargeRecoverSeconds);
+                return;
+            }
             _beat = Beat.Idle;
         }
 
@@ -96,8 +120,19 @@ namespace SpellyZombie
             float hit = Damage * mul;
             Vector3 shove = _dir * DrawingConfig.ChargeShove + Vector3.up * 2f;
 
+            // the moment of contact, wherever it happened
+            Vector3 spot = c.contactCount > 0 ? c.GetContact(0).point : transform.position;
+            if (FxLibrary.I != null)
+                FxLibrary.Spawn(FxLibrary.I.GroundHit, spot);
+            GrammarFX.PuffBurst(spot, new Color(0.9f, 0.85f, 0.7f), 4);
+            Juice.Thud(spot);
+
             var player = c.collider.GetComponentInParent<SimpleFPSController>();
-            if (player != null) player.TakeHit(shove, hit, $"{name} charge");
+            if (player != null)
+            {
+                player.TakeHit(shove, hit, $"{name} charge");
+                if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.TextPow, spot + Vector3.up * 1.2f);
+            }
             else
             {
                 var dmg = c.collider.GetComponentInParent<Damageable>();

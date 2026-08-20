@@ -443,7 +443,7 @@ namespace SpellyZombie
             var lib = FxLibrary.I;
             if (lib == null) return;
             Vector3 at = transform.position;
-            var fam = RuneGrammar.Family(Kind);
+            var fam = Family(Kind);
             if (Kind == ParticleKind.Flame || fam == ParticleKind.Spark)
             {
                 FxLibrary.Spawn(lib.HitSpark, at);
@@ -1164,132 +1164,31 @@ namespace SpellyZombie
                     return;
                 }
 
-                var dfa = RuneGrammar.Family(a.Kind);
-                var dfb = RuneGrammar.Family(b.Kind);
-                if (dfa == dfb)
-                {
-                    if (a.Kind == ParticleKind.Flame || b.Kind == ParticleKind.Flame)
-                    {
-                        var fl = a.Kind == ParticleKind.Flame ? a : b;
-                        fl.Absorb(fl == a ? b : a); // a flame eats its kin
-                    }
-                    else if (dfa == ParticleKind.Push
-                        || Mathf.Max(EffLevel(a), EffLevel(b)) >= 2)
-                    { StorePendingPair(a, b); return; } // tornado / lvl3 AREA = objects, wait
-                    else LevelMerge(a, b); // heat+heat = a REAL lvl2, asleep
-                    SettleDormantSurvivor(a, b);
-                    return;
-                }
-                if (RuneGrammar.ParadoxOf(a.Kind, b.Kind) != ParadoxKind.None
-                    || RuneGrammar.ExoticOf(a.Kind, b.Kind) != RuneGrammar.ExoticKind.None)
-                { StorePendingPair(a, b); return; } // steam & friends form at wake, identically
-
-                int dla = Level(a.Kind), dlb = Level(b.Kind);
-                if (dla != dlb || dla == 2)
-                {
-                    var hi2 = dla >= dlb ? a : b;
-                    hi2.Absorb(hi2 == a ? b : a); // the substrate rule, asleep
-                    SettleDormantSurvivor(a, b);
-                    return;
-                }
-                BounceApart(a, b, 0.25f); // rock bounces off ice, asleep too
-                return;
-            }
-
-            // an isolated particle refuses ALL chemistry - the barrier is the
-            // system's insulator (and the only way to stop an accidental Demon)
-            if (Time.time < a._isolatedUntil || Time.time < b._isolatedUntil)
-            {
-                BounceApart(a, b, 1.2f);
-                return;
-            }
-
-            // a BarrierMote doesn't combine - it ISOLATES the other particle
-            if (a.Kind == ParticleKind.BarrierMote || b.Kind == ParticleKind.BarrierMote)
-            {
-                var mote = a.Kind == ParticleKind.BarrierMote ? a : b;
-                var tgt = mote == a ? b : a;
-                if (tgt.Kind != ParticleKind.BarrierMote)
-                {
-                    tgt._isolatedUntil = Time.time + DrawingConfig.BarrierSeconds;
-                    GrammarFX.PuffBurst(mote.transform.position, new Color(0.6f, 0.9f, 1f, 0.5f));
-                    mote.Die();
-                }
-                else BounceApart(a, b, 1f); // two motes ignore each other
-                return;
-            }
-
-            var fa = RuneGrammar.Family(a.Kind);
-            var fb = RuneGrammar.Family(b.Kind);
-
-            // SAME + SAME = LEVEL UP. (Flames are manifests, not levels - they
-            // pool bigger. Push+Push becomes the tornado in the vectors phase.)
-            if (fa == fb)
-            {
-                // a FLAME is a manifest, not a level - it EATS its kin and grows
-                if (a.Kind == ParticleKind.Flame || b.Kind == ParticleKind.Flame)
-                {
-                    var flame = a.Kind == ParticleKind.Flame ? a : b;
-                    flame.Absorb(flame == a ? b : a);
-                    return;
-                }
-                if (fa == ParticleKind.Push)
-                {
-                    // Arrow+Arrow = tornado, Y+Y = whirlpool; a mixed pair
-                    // just pools velocities.
-                    ulong awayBit = RuneGrammar.Bit(RuneType.DirectionAway);
-                    ulong towardBit = RuneGrammar.Bit(RuneType.DirectionToward);
-                    bool bothAway = (a.Lineage & awayBit) != 0 && (b.Lineage & awayBit) != 0
-                        && (a.Lineage & towardBit) == 0 && (b.Lineage & towardBit) == 0;
-                    bool bothToward = (a.Lineage & towardBit) != 0 && (b.Lineage & towardBit) != 0
-                        && (a.Lineage & awayBit) == 0 && (b.Lineage & awayBit) == 0;
-                    if (bothAway || bothToward)
-                    {
-                        Vector3 vat = (a.transform.position + b.transform.position) * 0.5f;
-                        var storm = TornadoField.Open(vat, (a.Power + b.Power) * 0.5f,
-                            down: bothToward, a.Lineage | b.Lineage,
-                            FuseSize(a.SrcSize, b.SrcSize));
-                        a.BecameObj = storm; b.BecameObj = storm; // arrows wait out their storm
-                        a.Die(); b.Die();
-                        return;
-                    }
-                    a.Absorb(b);
-                    return;
-                }
+                // ONE LAW, ASLEEP TOO: same axis levels up, different axes
+                // fuse by threshold - lvl3-bound pairs wait as a pending pair
+                // so the biome opens where the ghost WAKES, not where it slept
+                if (SpellTable.IsSteam(a.PayloadNow, b.PayloadNow)
+                    || Mathf.Max(EffLevel(a), EffLevel(b)) >= 2)
+                { StorePendingPair(a, b); return; }
                 LevelMerge(a, b);
+                SettleDormantSurvivor(a, b);
                 return;
             }
 
-            // opposites synthesize a paradox object
-            var paradox = RuneGrammar.ParadoxOf(a.Kind, b.Kind);
-            if (paradox != ParadoxKind.None) { Synthesize(a, b, paradox); return; }
-
-            // EXOTICS: authored cross-pairs override the substrate (Healing…)
-            var exotic = RuneGrammar.ExoticOf(a.Kind, b.Kind);
-            if (exotic != RuneGrammar.ExoticKind.None)
+            // THE ONE LAW: heat meeting chill is steam - the only opposition
+            // with a product; every other combining pair simply ADDS payloads
+            // and the threshold table says what the sum now is. No paradox
+            // table, no exotics, no per-pair code. Order matters by itself.
+            if (SpellTable.IsSteam(a.PayloadNow, b.PayloadNow))
             {
-                a.ImpactFx(); b.ImpactFx(); // the recipe's two halves shown at the birth
-                Vector3 xat = (a.transform.position + b.transform.position) * 0.5f;
-                ulong xlin = a.Lineage | b.Lineage;
-                float xpow = (a.Power + b.Power) * 0.5f;
-                RuneGrammar.TryDemon(xlin, xat, FuseSize(a.SrcSize, b.SrcSize));
-                Object made = Exotics.Cast(exotic, a, b, xat, xpow);
-                a.BecameObj = made; b.BecameObj = made; // sustain: wait on the product
+                a.ImpactFx(); b.ImpactFx();
+                Vector3 sat = (a.transform.position + b.transform.position) * 0.5f;
+                RuneGrammar.TryDemon(a.Lineage | b.Lineage, sat, FuseSize(a.SrcSize, b.SrcSize));
+                SpellEffects.Steam(sat, (a.Power + b.Power) * 0.5f);
                 a.Die(); b.Die();
                 return;
             }
-
-            // ---- v2 substrate ----
-            int la = Level(a.Kind), lb = Level(b.Kind);
-            if (la != lb)
-            {
-                var hi = la > lb ? a : b;
-                var lo = la > lb ? b : a;
-                hi.Absorb(lo);
-                return;
-            }
-            if (la == 2) { a.Absorb(b); return; } // property carriers pool payloads (heavy glue…)
-            BounceApart(a, b, 1.2f); // rock bounces off ice
+            LevelMerge(a, b);
         }
 
         static void BounceApart(SpellParticle a, SpellParticle b, float force)
@@ -1325,25 +1224,23 @@ namespace SpellyZombie
 
             Vector3 at = (a.transform.position + b.transform.position) * 0.5f;
             int target = Mathf.Min(3, Mathf.Max(la, lb) + 1);
-            var family = RuneGrammar.Family(hi.Kind);
             lo.BecameObj = hi; // sustain law: lo's rune waits on the survivor
             lo.Die();
             RuneGrammar.TryDemon(hi.Lineage, at, hi.SrcSize);
 
+            // the sum may have crossed into a named region - the table decides
+            hi.RefreshIdentity();
+
             if (target == 2) { hi.BecomeLevel2(); return; }
 
-            // lvl3 for the carriers is a BIGGER carrier (Dense: larger+heavier;
-            // Spread: copies come out LARGER); for everyone else it's an AREA
-            if (family == ParticleKind.Dense || family == ParticleKind.Spread)
-            {
-                hi.GrammarLevel = 3;
-                hi.transform.localScale = Vector3.one * 0.34f;
-                hi.RefreshLook();
-                return;
-            }
-            float power = hi.Power; float srcSize = hi.SrcSize; ulong lineage = hi.Lineage;
+            // LVL 3 IS A BIOME (fusions never go there - MaxLevel caps them).
+            // The rewritten nature opens at the drawing's own summed size.
+            if (hi.Fusion != null) { hi.GrammarLevel = 2; return; }
+            float power = hi.Power; float srcSize = hi.SrcSize;
+            var offsets = hi.PayloadNow;
             hi.Die();
-            hi.BecameObj = Ultimate(family, at, power, srcSize, lineage); // runes wait on the FIELD
+            hi.BecameObj = ArtificialBiome.Open(at, offsets,
+                Mathf.Max(2f, srcSize * DrawingConfig.RuneReachScale * 3f), power);
         }
 
         void BecomeLevel2()
@@ -1365,80 +1262,6 @@ namespace SpellyZombie
             RefreshLook();
         }
 
-        /// lvl3 ultimates. Returns the created field so the sustain law can
-        /// wait on it.
-        static Object Ultimate(ParticleKind family, Vector3 at, float power, float srcSize, ulong lineage)
-        {
-            RuneGrammar.TryDemon(lineage, at, srcSize);
-            switch (family)
-            {
-                case ParticleKind.Spark: return FlameVortexField.Open(at, power, srcSize);
-                case ParticleKind.Frost: return SnowField.Open(at, power, srcSize);
-                case ParticleKind.Light: return PlasmaField.Open(at, power, srcSize);
-                case ParticleKind.Dark: return BlackHoleField.Open(at, power, growing: true, size: srcSize);
-                case ParticleKind.Glue: return TimeFreezeField.Open(at, power, srcSize);
-                case ParticleKind.Repel: return InertiaField.Open(at, power, srcSize);
-            }
-            return null;
-        }
-
-        /// Opposites make PARADOX objects - the tension embodied, never a cancel.
-        static void Synthesize(SpellParticle a, SpellParticle b, ParadoxKind paradox)
-        {
-            a.ImpactFx(); b.ImpactFx(); // the two OPPOSITES flash their colors as they refuse
-            Vector3 at = (a.transform.position + b.transform.position) * 0.5f;
-            ulong lineage = a.Lineage | b.Lineage;
-            float power = (a.Power + b.Power) * 0.5f;
-            float srcSize = FuseSize(a.SrcSize, b.SrcSize);
-            bool big = EffLevel(a) >= 2 && EffLevel(b) >= 2; // lvl2 × lvl2 = the AREA version
-            RuneGrammar.TryDemon(lineage, at, srcSize);
-
-            switch (paradox)
-            {
-                case ParadoxKind.Steam:
-                {
-                    // heat + chill = the one gas substance
-                    var steam = FormConjures.SpawnSteam(at + Vector3.up * 0.3f,
-                        big ? 1.6f : 0.9f, lineage);
-                    DrawingWorld.Instance?.LogEvent("fire and frost make SCALDING STEAM");
-                    a.BecameObj = steam; b.BecameObj = steam; // sustain law: runes wait on the cloud
-                    a.Die(); b.Die();
-                    return;
-                }
-                case ParadoxKind.WhiteHole:
-                {
-                    var f = WhiteHoleField.Open(at, power * (big ? 1.6f : 1f), srcSize);
-                    a.BecameObj = f; b.BecameObj = f;
-                    a.Die(); b.Die();
-                    return;
-                }
-                case ParadoxKind.ChaosGrip:
-                {
-                    // grip+slip: sticks to everything but can't be controlled
-                    var keep = RuneGrammar.Family(a.Kind) == ParticleKind.Glue ? a : b;
-                    var eat = keep == a ? b : a;
-                    keep.Lineage = lineage;
-            keep.SrcSize = srcSize;
-                    keep.Stick = Mathf.Abs(keep.Stick) + Mathf.Abs(eat.Stick);
-                    keep._chaosLeft = 999f;
-                    keep._settled = false;
-                    eat.BecameObj = keep;
-                    eat.Die();
-                    keep.RefreshLook();
-                    return;
-                }
-                case ParadoxKind.Barrier:
-                {
-                    var mote = Emit(ParticleKind.BarrierMote, at, Vector3.up, power);
-                    mote.Lineage = lineage;
-                    mote.SrcSize = srcSize;
-                    mote.SealId = a.SealId == b.SealId ? a.SealId : 0;
-                    a.BecameObj = mote; b.BecameObj = mote;
-                    a.Die(); b.Die();
-                    return;
-                }
-            }
-        }
 
         void Absorb(SpellParticle food)
         {
@@ -1453,8 +1276,8 @@ namespace SpellyZombie
             transform.localScale = Vector3.one * Mathf.Min(0.45f, transform.localScale.x * 1.18f);
             // spread on either side multiplies
             bool split = food.Density < -0.5f || Density < -0.5f;
-            int spreadLevel = RuneGrammar.Family(food.Kind) == ParticleKind.Spread ? EffLevel(food)
-                : RuneGrammar.Family(Kind) == ParticleKind.Spread ? GrammarLevel : 1;
+            int spreadLevel = Family(food.Kind) == ParticleKind.Spread ? EffLevel(food)
+                : Family(Kind) == ParticleKind.Spread ? GrammarLevel : 1;
             food.Die();
             if (split) TrySplit(spreadLevel);
             RuneGrammar.TryDemon(Lineage, transform.position, SrcSize);
@@ -1578,14 +1401,14 @@ namespace SpellyZombie
                     var plBoard = BodyState.Of(pl);
                     if (Mathf.Abs(Temp) > 25f) plBoard?.PushTemp(Temp * 0.03f);
                     // a friend's LIGHT washes the darkness off you
-                    var auraFam = RuneGrammar.Family(Kind);
+                    var auraFam = Family(Kind);
                     if (auraFam == ParticleKind.Light) plBoard?.PushLum(0.12f);
                     else if (auraFam == ParticleKind.Dark) plBoard?.PushLum(-0.1f);
                     continue;
                 }
-                if (Kind == ParticleKind.Flame || RuneGrammar.Family(Kind) == ParticleKind.Spark)
+                if (Kind == ParticleKind.Flame || Family(Kind) == ParticleKind.Spark)
                 GiveHeat(c, 50f * Power); // lvl2 radiance BURNS
-                else if (RuneGrammar.Family(Kind) == ParticleKind.Frost)
+                else if (Family(Kind) == ParticleKind.Frost)
                     GiveHeat(c, -45f * Power);
                 else if (Kind == ParticleKind.Glue) // lvl2 grip: nothing near it moves
                 {
@@ -1679,38 +1502,68 @@ namespace SpellyZombie
             Destroy(go, 0.12f);
         }
 
+        /// The 12 runes' particle identities - look and feel only; what
+        /// combinations become is the table's business, never this map's.
+        public static ParticleKind KindOf(RuneType r)
+        {
+            switch (r)
+            {
+                case RuneType.HeatUp: return ParticleKind.Spark;
+                case RuneType.HeatDown: return ParticleKind.Frost;
+                case RuneType.LuminanceUp: return ParticleKind.Light;
+                case RuneType.LuminanceDown: return ParticleKind.Dark;
+                case RuneType.StickyUp: return ParticleKind.Glue;
+                case RuneType.StickyDown: return ParticleKind.Repel;
+                case RuneType.DensityUp: return ParticleKind.Dense;
+                case RuneType.DensityDown: return ParticleKind.Spread;
+                default: return ParticleKind.Push;
+            }
+        }
+
+        /// A condensed state maps to its base family (Lightning -> Light).
+        public static ParticleKind Family(ParticleKind k)
+        {
+            switch (k)
+            {
+                case ParticleKind.Lightning: return ParticleKind.Light;
+                case ParticleKind.BlackHole: return ParticleKind.Dark;
+                case ParticleKind.Flame: return ParticleKind.Spark;
+                default: return k;
+            }
+        }
+
+        /// What this particle IS on the shared axes - the threshold engine's
+        /// whole view of it. Vectors carry their push as Affinity.
+        public SpellPayload PayloadNow => new SpellPayload
+        {
+            Heat = Temp, Lum = Lum, Weight = Density, Stick = Stick,
+            Affinity = Kind == ParticleKind.Push ? (IsY ? -Power : Power) : 0f
+        };
+
+        /// The threshold region this particle currently sits in, or null while
+        /// it is still its strongest single axis. Set after every merge.
+        public SpellTable.Row Fusion;
+
+        /// Re-read the table after the payload changed. A particle that
+        /// crossed into a named region SAYS so and wears the blended colour.
+        void RefreshIdentity()
+        {
+            var was = Fusion;
+            Fusion = SpellTable.Resolve(PayloadNow);
+            if (Fusion != null && Fusion != was)
+            {
+                DrawingWorld.Instance?.LogEvent($"the ink becomes {Fusion.Name.ToUpperInvariant()}");
+                if (_rend != null) _rend.sharedMaterial =
+                    MatterFX.Get(PayloadNow.Tint(), MoteShade.Additive);
+            }
+        }
+
         // ------------------------------------------------- touching the world --
         void Touch(Collider c)
         {
-            // barrier isolation is two-way - bounce off the shell
-            if (Barrier.Protects(c))
-            {
-                Vel = Vector3.Reflect(Vel, (transform.position - c.bounds.center).normalized) * 0.6f;
-                _settled = false;
-                return;
-            }
-
-            // a BarrierMote wraps the first THING it touches, then is spent
-            if (Kind == ParticleKind.BarrierMote)
-            {
-                Transform root = null;
-                var bp = c.GetComponentInParent<SimpleFPSController>();
-                if (bp != null) root = bp.transform;
-                else
-                {
-                    var bc = c.GetComponentInParent<Creature>();
-                    if (bc != null) root = bc.transform;
-                    else if (c.attachedRigidbody != null) root = c.attachedRigidbody.transform;
-                }
-                if (root != null)
-                {
-                    Barrier.Wrap(root);
-                    BecameObj = root.GetComponent<Barrier>(); // runes wait out the shield
-                    Die();
-                }
-                else { _settled = true; Vel = Vector3.zero; } // bare wall: wait for a target
-                return;
-            }
+            // a fusion delivers its named effect to whatever it touches
+            if (Fusion != null && !Dormant)
+                SpellEffects.Apply(Fusion, c, transform.position, Power, Time.deltaTime, OwnerId);
 
             // any player collider counts (a foot capsule can reach patches
             // the root never overlaps); TouchPlayer branches self-throttle,
@@ -1789,11 +1642,6 @@ namespace SpellyZombie
             // a preview touches nobody; a live particle bites everyone,
             // holder included
             if (Dormant) return;
-            if (Barrier.Protects(pilot)) // barriered player: nothing gets in
-            {
-                Vel = Vector3.Reflect(Vel, (transform.position - pilot.transform.position).normalized) * 0.6f;
-                return;
-            }
             var board = BodyState.Of(pilot); // the slider board takes it from here
             if (Kind == ParticleKind.Flame)
             {
@@ -1835,16 +1683,9 @@ namespace SpellyZombie
                 }
                 return;
             }
-            // vector law: amplify-or-invert current velocity plus the mote's
-            // own add along its travel; arrow amplifies, Y inverts
             if (Kind == ParticleKind.Push)
             {
-                Vector3 travel = Vel.sqrMagnitude > 0.01f ? Vel.normalized : transform.forward;
-                Vector3 vNow = pilot.Velocity;
-                // the arrow's own kick is a launch; the amplify term stacks
-                // on top when moving
-                Vector3 impulse = (IsY ? -vNow * 1.6f : vNow * 0.6f) + travel * (15f * Power);
-                pilot.TakeHit(impulse, 0f);
+                pilot.TakeHit(VectorImpulse(pilot.Velocity), 0f);
                 board?.PushMove((IsY ? -0.8f : 0.8f) * Power); // and the slider remembers
                 ImpactFx();
                 Die();
@@ -1871,6 +1712,33 @@ namespace SpellyZombie
             Die();
         }
 
+        /// THE TWO VECTORS, lvl1 (Spells V2). The glyphs kept their names but
+        /// swapped jobs - the enum still says Away/Toward, read it as:
+        ///
+        ///   ARROW = ATTRACT. It drags what it hits ALONG THE WAY IT WAS
+        ///   POINTING - the drawn heading, not the mote's drift. Point it at
+        ///   yourself and things come to you; point it away and they go.
+        ///
+        ///   Y = REPEL. It reverses the target: opposite to where it WAS
+        ///   going, and opposite to where the Y itself is heading. Both terms
+        ///   negative, so a charging thing is turned around rather than
+        ///   merely slowed.
+        Vector3 VectorImpulse(Vector3 targetVel)
+        {
+            Vector3 heading = _aimDir.sqrMagnitude > 0.01f ? _aimDir.normalized
+                : Vel.sqrMagnitude > 0.01f ? Vel.normalized : transform.forward;
+
+            if (!IsY)
+                return heading * (DrawingConfig.VectorPull * Power);
+
+            return -targetVel * DrawingConfig.VectorReverse
+                   - heading * (DrawingConfig.VectorPull * Power);
+        }
+
+        /// The drawn heading of the vector - where the arrow POINTED, kept
+        /// separate from wherever the mote has drifted since.
+        [System.NonSerialized] public Vector3 _aimDir;
+
         /// Level 5 - the world absorbs everything: the payload becomes real
         /// temperature, light, blindness, weight, glue, and shove.
         void Donate(Collider c, Matter m, Creature creature, Rigidbody rb)
@@ -1890,6 +1758,25 @@ namespace SpellyZombie
                 else GiveHeat(c, Temp * (creature != null ? 1.5f : 1f)); // flesh catches fast
                 if (Temp < -20f && FxLibrary.I != null) // frost bites visibly
                     FxLibrary.Spawn(FxLibrary.I.IceHit, transform.position);
+            }
+
+            // the vectors move THINGS by the same law they move players:
+            // the arrow drags along where it pointed, the Y turns it around
+            if (Kind == ParticleKind.Push)
+            {
+                if (rb != null && !rb.isKinematic)
+                    rb.AddForce(VectorImpulse(rb.linearVelocity) / Mathf.Max(0.2f, rb.mass * 0.1f),
+                        ForceMode.VelocityChange);
+                else if (creature != null)
+                {
+                    var crb = creature.GetComponent<Rigidbody>();
+                    if (crb != null && !crb.isKinematic)
+                        crb.AddForce(VectorImpulse(crb.linearVelocity)
+                            / Mathf.Max(0.2f, crb.mass * 0.1f), ForceMode.VelocityChange);
+                }
+                ImpactFx();
+                Die();
+                return;
             }
 
             if (Lum > 0.4f) AttachLantern(c);
@@ -2081,7 +1968,7 @@ namespace SpellyZombie
             if (lib == null) return;
             GameObject pick = null;
             float scale = 3.2f; // motes are ~0.14 scale - children inherit it
-            var fam = RuneGrammar.Family(Kind);
+            var fam = Family(Kind);
             // only actively burning kinds wear a looping effect
             if (Kind == ParticleKind.Flame || (fam == ParticleKind.Spark && GrammarLevel >= 2))
                 pick = lib.Fire;

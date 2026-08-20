@@ -50,23 +50,21 @@ namespace SpellyZombie
             return d;
         }
 
-        /// A random grammar effect nearby.
+        /// The demon speaks the SAME language as everything else: it rewrites
+        /// the nature around it (hostile temporary biomes), rains meteors and
+        /// raises teamless golems. No private spell list.
         void Calamity()
         {
             Vector3 at = transform.position
                 + new Vector3(Random.Range(-7f, 7f), 0.4f, Random.Range(-7f, 7f));
-            switch (Random.Range(0, 10))
+            switch (Random.Range(0, 6))
             {
                 case 0: GrammarFX.FlameBurst(at, 1f); break;
-                case 1: SnowField.Open(at, 1f); break;
-                case 2: PlasmaField.Open(at, 0.8f); break;
-                case 3: BlackHoleField.Open(at, 1f, growing: false); break;
-                case 4: WhiteHoleField.Open(at, 1f); break;
-                case 5: TimeFreezeField.Open(at, 1f); break;
-                case 6: InertiaField.Open(at, 1f); break;
-                case 7: TornadoField.Open(at, 1f, Random.value < 0.5f, 0UL); break;
-                case 8: FormConjures.Meteorite(at, Vector3.up, SurfaceMaterialType.Stone, 0.3f, 1.1f, 1, 0UL); break;
-                default: FormConjures.IceSpikes(at, Vector3.up, SurfaceMaterialType.Stone, 0.25f, 0.9f, 0UL); break;
+                case 1: ArtificialBiome.Open(at, new SpellPayload { Heat = 30f }, 5f, 1f); break;
+                case 2: ArtificialBiome.Open(at, new SpellPayload { Heat = -30f, Lum = -0.8f }, 5f, 1f); break;
+                case 3: ArtificialBiome.Open(at, new SpellPayload { Affinity = 1f, Weight = 0.6f }, 6f, 1f); break;
+                case 4: SpellEffects.Meteor(at, 1f, Random.Range(1, 4)); break;
+                default: Golem.Spawn(at, Random.Range(0.7f, 1.4f)); break;
             }
             GetComponent<ZombieBrain>()?.Mumble("HAHAHA!!", 1.2f);
         }

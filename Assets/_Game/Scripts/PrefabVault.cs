@@ -29,12 +29,8 @@ namespace SpellyZombie
     ///   FX_&lt;ParticleKind&gt;  - Spark, Frost, Light, Dark, Glue, Repel, Dense,
     ///                         Spread, Push, Flame, Lightning, Laser, Shadow,
     ///                         BlackHole, BarrierMote.
-    ///   FX_&lt;FieldClass&gt;    - SnowField, PlasmaField, BlackHoleField,
-    ///                         WhiteHoleField, TimeFreezeField,
-    ///                         InertiaField, TornadoField, HealingField,
-    ///                         SolidAvalancheField, LiquidAreaField,
-    ///                         StickyLavaField, FrostGlueField, AbsoluteZeroField.
-    ///                         Author it ~1 unit across - it is scaled to the field.
+    ///   FX_&lt;FieldClass&gt;    - PoisonField. Author it ~1 unit across - it is
+    ///                         scaled to the field.
     ///   FX_StateBlob       - the matter soft body. To react to solid/liquid/gas
     ///                         give it ONE of: an Animator float "StateT"
     ///                         (1 = solid, 0.5 = liquid, 0.1 = gas - plus an
