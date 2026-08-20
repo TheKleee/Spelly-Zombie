@@ -2,26 +2,16 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE STATE BLOB (the sketch, Jul 22, corrected same night: "it's
-    /// just a soft body... 1 single object with bones"): ONE skin — a single
-    /// sphere mesh - deformed by internal BONES. The state decides what the
-    /// bones do, and the skin follows:
-    ///
-    ///   SOLID  - bones stand still, the shape is stiff · opaque
-    ///   LIQUID - bones fall with gravity, the skin slumps wide · half-seen
-    ///   GAS    - bones lose weight, drift up and everywhere · barely there
-    ///
-    /// Rides an existing Matter (which keeps ALL chemistry: heat, reactions,
-    /// wading, crushing). An FX_StateBlob prefab in Resources/Custom (the
-    /// shader/art pass) replaces this look outright.
+    /// Soft-body look for Matter: one sphere skin deformed by internal bones.
+    /// Solid = stiff/opaque, liquid = slumps/half-seen, gas = drifts/barely there.
+    /// An FX_StateBlob prefab in Resources/Custom replaces this look outright.
     public class StateBlob : MonoBehaviour
     {
         const int Bones = 7;
         const float SkinScale = 1.55f;
-        const float StateLerpPerSec = 0.9f; // states MELT into each other, never snap
+        const float StateLerpPerSec = 0.9f; // states melt into each other, never snap
 
-        /// The Solid+Liquid boundary state : thick sludge - the slider
-        /// pins BETWEEN solid and liquid, half-slumped, mostly opaque.
+        /// Solid+Liquid boundary state: the slider pins between solid and liquid.
         public bool Muddy;
 
         Matter _matter;
@@ -36,9 +26,7 @@ namespace SpellyZombie
         Material _mat;
         float _stateT = 1f;    // 1 solid · 0.5 liquid · ~0.1 gas (continuous)
 
-        // the FX_StateBlob skin - instantiated AND DRIVEN (the committed
-        // version instantiated and returned, so the State Matter material
-        // never received _StateT and "the liquid is not the old liquid")
+        // the FX_StateBlob skin, instantiated and driven with _StateT
         GameObject _custom;
         Renderer[] _customRends; // cached once - fetching per melt frame allocated an array
         Animator _customAnim;
@@ -49,17 +37,33 @@ namespace SpellyZombie
         SphereCollider _sphere; float _sphereR0; Vector3 _sphereC0; float _lastFluid = -1f;
         float _spawnR; // collider radius at birth - the honest fallback when import bounds lie
 
-        // ---- the jiggle rig ("bones drive the shape and have their own
-        // colliders to keep the distance from each other and the ground") ----
+        // ---- the jiggle rig ----
         Transform _boneRoot;   // SMR root bone - rest-pose anchor
         Transform[] _bones;    // the D_ bones weighted in Blender
+
+        /// The bone nearest a world point, or null before the rig is built.
+        /// Ink binds to these so a drawing slumps WITH the skin instead of
+        /// riding the rigid root while the body sloshes behind it.
+        public Transform NearestBone(Vector3 worldPos)
+        {
+            if (_bones == null) return null;
+            Transform best = null;
+            float bestSqr = float.MaxValue;
+            for (int i = 0; i < _bones.Length; i++)
+            {
+                var b = _bones[i];
+                if (b == null) continue;
+                float d = (b.position - worldPos).sqrMagnitude;
+                if (d < bestSqr) { bestSqr = d; best = b; }
+            }
+            return best;
+        }
         Rigidbody[] _boneRbs;
         Collider[] _boneCols;
         Vector3[] _boneRest;   // root-local rest positions
         int _boneLayer = -1;   // forces first layer/shell sync
 
-        /// collider fits the mesh (a smaller export floated on the default
-        /// 0.5 sphere), then breathes with the state so puddles rest low
+        /// Fits the collider to the mesh; it breathes with the state so puddles rest low.
         void FitColliderToSkin()
         {
             if (_custom == null || _sphere == null) { _fitted = true; return; }
@@ -69,7 +73,7 @@ namespace SpellyZombie
             for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
             float scale = Mathf.Max(1e-4f, Mathf.Abs(transform.lossyScale.x));
             float r = Mathf.Max(b.extents.x, Mathf.Max(b.extents.y, b.extents.z)) / scale;
-            // the rig imports 0.005 bounds - keep the SPAWN size over a broken read,
+            // the rig imports 0.005 bounds - keep the spawn size over a broken read,
             // retry until updateWhenOffscreen skinning reports honest bounds
             if (r < Mathf.Max(1e-3f, _spawnR * 0.25f)) return;
             _fitted = true;
@@ -99,14 +103,12 @@ namespace SpellyZombie
             _sphere = GetComponent<SphereCollider>();
             if (_sphere != null) { _sphereR0 = _sphere.radius; _sphereC0 = _sphere.center; _spawnR = _sphereR0; }
 
-            // the old look retires - the SKIN is the body now
+            // disable the primitive look; the skin is the body
             foreach (var r in GetComponentsInChildren<Renderer>())
                 r.enabled = false;
 
-            // the art hook: FX_StateBlob replaces the code look entirely -
-            // and is DRIVEN: state via Animator "StateT" / material "_StateT"
-            // / OnStateT(float), colour from the matter (one material = water
-            // here, lava there)
+            // art hook: FX_StateBlob replaces the code look; driven via
+            // Animator "StateT", material "_StateT", OnStateT(float)
             var skinPrefab = PrefabVault.Get("FX_StateBlob");
             if (skinPrefab != null)
             {
@@ -158,8 +160,7 @@ namespace SpellyZombie
             for (int v = 0; v < raw.Length; v++)
                 _baseVerts[v] = raw[v] * SkinScale; // into blob space
 
-            // skin weights: each vertex belongs to the bones NEAR it - smooth
-            // falloff, normalized, so the surface is one continuous body
+            // skin weights: smooth normalized falloff to nearby bones
             _weights = new float[_baseVerts.Length, Bones];
             const float sigma2 = 0.45f * 0.45f * 2f;
             for (int v = 0; v < _baseVerts.Length; v++)
@@ -183,15 +184,13 @@ namespace SpellyZombie
             skin.GetComponent<Renderer>().sharedMaterial = _mat;
         }
 
-        /// the soft body ("bones drive the shape and have their own
-        /// colliders to keep the distance from each other and the ground"):
-        /// each D_ bone gets a small SphereCollider + Rigidbody, springs home,
-        /// and the weighted skin follows by skinning - zero choreography.
+        /// Each D_ bone gets a small SphereCollider + Rigidbody and springs
+        /// home; the weighted skin follows.
         void SetupJiggleBones()
         {
             var smr = _custom.GetComponentInChildren<SkinnedMeshRenderer>(true);
             if (smr == null) return;
-            smr.updateWhenOffscreen = true; // import bounds are 0.005 - culling ate the blob (rig trap)
+            smr.updateWhenOffscreen = true; // import bounds are 0.005 - culling ate the blob
             var root = smr.rootBone;
             if (root == null) return;
             int n = 0;
@@ -213,7 +212,7 @@ namespace SpellyZombie
                 _bones[n] = bone;
                 _boneRest[n] = root.InverseTransformPoint(bone.position); // rest = the authored pose
                 var sc = bone.gameObject.AddComponent<SphereCollider>();
-                // radius meant in BLOB units, whatever the rig's import scale
+                // radius in blob units, whatever the rig's import scale
                 sc.radius = DrawingConfig.BlobBoneRadius * blobScale / Mathf.Max(1e-4f, Mathf.Abs(bone.lossyScale.x));
                 var rb = bone.gameObject.AddComponent<Rigidbody>();
                 rb.interpolation = RigidbodyInterpolation.Interpolate;
@@ -225,9 +224,8 @@ namespace SpellyZombie
             }
         }
 
-        /// Spring each bone to its rest spot relative to Root; gravity, the
-        /// ground and bone-vs-bone collisions do everything else. No states,
-        /// no choreography - the skin just follows the bones.
+        /// Spring each bone to its rest spot; gravity, ground and bone-vs-bone
+        /// collisions do the rest.
         void FixedUpdate()
         {
             if (_boneRbs == null) return;
@@ -247,15 +245,11 @@ namespace SpellyZombie
             for (int i = 0; i < _boneRbs.Length; i++)
             {
                 var rb = _boneRbs[i];
-                // a bone can die before the blob (impact debris, component
-                // cleanup order): skip it forever instead of spamming
-                // MissingReference 696 times
+                // a bone can die before the blob; skip instead of throwing MissingReference
                 if (rb == null) continue;
                 Vector3 home = _boneRoot.TransformPoint(_boneRest[i]);
                 Vector3 off = rb.position - home;
-                // LEASH: a hard drop can slingshot a bone past its siblings and
-                // lock them crossed — "they entangle when dropped". A bone may
-                // never stray further from its rest spot than its own reach.
+                // leash: a bone may never stray further from its rest spot than its own reach
                 float reach = (home - _boneRoot.position).magnitude
                     * DrawingConfig.BlobBoneStray;
                 if (off.sqrMagnitude > reach * reach && reach > 1e-4f)
@@ -272,17 +266,14 @@ namespace SpellyZombie
         {
             if (_matter == null) return;
 
-            // ---- the slider chases the phase (heat melts it down the ladder,
-            // compression climbs it back - Matter already derives the phase) ----
-            float target = Muddy ? 0.7f // MUD sits between solid and liquid
+            // ---- the slider chases the phase Matter derives ----
+            float target = Muddy ? 0.7f // mud sits between solid and liquid
                 : _matter.Phase == MatterPhase.Solid ? 1f
                 : _matter.Phase == MatterPhase.Liquid ? 0.5f : 0.1f;
             _stateT = Mathf.MoveTowards(_stateT, target, StateLerpPerSec * Time.deltaTime);
 
-            // the SKIN GETS THE STATE (the fix for "State Material is not
-            // getting liquified"): push _StateT + the matter's colour when it
-            // changes, keep fluids level with the world, fit the collider to
-            // the mesh once, and sink it as the state melts.
+            // push _StateT + colour on change; keep fluids world-level; fit the
+            // collider once and sink it as the state melts
             if (_custom != null)
             {
                 if (!_fitted) FitColliderToSkin();
@@ -296,7 +287,7 @@ namespace SpellyZombie
                         var tint = SurfaceMaterialDB.Info(
                             _matter != null ? _matter.Material : SurfaceMaterialType.Stone).SolidColor;
                         if (_mpb == null) _mpb = new MaterialPropertyBlock();
-                        foreach (var r in _customRends) // cached - the per-frame fetch was the melt's GC spike
+                        foreach (var r in _customRends) // cached to avoid per-frame allocation
                         {
                             r.GetPropertyBlock(_mpb);
                             _mpb.SetFloat("_StateT", _stateT);
@@ -315,9 +306,7 @@ namespace SpellyZombie
 
             if (_mesh == null) return;
 
-            // fluid states slump along the WORLD's down, never the body's
-            // tilt (the catch: a tumbled body made mud stand like a disc
-            // on its side) - only true solids keep the rock's lean
+            // fluids slump along world down, never the body's tilt; only true solids keep the lean
             if (_skinT != null)
             {
                 if (_stateT < 0.85f)
@@ -340,12 +329,7 @@ namespace SpellyZombie
             float liquidness = 1f - Mathf.InverseLerp(0.5f, 1f, _stateT);
             float gasness = 1f - Mathf.InverseLerp(0.1f, 0.5f, _stateT);
 
-            // A REAL SOLID IS RIGID ("objects that are really solid
-            // shouldn't deform at all... the bones inside shouldn't deform
-            // them. Muddy ones yes, and liquid, gas even more. Solid not.")
-            // The state slider melts continuously and never quite reaches 1,
-            // so a resting rock wore a permanent micro-slump. When the PHASE
-            // says solid and it is not mud, the bones pin to home, exactly.
+            // when the phase says solid and it is not mud, the bones pin to home exactly
             bool rigid = !Muddy && _stateT > 0.9f
                 && (_matter == null || _matter.Phase == MatterPhase.Solid);
 
@@ -353,7 +337,7 @@ namespace SpellyZombie
             {
                 if (rigid) { _pos[i] = _home[i]; continue; }
                 Vector3 want = _home[i];
-                if (liquidness > 0.01f) // bones FALL - the skin slumps wide and low
+                if (liquidness > 0.01f) // bones fall - the skin slumps wide and low
                 {
                     var slump = new Vector3(_home[i].x * 1.7f, Mathf.Min(_home[i].y, -0.1f) * 0.35f, _home[i].z * 1.7f);
                     want = Vector3.Lerp(want, slump, liquidness);
@@ -371,7 +355,7 @@ namespace SpellyZombie
                 _pos[i] = Vector3.Lerp(_pos[i], want, chase * dt);
             }
 
-            // ---- skinning: the bones' displacement flows into the ONE skin ----
+            // ---- skinning: bone displacement flows into the skin ----
             for (int v = 0; v < _baseVerts.Length; v++)
             {
                 Vector3 p = _baseVerts[v];

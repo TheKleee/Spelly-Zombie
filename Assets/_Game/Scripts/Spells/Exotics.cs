@@ -2,20 +2,15 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// GRAMMAR v4 P3 - the EXOTICS : authored products
-    /// for specific essence×behavior pairs, dispatched from the exotics table.
-    /// Every entity here is deliberately small; the grammar carries the rest.
+    /// Exotics: authored products for specific essence×behavior pairs,
+    /// dispatched from the exotics table.
     public static class Exotics
     {
-        /// One doorway from the particle law: two particles combined into an
-        /// exotic - spawn its product and return the thing the runes should
-        /// WAIT on (sustain law). Null = instantaneous, runes re-arm at once.
+        /// Spawns the exotic's product; returns what the runes wait on (null = instantaneous).
         public static Object Cast(RuneGrammar.ExoticKind kind, SpellParticle a, SpellParticle b,
             Vector3 at, float power)
         {
-            // BOTH PARENTS DECIDE HOW BIG THIS IS. Cast has always been handed
-            // a and b and never read them - so a fusion of two big runes made
-            // exactly the same exotic as two of the smallest ones.
+            // size comes from both parents' SrcSize
             float size = a != null && b != null
                 ? SpellParticle.FuseSize(a.SrcSize, b.SrcSize)
                 : DrawingConfig.RuneSizeMin;
@@ -50,15 +45,12 @@ namespace SpellyZombie
         }
     }
 
-    /// HeatUp + Light - LIGHT STRIKE (renamed Jul 22, Valve owns
-    /// "Sun Strike" territory and we ship on Steam): a telegraphed ring, a
-    /// heartbeat to dodge, then the sky's judgment on that exact spot.
+    /// HeatUp + Light - light strike: a telegraphed ring, a beat to dodge, then a blast on that spot.
     public class LightStrike : MonoBehaviour
     {
         public float Power = 1f;
         const float ChannelSeconds = 1.7f;
-        // scaled by the fusion that made it - an instance
-        // value now, not a const, because two big runes must strike wider
+        // scaled by the fusion that made it
         float BlastRadius = 2.4f;
         float _age;
         Light _glow;
@@ -94,7 +86,7 @@ namespace SpellyZombie
             if (_glow != null) _glow.intensity = Mathf.Lerp(0.5f, 9f, _age / ChannelSeconds);
             if (_age < ChannelSeconds) return;
 
-            // THE STRIKE - a column of sun on whoever stayed
+            // the strike lands
             Juice.Boom(transform.position, 1f);
             ZombieBrain.ScareVisible(transform.position, 18f, 6f);
             int n = Physics.OverlapSphereNonAlloc(transform.position + Vector3.up * 0.8f, BlastRadius,
@@ -106,7 +98,7 @@ namespace SpellyZombie
                 var pl = c.GetComponent<SimpleFPSController>();
                 if (pl != null) { pl.TakeHit(Vector3.up * 6f, 90f * Power, "light strike"); continue; }
                 var d = c.GetComponentInParent<Damageable>();
-                if (d != null) d.TakeDamage(220f * Power, "light-struck"); // JUDGMENT judges now
+                if (d != null) d.TakeDamage(220f * Power, "light-struck");
                 SpellParticle.GiveHeatTo(c, 160f * Power);
             }
             var flash = Exotics.Glow(transform.position + Vector3.up * 1f, BlastRadius * 2f,
@@ -154,8 +146,7 @@ namespace SpellyZombie
                 float best = 14f * 14f;
                 _prey = Targets.Nearest(transform.position, ref best,
                     includePlayers: true, movingOnly: true); // moving zombies + wizards
-                    // "anything that moves - EVEN AN OBJECT" : rolling
-                // crates, thrown ores, tumbling matter - all legitimate prey
+                // moving rigidbodies are prey too
                 int n = Physics.OverlapSphereNonAlloc(transform.position, 14f,
                     GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
                 for (int i = 0; i < n; i++)
@@ -200,7 +191,7 @@ namespace SpellyZombie
             if (pl != null)
             {
                 var board = BodyState.Of(pl);
-                board?.PushGrip(0.85f * Power); // the tar GRIPS - grip does the slowing
+                board?.PushGrip(0.85f * Power); // grip does the slowing
                 board?.PushTemp(9f * Power);    // and it burns, via the band
                 return;
             }
@@ -209,10 +200,7 @@ namespace SpellyZombie
         }
     }
 
-    /// HeatDown + Sticky - FROST GLUE (, the blade's replacement:
-    /// "a glue that freezes... sticky lava is just a glue that burns - chill
-    /// and heat can have the same logic"): a patch that grips and CHILLS.
-    /// Whatever stays stuck is freezing toward the ice-block.
+    /// HeatDown + Sticky - frost glue: a patch that grips and chills.
     public class FrostGlueField : GrammarField
     {
         public static FrostGlueField Open(Vector3 at, float power, float size = 0f)
@@ -231,7 +219,7 @@ namespace SpellyZombie
             if (pl != null)
             {
                 var board = BodyState.Of(pl);
-                board?.PushGrip(0.85f * Power); // the frost GRIPS - grip does the slowing
+                board?.PushGrip(0.85f * Power); // grip does the slowing
                 board?.PushTemp(-9f * Power);   // and it bites cold, via the band
                 return;
             }
@@ -240,8 +228,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Fire bolts / ice bolts - a volley with NO targeting: they fly where
-    /// they fly .
+    /// Fire bolts / ice bolts: a volley with no targeting.
     public class ElementBolt : MonoBehaviour
     {
         public bool Hot = true;
@@ -278,7 +265,7 @@ namespace SpellyZombie
                 _vel.normalized, out var hit, _vel.magnitude * dt + 0.3f,
                 ~0, QueryTriggerInteraction.Ignore))
             {
-                // a bolt in the SHIN still counts (limb capsules lead in 3rd person)
+                // a limb hit still counts
                 var pl = hit.collider.GetComponentInParent<SimpleFPSController>();
                 if (pl != null) pl.TakeHit(_vel.normalized * 4f, (Hot ? 16f : 9f) * Power,
                     Hot ? "fire bolt" : "ice bolt");
@@ -294,7 +281,7 @@ namespace SpellyZombie
     }
 
 
-    /// HeatDown + Darkness - ABSOLUTE ZERO: everything inside freezes. Now.
+    /// HeatDown + Darkness - absolute zero: everything inside freezes.
     public class AbsoluteZeroField : GrammarField
     {
         public static AbsoluteZeroField Open(Vector3 at, float power, float size = 0f)
@@ -313,16 +300,15 @@ namespace SpellyZombie
             if (pl != null)
             {
                 var board = BodyState.Of(pl);
-                board?.PushTemp(-20f * Power); // races toward frozen-solid - the band and the ice do the rest
-                board?.PushLum(-0.6f);         // the dark of deep cold
+                board?.PushTemp(-20f * Power); // the band and the ice do the rest
+                board?.PushLum(-0.6f);
                 return;
             }
             SpellParticle.GiveHeatTo(c, -260f * Power); // instant freeze territory
         }
     }
 
-    /// Darkness + Dense - DARK MATTER: slow, heavy, deletes magic on contact
-    /// and hits like a falling star when it finally arrives.
+    /// Darkness + Dense - dark matter: slow, heavy, deletes magic on contact, big hit on arrival.
     public class DarkMatterMote : MonoBehaviour
     {
         public float Power = 1f;
@@ -352,7 +338,7 @@ namespace SpellyZombie
                 float best = 20f * 20f;
                 _prey = Targets.Nearest(transform.position, ref best, includePlayers: true);
 
-                // it EATS magic: any particle it overlaps is simply unmade
+                // deletes any spell particle it overlaps
                 int n = Physics.OverlapSphereNonAlloc(transform.position, 1.1f,
                     GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Collide);
                 for (int i = 0; i < n; i++)
@@ -365,7 +351,7 @@ namespace SpellyZombie
 
             if (_prey != null)
                 transform.position += (_prey.position + Vector3.up * 0.7f - transform.position).normalized
-                    * 0.85f * dt; // slow. inevitable.
+                    * 0.85f * dt;
 
             if (_prey != null && (_prey.position + Vector3.up * 0.7f - transform.position).sqrMagnitude < 0.5f)
             {
@@ -378,8 +364,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Light + Sticky - STICKY LIGHT: stands perfectly still, holds what
-    /// touches it, and zombies CANNOT resist coming to look (the lure).
+    /// Light + Sticky - sticky light: holds what touches it and lures zombies.
     public class StickyLightMote : MonoBehaviour
     {
         float _age, _lureTick;
@@ -407,19 +392,18 @@ namespace SpellyZombie
             if (_lureTick <= 0f)
             {
                 _lureTick = 1.1f;
-                WorldEvents.Report(WorldEventKind.Spell, transform.position, 1.4f); // come look…
+                WorldEvents.Report(WorldEventKind.Spell, transform.position, 1.4f);
             }
         }
 
         void OnTriggerStay(Collider other)
         {
             var cr = other.GetComponentInParent<Creature>();
-            if (cr != null) cr.ApplyStuck(1.2f); // …and STAY
+            if (cr != null) cr.ApplyStuck(1.2f);
         }
     }
 
-    /// Light + Slick - SLICK LIGHT: an uncatchable glare ricocheting through
-    /// the dark, blinding and bowling over whatever it clips.
+    /// Light + Slick - slick light: ricochets around, blinding and knocking down what it clips.
     public class SlickLightMote : MonoBehaviour
     {
         public float Power = 1f;
@@ -449,19 +433,18 @@ namespace SpellyZombie
                 _vel.magnitude * dt + 0.25f, ~0, QueryTriggerInteraction.Ignore))
             {
                 var pl = hit.collider.GetComponentInParent<SimpleFPSController>();
-                if (pl != null) pl.KnockDown(1.3f); // clipping a LIMB still bowls you
+                if (pl != null) pl.KnockDown(1.3f); // a limb hit still counts
                 var cr = hit.collider.GetComponentInParent<Creature>();
                 if (cr != null) { cr.ApplyBlind(4f); cr.KnockDown(1.2f); }
-                _vel = Vector3.Reflect(_vel, hit.normal); // cannot be caught
+                _vel = Vector3.Reflect(_vel, hit.normal);
                 transform.position = hit.point + hit.normal * 0.3f;
             }
             else transform.position += _vel * dt;
         }
     }
 
-    /// Light + Dense - MULTIPLICATION: whatever magic it touches, there is
-    /// suddenly MORE of. It ignores its own kind (no infinite mirrors), and
-    /// yes - it can clone a zombie. asked for mayhem.
+    /// Light + Dense - multiplication: clones the magic it touches (ignores
+    /// its own kind); can clone a zombie.
     public class MultiplicationMote : MonoBehaviour
     {
         float _age, _cooldown;
@@ -500,7 +483,7 @@ namespace SpellyZombie
                     Random.onUnitSphere, sp.Power);
                 twin.Temp = sp.Temp; twin.Lum = sp.Lum; twin.Density = sp.Density; twin.Stick = sp.Stick;
                 twin.Lineage = sp.Lineage;
-                twin.SrcSize = sp.SrcSize;   // a clone is the same SIZE of spell, not a reset one
+                twin.SrcSize = sp.SrcSize;   // a clone keeps the same spell size
                 twin.SealId = sp.SealId;
                 return;
             }
@@ -509,7 +492,7 @@ namespace SpellyZombie
             if (z != null && z.GetComponent<Demon>() == null)
             {
                 _cooldown = 1.2f;
-                _clones += 2; // cloning the dead is expensive arithmetic
+                _clones += 2; // costs double
                 Zombie.Spawn(z.transform.position + Random.insideUnitSphere * 1f + Vector3.up * 0.3f,
                     ZombieKind.Walker, 1f);
                 DrawingWorld.Instance?.LogEvent("…now there are TWO of it. you did this.");
@@ -517,8 +500,7 @@ namespace SpellyZombie
         }
     }
 
-    /// Slick + Dense - the TELEPORT PAIR: two linked motes fly apart; touch
-    /// one, arrive at the other. Doors are a suggestion now.
+    /// Slick + Dense - teleport pair: two linked motes fly apart; touch one, arrive at the other.
     public class TeleportMote : MonoBehaviour
     {
         public TeleportMote Partner;
@@ -564,7 +546,7 @@ namespace SpellyZombie
         void OnTriggerEnter(Collider other)
         {
             if (Partner == null || _cooldown > 0f || other.isTrigger) return;
-            if (other.GetComponent<SpellParticle>() != null) return; // magic keeps its feet
+            if (other.GetComponent<SpellParticle>() != null) return; // particles don't teleport
 
             Vector3 dest = Partner.transform.position;
             var pl = other.GetComponentInParent<SimpleFPSController>();

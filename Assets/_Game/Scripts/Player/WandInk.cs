@@ -2,28 +2,18 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE WAND IS THE MANA BAR : a visible ink reservoir on
-    /// the wand drains as you draw and refills as kills award ink - no HUD
-    /// pool, you read your ink off the tool in your hand.
-    ///
-    /// the BLENDER WAND CONTRACT: inside Weapon_Wand, name the liquid
-    /// mesh "Ink" and put its PIVOT AT THE BOTTOM of the reservoir — this
-    /// component scales its local Y by the ink fraction, so the level sinks
-    /// toward the pivot as you spend. Glass/container is your own geometry,
-    /// any shape (vial, swirl tube, bulb - the sketch's quill works too).
-    /// No "Ink" child = a placeholder vial grows on the wand instead.
+    /// The wand is the mana bar: a visible reservoir drains and refills, no
+    /// HUD pool. Contract: name the liquid mesh "Ink" with its pivot at the
+    /// reservoir bottom - local Y scales with the ink fraction. No "Ink"
+    /// child = a placeholder vial grows on the wand instead.
     public class WandInk : MonoBehaviour
     {
         Transform _ink;
         Vector3 _fullScale;
         PlayerInk _pool;
 
-        // THE WAND ITSELF SHRINKS (the wand IS ink — "always visibly
-        // decaying", and "the wand disintegrating effect should exist as it's
-        // getting smaller or increasing, but opposite, as if it's formed").
-        // The whole wand scales from the grip with the ink fraction; while
-        // the size is actually CHANGING, little motes flake off (drain) or
-        // gather in (reform) - the same effect both ways, played opposite.
+        // the whole wand also scales from the grip with the ink fraction;
+        // WandFX plays while the size is changing
         Vector3 _wandScale0;
         WandTipFlow _flow;   // the three motes at the tip: out = draining, in = filling
         float _lastF = -1f;
@@ -34,8 +24,7 @@ namespace SpellyZombie
 
         void Start()
         {
-            // ONE scan for both contract children — "Ink" and "WandFX" (the
-            // per-LateUpdate WandFX search was an array alloc every frame)
+            // one scan for both contract children - "Ink" and "WandFX"
             foreach (var t in GetComponentsInChildren<Transform>(true))
             {
                 if (t == transform) continue;
@@ -68,8 +57,7 @@ namespace SpellyZombie
             column.transform.localPosition = new Vector3(0f, 0.035f, 0f);
             column.transform.localScale = new Vector3(0.008f, 0.035f, 0.008f);
             column.layer = gameObject.layer;
-            // THE WAND IS INK, SO IT IS BLACK ("the wand needs to be the
-            // same color as the ink => both black, not brown and blue")
+            // the wand matches the ink color
             column.GetComponent<Renderer>().sharedMaterial =
                 MatterFX.Get(DrawingConfig.InkColor, MoteShade.Opaque);
         }
@@ -87,10 +75,7 @@ namespace SpellyZombie
             s.y *= Mathf.Max(f, 0.03f); // a dry wand keeps a visible dreg
             _ink.localScale = s;
 
-            // WHICH WAY IS IT GOING? ("it does shrink and increase
-            // but there's no vfx for it... a small vfx playing on the tip of the
-            // wand telling us if it's growing or shrinking"). The length alone
-            // made you watch for a second to find out. The tip says it now.
+            // the tip motes report flow direction
             if (_flow == null) _flow = GetComponent<WandTipFlow>()
                 ?? gameObject.AddComponent<WandTipFlow>();
             float dt = Mathf.Max(0.0001f, Time.deltaTime);
@@ -106,9 +91,7 @@ namespace SpellyZombie
                 Time.deltaTime * DrawingConfig.WandResizeSpeed);
             transform.localScale = _wandScale0 * Mathf.Max(0.001f, _factor);
 
-            // NO SPAWNED FLAKES ("remove this laggy particle from wand
-            // degradation") — the hook: a "WandFX" child (found once in Start)
-            // is on while the size is really moving, off when it settles.
+            // the "WandFX" child is on while the size is moving, off settled
             if (_fx != null)
             {
                 bool changing = Mathf.Abs(_factor - target) > 0.0005f;

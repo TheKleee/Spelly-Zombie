@@ -2,11 +2,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// One biome = one box, and the box IS the elevation band (its own
-    /// bottom and top). No kinds, no enum: a biome is whatever its NAME and
-    /// its definition say - "Forest", "Magma", "Space". Boxes snap, never
-    /// overlap, and same-definition neighbours read as one region.
-    /// Concrete flavours: GroundBiome (walkable land) and LiquidBiome
+    /// One biome = one box; the box's own bottom and top are its elevation
+    /// band. Concrete flavours: GroundBiome (walkable land) and LiquidBiome
     /// (a volume you float and sink in).
     public abstract class Biome : MonoBehaviour
     {
@@ -31,6 +28,9 @@ namespace SpellyZombie
         [Header("PATHS")]
         [Tooltip("Can the verified path network run THROUGH here? A path may still LEAD to this biome's edge when off.")]
         public bool CanPath = true;
+        [Tooltip("0 = dead straight (town streets), 1 = wandering trail. Routes bend by this much as they cross this biome.")]
+        [Range(0f, 1f)]
+        public float PathCurve = 0.35f;
         [Tooltip("Your brush for paths inside this biome (cobble in town, dirt in forest). Empty = FloorLayer carries the path.")]
         public TerrainLayer PathLayer;
         [Tooltip("Child empties marking where routes may enter (gaps in fences, ramps through cliffs). Empty = anywhere along the border.")]
@@ -62,10 +62,38 @@ namespace SpellyZombie
         public GameObject Landmark;
 
         [Header("ENVIRONMENT (applies when the biome-average pass lands)")]
+        // The biome's natural state, on the same five axes an object carries.
+        // What a source teaches is its own payload PLUS this, so one pebble
+        // reads Dark in a forest and Light on a beach without authoring either.
         [Tooltip("Ambient heat offset from lobby-natural. A frozen peak goes negative, magma goes high.")]
         public float HeatOffset;
         [Tooltip("Ambient luminance offset from lobby-natural. Deep shade and space go negative.")]
         public float LightOffset;
+        [Tooltip("Ambient density offset. Thin air on a peak goes negative, deep or heavy ground goes positive.")]
+        public float DensityOffset;
+        [Tooltip("Ambient stickiness offset. A swamp is high; ice and polished stone go negative.")]
+        public float StickOffset;
+        [Tooltip("The natural state of this place. Solid = stone and mountain, Liquid = water and " +
+                 "swamp, Gas = thin dry air (desert). Drives the phase cycle: liquid beats solid, " +
+                 "gas beats liquid, solid beats gas. Gas teaches no rune - there isn't one.")]
+        public MatterPhase NaturalPhase = MatterPhase.Solid;
+
+        [Header("SPAWNING")]
+        [Tooltip("Mark ONE biome as the wizards' home - they all start here, scattered inside it. " +
+                 "Every UNMARKED biome is acolyte ground: they spawn randomly across those, so they " +
+                 "usually land apart but may share one. Mark none and a biome is chosen for you; " +
+                 "mark them all and one is released back to the acolytes.")]
+        public bool WizardSpawn;
+
+        [Header("STRENGTH (strength IS health)")]
+        [Tooltip("How strong things naturally get here. Everything is pulled toward it, capped by " +
+                 "its OWN ceiling - so a 90-cap acolyte sits at 90 in a 100 biome (strong for them) " +
+                 "while a 140-cap wizard is dragged DOWN to 100. 0 = no ceiling, the natural world.")]
+        public float StrengthCap;
+
+        [Tooltip("Multiplies how fast strength mends here. 1 = natural. Below 1 for hostile ground " +
+                 "where wounds linger; above 1 for a restful place.")]
+        public float RegenScale = 1f;
 
         public Bounds Area => new Bounds(transform.position, Size);
 

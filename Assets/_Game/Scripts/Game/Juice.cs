@@ -3,10 +3,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The feel layer: camera shake, hit-stop, and PROCEDURAL sound - every
-    /// clip is synthesized at runtime (sine/noise/sweeps), so the game has full
-    /// audio with zero asset files. Replace with real SFX later; the hook
-    /// points stay identical.
+    /// The feel layer: camera shake, hit-stop, and procedural sound (every clip
+    /// synthesized at runtime). Replace with real SFX later; hook points stay identical.
     public static class Juice
     {
         // ------------------------------------------------------------ shake --

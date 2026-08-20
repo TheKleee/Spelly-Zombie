@@ -3,18 +3,9 @@ using UnityEngine.SceneManagement;
 
 namespace SpellyZombie
 {
-    /// the TWO-SONG SOUNDTRACK (the Song Maker pair: "one for action,
-    /// one for chilling - almost the same"): that similarity is exactly what
-    /// vertical layering wants. Both tracks play in lockstep from the same
-    /// moment, and the mix CROSSFADES between them - chill in the lobby,
-    /// menus and calm stretches; action while danger stands near. The
-    /// transition is a fade, not a track change, so the music never stumbles.
-    ///
-    /// the SHELF, as always: drop the WAVs at
-    ///   Resources/Custom/Music_Chill
-    ///   Resources/Custom/Music_Action
-    /// (loop-clean if the song ends on the bar - Song Maker exports do).
-    /// Missing files = silence, nothing breaks. Replace anytime.
+    /// Two-track soundtrack: chill and action clips play in lockstep and the
+    /// mix crossfades between them while danger is near. Clips load from
+    /// Resources/Custom/Music_Chill and Music_Action; missing files = silence.
     public class MusicDirector : MonoBehaviour
     {
         const float BaseVolume = 0.5f;   // music sits under the SFX
@@ -30,15 +21,14 @@ namespace SpellyZombie
             if (_instance != null) return;
             var chillClip = Resources.Load<AudioClip>("Custom/Music_Chill");
             var actionClip = Resources.Load<AudioClip>("Custom/Music_Action");
-            if (chillClip == null && actionClip == null) return; // no soundtrack yet
+            if (chillClip == null && actionClip == null) return;
 
             var go = new GameObject("SZ_Music");
             Object.DontDestroyOnLoad(go);
             _instance = go.AddComponent<MusicDirector>();
             _instance._chill = Source(go, chillClip);
             _instance._action = Source(go, actionClip);
-            // both start on the SAME DSP tick - phase-locked twins, faded not
-            // swapped; scheduled start makes the lock sample-exact
+            // scheduled start keeps both clips sample-locked
             double at = AudioSettings.dspTime + 0.1;
             if (_instance._chill != null) { _instance._chill.volume = BaseVolume; _instance._chill.PlayScheduled(at); }
             if (_instance._action != null) { _instance._action.volume = 0f; _instance._action.PlayScheduled(at); }
@@ -51,19 +41,16 @@ namespace SpellyZombie
             src.clip = clip;
             src.loop = true;
             src.playOnAwake = false;
-            src.spatialBlend = 0f; // the soundtrack has no position
+            src.spatialBlend = 0f;
             return src;
         }
 
         float _dangerHold;
 
-        /// Action means DANGER NEAR, per side: an acolyte hears it when a
-        /// wizard closes in; a wizard hears it for zombies - never for
-        /// acolytes, whose hiding spot the music must not leak.
+        /// Acolytes hear action music when a wizard is near; wizards only for
+        /// zombies - acolyte proximity must never leak a hiding spot.
         bool DangerNear()
         {
-            // the lobby counts too: it is the sandbox where the rule is
-            // learned and tested, only the menu stays quiet
             if (ActiveScene.Name == "Menu") return false;
             SimpleFPSController me = null;
             foreach (var p in SimpleFPSController.All)
@@ -92,8 +79,7 @@ namespace SpellyZombie
 
         void Update()
         {
-            // a short hold after the last contact, so the mix never flutters
-            // at the range boundary
+            // hold after the last contact so the mix does not flutter at the range boundary
             if (DangerNear()) _dangerHold = 4f;
             else _dangerHold -= Time.unscaledDeltaTime;
             bool action = _dangerHold > 0f;
@@ -104,8 +90,7 @@ namespace SpellyZombie
             if (_action != null)
                 _action.volume = Mathf.MoveTowards(_action.volume, action ? BaseVolume : 0f, step);
 
-            // twin clips: while one lies fully silent, pin it to the other's
-            // sample clock, so the loops can never drift apart over a session
+            // pin the silent clip to the other's sample clock so the loops never drift
             if (_chill != null && _action != null
                 && _chill.clip.samples == _action.clip.samples)
             {

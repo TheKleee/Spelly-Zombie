@@ -3,33 +3,19 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE BODY IS MATTER : sliders live on
-    /// every body, spells only PUSH them - damage, slow, inverted controls,
-    /// floating, weight gates and vision are all READINGS derived each tick.
-    /// The environment drifts every slider home: walking away from the fire
-    /// IS the cure.
-    ///
-    ///   Temp   - THE damage band. Out of band = DPS by offset; deep cold =
-    ///            frozen solid (the body stops entirely).
-    ///   Lum    - VISION ONLY, never damage: darkness creeps in low, the
-    ///            world blooms high.
-    /// Grip   - too grippy = slowed  planted; too slick = skating  the
-    ///            floor wins (ragdoll).
-    ///   Weight - light = higher jumps, slower falls, then FLOAT; heavy =
-    ///            movement gates (no sprint, then crouch-crawl only).
-    ///   Move   - dead-center normal; + = arrow speed buff; − = Y-owned:
-    ///            inputs INVERTED at the Y's amplitude.
-    ///
-    /// On PLAYERS the whole board runs. On CREATURES only Grip/Weight/Move
-    /// run - their temperature already lives on Thermal (Frozen/Burning),
-    /// and two thermometers would fight.
+    /// Per-body sliders. Spells only push them; effects are readings derived
+    /// each tick, and the environment drifts every slider home.
+    ///   Temp   - the damage band; deep cold = frozen solid.
+    ///   Lum    - vision only: darkness low, bloom high.
+    ///   Grip   - + sticky (slow, then stuck) · − slick (slides, ragdolls).
+    ///   Weight - light = higher jumps then float; heavy = movement gates.
+    ///   Move   - + speed buff · − inverted inputs.
+    /// On creatures only Grip/Weight/Move run; Thermal owns their temperature.
     public class BodyState : MonoBehaviour
     {
-        // ---- naturals, bands, thresholds - the survival game tunes HERE ----
-        // AXIOM : `const` INLINES at every call site, so a
-        // tuning file could never reach these — the header says "the survival
-        // game tunes HERE" and it was lying. `static readonly` + the
-        // sz_tuning.json overlay makes every number changeable with no rebuild.
+        // ---- naturals, bands, thresholds ----
+        // static readonly + sz_tuning.json overlay: tunable without a rebuild
+        // (const would inline at call sites)
         public static readonly float NaturalTemp = Tune("BodyNaturalTemp", 37f);
         public static readonly float TempBandLow = Tune("BodyTempBandLow", 15f);
         public static readonly float TempBandHigh = Tune("BodyTempBandHigh", 45f);
@@ -48,15 +34,36 @@ namespace SpellyZombie
 
         public static readonly float WeightDriftPerSec = Tune("BodyWeightDriftPerSec", 0.30f);
         public static readonly float FloatBelow = Tune("BodyFloatBelow", 0.35f);   // REALLY light: you float
-        public static readonly float FloatMaxSeconds = Tune("BodyFloatMaxSeconds", 5f); // ...for THIS long, however many spells stack
+        // The load ladder, all measured as weight ÷ strength (see Load).
         public static readonly float RunLimit = Tune("BodyRunLimit", 1.55f);       // sprint refuses above
+        public static readonly float JumpLimit = Tune("BodyJumpLimit", 2.0f);      // feet leave the ground below this only
         public static readonly float WalkLimit = Tune("BodyWalkLimit", 2.4f);      // crouch-crawl only above
+        public static readonly float CrushLimit = Tune("BodyCrushLimit", 3.2f);    // above: your own weight bleeds strength
+        public static readonly float CollapseLimit = Tune("BodyCollapseLimit", 4f);// above: too weak to stand, you ragdoll
+        public static readonly float CrushDrainPerSec = Tune("BodyCrushDrainPerSec", 4f);
 
         public static readonly float MoveDriftPerSec = Tune("BodyMoveDriftPerSec", 0.45f);
 
         public static readonly float DriftExpo = Tune("BodyDriftExpo", 3f);
 
         static float Tune(string key, float def) => DrawingConfig.Overlay(key, def);
+
+        // ---- the biome under my feet, sampled on a beat, not per frame ----
+        float _ambHeat, _ambLight, _ambStick, _ambDensity, _ambNext;
+        MatterPhase _ambPhase = MatterPhase.Gas;   // what the place is made of
+
+        void TickAmbient(float dt)
+        {
+            _ambNext -= dt;
+            if (_ambNext > 0f) return;
+            _ambNext = 0.25f;
+            var b = SpellyMap.BiomeAt(transform.position);
+            _ambHeat = b != null ? b.HeatOffset : 0f;
+            _ambLight = b != null ? b.LightOffset : 0f;
+            _ambStick = b != null ? b.StickOffset : 0f;
+            _ambDensity = b != null ? b.DensityOffset : 0f;
+            _ambPhase = b != null ? b.NaturalPhase : MatterPhase.Gas; // no map = ordinary air
+        }
 
         /// Recovery speeds up with the size of the effect: a slider pushed to
         /// its extreme sheds up to DriftExpo times faster than a light touch,
@@ -71,17 +78,33 @@ namespace SpellyZombie
         public float Weight = 1f;   // mass multiplier
         public float Move;          // 0 center · + arrow buff · − Y inversion
 
-        /// What your arms hold right now ("their weight is added on
-        /// your weight so you might move slower") — the gates are the
-        /// strength limit, no artificial carry cap.
+        /// The body's own phase - Transparency drops it to liquid, Cloud to
+        /// gas. Written through StateView so the art shows it, and read by the
+        /// phase cycle (liquid beats solid, gas beats liquid, solid beats gas).
+        public MatterPhase Phase { get; private set; } = MatterPhase.Solid;
+
+        /// Seconds left of a spell-forced phase; 0 = back to solid.
+        float _phaseLeft;
+
+        /// Push the body into a phase for a while. Solid is the natural home.
+        public void SetPhase(MatterPhase p, float seconds)
+        {
+            Phase = p;
+            _phaseLeft = Mathf.Max(_phaseLeft, seconds);
+            var view = GetComponentInChildren<StateView>();
+            if (view != null) view.Set(p);
+        }
+
+        /// Weight of what your arms hold - added to body weight. The movement
+        /// gates are the only carry limit.
         public float CarriedWeight;
         public float TotalWeight => Weight + CarriedWeight;
 
         SimpleFPSController _pilot;
         Creature _creature;
         float _hurtCarry;   // sub-point band damage lands in readable chunks
-        float _floatFor;    // seconds of continuous floating - the balloon clock
-        bool _floatSpent;   // budget used: no hover, full gravity, until real recovery
+        float _crushCarry;  // same, for own-weight crushing
+
         float _slipTick;    // ragdoll-roulette beat while deep slick
 
         /// Resolve the body a collider belongs to, adding the board on first
@@ -126,36 +149,98 @@ namespace SpellyZombie
             Grip = 0f;
             Weight = 1f;
             Move = 0f;
-            _floatFor = 0f;
-            _floatSpent = false;
+
         }
 
         // ---- readings ----
         public bool FrozenSolid => _pilot != null && Temp <= FrozenSolidAt;
-        // the screen answers EARLY
-        // creep starts near natural temp; the DAMAGE band is unchanged
+        // severity creep starts near natural temp; the damage band is unchanged
         public float BurnSeverity => Mathf.Clamp01((Temp - 41f) / 42f);
         public float FreezeSeverity => Mathf.Clamp01((33f - Temp) / 42f);
         /// 0 = normal sight · 1 = pitch black (this IS the vision reduction)
         public float DarknessSeverity => Mathf.Clamp01((NaturalLum - Lum) / (NaturalLum + 0.55f));
         public float BloomSeverity => Mathf.Clamp01((Lum - 1.4f) / 1.4f);
 
-        public bool Floating => TotalWeight <= FloatBelow && !_floatSpent;
-        public bool CanSprint => TotalWeight < RunLimit;
-        public bool CrawlOnly => TotalWeight >= WalkLimit;
-        /// Lighter bodies spring higher and fall softer; heavy is gated, not nerfed.
-        public float JumpMul => TotalWeight < 1f ? Mathf.Lerp(1.5f, 1f, TotalWeight) : 1f;
-        /// A spent float budget also cancels light-body gravity scaling.
-        public float GravityMul => _floatSpent ? 1f
-            : TotalWeight < 1f ? Mathf.Max(0.18f, TotalWeight) : 1f;
+        /// STRENGTH IS THE OLD HP - one stat for players, creatures and
+        /// scenery. A player's ceiling comes from Sides (side, buffs, the
+        /// ground); everything else reads its own Damageable, which owns the
+        /// definition. 0.35..1, never 0.
+        public float StrengthMul
+        {
+            get
+            {
+                if (_pilot != null)
+                {
+                    float f = Sides.StrengthFraction(Grimoire.LocalPlayerId, _pilot.Health);
+                    return Mathf.Lerp(DrawingConfig.StrengthFloorMul, 1f, f);
+                }
+                if (_dmg == null) _dmg = GetComponent<Damageable>();
+                return _dmg != null ? _dmg.StrengthMul : 1f;
+            }
+        }
 
+        Damageable _dmg;
+
+        /// WEIGHT MEASURED AGAINST STRENGTH. Every movement gate reads this
+        /// instead of raw weight, so the SAME load crushes a wounded body and
+        /// is carried by a healthy one. Wounds make the world heavier.
+        public float Load => TotalWeight / Mathf.Max(0.05f, StrengthMul);
+
+        /// THE DENSITY OF WHAT YOU ARE STANDING IN. A biome is normally gas,
+        /// sometimes liquid, and its phase sets the base while its
+        /// DensityOffset shifts it - so thin peak air is just a negative
+        /// offset on a box stacked high, never altitude maths.
+        /// SWIMMING IS NOT A MODE: water is simply a medium dense enough to
+        /// hold you, so the same number that makes a light body drift makes a
+        /// normal body float in a lake.
+        public float MediumDensity
+        {
+            get
+            {
+                float baseD = _ambPhase == MatterPhase.Liquid ? DrawingConfig.LiquidMediumDensity
+                            : _ambPhase == MatterPhase.Solid ? DrawingConfig.SolidMediumDensity
+                            : FloatBelow;                       // gas: the ordinary air
+                return Mathf.Max(0f, baseD + _ambDensity);
+            }
+        }
+
+        /// Nothing flies and nothing "enters swim mode". Gravity weakens as
+        /// the medium closes on your own weight, and once the medium is the
+        /// denser of the two it goes negative and you rise - helium in air,
+        /// a body bobbing up in water, the same arithmetic.
+        public float GravityMul
+        {
+            get
+            {
+                float med = MediumDensity;
+                return Mathf.Max(DrawingConfig.FloatRiseMax,
+                    (TotalWeight - med) / Mathf.Max(0.01f, 1f - med));
+            }
+        }
+
+        /// How much you can push yourself around inside the medium: none when
+        /// it barely holds you, full when it carries you. This is what makes
+        /// water swimmable and thin air not - one reading, no swim flag.
+        public float MediumControl => Mathf.Clamp01(1f - GravityMul);
+
+        /// Dense enough around you to move through rather than fall through.
+        public bool Swimmable => MediumControl >= DrawingConfig.SwimAt;
+        public bool CanSprint => Load < RunLimit;
+        public bool CanJump => Load < JumpLimit;
+        public bool CrawlOnly => Load >= WalkLimit;
+        /// Past this your own body is more than you can hold up: strength
+        /// bleeds away because you are carrying yourself and losing.
+        public bool Crushing => Load >= CrushLimit;
+        /// Too weak to stand at all - the legs go.
+        public bool Collapsing => Load >= CollapseLimit;
+        /// Lighter bodies spring higher and fall softer; heavy is gated, not nerfed.
+        public float JumpMul => !CanJump ? 0f
+            : TotalWeight < 1f ? Mathf.Lerp(1.5f, 1f, TotalWeight) : 1f;
         /// −1 while a Y owns you: your inputs walk you the other way.
         public float InputSign => Move < -0.05f ? -1f : 1f;
 
-        /// One multiplier from the whole board - players and zombies both.
-        /// NOTHING here ever returns zero ("the only thing that's so
-        /// strong that it keeps you from moving at all is the time freeze") —
-        /// grip and cold slow you PROPORTIONALLY, down to a pitiful shuffle.
+        /// One speed multiplier from the whole board, players and zombies
+        /// both. Never returns zero - slows are proportional.
         public float SpeedMul
         {
             get
@@ -177,32 +262,29 @@ namespace SpellyZombie
             float dt = Time.deltaTime;
 
             // ---- the drift home: the environment IS the cure ----
+            // HOME IS THE BIOME. Its offsets are 0 by default, so an
+            // unauthored place (and the whole lobby, which has no map) drifts
+            // to the same naturals as before. A cold peak drags you under the
+            // band and the existing damage does the rest.
+            TickAmbient(dt);
+
+            // a forced phase wears off back to solid, the body's natural home
+            if (_phaseLeft > 0f)
+            {
+                _phaseLeft -= dt;
+                if (_phaseLeft <= 0f) SetPhase(MatterPhase.Solid, 0f);
+            }
             if (_pilot != null)
             {
-                Temp = Mathf.MoveTowards(Temp, NaturalTemp, TempDriftPerSec * Rush(Temp - NaturalTemp, 40f) * dt);
-                Lum = Mathf.MoveTowards(Lum, NaturalLum, LumDriftPerSec * Rush(Lum - NaturalLum, 1.5f) * dt);
+                float homeTemp = NaturalTemp + _ambHeat;
+                float homeLum = NaturalLum + _ambLight;
+                Temp = Mathf.MoveTowards(Temp, homeTemp, TempDriftPerSec * Rush(Temp - homeTemp, 40f) * dt);
+                Lum = Mathf.MoveTowards(Lum, homeLum, LumDriftPerSec * Rush(Lum - homeLum, 1.5f) * dt);
             }
-            Grip = Mathf.MoveTowards(Grip, 0f, GripDriftPerSec * Rush(Grip, 1.5f) * dt);
-            Weight = Mathf.MoveTowards(Weight, 1f, WeightDriftPerSec * Rush(Weight - 1f, 0.9f) * dt);
+            Grip = Mathf.MoveTowards(Grip, _ambStick, GripDriftPerSec * Rush(Grip - _ambStick, 1.5f) * dt);
+            Weight = Mathf.MoveTowards(Weight, 1f + _ambDensity, WeightDriftPerSec * Rush(Weight - 1f - _ambDensity, 0.9f) * dt);
             Move = Mathf.MoveTowards(Move, 0f, MoveDriftPerSec * Rush(Move, 2.2f) * dt);
 
-            // Floating is a spendable budget, not a per-hit state: stacked
-            // Spread motes re-pin the weight every frame, so a timer that
-            // resets on each hit would never expire.
-            if (TotalWeight <= FloatBelow)
-            {
-                if (!_floatSpent)
-                {
-                    _floatFor += dt;
-                    if (_floatFor > FloatMaxSeconds)
-                    {
-                        _floatSpent = true;
-                        if (_pilot != null && _pilot.IsLocalViewer)
-                            DrawingWorld.Instance?.LogEvent("your body remembers its weight");
-                    }
-                }
-            }
-            else { _floatSpent = false; _floatFor = 0f; } // recovered: budget refills
 
             // ---- temp band damage (players only - Thermal burns creatures) ----
             if (_pilot != null && !_pilot.IsDead)
@@ -221,10 +303,24 @@ namespace SpellyZombie
                 }
             }
 
-            // ---- slick: the floor wins PROPORTIONALLY ("if slippery
-            // is weak you might barely ragdoll a bit, extremely strong you'll
-            // ragdoll way more") — depth drives the odds, the pace, and how
-            // long you eat cobblestone
+            // ---- crushed by your own weight (strength IS health) ----
+            // Past the crush limit you are holding up more than you can, and
+            // it costs you: strength bleeds, which raises Load further, which
+            // bleeds faster. Get lighter or get out. Past collapse the legs
+            // simply go - too weak to stand.
+            if (_pilot != null && !_pilot.IsDead && !_pilot.IsDowned && Crushing)
+            {
+                float over = Load - CrushLimit;
+                _crushCarry += (1f + over) * CrushDrainPerSec * dt;
+                if (_crushCarry >= 0.75f)
+                {
+                    _pilot.TakeHit(Vector3.zero, _crushCarry, "crushed by your own weight");
+                    _crushCarry = 0f;
+                }
+                if (Collapsing) _pilot.KnockDown(0.6f); // re-applied while it lasts
+            }
+
+            // ---- slick: depth drives ragdoll odds, pace and sprawl ----
             if (Grip < SlickSlideAt)
             {
                 float depth = Mathf.InverseLerp(SlickSlideAt, SlickDeepAt, Grip); // 0 faint … 1 soap hell
@@ -251,10 +347,7 @@ namespace SpellyZombie
             if (_pilot != null) UpdateBodyFx(); // the body wears its damage
         }
 
-        // ---- the BODY shows it ("small flames over your body
-        // depending of how much you're burning") — allies read your state at
-        // a glance. And the cure is already in the sliders: a chill mote on a
-        // burning friend pushes their temp back toward the band.
+        // ---- body FX: allies read your state at a glance ----
         readonly GameObject[] _bodyFlames = new GameObject[3];
         readonly GameObject[] _eyeWisps = new GameObject[2];
         readonly GameObject[] _eyeGlares = new GameObject[2];
@@ -265,14 +358,10 @@ namespace SpellyZombie
         float EyeY => _pilot != null && _pilot.CameraPivot != null
             ? Mathf.Max(0.4f, _pilot.CameraPivot.localPosition.y) : 1.5f;
 
-            // ---- FX SOCKETS ON THE BONES : put empties named
-        // Socket_Burn / Socket_Freeze / Socket_Bleed / Socket_Eyes anywhere
-        // on the model - several of each is fine (Socket_Burn on the chest,
-        // another on a shoulder). Effects spawn AS CHILDREN, so they ride the
-        // bones through animation and ragdoll instead of floating at root
-        // offsets. A model with NO sockets gets code fallbacks on its bones
-        // (humanoid) or at eye-height fractions (the bean) - the empties
-        // always win over the guesses.
+        // FX sockets: empties named Socket_Burn / Socket_Freeze / Socket_Bleed
+        // / Socket_Eyes, several of each fine; effects spawn as children so
+        // they ride the bones. No sockets = bone/eye-height fallbacks;
+        // authored sockets always win.
         readonly List<Transform> _burnS = new List<Transform>();
         readonly List<Transform> _freezeS = new List<Transform>();
         readonly List<Transform> _bleedS = new List<Transform>();
@@ -295,13 +384,10 @@ namespace SpellyZombie
                 else if (t.name.StartsWith("Socket_Bleed")) _bleedS.Add(t);
                 else if (t.name.StartsWith("Socket_Eyes")) _eyeS.Add(t);
             }
-            // authored sockets win; fallbacks fill only the EMPTY categories -
-            // ON THE BONES THEMSELVES ("what does matter is that they
-            // are not offset from the body so it looks like it's affecting
-            // you"). the approved parents: spine, chest, head, shoulders,
-            // hips, legs - NEVER the arms (their bones point the wrong way).
-            // Each socket sits at its bone with a small forward nudge so the
-            // effect burns on the skin, not inside the ribs.
+            // fallbacks fill only the EMPTY categories, on the bones themselves:
+            // spine, chest, head, shoulders, hips, legs - never the arms (their
+            // bones point the wrong way). A small forward nudge keeps effects
+            // on the skin, not inside the ribs.
             var anim = GetComponentInChildren<Animator>();
             Transform B(HumanBodyBones b) =>
                 anim != null && anim.isHuman ? anim.GetBoneTransform(b) : null;
@@ -383,12 +469,8 @@ namespace SpellyZombie
 
             ResolveSockets();
 
-            // ONE VISUAL LANGUAGE ("distinguishable but visually
-            // coherent"): every status lives ON a bone socket, in the same
-            // small size family, with the same severity rhythm - count first,
-            // pace second, a slight growth third. Identity comes from the
-            // effect itself: orange licks · blue crystals · red drips ·
-            // black wisps · white shine.
+            // every status: socket-mounted, same size family, severity read as
+            // count first, pace second, slight growth third
 
             // burning: 1..3 small licks, one per Socket_Burn
             int want = BurnSeverity > 0.55f ? 3 : BurnSeverity > 0.28f ? 2 : BurnSeverity > 0.08f ? 1 : 0;
@@ -397,15 +479,11 @@ namespace SpellyZombie
                 bool on = i < want && i < _burnS.Count && _burnS[i] != null;
                 if (on && _bodyFlames[i] == null && lib.Fire != null)
                 {
-                    // chunky enough to be funny ("a bit larger for
-                    // comedic effects"), still clearly ON the body
                     var fx = Fit(Instantiate(lib.Fire, _burnS[i]),
                         Mathf.Lerp(0.16f, 0.26f, BurnSeverity));
                     fx.name = "BodyFlame";
                     fx.transform.localPosition = Vector3.zero; // the socket IS the spot
-                    // FLAMES BURN UP : bones carry
-                    // arbitrary axes - the effect starts world-upright and
-                    // only sways with the body from there
+                    // bones carry arbitrary axes - start the effect world-upright
                     fx.transform.rotation = Quaternion.identity;
                     _bodyFlames[i] = fx;
                 }
@@ -416,19 +494,16 @@ namespace SpellyZombie
                 }
             }
 
-            // darkness: wisps gather AROUND THE EYES (allies must see
-            // you're going blind) - one at dusk, two when the dark owns you.
-            // GLARE mirrors it in WHITE: light clouds at the eyes, and
-            // darkness is the cure (the sliders already do it)
+            // darkness: 1-2 wisps at the eyes; glare mirrors it in white
             int wisps = DarknessSeverity > 0.55f ? 2 : DarknessSeverity > 0.18f ? 1 : 0;
             int glares = BloomSeverity > 0.55f ? 2 : BloomSeverity > 0.18f ? 1 : 0;
             EyeFx(_eyeWisps, wisps, lib.Smoke, 0.08f, "EyeDark");
             EyeFx(_eyeGlares, glares, lib.HealShine, 0.09f, "EyeGlare");
 
-            // BLEEDING = the HP readout ("the more you have over your
-            // body the less hp you have") — wounds drip on a beat, more and
-            // faster as HP falls; healing raises HP and the dripping stops
-            float hurt = _pilot != null ? 1f - Mathf.Clamp01(_pilot.Health / Perks.MaxHealth) : 0f;
+            // bleeding is the HP readout: drips come more and faster as HP falls
+            float hurt = _pilot != null
+                ? 1f - Mathf.Clamp01(_pilot.Health / Sides.MaxHealthFor(Grimoire.LocalPlayerId))
+                : 0f;
             if (hurt > 0.25f && _pilot != null && !_pilot.IsDead)
             {
                 _bleedTick -= Time.deltaTime;
@@ -465,8 +540,7 @@ namespace SpellyZombie
             }
         }
 
-        /// One eye-status loop for wisps AND glares (they were the same loop
-        /// twice - only prefab, scale and name differed).
+        /// One eye-status loop for wisps and glares.
         void EyeFx(GameObject[] cache, int want, GameObject prefab, float scale, string fxName)
         {
             for (int i = 0; i < cache.Length; i++)
@@ -491,12 +565,11 @@ namespace SpellyZombie
             }
         }
 
-        // ---- the screen IS the readout (no bars; darkness genuinely
-        // steals vision; frost/heat creep at the edges) - local player only ----
+        // ---- fullscreen tints are the status readout - local player only ----
         static Texture2D _white;
         void OnGUI()
         {
-            if (_pilot == null || !_pilot.IsLocalViewer) return; // cached - no per-event camera scan
+            if (_pilot == null || !_pilot.IsLocalViewer) return;
             if (_white == null)
             {
                 _white = new Texture2D(1, 1);
@@ -505,11 +578,7 @@ namespace SpellyZombie
             }
             var full = new Rect(0f, 0f, Screen.width, Screen.height);
             float dark = DarknessSeverity;
-            // full darkness COVERS the camera outright - at the
-            // bottom of the slider you see nothing at all
             if (dark > 0.01f) Tint(full, new Color(0f, 0f, 0.02f, Mathf.Min(1f, dark * 1.06f)));
-            // GLARE blinds too : at the top of the slider the screen
-            // is solid white - darkness is the cure, symmetrically
             float bloom = BloomSeverity;
             if (bloom > 0.01f) Tint(full, new Color(1f, 1f, 0.94f, Mathf.Min(1f, bloom * 1.06f)));
             float frost = FreezeSeverity;

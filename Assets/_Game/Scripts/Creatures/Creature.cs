@@ -12,11 +12,18 @@ namespace SpellyZombie
 
         public bool GettingUp => _getUpLeft > 0f;
         public bool CanMove => !Frozen && !Stuck;
-        /// NEGATIVE while a Y owns this body
-        /// - the walk plays forward, the zombie slides BACKWARD. Moonwalk.
+        /// Can be negative: the body slides backward while the walk plays forward.
         public float SpeedMultiplier =>
             (Frozen || Stuck || GettingUp ? 0f : Slipping ? 0.15f : Burning ? 1.8f : 1f)
-            * (Board != null ? Board.SpeedMul * Board.InputSign : 1f);
+            * (Board != null ? Board.SpeedMul * Board.InputSign : 1f)
+            * StrengthMul;   // strength IS health: a hurt creature is a slow one
+
+        /// Its own strength, by the same law players and props obey.
+        public float StrengthMul => _dmg != null ? _dmg.StrengthMul : 1f;
+
+        /// Too weak to hold itself up: the legs go, same ladder as a player.
+        public bool CollapsingUnderWeight =>
+            Board != null && Board.Collapsing;
 
         BodyState _board;
         BodyState Board => _board != null ? _board : _board = GetComponent<BodyState>();
@@ -47,11 +54,10 @@ namespace SpellyZombie
         public void ApplyBlind(float seconds)
         {
             _blindLeft = Mathf.Max(_blindLeft, seconds);
-            GetComponentInChildren<GooglyEyes>()?.SetMood(EyeMood.Scared, seconds); // pinprick panic in the dark
+            GetComponentInChildren<GooglyEyes>()?.SetMood(EyeMood.Scared, seconds);
         }
 
-        /// Bowled over: full physics topple + dizzy orbiting pupils, then stands
-        /// back up. This is the ragdoll-lite everything funny routes through.
+        /// Physics topple + dizzy pupils, then stands back up.
         public void KnockDown(float seconds)
         {
             ApplySlip(seconds);
@@ -62,7 +68,7 @@ namespace SpellyZombie
         public void ApplySlip(float seconds)
         {
             _slipLeft = Mathf.Max(_slipLeft, seconds);
-            _getUpLeft = 0f; // knocked back down mid-rise - classic
+            _getUpLeft = 0f; // knocked back down mid-rise
             // lose your footing for real: let physics tip the body over
             if (_rb != null && !Frozen)
             {
@@ -91,7 +97,7 @@ namespace SpellyZombie
             {
                 _slipLeft -= dt;
                 if (_slipLeft <= 0f && !Frozen)
-                    _getUpLeft = 0.7f; // ragdoll over - now the struggle to stand
+                    _getUpLeft = 0.7f; // ragdoll over; start standing up
             }
 
             // getting up: visibly right itself over ~0.7s instead of snapping
@@ -134,9 +140,7 @@ namespace SpellyZombie
             _burnLeft -= dt;
             if (_thermal != null)
             {
-                // the fire feeds itself - but as a PUSH, not a pin: sustained
-                // cold (frost hits, a snow field) can WIN the tug-of-war and
-                // put you out
+                // fire adds heat as a push, not a pin: sustained cold can put it out
                 _thermal.Temperature += 30f * dt;
                 if (_thermal.Temperature < DrawingConfig.BurnThreshold - 15f)
                 {
@@ -149,7 +153,7 @@ namespace SpellyZombie
             }
             if (_dmg != null) _dmg.TakeDamage(15f * dt, "on fire");
 
-            // FLAMES - the part that was missing. Orange blobs boil off the body.
+            // flame blobs boil off the body
             _flameTimer -= dt;
             if (_flameTimer <= 0f)
             {

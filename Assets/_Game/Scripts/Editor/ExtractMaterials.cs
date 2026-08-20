@@ -3,17 +3,12 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// the MATERIAL FAUCET (the rule: "allow me to create materials from
-    /// a selected object - extract them to resources/materials"): select
-    /// ANYTHING - scene object, play-mode runtime object, prefab instance -
-    /// and every runtime-only material on it becomes a real, editable .mat
-    /// asset in Resources/Custom/Materials. The selection keeps referencing
-    /// the SAME material (now persistent), so what you see doesn't change -
-    /// it just stops being ephemeral. Drag the saved .mat onto any prefab.
-    ///
-    /// (Why runtime materials exist at all: the chemistry tints things by
-    /// COLOR VALUE at runtime - conjured matter, team colors, zombie variety.
-    /// This faucet turns any of them into assets the moment you want one.)
+    /// Turns runtime-only materials into real assets: select anything (scene
+    /// object, play-mode object, prefab instance) and every runtime material
+    /// on it is saved as an editable .mat in Resources/Custom/Materials.
+    /// The selection keeps referencing the same material, now persistent.
+    /// Runtime materials exist because the chemistry tints by color value:
+    /// conjured matter, team colors, zombie variety.
     public static class ExtractMaterials
     {
         const string MatDir = "Assets/_Game/Resources/Custom/Materials";

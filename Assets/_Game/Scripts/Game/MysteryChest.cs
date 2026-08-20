@@ -5,18 +5,9 @@ using UnityEngine.SceneManagement;
 
 namespace SpellyZombie
 {
-    /// THE MYSTERY CHEST (CoD mystery box, witch edition): spawns at one random
-    /// MysteryChestSpawnPoint per scene. Pay riches, press E, the lid creaks
-    /// open with a light show, and out comes:
-    ///
-    ///   60%  a rune card - weighted toward families you DON'T own yet
-    ///   20%  a weapon pickup
-    ///   10%  full ink for the whole team
-    ///   10%  THE BEAR - the chest slams shut and MOVES to another spawn
-    ///        point (half refund). Classic.
-    ///
-    /// Local-sim like Perks/Powerups until B4 host authority (accepted
-    /// divergence; the roll only touches local buffs and world pickups).
+    /// Mystery chest: spawns at one random MysteryChestSpawnPoint per scene.
+    /// E rolls: a rune card (weighted toward unowned families), team ink, or
+    /// the chest moves to another spawn point. Local-sim until B4 host authority.
     public class MysteryChest : MonoBehaviour
     {
         const float Reach = 2.4f;
@@ -44,9 +35,8 @@ namespace SpellyZombie
             Build(points[Random.Range(0, points.Length)].transform.position);
         }
 
-        /// the prefab first (Resources/Custom/Chest) - a child named
-        /// "Lid" (pivot on the hinge edge, authored CLOSED at identity
-        /// rotation) swings open. Primitives fill in until the exists.
+        /// Prefab first (Resources/Custom/Chest): a child named "Lid" (pivot on
+        /// the hinge edge, authored closed) swings open. Primitives fill in otherwise.
         static void Build(Vector3 at)
         {
             GameObject root;
@@ -56,9 +46,7 @@ namespace SpellyZombie
             {
                 root = Object.Instantiate(customChest, at, Quaternion.identity);
                 root.name = "SZ_MysteryChest";
-                // AXIOM : exact "Lid" only meant any other name
-                // the chest never opens, silently. Exact first, then a TOKEN
-                // match (a raw Contains("lid") would grab "Collider"/"Solid").
+                // exact "Lid" first, then token match (raw Contains("lid") would grab "Collider"/"Solid")
                 foreach (var t in root.GetComponentsInChildren<Transform>(true))
                     if (t.name == "Lid") { lidT = t; break; }
                 if (lidT == null)
@@ -75,8 +63,7 @@ namespace SpellyZombie
                         "\"Lid\". It spawns, glows and pays out fine, it just won't SWING OPEN. Name the " +
                         "hinge child Lid, pivot it on the hinge edge, and author it CLOSED.", root);
 
-                // a Blender export without colliders would be a ghost - the
-                // pen, spells and zombies would pass straight through it
+                // an export without colliders would be a ghost; add a bounds box
                 if (root.GetComponentInChildren<Collider>() == null)
                 {
                     var rends = root.GetComponentsInChildren<Renderer>();
@@ -156,7 +143,7 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             if (kb == null || !kb.eKey.wasPressedThisFrame) return;
 
-            StartCoroutine(Roll()); // no currency gate - riches are gone
+            StartCoroutine(Roll()); // no currency gate
         }
 
         IEnumerator Roll()
@@ -165,7 +152,7 @@ namespace SpellyZombie
             _lidOpen = 1f;
             Juice.Crackle(transform.position);
 
-            // the light show - hope rises with the pitch of the flicker
+            // the light show
             float t = 0f;
             while (t < 2.1f)
             {
@@ -179,9 +166,7 @@ namespace SpellyZombie
                 yield return null;
             }
 
-            // NO WEAPONS ("remove weapons from the game completely...
-            // they do not belong to this game at all right now") — the chest was
-            // the last live spawner; its 20% weapon slice folds into ink
+            // weapons are out of the roll; their share folds into ink
             float roll = Random.value;
             if (roll < 0.60f) GiveCard();
             else if (roll < 0.90f) GiveInk();
@@ -246,7 +231,7 @@ namespace SpellyZombie
             yield return new WaitForSeconds(0.8f);
             if (away.Count > 0)
                 transform.position = away[Random.Range(0, away.Count)];
-            // only one spawn point in this scene? it sulks in place instead
+            // with a single spawn point the chest stays in place
         }
 
     }

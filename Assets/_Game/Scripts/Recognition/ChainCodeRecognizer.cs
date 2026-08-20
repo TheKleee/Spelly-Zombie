@@ -3,25 +3,10 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// the direction-sentence recognizer (classic chain-code + edit
-    /// distance, independently reinvented - the Graffiti/OCR approach).
-    ///
-    /// A drawing becomes a SENTENCE of 8 letters (F, FR, R, BR, B, BL, L, FL):
-    ///  1. nodes only count once far enough from the last accepted node
-    ///     (shaky hands and fast strokes read identically)
-    ///  2. repeated letters collapse - a straight line is ONE letter, so a Z is
-    ///     ~3 letters at any size or speed
-    /// 3. matching is FUZZY: edit distance  percentage (one wrong letter in a
-    ///     six-letter shape ≈ 83%, still readable - never binary fail)
-    ///  4. every shape is also read BACKWARDS (reversed + inverted letters),
-    ///     so drawing from either end matches
-    ///  5. the frame comes from the DRAWING, not the world: sentences are
-    ///     produced in several candidate frames (viewer-up, longest-segment,
-    ///     end-to-end axis) and the best pairing wins - orientation-robust
-    ///     without collapsing mirror/flip twins
-    /// Strokes are concatenated in pen order; because grouped strokes must
-    /// physically TOUCH (the exactness rule), the pen-up jump between them is
-    /// tiny and vanishes under the sampling gate.
+    /// Chain-code recognizer: a drawing becomes a sentence of 8 direction
+    /// letters (repeated letters collapse; matching is fuzzy edit distance;
+    /// every shape also reads backwards; frames come from the drawing, not
+    /// the world). Used by the compound-sigil parse.
     public static class ChainCodeRecognizer
     {
         const float MinStepFraction = 0.08f; // sampling gate: % of shape extent
@@ -29,26 +14,16 @@ namespace SpellyZombie
 
         // ------------------------------------------------------------ encode --
         /// All readings of a shape: {pen-path walks} × {frames} × {fwd, bwd}.
-        /// Multi-stroke shapes are re-walked PATH-FINDER style from every
-        /// endpoint (greedy nearest-endpoint chaining), so a Y drawn as stem
-        /// then V - in any order, any direction - produces the same sentences
-        /// as the template. "No matter how ugly you draw it, a Y is a Y."
+        /// Multi-stroke shapes are re-walked from every endpoint (greedy
+        /// nearest-endpoint chaining), so stroke order and direction never matter.
         public static List<byte[]> EncodeAll(IReadOnlyList<IReadOnlyList<Vector2>> strokes)
         {
             var readings = new List<byte[]>();
             foreach (var pts in AllWalks(strokes))
             {
                 if (pts.Count < 2) continue;
-                // THE FRAME COMES FROM THE DRAWING, NEVER THE WORLD ('s
-                // law). A third frame of 0° used to sit at the front of this
-                // list - the raw plane/world frame. Match takes the best over
-                // all readings, so a tilted drawing and its upright twin agreed
-                // on the a1/a2 sentences but produced DIFFERENT frame-0
-                // sentences, and either could raise a template's chain score.
-                // VariantScore multiplies the graph verdict by that score, so
-                // the world frame was quietly swinging the final ranking by up
-                // to ±20% purely on how the rune happened to be tilted. Both
-                // frames left are read off the shape itself.
+                // both frames are read off the shape itself, never the
+                // world/plane frame
                 float a1 = LongestSegmentAngle(pts);
                 float a2 = EndToEndAngle(pts);
                 float[] frames = { a1, a2 };
@@ -112,12 +87,8 @@ namespace SpellyZombie
                 walk.AddRange(stroke);
         }
 
-        // (Elongation + AspectPenalty DELETED - retired Jul 31: world-frame
-        // elongation violates the own-frame law; never re-wire a
-        // world-axis bounding-box measure into the matcher.)
-
-        /// Score a SPAN of a sentence against a template's readings - the
-        /// building block of compound parsing ("multiple letters per word").
+        /// Score a span of a sentence against a template's readings - the
+        /// building block of compound parsing.
         public static float ScoreSpan(byte[] sentence, int start, int len, List<byte[]> templates)
         {
             if (templates == null || len < 1 || start + len > sentence.Length) return 0f;
@@ -131,9 +102,6 @@ namespace SpellyZombie
             }
             return best;
         }
-
-        // (Match DELETED - the single-glyph chain-code vote was removed Aug 1;
-        // only EncodeAll + ScoreSpan are wired, via RuneLibrary's compound path.)
 
         // -------------------------------------------------------- internals --
         static List<Vector2> Flatten(IReadOnlyList<IReadOnlyList<Vector2>> strokes)
@@ -150,7 +118,7 @@ namespace SpellyZombie
 
         static byte[] Encode(List<Vector2> pts, float frameAngle)
         {
-            // shape extent  sampling gate
+            // sampling gate scales with shape extent
             Vector2 min = pts[0], max = pts[0];
             foreach (var p in pts) { min = Vector2.Min(min, p); max = Vector2.Max(max, p); }
             float extent = Mathf.Max(max.x - min.x, max.y - min.y);
@@ -179,7 +147,7 @@ namespace SpellyZombie
         }
 
         /// Same shape drawn from the other end: reverse the letters and point
-        /// each one the opposite way (FB, FRBL…).
+        /// each one the opposite way.
         static byte[] ReverseInvert(byte[] s)
         {
             var r = new byte[s.Length];

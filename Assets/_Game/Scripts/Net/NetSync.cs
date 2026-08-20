@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// B2/B3 broadcast-based sync: live avatars + replicated world strokes (each client detects/casts); B4 adds host-authoritative zombies/rounds.
+    /// Broadcast-based sync: live avatars + replicated world strokes (each client detects/casts), plus host-authoritative zombies/rounds.
     public class NetSync : MonoBehaviour
     {
         // ------------------------------------------------------------ types --
@@ -19,9 +19,7 @@ namespace SpellyZombie
             public float Pitch; // look pitch (+down) - remote heads follow it
             public byte Flags; // 1 = downed, 2 = sprawled, 4 = GHOST is flying
             public byte Team;  // MatchLobby team color index
-            // the spirit's own position: the corpse stays at Pos so friends
-            // can revive it, while the ghost flies here (
-            // "ghosts must be visible to other players as well")
+            // ghost position; the corpse stays at Pos so friends can revive it
             public Vector3 GhostPos;
             public float GhostYaw;
             public bool Acolyte; // ghost tint: green acolyte / wizard ink
@@ -67,13 +65,9 @@ namespace SpellyZombie
             public float ReadScore;    // the host primes its cache, never re-reads (netcode §1)
             public int[] ClusterOwners;
             public int[] ClusterIds;
-            // BODY INK (, multiplayer parity: "if something exists in
-            // the game then it's part of the game for everyone"). Non-empty =
-            // this stroke lives on the owner's SKELETON: Points and Normal are
-            // in that bone's LOCAL space, and the receiver mounts them on the
-            // same-named bone of the owner's avatar. World positions would be
-            // wrong twice over - the avatar stands elsewhere and poses
-            // differently. Empty = world ink, exactly as before.
+            // Non-empty = body ink: Points and Normal are in that bone's local
+            // space, and the receiver mounts them on the same-named bone of the
+            // owner's avatar. Empty = world ink.
             public string BoneName;
         }
 
@@ -116,7 +110,7 @@ namespace SpellyZombie
             public float Prep;
         }
 
-        /// Client → host: "my wand drank this much from the pot" — the bill.
+        /// Client → host: how much the wand drank from the pot.
         public struct PotDrinkMsg : IBroadcast
         {
             public float Amount;
@@ -133,7 +127,7 @@ namespace SpellyZombie
             public string Code; // SocketManager wire format ("2,0,1"), slot order = catalog order
         }
 
-        // ---- B4: host-authoritative zombies & rounds ----
+        // ---- host-authoritative zombies & rounds ----
         public struct ZombieSnap : IBroadcast // host  clients, 10 Hz unreliable
         {
             public int[] Ids;
@@ -170,7 +164,7 @@ namespace SpellyZombie
             public int Rune; // -1 = none
         }
 
-        public struct DeclareRuneMsg : IBroadcast // any → host → others: "this ink IS this rune"
+        public struct DeclareRuneMsg : IBroadcast // any → host → others: declare a rune for strokes
         {
             public int Owner;
             public int[] Owners;
@@ -450,8 +444,8 @@ namespace SpellyZombie
                 return;
             }
 
-            // STABLE IDENTITY: connected, you ARE your FishNet ClientId - every
-            // stroke, stake and grimoire key agrees across machines (netcode §0)
+            // connected identity = FishNet ClientId, so strokes and grimoire
+            // keys agree across machines (netcode §0)
             if (!_identityAdopted && LocalId >= 0)
             {
                 _identityAdopted = true;
@@ -478,7 +472,7 @@ namespace SpellyZombie
                 AnnounceIdentity();
             }
 
-            // B4: the host streams its zombies to everyone (10 Hz, unreliable -
+            // the host streams its zombies to everyone (10 Hz, unreliable -
             // an empty snapshot is meaningful too: it clears dead proxies)
             if (NetGame.IsHost)
             {
@@ -781,7 +775,7 @@ namespace SpellyZombie
             InstanceFinder.ServerManager.RegisterBroadcast<InkBurnMsg>(OnInkBurnServer);
             InstanceFinder.ClientManager.RegisterBroadcast<InkBurnMsg>(OnInkBurnClient);
 
-            // the book stand lobby : password gate + map likes
+            // the book stand lobby: password gate + map likes
             InstanceFinder.ServerManager.RegisterBroadcast<JoinAuthMsg>(OnJoinAuthServer);
             InstanceFinder.ServerManager.RegisterBroadcast<MapLikeMsg>(OnMapLikeServer);
             InstanceFinder.ClientManager.RegisterBroadcast<MapLikesMsg>(OnMapLikesClient);
@@ -850,9 +844,7 @@ namespace SpellyZombie
         }
 
         /// DrawingWorld calls this whenever a local stroke finishes - replicate
-        /// it if it lives on world geometry (dynamic surfaces come with B4)
-        /// or on the LOCAL PLAYER'S BODY ("fix the ink to be
-        /// visible to everyone in multiplayer" — parity law, see below).
+        /// it if it lives on world geometry or the local player's body.
         public static void OnLocalStrokeFinished(Stroke s)
         {
             if (_instance == null || !NetGame.Connected || ApplyingRemote) return;
@@ -861,19 +853,14 @@ namespace SpellyZombie
             if (s.OwnerId != Grimoire.LocalPlayerId && !NetGame.IsHost) return;
             if (s.Surface == null) return;
 
-            // BODY INK REPLICATES ("never remove things in
-            // multiplayer... if something exists in the game then it's part of
-            // the game for everyone"). The old blanket `if (s.Persistent)
-            // return` is DEAD BY RULING. Body strokes ride mixamorig bones on
-            // the local player - those bones carry ragdoll Rigidbodies, so this
-            // branch must be decided BEFORE the dynamic-surface skips below.
+            // body strokes ride mixamorig bones that carry ragdoll Rigidbodies,
+            // so this branch must be decided before the dynamic-surface skips below
             bool bodyInk = s.Persistent
                 && s.Surface.name.StartsWith("mixamorig:")
                 && s.Surface.GetComponentInParent<SimpleFPSController>() != null;
 
-            // still local-only: weapon engravings (remote hands hold nothing
-            // yet - the avatar wand/grimoire gap, same parity law) and the
-            // PaintShell fallback (the shell never exists on a remote)
+            // still local-only: weapon engravings (remote hands hold nothing yet)
+            // and the PaintShell fallback (the shell never exists on a remote)
             if (s.Persistent && !bodyInk) return;
             if (!bodyInk && s.Surface.GetComponentInParent<Creature>() != null) return;  // dynamic: later
             if (!bodyInk && s.Surface.GetComponentInParent<Rigidbody>() != null) return; // dynamic: later
@@ -883,9 +870,8 @@ namespace SpellyZombie
             foreach (var n in s.Nodes)
             {
                 if (n == null) continue;
-                // body ink travels in BONE-LOCAL space: the receiver's copy of
-                // this player stands somewhere else, in some other pose - only
-                // the bone frame means the same thing on both machines
+                // body ink travels in bone-local space - the only frame that
+                // means the same thing on both machines
                 pts.Add(bodyInk ? s.Surface.InverseTransformPoint(n.transform.position)
                                 : n.transform.position);
                 normal = n.SurfaceNormal;
@@ -965,7 +951,7 @@ namespace SpellyZombie
             return "/" + path;
         }
 
-        // ------------------------------------------- B4 outgoing helpers --
+        // ---------------------------------------------- outgoing helpers --
         /// A proxy took damage on a client: tell the host (called by NetZombieProxy).
         public static void SendZombieHit(int id, float amount)
         {
@@ -1052,7 +1038,7 @@ namespace SpellyZombie
             InstanceFinder.ClientManager.Broadcast(new UnlockMsg { Owner = owner, Card = card, Rune = rune });
         }
 
-        /// "This ink IS this rune" — every machine stamps the same strokes (netcode §1).
+        /// Declare a rune: every machine stamps the same strokes (netcode §1).
         public static void PushDeclare(List<Stroke> members, RuneType rune)
         {
             if (_instance == null || !NetGame.Connected || members == null) return;
@@ -1214,7 +1200,6 @@ namespace SpellyZombie
         // ------------------------------------------------- server relaying --
         void OnZombieHitServer(NetworkConnection conn, ZombieHit msg, Channel channel)
         {
-            // find the real zombie this client's magic touched and hurt it
             foreach (var z in Zombie.All)
             {
                 if (z == null || z.gameObject.GetInstanceID() != msg.Id) continue;
@@ -1260,7 +1245,6 @@ namespace SpellyZombie
         {
             msg.Id = conn.ClientId; // trust the connection, not the packet
 
-            // the host's ban list bites at the door
             if (BanList.Contains(msg.SteamId))
             {
                 conn.Disconnect(true);
@@ -1449,7 +1433,7 @@ namespace SpellyZombie
                     Ack(conn, false, "what you aimed at is gone");
                     return;
                 }
-                // STATE RULE : once touched, only SOLID grabs again
+                // once touched, only a solid grabs again
                 if (blob.Touched && blob.Phase != MatterPhase.Solid)
                 {
                     Ack(conn, false, $"the {blob.Material} has been handled, only a SOLID grabs again");
@@ -1560,7 +1544,7 @@ namespace SpellyZombie
                 proxy.Target(msg.Pos[i], msg.Yaw[i]);
             }
 
-            // whoever the host stopped listing is DEAD - poof the proxy
+            // gone from the host's list = dead; remove the proxy
             _gone.Clear();
             foreach (var kv in _proxies)
                 if (!_seen.Contains(kv.Key)) _gone.Add(kv.Key);
@@ -1589,9 +1573,8 @@ namespace SpellyZombie
             NetTimer = msg.Timer;
             NetKills = msg.Kills;
 
-            // SCENE-FOLLOW: the host's match went LIVE (1) - clients still
-            // standing in the lobby ride along to the host's map, each in
-            // their own travel egg. Only the lobby auto-leaves.
+            // phase 1 = the host's match went live: clients still in the lobby
+            // follow to the host's map. Only the lobby auto-leaves.
             string here = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             if (msg.Phase == 1 && here == "Lobby")
             {
@@ -1828,14 +1811,9 @@ namespace SpellyZombie
             }
         }
 
-        /// A friend's BODY ink lands on their avatar's skeleton (
-        /// "fix the ink to be visible to everyone in multiplayer"). The points
-        /// arrive in bone-local space and mount on the same-named bone here, so
-        /// the drawing sits on the body whatever pose or place the avatar is
-        /// in. The copy is COSMETIC: silent complete - no recognition, no
-        /// claim, no closure (the owner's BodySealFire carries any cast,
-        /// netcode §2) - and CachePersistence inside CompleteStroke makes it
-        /// evaporation-exempt via the avatar's PersistentInkSurface.
+        /// A friend's body ink: points arrive bone-local and mount on the same-named
+        /// avatar bone. The copy is cosmetic and evaporation-exempt - no recognition,
+        /// claim or closure (the owner's BodySealFire carries any cast, netcode §2).
         void ApplyBodyStroke(StrokeMsg msg)
         {
             // avatars key by CLIENT id; stroke owners are OwnerIdOf = client+1
@@ -1875,7 +1853,7 @@ namespace SpellyZombie
             }
         }
 
-        // ------------------------------------------- book stand lobby (Aug 8) --
+        // --------------------------------------------------- book stand lobby --
         static readonly Dictionary<int, string> _mapLikes = new Dictionary<int, string>();   // host: clientId  liked map
         static readonly Dictionary<string, int> _likeCounts = new Dictionary<string, int>(); // everyone: map  likes (stand UI reads)
 
@@ -1938,7 +1916,7 @@ namespace SpellyZombie
             conn.Disconnect(true);
         }
 
-        // ------------------------------------------------ the pot (Aug 8-9) --
+        // ---------------------------------------------------------- the pot --
         /// Local player excluded - the sim already counts it directly.
         public static void EachRemotePlayer(System.Action<int, Vector3> visit)
         {
@@ -2003,9 +1981,8 @@ namespace SpellyZombie
         }
     }
 
-    /// A remote friend: bean, googly eyes, smooth-lerped presence. Keels over
-    /// when their flags say downed/sprawled - your buddy's disasters are
-    /// visible from across the map.
+    /// A remote player's avatar, lerped to broadcast state; tips over when
+    /// their flags say downed/sprawled.
     public class NetAvatar : MonoBehaviour
     {
         public static readonly System.Collections.Generic.List<NetAvatar> All
@@ -2037,11 +2014,9 @@ namespace SpellyZombie
             var prefab = CharacterLibrary.Model;
             if (prefab != null)
             {
-                // friends wear the real wizard (T-pose arms eased down until
-                // pose sync lands in B4 - a gliding T-pose is a bit too cursed)
+                // no pose sync yet - the prefab's T-pose arms are eased down
                 go = new GameObject($"NetPlayer_{id}");
-                // their body ink mounts on these bones
-                // the marker makes the copies Persistent: evaporation-exempt and
+                // makes their body-ink copies Persistent: evaporation-exempt and
                 // never consumed by spells, same as on the owner's machine
                 go.AddComponent<PersistentInkSurface>();
                 var body = Object.Instantiate(prefab, go.transform);
@@ -2217,8 +2192,7 @@ namespace SpellyZombie
             var target = Quaternion.Euler(0f, _targetYaw, roll);
             transform.rotation = Quaternion.Slerp(transform.rotation, target, Time.deltaTime * 10f);
 
-            // their head follows their aim - you can SEE what a friend is
-            // studying from across the yard (rebuilt from base every frame)
+            // their head follows their look pitch (rebuilt from base every frame)
             if (_head != null)
             {
                 _head.localRotation = _headBase;

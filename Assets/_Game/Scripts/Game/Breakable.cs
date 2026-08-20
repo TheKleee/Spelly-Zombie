@@ -2,27 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// DEATH DEBRIS, and every part of it is YOURS (AXIOM,
-    /// "I create trees and colliders and I decide what log prefabs will look
-    /// like and what particle effect will spawn").
-    ///
-    /// Drop this beside a Damageable on anything breakable - your tree, your
-    /// rock, your fence - and fill in as much or as little as you like:
-    ///
-    ///   DebrisPrefabs  - YOUR logs / rock chunks. Empty = code-built chunks.
-    ///   DebrisOrigins  - optional empties marking where they appear.
-    ///   BreakFx        - YOUR particle effect. Empty = the default poof.
-    ///   Standing       - optional stump / cracked rock left behind.
-    ///
-    /// Nothing you author is ever overwritten: your prefab's own Rigidbody,
-    /// colliders, materials and material tag are ADOPTED, and code only adds
-    /// what is genuinely missing.
-    ///
-    /// PERFORMANCE: this component has NO Update. A forest of these costs
-    /// nothing until something actually breaks - the work happens once, on
-    /// the OnDeath event. (The thing to keep watching is Thermal, which DOES
-    /// tick per-frame: let spells add it on contact, never pre-attach it to
-    /// scenery.)
+    /// Death debris: goes beside a Damageable and spawns authored debris/FX
+    /// (code-built fallbacks when slots are empty), adopting any authored
+    /// components. No Update - the work happens once, on OnDeath.
     public class Breakable : MonoBehaviour
     {
         [Header("WHAT IT LEAVES BEHIND: your prefabs")]
@@ -46,7 +28,7 @@ namespace SpellyZombie
         public bool CodeSplinters = true;
         [Tooltip("Play the default thud. Off if your effect brings its own sound.")]
         public bool DefaultSound = true;
-        [Tooltip("LOBBY ONLY: seconds before this object rebuilds itself after breaking. 0 = the global LobbyRespawnSeconds. The cauldron wants 3 .")]
+        [Tooltip("LOBBY ONLY: seconds before this object rebuilds itself after breaking. 0 = the global LobbyRespawnSeconds.")]
         public float LobbyRespawnOverride = 0f;
 
         void Awake()
@@ -71,12 +53,12 @@ namespace SpellyZombie
             var tag = GetComponentInParent<SurfaceMaterialTag>();
             var mat = tag != null ? tag.Material : SurfaceMaterialType.Wood;
 
-            // ---- YOUR effect, or the fallback ----
+            // ---- authored effect, or the fallback ----
             if (BreakFx != null) Instantiate(BreakFx, b.center, Quaternion.identity);
             else if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, b.center);
             if (DefaultSound) Juice.Thud(b.center);
 
-            // ---- what's left standing (your stump), if you made one ----
+            // ---- optional standing piece ----
             if (Standing != null)
                 Instantiate(Standing, transform.position, transform.rotation, transform.parent);
 
@@ -89,17 +71,13 @@ namespace SpellyZombie
 
             if (CodeSplinters) Splinters(b, mat);
 
-            // THE LOBBY PUTS ITSELF BACK TOGETHER . It is the
-            // practice ground, so it has to survive being practised on -
-            // acolytes need shapes left to scan and wizards need things left to
-            // break. In a real round, broken stays broken.
+            // lobby objects respawn after breaking; in a round broken stays broken
             if (RoundDirector.InLobby)
                 LobbyRespawn.Take(gameObject, LobbyRespawnOverride > 0f
                     ? LobbyRespawnOverride : DrawingConfig.LobbyRespawnSeconds);
         }
 
-        /// YOUR prefabs become real, physical, chemistry-aware debris - with
-        /// everything you authored on them left exactly as you made it.
+        /// Spawns authored debris prefabs; everything authored on them is kept.
         void SpawnYourDebris(int count, Bounds b, SurfaceMaterialType mat)
         {
             for (int i = 0; i < count; i++)
@@ -118,12 +96,12 @@ namespace SpellyZombie
                 else
                 {
                     at = b.center + Vector3.Scale(Random.insideUnitSphere, b.extents * 0.7f);
-                    rot = prefab.transform.rotation; // YOUR authored orientation
+                    rot = prefab.transform.rotation; // authored orientation
                 }
 
                 var piece = Instantiate(prefab, at, rot);
 
-                // adopt, never dictate: your rigidbody/collider/tag win
+                // adopt, never dictate: authored rigidbody/collider/tag win
                 var rb = Adopt.Component<Rigidbody>(piece, out bool madeRb);
                 if (madeRb && piece.GetComponentInChildren<Collider>() == null)
                     Debug.LogWarning($"[SpellyZombie] Debris '{prefab.name}' has no collider: " +
@@ -131,7 +109,6 @@ namespace SpellyZombie
                 rb.linearVelocity = Random.onUnitSphere * DebrisSpread + Vector3.up * (DebrisSpread * 0.5f);
                 rb.angularVelocity = Random.insideUnitSphere * 4f;
 
-                // make it a chemistry citizen only if you didn't already
                 if (piece.GetComponentInChildren<SurfaceMaterialTag>() == null)
                     piece.AddComponent<SurfaceMaterialTag>().Material = mat;
 
@@ -139,8 +116,7 @@ namespace SpellyZombie
             }
         }
 
-        /// The fallback when you haven't made debris yet - real material
-        /// chunks, so burning the fence still leaves you the coal.
+        /// Fallback: real material chunks, so debris still joins the chemistry.
         void SpawnCodeChunks(int count, Bounds b, SurfaceMaterialType mat)
         {
             for (int i = 0; i < count; i++)

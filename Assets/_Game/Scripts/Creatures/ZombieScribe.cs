@@ -3,18 +3,14 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// How zombies draw. Synthetic strokes go through the SAME pipeline as the
-    /// player's pen - real DrawNodes, registered strokes, normal seal detection
-    /// and recognition - so everything composes: a zombie's circle around your
-    /// rune closes a real seal (owned by the ZOMBIE, cast with ITS cards), and a
-    /// rune a zombie scrawls on a buddy is real ink you can circle yourself.
+    /// How zombies draw: synthetic strokes go through the same pipeline as the
+    /// player's pen (real DrawNodes, registered strokes, normal seal detection),
+    /// so zombie ink and player ink fully compose.
     public static class ZombieScribe
     {
-        /// Draw a closed ring and seal it (the compulsion payoff). Every point is
-        /// raycast-snapped onto the actual surface like the player's pen - points
-        /// that miss (target moved, curved body, edge of a crate) simply don't
-        /// land. Too many misses and the loop can't close: the zombie proudly
-        /// produced a useless arc. Returns false on that glorious failure.
+        /// Draw a closed ring and seal it. Points are raycast-snapped onto the
+        /// surface; misses don't land. Too many misses and the loop can't close -
+        /// returns false.
         public static bool DrawCircle(Vector3 center, Vector3 normal, float radius,
             Transform surface, int ownerId)
         {
@@ -28,7 +24,7 @@ namespace SpellyZombie
             for (int i = 0; i <= steps; i++) // first and last point meet - a loop
             {
                 float a = i / (float)steps * Mathf.PI * 2f;
-                // wobble: zombies do not own a compass
+                // hand wobble
                 float r = radius * (1f + Mathf.PerlinNoise(a * 2f, ownerId * 0.13f) * 0.15f);
                 Vector3 p = center + (right * Mathf.Cos(a) + up * Mathf.Sin(a)) * r;
                 if (Snap(p, normal, surface, out var onSurface, out var n))
@@ -40,21 +36,19 @@ namespace SpellyZombie
                 DrawingWorld.Instance.CloseSingleStroke(s); // same path as the player pen
                 return true;
             }
-            DrawingWorld.Instance.CompleteStroke(s); // a sad little arc remains
+            DrawingWorld.Instance.CompleteStroke(s); // leaves an open arc
             return false;
         }
 
-        /// Stamp a rune glyph onto a surface - the ONE way runes enter the world
-        /// now (player choose-and-stamp AND zombie scrawls). The stroke carries
-        /// DeclaredRune, so seals read it with zero recognition. Direction runes
-        /// pass alignTravel (the sketch's pen direction) so the stamp points the
-        /// way the player drew. wobble > 0 adds the shaky zombie hand.
+        /// Stamp a rune glyph onto a surface - the one way runes enter the world
+        /// (player stamp and zombie scrawl). The stroke carries DeclaredRune, so
+        /// seals read it with zero recognition. alignTravel rotates the stamp to
+        /// the sketch's pen direction; wobble > 0 adds hand shake.
         public static void DrawGlyph(RuneType rune, Vector3 center, Vector3 normal,
             float size, Transform surface, int ownerId,
             Vector3 alignTravel = default, float wobble = 0.03f)
         {
-            // zombies write in the hand once records templates
-            // (single-stroke recordings only - a scrawl is one stroke)
+            // recorded single-stroke templates take priority over the built-in polyline
             var recorded = RuneLibrary.RecordedStrokes(rune);
             var poly = recorded != null && recorded.Count == 1 && recorded[0].Count >= 2
                 ? recorded[0] : RuneLibrary.GlyphPolyline(rune);
@@ -96,7 +90,7 @@ namespace SpellyZombie
                 prev = p;
                 hasPrev = true;
             }
-            DrawingWorld.Instance.CompleteStroke(s); // too few landed points  it burns; oh well
+            DrawingWorld.Instance.CompleteStroke(s); // may burn if too few points landed
         }
 
         static void PlacePoint(Stroke s, Vector2 p, Vector2 min, Vector2 max, float scale,
@@ -109,9 +103,8 @@ namespace SpellyZombie
                 s.AddNode(DrawNode.Create(s, s.Nodes.Count, onSurface, n, surface));
         }
 
-        /// Sit a point ON the surface: cast from just above the intended spot
-        /// back toward it, and accept only the intended surface. Misses are
-        /// allowed - zombie drawings gap, wobble, and sometimes fail entirely.
+        /// Sit a point on the surface: cast from just above back toward it,
+        /// accepting only the intended surface. Misses are allowed.
         static bool Snap(Vector3 desired, Vector3 normal, Transform surface,
             out Vector3 pos, out Vector3 hitNormal)
         {
@@ -128,8 +121,8 @@ namespace SpellyZombie
             return false;
         }
 
-        /// Find the best nearby "unfinished doodle" — open, intact ink that is
-        /// not the scribe's own. This is what a scribbler cannot walk past.
+        /// Find the best nearby unfinished doodle: open, intact ink that is not
+        /// the scribe's own.
         public static Stroke FindDoodle(Vector3 from, float range, int selfId, Transform selfBody)
         {
             if (DrawingWorld.Instance == null) return null;
@@ -138,7 +131,7 @@ namespace SpellyZombie
             foreach (var s in DrawingWorld.Instance.Strokes)
             {
                 if (!s.Alive || s.State != StrokeState.Open) continue;
-                if (s.OwnerId == selfId) continue;              // its own art is perfect already
+                if (s.OwnerId == selfId) continue;              // skip its own strokes
                 if (s.Nodes.Count < 4 || !s.ChainIntact()) continue;
                 if (s.Hidden()) continue; // zombies can't covet stowed-weapon ink
                 var first = s.First;

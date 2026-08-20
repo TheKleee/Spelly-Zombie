@@ -3,14 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// ONE-SHOT HINTS ("our players don't know that they can click alt
-    /// to use a free-hand tool... hints should tell you about every available
-    /// option when it arises - once, when you do it the hint disappears").
-    ///
-    /// Exactly that, nothing more: a system calls Offer() every frame the
-    /// option is genuinely available, Retire() the moment the player uses it.
-    /// Retired hints never come back (persisted). ON by default for the demo;
-    /// Hints.Enabled is the options switch.
+    /// One-shot hints: a system calls Offer() every frame the option is
+    /// genuinely available, Retire() the moment the player uses it. Retired
+    /// hints never come back (persisted). Hints.Enabled is the options switch.
     public static class Hints
     {
         public enum Id
@@ -42,10 +37,7 @@ namespace SpellyZombie
         }
 
         /// Call every frame this option is actually available to the player.
-        /// Renders as a ONE-FACT CHIP in the shared row ("users
-        /// have no idea that by clicking ALT they can draw more accurately" —
-        /// the old faint OnGUI sentence was the last prompt outside the chip
-        /// language, shown mid-stroke where nobody reads screen bottoms).
+        /// Renders as a chip in the shared row.
         public static void Offer(Id id)
         {
             Load();
@@ -84,8 +76,7 @@ namespace SpellyZombie
             }
         }
 
-        /// The benefit, not the mechanics (the framing: ALT = "draw more
-        /// accurately", never "free the cursor").
+        /// Labels state the benefit, not the mechanics.
         static string Label(Id id)
         {
             switch (id)

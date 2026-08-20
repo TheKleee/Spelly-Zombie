@@ -6,12 +6,9 @@ using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// Third-person reveal sphere: when geometry hides the body, a second
-    /// camera renders the scene with its near plane pushed to just in front
-    /// of the body, and that texture shows in a soft circle around them.
-    /// The occluder is clipped away inside the circle, so the body AND some
-    /// surroundings stay visible. Local player only, purely cosmetic on this
-    /// machine, nothing replicates.
+    /// Third-person reveal: when geometry hides the body, a second camera
+    /// renders with its near plane just in front of the body, shown in a soft
+    /// circle - the occluder is clipped away inside it. Local-only, cosmetic.
     public class XRayGlow : MonoBehaviour
     {
         const float StandOff = 0.45f;  // clip everything up to this close to the body

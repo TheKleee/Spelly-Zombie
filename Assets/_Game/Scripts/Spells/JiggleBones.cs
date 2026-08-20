@@ -2,23 +2,13 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// LIVE JIGGLE BONES FOR A SKINNED BLOB - the deformation system, extracted.
-    ///
-    /// THE BLOB DEFORMS BY BONES : one skinned sphere, bones
-    /// named D_* under the SMR's rootBone, each dragged by physics and sprung
-    /// back toward its AUTHORED rest - the skin just follows. This component is
-    /// that rig alone, no state choreography: StateBlob keeps its own woven
-    /// copy for conjured matter (migrating it is the call), and the CAULDRON
-    /// INK uses this one so the bones posed in the prefab "adapt in real
-    /// time" — settle into the bowl, slosh when the pot is carried, tip out
-    /// when it is flipped.
-    ///
-    /// Same knobs as the conjured blob, one tuning for every soft thing:
-    /// BlobBoneSpring / BlobBoneStray / BlobBoneDamping / BlobBoneRadius.
+    /// Jiggle bones for a skinned blob: D_* bones under the SMR rootBone are
+    /// dragged by physics and sprung back to their authored rest; the skin follows.
+    /// Tuned by BlobBoneSpring / BlobBoneStray / BlobBoneDamping / BlobBoneRadius.
     public class JiggleBones : MonoBehaviour
     {
         [Range(0f, 1f)]
-        [Tooltip("How strongly physics may move the bones off YOUR pose. 1 = the conjured blob's full slosh, 0.1 = a whisper. This component is OPT-IN — nothing adds it for you .")]
+        [Tooltip("How strongly physics may move the bones off the pose. 1 = the conjured blob's full slosh, 0.1 = a whisper. Opt-in: nothing adds this component automatically.")]
         public float Influence = 0.25f;
 
         Transform _root;
@@ -39,7 +29,7 @@ namespace SpellyZombie
         {
             var smr = GetComponentInChildren<SkinnedMeshRenderer>(true);
             if (smr == null) return;
-            smr.updateWhenOffscreen = true; // rig trap: import bounds ~0.005, culling eats the blob
+            smr.updateWhenOffscreen = true; // import bounds ~0.005, culling eats the blob
             var root = smr.rootBone;
             if (root == null) return;
 
@@ -70,12 +60,8 @@ namespace SpellyZombie
                 sc.radius = DrawingConfig.BlobBoneRadius * blobScale
                     / Mathf.Max(1e-4f, Mathf.Abs(bone.lossyScale.x));
 
-                // CLAMPED IN WORLD TERMS. The formula above is StateBlob's,
-                // authored for unit-scale conjured rigs - under the ~96x-scaled
-                // cauldron the import scales stop cancelling and a "bone" can
-                // become a multi-metre sphere shoving the whole plaza around.
-                // A bone's collider may never exceed a third of the blob's own
-                // visible radius, whatever the transforms claim.
+                // clamp in world terms: a bone collider may never exceed a third
+                // of the blob's visible radius (large import scales break the formula)
                 float worldR = sc.radius * Mathf.Abs(bone.lossyScale.x);
                 float maxWorldR = Mathf.Max(0.02f, smr.bounds.extents.magnitude * 0.33f);
                 if (worldR > maxWorldR)
@@ -103,22 +89,12 @@ namespace SpellyZombie
                 Vector3 off = rest - rb.position;
                 Vector3 vel = rb.linearVelocity;
 
-                // CRITICALLY DAMPED ("it's literally
-                // oscillating"). The raw spring rings — 220 stiffness against
-                // damping 9 is a bell, and pot ink must SIT, not wobble
-                // forever. The velocity term below is exact critical damping
-                // for whatever stiffness the knob holds, so the ink settles
-                // dead and moves only when something actually disturbs the pot.
-                // BlobBoneDamping stays as extra syrup on top via linearDamping.
-                // Influence scales the stiffness; the damping term tracks it so
-                // the spring stays exactly critical at every slider position
+                // critically damped: the velocity term is exact critical damping for
+                // the Influence-scaled stiffness; BlobBoneDamping adds extra via linearDamping
                 float k = DrawingConfig.BlobBoneSpring * Mathf.Max(0.01f, Influence);
                 rb.AddForce(off * k - vel * (2f * Mathf.Sqrt(k)), ForceMode.Acceleration);
 
-                // the leash - and it KILLS the velocity it corrects. The old
-                // version teleported the bone back but let it keep its escape
-                // velocity, so gravity and the leash traded the bone back and
-                // forth every physics step: the oscillation's second engine.
+                // the leash kills the escape velocity it corrects, or the bone oscillates
                 float leash = DrawingConfig.BlobBoneStray * _reach[i]
                     * Mathf.Max(1e-4f, Mathf.Abs(transform.lossyScale.x));
                 if (off.magnitude > leash)

@@ -1,9 +1,6 @@
-// The environment's skin. No texture maps — color comes from _BaseColor
-// (fed by the SurfaceMaterialDB palette) and detail is quiet procedural
-// world-space noise (triplanar, so UV-less graybox geometry gets it too).
-// Detail strength is deliberately capped tiny: players DRAW on every
-// surface, and the ink must always win the contrast fight — this shader's
-// job is "nice up close, invisible next to a drawing".
+// Environment surface: no texture maps — _BaseColor (from the
+// SurfaceMaterialDB palette) plus quiet world-space noise, so UV-less
+// geometry works too. Detail stays small so drawn ink keeps the contrast.
 Shader "SpellyZombie/Surface"
 {
     Properties
@@ -105,8 +102,7 @@ Shader "SpellyZombie/Surface"
                 half3 albedo = _BaseColor.rgb
                     * (1.0 + grain * 2.0 * _GrainStrength + macro * 2.0 * _MacroStrength);
 
-                // lighting: main light + shadows + ambient + the game's many
-                // little point lights (rune light, embers, lanterns)
+                // lighting: main light + shadows + ambient + additional lights
                 float4 shadowCoord = TransformWorldToShadowCoord(IN.positionWS);
                 Light mainLight = GetMainLight(shadowCoord);
                 half3 lighting = SampleSH(n);

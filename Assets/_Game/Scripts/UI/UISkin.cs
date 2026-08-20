@@ -3,10 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The game's UI skin: sprite references resolved once in the editor
-    /// ("Spelly Zombie/UI/Build UI Skin") from the imported Kenney Adventure
-    /// pack, loaded at runtime from Resources. Swap a sprite or drop in the
-    /// hand-drawn font here and the WHOLE interface re-dresses - no code edit.
+    /// UI skin: sprite references built by "Spelly Zombie/UI/Build UI Skin"
+    /// from the Kenney Adventure pack, loaded at runtime from Resources.
+    /// Swapping a sprite or the font here re-dresses the whole interface.
     public class UISkin : ScriptableObject
     {
         [Header("Panels")]
@@ -51,7 +50,7 @@ namespace SpellyZombie
         [Tooltip("Drop ANY menu/submenu/popup prefab here. Whenever the game is about to code-build a UI group whose name matches a prefab in this list, YOUR prefab is instantiated instead, untouched. Known names: MainMenu, Settings, PauseMenu, HUD, Vitals, RoundBanner, Downed, LobbyBanner, LobbyBoard, NetPanel, PromptGroup, RuneChooser, PowerupChooser, Announcement, SealGallery. Buttons and live texts wire up by name + sibling order.")]
         public List<GameObject> SurfacePrefabs = new List<GameObject>();
 
-        /// the prefab for a named UI surface, or null code builds it.
+        /// The prefab for a named UI surface; null = code builds it.
         public static GameObject SurfacePrefab(string name)
         {
             var s = I;
@@ -64,8 +63,7 @@ namespace SpellyZombie
         static UISkin _loaded;
         static bool _tried;
 
-        /// Null until "Build UI Skin" has been run — UIKit falls back to flat
-        /// colors so the interface never breaks, just loses its clothes.
+        /// Null until "Build UI Skin" has been run; UIKit then falls back to flat colors.
         public static UISkin I
         {
             get

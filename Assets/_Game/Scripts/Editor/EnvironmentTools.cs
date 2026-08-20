@@ -7,27 +7,19 @@ using UnityEngine.Rendering.Universal;
 
 namespace SpellyZombie
 {
-    /// Environment pipeline, part two (the Quaternius era):
-    ///   4 - Set Atmosphere: storybook dusk - warm low sun, mauve fog,
-    ///       trilight ambient, procedural sunset skybox, and a URP post
-    ///       volume (soft bloom so ink/particles glow, gentle vignette).
-    ///       Works on the graybox TODAY and under the village kit later.
-    ///   5 - Prepare Imported Packs: run after dropping Quaternius packs
-    ///       into Assets/_Game/Art/Packs/ - enables mesh colliders on every
-    ///       model (EVERY SURFACE MUST BE DRAWABLE - ink is a raycast) and
-    ///       converts Standard-shader materials to URP Lit (no pink).
-    ///   6 - Auto-Tag Scene By Name: gives placed pack objects their
-    ///       SurfaceMaterialTag by name heuristics (wood burns, stone melts).
+    /// Environment tools: SetAtmosphere (sun/fog/ambient/skybox/post volume),
+    /// Prepare Imported Packs (colliders + URP materials for packs in
+    /// Assets/_Game/Art/Packs/), Auto-Tag Scene By Name (SurfaceMaterialTag).
     public static class EnvironmentTools
     {
         const string ArtDir = "Assets/_Game/Art";
         const string PacksDir = ArtDir + "/Packs";
 
         // ------------------------------------------------------ atmosphere --
-        // menu removed (scene-modifying - owns scene lighting/atmosphere)
+        // no menu item; modifies scene lighting/atmosphere directly
         public static void SetAtmosphere()
         {
-            // the sun: low, warm, long goofy shadows
+            // sun: low and warm
             Light sun = null;
             foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
                 if (l.type == LightType.Directional) { sun = l; break; }
@@ -42,7 +34,7 @@ namespace SpellyZombie
             sun.intensity = 1.15f;
             sun.shadows = LightShadows.Soft;
 
-            // fog: light daytime haze - depth without hiding the horde
+            // fog: light daytime haze
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = 0.008f;
@@ -54,8 +46,7 @@ namespace SpellyZombie
             RenderSettings.ambientEquatorColor = new Color(0.76f, 0.72f, 0.64f);
             RenderSettings.ambientGroundColor = new Color(0.38f, 0.34f, 0.31f);
 
-            // the RULE (updated July 11): the skybox is PT_Skybox_mat.mat.
-            // Fall back to Sky.mat, then to a generated one, if missing.
+            // skybox: PT_Skybox_mat.mat; falls back to Sky.mat, then a generated one
             Directory.CreateDirectory(ArtDir);
             var sky = AssetDatabase.LoadAssetAtPath<Material>(
                 "Assets/Polytope Studio/Lowpoly_Environments/Sources/Materials/PT_Skybox_mat.mat");
@@ -77,7 +68,7 @@ namespace SpellyZombie
             foreach (var cam in Object.FindObjectsByType<Camera>(FindObjectsSortMode.None))
                 cam.clearFlags = CameraClearFlags.Skybox;
 
-            // URP post: bloom makes additive ink/particles GLOW at dusk
+            // URP post: bloom so additive ink/particles glow
             string profilePath = ArtDir + "/SZ_Atmosphere.asset";
             var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(profilePath);
             if (profile == null)
@@ -110,11 +101,7 @@ namespace SpellyZombie
         // ------------------------------------------------------ fx library --
         const string CFXR = "Assets/JMO Assets/Cartoon FX Remaster/CFXR Prefabs/";
 
-        // AXIOM : this used to FORCE all 35 roles back to the CFXR
-        // defaults - and it is called as a side effect by five scene builders,
-        // so building a test scene silently discarded every FX prefab had
-        // assigned. It now FILLS BLANKS ONLY. The destructive path lives on its
-        // own menu item (Art/8) where chooses it deliberately.
+        // fills blanks only; the destructive reset lives on menu item Art/8
         static bool _fxReset;   // true only inside the explicit reset menu item
         static int _fxFilled, _fxKept;
 
@@ -155,7 +142,6 @@ namespace SpellyZombie
             Wire(ref lib.ElectricHit, CFXR + "Electric/CFXR Electrified 3.prefab");
             Wire(ref lib.IceHit, CFXR + "Ice/CFXR3 Hit Ice B (Air).prefab");
             Wire(ref lib.RunicAura, CFXR + "Magic Misc/CFXR3 Magic Aura A (Runic).prefab");
-            // the full mapping
             Wire(ref lib.Sun, CFXR + "Fire/CFXR4 Sun.prefab");
             Wire(ref lib.FireBurst, CFXR + "Explosions/CFXR3 Fire Explosion B.prefab");
             Wire(ref lib.HealShine, CFXR + "Misc/CFXR2 Shiny Item (Loop).prefab");
@@ -235,8 +221,7 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------------ auto-tags --
-        // name  chemistry. Wood burns to coal, stone melts to lava, straw is
-        // kindling - imported scenery joins the reaction table by its name.
+        // name-based chemistry tags for imported scenery
         static readonly (string key, SurfaceMaterialType mat)[] NameRules =
         {
             ("stone", SurfaceMaterialType.Stone), ("rock", SurfaceMaterialType.Stone),
@@ -251,7 +236,7 @@ namespace SpellyZombie
             ("water", SurfaceMaterialType.Water),
             ("dirt", SurfaceMaterialType.Earth), ("ground", SurfaceMaterialType.Earth),
             ("terrain", SurfaceMaterialType.Earth), ("path", SurfaceMaterialType.Earth),
-            // everything wooden - the default for village kit is honestly wood
+            // wood is the effective default for the village kit
             ("wood", SurfaceMaterialType.Wood), ("house", SurfaceMaterialType.Wood),
             ("wall", SurfaceMaterialType.Wood), ("roof", SurfaceMaterialType.Wood),
             ("fence", SurfaceMaterialType.Wood), ("barrel", SurfaceMaterialType.Wood),

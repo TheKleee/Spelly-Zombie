@@ -4,10 +4,8 @@ namespace SpellyZombie
 {
     public enum WorldEventKind { Ink, Spell, Explosion, Sparkle, Death }
 
-    /// Tiny perception bus: anything noteworthy reports itself here, and googly
-    /// eyes / zombie brains READ it instead of having wires into every system.
-    /// This is what makes eyes follow fresh ink and zombies gawk at explosions -
-    /// and because zombies perceive through it, drawing ink somewhere IS a decoy.
+    /// Tiny perception bus: noteworthy events report here; googly eyes and zombie
+    /// brains read it. Zombies perceive through it, so drawn ink works as a decoy.
     public static class WorldEvents
     {
         public struct Evt

@@ -3,16 +3,10 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Connection front door (B1): whatever transport the scene's NetworkManager has active - Tugboat for LAN now, FishySteamworks later.
-    ///
-    /// THE BOOK STAND RULE : "I don't want multiplayer to be
-    /// controlled via a floating permanent ui in the lobby but rather by
-    /// walking towards the book stand" — the control panel exists ONLY while
-    /// the local player stands at a LobbyStand design, with the cursor
-    /// freed for real mouse use. Create/join with an optional PASSWORD, the
-    /// HOST picks the map (and one day the mode); everyone else leaves a LIKE
-    /// on the map they want. The tiny top-right status line stays always -
-    /// it is a readout, not a control.
+    /// Connection front door: uses whatever transport the scene's NetworkManager
+    /// has active (Tugboat LAN or FishySteamworks). The control panel exists only
+    /// while the local player stands at a LobbyStand, with the cursor freed;
+    /// the top-right status line is an always-on readout, not a control.
     public class NetGame : MonoBehaviour
     {
         public static bool Connected =>
@@ -26,8 +20,7 @@ namespace SpellyZombie
         public static bool IsAuthority => !Connected || IsHost;
 
         /// The password this lobby demands (host side; empty = open lobby) and
-        /// the one we typed to get in (client side) - NetSync's join handshake
-        /// reads both at the book stand's word.
+        /// the one we typed to get in (client side) - NetSync's join handshake reads both.
         public static string HostPassword = "";
         public static string JoinPassword = "";
 
@@ -250,8 +243,7 @@ namespace SpellyZombie
                 MatchLobby.AcolytePercent > 10, MatchLobby.AcolytePercent < 90);
             ry -= 34f;
 
-            // (no seed control: seeds come from the daily pool, rolled by
-            // MatchLobby - "host doesn't know what seed does")
+            // no seed control: seeds come from the daily pool, rolled by MatchLobby
             var pwField = UIKit.Input(_ui, _codeEdit, v => _codeEdit = v);
             pwField.contentType = UnityEngine.UI.InputField.ContentType.Password;
             UIKit.Place((RectTransform)pwField.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(120f, 26f));
@@ -299,7 +291,7 @@ namespace SpellyZombie
             y -= 28f;
         }
 
-        // ---- alone at the stand: the two-tab screen from the sketch ----
+        // ---- alone at the stand: the two-tab screen ----
         void BuildOfflinePanel(UISkin skin)
         {
             UIKit.Place(_ui, new Vector2(0.5f, 0.5f), new Vector2(-215f, 10f), new Vector2(600f, 620f));

@@ -7,24 +7,10 @@ namespace SpellyZombie
     /// The four world sources and what they teach, in order, one per absorb.
     public enum AbsorbKind { Single, Flame, Puddle, Mud, Rock }
 
-    /// THE WORLD TEACHES : you don't find floating runes - you
-    /// find a FLAME, a PUDDLE, a LOG, and absorb it into the grimoire. The
-    /// thing you absorb IS the lesson: fire teaches Heat, water teaches Liquid,
-    /// a log teaches Solid.
-    ///
-    /// ABSORBING CONSUMES THE SOURCE : the torch goes out, so that
-    /// one torch teaches exactly ONE player. Everyone else must find their own
-    /// fire - which is what keeps kits different and forces you to combine
-    /// spells instead of all owning the same ones.
-    ///
-    /// SPELL-BORN THINGS CAN NEVER BE ANALYZED — not "isn't currently a spell"
-    /// but PROVENANCE: anything a spell created is permanently ineligible, even
-    /// after the touch law turns it into an object. Otherwise conjure  touch
-    /// analyze is a free rune printer.
-    ///
-    /// AXIOM: everything here is yours. Put this on your torch/puddle/log
-    /// prefab, pick the card it teaches, and supply your own absorb effect.
-    /// Nothing about your object is altered except what you asked for.
+    /// A world object the grimoire absorbs to learn a rune. Absorbing
+    /// consumes the source, so one source teaches exactly one player.
+    /// Spell-born things are permanently ineligible (provenance, not current
+    /// form) - otherwise conjure-then-analyze is a free rune printer.
     public class Analyzable : MonoBehaviour
     {
         [Header("WHAT THIS TEACHES")]

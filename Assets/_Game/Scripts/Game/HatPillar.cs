@@ -4,13 +4,8 @@ using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// THE HAT COLOR PILLAR ("anyone will be able to go to a
-    /// color picker pillar to open up a menu to change their hat color to
-    /// whatever they want while in lobby"). design the pillar object and
-    /// adds this component; walking up offers E, E opens three sliders -
-    /// hue, saturation, brightness - that repaint the hat LIVE on the wizard
-    /// standing there. Direct manipulation, nothing to read (the hat itself
-    /// is the preview). The pick saves per user and dresses every spawn.
+    /// Lobby pillar: aim + E opens a color wheel that repaints the hat live.
+    /// The pick saves per player and dresses every spawn.
     public class HatPillar : MonoBehaviour
     {
         [Tooltip("How close the player must stand for the offer, meters.")]
@@ -27,8 +22,7 @@ namespace SpellyZombie
         {
             var c = HatColor.Saved();
             if (c != null) Color.RGBToHSV(c.Value, out _h, out _s, out _v);
-            // the pillar's body: a shaft of light in the picked color (the
-            // own art on this object suppresses it automatically)
+            // beam in the picked color; authored art on this object suppresses it
             _beam = PillarBeam.Build(transform, out _glow);
             // a dedicated aim body: trigger only, so bodies pass through and
             // the pen ignores it (pen raycasts skip triggers). Tall as the beam.
@@ -46,10 +40,7 @@ namespace SpellyZombie
 
         void Update()
         {
-            // THE PILLAR IS THE HAT ("pillar should be the same color
-            // as the hat as well not to confuse people... Pillar is the
-            // selected color") — the EXACT pick, no visibility floors: a
-            // white hat means a white beam
+            // the beam shows the exact picked color, no visibility floor
             Color worn = Color.HSVToRGB(_h, _s, _v);
             PillarBeam.Tint(_beam, worn);
             PillarBeam.Tint(_glow, worn);
@@ -85,14 +76,11 @@ namespace SpellyZombie
         void Open()
         {
             PanelOpen = true;
-            // NO BACKING PANEL ("The brown outline is not necessary
-            // it looks totally out of place") — the wheel, slider, presets
-            // and done all float free over the world
+            // no backing panel; the controls float free
             _panel = UIKit.Group(UIKit.Root, "HatPanel");
             UIKit.Place(_panel, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(380f, 420f));
 
-            // THE COLOR WHEEL (Meccha-style): hue runs around the wheel,
-            // saturation runs outward; click or drag anywhere on it
+            // hue runs around the wheel, saturation runs outward
             var wheelGo = new GameObject("Wheel", typeof(RectTransform), typeof(Image));
             wheelGo.transform.SetParent(_panel, false);
             var wImg = wheelGo.GetComponent<Image>();
@@ -100,14 +88,10 @@ namespace SpellyZombie
             wImg.preserveAspect = true;
             UIKit.Place((RectTransform)wheelGo.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 70f), new Vector2(250f, 250f));
             var drag = wheelGo.AddComponent<HatWheelDrag>();
-            // the wheel is WYSIWYG: it shows full brightness, so it picks at
-            // full brightness (the slider is gone per the sketch; darker
-            // shades live in the presets)
+            // the wheel shows full brightness, so it picks at full brightness
             drag.Pick = (h, s) => { _h = h; _s = s; _v = 1f; Repaint(); };
 
-            // the marker riding the wheel: the drag surface moves it DIRECTLY
-            // under the pointer ("the indicator is not following the
-            // mouse"), Repaint only places it for preset clicks and reopen
+            // the drag surface moves the dot; Repaint places it only for preset clicks and reopen
             var dotGo = new GameObject("Dot", typeof(RectTransform), typeof(Image));
             dotGo.transform.SetParent(wheelGo.transform, false);
             _dot = (RectTransform)dotGo.transform;
@@ -117,9 +101,7 @@ namespace SpellyZombie
             _dot.sizeDelta = new Vector2(12f, 12f);
             drag.Dot = _dot;
 
-            // presets wear the same button chrome as [done], the
-            // row centered mid-screen; no tray, no preview box - THE PILLAR
-            // is the selected color
+            // preset row; the pillar itself is the preview
             Color[] presets =
             {
                 new Color(0.86f, 0.22f, 0.18f), new Color(1f, 0.62f, 0.12f),
@@ -162,8 +144,7 @@ namespace SpellyZombie
             HatColor.Set(c); // saves + dresses the wizard live
         }
 
-        // the HSV disc, generated once and shared (hue by angle, saturation
-        // by radius, full brightness - the slider below owns brightness)
+        // the HSV disc, generated once and shared (hue by angle, saturation by radius)
         static Sprite _wheelSprite;
         static Sprite WheelSprite()
         {
@@ -208,7 +189,7 @@ namespace SpellyZombie
         UnityEngine.EventSystems.IDragHandler
     {
         public System.Action<float, float> Pick;
-        public RectTransform Dot; // moved DIRECTLY under the pointer, never derived
+        public RectTransform Dot; // moved directly under the pointer
 
         public void OnPointerDown(UnityEngine.EventSystems.PointerEventData e) => Read(e);
         public void OnDrag(UnityEngine.EventSystems.PointerEventData e) => Read(e);
@@ -218,10 +199,7 @@ namespace SpellyZombie
             var rt = (RectTransform)transform;
             if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
                     rt, e.position, e.pressEventCamera, out var lp)) return;
-            // measure from the RECT'S CENTER, not the pivot - UIKit.Place
-            // pivots this rect at its top, which put "wheel center" a full
-            // radius below the cursor (the bug: dot at the bottom while the
-            // mouse sat in the middle)
+            // measure from the rect's center, not the pivot (UIKit.Place pivots this rect at its top)
             Vector2 p = lp - rt.rect.center;
             float half = rt.rect.width * 0.5f;
             float dx = p.x / half;
@@ -259,13 +237,10 @@ namespace SpellyZombie
             if (p != null) Dress(p);
         }
 
-        /// Tints every renderer under the child whose name contains "Hat"
-        /// (the authoring convention, same family as PageAnchor/Tip - warned
-        /// loudly when absent, never guessed further). Property block only:
-        /// the material asset is never touched.
-        /// MP PARITY GAP (flagged): remote wizards' hat colors need a slot
-        /// in the player-state sync - it rides with the known sides-sync gap.
-        // found once per pilot - the full-rig name walk allocated every sweep
+        /// Tints every renderer under the child whose name contains "Hat".
+        /// Property block only: the material asset is never touched.
+        /// Remote wizards' hat colors are not yet synced (needs a player-state slot).
+        // cached per player rig
         static readonly System.Collections.Generic.Dictionary<SimpleFPSController, Transform> _found =
             new System.Collections.Generic.Dictionary<SimpleFPSController, Transform>();
 

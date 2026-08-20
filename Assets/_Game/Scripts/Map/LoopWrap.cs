@@ -2,10 +2,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The infinite ocean: cross the loop boundary on an axis and that
-    /// coordinate wraps to the far side (x = +80 becomes x = -80), momentum
-    /// and heading intact. With the horizon fog, the island fading in ahead
-    /// IS the island you left behind - the world reads endless.
+    /// Crossing the loop boundary on an axis wraps that coordinate to the
+    /// far side (x = +80 becomes x = -80), momentum and heading intact.
     public class LoopWrap : MonoBehaviour
     {
         public float Limit = 80f;
@@ -23,7 +21,7 @@ namespace SpellyZombie
             else if (p.z < -Limit) q.z = p.z + Limit * 2f;
             if (q == p) return;
 
-            // CharacterController fights teleports - the FallCatcher pattern
+            // CharacterController must be disabled to teleport
             if (_cc != null) _cc.enabled = false;
             transform.position = q;
             if (_cc != null) _cc.enabled = true;

@@ -3,19 +3,31 @@ using UnityEngine.EventSystems;
 
 namespace SpellyZombie
 {
-    /// The click feel every button in every menu gets: a squash while held,
-    /// then a tiny overshoot and wiggle on release. Added by UIKit.Button, so
-    /// nothing has to remember it. Unscaled time, menus may be paused.
+    /// The feel every button in every menu gets: a swell under the cursor, a
+    /// squash while held, then a tiny overshoot and wiggle on release. Added
+    /// by UIKit.Button, so nothing has to remember it. Unscaled time, menus
+    /// may be paused.
     [DisallowMultipleComponent]
-    public class ButtonJuice : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
+    public class ButtonJuice : MonoBehaviour,
+        IPointerEnterHandler, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
     {
         const float Life = 0.32f;
+
+        /// The click spring as a borrowable curve - k runs 0..1 over SpringLife.
+        /// RuneToast pops with this, so there is one definition of the feel.
+        public const float SpringLife = Life;
+        public static float SpringScale(float k) =>
+            1f + Mathf.Sin(k * Mathf.PI * 2f) * 0.06f * (1f - k);
+        public static float SpringRollDeg(float k) =>
+            Mathf.Sin(k * Mathf.PI * 3f) * 2.4f * (1f - k);
 
         RectTransform _rt;
         Vector3 _baseScale;
         Quaternion _baseRot;
         float _t = Life;
         bool _down;
+        bool _over;        // cursor is on it
+        float _swell = 1f; // eased hover/press size, multiplied into the spring
 
         void Awake()
         {
@@ -57,6 +69,8 @@ namespace SpellyZombie
             return _runner;
         }
 
+        public void OnPointerEnter(PointerEventData e) { _over = true; }
+
         public void OnPointerDown(PointerEventData e) { _down = true; }
 
         public void OnPointerUp(PointerEventData e)
@@ -68,11 +82,15 @@ namespace SpellyZombie
 
         public void OnPointerExit(PointerEventData e)
         {
+            _over = false;
             if (_down) { _down = false; _t = Life; }
         }
 
         void OnDisable()
         {
+            _over = false;
+            _down = false;
+            _swell = 1f;
             if (_rt == null) return;
             _rt.localScale = _baseScale;
             _rt.localRotation = _baseRot;
@@ -80,26 +98,27 @@ namespace SpellyZombie
 
         void Update()
         {
-            if (_down)
+            if (_rt == null) return;
+            float dt = Time.unscaledDeltaTime;
+
+            // pressed beats hovered beats resting
+            float want = _down ? 0.94f
+                : _over ? DrawingConfig.ButtonHoverScale
+                : 1f;
+            _swell = Mathf.MoveTowards(_swell, want,
+                dt * DrawingConfig.ButtonHoverSpeed * Mathf.Max(0.05f, Mathf.Abs(want - _swell) + 0.1f));
+
+            float spring = 1f, roll = 0f;
+            if (_t < Life)
             {
-                _rt.localScale = _baseScale * 0.94f;
-                return;
+                _t += dt;
+                float k = Mathf.Clamp01(_t / Life);
+                spring = SpringScale(k);
+                roll = SpringRollDeg(k);
             }
 
-            if (_t >= Life) return;
-
-            _t += Time.unscaledDeltaTime;
-            if (_t >= Life)
-            {
-                _rt.localScale = _baseScale;
-                _rt.localRotation = _baseRot;
-                return;
-            }
-            float k = _t / Life;
-            float decay = 1f - k;
-            _rt.localScale = _baseScale * (1f + Mathf.Sin(k * Mathf.PI * 2f) * 0.06f * decay);
-            _rt.localRotation = _baseRot
-                * Quaternion.Euler(0f, 0f, Mathf.Sin(k * Mathf.PI * 3f) * 2.4f * decay);
+            _rt.localScale = _baseScale * (_swell * spring);
+            _rt.localRotation = _baseRot * Quaternion.Euler(0f, 0f, roll);
         }
     }
 }

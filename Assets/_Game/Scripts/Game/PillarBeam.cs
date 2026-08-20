@@ -2,15 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A LOBBY PILLAR IS A SHAFT OF LIGHT (the primitive
-    /// pillars "cannot look like simple shapes... it can stand out as a
-    /// transparent beam of light" — it must fit the world, not stand out
-    /// as geometry). One soft translucent column plus a faint ground disc,
-    /// built ONLY when the pillar object carries no renderer of its own:
-    /// the real art replaces the beam by simply existing.
-    ///
-    /// No colliders anywhere: the pen cannot ink a beam, the acolyte scan
-    /// cannot pick it apart into pieces, and nobody bumps into light.
+    /// Lobby pillar visual: a translucent beam of light plus a ground disc,
+    /// built only when the pillar object has no renderer of its own. No
+    /// colliders: the beam cannot be inked, scanned apart, or bumped into.
     public static class PillarBeam
     {
         static MaterialPropertyBlock _mpb;
@@ -40,18 +34,13 @@ namespace SpellyZombie
             go.layer = 2; // invisible to the pen
             var r = go.GetComponent<Renderer>();
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            // one shared translucent material; per-beam color rides a
-            // property block so live tinting never churns materials
+            // shared material; per-beam color rides a property block
             r.sharedMaterial = MatterFX.Get(new Color(1f, 1f, 1f, 0.45f), MoteShade.Transparent);
             return r;
         }
 
-        /// Where on the beam's column the player is LOOKING - the floating E
-        /// rides the aim height instead of hanging at a fixed altitude
-        /// ("The E should hover near the mouse... locked to the
-        /// object but appear near the mouse" — look down while walking to
-        /// the beam and a fixed 1.5m badge sits off screen). Same law as
-        /// the aim badge's hit-point rule for large objects.
+        /// Point on the pillar column at the player's aim height, so the
+        /// floating E badge follows the look instead of a fixed altitude.
         public static Vector3 BadgePoint(Transform pillar)
         {
             var cam = Camera.main;
@@ -66,8 +55,7 @@ namespace SpellyZombie
             return new Vector3(axis.x, y, axis.z);
         }
 
-        /// Tint without touching the material (drag-repaints happen every
-        /// frame while picking a hat color - property blocks make that free).
+        /// Tint via property block - drag-repaints happen every frame.
         public static void Tint(Renderer r, Color c)
         {
             if (r == null) return;

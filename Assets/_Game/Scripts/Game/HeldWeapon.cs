@@ -4,15 +4,12 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Everything a carryable weapon shares - the SLIDE TABLET and the RUNE
-    /// CHAMBER both wear this. Loose: shop-window bob until E (WeaponSlots).
-    /// Held: holster pose, R raises it into DRAW MODE (free brush cursor,
-    /// MMB-drag spins it, WASD slides the view, scroll zooms), F drops it.
+    /// Base for carryable weapons (slide tablet, rune chamber). Loose: bob
+    /// until E picks it up. Held: R toggles draw mode, F drops it.
     /// Subclasses implement UpdateArmed() - the trigger mechanics.
     public abstract class HeldWeapon : MonoBehaviour
     {
-        /// One weapon at a time can be raised for engraving (it's the SELECTED
-        /// one - WeaponSlots hides the others, so the key can't be stolen).
+        /// One weapon at a time can be raised for engraving (WeaponSlots hides the others).
         public static bool DrawMode { get; protected set; }
         public static void CancelDrawMode() => DrawMode = false;
 
@@ -32,7 +29,7 @@ namespace SpellyZombie
         Vector2 _drawPan; // WASD view slide (weapon shifts opposite, camera-style)
 
         Transform _pivot;              // the camera (aim space / draw mode)
-        Transform _hand;               // the grip socket - the weapon lives HERE
+        Transform _hand;               // the grip socket
         Vector3 _handLocalPos;         // glue pose captured at equip
         Quaternion _handLocalRot;
 
@@ -131,9 +128,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // R = engrave mode (WeaponSlots hides this weapon unless selected).
-            // Not while floored or flying - the controller would cancel it a
-            // frame later anyway; refusing at the door kills the cursor flicker
+            // R = engrave mode; refused while floored or flying
             var pilot = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             bool floored = pilot != null
                 && (pilot.IsDowned || pilot.IsSprawled || pilot.IsAirTumbling);
@@ -152,9 +147,7 @@ namespace SpellyZombie
 
             if (DrawMode)
             {
-                // MMB-drag spins the weapon; WASD MOVES the camera view (the
-                // camera can't leave your head, so the weapon slides opposite -
-                // reads the same); scroll zooms
+                // MMB-drag spins the weapon; WASD pans (weapon slides opposite); scroll zooms
                 if (mouse != null && mouse.middleButton.isPressed)
                 {
                     Vector2 d = mouse.delta.ReadValue();
@@ -177,9 +170,7 @@ namespace SpellyZombie
                 }
             }
 
-            // where the weapon LIVES: engraving happens in camera space (raise
-            // to center), everything else in the HAND that grips it. The hand
-            // itself is IK-anchored to the aim point, so pointing still works.
+            // draw mode parents to the camera; otherwise to the gripping hand (IK-anchored)
             if (DrawMode)
             {
                 if (transform.parent != _pivot && _pivot != null)
@@ -207,8 +198,7 @@ namespace SpellyZombie
                     HolsterRot, Time.deltaTime * 9f);
             }
 
-            // a downed/dead/sprawled wizard's trigger finger doesn't work
-            // (firing while bleeding out made you impossible to revive)
+            // no firing while downed/sprawled/tumbling
             if (Wielder == null || !(Wielder.IsDowned || Wielder.IsSprawled || Wielder.IsAirTumbling))
                 UpdateArmed(kb, mouse);
         }
@@ -219,10 +209,8 @@ namespace SpellyZombie
         /// Whoever holds the weapon - trigger gates read their state.
         protected SimpleFPSController Wielder { get; private set; }
 
-        /// WeaponSlots hands the weapon to a player (E). With the real body,
-        /// the weapon is GLUED INTO THE HAND: struck into its camera-space aim
-        /// pose first, then parented to the grip socket keeping that pose -
-        /// hand IK holds the aim, animation adds the life.
+        /// WeaponSlots hands the weapon to a player (E): posed in camera space
+        /// first, then parented to the grip socket keeping that pose.
         public virtual void EquipTo(SimpleFPSController player)
         {
             if (player == null || player.CameraPivot == null) return;

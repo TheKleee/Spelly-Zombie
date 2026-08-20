@@ -3,13 +3,10 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// LOBBY PILLARS (one for hat coloring, one for switching
-    /// sides — and after the primitive graybox verdict, "it can stand out as
-    /// a transparent beam of light"): the builder now drops two EMPTY marker
-    /// objects with the components wired. The visuals are runtime beams of
-    /// light built by the components themselves, so nothing ugly is ever
-    /// serialized into the scene - and any art parents under a marker
-    /// replaces its beam automatically.
+    /// Drops two empty marker objects with the pillar components wired: one
+    /// for hat coloring, one for switching sides. The components build their
+    /// own runtime light beams, so nothing is serialized into the scene; art
+    /// parented under a marker replaces its beam.
     public static class LobbyPillarsBuilder
     {
         [MenuItem("Spelly Zombie/Build LOBBY PILLARS (open scene)")]

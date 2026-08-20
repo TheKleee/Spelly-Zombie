@@ -6,20 +6,15 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// Central tuning constants for the drawing / seal system.
-    /// Everything gameplay-feel lives here so balancing is one file.
-    ///
-    /// MODDING / BALANCE HOOK (Jul 25): every value below is a DEFAULT that can
-    /// be overridden at runtime by a JSON file at
+    /// Every value is a default overridable at runtime by
     ///   {Application.persistentDataPath}/sz_tuning.json
-    /// with no recompile - ship a balance file, tweak the demo live, or let a
-    /// Steam Workshop tuning mod reach these. Format (only list what you change):
+    /// Format (only list what you change):
     ///   {"entries":[{"key":"InkMax","value":120},{"key":"ParticleLife","value":6}]}
-    /// Keys are the field names below. Fields are `static readonly` (not `const`)
-    /// so the overlay can reach them AND Harmony can patch them.
+    /// Keys are the field names. Fields are `static readonly` (not `const`) so
+    /// the overlay can reach them and Harmony can patch them.
     public static class DrawingConfig
     {
-        // ---- the tuning overlay: loaded ONCE, before any field below (this
-        // field is declared first, so its initializer runs first) ----
+        // overlay loads first: declared before every tunable below
         [Serializable] class TuneEntry { public string key; public float value; }
         [Serializable] class TuneFile { public TuneEntry[] entries; }
         public const string OverlayFileName = "sz_tuning.json"; // a filename, never tuned → stays const
@@ -45,16 +40,12 @@ namespace SpellyZombie
         }
         static float O(string key, float def) => _overlay.TryGetValue(key, out var v) ? v : def;
 
-        /// Public door for other tuning blocks (BodyState, StickyBonds, HandGrab)
-        /// so every knob in the game reads from the SAME sz_tuning.json.
+        /// Overlay accessor for other tuning blocks so every knob reads the same sz_tuning.json.
         public static float Overlay(string key, float def) => O(key, def);
 
-        /// FORCE the type initializer to run in a SAFE context. Without this,
-        /// the first touch of DrawingConfig could be a MonoBehaviour FIELD
-        /// INITIALIZER during scene load (PlayerInk's `Ink = InkMax`), where
-        /// Unity forbids persistentDataPath - the overlay silently died for
-        /// the whole session. These hooks run on the main thread BEFORE any
-        /// scene deserializes, so the overlay always loads.
+        /// Forces the type initializer to run before any scene deserializes.
+        /// A MonoBehaviour field initializer during scene load cannot touch
+        /// persistentDataPath, which would silently skip the overlay.
         public static void Prime() { }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -68,187 +59,105 @@ namespace SpellyZombie
 
         // ---- Pen / stroke capture ----
         public static readonly float DrawRange = O(nameof(DrawRange), 8f);           // max raycast distance of the pen
-        public static readonly float NodeSpacing = O(nameof(NodeSpacing), 0.007f); // min world distance between nodes. "the runes keep not knowing they are connected - shorten the distance of node creation." Sparse nodes leave real gaps between ink that visually touches, so touch tests miss and one rune reads as several.
+        public static readonly float NodeSpacing = O(nameof(NodeSpacing), 0.007f); // min world distance between nodes; sparse nodes leave gaps that make touch tests miss
         public static readonly float SurfaceOffset = O(nameof(SurfaceOffset), 0.008f); // lift ink off the surface to avoid z-fighting
-        public static readonly float MaxStrokeJump = O(nameof(MaxStrokeJump), 0.12f); // hit point jumping further than this in one frame ends the stroke - separate marks STAY separate
+        public static readonly float MaxStrokeJump = O(nameof(MaxStrokeJump), 0.12f); // hit point jumping further than this in one frame ends the stroke
         public static readonly float MaxStrokeJumpPerMeter = O(nameof(MaxStrokeJumpPerMeter), 0.02f); // tiny distance allowance (fast flicks split; forgiving seals reconnect what should connect)
-        public static readonly int MinStrokeNodes = Oi(nameof(MinStrokeNodes), 2); // "lines aren't even created when I don't move the mouse far enough". 3 nodes = ~3cm of travel before ANY line existed — and an arrowhead's barb or a LIGHT ray is exactly that short. A limb is not an accidental click; 2 is the minimum that can be a line at all.
-        public static readonly float InkWidth = O(nameof(InkWidth), 0.007f); // line renderer width - THIN pen
+        public static readonly int MinStrokeNodes = Oi(nameof(MinStrokeNodes), 2); // 2 is the minimum that can form a line; arrowhead barbs are that short
+        public static readonly float InkWidth = O(nameof(InkWidth), 0.007f); // line renderer width
         public static readonly float DrawSmoothingTime = O(nameof(DrawSmoothingTime), 0.025f); // hand-jitter smoothing time constant, seconds (0 = raw input)
         public static readonly float DrawLookSensitivityScale = O(nameof(DrawLookSensitivityScale), 0.35f); // camera sensitivity multiplier while the pen is down
         public static readonly float EraseRadius = O(nameof(EraseRadius), 0.02f);
-        // ---- evaporation ("the longer the game lasts the more it
-        // lags - old ink standing there unused should evaporate after 1 minute") ----
-        // ---- rune emoji sitting inline in a line of text (TMP sprites sit on
-        // the baseline; letters read centred higher, so the icon needs a lift) ----
+        // rune icons inline in text: TMP sprites sit on the baseline
         public static readonly float RuneIconLift = O(nameof(RuneIconLift), 0f);     // em above the baseline. 0 = no tag emitted; the sprite asset's own metrics do the aligning
         public static readonly float RuneIconScale = O(nameof(RuneIconScale), 100f); // % of the surrounding text size. 100 = no tag emitted
         public static readonly float InkEvaporateSeconds = O(nameof(InkEvaporateSeconds), 60f);    // loose world ink lives this long
-        /// THE SCOOP TAX : rubbed-out ink refills the wand at a LOSS
-        /// "without that logic people could cast spells for free without having to
-        /// take any ink from the cauldron ever." Half back is the opening number
-        /// ("or 70% if half is too strict idk"), so it lives in sz_tuning.json for
-        /// him to try 0.7 without a build. design wizard power LIMITED.
+        /// Rubbed-out ink refills the wand at a loss so casting is never free.
         public static readonly float ScoopRefund = O(nameof(ScoopRefund), 0.5f);
-        /// How long a WORLD seal lives after casting before its ink is consumed
-        /// ("consumed quickly after the spell is cast" — no re-emit
-        /// farming, no erase-and-recast). Body seals keep SealProduceSeconds.
+        /// How long a world seal lives after casting before its ink is consumed.
+        /// Body seals keep SealProduceSeconds.
         public static readonly float SealConsumeSeconds = O(nameof(SealConsumeSeconds), 1.2f);
 
-        // ---- THE POT . One ink pool,
-        // no exceptions: every wand refill bills it, nothing ever refills it.
+        // ---- The pot: one ink pool. Every wand refill bills it, nothing refills it.
         public static readonly float PotPrepSeconds = O(nameof(PotPrepSeconds), 30f);        // inert gather phase, then it opens full
         public static readonly float PotCapacityInk = O(nameof(PotCapacityInk), 1600f);      // total reserve, in wand ink units
-        public static readonly float PotCloseRadius = O(nameof(PotCloseRadius), 2.6f);       // "close enough to lift it": fast refill, spill, defuse, corrupt touch
+        public static readonly float PotCloseRadius = O(nameof(PotCloseRadius), 2.6f);       // fast refill, spill, defuse, corrupt touch inside this
         public static readonly float PotRefillRange = O(nameof(PotRefillRange), 45f);        // beyond this the refill sits at the floor rate
-        public static readonly float PotRefillNearPerSec = O(nameof(PotRefillNearPerSec), 45f);  // ink/s at the pot — "refill way quicker" (Aug 10): a full tank in ~2s standing over it
+        public static readonly float PotRefillNearPerSec = O(nameof(PotRefillNearPerSec), 45f);  // ink/s at the pot: a full tank in ~2s standing over it
         public static readonly float PotRefillFloorPerSec = O(nameof(PotRefillFloorPerSec), 2.5f); // ink/s across the map - never truly dry, never enough to camp on
         public static readonly float PotSpillPerSec = O(nameof(PotSpillPerSec), 8f);         // full wand inside the close radius: the tap keeps running, the pot pays
-        public static readonly float PotCorruptDrainPerSec = O(nameof(PotCorruptDrainPerSec), 11f); // green evaporation, "as if 3 or 4 people are filling their wands"
+        public static readonly float PotCorruptDrainPerSec = O(nameof(PotCorruptDrainPerSec), 11f); // green evaporation drain rate
         public static readonly float PotAcolyteFillPerSec = O(nameof(PotAcolyteFillPerSec), 9f);   // the babysitting tax: their corruption FILLS it
         public static readonly float PotAcolyteFillRadius = O(nameof(PotAcolyteFillRadius), 6f);   // must stay smaller than a sensible overwatch distance
-        public static readonly float PotCorruptSeconds = O(nameof(PotCorruptSeconds), 3.2f); // acolyte touch to turn it green - the CS PLANT time
-        public static readonly float PotDefuseSeconds = O(nameof(PotDefuseSeconds), 10f);    // wizard presence to turn green back - the CS DEFUSE time (colour only, ink lost is lost)
+        public static readonly float PotCorruptSeconds = O(nameof(PotCorruptSeconds), 3.2f); // seconds of acolyte touch to turn it green
+        public static readonly float PotDefuseSeconds = O(nameof(PotDefuseSeconds), 10f);    // seconds of wizard presence to turn it back (colour only, ink lost is lost)
 
-        // ---- THE STRIKE ("spells need to be faster and jump to
-        // move towards the target... when I cast a fire I need to feel like a
-        // god"). Delivery only — the elemental chemistry is untouched.
+        // ---- The strike: delivery only, elemental chemistry untouched ----
         public static readonly float StrikeLockRange = O(nameof(StrikeLockRange), 12f);   // snapshot at spawn + hover lock-on radius
-        public static readonly float StrikeSpeed = O(nameof(StrikeSpeed), 14f);           // the slam. 24 flew PAST everything ("way too fast and extremely not precise")
+        public static readonly float StrikeSpeed = O(nameof(StrikeSpeed), 14f);           // the slam speed
         public static readonly int StrikeBurstPieces = (int)O(nameof(StrikeBurstPieces), 4f); // shatter count on impact - the flying debris that teaches grabbing
-        /// Scan ink per meter of the scanned object's largest dimension (
-        /// "larger objects... regenerate more ink" — size IS the reward, and a
-        /// big disguise is a bad disguise, so the trade balances itself).
+        /// Scan ink per meter of the scanned object's largest dimension.
         public static readonly float ScanInkPerMeter = O(nameof(ScanInkPerMeter), 25f);
-        public static readonly float InkEvaporateFadeSeconds = O(nameof(InkEvaporateFadeSeconds), 6f); // then thins out over this long before vanishing // eraser WIDER than the thin pen - still small enough for precise corrections; swept along the cursor path so thin ≠ skippy
+        public static readonly float InkEvaporateFadeSeconds = O(nameof(InkEvaporateFadeSeconds), 6f); // then thins out over this long before vanishing
 
         // ---- Seal closure / integrity ----
-        // Closure requires the ink to basically touch. Ends only link at
-        // near-contact; a visible gap never seals. The reliable, exact way to
-        // close is to let the lines actually cross (CrossingFinder).
-        // (CloseThreshold stays in HAND units, not ink widths - the pen got
-        // thinner but fingers didn't get steadier.)
-        public static readonly float CloseThreshold = O(nameof(CloseThreshold), 0.018f); // cross-stroke endpoint link distance. "the seal activates when lines don't even touch" — 3.5cm is a visible GAP on a small drawing, and the law is that only TOUCHING ink joins. Halved so the ink really does have to meet.
-        // MAGNET CLOSE reach: a pen-up ending within this of a line end grows
-        // one visible bridge segment so the ink TRULY touches. Set 0 to turn
-        // the assist off entirely (the touch law itself never widens).
-        public static readonly float MagnetCloseRange = O(nameof(MagnetCloseRange), 0.015f); // the tune, twice: 6cm grabbed lines "too far away from the cursor", then "3cm is barely too large" (Aug 12) — 1.5cm, under the ink-touch law itself
-        /// TOUCHING IS TOUCHING, WHEREVER IT HAPPENS (the most-repeated law:
-        /// "only when lines are touching is the main rule for everything: seals
-        /// or runes" / "everything must touch exactly"). This is the ONE distance
-        /// that means "this ink meets that ink", measured point-to-SEGMENT — to
-        /// the LINE, never to the nearest sampled node. Because there is no
-        /// sampling error left to hide, it can be honest: 2 × InkWidth, which is
-        /// the width of the rendered ink plus a hair. Anything wider is a gap you
-        /// can SEE, and a visible gap must never close.
-        /// Endpoint-to-endpoint chaining keeps its own, looser CloseThreshold -
-        /// that one is in HAND units (two pen tips aimed at the same spot), not
-        /// ink units, and it is measured node-to-node by construction.
+        // Ends only link at near-contact; a visible gap never seals. The exact
+        // way to close is to let the lines cross (CrossingFinder).
+        public static readonly float CloseThreshold = O(nameof(CloseThreshold), 0.018f); // cross-stroke endpoint link distance, in hand units
+        // Magnet close: a pen-up ending within this of a line end grows one
+        // visible bridge segment. 0 disables the assist.
+        public static readonly float MagnetCloseRange = O(nameof(MagnetCloseRange), 0.015f);
+        /// The one distance that means "this ink meets that ink", measured
+        /// point-to-segment, never to the nearest sampled node. 2 × InkWidth.
+        /// Endpoint chaining keeps the looser CloseThreshold (hand units).
         public static readonly float InkTouchDistance = O(nameof(InkTouchDistance), 0.014f);
-        // SelfCloseFraction/Min/Max DELETED - retired Aug 1 (fraction-of-loop
-        // closure made SIZE matter, forbidden); SelfCloseThreshold below
-        // replaced them. LoadOverlay ignores stale sz_tuning.json keys.
         public static readonly float BreakDistance = O(nameof(BreakDistance), 0.12f); // an ACTIVE seal opens when a gap grows this far past its drawn length
         public static readonly int MinLoopNodes = Oi(nameof(MinLoopNodes), 8);
         public static readonly float MinLoopPerimeter = O(nameof(MinLoopPerimeter), 0.18f); // palm-sized seals are legal (~6cm triangle)
         public static readonly float MinLoopBulge = O(nameof(MinLoopBulge), 0.06f);  // a loop must enclose something - rejects paper-thin slivers
         public static readonly float GlyphCellMax = O(nameof(GlyphCellMax), 0.13f);  // a self-crossing CELL smaller than this is a rune's inner point (star), not a seal - bigger loops always close
-        // MaxLoopGapFraction DELETED - retired Aug 1: a relative gap test let
-        // SIZE and PEN-LIFT COUNT decide seal-ness (both forbidden by 's
-        // standing rules); the per-junction CloseThreshold is the whole law.
-        public static readonly int MaxLoopStrokes = Oi(nameof(MaxLoopStrokes), 12);  // DFS depth cap when chaining strokes into one seal - BODY loops split per limb (a circle over crossed arms is 6-8 pieces), so 6 silently refused honest body seals
+        public static readonly int MaxLoopStrokes = Oi(nameof(MaxLoopStrokes), 12);  // DFS depth cap when chaining strokes into one seal; body loops split per limb (6-8 pieces)
 
-        // ---- Seal shape -> WHICH VARIANT, and a flat production time ----
-        // "Seal sides create variants... different types of the same
-        // thing. Like we could create different zombies (smarter and dumber for
-        // example) per rune." And: "All seals keep producing for 10 seconds."
-        //
-        // SIDE COUNT IS A SELECTOR, NOT A MAGNITUDE. It picks which variant of that
-        // rune's spell you get. It sets no duration and no lifetime. The old
-        // 1-second-per-side rule (Jul 22) is DEAD; it survived in code long after
-        // had replaced it, and it is what made Claude keep repeating it back.
+        // ---- Seal shape -> variant ----
+        // Side count selects which variant of the rune's spell fires; it sets
+        // no duration and no lifetime. Every seal produces for a flat time.
         public static readonly int CircleEdges = Oi(nameof(CircleEdges), 10);        // a circle reads as 10 sides = the top variant
         public static readonly float SealProduceSeconds = O(nameof(SealProduceSeconds), 10f); // FLAT. Every seal, every shape.
-        public static readonly float CircleMaxVariance = O(nameof(CircleMaxVariance), 0.16f);// radius variation below this = circle - HAND circles are 10-18% wobbly, 7% only accepted machines
+        public static readonly float CircleMaxVariance = O(nameof(CircleMaxVariance), 0.16f);// radius variation below this = circle; hand circles wobble 10-18%
         public static readonly int CircleMinCorners = Oi(nameof(CircleMinCorners), 8); // and it must not be an obvious low-corner polygon
         public static readonly float RdpEpsilonFactor = O(nameof(RdpEpsilonFactor), 0.015f);// RDP epsilon as fraction of the loop's bounding diagonal
         public static readonly float MinCornerAngle = O(nameof(MinCornerAngle), 20f); // degrees of direction change required to count as an edge corner
 
-        // ---- Zombie navigation ("Zombies need a way to navigate.
-        // They are naturally stupid but they need some navigation logic at least
-        // simple kind.") ----
-        // NO NAVMESH ON PURPOSE. Baking would have to happen per map, and maps are
-        // the content strategy: downloaded environments must work with zero prep.
-        // NavMeshAgent also owns its own movement, which fights the Rigidbody that
-        // spells push, freeze and ragdoll. So: local steering, and wall-following
-        // when steering alone cannot escape (a courtyard with one exit).
+        // ---- Zombie navigation ----
+        // No navmesh on purpose: maps must work with zero prep, and NavMeshAgent
+        // fights the Rigidbody that spells push. Local steering + wall-following.
         public static readonly float ZombieLookAhead = O(nameof(ZombieLookAhead), 1.8f);      // metres probed in front. Bigger = smarter = notices walls sooner
         public static readonly float ZombieProbeRadius = O(nameof(ZombieProbeRadius), 0.35f); // half a zombie's width, so it fits where it thinks it fits
         public static readonly float ZombieStuckSeconds = O(nameof(ZombieStuckSeconds), 0.9f);// trying to move but going nowhere for this long = start wall-following
         public static readonly float ZombieWallFollowSeconds = O(nameof(ZombieWallFollowSeconds), 3f); // how long to commit to hugging one side before trying straight again
 
-        // A summoned zombie is a SPELL and expires. "zombies should not
-        // last forever... they will last a duration forcing acolytes to create
-        // more zombies and reveal themselves" and "zombies will last for a minute
-        // at least. Cause they need to walk." NOT the same clock as the seal,
-        // which produces for a flat 10 seconds; what it produced lives its own life.
+        // A summoned zombie is a spell and expires; not the seal's production clock.
         public static readonly float SummonedZombieLife = O(nameof(SummonedZombieLife), 75f);
 
-        /// Pupils of a zombie somebody else is steering. Red reads as "not its
-        /// own idea" instantly, and it is the only red on a creature otherwise
-        /// made of greens.
+        /// Pupil color of a zombie somebody else is steering.
         public static readonly Color MindControlEyeColor = new Color(0.85f, 0.10f, 0.10f, 1f);
 
-        // ---- how big a zombie is, and how big its eyes are ----
-        // "They are too large... They should be more of a player
-        // size and they have huge eyes". Both are numbers rather than prefab
-        // surgery, so can tune them live in sz_tuning.json and never risk the
-        // animation by rebuilding a prefab.
-        // How long the green puff off a dead zombie lingers. The detonation
-        // cloud, when it is built, is the loud one - this is the quiet version.
+        // ---- zombie size ----
+        // How long the green puff off a dead zombie lingers.
         public static readonly float ZombieDeathCloudSeconds = O(nameof(ZombieDeathCloudSeconds), 2.2f);
 
-        public static readonly float ZombieBodyScale = O(nameof(ZombieBodyScale), 0.7f); // multiplies every zombie body. 1 = the old size
-        public static readonly float ZombieEyeScale = O(nameof(ZombieEyeScale), 1.3f);    // was a hardcoded 2.2, which is where the saucers came from
+        public static readonly float ZombieBodyScale = O(nameof(ZombieBodyScale), 0.49f); // multiplies every zombie body. 1 = the old size
+        public static readonly float ZombieEyeScale = O(nameof(ZombieEyeScale), 1.3f);    // eye scale multiplier
 
-        // ---- THE THREE DIALS, ZOMBIE READING ------------------
-        // had to state these twice because the first build crossed two of
-        // them: the rune-to-seal RATIO was driving body size, when body size
-        // belongs to the seal's OWN ABSOLUTE SIZE and the ratio belongs to the
-        // gas. They are independent axes and must stay that way.
-        //
-        // ONLY THE TWO ENDS ARE AUTHORED ("only smallest and
-        // largest should be marked other things are derived"). Everything
-        // between is interpolated, so "normal" is a CONSEQUENCE of the ends
-        // rather than a third number that can drift out of agreement with them -
-        // which is exactly what a midpoint anchor PLUS clamps was: three numbers
-        // describing two facts.
-        //
-        // DIAL 1 - SEAL DIAMETER  BODY SIZE. Absolute and linear between the
-        // ends, continuous the whole way: a centimetre wider seal is always a
-        // measurably taller zombie, never a jump to the next preset.
-        //
-        // 8cm scribble 0.25m SCOUT - the ruling, and it is a ROLE, not a
-        //                          stat block: "tricky scouts to not be as
-        //                          easily noticed as larger ones"
-        // 1.8m circle    5.4m   GIANT
-        // (~0.55m chair-width falls out at ~1.66m, the "normal zombie")
-        // TEN, AND THE KEYBOARD IS THE REASON : 1-9 then 0 address
-        // every zombie in the first-person overwatch. THE CAP IS THE UI.
+        // ---- The summon dials ----
+        // Independent axes; only the two ends are authored, everything between
+        // interpolates. Dial 1: drawn size to body size, absolute and linear.
+        // Cap is 10 because keys 1-9 then 0 address every zombie in overwatch.
         public static readonly int AcolyteZombieCap = Oi(nameof(AcolyteZombieCap), 10);
 
-        // THESE FOUR ARE REFERENCE POINTS, NOT LIMITS ("should we
-        // even force a limit upon them? what if someone manages to draw across
-        // half a map? Why not be rewarded for it?... this is supposed to still
-        // be a funny friend slop game"). They mark two points and the line runs
-        // THROUGH them and keeps going in both directions. Draw a circle around
-        // the whole village and you get the kaiju you earned; draw a seal the
-        // size of a coin and you get a zombie the size of a bug.
-        // RE-RULED DIAL 2 : body size follows the RUNE'S
-        // own drawn diameter, not the seal's. These anchor the line: a rune
-        // this small  SummonSizeMin, this big  SummonSizeMax, unclamped
-        // beyond both. Defaults assume a rune fills roughly half its seal, so
-        // yesterday's drawings raise roughly yesterday's zombies.
+        // Reference points, not limits: the line runs through them and keeps
+        // going in both directions, unclamped. Body size follows the rune's own
+        // drawn diameter; defaults assume a rune fills roughly half its seal.
         public static readonly float SummonRuneMin = O(nameof(SummonRuneMin), 0.04f);
         public static readonly float SummonRuneMax = O(nameof(SummonRuneMax), 0.9f);
         public static readonly float SummonSealMin = O(nameof(SummonSealMin), 0.08f); // this seal...
@@ -256,91 +165,71 @@ namespace SpellyZombie
         public static readonly float SummonSealMax = O(nameof(SummonSealMax), 1.8f);   // and this seal...
         public static readonly float SummonSizeMax = O(nameof(SummonSizeMax), 3.3f);   // ...makes this one (5.4m giant)
 
-        // THE ONLY REAL FLOOR, AND IT IS PHYSICS NOT BALANCE. Unity's solver
-        // tunnels colliders under roughly 1-2cm straight through the ground, so
-        // below this a zombie does not get funnier, it silently falls out of the
-        // world. 0.012 is a ~2cm zombie: an ant you have to squint at, which is
-        // the small end taken as far as it can actually go.
+        // Physics floor, not balance: Unity's solver tunnels colliders under
+        // ~1-2cm through the ground. 0.012 is a ~2cm zombie.
         public static readonly float SummonSizeFloor = O(nameof(SummonSizeFloor), 0.012f);
 
 
-        // DIAL 2 - RUNE SIZE RELATIVE TO THE SEAL  GAS RADIUS, on the same
-        // two-ends-only rule. The ratio is already 0..1 (a speck in a wide loop
-        // a rune filling its seal), so it interpolates straight between these.
-        // Every zombie carries a small cloud while it lives (the reference: the
-        // WARCRAFT 3 ABOMINATION's disease cloud), the death puff uses the same
-        // radius, and DETONATION IS ALWAYS 3x.
+        // Dial 2: rune size relative to the seal (already 0..1) to gas radius.
+        // The death puff uses the same radius; detonation is always 3x.
         public static readonly float SummonGasRadiusMin = O(nameof(SummonGasRadiusMin), 0.4f);
         public static readonly float SummonGasRadiusMax = O(nameof(SummonGasRadiusMax), 2.5f);
-        // THE LIVING AURA, as a fraction of body height. Deliberately TIGHT -
-        // the Abomination's disease cloud hugged its unit. A zombie has to be
-        // approachable or "their role is to be chased" stops being true, and the
-        // big cloud waits for its corpse. Raise this and zombies go back to
-        // being walking area denial.
+        // Living aura as a fraction of body height, deliberately tight; the
+        // big cloud waits for the corpse.
         public static readonly float PoisonAuraBodyMul = O(nameof(PoisonAuraBodyMul), 0.6f);
 
-        public static readonly float SummonGasDetonateMul = O(nameof(SummonGasDetonateMul), 3f); // "always 3x larger"
-        // THE POISON, as a zone (PoisonField). Damage is PER SECOND and the
-        // field bills it by real dt, so it stays under the 5-damage line that
-        // shakes the camera - a DoT that shook the view made drawing impossible.
+        public static readonly float SummonGasDetonateMul = O(nameof(SummonGasDetonateMul), 3f);
+        // Poison damage is per second, billed by real dt; kept under the
+        // 5-damage camera-shake line so the DoT never shakes the view.
         public static readonly float PoisonDamage = O(nameof(PoisonDamage), 9f);
 
-        // METRES  FX SCALE for the cloud sprites. The CFXR poison prefab emits
-        // 2-3 UNIT particles from a point, so the honest metre radius the damage
-        // uses has to be converted or a small cloud fills the screen. Purely a
-        // LOOK dial - it does not change how far the gas reaches.
+        // Metres to FX scale: the CFXR poison prefab emits 2-3 unit particles,
+        // so the damage radius needs converting. Look only, not reach.
         public static readonly float PoisonFxScale = O(nameof(PoisonFxScale), 0.5f);
 
-        // How often a poison zone releases ONE puff. Never a burst: FxLibrary
-        // drops everything past 8 spawns in a frame, so a field that asked for a
-        // handful at once rendered as nothing. At this cadence against a ~2.8s
-        // puff life, roughly ten clouds are alive at any moment and the zone
-        // fills without ever spiking the budget. LOWER = thicker fog.
+        // One puff at a time: FxLibrary drops everything past 8 spawns per
+        // frame. Lower = thicker fog.
         public static readonly float PoisonPuffEvery = O(nameof(PoisonPuffEvery), 0.28f);
 
-        // A HORDE MUST NOT COST A HORDE OF PARTICLES. Above this many poison
-        // zones the cadence stretches in proportion, holding total smoke roughly
-        // constant whether one zombie is breathing or forty are. FxLibrary pools
-        // only 12 instances per prefab and destroys the overflow, so concurrent
-        // COUNT is the thing that has to be capped - sprite size is not the cliff.
+        // Above this many poison zones the cadence stretches in proportion,
+        // holding total smoke constant. FxLibrary pools 12 instances per prefab.
         public static readonly float PoisonFxCrowd = O(nameof(PoisonFxCrowd), 6f);
         // and smoke nobody can see is never spawned at all
         public static readonly float PoisonFxDistance = O(nameof(PoisonFxDistance), 30f);
 
-        // IT CLINGS AND IT GROWS : standing in poison leaves a small
-        // cloud on your HEAD that others can see, it swells the longer you stay
-        // in, and it fades on its own once you are out - the world stabilising.
-        // While you wear it, YOU poison everyone else you walk past.
+        // Standing in poison leaves a visible cloud on your head that grows
+        // with exposure, fades once you leave, and poisons others while worn.
         public static readonly float PoisonClingRadius = O(nameof(PoisonClingRadius), 0.7f);
         public static readonly float PoisonClingGrow = O(nameof(PoisonClingGrow), 0.55f); // metres per second of exposure
         public static readonly float PoisonClingMax = O(nameof(PoisonClingMax), 3.2f);
         public static readonly float PoisonClingSeconds = O(nameof(PoisonClingSeconds), 4f);
 
-        // THE EXIT PUFF: an acolyte leaving their disguise breathes out the
-        // same zombie poison - escape smoke and ambush in one. Body-tight on
-        // purpose ("not too large so you need to get really close").
+        // An acolyte leaving their disguise breathes out the same zombie poison.
         public static readonly float PoisonExitRadius = O(nameof(PoisonExitRadius), 1.1f);
         public static readonly float PoisonExitSeconds = O(nameof(PoisonExitSeconds), 2.5f);
         public static readonly float PoisonExitCooldown = O(nameof(PoisonExitCooldown), 4f);
 
-        // THE DEATH BURST: a dying acolyte gasses off like a detonated zombie
-        // ("a lot more poison like detonating the zombie"). Poison only, no shove.
+        // A dying acolyte gasses off like a detonated zombie. Poison only, no shove.
         public static readonly float PoisonDeathRadius = O(nameof(PoisonDeathRadius), 3f);
         public static readonly float PoisonDeathSeconds = O(nameof(PoisonDeathSeconds), 8f);
 
-        // Seeds come from a DAILY POOL (PEAK-style, ranged): this many map
-        // variants exist per UTC day; the host rolls one per lobby.
+        // Daily seed pool: this many map variants per UTC day; the host rolls one per lobby.
         public static readonly float DailySeedPool = O(nameof(DailySeedPool), 16f);
 
-        // THE DETONATION. Both scale with the seal's line count (potency), so a
-        // triangle drawn on a zombie really is the potent one. Shove is the
-        // headline — "how you steal the cauldron" — and the damage is the tax
-        // for standing next to it, not the point of it.
-        // Impulse strong enough to knock you OUT of draw mode and into first
-        // person, so the shove lands on a body free to move. Below this a knock
-        // leaves you drawing - the easel anchor still does its job. Detonation
-        // shoves at 30 in the middle and falls off to 0 at the rim, so this is
-        // also "how close you must be for the blast to break your concentration".
+        // The unlock tell: how long an earned page floats at the side, and
+        // how wide the paper card is (height follows at 1.3x).
+        public static readonly float ButtonHoverScale = O(nameof(ButtonHoverScale), 1.06f); // swell under the cursor - the "this is clickable" tell
+        public static readonly float ButtonHoverSpeed = O(nameof(ButtonHoverSpeed), 9f);    // how fast it swells and settles back
+
+        public static readonly float RuneToastSeconds = O(nameof(RuneToastSeconds), 3.5f);
+        public static readonly float RuneToastWidth = O(nameof(RuneToastWidth), 260f);  // card WIDTH; height follows the art's own aspect
+        public static readonly float RuneToastGap = O(nameof(RuneToastGap), 14f);       // clear space between stacked cards
+        public static readonly float RuneToastPopScale = O(nameof(RuneToastPopScale), 0.7f); // pop length as a multiple of the button spring
+        public static readonly float RuneToastMargin = O(nameof(RuneToastMargin), 28f); // distance from the left screen edge
+
+        // Detonation: shove and damage scale with the seal's line count.
+        // An impulse at or above this knocks you out of draw mode into first
+        // person; detonation shoves at 30 center falling to 0 at the rim.
         public static readonly float ShoveBreaksDrawing = O(nameof(ShoveBreaksDrawing), 8f);
 
         public static readonly float DetonateShove = O(nameof(DetonateShove), 30f);
@@ -352,156 +241,103 @@ namespace SpellyZombie
         public static readonly float DetonateBodyMul = O(nameof(DetonateBodyMul), 1.5f);
         // how far to look for a zombie under a closing seal...
         public static readonly float DetonateSealReach = O(nameof(DetonateSealReach), 1.1f);
-        // ...and how close to its SURFACE the seal must sit to count as drawn ON
-        // it. Ink lies on the skin, so this is small on purpose: a seal on the
-        // cobbles beside a zombie is still a summon.
+        // ...and how close to its surface the seal must sit to count as drawn on it.
         public static readonly float DetonateSurfaceSlack = O(nameof(DetonateSurfaceSlack), 0.25f);
 
-        // DIAL 3 - FEWER SEAL LINES  STRONGER. 1.2x per line MISSING from ten,
-        // so 1.2^(10 - Edges): triangle 3.58x, 9 sides 1.2x, and a circle (Edges
-        // == CircleEdges == 10) is exactly 1.0 — "drawing a circle will make them
-        // as powerful as they look (based on size)". The circle is the honest
-        // baseline; every line you SAVE is the skill reward.
+        // Dial 3: fewer seal lines = stronger. 1.2^(10 - Edges): triangle
+        // 3.58x, 9 sides 1.2x, circle (10) exactly 1.0.
         public static readonly float SealLineBonus = O(nameof(SealLineBonus), 1.2f);
 
-        /// How far along the arrow a commanded zombie marches. An arrow is a
-        /// HEADING, not a map pin: it points, they walk that way until they get
-        /// there or until something more interesting happens on the way.
+        /// How far along the arrow a commanded zombie marches; an arrow is a
+        /// heading, not a map pin.
         public static readonly float ZombieMarchDistance = O(nameof(ZombieMarchDistance), 25f);
 
-        /// Total arc a Y fans its zombies across. The arrow sends a column at one
-        /// spot; the Y sweeps a front. 110 degrees is wide enough to read as
-        /// "spread out" without sending anyone backwards.
+        /// Total arc a Y fans its zombies across.
         public static readonly float ZombieScatterArc = O(nameof(ZombieScatterArc), 110f);
 
-        /// Summoned dead are GREEN, because they are made of corrupt ink like
-        /// everything else an acolyte touches. melee brownish green, ranged
-        /// light green, so you can read which one is coming at you from across a
-        /// courtyard without a single icon.
+        /// Summoned dead are green: melee brownish green, ranged light green.
         public static readonly Color SummonMeleeColor = new Color(0.40f, 0.44f, 0.22f, 1f);
         public static readonly Color SummonRangedColor = new Color(0.58f, 0.80f, 0.46f, 1f);
 
         // ---- Zombie nerve ----
-        // "Zombies are really weak and are easily destroyed but are also really
-        // afraid... and they stop running away if player isn't chasing them
-        // (isn't nearby)." Fear is REACTIVE, not a standing state: they flee who
-        // is coming for them, and get on with it when nobody is.
-        // "Also zombies attack players that turned back to them... so that they
-        // can more easily protect their masters, or draw more attention to
-        // themselves... they want to be chased, that's their role."
+        // Fear is reactive: zombies flee whoever is coming for them and attack
+        // players whose back is turned.
         public static readonly float ZombieChaseRange = O(nameof(ZombieChaseRange), 7f);  // a player nearer than this is "on me"; further and I stop panicking
         public static readonly float ZombieBackAngle = O(nameof(ZombieBackAngle), 105f);  // player facing more than this far from me = their back is turned
 
         // ---- Detection / recognition ----
         public static readonly float DetectInterval = O(nameof(DetectInterval), 0.12f); // how often the seal detector rescans stroke endpoints
-        // Recognition law : the RIGHT rune fires or NONE fires. The
-        // stretch-fill oriented-chamfer matcher (InkChamfer) is the only
-        // authority; these two knobs are its whole tuning surface. Tuned on
-        // the recordings under GAME-REALISTIC distortion (jitter + oblique-
-        // view foreshortening + shear, 200 draws/rune + 500 scribbles):
-        // at .42/.03  99.4% right-rune, 0.0% wrong rune, 1.4% gibberish.
-        // Raise the floor if wrong runes ever slip through; lower it if
-        // honest drawings fizzle too often.
+        // Recognition law: the right rune fires or none fires. Chamfer knobs
+        // (InkChamfer), measured: at .42/.03, 99.4% right-rune, 0.0% wrong.
+        // Raise the floor if wrong runes slip through; lower it if honest
+        // drawings fizzle too often.
         public static readonly float RuneChamferFloor = O(nameof(RuneChamferFloor), 0.42f); // similarity the best rune must reach to fire at all (chamfer path, currently benched)
         public static readonly float RuneChamferMargin = O(nameof(RuneChamferMargin), 0.03f); // best must beat runner-up by this - a close second = coin flip  fizzle
-        // RECALIBRATED Aug 1 FOR THE TURN-SEQUENCE MATCHER. The three numbers
-        // below are a band, and the band moved: the old stem-and-limb score put
-        // an honest draw anywhere from 0.42 to 1.00, so the floor sat at 0.42.
-        // The turn sequence is a far tighter metric and its scores are bunched
-        // right at the top. Measured on 24 wall recordings:
-        // - a fresh drawing scored against the OTHER drawings (leave-one-out,
-        //     the harshest case - one template per rune): 0.89 to 1.00, and the
-        //     best WRONG rune never exceeds 0.84.
-        //   - the same drawings under random rotation, scale x0.14 to x7, one
-        //     to four pen lifts and 1.2% hand wobble, 11,474 draws: the right
-        //     rune scores 0.99 at the 1st percentile, and a wrong rune won
-        //     ZERO times.
-        // Leaving the floor at 0.42 under that distribution would have admitted
-        // 57% of random scribbles.
-        public static readonly float MinRuneScore = O(nameof(MinRuneScore), 0.72f);  // below this the shape is unreadable  fizzle. 0.17 under the worst honest read measured, and it rejects ~78% of random scribbles (0.42 admitted 57% of them)
-        public static readonly float RuneAmbiguityMargin = O(nameof(RuneAmbiguityMargin), 0.10f); // two DIFFERENT runes within this of each other = coin flip  fizzle, never misfire. The thinnest margin on an honest draw measured 0.12 (0.14 leave-one-out), so 0.10 costs nothing and 0.15 would start eating real casts
-        public static readonly float RuneTrustScore = O(nameof(RuneTrustScore), 0.85f); // a top match AT/ABOVE this is TRUSTED outright - the ambiguity guard only referees weak scribbles. Waves through 99.1% of honest draws and, measured, not one misfire (big wall pools raise every runner-up; honest CHILL/COMPRESS draws kept fizzling on thin gaps - the Jul 22 bug)
-        // ONE DRAWING = INK THAT TOUCHES. Aug 1: this was 0.05 - SEVEN ink widths,
-        // a plainly VISIBLE gap - and the flood that uses it is transitive, so a
-        // row of runes each 4cm apart all got swallowed into one "drawing". That
-        // is the complaint verbatim: "it sometimes carries runes along with
-        // the seal… even though these are not touching."
-        // It was 0.05 to paper over a MEASUREMENT bug, not because touching is
-        // 5cm: InkTouches compared node to NODE, so a barb landing on the middle
-        // of a shaft measured to the nearest sampled node instead of to the line.
-        // InkTouches now measures node-to-SEGMENT (see RuneGlyph), so the barb
-        // reads as touching at ~0 - and the number can finally tell the truth.
-        // These two must only ever move together; drop the distance without the
-        // segment math and visually-touching barbs orphan again.
-        public static readonly float RuneTouchDistance = O(nameof(RuneTouchDistance), 0.014f); // = InkTouchDistance: strokes whose INK MEETS read as ONE drawing. Same law as seals - the rule is one rule.
+        // Turn-sequence matcher band, measured on 24 wall recordings: honest
+        // draws score 0.89-1.00 leave-one-out (best wrong rune 0.84); under
+        // heavy distortion the right rune scores 0.99 at the 1st percentile.
+        public static readonly float MinRuneScore = O(nameof(MinRuneScore), 0.72f);  // below this the shape is unreadable and fizzles; rejects ~78% of random scribbles
+        public static readonly float RuneAmbiguityMargin = O(nameof(RuneAmbiguityMargin), 0.10f); // two different runes within this = fizzle, never misfire; thinnest honest margin measured 0.12
+        public static readonly float RuneTrustScore = O(nameof(RuneTrustScore), 0.85f); // a top match at/above this is trusted outright; the ambiguity guard only referees weak scribbles
+        // One drawing = ink that touches, measured node-to-segment (RuneGlyph).
+        // This distance and the segment math must move together.
+        public static readonly float RuneTouchDistance = O(nameof(RuneTouchDistance), 0.014f); // = InkTouchDistance; same law as seals
         public static readonly float BodyCastThrowSpeed = O(nameof(BodyCastThrowSpeed), 7f); // body/weapon seals THROW their particles outward at this speed
-        // The HAND throw (E). Was const 22 ("twice as strong", Aug 9); Aug 11:
-        // "a bit underwhelming... 1.5x might be the sweet spot or 2x, need to
-        // test" — 33 here, put ThrowSpeed: 44 in sz_tuning.json to feel 2x.
+        // The hand throw (E).
         public static readonly float ThrowSpeed = O(nameof(ThrowSpeed), 33f);
-        // (old zone-field Blob*/LiquidPool* knobs DELETED; overlay ignores stale keys.)
-        // ---- soft body jiggle bones ("bones drive the shape and have their
-        // own colliders to keep the distance from each other and the ground") ----
+        // ---- soft body jiggle bones ----
         public static readonly float BlobBoneSpring = O(nameof(BlobBoneSpring), 220f);  // accel per meter off rest - shape stiffness
-        public static readonly float BlobBoneStray = O(nameof(BlobBoneStray), 0.9f);    // leash: a bone may stray at most this ×its own reach from rest — stops bones crossing and locking ("they entangle when dropped")
+        public static readonly float BlobBoneStray = O(nameof(BlobBoneStray), 0.9f);    // leash: a bone may stray at most this × its own reach from rest
         public static readonly float BlobBoneDamping = O(nameof(BlobBoneDamping), 9f);  // wobble kill - lower = jigglier
         public static readonly float BlobBoneRadius = O(nameof(BlobBoneRadius), 0.08f); // bone collider size in blob units - their distance-keeping
         // ---- gas: a CLOUD that covers ground, not a balloon ----
         public static readonly float GasRiseSpeed = O(nameof(GasRiseSpeed), 0.15f);     // terminal climb - barely lifts, so it hangs where you made it
-        public static readonly float GasSpreadMax = O(nameof(GasSpreadMax), 5f); // final cloud size, in multiples of its birth size. Was 2.6 — the vapor is "in too small of an area to ever hit anyone... much larger, and it should grow in time". 7 once read as "ridiculous", but that was a fast balloon-pop; at the slow bloom below, 5× is a hazard that CREEPS over a room.
-        public static readonly float GasSpreadPerSec = O(nameof(GasSpreadPerSec), 0.45f); // how fast it swells toward that - a slow bloom, not a pop; at this rate the cloud grows for most of its life
-        public static readonly float GasLifeSeconds = O(nameof(GasLifeSeconds), 10f);   // was a hard-coded 2.5s - the cloud died before its growth went anywhere, which is WHY it never hit anyone
-        public static readonly float HandLearnMinScore = O(nameof(HandLearnMinScore), 0.95f); // only CLEAN casts silently teach your handwriting - sloppy-but-accepted never joins the pool. Moved with the band (Aug 1): honest reads now start at 0.89, so the old 0.8 would have taught the matcher from EVERY accepted cast, sloppy ones included
+        public static readonly float GasSpreadMax = O(nameof(GasSpreadMax), 5f); // final cloud size, in multiples of its birth size
+        public static readonly float GasSpreadPerSec = O(nameof(GasSpreadPerSec), 0.45f); // how fast it swells toward that; the cloud grows for most of its life
+        public static readonly float GasLifeSeconds = O(nameof(GasLifeSeconds), 10f);   // cloud lifetime
+        public static readonly float HandLearnMinScore = O(nameof(HandLearnMinScore), 0.95f); // only clean casts silently teach your handwriting
         public static readonly float HandLearnCooldown = O(nameof(HandLearnCooldown), 30f);  // seconds between silent handwriting samples (steady learning, no per-cast disk churn)
-        public static readonly float WritingPerDeclare = O(nameof(WritingPerDeclare), 0.1f); // a grimoire correction fills 1/10 of the writing bar ; corrections are the ONLY thing that moves it, and it never touches power
-        public static readonly float GoodRuneScore = O(nameof(GoodRuneScore), 0.85f); // at/above this the match counts as full strength. Also moved with the band (Aug 1): every honest read measured 0.89 or better, so full strength is the normal outcome and the sloppy-is-weaker gradient only bites between here and MinRuneScore
+        public static readonly float WritingPerDeclare = O(nameof(WritingPerDeclare), 0.1f); // a grimoire correction fills 1/10 of the writing bar; corrections alone move it
+        public static readonly float GoodRuneScore = O(nameof(GoodRuneScore), 0.85f); // at/above this the match counts as full strength; the sloppy-is-weaker gradient bites between here and MinRuneScore
         public static readonly float MinSizePower = O(nameof(MinSizePower), 0.30f);  // a tiny rune in a big seal still does this fraction of its effect
-
-        // GlyphJoinBase/GlyphJoinSizeFactor DELETED - retired with
-        // RuneGlyph.Segment's dead parameters; grouping is the RuneTouchDistance
-        // union-find everywhere now. LoadOverlay ignores stale sz_tuning.json keys.
 
         // ---- Spell effects (rune zones) ----
         public static readonly float ZoneRadiusScale = O(nameof(ZoneRadiusScale), 1.6f); // SIZE dial: particle size seed = drawn rune size × this
-        // EFFECT-RADIUS dial : zone reach = (rune size /
-        // seal radius) × this. Ratio ~0.5 is a typical rune in a typical seal,
-        // so 1.0 here keeps yesterday's reach for yesterday's drawing.
+        // Effect-radius dial: zone reach = (rune size / seal radius) × this.
         public static readonly float RuneReachScale = O(nameof(RuneReachScale), 1.0f);
-        // DORMANT SPELLS (, superseding caster-grace the same day:
-        // "the user doesn't need immunity at all"): ground seals cast frozen
-        // hologram previews at this fraction of true size; anything thrown or
-        // released turns live after the universal delay - safety is a property
-        // of the THING, never of a person. An untouched preview politely
-        // fades out after its lifetime.
-        public static readonly float DormantPreviewScale = O(nameof(DormantPreviewScale), 0.4f); // the Aug 11 tune: 0.2 read too small
+        // Dormant spells: ground seals cast frozen hologram previews at this
+        // fraction of true size; anything thrown or released turns live after
+        // the universal delay. An untouched preview fades out.
+        public static readonly float DormantPreviewScale = O(nameof(DormantPreviewScale), 0.4f);
         public static readonly float WakeDelaySeconds = O(nameof(WakeDelaySeconds), 0.2f);
         public static readonly float DormantLifeSeconds = O(nameof(DormantLifeSeconds), 45f);
-        // A preview with purpose (the priority order: enemy > ally-in-need >
-        // sleeping kin > hold): how far it senses, and how fast it drifts.
+        // Preview seek priority: enemy > ally-in-need > sleeping kin > hold.
         public static readonly float DormantSeekRange = O(nameof(DormantSeekRange), 7f);
-        public static readonly float DormantSeekSpeed = O(nameof(DormantSeekSpeed), 3.4f); // the tune: combine way faster
+        public static readonly float DormantSeekSpeed = O(nameof(DormantSeekSpeed), 3.4f);
         // How far off its seal's surface a preview hovers, along the seal's
-        // normal - walls push previews OUT, floors push UP, slants slant.
-        // , final: "not hover too far away from the seal... I'd rather
-        // look down than up" — waist height, one uniform ceiling for every
-        // floor preview (a hard clamp enforces it whatever physics tries).
+        // normal; hard-clamped.
         public static readonly float DormantHoverRange = O(nameof(DormantHoverRange), 0.7f);
-        // Birth ritual: a fresh zombie plays its StandUp climb and the brain
-        // holds still this long - match it to the clip's real length.
+        // A fresh zombie plays its StandUp climb this long; match the clip length.
         public static readonly float ZombieRiseSeconds = O(nameof(ZombieRiseSeconds), 2f);
         // The meteor's terminal dive.
         public static readonly float MeteorFallSpeed = O(nameof(MeteorFallSpeed), 32f);
+        // The reveal outline: what a wizard sees on absorb sources and an
+        // acolyte on wearable shapes while the matching page is open.
+        public static readonly float OutlineWidth = O(nameof(OutlineWidth), 4f);   // screen px at 1080p
+        public static readonly float OutlineRange = O(nameof(OutlineRange), 14f);  // acolyte sweep radius
+        public static readonly Color OutlineWizardColor = new Color(1f, 0.85f, 0.35f, 1f);
+        public static readonly Color OutlineAcolyteColor = new Color(0.45f, 1f, 0.45f, 1f);
+
+        // a standing flame (HeatEmitter): raw heat/s at its centre. Wood ignites
+        // at 200°C, so ~2s of direct contact sets a tossed log alight.
+        public static readonly float TorchHeatPerSec = O(nameof(TorchHeatPerSec), 110f);
         public static readonly float BurnThreshold = O(nameof(BurnThreshold), 70f);    // above this °C an object takes burn damage
-        // freeze point MIRRORS the burn point around ambient 18° ("it's
-        // just a game") — freezing something costs the same number of frost
-        // hits as igniting it costs sparks; particles stay symmetric ±25
+        // freeze mirrors burn around ambient 18°C; particles stay symmetric ±25
         public static readonly float FreezeThreshold = O(nameof(FreezeThreshold), -34f);
         public static readonly float BurnDamagePerSec = O(nameof(BurnDamagePerSec), 18f);
         public static readonly float FreezeDamagePerSec = O(nameof(FreezeDamagePerSec), 10f);
         public static readonly float AmbientDriftPerSec = O(nameof(AmbientDriftPerSec), 6f); // °C/s an object relaxes back toward ambient
-        // Proportional part of the cooling (law 7 with teeth): extra °C/s per
-        // degree away from ambient. At 0.06, a 500°-over blaze sheds ~36°/s
-        // and a fire is a story with an END, never a permanent fixture.
+        // extra °C/s per degree away from ambient, so fires end
         public static readonly float AmbientDriftFactor = O(nameof(AmbientDriftFactor), 0.06f);
         public static readonly float ForceAccel = O(nameof(ForceAccel), 25f);         // m/s² a full-strength Density rune applies - beats gravity with room to spare
         public static readonly float DirectionForce = O(nameof(DirectionForce), 40f); // m/s² a Direction rune applies along its arrow - the main mover, and the flight engine
@@ -511,167 +347,169 @@ namespace SpellyZombie
         // behaviour live in SurfaceMaterialDB / Matter, not here)
         public static readonly float MaxThermalObjectSize = O(nameof(MaxThermalObjectSize), 3f); // don't cook colliders bigger than this unless they're dynamic (walls/ground)
 
-        // ---- Physics damage (non-damage runes kill through velocity
-        // push a zombie off a roof, drop with a dead FLOAT, slam with a gust) ----
+        // ---- Physics damage (velocity kills: falls and slams) ----
         public static readonly float SafeFallSpeed = O(nameof(SafeFallSpeed), 10f);   // ≈ a 3.5m drop at gravity 14 - free
         public static readonly float FallDamagePerSpeed = O(nameof(FallDamagePerSpeed), 5f); // hp per m/s past safe (10m fall ≈ 33 dmg)
         public static readonly float ImpactDamageSpeed = O(nameof(ImpactDamageSpeed), 8f); // collisions slower than this are harmless (walking, brushing)
         public static readonly float ImpactDamagePerSpeed = O(nameof(ImpactDamagePerSpeed), 4f); // hp per m/s past that
 
-        // ---- air tumble . No jump
-        // lasts 2s - only spells, shoves and cliffs keep you up that long, so
-        // this NEVER interrupts normal jumping; it fires exactly when you got
-        // SENT. Landing gets a short flop beat, then you're a wizard again.
+        // ---- air tumble: no jump lasts 2s, so this never interrupts normal
+        // jumping; it fires only when you got launched ----
         public static readonly float AirTumbleSeconds = O(nameof(AirTumbleSeconds), 2f);
-        public static readonly float AirTumbleRecover = O(nameof(AirTumbleRecover), 0.45f); // faster than a combat sprawl - it's a joke, not a punishment
+        public static readonly float AirTumbleRecover = O(nameof(AirTumbleRecover), 0.45f); // landing flop recovery
 
         // ---- Round game (ink economy / survival loop) ----
         public static readonly float InkMax = O(nameof(InkMax), 100f);
-        public static readonly float InkCostPerMeter = O(nameof(InkCostPerMeter), 11f); // "the wand is really slowly becoming shorter - it needs to lose ink much faster" (was 6/m ≈ 16m per tank; now ≈ 9m, and the lobby cauldron refills forever)
+        public static readonly float InkCostPerMeter = O(nameof(InkCostPerMeter), 11f); // ≈9m of line per tank
         public static readonly float WandResizeSpeed = O(nameof(WandResizeSpeed), 3.5f); // how fast the wand's LENGTH chases its ink level - the shrink you actually see
-        /// Ink needed per kilo to lift a thing - and to tear it out of the
-        /// ground, which costs exactly the same ("the moment you can
-        /// easily lift it you should be able to unroot it"). ONE definition:
-        /// this default used to be repeated at three call sites and they drifted
-        /// apart, so lifting got cheaper while unrooting silently didn't.
+        /// Ink per kilo to lift a thing, and to tear it out of the ground -
+        /// one definition on purpose.
         public static readonly float LiftInkPerKg = O(nameof(LiftInkPerKg), 0.22f);
-        /// THE WORLD-OR-PROP LINE, in meters of collider bounds. Anything
-        /// whose physical bounds exceed this in ANY dimension is WORLD - never
-        /// liftable, never given a rigidbody, never made convex - no matter
-        /// how much ink is on it. (the fall-through, Aug 4: "Grabbing the
-        /// liquid ball made me fall through the ground indefinitely... I guess
-        /// I lifted the ground collider just a little bit." the aim ray passed
-        /// through the blob and hit the FLOOR - which carried every stroke he
-        /// had ever drawn on it, so the tear-loose path out-inked the floor's
-        /// anchor and gave the GROUND a dynamic body and a convex hull the
-        /// size of the map, with him standing inside it.) 2.5m ≈ a wizard and
-        /// a half: every authored prop (bench, chair, crate, cauldron) sits
-        /// well under it; floors, facades and canvases sit well over.
+        /// The world-or-prop line, in meters of collider bounds. Bounds over
+        /// this in any dimension = world: never liftable, no rigidbody, never
+        /// convex. Props sit well under 2.5m; floors and facades well over.
         public static readonly float LiftMaxDimension = O(nameof(LiftMaxDimension), 2.5f);
         public static readonly float PropMassKg = O(nameof(PropMassKg), 4f); // weight of any prop you haven't authored a Mass on
-        /// Ink is BLACK - the wand, the line and the ore all share it.
+        /// Ink is black; wand, line and ore share it.
         public static readonly Color InkColor = new Color(0.06f, 0.06f, 0.08f, 1f);
-        /// CORRUPT ink is GREEN (the standing law: a corrupt cauldron makes a green
-        /// wand). An acolyte holds nothing else, so their wand is green outright;
-        /// a corrupting wizard's greens from the tip down as the soul eats it.
+        /// Corrupt ink is green. An acolyte's wand is green outright; a
+        /// corrupting wizard's greens from the tip down.
         public static readonly Color CorruptInkColor = new Color(0.25f, 0.62f, 0.16f, 1f);
         public static readonly float InkPerKill = O(nameof(InkPerKill), 10f);        // shared to ALL players per zombie down - the fast lane
-        // ---- THE WAND ECONOMY ("they should evaporate way quicker
-        // and refill way quicker as well") ------------------------------------
-        //
-        // WIZARD  - no passive anything. The pot is the only well, poured by
-        //           CauldronEconomy.LocalWandTick, fast up close and a trickle
-        //           far away. Losing the pot means losing your regen entirely.
-        // ACOLYTE - no pot at all. Ink EVAPORATES and comes back only from
-        //           scanning, so standing still is the one thing they cannot do.
-        //
-        // DEAD: InkRegenPerSec used to be Awarded every frame to BOTH sides from
-        // PlayerInk.Update, on top of the cauldron. Nothing reads it now.
+        // ---- The wand economy ----
+        // Wizard: no passive regen; the pot is the only well (CauldronEconomy.LocalWandTick).
+        // Acolyte: no pot; ink evaporates and returns only from scanning.
         public static readonly float AcolyteInkEvaporatePerSec = O(nameof(AcolyteInkEvaporatePerSec), 1.6f);
 
-        // REVERSED Aug 11: "it's boring if we start the game with no wands...
-        // so let them start with wands." Starting empty was the Aug 9 rule
-        // and it lost on FEEL - the first thing a player does is stand around
-        // unable to play while they go find ink. Losing your wand still means
-        // something; being handed an empty one to begin with just delays the game.
-        //
-        // A FRACTION of the ceiling rather than a flat number, so it tracks
-        // InkMax (and the Drawing perk's larger well) instead of drifting from
-        // it. 0 restores the wandless start if ever wants it back for a mode.
+        // Fraction of InkMax granted at spawn; 0 restores a wandless start.
         public static readonly float StartInkFraction = O(nameof(StartInkFraction), 1f);
 
-        // ---- THE WAND TIP FLOW: the dowsing rod ------------------------------
-        // Mote size rides the RATE of ink change, not just its direction, which
-        // makes one effect answer two questions: am I gaining or losing (which
-        // way they fly) and how fast (how big they are). Because the cauldron
-        // refills faster the closer you stand, "how big" IS the hot-cold compass
-        // to a hidden pot - no second system, nothing new to teach.
-        //
-        // Rates are in ink FRACTION per second. For scale: the pot up close is
-        // ~0.45, drawing drains ~0.2, the far-away floor is ~0.025, and an
-        // acolyte's evaporation is ~0.016.
+        // ---- The wand tip flow ----
+        // Mote direction = gaining or losing ink; mote size = how fast.
+        // Rates are in ink fraction per second: pot up close ~0.45, drawing
+        // ~0.2, far floor ~0.025, acolyte evaporation ~0.016.
         public static readonly float WandFlowDeadzone = O(nameof(WandFlowDeadzone), 0.008f); // below this the tip is quiet
         public static readonly float WandFlowFullRate = O(nameof(WandFlowFullRate), 0.25f);  // at or above this the motes are at full size
         public static readonly float WandMoteMin = O(nameof(WandMoteMin), 0.005f);           // world metres - a trickle
         public static readonly float WandMoteMax = O(nameof(WandMoteMax), 0.026f);           // world metres - standing in the cauldron
 
-        // The POT speaks the same language on its own scale: rising motes mean
-        // it is evaporating (the acolytes' win creeping closer), motes falling
-        // in mean an acolyte standing too near is refilling it from their own
-        // corruption. Pot fill moves far slower than a wand, hence its own rates.
+        // The pot's own scale: rising motes = evaporating, falling motes = an
+        // acolyte refilling it. Pot fill moves far slower than a wand.
         public static readonly float PotFlowDeadzone = O(nameof(PotFlowDeadzone), 0.0006f);
         public static readonly float PotFlowFullRate = O(nameof(PotFlowFullRate), 0.02f);
 
-        // Zombies loitering at a black pot corrupt it too — "many times slower
-        // than the actual Acolyte" (Aug 11). 0.12 ≈ 8x slower: a plant by horde
-        // takes ~27s of undisturbed loitering vs the acolyte's ~3.2, long
-        // enough that the creeping green gives wizards a fair alarm.
+        // Zombies loitering at a black pot corrupt it too, ~8x slower than an acolyte.
         public static readonly float PotZombieCorruptFactor = O(nameof(PotZombieCorruptFactor), 0.12f);
 
-        // THE FLEE (, superseding the same-day timed hop: "we
-        // essentially remove the timer and leave it to strategy instead"): ink
-        // moves ONLY when its pot is shattered - beam up, this many seconds of
-        // drought with no wizard regen anywhere, then beam down + splash in a
-        // random SURVIVING pot. Pool and corruption ride along unchanged.
-        // Broken stays broken; the last break grounds the ink at the InkGrave.
+        // Ink moves only when its pot is shattered: beam up, this many seconds
+        // of drought, then splash into a random surviving pot. Broken stays
+        // broken; the last break grounds the ink at the InkGrave.
         public static readonly float PotHopGapSeconds = O(nameof(PotHopGapSeconds), 10f);
 
-        // THE LOBBY FAILSAFE : the lobby pot is the REAL pot
-        // it drains visibly, corrupts, defuses - but every this-many seconds it
-        // rebrews itself full and black. Practice with real behaviour, stakes
-        // with a net. "It cannot be deprived... but you can see it depriving."
+        // The lobby pot behaves like the real one but rebrews itself full and
+        // black on this period.
         public static readonly float LobbyPotRefreshSeconds = O(nameof(LobbyPotRefreshSeconds), 10f);
 
-        // THE PAINT FREEZE : ink touching a zombie pins it in the
-        // rest pose - the pose its paint shell describes - for this long past
-        // the last touch. Long enough to lift the pen between a seal's strokes
-        // without the canvas walking off; short enough that a single dab is a
-        // tease, not a stun-lock.
+        // Ink touching a zombie pins it in rest pose this long past the last
+        // touch, so the canvas doesn't walk off between strokes.
         public static readonly float ZombiePaintFreezeSeconds = O(nameof(ZombiePaintFreezeSeconds), 2.5f);
 
         // How long a broken lobby prop stays gone before rebuilding itself.
-        // Long enough that breaking things still reads as breaking them, short
-        // enough that the courtyard is never stripped of things to scan.
         public static readonly float LobbyRespawnSeconds = O(nameof(LobbyRespawnSeconds), 15f);
 
-        // THE METEOR : born at the seal, thrown up, swelling as it
-        // climbs, then plain gravity — "this way we have a lot more visual
-        // clarity of what's going on". Growth is what answers "meteor is quite
-        // small": the size lands EARNED instead of assigned.
+        // The meteor: born at the seal, thrown up, swelling as it climbs, then
+        // plain gravity.
         public static readonly float MeteorRiseSpeed = O(nameof(MeteorRiseSpeed), 13f);
         public static readonly float MeteorGrowth = O(nameof(MeteorGrowth), 3.5f);   // final size vs birth size
         public static readonly float MeteorGrowSeconds = O(nameof(MeteorGrowSeconds), 0.9f);
 
-        // Fusions ADD their parents' drawn size (SpellParticle.FuseSize) - the
-        // "combinations are additions so they increase really quickly". This is
-        // the ceiling on a long chain, high enough that stacking still feels
-        // explosive and low enough that a runaway loop cannot produce a spell
-        // the size of the map by accident.
+        // Fusions add their parents' drawn size (SpellParticle.FuseSize); this
+        // caps a long chain.
         public static readonly float FusedSizeCap = O(nameof(FusedSizeCap), 12f);
 
-        // THE NEUTRAL POINT. The smallest size a rune can carry - the floor of
-        // z.Radius in Spell.cs - so SpellParticle.SizeMul returns exactly 1 here
-        // and a smallest-rune spell stays byte-for-byte what already tuned.
-        // ONE constant, so the floor and the reference can never drift apart.
+        // The smallest size a rune can carry - the floor of z.Radius in
+        // Spell.cs - where SpellParticle.SizeMul returns exactly 1. One
+        // constant so floor and reference cannot drift apart.
         public static readonly float RuneSizeMin = O(nameof(RuneSizeMin), 0.9f);
         // and the ceiling on how far a fused spell may outgrow that neutral
         public static readonly float FusedSizeMulMax = O(nameof(FusedSizeMulMax), 3f);
 
-        // Drain WHILE THE PEN IS DOWN, on top of the per-metre cost below - so
-        // hovering a live pen bleeds you even when the line is short. Was a
-        // hardcoded const 6 inside WandState, the one drain sz_tuning could not
-        // reach.
+        // Drain while the pen is down, on top of the per-metre cost.
         public static readonly float WandDrainPerSec = O(nameof(WandDrainPerSec), 14f);
-        public static readonly float CauldronInkPerSec = O(nameof(CauldronInkPerSec), 22f); // standing at any cauldron refills fast — the ship's "keep coming back" anchor
-        public static readonly float HolyLightPerSec = O(nameof(HolyLightPerSec), 11f); // light zones sear undead flesh - light is a weapon again
+        public static readonly float CauldronInkPerSec = O(nameof(CauldronInkPerSec), 22f); // standing at any cauldron refills fast
+        public static readonly float HolyLightPerSec = O(nameof(HolyLightPerSec), 11f); // light zones damage undead
         public static readonly float MidDrawCloseStartRegion = O(nameof(MidDrawCloseStartRegion), 0.12f); // mid-draw closure only onto the stroke's first 12cm (the circle gesture) - deeper self-crossings are glyphs, not lassos
         public static readonly float SolidDropHeight = O(nameof(SolidDropHeight), 3f); // solid conjures materialize OVERHEAD and drop - gravity is the damage
         public static readonly float InkTricklePerSec = O(nameof(InkTricklePerSec), 4f); // extra intermission refill
         public static readonly float IntermissionSeconds = O(nameof(IntermissionSeconds), 20f);
-        public static readonly int MaxRounds = Oi(nameof(MaxRounds), 10);            // demo cap — survive this and you "win"
+        public static readonly int MaxRounds = Oi(nameof(MaxRounds), 10);            // demo round cap
         // read through Sides.MaxHealthFor
         public static readonly float WizardMaxHealth = O(nameof(WizardMaxHealth), 140f);
         public static readonly float AcolyteMaxHealth = O(nameof(AcolyteMaxHealth), 90f);
+        // Out-of-danger mending, never above your own max. THE RATE IS DERIVED
+        // FROM THAT MAX, never per side: the lower your ceiling the faster you
+        // recover, so acolytes (90) mend faster than wizards (140) with no
+        // side rule, and BUFFING - which raises the ceiling - costs recovery
+        // speed. rate = RegenAtRefMax * (RegenRefMax / max)^RegenFalloff.
+        // strength IS health: lifting and throwing scale with how much of your
+        // ceiling is left. This is the floor at 0 strength - never 0, a dying
+        // wizard still shoves, feebly.
+        public static readonly float StrengthFloorMul = O(nameof(StrengthFloorMul), 0.35f);
+        // how fast strength SETTLES down to a lower ceiling (walking into a
+        // weak biome). Slow enough that leaving in time saves you.
+        public static readonly float StrengthSettlePerSec = O(nameof(StrengthSettlePerSec), 6f);
+        // the environment obeys the same law: a prop too weak for its own mass
+        // buckles. Load = (mass x PropWeightPerKg) / its strength.
+        // Spread thins a body until it cannot hold together and SPLITS - which
+        // is why Spread multiplies things without any duplication rule.
+        // Density = mass / scale^3, so a big light thing divides first.
+        public static readonly float SplitMinDensity = O(nameof(SplitMinDensity), 0.6f);
+        public static readonly float SplitPush = O(nameof(SplitPush), 1.6f); // how far the halves shove apart
+        // BUOYANCY, not flight: you rise when the medium is denser than you.
+        // The medium is the BIOME - normally gas, sometimes liquid - and its
+        // DensityOffset is that density, so thin peak air and heavy deep air
+        // are authored as biome boxes, never as altitude maths.
+        public static readonly float FloatRiseMax = O(nameof(FloatRiseMax), -0.35f); // hardest upward drift
+        // what each phase of medium weighs. Liquid sits just under a normal
+        // body, so you bob and swim without a swim MODE; solid is future
+        // digging, where strength will matter as much as density.
+        public static readonly float LiquidMediumDensity = O(nameof(LiquidMediumDensity), 0.92f);
+        public static readonly float SolidMediumDensity = O(nameof(SolidMediumDensity), 2.5f);
+        public static readonly float SwimAt = O(nameof(SwimAt), 0.55f); // medium control that counts as swimmable
+        public static readonly float FloatDrag = O(nameof(FloatDrag), 1.4f);         // drifting, never shooting off
+        // how much lighter than the air you must be to SWIM through gas the
+        // way you swim through liquid
+
+        // A creature's strength ceiling from its own body: bigger and heavier
+        // is stronger. Size dominates (power > 1), mass adds on top - a giant
+        // is strong because it is big, and heavier again because it is dense.
+        public static readonly float BodyStrengthBase = O(nameof(BodyStrengthBase), 60f);
+        public static readonly float BodyStrengthSizePower = O(nameof(BodyStrengthSizePower), 1.6f);
+        public static readonly float BodyStrengthPerKg = O(nameof(BodyStrengthPerKg), 0.05f);
+
+        // ---- the charge (golems and zombies share ChargeAttack) ----
+        // The tell is the fairness: you get this long to read the hop and move.
+        // The direction locks when the tell starts, so a charge NEVER homes.
+        public static readonly float ChargeTellSeconds = O(nameof(ChargeTellSeconds), 0.7f);
+        public static readonly float ChargeTellHop = O(nameof(ChargeTellHop), 3.2f);
+        public static readonly float ChargeRunSeconds = O(nameof(ChargeRunSeconds), 1.3f);
+        public static readonly float ChargeSpeed = O(nameof(ChargeSpeed), 11f);
+        public static readonly float ChargeShove = O(nameof(ChargeShove), 12f);
+        // golems walk by skipping - a hop every so often instead of a glide
+        public static readonly float GolemSkipEvery = O(nameof(GolemSkipEvery), 0.55f);
+        public static readonly float GolemSkipHop = O(nameof(GolemSkipHop), 2.1f);
+
+        // What a biome stamps onto whatever it raises (BiomeStamp).
+        public static readonly float BiomeTintStrength = O(nameof(BiomeTintStrength), 0.35f); // bounded: the melee/ranged read must survive
+        public static readonly float ResistFullAt = O(nameof(ResistFullAt), 25f);   // axis amount that earns the full cut
+        public static readonly float ResistMaxCut = O(nameof(ResistMaxCut), 0.45f); // HARD CAP - helpful, never immunity
+        public static readonly float PropWeightPerKg = O(nameof(PropWeightPerKg), 0.06f);
+        public static readonly float PropCrushLoad = O(nameof(PropCrushLoad), 3f);   // below this nothing buckles
+        public static readonly float PropCrushPerSec = O(nameof(PropCrushPerSec), 3f);
+        public static readonly float RegenAtRefMax = O(nameof(RegenAtRefMax), 1.5f); // rate for a thing whose max IS RegenRefMax
+        public static readonly float RegenRefMax = O(nameof(RegenRefMax), 100f);
+        public static readonly float RegenFalloff = O(nameof(RegenFalloff), 1f);     // 1 = plain inverse; higher punishes big ceilings harder
+        public static readonly float RegenCalmSeconds = O(nameof(RegenCalmSeconds), 5f); // undamaged this long before mending starts
         // ragdolling in open air without gaining height for this long kills you
         public static readonly float FallDeathSeconds = O(nameof(FallDeathSeconds), 10f);
         // public lobbies refuse joiners whose estimated ping to the host exceeds this (0 = no gate)
@@ -679,12 +517,8 @@ namespace SpellyZombie
         public static readonly float ReviveSeconds = O(nameof(ReviveSeconds), 3f);
         public static readonly float ReviveRange = O(nameof(ReviveRange), 2.5f);
 
-        // (StickyGripDamping/StickyPressForce/SlickGravityBoost DELETED - the
-        // retired sticky zone fields; StickyBonds owns the live ladder.)
-
         // ---- Luminance ----
-        // plain light no longer damages - light's damage is EARNED through the
-        // plasma ladder (light + density  lightning  laser)
+        // plain light does no damage; the plasma ladder earns it (light + density, lightning, laser)
         public static readonly float BlindSeconds = O(nameof(BlindSeconds), 1.5f);   // darkness re-applies this while a creature stays inside
 
         // ---- GRAMMAR v4 (SPELL_PARTICLES.md - leveling, paradox, lineage) ----
@@ -693,12 +527,12 @@ namespace SpellyZombie
         public static readonly float UltimateRadius = O(nameof(UltimateRadius), 3.5f); // lvl3 area effects (flame burst, snow field…)
         public static readonly float UltimateSeconds = O(nameof(UltimateSeconds), 5f); // lifetime of lvl3 fields (plasma, inertia…)
         public static readonly float BarrierSeconds = O(nameof(BarrierSeconds), 5f); // two-way isolation duration
-        public static readonly float DemonCooldown = O(nameof(DemonCooldown), 90f);    // all-12 chains can't machine-gun apocalypses
+        public static readonly float DemonCooldown = O(nameof(DemonCooldown), 90f);    // cooldown between all-12 demon summons
 
         // ---- living particles ----
-        public static readonly float ParticleKinRange = O(nameof(ParticleKinRange), 1.3f); // affinity range toward OTHER particles (first love)
+        public static readonly float ParticleKinRange = O(nameof(ParticleKinRange), 1.3f); // affinity range toward other particles
         public static readonly float ParticleChaseRange = O(nameof(ParticleChaseRange), 3.5f); // and toward nearby prey when no kin is around
-        public static readonly float ParticleChaseAccel = O(nameof(ParticleChaseAccel), 1.7f); // gentler than kin-pull - a stalk, not a homing missile
+        public static readonly float ParticleChaseAccel = O(nameof(ParticleChaseAccel), 1.7f); // gentler than kin-pull
 
         // ---- Spell particles (SPELL_PARTICLES.md - the matter-level law) ----
         public static readonly float SparkHeatDelta = O(nameof(SparkHeatDelta), 25f); // °C one spark/frost carries; 3 hits on one target = 3×
@@ -716,35 +550,14 @@ namespace SpellyZombie
         public static readonly int ExplodeParticles = Oi(nameof(ExplodeParticles), 48);
 
         // ---- Persistent ink (characters & weapons) ----
-        // a spent loop re-fires only after opening THIS wide and re-closing.
-        // 22cm needs a real pose; idle animation jiggle stays under it.
+        // a spent loop re-fires only after opening this wide and re-closing;
+        // idle animation jiggle stays under it.
         public static readonly float ReArmDistance = O(nameof(ReArmDistance), 0.22f);
         public static readonly float ReCloseDistance = O(nameof(ReCloseDistance), 0.05f); // re-armed seals re-fire within this (forgiving, poses aren't millimetre-exact); fresh ink keeps the tight CloseThreshold
         public static readonly int MaxEnvironmentStrokes = Oi(nameof(MaxEnvironmentStrokes), 300);// oldest unsealed world ink fades beyond this (perf cap)
 
-        /// ONE STROKE CLOSES ON ITSELF AT EXACTLY THE SAME DISTANCE TWO STROKES
-        /// LINK AT. The parameter is kept for the three call sites (and because
-        /// the loop's length is still worth having in a stack trace), but it is
-        /// deliberately IGNORED.
-        ///
-        /// This was `Clamp(loopLength × 0.05, 0.02, 0.06)`, and it broke both of
-        /// the standing rules at once:
-        ///   · PEN-LIFT COUNT decided. A 1.2m circle drawn in ONE stroke closed
-        ///     with its ends 6cm apart - eight ink widths, a plainly visible gap,
-        ///     and it fired MID-DRAW before the pen even came back. The SAME
-        ///     circle drawn in TWO strokes got CloseThreshold, 1.8cm. A factor of
-        /// three to four, decided by nothing but where lifted the pen.
-        ///     ("A seal drawn in 5 strokes must behave exactly like the same seal
-        ///     drawn in one sweep.")
-        ///   · SIZE decided. Inside the one-stroke path it was 2cm on a small
-        ///     loop and 6cm on a big one, so the bigger you drew, the more air
-        ///     the game would close for you. ("Size must never matter.")
-        /// It is also the most likely surviving source of "the seal activates
-        /// when lines don't even touch" (Jul 31), which is what halving
-        /// CloseThreshold was meant to end.
-        ///
-        /// Overshoot still closes anything, at any size, through CrossingFinder -
-        /// which is the exact way, and needs no allowance at all.
+        /// One stroke closes on itself at exactly the distance two strokes
+        /// link at. The parameter is deliberately ignored; kept for the call sites.
         public static float SelfCloseThreshold(float loopLength) => CloseThreshold;
     }
 }

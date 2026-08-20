@@ -3,10 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    // Charger doubles as the spec's "brute", Scribbler as the "spitter".
     public enum ZombieKind { Walker, Charger, Scribbler, Runner, Swarm }
 
-    /// The design's enemy: slow, physical, legibly dumb (see ZombieBrain); all Flesh-tagged rigidbodies so the whole chemistry applies.
+    /// Zombie body: Flesh-tagged rigidbody; decisions live in ZombieBrain.
     [RequireComponent(typeof(Rigidbody))]
     public class Zombie : MonoBehaviour
     {
@@ -16,18 +15,16 @@ namespace SpellyZombie
         public float AttackDamage = 10f;
         public float AttackCooldown = 1.2f;
 
-        /// The rune cards this zombie possesses - used when IT completes a seal,
-        /// and dropped as pickups when it dies (design rule 4).
+        /// Rune cards this zombie owns; used when it completes a seal.
         public readonly List<RuneCardType> Cards = new List<RuneCardType>();
 
         /// Owner id in the Grimoire (seal ownership + rune checks).
         public int OwnerId => gameObject.GetInstanceID();
 
-        /// Set by Demon on attach - demons don't count toward ending a round (spares a GetComponent per zombie per tick).
+        /// Set by Demon on attach; demons don't count toward ending a round.
         public bool IsDemon;
 
-        /// Live registry - cheaper than FindObjectsByType in per-tick paths,
-        /// and the RoundDirector's alive count.
+        /// Live registry; the RoundDirector's alive count.
         public static readonly List<Zombie> All = new List<Zombie>();
 
         static readonly Color SkinColor = new Color(0.45f, 0.62f, 0.35f);
@@ -69,8 +66,7 @@ namespace SpellyZombie
         Stroke _doodle;
         float _doodleScan, _ritualLeft, _completeCooldown, _tagCooldown, _idleDoodle;
 
-        // full-seal scrawl: runes first, circle a beat later (readable - and it
-        // SHOWS players which cards this wizard carries)
+        // full-seal scrawl: runes first, circle a beat later
         float _sealScrawl, _scrawlCircleIn;
         Vector3 _scrawlCenter, _scrawlNormal;
         float _scrawlRadius;
@@ -78,27 +74,14 @@ namespace SpellyZombie
 
         public static Zombie Spawn(Vector3 pos, ZombieKind kind, float speedMul = 1f)
         {
-            // B4: zombies exist ONLY on the host - clients get NetZombieProxy stand-ins
+            // zombies exist only on the host; clients get NetZombieProxy stand-ins
             if (NetGame.Connected && !NetGame.IsHost) return null;
 
             Color skin = KindSkin(kind);
             GameObject go, head;
 
-            // ---- the PREFAB WINS, WHOLESALE ----------------------------------
-            // ONE prefab covers every kind. Drag a zombie out of the Hierarchy,
-            // drop it at Resources/Custom/Zombie, and the game spawns THAT
-            // instead of building a capsule. (Resources/Custom/Zombie_Charger
-            // and friends are checked first, so a per-kind override is possible
-            // but never required.)
-            //
-            // The KINDS still differ, because that is code's job: a Charger is
-            // stocky and a Runner is lanky. the authored scale is the base and
-            // the kind multiplies it, so the prefab's size is respected and the
-            // roster still reads at a glance from one model.
-            //
-            // the materials, the hat, the head placement are left alone, and
-            // every component below is filled in ONLY IF MISSING, the same
-            // "fills gaps only" rule the scenery tools already follow.
+            // prefab override: Zombie_<kind> checked first, then Zombie; the kind
+            // scale multiplies the authored scale, components below fill gaps only
             var custom = PrefabVault.Get("Zombie_" + kind) ?? PrefabVault.Get("Zombie");
             bool graybox = custom == null;
 
@@ -108,8 +91,7 @@ namespace SpellyZombie
                 go.name = "Zombie_" + kind;
                 go.transform.position = pos + Vector3.up * 1.1f;
 
-                // kind shape relative to a Walker, applied on top of the scale;
-                // ZombieBodyScale sizes the prefab path too, one dial for all
+                // kind shape relative to a Walker, applied on top of the authored scale
                 Vector3 rel = RawKindScale(kind);
                 Vector3 baseK = RawKindScale(ZombieKind.Walker);
                 go.transform.localScale = Vector3.Scale(go.transform.localScale,
@@ -135,7 +117,7 @@ namespace SpellyZombie
                 head.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(skin * 1.15f, MoteShade.Opaque);
             }
 
-            // scribbler = The Wizard; the HAT WINS: Resources/Custom/ScribblerHat replaces the code cubes
+            // ScribblerHat prefab replaces the code-built hat cubes
             if (graybox && kind == ZombieKind.Scribbler)
             {
                 var hatSkin = PrefabVault.Spawn("ScribblerHat", go.transform);
@@ -153,10 +135,7 @@ namespace SpellyZombie
                 }
             }
 
-            // EVERY COMPONENT BELOW FILLS A GAP. If the prefab already carries
-            // one, it is used exactly as configured it and none of these
-            // numbers get written over the top. Only components the code itself
-            // created take the per-kind stat pass.
+            // components are added only if missing; per-kind stats apply only to code-created ones
             var rb = Adopt.Component<Rigidbody>(go, out bool rbNew);
             if (rbNew)
             {
@@ -175,8 +154,7 @@ namespace SpellyZombie
             if (tagNew) tag.Material = SurfaceMaterialType.Flesh;
             Adopt.Component<PersistentInkSurface>(go); // runes drawn ON zombies ride them and persist
 
-            // the googly soul - the eyes if the prefab already has a pair,
-            // otherwise the code-built ones on the head
+            // prefab eyes if present, otherwise code-built ones on the head
             var eyes = go.GetComponentInChildren<GooglyEyes>(true)
                 ?? GooglyEyes.Attach(head.transform, 0f, DrawingConfig.ZombieEyeScale);
 
@@ -184,7 +162,7 @@ namespace SpellyZombie
             brain.Eyes = eyes;
             if (brainNew)
             {
-                // capacity IS intelligence: charger 1 slot, scribbler the horde's intellectual
+                // memory slot count per kind
                 brain.Capacity = kind == ZombieKind.Charger || kind == ZombieKind.Swarm ? 1
                     : kind == ZombieKind.Scribbler ? 5 : 3;
                 if (kind == ZombieKind.Runner) { brain.SightRange = 17f; brain.HearRange = 12f; } // skittish
@@ -194,18 +172,25 @@ namespace SpellyZombie
             z.Kind = kind;
             if (zNew)
             {
-                switch (kind) // body stats - the roster is mostly numbers on one bean
+                switch (kind) // per-kind body stats
                 {
                     case ZombieKind.Runner: z.WalkSpeed = 3.4f; z.AttackDamage = 6f; z.AttackCooldown = 0.7f; break;
                     case ZombieKind.Swarm: z.WalkSpeed = 2.3f; z.AttackDamage = 3f; z.AttackCooldown = 0.5f; z.AttackRange = 0.9f; break;
-                    case ZombieKind.Charger: z.AttackDamage = 14f; break;
+                    case ZombieKind.Charger:
+                        z.AttackDamage = 14f;
+                        // the name finally means something: the shared charge,
+                        // same hop-then-committed-line a golem uses
+                        var ch = z.gameObject.GetComponent<ChargeAttack>();
+                        if (ch == null) ch = z.gameObject.AddComponent<ChargeAttack>();
+                        ch.Damage = z.AttackDamage;
+                        break;
                 }
             }
             z.WalkSpeed *= speedMul; // rounds make everything faster
             dmg.OnDeath += z.OnDeath;
             dmg.OnDamaged += z.OnDamaged;
 
-            // every zombie carries rune cards (scribblers carry two - juiciest to hunt)
+            // every zombie carries rune cards; scribblers carry two
             var all = (RuneCardType[])System.Enum.GetValues(typeof(RuneCardType));
             int cardCount = kind == ZombieKind.Scribbler ? 2 : 1;
             for (int i = 0; i < cardCount; i++)
@@ -222,8 +207,7 @@ namespace SpellyZombie
                 Debug.Log($"[SpellyZombie] Scribbler spawned (hat, purple) carrying: {string.Join(", ", z.Cards)}");
             }
 
-            // wardrobe: shared character model follows the capsule (graybox continues if not wired).
-            // the PREFAB IS ALREADY DRESSED - do not wear a second body over it.
+            // wardrobe: shared model follows the capsule; a prefab body is already dressed
             if (graybox)
             {
                 float widthMul = kind == ZombieKind.Charger ? 1.25f
@@ -234,11 +218,8 @@ namespace SpellyZombie
             return z;
         }
 
-        /// BIRTH RITUAL ("when zombies are created I want them
-        /// to get up from the ground and not move until they fully completed
-        /// that animation") — the same StandUp clip the knockdown recovery
-        /// plays, fired at spawn, with the brain tranced for its duration
-        /// (the paint-freeze line, reused). Tune ZombieRiseSeconds to the clip.
+        /// Spawn rise: plays the StandUp clip with the brain tranced for its
+        /// duration. Tune ZombieRiseSeconds to the clip.
         public void RiseFromGrave()
         {
             if (_brain == null) _brain = GetComponent<ZombieBrain>();
@@ -250,16 +231,13 @@ namespace SpellyZombie
 
         bool _rising;
 
-        /// Born from the soil, not dropped onto it: snap to the ground, bury
-        /// the whole body, then climb out over ZombieRiseSeconds.
+        /// Snap to the ground, bury the body, climb out over ZombieRiseSeconds.
         System.Collections.IEnumerator DigUp()
         {
             _rising = true;
             if (_rb == null) _rb = GetComponent<Rigidbody>();
 
-            // probe from just above the feet, and only accept floor-like hits:
-            // starting high found tree canopies and roofs, and the zombie
-            // surfaced on top of them before falling off
+            // probe from just above the feet; accept only floor-like hits
             if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down,
                     out var hit, 40f,
                     Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer),
@@ -286,7 +264,6 @@ namespace SpellyZombie
             {
                 t += Time.deltaTime;
                 float k = 1f - (1f - Mathf.Clamp01(t / dur)) * (1f - Mathf.Clamp01(t / dur));
-                // the soil bursts as the body breaches, selling the dig
                 if (!burst && k > 0.3f)
                 {
                     burst = true;
@@ -304,8 +281,7 @@ namespace SpellyZombie
             _rising = false;
         }
 
-        /// First child whose name contains `name`, case-insensitive. Lets the
-        /// prefab call the head "Head", "head_geo" or "SZ_Head" and still get eyes.
+        /// First child whose name contains `name`, case-insensitive.
         static GameObject FindNamed(Transform root, string name)
         {
             foreach (var t in root.GetComponentsInChildren<Transform>(true))
@@ -319,16 +295,9 @@ namespace SpellyZombie
         /// The visual follower wearing this zombie's model (null in graybox).
         public ZombieDress Dress => _dress;
 
-        /// THE PAINT FREEZE ("have zombie stop in place if someone
-        /// is painting on it as if it's frozen so that we can summon a dynamic
-        /// shell"). The pen touching this zombie pins it — SurfaceDrawer calls
-        /// this every inked frame - and the dress settles the body into the REST
-        /// POSE, which is the pose the paint shell was cast in: for the freeze's
-        /// duration the collider you draw on and the mesh you see are the same
-        /// shape, exactly the trick the player's body paint already plays.
-        ///
-        /// It is also gameplay, the words: the statue is the tell that an
-        /// acolyte is painting on it, and painting is how you stop one running.
+        /// Pen on this zombie pins it; SurfaceDrawer calls this every inked frame.
+        /// The dress settles into the rest pose so the paint-shell collider and
+        /// the visible mesh stay the same shape while drawing.
         public void PaintFreeze(float seconds)
         {
             if (_brain != null)
@@ -406,7 +375,7 @@ namespace SpellyZombie
             if (Kind == ZombieKind.Scribbler || (summon != null && summon.Ranged))
             {
                 if (_castCooldown > 0f) return false;
-                _castCooldown = 1.4f; // an attack, not a ritual
+                _castCooldown = 1.4f;
                 ClearCastRing();
                 _dress?.Attack();
                 StartCoroutine(GooThrow(aimDir));
@@ -458,7 +427,7 @@ namespace SpellyZombie
             WorldEvents.Report(WorldEventKind.Spell, land, 2f);
         }
 
-        /// Walk WITHOUT erasing physics: legs steer with limited grip so spell pushes visibly win (hard-set velocity made zombies force-immune).
+        /// Steer with limited grip instead of hard-setting velocity, so external forces still win.
         void Steer(Vector3 dir, float speed)
         {
             Vector3 v = _rb.linearVelocity;
@@ -467,15 +436,8 @@ namespace SpellyZombie
             if (desired.sqrMagnitude > 0.01f) desired = desired.normalized * speed;
             else desired = Vector3.zero;
 
-            // THE GROUND CHECK, done properly ("create proper
-            // zombie walk"). Two requirements, each earned by a bug:
-            //   REACH SCALES WITH THE BODY - transform.position is the capsule
-            //   CENTRE and its half-height is localScale.y, so a fixed 1.35
-            //   never reached the floor for a summon drawn past ~1.6x: it was
-            //   permanently "airborne", grip 2, and drifted like it was on ice.
-            //   MASK OUT LAYER 30 - the paint shells (and every wall canvas)
-            //   live there. They are raycast-visible by design, and a zombie
-            //   must never mistake its buddy's skin for the floor.
+            // ground probe: reach scales with the capsule half-height (localScale.y);
+            // ink-canvas layer masked out so paint shells never count as floor
             bool grounded = Physics.Raycast(transform.position, Vector3.down,
                 transform.localScale.y + 0.53f,
                 Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer),
@@ -490,7 +452,7 @@ namespace SpellyZombie
         {
             if (_creature == null || _brain == null) return;
 
-            // THE VOID RULE : below the floor it dies where it fell - drops, kill credit, no teleport home
+            // below KillY it dies where it fell (drops and kill credit, no teleport)
             if (transform.position.y < FallCatcher.KillY)
             {
                 _dmg2?.TakeDamage(99999f, "the void");
@@ -503,13 +465,10 @@ namespace SpellyZombie
             if (_charging) { TickCharge(); return; }
             if (!_creature.CanMove) return;
 
-            // LIMP WHILE LIFTED. A zombie that keeps walking in mid-air fights the
-            // levitation and jitters, and one that steers itself while flying does
-            // not read as thrown. While something has hold of it, it is cargo
-            // rather than a creature: no steering, no turning, no chewing.
+            // while held by a grab: no steering, no turning, no chewing
             if (HandGrab.LocalHeldBody == _rb) { _windup = 0f; return; }
 
-            // TRANCE: full stop, just bliss (steered, not hard-set - fireballs still launch it)
+            // trance: full stop (steered, not hard-set, so forces still apply)
             if (_brain.Tranced)
             {
                 Steer(Vector3.zero, 0f);
@@ -517,23 +476,21 @@ namespace SpellyZombie
                 return;
             }
 
-            // ---- the brain decided; the body obeys (badly) ----
+            // ---- apply the brain's decision ----
             float speed = WalkSpeed * _brain.SpeedScale * _creature.SpeedMultiplier;
             if (_brain.MoveDir.sqrMagnitude > 0.01f && speed > 0.01f)
             {
                 Steer(_brain.MoveDir, speed);
-                // a driven body faces the ghost's look, so it can strafe and
-                // back away without spinning around
+                // a driven body faces the ghost's look so it can strafe
                 Vector3 face = Possessed && PossessedFace.sqrMagnitude > 0.01f
                     ? PossessedFace : _brain.MoveDir;
                 if (_creature.SpeedMultiplier >= 0.5f)
                     transform.rotation = Quaternion.Slerp(transform.rotation,
                         Quaternion.LookRotation(face), Time.fixedDeltaTime * 4f);
-                TryChewObstacle(speed); // CoD rule: barricades get eaten, not respected
+                TryChewObstacle(speed); // breakable obstacles get chewed through
             }
 
-            // a driven zombie takes no decisions of its own, but its attack
-            // cooldowns keep ticking or the ghost gets exactly one shot ever
+            // possessed: no own decisions, but attack cooldowns keep ticking
             if (Possessed)
             {
                 _castCooldown -= Time.fixedDeltaTime;
@@ -545,8 +502,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // the compulsion outranks EVERYTHING: a scribbler that sees an
-            // unfinished doodle must complete it - even the smart one is a zombie
+            // scribbler compulsion runs before combat
             if (Kind == ZombieKind.Scribbler && TickCompulsion()) return;
 
             var target = _brain.AttackTarget;
@@ -561,7 +517,7 @@ namespace SpellyZombie
             }
         }
 
-        /// The scribbler's disease: it completes ANY open ink into a REAL seal with ITS cards, and tags buddies with runes. Returns true while busy.
+        /// Scribbler: completes open ink into a real seal with its cards, tags buddies with runes. Returns true while busy.
         bool TickCompulsion()
         {
             float dt = Time.fixedDeltaTime;
@@ -583,7 +539,7 @@ namespace SpellyZombie
                 }
             }
 
-            // fresh ink is a MAGNET - the decoy loop: it arrives as you finish and must join in
+            // fresh ink lures it (decoy behavior)
             if (_doodle == null && WorldEvents.InkIsFresh)
             {
                 Vector3 ink = WorldEvents.LatestInkPos;
@@ -625,11 +581,10 @@ namespace SpellyZombie
                 DrawCastRing(1f - Mathf.Clamp01(_ritualLeft / 1.8f));
                 if (_ritualLeft > 0f) return true;
 
-                // it HAS to. it cannot not.
                 ClearCastRing();
                 var surface = _doodle.First != null ? _doodle.First.transform.parent : null;
                 bool closed = ZombieScribe.DrawCircle(center, normal, radius, surface, OwnerId);
-                _brain.Mumble(closed ? "MMM: DONE." : "GRUH?!", 2.5f); // botched it. tragic.
+                _brain.Mumble(closed ? "MMM: DONE." : "GRUH?!", 2.5f);
                 if (!closed) _brain.Eyes?.SetMood(EyeMood.Scared, 2f);
                 _doodle = null;
                 _completeCooldown = 6f;
@@ -645,12 +600,12 @@ namespace SpellyZombie
                 {
                     bool closed = _scrawlSurface != null &&
                         ZombieScribe.DrawCircle(_scrawlCenter, _scrawlNormal, _scrawlRadius, _scrawlSurface, OwnerId);
-                    _brain.Mumble(closed ? "HMM. MINE." : "GRUH?!", 2.5f); // the canvas walked away
+                    _brain.Mumble(closed ? "HMM. MINE." : "GRUH?!", 2.5f);
                 }
                 return true;
             }
 
-            // occasionally casts ITS OWN SEAL on whatever is in front - free intel on its whole deck
+            // occasionally casts its own seal on whatever is in front
             _sealScrawl -= dt;
             if (_doodle == null && _sealScrawl <= 0f && Cards.Count > 0)
             {
@@ -696,7 +651,7 @@ namespace SpellyZombie
                 }
             }
 
-            // idle: doodle deck runes on the ground - graffiti other scribblers circle, and YOU can seal to steal a cast
+            // idle: doodles deck runes on the ground; players can seal them
             _idleDoodle -= dt;
             if (_doodle == null && _idleDoodle <= 0f && Cards.Count > 0)
             {
@@ -752,7 +707,7 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------- barricade chewing --
-        // CoD flow: blocked by a breakable  swipe it apart; solid walls stay walls (patrol repick handles those)
+        // blocked by a breakable: swipe it apart; solid walls are patrol repick's job
         float _chewTimer;
         void TryChewObstacle(float wantedSpeed)
         {
@@ -767,12 +722,12 @@ namespace SpellyZombie
 
             Vector3 dir = _brain.MoveDir.normalized;
             int mask = Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer);
-            // SphereCast from the BELLY — root-height rays sailed over fences
+            // SphereCast from belly height so low fences are hit
             if (!Physics.SphereCast(transform.position + Vector3.down * 0.35f, 0.4f,
                     dir, out var hit, 1.6f, mask, QueryTriggerInteraction.Ignore)) return;
 
-            if (hit.collider.GetComponentInParent<Creature>() != null) return;            // brawls are elsewhere
-            if (hit.collider.GetComponentInParent<SimpleFPSController>() != null) return; // that's lunch, not lumber
+            if (hit.collider.GetComponentInParent<Creature>() != null) return;            // creatures excluded
+            if (hit.collider.GetComponentInParent<SimpleFPSController>() != null) return; // players excluded
             var obstacle = hit.collider.GetComponentInParent<Damageable>();
             if (obstacle == null) return; // real wall - go around
 
@@ -786,8 +741,7 @@ namespace SpellyZombie
 
         float _autoScan;
 
-        /// Bites whatever stands in reach on its own: players (never its own
-        /// master) and, zombies being zombies, occasionally each other.
+        /// Bites whatever is in reach: players (never its summoner), occasionally other zombies.
         void AutoSwipe()
         {
             _autoScan -= Time.fixedDeltaTime;
@@ -844,19 +798,19 @@ namespace SpellyZombie
             _windup += Time.fixedDeltaTime;
             _brain.SpeedScale = 0f; // dig in
             Vector2 tremble = Random.insideUnitCircle * 0.01f;
-            transform.position += new Vector3(tremble.x, 0f, tremble.y); // shaking with intent
+            transform.position += new Vector3(tremble.x, 0f, tremble.y);
             if (_windup < 1f)
             {
                 if (_windup < 0.1f)
                 {
                     _brain.Mumble("HRRNK!!", 1.5f);
                     _brain.Eyes?.SetMood(EyeMood.Mad, 1.5f);
-                    _dress?.Scream(); // the agonized windup howl
+                    _dress?.Scream();
                 }
                 return;
             }
 
-            // GO. Direction is LOCKED - steering is for the living.
+            // charge direction locks once started
             _windup = 0f;
             _charging = true;
             _chargeLeft = 3f;
@@ -878,7 +832,7 @@ namespace SpellyZombie
             if (!_charging) return;
             if (col.collider.attachedRigidbody == null && col.collider.GetComponent<CharacterController>() == null)
             {
-                // met an immovable object: the wall wins, always
+                // hit something immovable
                 EndCharge(true);
                 return;
             }
@@ -888,7 +842,7 @@ namespace SpellyZombie
             if (creature != null && creature != _creature)
             {
                 creature.KnockDown(2.5f);
-                creature.GetComponent<ZombieBrain>()?.GetMadAt(transform); // they remember this
+                creature.GetComponent<ZombieBrain>()?.GetMadAt(transform);
             }
             var player = col.collider.GetComponentInParent<SimpleFPSController>();
             if (player != null)
@@ -903,7 +857,7 @@ namespace SpellyZombie
             _chargeCooldown = Random.Range(4f, 7f);
             if (ateWall)
             {
-                _creature.KnockDown(3f);       // self-stun, dizzy pupils orbiting
+                _creature.KnockDown(3f);       // self-stun
                 _brain.Mumble("@#$%!", 2.5f);
             }
         }
@@ -913,7 +867,7 @@ namespace SpellyZombie
         {
             _castCooldown -= Time.fixedDeltaTime;
 
-            // keeps its distance like a coward
+            // keeps its distance
             if (dist < 5f) { _brain.MoveDir = (transform.position - target.position).normalized; _brain.SpeedScale = 1.2f; }
             else _brain.SpeedScale = Mathf.Min(_brain.SpeedScale, 0.4f);
 
@@ -926,17 +880,17 @@ namespace SpellyZombie
                 return;
             }
 
-            // the curse lands: real chemistry, dropped on your position
+            // the curse: real Matter dropped at the target
             _castLeft = 0f;
             _castCooldown = Random.Range(6f, 10f);
             ClearCastRing();
             _dress?.Attack();
             if (Random.value < 0.5f)
                 Matter.Spawn(SurfaceMaterialType.Stone, MatterPhase.Solid, 0.7f,
-                    target.position + Vector3.up * 4f);           // anvil, classic
+                    target.position + Vector3.up * 4f);           // solid from above
             else
                 Matter.Spawn(SurfaceMaterialType.Stone, MatterPhase.Liquid, 0.45f,
-                    target.position + Vector3.up * 0.4f);          // lava at your feet
+                    target.position + Vector3.up * 0.4f);          // liquid at the feet
             WorldEvents.Report(WorldEventKind.Spell, target.position, 2f);
         }
 
@@ -995,87 +949,51 @@ namespace SpellyZombie
         }
 
 
-        /// THE CURSED INK GOING OFF . A seal closed on a zombie by
-        /// an acolyte blows it: the same gas it was already breathing, at
-        /// SummonGasDetonateMul — the flat "always 3x larger" — and this one
-        /// SHOVES, which is the whole point. the words: "a detonation makes a
-        /// much bigger cloud that SHOVES people away, which is how you steal the
-        /// cauldron", and the play design is a wizard chasing a zombie and
-        /// getting it blown in the face.
-        ///
-        /// Both dials arrive from the seal: bigger seal = bigger explosion,
-        /// fewer lines = more potent ("a triangle on a zombie is a really potent
-        /// poison"). Size widens the blast, potency drives what it does to you.
+        /// Seal closed on this zombie by an acolyte: a poison blast that shoves.
+        /// sizeMul widens the blast; potency scales shove and damage.
         public void Detonate(float sizeMul, float potency)
         {
-            // 3x THE DEATH CLOUD, not 3x the living aura - the aura is only a
-            // body-width now, so multiplying that would have quietly shrunk
-            // every detonation to nothing.
+            // base radius is the death-cloud radius, not the body-tight living aura
             var summoned = GetComponent<SummonedZombie>();
             float radius = (summoned != null ? summoned.GasRadius : DrawingConfig.SummonGasRadiusMin)
                 * DrawingConfig.SummonGasDetonateMul * Mathf.Max(0.2f, sizeMul);
 
-                // AND NEVER SMALLER THAN THE THING THAT BLEW UP ("it
-            // should be larger than the zombie body at least 3x"). The gas
-            // radius comes off the rune-to-seal ratio, which knows nothing about
-            // how big the body is - so a fat zombie with a small rune could
-            // detonate inside its own silhouette. Measured off the body it
-            // actually has: DIAMETER at least 3x its height, hence 1.5x here.
+            // never smaller than the body that blew up
             float bodyHeight = transform.localScale.y * 2f;
             radius = Mathf.Max(radius, bodyHeight * DrawingConfig.DetonateBodyMul);
             Vector3 at = transform.position + Vector3.up * bodyHeight * 0.35f;
 
-            // IT LEAVES THE GROUND POISONED - one zone, standing where the
-            // zombie stood, at the flat 3x. The field draws its own dome, ring
-            // and skin and fades on its own clock, so there is nothing here to
-            // hand-roll: no puff cadence, no sprite scaling, no lifetime timer.
+            // leaves one poison field where it stood; the field owns its visuals and lifetime
             PoisonField.Open(at, radius, DrawingConfig.DetonateFieldSeconds);
 
-            // players shoved with falloff, acolytes pushed but never damaged,
-            // props thrown - the shared blast (Shove.Blast, also the acolyte
-            // death burst). Own body excluded from the prop throw.
+            // shared blast: players shoved with falloff, acolytes never damaged,
+            // own body excluded from the prop throw
             Shove.Blast(at, radius, DrawingConfig.DetonateShove * potency,
                 DrawingConfig.DetonateDamage * potency, "a zombie went off", _rb);
 
-            // it was a spell; spells end. OnDeath adds its own small puff on top,
-            // which reads as the corpse gassing off inside the bigger blast.
+            // the detonation kills it; OnDeath adds its small corpse cloud on top
             _dmg2?.TakeDamage(999999f, "detonated");
         }
 
         void OnDeath(string cause)
         {
-            WorldEvents.Report(WorldEventKind.Death, transform.position, 2f); // others hear a buddy pop
-            RoundDirector.NotifyKill(this); // round economy: kills are the ink mine
+            WorldEvents.Report(WorldEventKind.Death, transform.position, 2f); // nearby zombies hear it
+            RoundDirector.NotifyKill(this); // round economy
             Juice.Pop(transform.position);
 
-            // A CORPSE GASSES OFF ("when zombie dies it should
-            // create a poison cloud just not as explosive and large as when
-            // detonated"). It is the SAME cloud it was already breathing, at the
-            // SAME radius - dying just makes it visible as an event. The
-            // detonation is the loud version at SummonGasDetonateMul (3x), which
-            // is why this one is deliberately not scaled up at all.
-            // THE CORPSE IS THE CLOUD . Alive it only carried a
-            // body-tight aura; everything the rune-to-seal ratio bought is
-            // released HERE. That is what makes killing one a decision instead
-            // of a reward, and it is why a courtyard where a fight happened
-            // stays poisoned afterwards - the atmosphere is earned, not ambient.
+            // death releases the gas cloud at GasRadius, unscaled;
+            // detonation is the SummonGasDetonateMul version
             var mine = GetComponent<SummonedZombie>();
             PoisonField.Open(
                 transform.position + Vector3.up * transform.localScale.y * 0.35f,
-                // a world zombie has no seal behind it, so no ratio - it gets the
-                // small end of the range rather than a number invented for it
+                // world zombies (no seal) get the minimum radius
                 mine != null ? mine.GasRadius : DrawingConfig.SummonGasRadiusMin,
                 DrawingConfig.ZombieDeathCloudSeconds);
 
-            // pop the puppet, hear the puppeteer: the summoner whistles at
-            // their own position. 3D falloff means only wizards in earshot
-            // learn anything - commanding from distance stays safe.
+            // the summoner whistles at their own position; 3D falloff limits the tell
             if (mine != null) WhistleOwner(mine.SummonedBy);
 
-            // NO CARD DROPS. Runes are learned by ANALYZING NATURAL OBJECTS with
-            // the grimoire, not by picking loot off a
-            // corpse. Floating pickups were replaced long ago and this drop was
-            // the last place still spawning them.
+            // no card drops; runes are learned by analyzing objects with the grimoire
             Grimoire.Drop(OwnerId);
         }
 

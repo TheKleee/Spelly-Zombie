@@ -1,8 +1,6 @@
-// The one shader every spell particle and matter blob wears.
-// Vertex-side "soft body": per-object phased wobble (jelly), a squash dial
-// (liquids settle into shape), and a fresnel rim so blobs read as glowing /
-// wet volumes instead of flat balls. All softness is GPU-side — physics
-// stays one rigidbody per blob, and none of this touches the network.
+// Shader for spell particles and matter blobs: vertex wobble, a squash
+// dial, and a fresnel rim. All softness is GPU-side — physics stays one
+// rigidbody per blob and none of it touches the network.
 Shader "SpellyZombie/Particle"
 {
     Properties
@@ -67,13 +65,11 @@ Shader "SpellyZombie/Particle"
                 Varyings OUT;
                 float3 p = IN.positionOS.xyz;
 
-                // soft-body settle: sink vertically, bulge outward (liquids
-                // "fall into shape"; driven per-object via _Squash MPB)
+                // squash: sink vertically, bulge outward; driven per-object via MPB
                 p.y  *= 1.0 - _Squash * 0.45;
                 p.xz *= 1.0 + _Squash * 0.28;
 
-                // per-object phase from the object's world origin, so a crowd
-                // of blobs never wobbles in lockstep
+                // per-object phase from world origin so blobs never wobble in lockstep
                 float3 origin = float3(unity_ObjectToWorld._m03,
                                        unity_ObjectToWorld._m13,
                                        unity_ObjectToWorld._m23);

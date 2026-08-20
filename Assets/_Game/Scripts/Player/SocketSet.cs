@@ -3,31 +3,24 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// STANDARD BONE SOCKETS - the costume mount points every dressed body
-    /// (player, remote avatar, zombie) gets. Socket names are the contract:
-    ///   Hat · Head · Cape · Chest · Belt · ShoulderL · ShoulderR ·
-    ///   HandL · HandR · LegL · LegR
-    /// Sockets sit at their bone but are rotated into PLAIN CHARACTER SPACE
-    /// (+Z = the way the body faces, +Y = up), so authors costume
-    /// prefabs in normal orientation - no wrestling with Mixamo bone axes.
-    /// MUST be built after the body faces forward (players: first LateUpdate
-    /// after the animator's first frame; zombies: dress's first LateUpdate).
-    /// (Own file on purpose - a MonoBehaviour hiding in a mismatched filename
-    /// serializes as a broken "script can not be loaded" corpse on prefabs.)
+    /// Standard bone sockets - costume mount points on every dressed body.
+    /// Names are the contract: Hat · Head · Cape · Chest · Belt · ShoulderL ·
+    /// ShoulderR · HandL · HandR · LegL · LegR. Sockets sit at their bone
+    /// rotated into plain character space (+Z = facing, +Y = up). Must be
+    /// built after the body faces forward. Kept in its own file - a class in
+    /// a mismatched filename breaks prefab serialization.
     public class SocketSet : MonoBehaviour
     {
         readonly Dictionary<string, Transform> _sockets = new Dictionary<string, Transform>();
 
-        /// Which sockets this body actually has - so a catalog slot that finds
-        /// nothing can say WHY (AXIOM: never fail silently on the content).
+        /// Which sockets this body actually has - used by missing-socket warnings.
         public IEnumerable<string> Names => _sockets.Keys;
 
         public Transform Get(string socketName) =>
             _sockets.TryGetValue(socketName, out var t) ? t : null;
 
-        /// THE three-pass mixamorig bone search (exact  EndsWith  Contains;
-        /// HeadTop exports as HeadTop_End) - shared by CharacterRig and every
-        /// dresser, so player and zombie bodies resolve bones identically.
+        /// Three-pass bone search (exact, EndsWith, Contains; HeadTop exports
+        /// as HeadTop_End) - shared so every body resolves bones identically.
         public static Transform FindBone(Transform[] bones, string boneName)
         {
             foreach (var t in bones) if (t.name == "mixamorig:" + boneName) return t;
@@ -38,14 +31,8 @@ namespace SpellyZombie
 
         public static SocketSet Build(GameObject body, Transform facing)
         {
-            // AXIOM : a BAKED body brings a SocketSet COMPONENT
-            // with it, but _sockets is a plain Dictionary - Unity cannot
-            // serialize one, so the bake saves an EMPTY SHELL. This used to
-            // early-return on the component alone, so on the baked player
-            // every Get() answered null: no wand, no grimoire (BuildPenProps
-            // bails on its first line), no costume mount points. The component
-            // is adopted; the LOOKUP is always rebuilt, because it only ever
-            // exists at runtime. "Fills gaps only", same as every other adopt.
+            // a baked body carries this component, but Unity cannot serialize
+            // the Dictionary - adopt the component, always rebuild the lookup
             var set = body.GetComponent<SocketSet>();
             if (set != null && set._sockets.Count > 0) return set; // resolved already this session
             if (set == null) set = body.AddComponent<SocketSet>();
@@ -62,9 +49,8 @@ namespace SpellyZombie
             void Sock(string socketName, Transform bone)
             {
                 if (bone == null) return;
-                // ADOPT a baked socket when the body carries one ('s
-                // baked prefabs include sockets + their worn contents; a
-                // second empty twin was the "Socket.Cape twice" confusion)
+                // adopt a baked socket when the body carries one - never
+                // create an empty twin
                 Transform s = null;
                 foreach (Transform child in bone)
                     if (child.name == "Socket." + socketName) { s = child; break; }

@@ -3,22 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE LOBBY REBUILDS ITSELF ("objects to spawn after being
-    /// destroyed - cause we need to allow acolytes to scan and people to test
-    /// spells out... we can't do that in leveled lobby map").
-    ///
-    /// The lobby is the practice ground, so it has to survive being practised
-    /// on. An acolyte needs shapes left to scan and a wizard needs things left
-    /// to break; a stripped courtyard teaches nobody anything. A broken prop
-    /// comes back where it stood, whole, after a short wait.
-    ///
-    /// IT HIDES RATHER THAN DESTROYS, for a boring reason that matters: a
-    /// destroyed GameObject cannot run the timer that would bring it back, and
-    /// re-instantiating means knowing which prefab a hand-placed scene object
-    /// came from - which nothing records. Hiding keeps the exact object, the
-    /// materials and the Inspector settings, and puts them back untouched.
-    ///
-    /// LOBBY ONLY. In a real round, broken is broken.
+    /// Lobby props come back after being broken. Hides rather than destroys:
+    /// a destroyed object can't run its comeback timer, and nothing records
+    /// which prefab a scene object came from. Lobby only; in a round broken is broken.
     public class LobbyRespawn : MonoBehaviour
     {
         Vector3 _pos;
@@ -38,9 +25,8 @@ namespace SpellyZombie
 
         void Awake()
         {
-            // captured BEFORE anything can shove it: a prop that was lifted,
-            // thrown and then broken must return to where PUT it, not to
-            // wherever it happened to die
+            // captured before anything can shove it: a broken prop returns to
+            // its authored spot, not to wherever it died
             _pos = transform.position;
             _rot = transform.rotation;
             _scale = transform.localScale;
@@ -62,10 +48,7 @@ namespace SpellyZombie
         {
             if (_back > 0f) return;   // already gone; do not double-hide
 
-            // THE DRAWING DIES WITH THE CANVAS ("when object is
-            // destroyed in the lobby the lines on the object need to be
-            // destroyed with it") — no ink floating where the prop was, and
-            // the rebuilt prop comes back factory-new, ready to be drawn on.
+            // burn the strokes on this surface; the rebuilt prop comes back factory-new
             var world = DrawingWorld.Instance;
             if (world != null)
                 for (int i = world.Strokes.Count - 1; i >= 0; i--)
@@ -75,10 +58,8 @@ namespace SpellyZombie
                     if (s.Surface == transform || s.Surface.IsChildOf(transform)) s.Burn();
                 }
 
-            // Damageable would Destroy() its object the moment OnDeath returns -
-            // this is the one hook that stops it, restored on the way back.
-            // EVERY Damageable under the object counts: authored props carry
-            // theirs on mesh children, and a root-only flip let the child die.
+            // Damageable would Destroy() the object when OnDeath returns; this
+            // hook stops it. Every Damageable under the object counts.
             foreach (var d in GetComponentsInChildren<Damageable>(true))
                 if (d != null) d.Destructible = false;
 
@@ -90,12 +71,8 @@ namespace SpellyZombie
             foreach (var col in GetComponentsInChildren<Collider>(true))
                 if (col.enabled) { col.enabled = false; _off.Add(col); }
 
-            // REMEMBER WHAT IT WAS. Restoring isKinematic=false blindly turned
-            // rooted scenery into a DYNAMIC body - and the village props carry
-            // concave MeshColliders, which Unity refuses on a dynamic body:
-            // "Concave Mesh Colliders are not supported... Scene hierarchy path
-            // SZ_Village/Stall_Empty". The body then behaves undefined, and
-            // anything touching it (a zombie chewing through) goes with it.
+            // remember isKinematic: forcing it false would put concave
+            // MeshColliders on a dynamic body, which Unity refuses
             var rb = GetComponent<Rigidbody>();
             if (rb != null)
             {
@@ -113,16 +90,14 @@ namespace SpellyZombie
             if (_back > 0f) return;
             _back = -1f;
 
-            // back exactly where design it, at full health, whole
+            // back at its captured pose, at full health, whole
             transform.SetPositionAndRotation(_pos, _rot);
             transform.localScale = _scale;
 
             var rb = GetComponent<Rigidbody>();
             if (rb != null)
             {
-                // back to what it WAS, and velocities only touched on a body
-                // that is actually dynamic - writing them to a kinematic one is
-                // the other warning that was flooding the console
+                // restore the original mode; velocities only on a dynamic body
                 rb.isKinematic = _wasKinematic;
                 if (!_wasKinematic)
                 {
@@ -136,9 +111,8 @@ namespace SpellyZombie
             _hidden.Clear();
             _off.Clear();
 
-            // Revive, not just heal: the private dead-flag must drop too,
-            // or the prop comes back IMMORTAL (breakable exactly once).
-            // Every Damageable under the object, same reach as the Vanish.
+            // Revive, not just heal: the dead-flag must drop too or the prop
+            // comes back immortal. Every Damageable under the object counts.
             foreach (var d in GetComponentsInChildren<Damageable>(true))
                 if (d != null)
                 {
@@ -146,8 +120,7 @@ namespace SpellyZombie
                     d.Destructible = true;
                 }
 
-            // the ink an acolyte's scan left on it goes too, so the same prop
-            // can be scanned again by the next person practising
+            // scan ink goes too, so the prop can be scanned again
             foreach (var mark in GetComponentsInChildren<InkMark>(true))
                 if (mark != null) Destroy(mark);
         }

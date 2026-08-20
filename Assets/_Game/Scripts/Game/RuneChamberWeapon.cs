@@ -4,24 +4,9 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// THE RUNE CHAMBER (second weapon mechanism from the design: "player draws
-    /// a rune sequence, each trigger pull cycles the next rune into the seal").
-    ///
-    /// A magazine STRIP with four engraving slots slides under a fixed WINDOW.
-    /// Around the window sits a factory-engraved seal loop with a gap, and a
-    /// BRIDGE bar that closes it - the same mechanically-closed-loop trick as
-    /// the slide tablet:
-    ///
-    /// R            raise it and engrave a rune on each strip slot
-    /// HOLD Q/LMB   the bridge snaps in, the loop closes around whichever
-    ///                 rune sits in the window - that seal FIRES
-    /// RELEASE      the loop opens (ink re-arms) and the strip ADVANCES,
-    ///                 cycling the next rune into the window
-    ///
-    /// Four slots = a drawn firing sequence: fire-fire-ice-push, repeat. The
-    /// strip carriage-returns to slot 1 after the last. Recognition reads the
-    /// windowed rune through the surface-riding frame (SurfaceDelta), so the
-    /// strip's travels never change what you engraved.
+    /// A magazine strip with four engraving slots slides under a fixed window,
+    /// ringed by a factory seal loop that a bridge bar closes. Hold Q/LMB: the
+    /// loop closes and the windowed rune fires; release re-arms and advances the strip.
     public class RuneChamberWeapon : HeldWeapon
     {
         public const int Slots = 4;
@@ -137,20 +122,16 @@ namespace SpellyZombie
             if (!_inked && DrawingWorld.Instance != null) EngraveFactoryLoop();
         }
 
-        /// The pre-engraved seal machinery: a C-shaped loop around the window
-        /// (on the frame) and the short closing segment (on the bridge). Drawn
-        /// with the bridge in its CLOSED berth so the ends align exactly, then
-        /// the bridge springs open - 0.13 apart, safely past re-arm distance.
-        /// allowCloseOntoInk:false keeps it from sealing itself while inking.
+        /// The pre-engraved seal machinery: a C loop on the frame plus the
+        /// closing segment on the bridge, drawn in the closed berth so the ends
+        /// align. allowCloseOntoInk:false keeps it from sealing itself while inking.
         void EngraveFactoryLoop()
         {
             _inked = true;
             if (_frame == null || _bridge == null) return;
 
-            // ALL coordinates live in weapon-ROOT local space (scale 1) - going
-            // through the scaled primitive transforms would crush them. Nodes
-            // still PARENT to their moving part (worldPositionStays), so the
-            // bridge carries its ink and the frame keeps the ring.
+            // coordinates live in weapon-root local space (scaled primitive
+            // transforms would crush them); nodes still parent to their moving part
             float y = 0.073f; // just above the bezel tops
             var c = new List<Vector3>(); // the C ring, gap at the front edge
             void Edge(Vector3 from, Vector3 to)
@@ -207,7 +188,7 @@ namespace SpellyZombie
             bool pressing = kb.qKey.isPressed
                 || (!DrawMode && mouse != null && mouse.leftButton.isPressed);
             _bridgeT = Mathf.MoveTowards(_bridgeT, pressing ? 1f : 0f,
-                9f * Perks.RackSpeedMul * Time.deltaTime); // Quick Hands again
+                9f * Time.deltaTime);
             if (_bridge != null)
                 _bridge.localPosition = Vector3.Lerp(BridgeOpen, BridgeClosed, _bridgeT);
 
@@ -222,7 +203,7 @@ namespace SpellyZombie
                 }
                 else
                 {
-                    // release complete  CYCLE: next slot glides into the window
+                    // release complete: next slot cycles into the window
                     _slot = (_slot + 1) % Slots;
                     if (_slot == 0) Juice.Chime(transform.position); // carriage return
                 }

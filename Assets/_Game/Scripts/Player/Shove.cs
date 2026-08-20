@@ -2,25 +2,10 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A BLOW BIG ENOUGH BREAKS YOUR CONCENTRATION ("when the
-    /// force is strong enough it should push you out of the draw mode into the
-    /// first person mode").
-    ///
-    /// the controller drops `_shove` to zero while a draw or easel mode is open
-    /// - the easel is an anchor, or the body slides out from under a detached
-    /// camera. That is right for the gentle stuff, and it is why a detonation in
-    /// your face moved you nowhere: you detonate BY drawing, so the impulse was
-    /// deleted the frame it landed.
-    ///
-    /// the answer is better than removing the anchor. A light knock leaves you
-    /// drawing; a real blast throws you OUT of the mode first, and then the
-    /// shove lands on a body that is free to move. the controller already does
-    /// exactly this when you get floored ("getting floored kicks you out of the
-    /// mode") — this is the same rule, keyed on force instead of on ragdolling.
-    ///
-    /// Every force source should deliver through here rather than calling
-    /// TakeHit directly, so the rule holds for spells and charges too and does
-    /// not have to be re-derived per caller.
+    /// Delivers impulses to players. Over ShoveBreaksDrawing the hit ends any
+    /// draw/easel mode first, so the impulse lands on a body free to move
+    /// (the controller eats shoves while a mode is open). Every force source
+    /// should route through here, not TakeHit directly.
     public static class Shove
     {
         /// Hit a player with an impulse and optional damage. Breaks drawing
@@ -30,32 +15,17 @@ namespace SpellyZombie
         {
             if (player == null) return;
 
-            // EVERY MODE, NOT JUST DRAWING ("whenever you're in
-            // any mode like posing or shapeshift mode... you drop into either
-            // first person or third person mode so that your body can ragdoll").
-            // Each of these pins the body, detaches the camera, or eats the
-            // shove - so a hit big enough has to END them before the impulse can
-            // mean anything. One list here rather than each mode inventing its
-            // own "am I being blown up" test.
+            // each mode pins the body, detaches the camera, or eats the shove -
+            // a big enough hit must end them all here first
             if (impulse.magnitude < DrawingConfig.ShoveBreaksDrawing)
             {
                 player.TakeHit(impulse, damage, cause);
                 return;
             }
 
-            // WHERE YOU LAND WHEN A BLAST RAGDOLLS YOU - the table, Aug 10.
-            // The shorthand is: YOUR CAMERA DOES NOT CHANGE UNLESS A MODE FORCED
-            // IT, and body POSE is the single mode whose third-person view
-            // survives, because that is the one where watching your own wizard
-            // get thrown is the point.
-            //
-            //   FIRST person  · acolyte wearing a shape
-            //                 · acolyte rotating that shape
-            //                 · acolyte in zombie overwatch
-            //                 · wizard in BODY PAINT
-            //                 · anyone already in first person (draw mode too)
-            //   THIRD person  · wizard in BODY POSE
-            //                 · anyone already in third person
+            // camera after a blast: unchanged unless a mode forced it. Body
+            // pose lands in third person; shape/pose/overwatch/paint land in
+            // first person.
             bool wasShaped = ShapeShift.LocalIsShaped;
             bool wasAcolyteMode = wasShaped || ShapeShift.PoseOpen || ZombieWatch.IsOpen;
             bool wasPaint = SelfPaint.IsActive;
@@ -68,25 +38,20 @@ namespace SpellyZombie
             ShapeShift.Blown();
             ZombieWatch.Blown();
 
-            // ASKED FOR BY NAME, never toggled - a toggle here would land the
-            // blast victim in whichever mode they were NOT in.
+            // asked for by name, never toggled - a toggle would land the
+            // victim in the wrong view
             if (wasPose)
             {
-                // body pose keeps him looking at himself while is thrown
+                // body pose keeps the view on your own thrown body
                 player.EnterThirdPerson();
             }
             else if (wasAcolyteMode || wasPaint)
             {
-                // BACK INTO YOUR OWN EYES, wand and grimoire and all. For a
-                // SHAPED acolyte this also strips the disguise, and that is
-                // deliberate (confirmed it): losing first person while
-                // wearing something is already ShapeShift's own rule — "Tab
-                // brought us back to first person = back to yourself" — so its
-                // Update unwears on the next frame without a second copy of that
-                // law living here. A blast exposes a hider.
+                // first person also strips a shaped acolyte's disguise -
+                // ShapeShift's own rule unwears on the next frame (deliberate)
                 player.EnterFirstPerson();
             }
-            // nothing forced a camera  leave the mode exactly as it was
+            // no mode forced a camera change - leave it as it was
 
             if (wasInAMode)
                 DrawingWorld.Instance?.LogEvent("the blast throws you out of it");

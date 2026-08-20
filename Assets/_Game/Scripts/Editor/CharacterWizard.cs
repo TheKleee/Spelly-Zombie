@@ -5,10 +5,8 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// One-click wiring of the Mixamo-rigged character: finds SZ_Body.fbx,
-    /// enforces sane import settings, retargets every Mixamo animation clip to
-    /// its avatar (looping on), builds the locomotion AnimatorController
-    /// (idle/walk/run blend by Speed + separate Crouch, IK pass on for weapon
-    /// holding) and points CharacterLibrary at all of it.
+    /// retargets every Mixamo clip to its avatar, builds the locomotion
+    /// AnimatorController, and points CharacterLibrary at all of it.
     public static class CharacterWizard
     {
         const string LibPath = "Assets/_Game/Resources/CharacterLibrary.asset";
@@ -32,13 +30,9 @@ namespace SpellyZombie
             var importer = AssetImporter.GetAtPath(fbxPath) as ModelImporter;
             if (importer != null)
             {
-                // THE BODY'S RIG BELONGS TO (the ruling after the wizard
-                // "ruined the character again"): force-converting to Humanoid
-                // let Unity's AUTOMATIC bone-mapping + T-pose enforcement
-                // reconfigure the edited skeleton - that automatic mangling
-                // was the ruin. The wizard now NEVER touches rig settings.
-                // Not Humanoid yet? Stop and say exactly what to do by hand,
-                // where can SEE the mapping.
+                // never modify rig settings here: force-converting to Humanoid
+                // runs Unity's automatic bone mapping, which can mangle an
+                // edited skeleton
                 if (importer.animationType != ModelImporterAnimationType.Human)
                 {
                     Debug.LogError(
@@ -59,9 +53,8 @@ namespace SpellyZombie
                 }
                 if (!importer.isReadable)
                 {
-                    // body paint bakes the skinned mesh into a collider shell -
-                    // BakeMesh needs CPU-readable vertices or it throws.
-                    // (Mesh-access flag only; the rig is never modified.)
+                    // BakeMesh needs CPU-readable vertices (body paint bakes
+                    // the skinned mesh into a collider shell)
                     importer.isReadable = true;
                     dirty = true;
                 }
@@ -73,9 +66,9 @@ namespace SpellyZombie
             foreach (var o in AssetDatabase.LoadAllAssetsAtPath(fbxPath))
                 if (o is Avatar av) { avatar = av; break; }
 
-            // ---- gather + configure the PLAYER animation FBXs. Precise slot
-            // matching: "Left Strafe Walking" must never claim the walk slot
-            // (that's what made walking play a strafe). Zombie folder excluded.
+            // gather + configure the player animation FBXs. Precise slot
+            // matching: "Left Strafe Walking" must never claim the walk slot.
+            // Zombie folder excluded.
             var picks = new System.Collections.Generic.Dictionary<string, string>();
             void Consider(string slot, string path)
             {
@@ -98,8 +91,7 @@ namespace SpellyZombie
                 }
                 else if (file.Contains("jump"))
                 {
-                    // ORDER MATTERS: "JumpRun" also contains "run" — without
-                    // this early branch it would eat the run LOCOMOTION slot
+                    // "JumpRun" also contains "run"; must branch before the run slot
                     Consider(file.Contains("run") ? "jumpRun" : "jump", path);
                 }
                 else if (file.Contains("strafe"))
@@ -154,8 +146,7 @@ namespace SpellyZombie
                 AssetDatabase.CreateAsset(lib, LibPath);
             }
             lib.BodyModel = AssetDatabase.LoadAssetAtPath<GameObject>(fbxPath);
-            // AXIOM: a builder returning null must NEVER blank a controller he
-            // already has wired (a missing clip used to unwire the whole rig)
+            // a null build result must not blank an already-wired controller
             if (ctrl != null) lib.AnimController = ctrl;
             if (zombieCtrl != null) lib.ZombieController = zombieCtrl;
             EditorUtility.SetDirty(lib);
@@ -167,13 +158,8 @@ namespace SpellyZombie
                       "named Hat_x / Cape_x / ZHat_x…). Placeholder team hat+cloak until then.");
         }
 
-        /// `loop` is the clip's NATURE, not a default ("the same
-        /// with getting out of the ground and pretty much all animations. They
-        /// are all independent"). This used to force looping ON for everything,
-        /// which is right for idle/walk/run and wrong for every one-shot: a
-        /// standup marked as a loop replays getting up forever, and only the
-        /// exit transition cutting it early hid that. One-shots now import as
-        /// one-shots and are allowed to finish.
+        /// Retargets a clip FBX to the avatar and sets loopTime: cycles loop,
+        /// one-shots import with loop off so they can finish.
         static void ConfigureClipFbx(string path, Avatar avatar, bool loop = true)
         {
             var imp = AssetImporter.GetAtPath(path) as ModelImporter;
@@ -212,9 +198,8 @@ namespace SpellyZombie
             return null;
         }
 
-        /// The undead wardrobe: retarget everything in Art/Zombie to the shared
-        /// avatar and build the zombie controller - locomotion blend (their
-        /// speeds are slower) + Attack / Hit / Scream one-shot triggers.
+        /// Retargets everything in Art/Zombie to the shared avatar and builds
+        /// the zombie controller: locomotion + one-shot triggers.
         /// Duplicate clips ("(2)", "(3)") lose to the shortest filename.
         static RuntimeAnimatorController BuildZombieSet(Avatar avatar)
         {
@@ -275,25 +260,10 @@ namespace SpellyZombie
             ctrl.AddParameter("Fidget", AnimatorControllerParameterType.Trigger);
             var sm = ctrl.layers[0].stateMachine;
 
-            // THREE STATES, NOT ONE BLEND ("this whole blend tree
-            // is not well made... we're blending between 3 completely separate
-            // animations that work well independently but together they are
-            // awful"). is right and this was mine.
-            //
-            // Mixamo idle/walk/run are authored apart - different posture,
-            // different limb phase, no shared cadence. A 1D tree crossfades them
-            // PERMANENTLY, not just while switching: a zombie wandering at
-            // 0.55 * WalkSpeed sat at a fixed ~50/50 idle-walk mix for its whole
-            // life, which is half a walk cycle smeared over an idle pose. That
-            // is the mush, and no threshold tuning fixes it because the blend
-            // itself is the defect.
-            //
-            // Discrete states play each clip WHOLE, so each looks exactly as
-            // good as it does on its own. ZombieDress carries HOW FAST in
-            // Animator.speed instead, so the stride matches ground speed rather
-            // than sliding. Thresholds carry hysteresis (enter 0.15, leave 0.10;
-            // enter 3.0, leave 2.6) so a zombie loitering on a boundary cannot
-            // flicker between two states.
+            // discrete states, not a blend tree: each clip plays whole.
+            // ZombieDress matches stride via Animator.speed. Thresholds carry
+            // hysteresis (enter 0.15/leave 0.10, enter 3.0/leave 2.6) so a
+            // zombie on a boundary cannot flicker.
             AnimatorState idleSt = null, walkSt = null, runSt = null;
             if (idle != null) { idleSt = sm.AddState("Idle"); idleSt.motion = idle; }
             if (walk != null) { walkSt = sm.AddState("Walk"); walkSt.motion = walk; }
@@ -311,9 +281,8 @@ namespace SpellyZombie
                 tr.AddCondition(mode, at, "Speed");
             }
 
-            // ORDER MATTERS: Unity takes the first transition whose condition
-            // passes, so the sprint exits are registered before the walk ones or
-            // a runner leaving idle would stop at Walk on its way past.
+            // Unity takes the first transition whose condition passes, so the
+            // sprint exits are registered before the walk ones
             Cross(idleSt, runSt, AnimatorConditionMode.Greater, 3.0f, 0.20f);
             Cross(idleSt, walkSt, AnimatorConditionMode.Greater, 0.15f, 0.18f);
             Cross(walkSt, runSt, AnimatorConditionMode.Greater, 3.0f, 0.20f);
@@ -321,14 +290,7 @@ namespace SpellyZombie
             Cross(runSt, idleSt, AnimatorConditionMode.Less, 0.10f, 0.20f);
             Cross(runSt, walkSt, AnimatorConditionMode.Less, 2.6f, 0.20f);
 
-            // ONE-SHOTS ARE CUT TO AND CUT FROM, NEVER BLENDED (the ruling, and
-            // the same one as the locomotion tree). These clips share nothing
-            // but a skeleton, so a 0.08s crossfade into a standup from a walk
-            // pose was averaging two unrelated poses at exactly the moment the
-            // animation needed to read clearly. And exitTime 0.9 threw away the
-            // last tenth of every clip - the settle at the end of getting up,
-            // the recovery after a swing - smearing it into locomotion instead.
-            // Hard in, whole clip, hard out.
+            // one-shots: hard in, whole clip, hard out - never blended
             AnimatorStateTransition OneShot(string stateName, Motion motion, string trigger)
             {
                 if (motion == null) return null;
@@ -346,10 +308,8 @@ namespace SpellyZombie
                 return enter;         // callers may add conditions of their own
             }
 
-            // FOUR SEPARATE SWINGS, NOT A BLEND. A punch and a headbutt share
-            // nothing but a skeleton, so averaging them on a Variant axis was
-            // the locomotion mistake a second time. ZombieDress rolls Variant to
-            // a whole number, so each swing gets its own state and plays whole.
+            // each swing is its own state; ZombieDress rolls Variant to a whole
+            // number to pick one
             var punch = Clip("punch");
             var kick = Clip("kick");
             var headbutt = Clip("headbutt");
@@ -362,30 +322,20 @@ namespace SpellyZombie
                     swings[i], "Attack");
                 if (enter == null || swings.Count == 1) continue;
                 enter.AddCondition(AnimatorConditionMode.Greater, i - 0.5f, "Variant");
-                // the LAST swing catches every roll above it, so a Variant
-                // rolled across four flavours still lands when only two clips
-                // were found in the folder
+                // the last swing catches every roll above it
                 if (i < swings.Count - 1)
                     enter.AddCondition(AnimatorConditionMode.Less, i + 0.5f, "Variant");
             }
             OneShot("Hit", hit, "Hit");
             OneShot("Scream", scream, "Scream");
-            // getting up plays ALL the way - cutting it at 0.95 and crossfading
-            // out is exactly what was seeing (Aug 10: "the same with getting
-            // out of the ground")
             OneShot("StandUp", Clip("standup"), "StandUp");
             OneShot("Fidget", Clip("fidget"), "Fidget");
             return ctrl;
         }
 
-        /// AXIOM : the Animator window is the ONLY authoring
-        /// surface for animation feel, and rebuilding used to DeleteAsset it
-        /// "clean every run" — so every hand-tuned transition, blend threshold,
-        /// extra layer, avatar mask and StateMachineBehaviour died the next
-        /// time clicked Build (which must do whenever adds a clip).
-        /// Now: if the controller carries the edits it is KEPT untouched;
-        /// otherwise it is backed up before regenerating. Returns null when the
-        /// caller should keep the existing asset as-is.
+        /// If the controller carries hand edits it is kept untouched and this
+        /// returns null (caller keeps the existing asset); otherwise it is
+        /// backed up and a fresh controller is created.
         static AnimatorController OpenForBuild(string path)
         {
             var existing = AssetDatabase.LoadAssetAtPath<AnimatorController>(path);
@@ -403,8 +353,7 @@ namespace SpellyZombie
             return AnimatorController.CreateAnimatorControllerAtPath(path);
         }
 
-        /// Conservative "did a human touch this?" test — any of these means the
-        /// generator never made it, so it must not be thrown away.
+        /// Conservative "did a human touch this?" test.
         static bool HasYourEdits(AnimatorController c)
         {
             if (c.layers.Length > 1) return true;
@@ -418,11 +367,9 @@ namespace SpellyZombie
             return false;
         }
 
-        /// Locomotion: 2D freeform-directional blend on (MoveX, MoveZ) - local
-        /// velocity in m/s - so forward/backward/strafes each play their own
-        /// clip at both walk (4.5) and sprint (7) radii. Crouch is a separate
-        /// state with its own directional blend. IK pass on, so HandIK can
-        /// hold the weapon with the upper body while the legs keep moving.
+        /// Locomotion: 2D freeform-directional blend on (MoveX, MoveZ), local
+        /// velocity in m/s. Crouch is a separate state with its own blend.
+        /// IK pass on so HandIK can hold the weapon.
         static RuntimeAnimatorController BuildController(
             System.Collections.Generic.Dictionary<string, AnimationClip> clips)
         {
@@ -458,13 +405,10 @@ namespace SpellyZombie
                 if (clip != null) t.AddChild(clip, new Vector2(x, z));
             }
 
-            // RINGS MATCH CLIP CONTENT, not controller speeds (the glide fix):
-            // an in-place walk cycle covers ~1.4 m/s of ground, so it belongs
-            // at the SLOW ring; normal MoveSpeed (4.5) must land on the RUN
-            // clip whose natural pace nearly matches it. With walk parked at
-            // 4.5 the legs strolled while the world flew past at 3× -
-            // "gliding". Sprint (7) clamps to the run ring; stride-sync in
-            // CharacterRig speeds the cycle the rest of the way.
+            // rings match clip content, not controller speeds: a walk cycle
+            // covers ~1.4 m/s, so MoveSpeed (4.5) lands on the run clip.
+            // Sprint (7) clamps to the run ring; stride-sync in CharacterRig
+            // speeds the cycle the rest of the way.
             var loco = Directional("Locomotion");
             Child(loco, C("idle"), 0f, 0f);
             Child(loco, C("walk"), 0f, 2f);
@@ -501,8 +445,7 @@ namespace SpellyZombie
                 up.AddCondition(AnimatorConditionMode.IfNot, 0f, "Crouched");
             }
 
-            // ---- airborne : "Jumping" in place at rest,
-            // "JumpRun" the leap once there's real ground speed ----
+            // airborne: "Jumping" in place, "JumpRun" once there's ground speed
             var jumpClip = C("jump");
             var jumpRunClip = C("jumpRun");
             if (jumpClip != null || jumpRunClip != null)
@@ -523,7 +466,7 @@ namespace SpellyZombie
                     };
                     AssetDatabase.AddObjectToAsset(airTree, ctrl);
                     airTree.AddChild(jumpClip, 0f);
-                    airTree.AddChild(jumpRunClip, 3f); // by jog speed the leap owns the air
+                    airTree.AddChild(jumpRunClip, 3f); // jumpRun takes over by jog speed
                     airMotion = airTree;
                 }
                 else airMotion = jumpClip != null ? (Motion)jumpClip : jumpRunClip;
@@ -533,7 +476,7 @@ namespace SpellyZombie
 
                 var launch = stand.AddTransition(air);
                 launch.hasExitTime = false;
-                launch.duration = 0.06f; // leaving the ground is INSTANT news
+                launch.duration = 0.06f; // takeoff reads instantly
                 launch.AddCondition(AnimatorConditionMode.If, 0f, "Airborne");
                 var land = air.AddTransition(stand);
                 land.hasExitTime = false;

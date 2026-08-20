@@ -2,16 +2,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A ZOMBIE THAT CAME OUT OF A SEAL. the rule: zombies are SPELLS, so they
-    /// belong to whoever cast them and they expire.
-    ///
-    /// Kept as its own component rather than fields on Zombie, so the ordinary
-    /// world zombies of the co-op mode are completely unaffected: no owner, no
-    /// clock, nothing new to think about.
-    ///
-    /// The owner matters later and matters a lot: when one of these kills a
-    /// player, the soul binds to the ACOLYTE WHO SUMMONED IT, not to the zombie,
-    /// because a spell belongs to its caster.
+    /// A zombie summoned from a seal: it belongs to its caster and expires.
+    /// Separate component so ordinary world zombies are unaffected.
     public class SummonedZombie : MonoBehaviour
     {
         /// Grimoire owner id of the acolyte who drew the seal.
@@ -24,8 +16,7 @@ namespace SpellyZombie
         public PoisonField Gas => _gas;
         PoisonField _gas;
 
-        /// What the rune-to-seal ratio bought: the size of the cloud its CORPSE
-        /// releases, and the base a detonation multiplies by three.
+        /// Radius of the death cloud, and the base a detonation multiplies.
         public float GasRadius { get; private set; } = 1f;
 
         float _left, _paintRetry;
@@ -37,52 +28,30 @@ namespace SpellyZombie
             SummonedBy = owner;
             Ranged = ranged;
             _left = seconds;
-            // DIAL 2 IS THE DEATH CLOUD, NOT THE LIVING ONE (, after
-            // trying the fog-bank version). A permanent cloud cancelled the
-            // zombie design — they "flee whoever chases them" and "their role is
-            // to be chased", and you cannot chase into gas you must not stand
-            // in. Death-only inverts it into the better trade: chasing is
-            // inviting, KILLING is punished, so the acolyte wants you to succeed.
-            // the frame for it is Deidara - the art is harmless until it goes off.
-            //
-            // Alive, it keeps a TIGHT aura roughly its own body: the Warcraft 3
-            // abomination actually referenced hugged its unit, it was never a
-            // fog bank. Close enough to bite, not wide enough to wall off a street.
+            // gasRadius drives the DEATH cloud only; alive it keeps a body-tight aura
             GasRadius = gasRadius;
             float bodyHeight = transform.localScale.y * 2f;
-            // the LIVING aura stays body-tight whatever size the seal bought;
-            // big radii belong to the death cloud, not to a fog you cannot
-            // draw or see through
             _gas = PoisonField.Open(transform.position + Vector3.up * bodyHeight * 0.35f,
                 Mathf.Min(bodyHeight * DrawingConfig.PoisonAuraBodyMul, 1.1f),
                 seconds + 1f, transform);
             Paint();
         }
 
-        /// Corrupt ink makes corrupt bodies. Melee is a brownish green, ranged a
-        /// light green, so you can tell across a courtyard which one is walking at
-        /// you without any icon.
-        ///
-        /// Through MatterFX.Get, which is exactly how Zombie.Spawn colours a
-        /// zombie in the first place. A property block did NOT work here: these
-        /// bodies use MatterFX's shared materials and the tint never showed, so
-        /// the melee ones stayed brown. MatterFX caches one material per colour,
-        /// so this stays batched for a crowd.
-        ///
-        /// the PREFAB IS NEVER RECOLOURED. If a custom ZombieBody is dressing
-        /// this zombie, the materials stand, per the axiom in ZombieDress.
+        /// Tints the body: melee and ranged get different greens, readable at range.
         void Paint()
         {
             var rends = GetComponentsInChildren<Renderer>(true);
             if (rends.Length == 0) return;      // body not built yet; Update retries
 
             Color c = Ranged ? DrawingConfig.SummonRangedColor : DrawingConfig.SummonMeleeColor;
+            // the ground it was raised on pulls the colour, bounded so the
+            // melee/ranged read survives
+            var stamp = GetComponent<BiomeStamp>();
+            if (stamp != null) c = stamp.Shift(c);
 
-            // the BAKED BODY GETS A PROPERTY BLOCK, not a new material: the
-            // shader and the maps survive, only the colour changes. The graybox
-            // gets a MatterFX material, which is how it was coloured to begin with.
+            // baked body: property block (shader and maps survive); graybox: MatterFX material
             var dress = GetComponent<ZombieDress>();
-            bool his = dress != null && dress.IsCustomBody;
+            bool custom = dress != null && dress.IsCustomBody;
 
             foreach (var r in rends)
             {
@@ -90,7 +59,7 @@ namespace SpellyZombie
                 bool head = r.transform.name == "Head";
                 Color mine = head ? c * 1.15f : c;
 
-                if (his)
+                if (custom)
                 {
                     if (_block == null) _block = new MaterialPropertyBlock();
                     r.GetPropertyBlock(_block);
@@ -115,7 +84,7 @@ namespace SpellyZombie
             _left -= Time.deltaTime;
             if (_left > 0f) return;
 
-            // no corpse, no drops: it was never really alive, it was a spell
+            // expires with no corpse and no drops
             if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, transform.position);
             Destroy(gameObject);
         }

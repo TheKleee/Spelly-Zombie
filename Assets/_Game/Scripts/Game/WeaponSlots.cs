@@ -3,19 +3,13 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// The hands : slot 1 is the wand + grimoire - always there,
-    /// never droppable, and the ONLY slot whose left/right click is the pen.
-    /// Slots 2-3 hold picked-up weapons, each with its own click mechanics.
-    ///
-    /// E       take the weapon you're standing near (max 3 carried)
-    /// F       drop the selected weapon (slot 1 refuses)
-    /// 1/2/3   select a slot - FIRST person only; in third person those
-    ///            same keys play emotes and the weapon selection is untouched
+    /// Weapon slots: slot 1 is the innate wand + grimoire, slots 2-3 hold
+    /// picked-up weapons. Currently inert - weapons are not in the game.
     public class WeaponSlots : MonoBehaviour
     {
         public const int MaxSlots = 3;
         const float PickupRange = 2.6f;
-        const float AimCosine = 0.78f; // ~39° cone - forgiving enough for small items in motion
+        const float AimCosine = 0.78f; // ~39° cone
 
         readonly HeldWeapon[] _held = new HeldWeapon[MaxSlots + 1]; // 1-based; [1] stays null (wand is innate)
         public int Current { get; private set; } = 1;
@@ -29,14 +23,8 @@ namespace SpellyZombie
 
         void Awake() => _pilot = GetComponent<SimpleFPSController>();
 
-        // WEAPONS ARE OUT OF THE GAME ("remove weapons from the
-        // game completely... they do not belong to this game at all right now.
-        // They might belong in some future game modes"). This component stays
-        // only because the baked Player prefab and SimpleFPSController (the
-        // file) reference it - but it DOES NOTHING: no slot keys, no ground
-        // offers, no E pickup, no F drop. Slot 1 (wand + grimoire) is the only
-        // hand there is. The engine below is kept for the possible future
-        // mode, unreachable until a ruling brings it back.
+        // Intentionally inert: weapons are not in the game. Kept because the
+        // baked Player prefab and SimpleFPSController reference this component.
         void Update() { }
 
         void Select(int slot)
@@ -54,20 +42,20 @@ namespace SpellyZombie
                 : $"Weapon slot {slot}");
         }
 
-        /// AIM, NOT PROXIMITY : E takes what you're LOOKING AT within reach - most centred in the cone wins.
+        /// Aim-based pickup: the most centred candidate within reach wins.
         HeldWeapon FindPickup()
         {
             if (_pilot == null) _pilot = GetComponent<SimpleFPSController>();
             if (_pilot == null) return null;
 
             HeldWeapon best = null;
-            float reach = PickupRange * Perks.PickupRangeMul; // Quick Hands stretches
+            float reach = PickupRange;
             float bestAim = 0f;
             foreach (var w in HeldWeapon.All)
             {
                 if (w == null || w.Held) continue;
                 float aim = _pilot.AimScore(w.transform.position, reach, AimCosine, w.transform);
-                if (aim > bestAim) { bestAim = aim; best = w; } // most CENTRED wins
+                if (aim > bestAim) { bestAim = aim; best = w; }
             }
             return best;
         }
@@ -105,8 +93,7 @@ namespace SpellyZombie
 
         void ApplyVisibility()
         {
-            // in third person (and while body-painting) the held weapon would
-            // float in mid-air next to the pulled-back camera - hide it
+            // hidden in third person and while body-painting - it would float beside the camera
             bool showHeld = !SimpleFPSController.ThirdPersonActive && !SelfPaint.IsActive;
             for (int slot = 2; slot <= MaxSlots; slot++)
             {

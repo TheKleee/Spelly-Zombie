@@ -6,10 +6,8 @@ using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// Runtime uGUI factory - the whole interface is BUILT FROM CODE on one
-    /// overlay canvas (zero scene wiring; the scenes stay the). Dressed by
-    /// UISkin (Kenney Adventure); falls back to flat colors if the skin isn't
-    /// built, so nothing ever breaks. Legacy Text now, font swaps via UISkin.
+    /// Runtime uGUI factory: builds the whole interface on one overlay canvas.
+    /// Styled by UISkin, flat-color fallback without it. Legacy Text; font via UISkin.
     public static class UIKit
     {
         public static readonly Color Ink = new Color(0.13f, 0.10f, 0.07f);       // dark ink on parchment
@@ -47,9 +45,7 @@ namespace SpellyZombie
             && EventSystem.current.currentSelectedGameObject != null
             && EventSystem.current.currentSelectedGameObject.GetComponent<InputField>() != null;
 
-        // ---- immersive mode ----
-        // A canvas switch rather than a per-system flag, so nothing new can
-        // leak into a screenshot by forgetting to check it.
+        // ---- immersive mode: a canvas switch, not per-system flags ----
         public static bool Immersive
         {
             get => _immersive;
@@ -64,8 +60,7 @@ namespace SpellyZombie
 
         static bool _immersive = PlayerPrefs.GetInt("sz_immersive", 0) == 1;
 
-        /// Screens the player opened. These outrank immersive, or the option
-        /// that hides the HUD would hide itself.
+        /// Screens the player opened; these outrank immersive.
         static bool ModalOpen =>
             GameMenu.IsOpen || UIKit.Typing || HatPillar.PanelOpen
             || LobbyStand.PanelOpen || PoseStudio.IsOpen || Powerups.IsChoosing
@@ -79,8 +74,7 @@ namespace SpellyZombie
             if (_canvas.enabled != show) _canvas.enabled = show;
         }
 
-        /// THE floating key badge - one style for the aim keys (E/F/I) and
-        /// every other world-anchored key hint, so nothing ever looks new.
+        /// Floating key badge - one style for all world-anchored key hints.
         public static RectTransform KeyBadge(RectTransform parent, string name,
             string letter, out Text letterText, out Image back)
         {
@@ -95,8 +89,7 @@ namespace SpellyZombie
             return ui;
         }
 
-        // world-anchored floats (aim keys, offer badges) survive immersive
-        // mode: they hang over objects, not over the screen
+        // world-anchored floats (aim keys, offer badges) survive immersive mode
         static Canvas _floatCanvas;
         public static RectTransform FloatRoot
         {
@@ -136,11 +129,8 @@ namespace SpellyZombie
         {
             if (_canvas != null) return;
 
-            // the PREFAB IS LAW: assign it on the UISkin asset (UI Prefab
-            // slot) - or bake one to Resources/SZ_UI via the menu tool. The
-            // canvas comes from it UNTOUCHED; factories adopt its children
-            // (rebind clicks, feed live counters) and only build what the
-            // prefab lacks. Nothing of the is ever restyled or reworded.
+            // Prefab source: UISkin's UI Prefab slot, else Resources/SZ_UI.
+            // Factories adopt its children as-is and only build what it lacks.
             var prefab = UISkin.I != null && UISkin.I.UIPrefab != null
                 ? UISkin.I.UIPrefab
                 : Resources.Load<GameObject>("SZ_UI");
@@ -152,12 +142,8 @@ namespace SpellyZombie
                 _canvas = pgo.GetComponent<Canvas>();
                 if (_canvas != null)
                 {
-                    // authors surface groups VISIBLE in the prefab
-                    // (easier to edit) - but each belongs to a manager, and
-                    // a scene without that manager must never show it (the
-                    // main menu was greeting people mid-Lobby). Managed
-                    // groups start ASLEEP; Group() wakes each one the moment
-                    // its owner builds it. Anything unmanaged is left alone.
+                    // Managed groups start disabled; Group() re-enables each
+                    // when its owner builds it. Unmanaged children are untouched.
                     foreach (Transform child in _canvas.transform)
                         if (ManagedSurfaces.Contains(child.name))
                             child.gameObject.SetActive(false);
@@ -182,11 +168,9 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------ prefab adoption --
-        // Factories claim prefab children by NAME, in sibling order, at most
-        // one per frame-scoped pass (so two Labels under one parent map 1:1).
-        // Adopted elements keep every value set in the prefab - Place
-        // and Stretch refuse to touch them; only behavior (text, clicks) and
-        // brand-new elements come from code.
+        // Factories claim prefab children by name, in sibling order, at most
+        // one per frame-scoped pass. Adopted elements keep prefab values;
+        // Place and Stretch skip them.
         static readonly HashSet<int> _adopted = new HashSet<int>();
         static int _claimFrame = -1;
         static readonly HashSet<int> _claimedNow = new HashSet<int>();
@@ -207,10 +191,8 @@ namespace SpellyZombie
             _claimedNow.Add(go.GetInstanceID());
         }
 
-        /// Take a live group out of service NOW. Unity defers Destroy to end
-        /// of frame, so "destroy then rebuild" in one frame used to re-adopt
-        /// the dying corpse and vanish with it (pause-menu Options, powerup
-        /// rerolls). Renamed + claimed = invisible to same-frame Group().
+        /// Destroy is deferred to end of frame; renaming + claiming keeps
+        /// same-frame Group() calls from re-adopting the dying object.
         public static void Retire(RectTransform group)
         {
             if (group == null) return;
@@ -249,9 +231,8 @@ namespace SpellyZombie
         // ------------------------------------------------------- primitives --
 
         /// Empty anchored group - the container each system owns and hides.
-        /// Resolution order: (1) adopt an existing child of that name,
-        /// (2) instantiate the PREFAB of that name from the UISkin
-        /// registry - the whole subtree is the, untouchable, (3) code-build.
+        /// Resolution order: adopt an existing child of that name, else
+        /// instantiate the UISkin surface prefab, else code-build.
         public static RectTransform Group(RectTransform parent, string name)
         {
             var p = parent != null ? parent : Root;
@@ -265,13 +246,13 @@ namespace SpellyZombie
             var surface = UISkin.SurfacePrefab(name);
             if (surface != null)
             {
-                var his = UnityEngine.Object.Instantiate(surface, p, false);
-                his.name = name;
-                MarkNew(his);
-                foreach (var t in his.GetComponentsInChildren<Transform>(true))
-                    _adopted.Add(t.gameObject.GetInstanceID()); // every value inside is the
-                his.SetActive(true);
-                return (RectTransform)his.transform;
+                var inst = UnityEngine.Object.Instantiate(surface, p, false);
+                inst.name = name;
+                MarkNew(inst);
+                foreach (var t in inst.GetComponentsInChildren<Transform>(true))
+                    _adopted.Add(t.gameObject.GetInstanceID());
+                inst.SetActive(true);
+                return (RectTransform)inst.transform;
             }
 
             var go = new GameObject(name, typeof(RectTransform));
@@ -281,8 +262,7 @@ namespace SpellyZombie
             return rt;
         }
 
-        /// Place with a single anchor point (Kenney sprites want fixed sizes).
-        /// Adopted elements keep the prefab values - hands off.
+        /// Place with a single anchor point. Adopted elements keep prefab values.
         public static RectTransform Place(RectTransform rt, Vector2 anchor, Vector2 pos, Vector2 size)
         {
             if (WasAdopted(rt)) return rt;
@@ -324,8 +304,7 @@ namespace SpellyZombie
             if (found != null)
             {
                 var ft = found.GetComponent<Text>();
-                if (ft != null) return ft; // the text stays the - live
-                                           // counters overwrite it themselves
+                if (ft != null) return ft; // adopted text is not overwritten here
             }
             var go = new GameObject("Label", typeof(RectTransform), typeof(Text));
             MarkNew(go);
@@ -338,8 +317,7 @@ namespace SpellyZombie
             t.alignment = anchor;
             t.text = text;
             t.raycastTarget = false;
-            // letters NEVER overflow their element: best-fit shrinks long text
-            // to its rect (size is the ceiling, not a promise)
+            // best-fit shrinks long text to the rect; size is the max font size
             t.horizontalOverflow = HorizontalWrapMode.Wrap;
             t.verticalOverflow = VerticalWrapMode.Truncate;
             t.resizeTextForBestFit = true;
@@ -360,7 +338,7 @@ namespace SpellyZombie
                     fb.onClick.RemoveAllListeners(); // lambdas don't serialize - rebind
                     if (fb.GetComponent<ButtonJuice>() == null) fb.gameObject.AddComponent<ButtonJuice>();
                     if (onClick != null) fb.onClick.AddListener(() => ButtonJuice.Press(fb, onClick));
-                    return fb; // caption included: the words, untouched
+                    return fb; // adopted caption kept
                 }
             }
             var skin = UISkin.I;
@@ -386,7 +364,7 @@ namespace SpellyZombie
         public static RectTransform Keycap(RectTransform parent, string key, float size = 34f)
         {
             var cap = Group(parent, "Key_" + key);
-            if (WasAdopted(cap)) return cap; // the cap, children included
+            if (WasAdopted(cap)) return cap;
             cap.sizeDelta = new Vector2(size * 1.25f, size);
             var img = Panel(cap, UISkin.I != null ? UISkin.I.ButtonGrey : null);
             Stretch((RectTransform)img.transform);
@@ -416,7 +394,7 @@ namespace SpellyZombie
             var group = Group(parent, "Bar");
             if (WasAdopted(group))
             {
-                // the bar: back = first Image child, fill = second
+                // back = first Image child, fill = second
                 var imgs = group.GetComponentsInChildren<Image>(true);
                 return new UIBar { Rt = group, Fill = imgs.Length > 1 ? imgs[1] : (imgs.Length > 0 ? imgs[0] : null) };
             }
@@ -529,8 +507,8 @@ namespace SpellyZombie
     }
 
     /// The one contextual prompt at the bottom of the screen: "[E] do a thing".
-    /// Callers refresh it EVERY FRAME they want it visible (cauldrons, chest,
-    /// doors later) - it hides itself the frame nobody asks for it.
+    /// Callers refresh it every frame they want it visible; it hides itself
+    /// the frame nobody asks for it.
     public class UIPrompt : MonoBehaviour
     {
         static UIPrompt _i;
@@ -547,10 +525,8 @@ namespace SpellyZombie
                 _i = go.AddComponent<UIPrompt>();
                 _i.BuildUI(key);
             }
-            // record only - applied ONCE in LateUpdate. Applying here let two
-            // same-frame callers with different keys destroy-and-rebuild the
-            // keycap against each other until one adopted the other's dying
-            // corpse: a destroyed RectTransform, thrown on every frame after.
+            // record only - applied once in LateUpdate so same-frame callers
+            // don't rebuild the keycap against each other
             _i._wantKey = key;
             _i._wantText = text;
             _i._wantColor = accent ?? UIKit.Gold;
@@ -589,28 +565,21 @@ namespace SpellyZombie
         string _wantKey, _wantText;
         Color _wantColor;
 
-        // THE WEAK TIER IS A ROW OF CHIPS (, the block law: "you
-        // can't put more information than one in one block... max 3 - but
-        // this is the extreme maximum"). Each Offer this frame becomes its
-        // own small pill - one key, one meaning - laid out by a layout
-        // group. Any Show() (a mode's own instruction, an urgent state)
-        // hides the whole row: focus beats navigation.
+        // Weak tier: each Offer this frame becomes one chip, max 3 per frame.
+        // Any Show() hides the whole row.
         struct Chip { public string Key, Text; public Color Tint; }
         readonly List<Chip> _chips = new List<Chip>();
         int _chipFrame = -1;
         RectTransform _chipRow;
         string _chipSig = "";
 
-        /// One chip: a single fact behind a single key. Speaks only when no
-        /// Show() lands this frame; the fourth Offer of a frame is refused -
-        /// three blocks is the extreme maximum, enforced here.
+        /// One chip behind one key. Shown only when no Show() lands this
+        /// frame; at most 3 offers per frame.
         public static void Offer(string key, string text, Color? accent = null)
         {
             if (_i == null) Show(key, text, accent); // first call builds the UI
             if (_i._chipFrame != Time.frameCount) { _i._chips.Clear(); _i._chipFrame = Time.frameCount; }
-            // two voices offering the SAME fact make one chip, never two (
-            // "why does it say tab to first person twice" — a duplicate also
-            // burns a slot of the three and crowds a real fact out)
+            // duplicate key+text offers collapse into one chip
             for (int i = 0; i < _i._chips.Count; i++)
                 if (_i._chips[i].Key == key && _i._chips[i].Text == text) return;
             if (_i._chips.Count >= 3) return;
@@ -628,7 +597,7 @@ namespace SpellyZombie
             {
                 if (_wantKey != _capKey || _cap == null) // == null: self-heal a dead cap
                 {
-                    UIKit.Retire(_cap); // corpse-proof - never re-adopted same frame
+                    UIKit.Retire(_cap); // never re-adopted same frame
                     _cap = UIKit.Keycap(_group, _wantKey, 32f);
                     UIKit.Place(_cap, new Vector2(0f, 0.5f), new Vector2(28f, 0f), _cap.sizeDelta);
                     _capKey = _wantKey;
@@ -646,11 +615,8 @@ namespace SpellyZombie
             for (int i = 0; i < _chips.Count; i++)
                 sig += _chips[i].Key + "|" + _chips[i].Text + "|";
             if (sig == _chipSig) return;
-            // CHURN GUARD : two
-            // callers alternating chip sets frame-to-frame must not thrash
-            // Retire/rebuild/layout every frame - a change lands at most
-            // five times a second, invisible for honest changes, a wall
-            // against fights.
+            // rebuilds rate-limited to 5/s so alternating chip sets don't
+            // thrash Retire/rebuild/layout every frame
             if (Time.unscaledTime < _chipRebuiltAt + 0.2f) return;
             _chipRebuiltAt = Time.unscaledTime;
             _chipSig = sig;
@@ -663,7 +629,7 @@ namespace SpellyZombie
         {
             _chipRow = UIKit.Group(UIKit.Root, "PromptChips");
             UIKit.Place(_chipRow, new Vector2(0.5f, 0f), new Vector2(0f, 118f), new Vector2(10f, 46f));
-            if (UIKit.WasAdopted(_chipRow)) return; // the row: the layout, the law
+            if (UIKit.WasAdopted(_chipRow)) return;
             var lay = _chipRow.gameObject.AddComponent<HorizontalLayoutGroup>();
             lay.spacing = 14f;
             lay.childAlignment = TextAnchor.MiddleCenter;

@@ -6,10 +6,44 @@ namespace SpellyZombie
     /// always a physical consequence (heat, impact, crush) — never a "damage
     /// spell". Destructible dynamic props (crates) are removed on death; static
     /// or marked-indestructible things just log.
+    ///
+    /// HEALTH *IS* STRENGTH - one stat for players, creatures and scenery
+    /// alike. A hurt thing is a weak thing: it lifts less, hits softer and
+    /// holds itself up worse. Everything that carries a Damageable is part of
+    /// that same law, which is why the environment has strength too.
     public class Damageable : MonoBehaviour
     {
         public float Health = 100f;
         public bool Destructible = true;
+
+        [Tooltip("This thing's own strength ceiling. 0 = whatever it was born with.")]
+        public float MaxStrength;
+
+        /// 0..1 of its ceiling. Anything that scales with strength reads this.
+        public float StrengthFraction =>
+            MaxStrength <= 0f ? 1f : Mathf.Clamp01(Health / MaxStrength);
+
+        /// A creature's ceiling comes from its BODY: bigger and heavier means
+        /// stronger. Size counts more than mass (a big light thing is still
+        /// strong), and the biome it was raised in caps the result.
+        /// One definition, used by zombies and golems alike.
+        public static float StrengthFromBody(float sizeMul, float massKg) =>
+            DrawingConfig.BodyStrengthBase
+            * Mathf.Pow(Mathf.Max(0.05f, sizeMul), DrawingConfig.BodyStrengthSizePower)
+            * (1f + Mathf.Max(0f, massKg) * DrawingConfig.BodyStrengthPerKg);
+
+        /// Set the ceiling from the body and fill it. Call once, after the
+        /// thing has its final scale and mass.
+        public void SetStrengthFromBody(float sizeMul, float massKg)
+        {
+            MaxStrength = Mathf.Max(1f, StrengthFromBody(sizeMul, massKg));
+            Health = MaxStrength;
+        }
+
+        /// The multiplier the world uses: never 0, so a nearly-dead thing is
+        /// feeble rather than inert.
+        public float StrengthMul =>
+            Mathf.Lerp(DrawingConfig.StrengthFloorMul, 1f, StrengthFraction);
 
         /// Fired once, just before the object is removed (cause string passed).
         public System.Action<string> OnDeath;
@@ -32,25 +66,19 @@ namespace SpellyZombie
             _body = GetComponent<Rigidbody>();
             Destructible = _body != null;
             _authored = Time.timeSinceLevelLoad < 1f;
+            // born full: whatever health it was given IS its ceiling
+            if (MaxStrength <= 0f) MaxStrength = Mathf.Max(1f, Health);
         }
 
-        // ================================================ IMPACT HURTS ====
-        // GETTING YEETED BREAKS THINGS (thrown objects take damage from
-        // physics). Nothing ever hurt a prop by hitting something - Matter
-        // damaged whatever it LANDED on, but the thrown bench itself was
-        // immortal. A prop with a Rigidbody now takes damage from any hard
-        // enough impact, and the damage scales with how hard it hit.
+        // impact damage: a prop with a Rigidbody takes damage scaled by how hard it hit
         static readonly float ImpactFloor = DrawingConfig.Overlay("ImpactDamageFloor", 4f);
-        // OWN key (dedupe audit Aug 5): "ImpactDamagePerSpeed" is DrawingConfig's
-        // CREATURE knob (default 4, Creature.cs) - one JSON key silently drove
-        // both systems while the code defaults disagreed. Props keep their 2.2.
+        // distinct key on purpose: "ImpactDamagePerSpeed" is the creature knob (Creature.cs)
         static readonly float ImpactScale = DrawingConfig.Overlay("PropImpactDamagePerSpeed", 2.2f);
 
         void OnCollisionEnter(Collision col)
         {
             if (_dead) return;
-            // rooted props gain their body only when torn loose, long after
-            // Awake - so look again rather than trusting the cached null
+            // rooted props gain their body after Awake when torn loose - re-check
             if (_body == null)
             {
                 _body = GetComponent<Rigidbody>();
@@ -68,31 +96,47 @@ namespace SpellyZombie
             string what = col.collider != null ? col.collider.name : "the ground";
             TakeDamage(dmg, $"slammed into {what}");
 
-            // and what it hit takes the same beating - a bench swung into a
-            // crate should wreck the crate too
+            // what it hit takes damage too
             var other = col.collider != null
                 ? col.collider.GetComponentInParent<Damageable>() : null;
             if (other != null && other != this) other.TakeDamage(dmg * 0.7f, $"hit by {name}");
         }
 
-        /// Back from the lobby graveyard: alive again, ready to die again.
-        /// (LobbyRespawn restored Health but the private dead-flag stayed up,
-        /// so every restored prop was secretly IMMORTAL - one break per lobby.)
+        /// Clears the dead flag on lobby respawn; restoring Health alone is not enough.
         public void Revive(float health)
         {
             _dead = false;
             Health = health;
         }
 
+        /// A thing too weak for its own mass buckles - the scenery obeys the
+        /// same weight-against-strength law bodies do. Only free-standing
+        /// objects: static geometry is held up by the world, not by itself.
+        void FixedUpdate()
+        {
+            if (_dead || _body == null || _body.isKinematic) return;
+            if (MaxStrength <= 0f) return;
+
+            float carried = _body.mass * DrawingConfig.PropWeightPerKg;
+            float load = carried / Mathf.Max(0.05f, StrengthMul);
+            if (load < DrawingConfig.PropCrushLoad) return;
+
+            _crushCarry += (load - DrawingConfig.PropCrushLoad)
+                * DrawingConfig.PropCrushPerSec * Time.fixedDeltaTime;
+            if (_crushCarry < 1f) return;
+            float bite = _crushCarry;
+            _crushCarry = 0f;
+            TakeDamage(bite, "buckling under its own weight");
+        }
+
+        float _crushCarry;
+
         public void TakeDamage(float amount, string cause)
         {
             if (amount <= 0f || _dead) return;
-            if (Barrier.Protects(this)) return; // two-way isolation holds for EVERYTHING
+            if (Barrier.Protects(this)) return; // two-way isolation holds for everything
 
-            // A LIMB IS NOT FURNITURE: damage landing on a bone of a living
-            // character forwards to the BEING - a Damageable that sneaks onto
-            // a skeleton bone must never Destroy() it (a burning leg once
-            // vanished from the rig and the skin snapped to the world origin).
+            // damage on a limb bone forwards to the owning being; never Destroy() a skeleton bone
             var pilot = GetComponentInParent<SimpleFPSController>();
             Component owner = pilot != null ? (Component)pilot : GetComponentInParent<Creature>();
             if (owner != null && owner.gameObject != gameObject)
@@ -116,10 +160,7 @@ namespace SpellyZombie
                 Debug.Log($"[SpellyZombie] {name} destroyed by {cause}");
                 OnDeath?.Invoke(cause);
                 if (!Destructible) return;
-                // THE LOBBY LAW, enforced at the source: authored things
-                // disappear and reappear, ALL of them, whatever components
-                // they carry - nothing authored is ever gone for good in the
-                // sandbox. Creatures and runtime spawns still die for real.
+                // in the lobby, authored props respawn; creatures and runtime spawns die for real
                 if (RoundDirector.InLobby && _authored
                     && GetComponent<Creature>() == null
                     && GetComponent<SimpleFPSController>() == null)

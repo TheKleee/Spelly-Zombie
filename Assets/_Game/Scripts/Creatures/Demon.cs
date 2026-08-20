@@ -2,15 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The void rift's summon : a black demon that rampages at
-    /// random - and ABSORBS whatever element touches it, BECOMING that element
-    /// until something else touches it or it expires. Touch fire  flaming
-    /// demon. Touch ice  ice demon. Eat a lava blob  lava demon. It leaks an
-    /// aura of its current element (real SpellParticles, so a flame demon
-    /// ignites the room just by walking through it), which means players can
-    /// RE-SPEC a rampaging demon by shooting elements at it - taming it into a
-    /// weapon, or watching a zombie scrawl turn it into a storm. Size comes
-    /// from the rune that tore the rift open.
+    /// Rift summon: rampages, absorbs whatever element touches it and becomes
+    /// it, leaking an aura of that element as real SpellParticles. Size comes
+    /// from the rune that opened the rift.
     public class Demon : MonoBehaviour
     {
         ParticleKind _aura = ParticleKind.Dark;
@@ -21,10 +15,8 @@ namespace SpellyZombie
         Renderer[] _skin;
         Rigidbody _rb;
 
-        // ---- THE GRAND DEMON (GRAMMAR v4, all-12 lineage): large, UNKILLABLE
-        // (expires only with time), constantly summons random calamities, and
-        // every zombie fears it unconditionally. Correct play: RUN, and hope
-        // it eats the horde on its way out.
+        // grand demon: unkillable (expires only with time), summons random
+        // calamities, feared by every zombie
         bool _grand;
         float _calamityTick, _grandFearTick;
         Damageable _grandDmg;
@@ -35,24 +27,21 @@ namespace SpellyZombie
             if (d == null) return null;
             d._grand = true;
             d._life = 42f;
-            d.transform.localScale = Vector3.one * 2.8f; // LARGE - reads across the map
+            d.transform.localScale = Vector3.one * 2.8f; // reads across the map
             if (d._rb != null) { d._baseMass = 70f * 8f; d._rb.mass = d._baseMass; }
 
-            var lib = FxLibrary.I; // the arrival is an EVENT
+            var lib = FxLibrary.I;
             if (lib != null)
             {
                 FxLibrary.Spawn(lib.DemonBoom, pos);
                 FxLibrary.Spawn(lib.SkullHead, pos + Vector3.up * 3.2f, d.transform, 7f);
             }
 
-            // UNKILLABLE from frame ZERO: it spawns into the epicentre of an
-            // all-12 chain - a meteor landing on it in the one frame before
-            // Update's refresh permanently killed the apocalypse (verified)
+            // unkillable from frame zero: Update's refresh alone is one frame too late
             d._grandDmg = d.GetComponent<Damageable>();
             if (d._grandDmg != null) d._grandDmg.Health = 999999f;
 
-            // and it fears NOTHING - its own calamities were writing Danger
-            // memories that froze it mid-rampage (it scared itself, verified)
+            // fearless, or its own calamities write Danger memories that freeze it
             var brain = d.GetComponent<ZombieBrain>();
             if (brain != null) brain.Fearless = true;
             DrawingWorld.Instance?.LogEvent("ALL TWELVE ANSWERED. RUN.");
@@ -61,8 +50,7 @@ namespace SpellyZombie
             return d;
         }
 
-        /// A random lvl2/lvl3 effect from the whole grammar, somewhere nearby -
-        /// the Demon casts the same magic the players do, just constantly.
+        /// A random grammar effect nearby.
         void Calamity()
         {
             Vector3 at = transform.position
@@ -91,10 +79,7 @@ namespace SpellyZombie
             if (z == null) return null;
             z.name = "Demon";
 
-            // A DEMON TOWERS ("it uses the same body as zombies...
-            // since it's destroying everything that thing should be large") —
-            // the same rig, but never below twice a normal zombie, and a big
-            // drawing raises a proper kaiju.
+            // same rig, never below twice a normal zombie; bigger drawing, bigger demon
             float scale = Mathf.Clamp(1.8f + srcSize * 0.6f, 2.2f, 4f);
             z.transform.localScale = Vector3.one * scale;
 
@@ -108,7 +93,7 @@ namespace SpellyZombie
                 demon._rb.mass = demon._baseMass;
             }
 
-            // horns, so nobody mistakes what came through
+            // horns
             for (int side = -1; side <= 1; side += 2)
             {
                 var horn = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -150,12 +135,10 @@ namespace SpellyZombie
                 case ParticleKind.Spread: Become("AIRY", new Color(0.75f, 1f, 0.85f), ParticleKind.Spread, false); break;
                 case ParticleKind.Push: Become("GALE", new Color(0.95f, 0.95f, 0.7f), ParticleKind.Push, false); break;
                 case ParticleKind.Lightning: Become("STORM", new Color(0.7f, 0.88f, 1f), ParticleKind.Lightning, true); break;
-                // GRAMMAR v4 condensed kinds - eating a FLAME (the most common
-                // manifest) silently did nothing before (verified)
+                // condensed kinds map to base elements
                 case ParticleKind.Flame: Become("FLAME", new Color(1f, 0.45f, 0.08f), ParticleKind.Spark, true); break;
                 case ParticleKind.BlackHole: Become("VOID", new Color(0.03f, 0.01f, 0.06f), ParticleKind.Dark, false); break;
-                // a BarrierMote is just swallowed - isolating a demon from
-                // itself is not a thing
+                // a BarrierMote is swallowed with no form change
             }
         }
 
@@ -172,9 +155,9 @@ namespace SpellyZombie
                 : m.Material == SurfaceMaterialType.Water ? ParticleKind.Frost
                 : m.Material == SurfaceMaterialType.Slime ? ParticleKind.Glue
                 : m.Material == SurfaceMaterialType.Coal ? ParticleKind.Repel // oily
-                : ParticleKind.Dense;                                          // throws its weight around
+                : ParticleKind.Dense;
             Become(m.Material.ToString().ToUpper(), tint, aura, hot);
-            Destroy(m.gameObject); // gone. eaten.
+            Destroy(m.gameObject);
         }
 
         void Become(string form, Color tint, ParticleKind aura, bool glows)
@@ -215,12 +198,11 @@ namespace SpellyZombie
 
             if (_grand)
             {
-                // UNKILLABLE: whatever hurt it this frame, it doesn't care -
-                // only the clock ends a grand demon
+                // refresh health: only the clock ends a grand demon
                 if (_grandDmg == null) _grandDmg = GetComponent<Damageable>();
                 if (_grandDmg != null) _grandDmg.Health = 999999f;
 
-                // unconditional terror - every zombie that exists nearby flees
+                // every zombie nearby flees
                 _grandFearTick -= dt;
                 if (_grandFearTick <= 0f)
                 {
@@ -236,8 +218,7 @@ namespace SpellyZombie
                 }
             }
 
-            // the aura: the demon LEAKS its element as real particles - its
-            // element does whatever that element does, no special cases
+            // the aura: leaks its element as real particles, no special cases
             _auraTick -= dt;
             if (_auraTick <= 0f)
             {

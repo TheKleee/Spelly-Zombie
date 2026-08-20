@@ -2,21 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// the BOOK STAND : multiplayer is not controlled by a
-    /// floating permanent panel - you WALK to the stand design near spawn
-    /// and the menu pops up there, mouse and keyboard both. Create/join a
-    /// lobby, optional password, the HOST picks the map (and, when more than
-    /// one exists, the game mode); everyone else can leave a LIKE on the map
-    /// they want.
-    ///
-    /// ADDS THIS COMPONENT TO the STAND - nothing is auto-found (the
-    /// no-silent-autodetect law: the content, the slot). Several stands are
-    /// fine; near any of them counts.
-    ///
-    /// NetGame owns the panel itself; this component only answers "is the
-    /// local player at a stand?" and frees the cursor while the panel is up.
-    /// The cursor is re-asserted every frame the panel stays open, mirroring
-    /// how the easel modes hold it free against the controller's re-lock.
+    /// The book stand: walk up and the multiplayer menu pops there. Add this
+    /// component to the stand - nothing is auto-found; several stands are fine.
+    /// NetGame owns the panel; this answers proximity and frees the cursor while it is up.
     public class LobbyStand : MonoBehaviour
     {
         [Tooltip("How close the player must stand for the menu to appear, meters.")]
@@ -36,18 +24,14 @@ namespace SpellyZombie
 
         void Start()
         {
-            // the menu must not die to a stray meteor; it still respawns via
-            // LobbyRespawn if something truly determined kills it
+            // raise durability so casual splash can't kill the menu; LobbyRespawn still covers a real kill
             var dmg = GetComponentInParent<Damageable>();
             if (dmg != null && dmg.Health < Toughness) dmg.Health = Toughness;
             BuildOpenBook();
         }
 
-        /// THE OPEN BOOK ON THE STALL (the gate item 4, ordered Aug 13: "I
-        /// just need to put an open book on it") — a simple open grimoire
-        /// resting on top of the stand model, the visual that says "this is
-        /// the menu". the ART WINS: name any child of the stand "Book" and
-        /// this builder steps aside.
+        /// Builds a simple open book on top of the stand. Any child named
+        /// "Book"/"Grimoire" suppresses the builder.
         void BuildOpenBook()
         {
             if (Book != null) return; // the animated grimoire drives instead

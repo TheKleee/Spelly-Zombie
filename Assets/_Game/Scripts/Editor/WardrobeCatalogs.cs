@@ -4,11 +4,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// "Spelly Zombie → Wardrobe → Create Wardrobe Catalogs": makes the three
-    /// SocketWardrobe assets (Player / Zombie / Demon) in _Game/Resources,
-    /// pre-filled with empty slot rows for every socket so only drags
-    /// the Blender prefabs into the lists. Safe to re-run - existing assets
-    /// are left untouched.
+    /// Makes the three SocketWardrobe assets (Player / Zombie / Demon) in
+    /// _Game/Resources, pre-filled with empty slot rows for every socket.
+    /// Safe to re-run; existing assets are left untouched.
     public static class WardrobeCatalogs
     {
         static readonly string[] AllSockets =
@@ -45,12 +43,9 @@ namespace SpellyZombie
             return 1;
         }
 
-        // ---- one-click: selected scene object  prefab  catalog slot -------
-        // Select the model(s) in the scene (or prefabs in the Project),
-        // pick a catalog; the socket is read from the NAME (WizardHat  Hat,
-        // WizardCape  Cape...). Scene objects are saved into
-        // _Game/Prefabs/Costume with their rotation/scale kept and their
-        // stray scene position cleared so they sit ON the socket pivot.
+        // one-click: selection -> prefab -> catalog slot. Socket is inferred
+        // from the name. Scene objects are saved into _Game/Prefabs/Costume
+        // with rotation/scale kept and scene position cleared.
 
         [MenuItem("Spelly Zombie/Wardrobe/Add Selection To PLAYER Catalog")]
         static void AddToPlayer() => AddSelection("SZ_WardrobePlayer");
@@ -153,9 +148,8 @@ namespace SpellyZombie
                     Debug.Log($"[SpellyZombie] '{go.name}' is part of '{outer.name}', saving the whole piece.");
                     go = outer;
                 }
-                // re-run on a piece already in the costume folder: UPDATE the
-                // existing prefab with the scene tweaks instead of minting
-                // 'Name 1.prefab' duplicates forever
+                // a piece already in the costume folder updates its existing
+                // prefab instead of minting 'Name 1.prefab' duplicates
                 string existing = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(go);
                 if (!string.IsNullOrEmpty(existing) &&
                     existing.Replace('\\', '/').StartsWith(CostumeDir + "/"))
@@ -179,10 +173,8 @@ namespace SpellyZombie
             return AssetDatabase.LoadAssetAtPath<GameObject>(path);
         }
 
-        /// The asset root's transform is what Lock() instantiates at the
-        /// socket: rotation and scale are the orientation fixes and come
-        /// from the scene object; position is just where it sat in the level -
-        /// junk once the piece locks on, so it's cleared.
+        /// The asset root's transform is what Lock() instantiates at the socket:
+        /// rotation/scale come from the scene object; position is cleared.
         static void SyncRoot(string path, Transform sceneRoot)
         {
             var contents = PrefabUtility.LoadPrefabContents(path);
@@ -199,9 +191,8 @@ namespace SpellyZombie
             PrefabUtility.UnloadPrefabContents(contents);
         }
 
-        /// Cloth and on-body ink READ VERTICES at runtime - Blender exports
-        /// default to Read/Write OFF and would throw mid-dressing. Flip the
-        /// source model's import setting once, here, automatically.
+        /// Cloth and on-body ink read vertices at runtime; Blender exports
+        /// default to Read/Write off. Flips the source model's import setting.
         static void EnsureReadable(GameObject prefab)
         {
             var meshes = new List<Mesh>();
@@ -223,9 +214,8 @@ namespace SpellyZombie
             }
         }
 
-        /// Cloth pins the TOP 15% of verts by local Y - a cape authored lying
-        /// flat has its whole surface inside that band and turns into a rigid
-        /// board. Catch it at import time instead of in-game.
+        /// Cloth pins the top 15% of verts by local Y; a cape authored lying
+        /// flat has its whole surface in that band and goes rigid. Warns at import.
         static void WarnIfFlat(GameObject prefab)
         {
             var mf = prefab.GetComponentInChildren<MeshFilter>();

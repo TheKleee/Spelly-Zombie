@@ -4,19 +4,15 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// THE GRIMOIRE'S EYE - hold out the book and absorb what you're looking
-    /// at. Lives on the player; scans the small Analyzable registry only when
-    /// the key is available, so it costs nothing per object in the world.
+    /// Absorb: hold the book out and absorb the aimed object. Lives on the
+    /// player; scans the small Analyzable registry only when the key is available.
     public class GrimoireAbsorb : MonoBehaviour
     {
-        public const float Cone = 0.72f;   // a bit wider than the grab cone - you're reading, not grabbing
+        public const float Cone = 0.72f;   // wider than the grab cone
 
-        /// True while the local player is aiming at something LEARNABLE.
-        /// ABSORB IS ON **F** ("Grimoire using G to absorb is wrong
-        /// it's going to use F, the same thing it's using to set the
-        /// handwriting"), and **ABSORB TAKES PRIORITY** when a drawing and a
-        /// learnable object are both under the cursor. G is now purely the
-        /// book's up/down key.
+        /// True while the local player is aiming at something learnable.
+        /// Absorb is on F and takes priority when a drawing and a learnable
+        /// object are both under the cursor.
         public static bool TargetInReach { get; private set; }
 
         /// True while F would DECLARE the aimed drawing (book open on a rune
@@ -26,27 +22,10 @@ namespace SpellyZombie
 
         SimpleFPSController _pilot;
 
-        // ---- DECLARE A DRAWING (the correction: "the book shouldn't
-        // take away the ink"): open the grimoire to a rune's page, aim at a
-        // drawing of yours the game read WRONG, and STATE that it is in fact
-        // this rune. The strokes get DeclaredRune stamped (seals trust it
-        // outright - enclosing it casts exactly what you declared), the ink
-        // STAYS where you drew it, and the drawing joins your handwriting
-        // pool so next time recognition gets it right on its own.
-        /// How far off the aim axis a piece of ink may sit and still count as
-        /// "what is pointing at", as a fraction of its distance — being a
-        /// fraction it means the same POINTING gesture at any range. The old
-        /// test was a fixed 44° cone on the stroke's CENTROID with no distance
-        /// term at all; scoring nodes instead of the centroid was the fix.
-        ///
-        /// 0.28 ≈ 16°, not the 7° it briefly was. A seal is a LOOP, and the
-        /// natural "this is a seal" gesture is to aim at the middle of it —
-        /// where there is no ink. At 7° a 1m seal viewed from 2m put its nearest
-        /// line 0.5m off axis (slope 0.25) and every candidate was rejected, so
-        /// F did nothing: problem (B) again, from the opposite direction.
-        /// Candidates are still RANKED by metres of miss, so near-and-under-the-
-        /// crosshair keeps beating far-and-vaguely-that-way - the cone only says
-        /// what is eligible, not what wins.
+        // Declare flow: book open to a rune page, F stamps DeclaredRune on the
+        // aimed drawing; the ink stays and the strokes teach the handwriting pool.
+        /// Max off-axis miss as a fraction of distance along the aim ray
+        /// (0.28 ≈ 16°). Eligibility only - candidates rank by metres of miss.
         const float PointingCone = 0.28f;
 
         readonly List<Stroke> _inkMembers = new List<Stroke>();
@@ -99,41 +78,26 @@ namespace SpellyZombie
             if (_pilot == null || _pilot.IsDowned)
             { TargetInReach = false; DeclareInReach = false; Highlight(null); return; }
 
-            // ACOLYTES DO NOT ABSORB - BUT THEY DECLARE (
-            // "Acolyte can't use grimoire to override runes like wizard can.
-            // Grimoire should be able to learn the handwriting from Acolytes
-            // as well to make it fair"). Their smaller book corrects misread
-            // ink and teaches their handwriting exactly like the wizard's;
-            // only ABSORBING stays wizard-only, so Best() is never consulted
-            // for them and the scan/absorb F-collision cannot happen there.
+            // acolytes declare but never absorb - Best() is not consulted for them
             bool acolyteHand = Sides.IsAcolyte(Grimoire.LocalPlayerId);
 
-            // FULL HANDS = NO BOOK TALK ("when I'm holding
-            // something the information about grimoire shouldn't be there as
-            // I can't use it anyway"). F belongs to DROP while carrying, so
-            // every declare/absorb prompt and F-catch stands down.
+            // while carrying, F belongs to drop - all declare/absorb prompts stand down
             if (HandGrab.LocalHolding)
             { TargetInReach = false; DeclareInReach = false; Highlight(null); return; }
 
             var kb = Keyboard.current;
-            // THE BOOK WORKS EVERYWHERE YOU CAN SEE INK ("there is
-            // still no way for me to command the grimoire" — tests in
-            // third person): first person aims with the crosshair, third
-            // person with the camera, the body-paint easel with the cursor.
+            // first person aims with the crosshair, third person with the
+            // camera, the easel with the cursor
             if (kb == null)
             { TargetInReach = false; DeclareInReach = false; Highlight(null); return; }
 
-            // ALREADY-ABSORBED THINGS ARE INVISIBLE TO THE BOOK (the rule:
-            // "if you already have absorbed this element you can't do it
-            // again so it's ignored") — Best() skips them, so F falls
-            // straight through to the drawing behind them.
+            // already-absorbed things are skipped by Best(), so F falls
+            // through to the drawing behind them
             var target = acolyteHand ? null : Best();
             TargetInReach = target != null;
             if (target == null)
             {
-                // no absorbable object - the DECLARE flow: with the book OPEN
-                // to a rune's page, F states a misread drawing IS that rune;
-                // on the SEAL page, F traces the drawing's loop and casts it.
+                // no absorbable object: declare flow (rune page stamps, seal page traces)
                 ScanInk();
                 // an OBJECT under the acolyte's aim owns F for scanning - the
                 // declare only speaks when no scan target is on offer
@@ -143,10 +107,8 @@ namespace SpellyZombie
                 DeclareInReach = declRune || declSeal;
                 Highlight(DeclareInReach ? _inkMembers : null);
 
-                // HOVERING AN UNNAMED LINE AT THE EASEL POPS THE BOOK (
-                // "put a mouse over it and the grimoire menu should pop up.
-                // Right now there isn't one") — an EVENT on hover-enter, one
-                // trigger per hovered drawing, never a per-frame nag.
+                // easel: hover-enter over an unnamed line pops the book,
+                // once per hovered drawing
                 var hovered = _inkMembers.Count > 0 ? _inkMembers[0] : null;
                 if (SelfPaint.IsActive && hovered != null && hovered != _poppedFor
                     && !GrimoirePages.BookOpen)
@@ -155,10 +117,6 @@ namespace SpellyZombie
                     GrimoirePages.RequestOpen();
                 }
                 if (hovered == null) _poppedFor = null;
-                // NO "declare as X" TEXT ("a floating F prompt is
-                // enough when the ink highlights - users will understand
-                // instantly"): the highlight names the target, the open book
-                // names the rune, the floating F names the key. Zero words.
                 if (declRune)
                 {
                     ShowDeclareBadge();
@@ -171,19 +129,10 @@ namespace SpellyZombie
                 }
                 else if (_fizzledInSight || Time.time < _fizzleShowUntil)
                 {
-                    // nobody knows this exists by default ("it should
-                    // pop up to show them") — an unreadable drawing teaches
-                    // the flow as ONE chip. The old two-fact Show strobed at
-                    // aim-wobble cadence ("in a split second it just looks
-                    // like debugging noise"); the grace keeps it steady while
-                    // the aim slips off the line and back.
+                    // grace keeps the chip steady while the aim slips off the line and back
                     if (_fizzledInSight) _fizzleShowUntil = Time.time + 0.6f;
                 }
 
-                // NEVER SILENTLY FAIL. With the book open on
-                // a page that F can act on, but nothing under the aim, F used to
-                // do absolutely nothing and say absolutely nothing - which reads
-                // exactly like "the declare is broken".
                 if (!DeclareInReach && kb.fKey.wasPressedThisFrame && GrimoirePages.BookOpen
                     && (GrimoirePages.SealPageOpen || GrimoirePages.PageRune != RuneType.None))
                     DrawingWorld.Instance?.LogEvent(
@@ -208,32 +157,20 @@ namespace SpellyZombie
             }
         }
 
-        /// Find the best-aimed drawing of MY OWN open ink (seed by aim, then
-        /// the whole touching cluster - connected ink is one drawing, same
-        /// law as the seals) and decide what the book offers for it.
-        ///
-        /// THE LAG FIX :
-        /// the old scan fired a physics RAYCAST per stroke and re-ran the
-        /// full recognizer ensemble five times a second forever. Now the aim
-        /// pass is pure cone math with ONE raycast for the winner, the flood
-        /// only tests strokes near the seed, and the recognizer runs ONLY
-        /// when the aimed drawing actually changes.
+        /// Find the best-aimed drawing of the player's own open ink (seed by
+        /// aim, then the touching cluster) and decide what the book offers.
+        /// The recognizer runs only when the aimed drawing changes.
         void ScanInk()
         {
             if (Time.time < _inkScan) return;
             _inkScan = Time.time + 0.25f;
-            // the recognizer SLEEPS while the pen is down ("should not
-            // fire all the time - only after you release the mouse")
+            // recognizer sleeps while the pen is down
             var w0 = DrawingWorld.Instance;
             if (w0 != null)
                 for (int i = 0; i < w0.Strokes.Count; i++)
                     if (w0.Strokes[i].State == StrokeState.Drawing) return;
-                    // THE RUNE SURVIVES THE CACHE ("the grimoire
-            // can't catch the line for handwriting detection"): these resets
-            // used to run BEFORE the steady-aim cache below, which returns
-            // early and skips the recompute - so _inkRune died 0.25s after
-            // aiming and the declare prompt flickered once and vanished.
-            // Cleared now only on aim-lost exits and on a full recompute.
+            // cleared only on aim-lost exits and on a full recompute - the
+            // steady-aim cache below returns early
             _fizzledInSight = false;
             var world = DrawingWorld.Instance;
             if (world == null) { ClearInkRead(); return; }
@@ -244,11 +181,8 @@ namespace SpellyZombie
 
             Stroke seed = null;
             Vector3 seedC = default;
-            // ON THE EASEL (body paint or any free-cursor mode) the pen IS
-            // the pointer ("while drawing on the body you should also
-            // be able to use grimoire - drawing on body is the main quick
-            // weapon"): ink is picked under the CURSOR — no aim cone, no
-            // occlusion ray, you are looking straight at your own body.
+            // easel / free-cursor: ink is picked under the cursor - no aim
+            // cone, no occlusion ray
             bool easel = SelfPaint.IsActive || Cursor.lockState != CursorLockMode.Locked;
             if (easel)
             {
@@ -280,34 +214,8 @@ namespace SpellyZombie
                     : _pilot.transform.position + Vector3.up * 1.4f;
                 Vector3 look = pivot != null ? pivot.forward : _pilot.transform.forward;
 
-                // AIM AT THE INK, NOT AT THE MIDDLE OF NOTHING.
-                //
-                // This used to score each stroke by the cosine between the look
-                // axis and its CENTROID, and a seal is a LOOP - its centroid is
-                // the empty hole in the middle of it. aims at the line, the
-                // game scored the hole; on a 1m circle that puts the scored point
-                // half a metre off the crosshair. Worse, a rune drawn INSIDE the
-                // seal has almost the same centroid, so seal-versus-rune was
-                // being decided by a few centimetres of noise. That is exactly
-                // "it sometimes doesn't select what we're looking at".
-                //
-                // Two more defects went with it: distance wasn't in the score at
-                // all, so a drawing 3m away could out-score the one under the
-                // crosshair just by being far enough that its offset subtended a
-                // smaller angle - the book reaching across the room. And the
-                // cone was 44° wide.
-                //
-                // Now: score the closest NODE to the aim ray, in METRES OF MISS,
-                // through a cone that scales with distance (~7°). Near-and-under-
-                // the-crosshair beats far-and-slightly-more-centred, and seedC
-                // lands ON the ink, which is also the only honest place to start
-                // the occlusion ray from.
-                // THE BOOK MUST REACH AS FAR AS THE PEN. This capped the aim at
-                // 3.2m while DrawRange is 8m, so ink drawn on a far wall - legal
-                // ink, in pen range - could never be declared: _cands came back
-                // empty, ScanInk returned, and F did nothing and said nothing.
-                // That is the (B) with a brand-new cause. The cone does the
-                // discriminating; distance is not what makes an aim wrong.
+                // score the closest node to the aim ray in metres of miss;
+                // reach matches DrawRange so far-wall ink stays declarable
                 float reach = DrawingConfig.DrawRange;
                 float prefilter = (reach + 2f) * (reach + 2f); // centroid can sit past the nearest node
                 _cands.Clear();
@@ -321,10 +229,8 @@ namespace SpellyZombie
                 if (_cands.Count == 0) { ClearInkRead(); return; }
                 _cands.Sort((x, y) => x.miss.CompareTo(y.miss));
 
-                // STICKY AIM: while the previous seed stays nearly as good as
-                // the winner it keeps the seat - without this, sway flapped
-                // the winner between neighbouring body strokes per tick and
-                // each flap could reflood a DIFFERENT drawing
+                // sticky aim: the previous seed keeps the seat while it stays
+                // nearly as good as the winner
                 for (int i = 1; i < _cands.Count; i++)
                     if (_cands[i].s == _lastSeed)
                     {
@@ -337,10 +243,7 @@ namespace SpellyZombie
                         break;
                     }
 
-                // OCCLUSION FALLS THROUGH TO THE RUNNER-UP. It used to abort the
-                // whole scan the moment the winner turned out to be behind
-                // something, so the drawing was actually aiming at never got
-                // a second look — the "F did nothing" flavour of the bug.
+                // occlusion falls through to the runner-up
                 foreach (var (s, p, _) in _cands)
                 {
                     Vector3 toSeed = p - eye;
@@ -359,21 +262,8 @@ namespace SpellyZombie
                 if (seed == null) { ClearInkRead(); return; }
             }
 
-            // STEADY AIM PAYS NOTHING ("the game is lagging a
-            // lot... only when my camera is on the ink... and only when I'm not
-            // drawing" — exactly this method's schedule: it sleeps while the
-            // pen is down and runs 4x/sec otherwise). The flood below is
-            // node-pair touch math over every nearby stroke, tens of thousands
-            // of distance checks against a doodled-on floor, and it reran on
-            // EVERY tick even though the answer could not have changed. Same
-            // seed + same stroke count + every cached member still eligible =
-            // the cluster, the rune and the prompt are all still true; keep them.
-            // SAME DRAWING = SAME ANSWER, whichever of its strokes won the aim
-            // this tick. Dense body ink makes the nearest-node winner flap
-            // between neighbouring strokes every scan, and a seed-only cache
-            // paid the FULL cluster flood on every flap ("when I have
-            // ink over my body and it's on the camera it's lagging a lot").
-            // Membership is the honest identity of the drawing.
+            // steady-aim cache: same seed (or cached member) + same stroke
+            // count + all members still eligible = keep the cluster and verdict
             if ((seed == _lastSeed || _inkMembers.Contains(seed))
                 && world.Strokes.Count == _lastStrokeCount
                 && _inkMembers.Count > 0)
@@ -388,9 +278,7 @@ namespace SpellyZombie
             _lastSeed = seed;
             _lastStrokeCount = world.Strokes.Count;
 
-            // the whole DRAWING: flood among NEARBY strokes only (a drawing
-            // is metres, not the map) - node-pair touch math runs only for
-            // genuine neighbour candidates
+            // flood among nearby strokes only
             _near.Clear();
             foreach (var s in world.Strokes)
             {
@@ -398,10 +286,7 @@ namespace SpellyZombie
                 if ((s.Centroid() - seedC).sqrMagnitude > 16f) continue;
                 _near.Add(s);
             }
-            // THE MAIN RULE, EVERYTHING, NO EXCEPTIONS ("only when
-            // lines are touching is the main rule for everything: seals or
-            // runes" — the arrow/Y gap allowance is DEAD, it merged drawings
-            // from across the floor): one drawing = ink that touches.
+            // one drawing = ink that touches
             float joinGap = DrawingConfig.RuneTouchDistance;
             _inkMembers.Clear();
             _inkMembers.Add(seed);
@@ -423,19 +308,9 @@ namespace SpellyZombie
                 }
             }
 
-            // Classify ONLY when the aimed drawing changed.
-            //
-            // 0 IS THE "NOTHING AIMED" SENTINEL — every early return above writes
-            // _lastHash = 0 - so the identity must never BE 0. It was: the first
-            // stroke of the session has Id 0 (Stroke._nextId starts at 0), so a
-            // one-stroke drawing hashed to exactly 0, the change test never
-            // fired, RuneLibrary.Classify never ran, and _lastReadAs/_lastReadScore
-            // stayed stale. readsFine was then wrong in both directions: the book
-            // offered to "declare" ink that already read correctly, and popped
-            // "unreadable" over a drawing that reads fine.
-            //
-            // Node counts are in the key too, matching RuneGlyph.CacheKey - erase
-            // half the drawing and the verdict must be recomputed, not remembered.
+            // classify only when the aimed drawing changed. 0 is the
+            // nothing-aimed sentinel, so the hash must never be 0; node counts
+            // in the key force a recompute after erasing.
             int hash = 17;
             foreach (var m in _inkMembers)
                 hash ^= unchecked(m.Id * (int)2654435761 + m.Nodes.Count * 31);
@@ -449,11 +324,8 @@ namespace SpellyZombie
             bool readsFine = _lastReadAs != RuneType.None
                 && _lastReadScore >= DrawingConfig.MinRuneScore;
 
-                // THE SEAL PAGE ("a page for seals… seal must always find
-            // a closed path"): any open WORLD drawing of yours can be traced —
-            // the detector still has to FIND the loop when you press F. Body
-            // ink is excluded (the ruling: the flat mirror can't follow
-            // limbs) - body seals close naturally through poses instead.
+            // seal page: world drawings only - the detector must still find
+            // the loop on F. Body ink is excluded; body seals close via poses.
             if (GrimoirePages.BookOpen && GrimoirePages.SealPageOpen)
             {
                 bool onBody = false;
@@ -467,9 +339,8 @@ namespace SpellyZombie
             if (GrimoirePages.BookOpen && page != RuneType.None
                 && RuneLibrary.IsUnlocked(Grimoire.LocalPlayerId, page))
             {
-                // the open page IS the declaration - no guessing, no scoring
-                // . Only
-                // gate: nothing to fix if it already is / already reads so.
+                // the open page is the declaration; skip if already declared
+                // or already reading so
                 bool allDeclared = true;
                 foreach (var m in _inkMembers)
                     if (m.DeclaredRune != page) { allDeclared = false; break; }
@@ -487,9 +358,8 @@ namespace SpellyZombie
             _fizzledInSight = !readsFine && !anyDeclared;
         }
 
-        /// SEAL PAGE + F: run the real closure detectors over the aimed
-        /// drawing - found = the seal forms and CASTS (the normal path);
-        /// not found = the log says why. The book never fakes a loop.
+        /// Seal page + F: run the closure detectors over the aimed drawing;
+        /// found = the seal forms and casts, not found = the log says why.
         void DeclareSeal()
         {
             var world = DrawingWorld.Instance;
@@ -520,10 +390,8 @@ namespace SpellyZombie
             _inkScan = 0f;
         }
 
-        /// "That is in fact this rune": stamp the drawing (seals trust
-        /// DeclaredRune outright - no recognition, no guessing), leave the
-        /// ink exactly where it is, and teach the strokes as handwriting so
-        /// next time it reads right on its own.
+        /// Stamp DeclaredRune on the drawing (seals trust it outright), leave
+        /// the ink in place, and teach the strokes as handwriting.
         void DeclareInk()
         {
             Highlight(null); // drop the aim tint first - RuneColor below is the real answer
@@ -557,10 +425,6 @@ namespace SpellyZombie
         /// down the ray don't count, and neither does anything outside the
         /// pointing cone (`coneSlope` × distance). False = this stroke is not
         /// being pointed at at all.
-        ///
-        /// NODES, not the centroid: the centroid of a seal is the hole is
-        /// looking THROUGH, and the centroid of a long stroke can sit anywhere
-        /// but on the stroke.
         static bool NearestNodeToRay(Stroke s, Vector3 origin, Vector3 dir,
                                      float minAlong, float maxAlong, float coneSlope,
                                      out Vector3 point, out float miss)
@@ -580,14 +444,9 @@ namespace SpellyZombie
             return miss < float.MaxValue;
         }
 
-        /// SHOW HIM WHAT F WILL ACT ON, BEFORE PRESSES IT. the rule is that
-        /// nothing may fail silently - and picking the wrong drawing is a silent
-        /// failure you only discover after the seal fires on the wrong ink. With
-        /// the selection lit up, a wrong pick is visible while it's still free to
-        /// fix, and this whole class of bug reports itself from now on.
-        /// Runs every frame, so it allocates nothing and only repaints on CHANGE:
-        /// ink that stays selected keeps the colour saved when it was first lit,
-        /// never the highlight itself - or the tint would bake in permanently.
+        /// Tints the ink F will act on. Runs every frame: allocates nothing,
+        /// repaints only on change, and restores the colour saved when a stroke
+        /// was first lit (never the highlight) so the tint can't bake in.
         void Highlight(List<Stroke> members)
         {
             _tintKeep.Clear();
@@ -624,10 +483,8 @@ namespace SpellyZombie
 
         static readonly Color DeclareTint = new Color(0.85f, 0.8f, 1f);
 
-        /// The most CENTRED analyzable thing in reach (same aim rule as every
-        /// other interaction — never "whatever happens to be nearest").
-        /// Things whose rune you ALREADY hold are skipped entirely, so they
-        /// never sit between you and a drawing you meant to declare.
+        /// The most centred analyzable thing in reach. Things whose rune is
+        /// already held are skipped entirely.
         Analyzable Best()
         {
             Analyzable best = null;

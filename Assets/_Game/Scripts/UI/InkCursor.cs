@@ -2,13 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The default cursor, in-world: a wizard's QUILL with a gold nib and a
-    /// falling rune-cyan ink drop - the OS arrow doesn't belong in a game
-    /// about drawing. Procedural like PrecisionCursor (no asset files);
-    /// applied once at load and re-applied whenever precision mode hands the
-    /// cursor back. overrides it by dropping a Texture2D at
-    /// Resources/Custom/Cursor (import: Read/Write ON, compression None) -
-    /// the art wins without touching code.
+    /// Procedural quill cursor; applied at load and re-applied whenever
+    /// precision mode hands the cursor back. A Texture2D at
+    /// Resources/Custom/Cursor (Read/Write ON, compression None) overrides it.
     public static class InkCursor
     {
         static Texture2D _tex;
@@ -27,7 +23,7 @@ namespace SpellyZombie
             if (custom != null)
             {
                 _tex = custom;
-                _hotspot = new Vector2(4f, 4f); // the art: tip at top-left
+                _hotspot = new Vector2(4f, 4f); // custom art: tip at top-left
                 return;
             }
 

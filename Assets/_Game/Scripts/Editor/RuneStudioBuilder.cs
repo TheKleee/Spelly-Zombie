@@ -4,15 +4,13 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE RUNE STUDIO : a quiet gallery with 12
-    /// walls, one per rune. Draw samples on a wall, E saves the wall, the
-    /// eraser deletes mistakes, and every scene load repaints what's saved.
-    /// Replaces the F-key recording entirely.
+    /// Rune Studio: a gallery with 12 walls, one per rune. Draw samples on a
+    /// wall, E saves the wall, the eraser deletes mistakes; every scene load
+    /// repaints what's saved.
     public static class RuneStudioBuilder
     {
         const string ScenePath = "Assets/_Game/Scenes/RuneStudio.unity";
 
-        /// "can we remove all but the first drawing on each wall?"
         /// Trims every rune's recorded pool to its first drawing. Works in or
         /// out of play mode; the walls redraw on the next Rune Studio load.
         [MenuItem("Spelly Zombie/Runes - Keep ONLY the first drawing per rune")]
@@ -25,17 +23,15 @@ namespace SpellyZombie
             RuneLibrary.KeepOnlyFirstSample();
         }
 
-        /// The audit is O(samples²) - measured at 26-41 SECONDS on a full
-        /// library - so it no longer runs on scene load. Run it here after
-        /// re-recording, and the result is cached for the game to read.
+        /// The audit is O(samples²), tens of seconds on a full library, so it
+        /// does not run on scene load. Run after re-recording; result is cached.
         [MenuItem("Spelly Zombie/Runes - Re-audit templates (health check)")]
         public static void ReAuditTemplates() => RuneLibrary.ReAudit();
 
         [MenuItem("Spelly Zombie/Build Rune Studio Scene (replaces the open scene)")]
         public static void Build()
         {
-            // AXIOM: NewScene does NOT prompt - this used to silently discard
-            // every unsaved edit in whatever scene was open (Village included).
+            // NewScene does not prompt; ask about unsaved scenes first
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
             string target = ScenePath;
@@ -50,7 +46,7 @@ namespace SpellyZombie
 
             var lit = Shader.Find("Universal Render Pipeline/Lit");
 
-            // calm, even light - this is a study, not a dungeon
+            // calm, even light
             var sunGo = new GameObject("Sun");
             var sun = sunGo.AddComponent<Light>();
             sun.type = LightType.Directional;

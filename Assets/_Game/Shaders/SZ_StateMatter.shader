@@ -1,20 +1,6 @@
-// =============================================================================
-//  SPELLY ZOMBIE — STATE MATTER
-//
-//  ONE shader for the whole ladder (Marko's design): the same material reads
-//  _StateT and becomes solid, liquid or gas.
-//
-//     _StateT = 1.0   SOLID   opaque, dead still
-//     _StateT = 0.5   LIQUID  translucent, BUBBLES rising, a gentle puddle sway
-//     _StateT = 0.1   GAS     faint, BREAKING UP into holes, swirling like a tornado
-//
-//  The game already drives _StateT on anything wearing a StateBlob — drop a
-//  material using this shader on your blob and it just works, no wiring.
-//
-//  ALSO MEANT FOR THE SPELL FIELDS (tornado, whirlpool, black/white hole):
-//  make a material per effect and park _StateT where you want it, then push
-//  Swirl / Holes / Rim to taste. Suggested starting points at the bottom.
-// =============================================================================
+// One material reads _StateT and becomes solid (1.0), liquid (0.5) or gas
+// (0.1). StateBlob drives _StateT at runtime; spell-field materials park
+// _StateT and tune Swirl / Holes / Rim.
 Shader "Spelly Zombie/State Matter"
 {
     Properties
@@ -117,9 +103,7 @@ Shader "Spelly Zombie/State Matter"
                     f.z);
             }
 
-            // SOLID sits still · LIQUID sways · GAS twists. Liquidness peaks at
-            // the liquid mark and fades out into gas, so a cloud isn't ALSO
-            // being sloshed like a puddle.
+            // liquidness peaks at the liquid mark and fades into gas so the two never stack
             void StateWeights(float t, out float liq, out float gas)
             {
                 gas = 1.0 - saturate((t - 0.1) / 0.4);
@@ -144,8 +128,7 @@ Shader "Spelly Zombie/State Matter"
                     pos += nrm * n * (_Wobble * 0.8) * liq;
                 }
 
-                // GAS — twist around the up axis (the tornado) plus a puffing
-                // turbulence, so it churns instead of merely floating
+                // GAS — twist around the up axis plus turbulence
                 if (gas > 0.001)
                 {
                     float ang = _Swirl * gas * (pos.y * 1.5 + t * _SwirlSpeed);
@@ -193,7 +176,7 @@ Shader "Spelly Zombie/State Matter"
                     bubble = smoothstep(0.70, 0.88, b) * _Bubbles * liq;
                 }
 
-                // ---- lighting: simple, stylised, never fights the art ------
+                // ---- lighting: simple, stylised ------
                 Light main = GetMainLight();
                 float  ndl = saturate(dot(N, main.direction)) * 0.55 + 0.45;
                 half3  amb = SampleSH(N);
@@ -203,7 +186,6 @@ Shader "Spelly Zombie/State Matter"
                 float fres = pow(1.0 - saturate(dot(N, V)), 3.0);
                 col += fres * _Rim * (0.25 + 0.75 * gas) * _BaseColor.rgb;
 
-                // bubbles read as brighter, thicker patches
                 col += bubble * 0.7;
 
                 // ---- alpha by state ----------------------------------------
@@ -221,16 +203,3 @@ Shader "Spelly Zombie/State Matter"
 
     Fallback "Universal Render Pipeline/Unlit"
 }
-
-// -----------------------------------------------------------------------------
-//  STARTING POINTS FOR THE SPELL FIELDS (make one material each):
-//
-//   TORNADO      StateT 0.10 · Swirl 4.5 · SwirlSpeed 3.0 · Turbulence 0.5
-//                Holes 0.35 · Rim 1.6 · Cull Off
-//   WHIRLPOOL    StateT 0.45 · Swirl 3.0 · SwirlSpeed -2.0 · Bubbles 0.9
-//                Holes 0.0  · Rim 0.6
-//   BLACK HOLE   StateT 0.10 · Colour near-black · Swirl 5 · Holes 0.8
-//                Rim 2.5 (a dark body with a screaming edge) · Cull Off
-//   WHITE HOLE   same as black but Colour white-hot · GasAlpha 0.45 · Rim 3
-//   STEAM CLOUD  StateT 0.10 · Swirl 0.6 · Turbulence 0.5 · Holes 0.7
-// -----------------------------------------------------------------------------

@@ -3,11 +3,9 @@ using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// The stand's two-tab lobby screen, from the sketch: HOST | JOIN
-    /// tabs. JOIN = filter chips (regions, languages, behaviors) on the left,
-    /// the lobby list on the right. HOST = the same chips selecting YOUR
-    /// lobby's card, settings rows with arrows on the right. Solid chips for
-    /// readability. Embedded by the stand and main menu.
+    /// Two-tab lobby screen. JOIN = filter chips left, lobby list right.
+    /// HOST = the same chips selecting your lobby's card, settings rows right.
+    /// Embedded by the lobby stand and main menu.
     public static class LobbyBrowserUI
     {
         public static bool TabHost;
@@ -34,7 +32,7 @@ namespace SpellyZombie
                 null, 12,
                 !clickable ? new Color(0.5f, 0.5f, 0.55f)
                 : on ? Color.white : new Color(0.85f, 0.85f, 0.88f));
-            b.interactable = clickable; // at a limit the arrow is visibly OFF, not bugged
+            b.interactable = clickable;
             var img = b.GetComponent<Image>();
             if (img != null)
             {
@@ -105,7 +103,6 @@ namespace SpellyZombie
                 bool locked = l.Locked;
                 Chip(parent, left + width - 84f, ry - 6f, 76f, Loc.T("browse.join"), true, () =>
                 {
-                    // password is asked for ONLY when the lobby wants one
                     if (locked) OpenPasswordPrompt(id);
                     else SteamLobby.JoinListed(id, "");
                 });
@@ -195,7 +192,6 @@ namespace SpellyZombie
                 SteamLobby.PendingSize > 2, SteamLobby.PendingSize < SteamLobby.MaxPlayers);
             ry -= 30f;
 
-            // 5..15: matches stay short so nobody sees everything in one night
             ArrowRow(parent, rx, ry, width - 190f, Loc.F("stand.duration", MatchLobby.DurationMin),
                 () => MatchLobby.DurationMin = Mathf.Max(5, MatchLobby.DurationMin - 5),
                 () => MatchLobby.DurationMin = Mathf.Min(15, MatchLobby.DurationMin + 5),
@@ -227,7 +223,6 @@ namespace SpellyZombie
             UIKit.Place((RectTransform)pwLbl.transform, new Vector2(0f, 1f), new Vector2(rx + 118f, ry - 4f), new Vector2(140f, 18f));
             ry -= 38f;
 
-            // the one unmistakable button: this is how you host
             var skin = UISkin.I;
             var create = UIKit.Button(parent, Loc.T("stand.hostpublic"),
                 () => SteamLobby.HostPublic(HostPw),

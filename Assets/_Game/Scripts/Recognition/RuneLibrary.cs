@@ -22,36 +22,31 @@ namespace SpellyZombie
         DensityDown = 12
     }
 
-    /// One collectable card = one of these = BOTH directions of the pair.
-    /// Picking up the Heat card teaches heat-up AND heat-down at once.
+    /// One collectable card = both directions of the pair (the Heat card
+    /// teaches heat-up AND heat-down at once).
     public enum RuneCardType
     {
         Heat, State, Luminance, Sticky, Direction, Density
     }
 
-    /// Holds one TURN-SEQUENCE descriptor per rune (see RuneGraph - the signed
-    /// sequence of corners along the rune's single line, so a rune reads the
-    /// same drawn at ANY angle and at ANY size, but never reads as its mirror).
-    /// Templates may be drawn in any number of strokes, in any order and
-    /// direction - an arrow recorded as shaft + barbs matches an arrow drawn
-    /// barbs-first, because pen lifts are stitched away before anything is
-    /// measured. Ships with rough synthesized glyphs; every drawing on a rune's
-    /// Rune Studio wall replaces them.
+    /// One turn-sequence descriptor per rune (see RuneGraph): a rune reads
+    /// the same at any angle and size but never as its mirror. Pen lifts are
+    /// stitched away before anything is measured, so stroke count and order
+    /// don't matter. Ships with synthesized seed glyphs; drawings on a rune's
+    /// Rune Studio wall replace them.
     public static class RuneLibrary
     {
         class Entry
         {
             public RuneType Type;
-            /// THE SIGNAL. Built once per template here - SetTemplateInternal
-            /// is the single funnel every load, record and learn path goes
-            /// through, so this field IS the descriptor cache; nothing
-            /// re-derives it per match.
+            /// Built once by SetTemplateInternal and cached for the pool's
+            /// life; never re-derived per match.
             public RuneGraph Graph;
 
             List<List<Vector2>> _stitched; // held only until the sentences build
             List<byte[]> _sentences;
 
-            /// The stitched paths this template was built from - Sentences
+            /// The stitched paths this template was built from; Sentences
             /// encode from these on first demand.
             public void SetSource(List<List<Vector2>> stitched)
             {
@@ -59,12 +54,8 @@ namespace SpellyZombie
                 _sentences = null;
             }
 
-            /// COMPOUND SIGILS ONLY (see ClassifyCompound). Built LAZILY on the
-            /// first compound parse: EncodeAll used to run for EVERY template on
-            /// every load/save purely to feed a path that is unreachable while
-            /// CompoundSigilsEnabled stays false - feature preserved, load-time
-            /// cost gone. They get no vote on which rune a single glyph is - see
-            /// the note above Top2Descriptor.
+            /// Compound sigils only (see ClassifyCompound); built lazily on
+            /// first use. No vote on which rune a single glyph is.
             public List<byte[]> Sentences
             {
                 get
@@ -78,25 +69,18 @@ namespace SpellyZombie
                 }
             }
 
-            // MULTI-TEMPLATE : every drawing on a rune's
-            // wall is a variant of the hand - the ensemble scores against all
-            // of them and keeps the best. More samples = recognition converges
-            // on how actually draws, not one lucky snapshot.
+            // every drawing on a rune's wall is a variant; scoring keeps the
+            // best match across all of them
             public readonly List<Entry> Variants = new List<Entry>();
         }
 
-        /// BUMPED WHENEVER THE TEMPLATE POOL CHANGES. The recognition cache in
-        /// RuneGlyph is keyed by stroke ids only, so after a wall save it used
-        /// to hand back the PRE-SAVE verdict for unchanged ink - which in the
-        /// Rune Studio test loop looks exactly like "the matcher ignored my
-        /// drawing". Readers compare this and drop their cache.
+        /// Bumped whenever the template pool changes; readers compare it and
+        /// drop stale recognition caches.
         public static int PoolGeneration { get; private set; }
 
-        /// the LAW: the pen-lift count NEVER matters - only the end shape.
-        /// Strokes whose ENDPOINTS meet are stitched into continuous paths
-        /// before any shape math runs, so an arrow drawn as three separate
-        /// lines measures identically to one drawn in a single sweep (the
-        /// corner between two stitched lines COUNTS as a corner).
+        /// Strokes whose endpoints meet are stitched into continuous paths
+        /// before any shape math runs; the corner between two stitched lines
+        /// counts as a corner, so pen-lift count never matters.
         static List<List<Vector2>> StitchStrokes(IReadOnlyList<IReadOnlyList<Vector2>> strokes)
         {
             var paths = new List<List<Vector2>>();
@@ -104,10 +88,8 @@ namespace SpellyZombie
                 if (s != null && s.Count >= 2) paths.Add(new List<Vector2>(s));
             if (paths.Count == 0) return paths;
 
-            // SIZE MUST NOT MATTER ("the overall length of the runes
-            // shouldn't matter, only their shape"): stitch at 6% of the drawing's
-            // own Extent (point-set diameter, never a world-axis box) - every
-            // fixed-metre or clamped version of this quietly let size decide.
+            // stitch at 6% of the drawing's own Extent (point-set diameter,
+            // never a world-axis box) so size never decides
             float stitchDist = RuneGraph.Extent(paths) * 0.06f;
             bool merged = true;
             while (merged && paths.Count > 1)
@@ -146,23 +128,15 @@ namespace SpellyZombie
             return Denoise(paths, stitchDist);
         }
 
-        /// FORGIVE THE SMALL MISTAKES ("lines popping up even if they
-        /// might be part of the line"). A hand-drawn rune is full of things
-        /// that aren't features: a wobble that reads as a corner, an overshoot
-        /// that reads as a new limb, a slip of the pen that leaves a stub.
-        /// Every one of them invents a fake endpoint and a fake corner, and
-        /// every shape feature downstream then measures the mistake instead of
-        /// the rune. Two passes, both scale-relative so size never matters:
-        ///   1. throw away strokes too short to be a limb
-        ///   2. straighten each path (Douglas-Peucker), collapsing wobble into
-        ///      the line it was always meant to be
+        /// Straighten each path (Douglas-Peucker) with a scale-relative
+        /// epsilon, collapsing hand wobble that would otherwise read as fake
+        /// corners.
         static List<List<Vector2>> Denoise(List<List<Vector2>> paths, float scale)
         {
             if (paths.Count == 0) return paths;
 
-            // NO STROKE IS EVER DELETED (the law: never delete a stroke for
-            // being short - barbs and LIGHT rays ARE short strokes); only wobble
-            // WITHIN a line is noise. One straightening rule: RuneGraph owns RDP.
+            // no stroke is ever deleted for being short (barbs and LIGHT rays
+            // ARE short strokes); only wobble within a line is noise
             float eps = scale * 0.10f;
             var outp = new List<List<Vector2>>(paths.Count);
             foreach (var p in paths)
@@ -172,21 +146,6 @@ namespace SpellyZombie
             }
             return outp;
         }
-
-        // THE SHAPEFEEL SUITE IS GONE (Jul 31, the segment-graph swap).
-        // Fingerprint / MeasureBranchAngle / ConnectedParts / ResampleStroke /
-        // FeelPenalty all lived here: total turn, gap bearing, longest-run
-        // fraction, branch lean, connected-part count. Every one of them was a
-        // hand-rolled approximation of a question RuneGraph now answers
-        // exactly, in the rune's OWN frame:
-        //   longest-run fraction  -> RuneGraph.StemFrac
-        //   branch lean           -> Limb.Angle (SIGNED, so mirrors separate)
-        //   connected parts       -> node degrees + T-junction splitting
-        //   gap bearing           -> measured against the WORLD, which is
-        // exactly what the law forbids. Deleted,
-        //                            not ported.
-        // Keeping them as a second opinion would have meant a world-frame
-        // measurement quietly vetoing a correct rotation-invariant read.
 
         [Serializable]
         class SavedStroke { public List<Vector2> points = new List<Vector2>(); }
@@ -200,10 +159,7 @@ namespace SpellyZombie
             public int rune;
             public List<Vector2> points = new List<Vector2>();      // legacy single-stroke format
             public List<SavedStroke> strokes = new List<SavedStroke>(); // NEWEST sample (multi-stroke)
-            // OLDER samples, oldest first (the multi-sample recording:
-            // F-key APPENDS, never overwrites; capped at MaxSamples total).
-            // Current matchers read only the newest; the multi-template
-            // matcher will read the whole pool.
+            // older samples, oldest first; capped at MaxSamples total
             public List<SavedSample> older = new List<SavedSample>();
         }
 
@@ -212,43 +168,31 @@ namespace SpellyZombie
         {
             public int version;
             public List<SavedTemplate> items = new List<SavedTemplate>();
-            /// Cached result of the last template audit - the rune pairs whose
-            /// drawings read alike. Persisted because RECOMPUTING IT IS THE
-            /// SINGLE SLOWEST THING IN THE GAME: the audit is O(samples²) and
-            /// was MEASURED at 26-41 SECONDS on a 204-sample library, against
-            /// ~200ms for the same scene without it. It ran on every scene load.
+            /// Cached audit result: the rune pairs whose drawings read alike.
+            /// Persisted because the audit is O(samples²) - 26-41s on a
+            /// 204-sample library.
             public List<int> confusable = new List<int>();
-            /// How many samples the cache was built from - if the library grew
-            /// or shrank, the cache is stale and the audit is re-run once.
+            /// Sample count the cache was built from; a mismatch means stale
+            /// and forces one re-audit.
             public int auditedCount = -1;
-            /// WHICH MATCHER produced that cache. Sample count alone was not
-            /// enough: swap the matcher and Init would load the $P-era
-            /// confusable list unchanged and silently exempt the WRONG pairs
-            /// from the ambiguity guard. Absent in old files, so it reads 0 and
-            /// forces exactly one re-audit. Deliberately NOT done by bumping
-            /// GlyphSetVersion - that would delete every one of 's
-            /// recordings.
+            /// Matcher version that produced the cache; a mismatch forces one
+            /// re-audit (absent in old files, so it reads 0).
             public int matcher;
         }
 
         /// Bump when the default glyph alphabet changes - stale recordings from
         /// an older alphabet are discarded instead of shadowing the new shapes.
-        const int GlyphSetVersion = 6; // v6 = the ORIGINAL alphabet restored
+        const int GlyphSetVersion = 6;
 
-        /// Bump when the SCORING changes shape. Only invalidates the audit
-        /// cache; never touches a recording. 1 = the segment-graph matcher,
-        /// 2 = the signed-turn-sequence matcher (Aug 1). The bump matters:
-        /// without it Init would load the OLD matcher's `confusable` list and
-        /// silently exempt the wrong pairs from the ambiguity guard - and the
-        /// old list is empty anyway, because the audit that produced it was
-        /// scoring every sample against itself.
+        /// Bump when the scoring changes shape. Invalidates only the audit
+        /// cache, never a recording. 1 = segment-graph matcher,
+        /// 2 = signed-turn-sequence matcher.
         const int MatcherVersion = 2;
 
         static List<Entry> _entries;
         static string SavePath => Path.Combine(Application.persistentDataPath, "sz_rune_templates.json");
 
-        // ---- unlocks: per-OWNER, in memory only (design: every run starts with
-        // a single chosen card; the rest are collected - see Grimoire) ----
+        // ---- unlocks: per-owner, in memory only (see Grimoire) ----
 
         /// Graybox switch: when true everything is drawable by everyone (all runes
         /// unlocked, no starting-rune picker) - flip on only for combo testing.
@@ -257,32 +201,27 @@ namespace SpellyZombie
         /// Convenience: unlock a card for the LOCAL player (pickups use this).
         public static void UnlockCard(RuneCardType card) => Grimoire.Unlock(Grimoire.LocalPlayerId, card);
 
-        /// The card gate applies only WHERE THE MATCH HAPPENS (the rule:
-        /// "limited just in the game"): during a run, or standing in the
-        /// selected map scene. The lobby, menu and sandboxes are free practice
-        /// grounds - draw everything, learn everything. Public: the starting
-        /// rune chooser and the grimoire display follow the same geography.
+        /// The card gate applies only during a run or in the selected map
+        /// scene; lobby, menu and sandboxes are free practice grounds.
+        /// Public: the rune chooser and grimoire display follow the same rule.
         public static bool RestrictedArena =>
             RoundDirector.RunActive
             || UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == MatchLobby.SelectedMap;
 
-        /// The acolyte kit, the one canonical copy - pages and recognition
-        /// both read this.
+        /// The acolyte kit, the one canonical copy; pages and recognition both
+        /// read this.
         public static readonly RuneType[] AcolyteKit =
         {
             RuneType.StateSolid, RuneType.StateLiquid,
             RuneType.DirectionAway, RuneType.DirectionToward
         };
 
-        /// The SIDE outranks geography: corrupt ink reads ONLY the acolyte
-        /// kit, lobby included - a wizard rune never recognizes for them.
-        /// Wizards keep the free lobby and the earned-rune arena.
+        /// Nothing is free, lobby included: both sides own only what they
+        /// earned. Wizards earn by absorbing, acolytes by deeds.
         public static bool IsUnlocked(int ownerId, RuneType type)
         {
             if (type == RuneType.None) return false;
-            if (Sides.Of(ownerId) == Side.Acolyte)
-                return System.Array.IndexOf(AcolyteKit, type) >= 0;
-            return AllRunesUnlockedForTesting || !RestrictedArena || Grimoire.HasRune(ownerId, type);
+            return AllRunesUnlockedForTesting || Grimoire.HasRune(ownerId, type);
         }
 
         public static RuneCardType CardOf(RuneType type)
@@ -317,11 +256,10 @@ namespace SpellyZombie
             }
         }
 
-        /// COMPOUND SIGILS : one continuous
-        /// scribble can BE several runes - its direction sentence is parsed
-        /// like a word: consecutive chunks that each read as a rune all fire.
-        /// Draw flame+arrow+bracket as one gibberish sigil  Heat, Direction
-        /// and Solid all cast. Returns the parts (≥2) or an empty list.
+        /// Compound sigils: one continuous scribble can be several runes - its
+        /// direction sentence is parsed like a word, and consecutive chunks
+        /// that each read as a rune all fire. Returns the parts (≥2) or an
+        /// empty list.
         public static List<(RuneType type, float score)> ClassifyCompound(int ownerId,
             IReadOnlyList<IReadOnlyList<Vector2>> rawStrokes)
         {
@@ -335,9 +273,8 @@ namespace SpellyZombie
             foreach (var reading in readings)
             {
                 int n = reading.Length;
-                // a WORD is LONG - two-plus runes of pen. Short scribbles are
-                // one glyph's business (a small rectangle once read as PULL×3
-                // through this path; never again)
+                // compound words are 9-24 letters; shorter scribbles are one
+                // glyph's business
                 if (n < 9 || n > 24) continue;
 
                 // dp[i]: best way to explain the first i letters
@@ -371,7 +308,7 @@ namespace SpellyZombie
                             foreach (var v in e.Variants)
                                 if (v.Sentences != null)
                                     sc = Mathf.Max(sc, ChainCodeRecognizer.ScoreSpan(reading, j, len, v.Sentences));
-                            if (sc < 0.7f) continue; // letters must be CLEAN - spans have no fingerprint guard
+                            if (sc < 0.7f) continue; // spans have no fingerprint guard
                             float total = dpScore[j] + sc * len;
                             if (total > dpScore[i])
                             {
@@ -404,12 +341,10 @@ namespace SpellyZombie
             return DefaultGlyphs().TryGetValue(type, out var pts) ? pts : null;
         }
 
-        /// A recording thinner than this can't describe a shape - it misreads
-        /// everything angular as itself (the 7-point GRIP flick ate an arrow).
-        /// Sparse recordings are treated as NOT RECORDED for MATCHING: they
-        /// never become a template, and the seed shape recognizes instead until
-        /// one is drawn properly. They are NOT deleted - the ink stays on the
-        /// wall and in the file (see ReplaceSamples).
+        /// Below this a recording can't describe a shape and misreads angular
+        /// drawings, so it never becomes a template (the seed shape recognizes
+        /// instead). It is NOT deleted - the ink stays on the wall and in the
+        /// file (see ReplaceSamples).
         const int MinTemplatePoints = 12;
 
         static int PointCount(List<List<Vector2>> strokes)
@@ -419,21 +354,17 @@ namespace SpellyZombie
             return n;
         }
 
-        /// The player's RECORDED strokes for a rune (raw, as drawn with F1-F12)
-        /// - null when nothing usable was recorded. Displays (menu rune ring,
-        /// zombie scrawl) prefer these: the alphabet shown is the one YOU
-        /// taught it. Sparse recordings don't count (see MinTemplatePoints).
+        /// The player's recorded strokes for a rune, raw as drawn - null when
+        /// nothing usable was recorded. Displays prefer these. Sparse
+        /// recordings don't count (see MinTemplatePoints).
         public static List<List<Vector2>> RecordedStrokes(RuneType type)
         {
             Init();
             if (_saved == null || _saved.items == null) return null;
             var item = _saved.items.Find(i => i.rune == (int)type);
             if (item == null) return null;
-            // NEWEST USABLE, not "newest, or nothing". Sparse drawings now stay
-            // on the wall instead of being deleted (see ReplaceSamples), so the
-            // newest one can be a small scribble - that must not make the whole
-            // rune report as un-recorded and hand the displays a seed shape when
-            // the handwriting is sitting right there.
+            // newest USABLE sample: the newest can be sparse, so walk the
+            // older ones too
             var strokes = ToStrokeLists(item);
             if (strokes.Count > 0 && PointCount(strokes) >= MinTemplatePoints) return strokes;
             if (item.older != null)
@@ -445,20 +376,15 @@ namespace SpellyZombie
             return null;
         }
 
-        // ScoreAll (the choose-and-stamp candidate list) is DELETED. It had
-        // zero callers and duplicated Top2's scoring loop verbatim - a second
-        // copy of the matcher wiring that nothing exercised and that would
-        // silently rot. Top2 is the one scoring loop.
-
-        /// Player-facing name = EMOJI .
-        /// ShortName's English words stay for dev console logs only.
+        /// Player-facing name is the emoji; ShortName's English words are for
+        /// dev console logs only.
         public static string Icon(RuneType r)
         {
             switch (r)
             {
                 case RuneType.HeatUp: return "🔥";
-                // BARE 2744, no U+FE0F variation selector - the selector has no
-                // glyph, so TMP drew a missing-box beside the snowflake
+                // bare U+2744, no U+FE0F variation selector - TMP has no glyph
+                // for the selector and draws a missing-box beside it
                 case RuneType.HeatDown: return "❄";
                 case RuneType.StateSolid: return "🗿";
                 case RuneType.StateLiquid: return "💦";
@@ -474,19 +400,10 @@ namespace SpellyZombie
             }
         }
 
-        /// THE SAME GLYPH MEANS SOMETHING ELSE IN A CORRUPT HAND.
-        /// "When acolyte is drawing the runes should not be recognized the same
-        /// way as they are for the wizard. They should only recognize zombie icon
-        /// instead of solid and poison instead of liquid."
-        ///
-        /// The recogniser is untouched: it still reads the shape as StateSolid.
-        /// Only what the acolyte's book CALLS it changes, which is the same
-        /// corrupt-ink-reinterprets rule that makes an arrow command the dead
-        /// instead of shoving a crate.
-        ///
-        /// EmojiGrid rebuilds itself from Assets/_Game/Fonts/sz-emoji (see
-        /// EmojiGridBuilder) - zombie and skull are in the atlas, and any new
-        /// icon is one Noto png dropped in that folder. Art is the call.
+        /// Acolytes see zombie/skull for Solid/Liquid. The recognizer is
+        /// untouched - it still reads the shape as StateSolid/StateLiquid;
+        /// only what the acolyte's book calls it changes. New icons = one Noto
+        /// png in Assets/_Game/Fonts/sz-emoji (see EmojiGridBuilder).
         public static string IconFor(RuneType r, int owner)
         {
             if (!Sides.IsAcolyte(owner)) return Icon(r);
@@ -512,19 +429,11 @@ namespace SpellyZombie
             }
         }
 
-        /// INLINE form: the icon sitting INSIDE a line of text.
-        ///
-        /// Alignment is the SPRITE ASSET'S job, not this string's. EmojiGrid
-        /// shipped with HorizontalBearingX -256 (half a glyph to the LEFT, so
-        /// every icon collided with the word before it) and BearingY 256 (only
-        /// half the glyph above the baseline, so half of every emoji hung
-        /// BELOW it). Fixed in the asset to 0 and 462.3, matching Unity's own
-        /// EmojiOne ratio of 0.90 x height. With correct metrics this returns
-        /// the bare icon and adds NOTHING to the string.
-        ///
-        /// The knobs stay only as a trim: leave them at 0 / 100 and no tags are
-        /// emitted at all. Set them in sz_tuning.json if a font's line spacing
-        /// ever needs a nudge.
+        /// Inline form: the icon inside a line of text. Alignment is the
+        /// sprite asset's job, not this string's - with correct metrics this
+        /// returns the bare icon. The knobs are only a trim: at 0 / 100 no
+        /// tags are emitted; set them in sz_tuning.json if a font ever needs
+        /// a nudge.
         public static string IconInline(RuneType r)
         {
             string icon = Icon(r);
@@ -567,10 +476,8 @@ namespace SpellyZombie
         /// were never saved - so we know a rebuild is needed when it ends.
         static bool _roundLearned;
 
-        /// FORGET THIS ROUND'S HANDWRITING. Called when a round ends: the
-        /// matcher is rebuilt from the saved file, dropping everything the
-        /// game picked up while playing. Next round starts from your recorded
-        /// drawings again, exactly as it did this one.
+        /// Round end: rebuild the matcher from the saved file, dropping
+        /// everything learned during play.
         public static void ForgetRoundLearning()
         {
             if (!_roundLearned) return;
@@ -579,9 +486,8 @@ namespace SpellyZombie
             Init();
         }
 
-        /// KEEP ONLY THE FIRST DRAWING of every rune ("remove all but
-        /// the first drawing on each wall"). Trims the recorded pools down to
-        /// one sample each and writes the file.
+        /// Trim every rune's recorded pool down to its first (oldest) drawing
+        /// and write the file.
         public static void KeepOnlyFirstSample()
         {
             Init();
@@ -589,8 +495,8 @@ namespace SpellyZombie
             int trimmed = 0;
             foreach (var item in _saved.items)
             {
-                // the OLDEST recording is the first one you made; `strokes`
-                // holds the newest, `older` the ones before it in order
+                // `strokes` holds the newest sample, `older` the earlier ones
+                // in order, so older[0] is the first recording
                 if (item.older != null && item.older.Count > 0)
                 {
                     var first = item.older[0];
@@ -599,7 +505,7 @@ namespace SpellyZombie
                     item.older = new List<SavedSample>();
                     trimmed++;
                 }
-                item.points = new List<Vector2>(); // legacy field stays retired
+                item.points = new List<Vector2>(); // legacy field, kept empty
             }
             try { File.WriteAllText(SavePath, JsonUtility.ToJson(_saved)); }
             catch (Exception e) { Debug.LogWarning($"[RuneLibrary] Failed to save: {e.Message}"); }
@@ -616,16 +522,14 @@ namespace SpellyZombie
                 SetTemplateInternal(pair.Key, new List<List<Vector2>> { pair.Value });
             LoadRecorded();
 
-            // THE AUDIT NO LONGER RUNS ON EVERY LOAD. It is O(samples²) and was
-            // measured at 26-41 SECONDS with a full library - the entire scene
-            // load time. Its only output is the `confusable` pair set, so that
-            // is cached in the save file and only recomputed when the library
-            // actually changes. Re-run it any time from
-            // Spelly Zombie  Runes - Re-audit templates.
+            // the audit is O(samples²) (26-41s on a full library), so its
+            // confusable set is cached in the save file and recomputed only
+            // when the library changes; re-run any time via Spelly Zombie >
+            // Runes - Re-audit templates
             int have = CountSamples();
             if (_saved != null && _saved.confusable != null
                 && _saved.auditedCount == have
-                && _saved.matcher == MatcherVersion) // a $P-era cache exempts the WRONG pairs
+                && _saved.matcher == MatcherVersion) // a stale matcher's cache exempts the wrong pairs
                 _confusable = new HashSet<int>(_saved.confusable);
             else
                 AuditTemplates(); // library or matcher changed (or first run) - pay it once
@@ -659,8 +563,7 @@ namespace SpellyZombie
             catch (Exception e) { Debug.LogWarning($"[RuneLibrary] audit cache not saved: {e.Message}"); }
         }
 
-        /// Run the health check by hand (editor menu). Everything it prints -
-        /// "PULL reads as PUSH", "X and Y score within 0.12" — comes from here.
+        /// Run the template audit by hand (editor menu).
         public static void ReAudit()
         {
             Init();
@@ -668,20 +571,16 @@ namespace SpellyZombie
             Debug.Log("[RuneLibrary] Template audit finished; result cached.");
         }
 
-        /// Pay the whole recognition bill at SCENE LOAD, never on the first
-        /// rune .
-        /// Loads every recorded sample, audits the pools, then pushes one
-        /// throwaway glyph through the full scoring path - ownerId null scores
-        /// the ENTIRE library - so code and buffers are hot before anyone draws.
+        /// Pay the whole recognition bill at scene load: load every recorded
+        /// sample, audit the pools, then push throwaway glyphs through the
+        /// full scoring path (ownerId null scores the entire library) so code
+        /// and buffers are hot before anyone draws.
         public static void Warm()
         {
             Init();
-            // TWO pokes, because there are two code paths. A zigzag exercises
-            // the turn-sentence path (the ten single-line runes); a Y exercises
-            // the stem-and-limb path (PUSH and PULL). The family gate in
-            // RuneGraph.Compare returns early across families, so a zigzag alone
-            // would leave the whole branched matcher cold and hand the first
-            // arrow of the session the hitch this method exists to prevent.
+            // two pokes, two code paths: a zigzag warms the turn-sentence
+            // path, a Y warms the stem-and-limb path (the family gate returns
+            // early across families, so one alone leaves the other cold)
             var zigzag = new List<IReadOnlyList<Vector2>>
             {
                 new List<Vector2>
@@ -700,32 +599,17 @@ namespace SpellyZombie
             Top2(null, fork);
         }
 
-        /// Classify a glyph (one or more raw 2D strokes in a shared frame)
-        /// against the runes the given OWNER has unlocked - the seal's owner is
-        /// whoever completed it, so zombie-closed seals read with zombie cards.
-        ///
-        /// THE TURN-SEQUENCE MATCHER (the Aug 1 correction: "all of my
-        /// runes are 1 long line except for push and pull… there's no
-        /// difference with light and dark"). A rune IS its sequence of signed
-        /// corners, so it reads the same drawn at any angle and any size, and
-        /// its mirror reads as the opposite rune. "All shapes are distinct - I
-        /// made them that way exactly because they can be flipped", so any
-        /// cross-fire between two of them is a bug in RuneGraph, never a reason
-        /// to re-record a glyph. The chamfer matcher stays in the project
-        /// (InkChamfer), benched.
-        /// AMBIGUITY GUARD kept: two different runes scoring within
-        /// RuneAmbiguityMargin = coin flip  fizzle, never misfire.
-        /// Every call logs what it received and concluded, and dumps the raw
-        /// input for offline replay - the silent-fizzle hunt stays armed.
+        /// Classify a glyph (raw 2D strokes in a shared frame) against the
+        /// runes the OWNER has unlocked - the seal's owner is whoever
+        /// completed it. A rune reads at any angle and size; its mirror reads
+        /// as the opposite rune. Ambiguity guard: two runes scoring within
+        /// RuneAmbiguityMargin fizzle, never misfire.
         public static (RuneType type, float score) Classify(int ownerId, IReadOnlyList<IReadOnlyList<Vector2>> rawStrokes)
         {
             Init();
             var (t1, s1, t2, s2) = Top2(ownerId, rawStrokes);
-            // A STRONG top is trusted outright (the Jul 22 bug: the big
-            // wall pools raised every rune's runner-up score, so honest CHILL
-            // and COMPRESS draws sat 0.03 above some unrelated rune and the
-            // guard ate them). The coin-flip fizzle now referees only WEAK
-            // tops, where a near-tie genuinely is a scribble.
+            // a top at or above RuneTrustScore is trusted outright; the
+            // coin-flip fizzle referees only weak tops
             bool ambiguous = t1 != RuneType.None && t2 != RuneType.None && t2 != t1
                 && s1 < DrawingConfig.RuneTrustScore
                 && s1 - s2 < DrawingConfig.RuneAmbiguityMargin
@@ -736,10 +620,8 @@ namespace SpellyZombie
             float score = t1 == RuneType.None ? 0f : s1;
             bool hit = rune != RuneType.None && score >= DrawingConfig.MinRuneScore;
 
-            // DIAGNOSTICS ARE OFF BY DEFAULT. These two lines ran on EVERY
-            // classify: a stack-traced Editor log plus a CSV append that had
-            // grown to 14MB and is never truncated. Flip LogClassifies when
-            // you're actually debugging recognition.
+            // costs a stack-traced Editor log plus a CSV append per classify;
+            // flip LogClassifies only while debugging recognition
             if (LogClassifies)
             {
                 int nStrokes = 0, nPts = 0;
@@ -755,43 +637,29 @@ namespace SpellyZombie
             return (rune, score);
         }
 
-        /// TURN-SEQUENCE scoring. The drawing becomes ONE descriptor - the
-        /// signed corners along its line, or (for an arrow or a Y) a stem plus
-        /// limbs - and every unlocked rune's whole sample pool is scored
-        /// against it. Returns the two best DIFFERENT runes.
+        /// The drawing becomes one descriptor (signed corners, or stem plus
+        /// limbs for arrow/Y) and every unlocked rune's whole sample pool is
+        /// scored against it. Returns the two best DIFFERENT runes.
         static (RuneType t1, float s1, RuneType t2, float s2) Top2(int? ownerId,
             IReadOnlyList<IReadOnlyList<Vector2>> rawStrokes)
         {
-            // Pen lifts never matter: stitch to the END SHAPE first, then
-            // measure. EVERYTHING reads the same stitched paths - an older path
-            // handed RAW strokes to one matcher and stitched ones to the rest,
-            // so the two halves of the ensemble were literally looking at
-            // different drawings.
+            // stitch to the end shape first, then measure; every matcher reads
+            // the same stitched paths
             var stitched = StitchStrokes(rawStrokes);
             var graph = RuneGraph.Build(stitched);
             if (graph == null) return (RuneType.None, 0f, RuneType.None, 0f);
 
-            // A BARE LINE IS NOT A RUNE ("a straight line should be
-            // detected as NOTHING automatically"). Every rune in the alphabet
-            // is one line WITH CORNERS - that is what the pairs differ by. A
-            // drawing that is one straight run has no turn sequence at all, and
-            // letting it match the nearest template is how every stray line
-            // became a PUSH. The graph owns this rule: no corners, no rune. It
-            // is the definition now, not a heuristic on turn totals.
+            // no corners, no rune: a bare line matches nothing (the graph
+            // owns this rule)
             if (graph.BareLine) return (RuneType.None, 0f, RuneType.None, 0f);
 
             return Top2Descriptor(ownerId, graph, null);
         }
 
-        /// The one scoring loop, over an ALREADY-BUILT descriptor.
-        ///
-        /// `skip` is how a template is kept from scoring against ITSELF - see
-        /// AuditTemplates, which could not see a single one of its own bugs
-        /// until this existed.
-        ///
-        /// EVERY rune is scored, never just the argmax: the unlock gate and the
-        /// ambiguity guard both need the runner-up. ownerId gates by unlocks;
-        /// pass null to score the full library.
+        /// The one scoring loop, over an already-built descriptor. `skip`
+        /// keeps a template from scoring against itself (leave-one-out
+        /// audits). Every rune is scored because the ambiguity guard needs the
+        /// runner-up; ownerId gates by unlocks, null scores the full library.
         static (RuneType t1, float s1, RuneType t2, float s2) Top2Descriptor(int? ownerId,
             RuneGraph graph, Entry skip)
         {
@@ -822,28 +690,10 @@ namespace SpellyZombie
             return (bestType, bestScore, secondType, secondScore);
         }
 
-        // THE CHAIN CODE NO LONGER TOUCHES A RUNE VERDICT (Aug 1). It used to
-        // be wired in here as `graph * Lerp(0.88, 1.06, chain)` - the graph held
-        // an absolute veto and the direction sentence was worth ±9%. That
-        // weighting was measured and it was the worst of both worlds:
-        // - it could not rescue anything. Scored ALONE on the recordings
-        //     the chain code gets 22/24 and reads LIGHT and DARK correctly, but
-        //     ±9% cannot lift the graph's broken 0.18 for LIGHT anywhere near
-        //     the 0.42 floor. The good signal was outvoted by the broken one.
-        //   - now that the primary descriptor works, the same ±9% is purely
-        //     destructive: correct reads and their runner-ups are separated by
-        //     as little as 0.14 (SOLID vs LIQUID), so a ±9% swing driven by a
-        //     45°-bucketed, length-blind sentence read in a frame GUESSED off
-        //     the drawing can flip the ranking on its own.
-        // ChainCodeRecognizer stays in the project and stays in use - it is what
-        // parses COMPOUND SIGILS (see ClassifyCompound), a job the single-glyph
-        // descriptor does not do. It just does not get a vote on which rune a
-        // single glyph is.
+        // ---- template health ----
 
-        // ---- template health: is the alphabet YOURS, and is it unambiguous? --
-
-        /// Per-classify logging + CSV dump. OFF by default - it cost a
-        /// stack-traced Editor log and a file append on every recognition.
+        /// Per-classify logging + CSV dump; off by default (costs a log and a
+        /// file append on every recognition).
         public static bool LogClassifies = false;
 
         static HashSet<int> _confusable; // rune pairs whose templates read alike
@@ -853,11 +703,9 @@ namespace SpellyZombie
             return x < y ? (x << 8) | y : (y << 8) | x;
         }
 
-        /// Runs at load and after every re-recording. Answers two questions in
-        /// the Console: (1) which runes still use DEFAULT shapes instead of
-        /// your handwriting, (2) do any two templates read so alike that a
-        /// cross-fire is possible? Alike pairs are remembered so the ambiguity
-        /// guard doesn't render them uncastable - re-recording is the real fix.
+        /// Console health check: which runes still use default shapes, and
+        /// which two templates read alike. Alike pairs are remembered so the
+        /// ambiguity guard doesn't render them uncastable.
         static void AuditTemplates()
         {
             _confusable = new HashSet<int>();
@@ -869,9 +717,8 @@ namespace SpellyZombie
                 if (rec == null) { seedRunes.Add(ShortName(r)); continue; }
                 int pts = 0;
                 foreach (var s in rec) pts += s.Count;
-                // a 7-point flick barely describes a shape - sparse templates
-                // score weakly against their OWN drawings, so a richer rune's
-                // template can outbid them (how GRIP once read as SOLID)
+                // sparse templates score weakly even against their own
+                // drawings, so a richer rune's template can outbid them
                 if (pts < 12)
                     Debug.LogWarning($"[RuneLibrary] AUDIT: the {ShortName(r)} template is only {pts} points. Sparse recordings misread easily; re-record it drawing larger and slower.");
             }
@@ -880,24 +727,9 @@ namespace SpellyZombie
             else
                 Debug.Log("[RuneLibrary] AUDIT: all 12 runes use YOUR recorded handwriting.");
 
-            // LEAVE-ONE-OUT, AND THAT IS THE WHOLE POINT.
-            //
-            // THE AUDIT USED TO BE BLIND BY CONSTRUCTION. It re-derived each
-            // rune's drawing from the saved strokes and scored it with
-            // Top2(null, sample) - against a pool that CONTAINED THAT EXACT
-            // DRAWING. Self-match is 1.00 by definition, so the audit could
-            // never report anything: the saved file proves it, `"confusable":
-            // []` with `auditedCount: 24`, while a freshly drawn LIGHT was
-            // fizzling at 0.18 against its own wall. That is also why the Rune
-            // Studio test loop kept saying a rune worked when it did not - the
-            // studio was scoring the ink against a pool containing that ink.
-            //
-            // A sample is now scored against every template EXCEPT ITSELF, so
-            // "does my handwriting read as itself" is a real question with a
-            // real answer. It also means a rune with only ONE drawing on its
-            // wall cannot be cross-checked at all - there is nothing else of
-            // the to recognise it by - and saying so out loud is more useful
-            // than a fake 1.00.
+            // leave-one-out: each sample scores against every template except
+            // itself (self-match is 1.00 by definition and reports nothing).
+            // A rune with only one drawing cannot be cross-checked at all.
             var entangled = new List<string>();
             var lonely = new List<string>();
             var crossReads = new List<string>(); // summarized in ONE line at the end
@@ -915,20 +747,14 @@ namespace SpellyZombie
 
                     if (t1 != e.Type)
                     {
-                        // collected, not logged per sample - a wall of
-                        // LogError per boot was pure noise ("all of
-                        // these errors are annoying")
+                        // collected, not logged per sample
                         crossReads.Add($"{ShortName(e.Type)} reads {ShortName(t1)} {s1:F2}");
                         if (_confusable.Add(PairKey(e.Type, t1)))
                             entangled.Add($"{ShortName(e.Type)}~{ShortName(t1)}");
                     }
-                    // POOL-AWARE CONFUSABILITY: when a drawing of rune A merely
-                    // NEARLY ties with B, those two are entangled IN 'S
-                    // HAND, and the coin-flip guard would eat every valid cast
-                    // between them (PULL 0.80/PUSH 0.79 once fizzled the correct
-                    // Ys). Entangled pairs are exempt from that guard: the top
-                    // score wins. The console names them so cleaning up a wall
-                    // stays the informed choice.
+                    // a near-tie marks the pair entangled; entangled pairs are
+                    // exempt from the ambiguity guard (top score wins), and
+                    // the console names them
                     else if (t2 != RuneType.None
                              && s1 - s2 < DrawingConfig.RuneAmbiguityMargin + 0.03f)
                     {
@@ -949,8 +775,8 @@ namespace SpellyZombie
             SaveAuditCache(); // never pay for this twice
         }
 
-        /// the rule: EVERYTHING drawn on a wall is saved - no practical
-        /// cap (this bound only guards against a runaway file).
+        /// Everything drawn on a wall is saved; this bound only guards against
+        /// a runaway file.
         const int MaxSamples = 200;
 
         /// ALL saved samples for a rune, oldest first (each sample = the
@@ -982,20 +808,11 @@ namespace SpellyZombie
             return outp;
         }
 
-        /// THE RUNE STUDIO SAVE : a wall's ink IS the rune's
-        /// sample pool - this replaces the whole pool with the wall snapshot.
-        /// An empty wall clears the rune back to its synthetic seed shape.
-        /// Returns how many were kept.
-        ///
-        /// EVERY DRAWING ON THE WALL IS KEPT, however small. This used to DELETE
-        /// any drawing under MinTemplatePoints - and since nodes are laid at a
-        /// fixed world spacing, a point count is a proxy for PHYSICAL SIZE, so
-        /// that was "the small drawings are erased from the wall", breaking both
-        /// "size must never matter" and "I don't want to see any changes from
-        /// what I drew". Sparse drawings are still not used as matcher
-        /// templates (they misread everything angular as themselves) - but that
-        /// is a recognition decision, taken below and in LoadRecorded. It is not
-        /// a licence to throw the ink away.
+        /// The Rune Studio save: a wall's ink IS the rune's sample pool - this
+        /// replaces the whole pool with the wall snapshot; an empty wall
+        /// clears the rune back to its seed shape. Returns how many were kept.
+        /// EVERY drawing is kept however small; sparse ones just aren't used
+        /// as templates (see MinTemplatePoints). The ink is never deleted.
         public static int ReplaceSamples(RuneType type, List<List<List<Vector2>>> samples)
         {
             Init();
@@ -1023,7 +840,7 @@ namespace SpellyZombie
                     item = new SavedTemplate { rune = (int)type };
                     _saved.items.Add(item);
                 }
-                item.points = new List<Vector2>(); // legacy field stays retired
+                item.points = new List<Vector2>(); // legacy field, kept empty
                 item.older = new List<SavedSample>();
                 for (int i = 0; i < kept.Count - 1; i++)
                     item.older.Add(new SavedSample { strokes = ToSavedStrokes(kept[i]) });
@@ -1033,19 +850,13 @@ namespace SpellyZombie
             try { File.WriteAllText(SavePath, JsonUtility.ToJson(_saved)); }
             catch (Exception e) { Debug.LogWarning($"[RuneLibrary] Failed to save samples: {e.Message}"); }
 
-            // IN-PLACE matcher update (the full reload + audit on every
-            // save lagged the studio): only THIS rune's variants rebuild; the
-            // template audit stays a session-start affair.
+            // in-place matcher update: only THIS rune's variants rebuild; the
+            // template audit stays a session-start affair
             if (_entries != null)
             {
-                // THE RETURN VALUE IS LOAD-BEARING (see SetTemplateInternal):
-                // false means the descriptor could not be built, so that sample
-                // is NOT the one that restates the rune's identity. Flipping
-                // `first` regardless left the very first sample appending
-                // instead of replacing - the Variants.Clear() branch never ran
-                // and the rune kept matching against drawings that are no
-                // longer on the wall. LoadRecorded has always done this
-                // correctly; this path had drifted.
+                // flip `first` only on success: a false from
+                // SetTemplateInternal means no descriptor was built, and the
+                // next usable sample must replace, not append
                 bool first = true;
                 foreach (var sample in kept)
                 {
@@ -1061,15 +872,8 @@ namespace SpellyZombie
                         SetTemplateInternal(type, new List<List<Vector2>> { poly });
                 }
 
-                // refresh THIS rune's entanglements immediately - the studio
-                // test loop must judge by the wall as it is NOW.
-                //
-                // LEAVE-ONE-OUT here too. This used to re-derive each wall
-                // drawing and score it with Top2(null, sample) against a pool
-                // that had just been rebuilt FROM that same drawing, so it
-                // always saw a 1.00 and never flagged anything. Scoring the
-                // cached descriptor against every template but itself is the
-                // only version of this check that can fail.
+                // refresh THIS rune's entanglements immediately, leave-one-out
+                // (each cached descriptor against every template but itself)
                 var entry = _entries.Find(x => x.Type == type);
                 if (_confusable != null && entry != null)
                 {
@@ -1093,20 +897,11 @@ namespace SpellyZombie
             return kept.Count;
         }
 
-        /// ONE MORE SAMPLE OF THE PLAYER'S HAND (the invisible natural
-        /// progression: "the game learns the handwriting… your character
-        /// becomes better at casting that rune naturally"). Appends a played
-        /// drawing to the rune's pool; when the pool is full the OLDEST
-        /// sample rolls out, so the ensemble follows how the player draws
-        /// NOW. Returns false for drawings too sparse to teach anything.
-        ///
-        /// QUIET mode (the in-game silent learn): NO pool rebuild, NO
-        /// confusable refresh, NO file write on the cast frame (closing
-        /// a seal must never hitch) - and no LATER file write either. A quiet
-        /// sample joins the live matcher and nothing else, because what the
-        /// game learns while you play lasts one round; only Rune Studio
-        /// persists. A full pool simply declines quiet samples; the declare
-        /// path still rolls.
+        /// Append a played drawing to the rune's pool; a full pool rolls the
+        /// oldest sample out. Returns false for drawings too sparse to teach.
+        /// Quiet (the in-game silent learn) joins the live matcher only - no
+        /// rebuild, no confusable refresh, no file write ever; it lasts one
+        /// round. A full pool declines quiet samples.
         public static bool AddSample(RuneType type, List<List<Vector2>> sample, bool quiet = false)
         {
             Init();
@@ -1115,12 +910,8 @@ namespace SpellyZombie
 
             if (quiet)
             {
-                // WHAT THE GAME LEARNS WHILE YOU PLAY LASTS ONE ROUND (
-                // "when someone memorizes the handwriting it should only be in
-                // memory for that round and not all the rounds"). So a quiet
-                // sample joins the LIVE matcher and nothing else - it never
-                // touches _saved and never reaches the file. Only what you
-                // deliberately record in Rune Studio persists.
+                // round-only: a quiet sample joins the live matcher and never
+                // touches _saved or the file; only Rune Studio persists
                 var e = _entries.Find(x => x.Type == type);
                 if (e == null || e.Variants.Count >= MaxSamples - 1) return false;
                 if (!SetTemplateInternal(type, sample, append: true)) return false;
@@ -1142,18 +933,9 @@ namespace SpellyZombie
                 if (newest.Count > 0) pool.Add(newest);
             }
             pool.Add(sample);
-            while (pool.Count > MaxSamples) pool.RemoveAt(0); // the oldest hand rolls out
+            while (pool.Count > MaxSamples) pool.RemoveAt(0); // the oldest rolls out
             return ReplaceSamples(type, pool) > 0;
         }
-
-        // FlushSaves() IS GONE, with its `_savedDirty` flag and the 10-second
-        // timer in DrawingWorld that called it. Nothing ever set the flag, so
-        // the method could not write even in principle - it was dead code that
-        // READ as load-bearing, and AddSample's own doc used to promise a
-        // deferred save that would never happen. It has nothing left to do
-        // either: quiet in-game learning is round-only by ruling, so it
-        // deliberately never touches _saved, and the two real write paths
-        // (ReplaceSamples, SaveAuditCache) write immediately.
 
         static List<SavedStroke> ToSavedStrokes(List<List<Vector2>> strokes)
         {
@@ -1162,30 +944,12 @@ namespace SpellyZombie
             return outp;
         }
 
-        /// THE ONE PLACE a descriptor is built. Every load, record and learn
-        /// path funnels through here, so the RuneGraph on an Entry is computed
-        /// exactly once and then cached for the life of the pool - the matcher
-        /// itself never re-derives anything.
-        ///
-        /// Returns false ONLY for a drawing that cannot teach anything. That
-        /// contract is load-bearing: LoadRecorded / AddSample / ReplaceSamples
-        /// all read it as "this template does not exist", and a false makes the
-        /// NEXT sample take over the rune's identity instead of appending to it.
-        ///
-        /// A BARE LINE IS REJECTED HERE, and it has to be. the newest PULL
-        /// wall drawing is 63 points that deviate from their own chord by 0.52%
-        /// - a straight line, as far as any shape math is concerned. It built a
-        /// perfectly non-null graph, so the old `graph == null` gate waved it
-        /// through; it then occupied PULL's newest-sample slot and returned 0.00
-        /// against every drawing on earth, because a bare line matches nothing
-        /// by the rule. PULL had ONE live template and looked like it had
-        /// two. Accepting a template that can never match is strictly worse than
-        /// admitting the rune is under-taught - and the warning tells him which
-        /// wall to go redraw.
-        ///
-        /// This is NOT a licence to throw the ink away: the drawing stays on the
-        /// wall and in the save file (see ReplaceSamples). It just does not get
-        /// to be a template.
+        /// The one place a descriptor is built; every load, record and learn
+        /// path funnels through here and the result is cached for the pool's
+        /// life. Returns false only for a drawing that cannot teach (no graph,
+        /// or a bare line that can never match) - callers read false as "this
+        /// template does not exist" and let the next sample take over. The ink
+        /// itself stays on the wall and in the file (see ReplaceSamples).
         static bool SetTemplateInternal(RuneType type, List<List<Vector2>> rawStrokes, bool append = false)
         {
             // templates normalize exactly like drawings: end shape, not pen lifts
@@ -1201,7 +965,6 @@ namespace SpellyZombie
             PoolGeneration++; // the matcher's view of this rune just changed
             if (append && existing != null)
             {
-                // one more sample of the hand joins the pool
                 if (existing.Variants.Count < MaxSamples - 1)
                 {
                     var variant = new Entry { Type = type, Graph = graph };
@@ -1214,7 +977,7 @@ namespace SpellyZombie
             {
                 existing.Graph = graph;
                 existing.SetSource(stitched);
-                existing.Variants.Clear(); // fresh identity: the pool restates itself
+                existing.Variants.Clear(); // non-append replaces the whole pool
             }
             else
             {
@@ -1252,9 +1015,9 @@ namespace SpellyZombie
                 int loaded = 0, totalSamples = 0;
                 foreach (var t in _saved.items)
                 {
-                    // EVERY wall drawing becomes a matcher variant ('s
-                    // studio): oldest first, first usable one replaces the
-                    // seed shape, the rest append to the pool
+                    // every wall drawing becomes a matcher variant: oldest
+                    // first, the first usable one replaces the seed shape,
+                    // the rest append to the pool
                     var all = new List<List<List<Vector2>>>();
                     if (t.older != null)
                         foreach (var s in t.older)
@@ -1304,16 +1067,11 @@ namespace SpellyZombie
             return result;
         }
 
-        // (per-press template saving removed with the F-keys - ReplaceSamples
-        // above is the one write path, driven by the Rune Studio walls.
-        // DeleteRecordings is DELETED too: zero callers, and dead code that
-        // hard-deletes the recordings file is a loaded gun - same reasoning
-        // that removed RuneWall's AlignToFirst.)
+        // ReplaceSamples is the one write path, driven by the Rune Studio walls.
 
         // ---- synthesized default glyphs (y-up, arbitrary units), one stroke each ----
-        // Rough approximations of the sketch alphabet; recording real hand-drawn
-        // templates (F1-F12) is always more accurate. Runes must stay OPEN - a
-        // clear gap between start and end - or they close into a seal instead.
+        // Runes must stay OPEN - a clear gap between start and end - or they
+        // close into a seal instead.
         static Dictionary<RuneType, List<Vector2>> DefaultGlyphs()
         {
             List<Vector2> P(params float[] xy)
@@ -1323,10 +1081,8 @@ namespace SpellyZombie
                 return list;
             }
 
-            // THE ORIGINAL ALPHABET (v6 - the final pick, restored verbatim
-            // from v1). These are STAMP TEMPLATES: the player sketches, chooses,
-            // and this exact shape appears as perfect ink. Must stay OPEN (a
-            // closed shape would read as a seal).
+            // stamp templates: the player sketches, chooses, and this exact
+            // shape appears as perfect ink
             return new Dictionary<RuneType, List<Vector2>>
             {
                 // tall jagged triangle, open at the base

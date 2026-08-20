@@ -17,13 +17,13 @@ namespace SpellyZombie
         /// True while a match runs - gates ink costs and real player downs.
         public static bool RunActive => Instance != null && Instance._phase == Phase.Live;
 
-        /// True before a match starts - the MatchLobby (pillars/ready-up) lives here.
+        /// True before a match starts - the MatchLobby lives here.
         public static bool InLobby => Instance != null && Instance._phase == Phase.Idle;
 
         /// True while the match runs - the music director crossfades on this.
         public static bool WaveActive => RunActive;
 
-        /// MatchLobby's start trigger (all ready, or the troll timer expired).
+        /// MatchLobby's start trigger.
         public static void ForceStart()
         {
             if (Instance == null || Instance._phase != Phase.Idle) return;
@@ -52,7 +52,7 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------------------ events --
-        /// Zombie.OnDeath calls this: kills are the ink mine.
+        /// Zombie.OnDeath calls this: kills award ink.
         public static void NotifyKill(Zombie z)
         {
             if (Instance == null || !RunActive) return;
@@ -115,7 +115,7 @@ namespace SpellyZombie
 
         void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            // home again: no stale end screen haunts the lobby
+            // back in the lobby: clear stale end-screen state
             if (scene.name == LobbySceneName && _phase == Phase.Over)
             {
                 _phase = Phase.Idle;
@@ -127,10 +127,10 @@ namespace SpellyZombie
             BeginLive();
         }
 
-        /// THE LOBBY IS SAFE GROUND - matches load the game map and begin on arrival.
+        /// Matches load the game map and begin on arrival.
         void StartRun()
         {
-            if (SceneManager.GetActiveScene().name == "Menu") return; // menus don't fight
+            if (SceneManager.GetActiveScene().name == "Menu") return; // no match from the menu
             if (SceneManager.GetActiveScene().name == LobbySceneName)
             {
                 if (Application.CanStreamedLevelBeLoaded(GameSceneName))
@@ -157,7 +157,6 @@ namespace SpellyZombie
             _clock = Mathf.Clamp(MatchLobby.DurationMin, 5, 15) * 60f;
             PlayerInk.RefillAll();
             Powerups.ResetRun(); // fresh build every match
-            Perks.ResetRun();    // the brews wear off too
             SealGallery.Clear();
             RuneLibrary.ForgetRoundLearning();
 
@@ -264,7 +263,7 @@ namespace SpellyZombie
         }
 
         // --------------------------------------------------------------- HUD --
-        // Rendering moved to UI/HUD.cs (uGUI + Kenney skin); this just reports.
+        // rendering lives in UI/HUD.cs; this just reports
         static string _hud = "";
         static (int, int, int, int) _hudKey = (int.MinValue, 0, 0, 0);
 

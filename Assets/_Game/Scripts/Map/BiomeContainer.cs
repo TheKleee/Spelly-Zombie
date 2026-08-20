@@ -2,11 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The land fence: every biome in its list may only exist - and only
-    /// shuffle - INSIDE this box. Anything not listed (the water slab)
-    /// lives free outside it. Keep the container comfortably smaller than
-    /// the map's loop distance, so the mirror-wrap seam always sits in
-    /// open water and never cuts a mountain in half.
+    /// Listed biomes may only exist - and shuffle - inside this box; anything
+    /// not listed lives free. Keep it comfortably smaller than the loop
+    /// distance so the wrap seam always sits in open water.
     public class BiomeContainer : MonoBehaviour
     {
         [Tooltip("Container size in metres. Center = this transform. Listed biomes never spawn or shuffle past these walls.")]

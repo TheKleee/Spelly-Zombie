@@ -60,10 +60,8 @@ namespace SpellyZombie
                 new Material(lit) { color = new Color(0.7f, 0.68f, 0.64f) };
             wall.AddComponent<SurfaceMaterialTag>().Material = SurfaceMaterialType.Stone;
 
-            // the CAULDRON - pre-filled so refill works instantly. NO ignition:
-            // heating is cut (Jul 25), and the old 400° start made the pot
-            // burn-damage ITSELF to death, which killed the whole refill loop
-            // (the "wand not working" bug).
+            // the cauldron, pre-filled so refill works instantly. No ignition:
+            // a hot pot burn-damages itself to death and kills the refill loop.
             var pot = CaveCauldron.Conjure(new Vector3(3.5f, 0f, 1.5f));
             pot.Fill = CaveCauldron.Capacity; // brimming, so wands refill on contact
 

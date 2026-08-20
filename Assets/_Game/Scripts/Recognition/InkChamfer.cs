@@ -3,33 +3,12 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE RECOGNIZER - oriented chamfer matching, chosen by MEASUREMENT.
-    ///
-    /// Every candidate (the old $P cloud, the 7×7 scan matrix, plain and
-    /// oriented chamfer) raced offline against the real recorded
-    /// templates under GAME-REALISTIC distortion - hand jitter PLUS the
-    /// oblique-view foreshortening and shear that ground drawings actually
-    /// suffer (the first race modeled only mild jitter; its winner passed
-    /// the lab and failed the street, same as the matrix before it).
-    /// Winner: STRETCH-FILL oriented chamfer on a 32×32 distance field -
-    /// 99.4% correct, 0.0% wrong rune, 1.4% scribbles accepted. Old $P
-    /// under the same distortion: 52-73% correct with misfires, and up to
-    /// HALF of scribbles firing.
-    ///
-    /// How it works - the ink is compared AS INK, no segment anchors, no
-    /// signatures, no flips (orientation is meaning: Heat-up ≠ Heat-down):
-    ///   1. rasterize the drawing upright (the frame the player saw) into a
-    ///      32×32 occupancy mask, each cell keeping its dominant stroke
-    ///      direction (V, \, H, /);
-    ///   2. build a distance field per direction channel;
-    ///   3. similarity = symmetric mean distance from each drawing cell to
-    ///      the template's compatible ink (same direction free, adjacent
-    ///      direction +1 cell) and back - so a wobble costs millimetres,
-    ///      not a flipped signature;
-    ///   4. ±9° readings of both sides absorb hand tilt;
-    ///   5. accept only when the best rune clears RuneChamferFloor AND
-    ///      beats the runner-up by RuneChamferMargin - the right rune or
-    ///      none, enforced by construction.
+    /// Oriented chamfer matching on a 32×32 distance field. The drawing is
+    /// rasterized upright, each cell keeping its dominant stroke direction
+    /// (V, \, H, /); similarity is the symmetric mean distance to the
+    /// template's compatible ink, with ±9° readings absorbing hand tilt.
+    /// Accepts only when the best rune clears RuneChamferFloor and beats the
+    /// runner-up by RuneChamferMargin. No flips: orientation is meaning.
     public static class InkChamfer
     {
         const int G = 32;                       // field resolution
@@ -85,7 +64,7 @@ namespace SpellyZombie
             Debug.Log(report.ToString());
         }
 
-        /// The public entry: strokes  the rune they draw, or None (fizzle).
+        /// The public entry: the rune the strokes draw, or None (fizzle).
         /// ownerId gates to the player's unlocked runes.
         public static RuneType Recognize(int? ownerId,
             IReadOnlyList<IReadOnlyList<Vector2>> strokes)
@@ -94,10 +73,8 @@ namespace SpellyZombie
             return rune;
         }
 
-        /// TEMPORARY DIAGNOSTICS: every classify appends its exact input to
-        /// sz_classify_dump.csv in persistentDataPath, so a failing shape can
-        /// be replayed through the offline harness bit-for-bit. Flip off once
-        /// recognition is proven in play.
+        /// Diagnostics: every classify appends its exact input to
+        /// sz_classify_dump.csv in persistentDataPath for offline replay.
         public static bool DumpClassifies = true;
         static int _dumpSeq;
 
@@ -130,8 +107,6 @@ namespace SpellyZombie
             bool accept = s1 >= DrawingConfig.RuneChamferFloor
                 && s1 - s2 >= DrawingConfig.RuneChamferMargin;
 
-            // EVIDENCE, not guesses: every classify states exactly what it
-            // received and what it concluded.
             string top = "";
             for (int i = 0; i < Mathf.Min(3, scores.Count); i++)
                 top += $" {RuneLibrary.ShortName(scores[i].t)} {scores[i].s:0.00}";
@@ -200,13 +175,10 @@ namespace SpellyZombie
             if (minx > maxx) return null;
             float w = Mathf.Max(maxx - minx, 1e-4f), h = Mathf.Max(maxy - miny, 1e-4f);
             float size = Mathf.Max(w, h);
-            // STRETCH-FILL both axes (the fix that survived the field): ink
-            // drawn on the ground is FORESHORTENED by the view angle - up to
-            // 2× squash - which uniform scale-fit faithfully preserved and
-            // then failed to match. Filling the grid on both axes makes
-            // aspect a non-signal on BOTH sides, template and drawing alike.
-            // Sliver guard: nearly-1D marks keep uniform fit so a straight
-            // line doesn't explode into noise.
+            // stretch-fill both axes: ground ink is foreshortened by the view
+            // angle (up to 2× squash), so aspect is a non-signal on template
+            // and drawing alike. Sliver guard: nearly-1D marks keep uniform
+            // fit so a straight line doesn't explode into noise.
             float scaleX, scaleY, ox, oy;
             if (Mathf.Min(w, h) > 0.10f * size)
             {

@@ -3,10 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Handles to the JMO Cartoon FX prefabs , wired once by
-    /// the editor menu into Assets/_Game/Resources/FxLibrary.asset and loaded
-    /// here at runtime. Systems ask for effects by ROLE, not by asset name -
-    /// swapping the look later is a one-field change in the asset.
+    /// Handles to the JMO Cartoon FX prefabs, wired by the editor menu into
+    /// Assets/_Game/Resources/FxLibrary.asset. Systems ask for effects by role,
+    /// not asset name - swapping the look is a one-field change in the asset.
     public class FxLibrary : ScriptableObject
     {
         public GameObject Fire;        // looping flames - burning wood wears this
@@ -33,7 +32,7 @@ namespace SpellyZombie
         public GameObject Shield;      // barrier wrap loop
         public GameObject DemonBoom;   // the Demon arrives
         public GameObject SkullHead;   // rides the fresh Demon
-        public GameObject BrokenHeart; // floats over a DOWNED body (ally-dying gap fix)
+        public GameObject BrokenHeart; // floats over a downed body
         public GameObject GroundHit;   // thrown-thing landing
         public GameObject TextBoom;    // comic _BOOM_ on explosions
         public GameObject TextBoing;   // comic _BOING_ on glue-stick
@@ -76,7 +75,7 @@ namespace SpellyZombie
                 {
                     _searched = true;
                     _instance = Resources.Load<FxLibrary>("FxLibrary");
-                    // silent-nothing guard: unwired roles spawn NOTHING - say so
+                    // unwired roles spawn nothing - warn once
                     if (_instance == null)
                         Debug.LogWarning("[SpellyZombie] No FxLibrary asset. Run 'Spelly Zombie → Art/7 - Wire FX Library (JMO)'");
                     else if (_instance.IceHit == null || _instance.HitSpark == null || _instance.TextPow == null)
@@ -88,22 +87,19 @@ namespace SpellyZombie
             }
         }
 
-        // THE FX BUDGET — past 8/frame the extras drop
+        // FX budget: past 8/frame the extras drop
         static int _frame, _spawnedThisFrame;
         const int MaxPerFrame = 8;
 
         // ===================================================== THE POOL ====
-        // FX LAG root cause : Instantiate/Destroy per effect — pooled instead, built once and reused
+        // pooled: built once and reused instead of Instantiate/Destroy per effect
         static readonly Dictionary<GameObject, Stack<GameObject>> _pool
             = new Dictionary<GameObject, Stack<GameObject>>();
         static readonly Dictionary<GameObject, GameObject> _origin
             = new Dictionary<GameObject, GameObject>();
 
-        /// Spawn an effect (null-safe, frame-budgeted, POOLED).
-        /// Spawn, then dress every particle system in the runtime color: the
-        /// ink splash wears the ink ("make the splash be the color of
-        /// the ink"). Pooled instances get re-dressed each spawn, so a green
-        /// splash never haunts a black pot.
+        /// Spawn an effect (null-safe, frame-budgeted, pooled), tinting every
+        /// particle system; pooled instances are re-dressed each spawn.
         public static GameObject SpawnTinted(GameObject prefab, Vector3 pos, Color c)
         {
             var go = Spawn(prefab, pos);
@@ -160,7 +156,7 @@ namespace SpellyZombie
                 }
             }
 
-            keeper.Arm(life > 0f ? life : 3f);   // everything comes home
+            keeper.Arm(life > 0f ? life : 3f);   // everything returns to the pool
             return fx;
         }
 

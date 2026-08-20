@@ -3,22 +3,9 @@ using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// THE POT ON EVERY SCREEN : one thin bar at the
-    /// top - its COLOUR says who holds the cauldron (ink black = wizards,
-    /// corrupt green = acolytes), its LENGTH says the ink left. the faces cap
-    /// the ends (acolyte left, wizard right), the cauldron icon RIDES THE
-    /// LINE at the bar's end, the timer sits centred above, and the trophy
-    /// hovers over whoever wins if the clock hit zero right now.
-    ///
-    /// REBUILT Aug 9 after the review ("flat out wrong"): the fill is a CHILD
-    /// of the track so it can never be off-centre or the wrong length, the
-    /// cauldron overlaps the line instead of floating beside it, the trophy
-    /// row lives INSIDE the container (it was drawn above the screen edge),
-    /// and the bar is thin by default. Icon size is its own knob, decoupled
-    /// from bar thickness.
-    ///
-    /// GAMEPLAY UI ONLY: shows on match maps, never in the Lobby or Menu.
-    /// adds this component and drags the art in - nothing is generated.
+    /// Cauldron status bar at top: colour = who holds the pot (black wizards,
+    /// green acolytes), length = ink left; the trophy hovers over whoever wins
+    /// if the clock hit zero now. Match maps only; art assigned in Inspector.
     public class CauldronHUD : MonoBehaviour
     {
         [Header("the art — dragged in, never generated")]
@@ -44,8 +31,7 @@ namespace SpellyZombie
         /// The pot's live truth - the cauldron economy writes these.
         public static float Fill = 1f;   // 0..1 ink remaining
         public static bool Corrupt;      // true = the acolytes hold it
-        /// Seconds shown centred above the bar; negative hides it. The prep
-        /// countdown uses it now; the round timer will when rounds land.
+        /// Seconds shown centred above the bar; negative hides it.
         public static float TimerSeconds = -1f;
 
         RectTransform _ui;
@@ -71,8 +57,6 @@ namespace SpellyZombie
             float h = Mathf.Max(6f, BarHeight);
             float icon = Mathf.Max(16f, IconSize);
 
-            // DEAD CENTRE at the top: anchors, pivot and position set directly
-            // (the corner-pivot helper is what shoved the first version left)
             float totalW = w + icon * 2.6f;
             float totalH = icon * 2.15f; // top half = trophy/timer row, bottom half = the bar row
             _ui.anchorMin = _ui.anchorMax = new Vector2(0.5f, 1f);
@@ -91,8 +75,7 @@ namespace SpellyZombie
             trackRt.anchoredPosition = new Vector2(0f, barY);
             trackRt.sizeDelta = new Vector2(w, h);
 
-            // the ink itself - a CHILD of the track: anchored to its left edge,
-            // so length and centring can never drift from the track again
+            // fill is a child of the track, anchored to its left edge
             _fill = Img(trackRt, "Fill");
             var fillRt = (RectTransform)_fill.transform;
             fillRt.anchorMin = new Vector2(0f, 0.5f);
@@ -105,8 +88,7 @@ namespace SpellyZombie
             PlaceIcon(Img(_ui, "FaceAcolyte"), AcolyteFace, -FaceX, barY, icon);
             PlaceIcon(Img(_ui, "FaceWizard"), WizardFace, FaceX, barY, icon);
 
-            // the cauldron ON THE LINE - centred on the bar's right END, so the
-            // line runs into the pot exactly like the sketch
+            // cauldron icon centred on the bar's right end
             _icon = Img(_ui, "Cauldron");
             PlaceIcon(_icon, CauldronWizard, w * 0.5f, barY, icon);
 
@@ -164,14 +146,11 @@ namespace SpellyZombie
         {
             if (_fill == null) return;
 
-            // GAMEPLAY UI ONLY ("this thing shouldn't exist in
-            // the lobby... makes 0 sense") — match maps only. The pot OBJECT
-            // still works everywhere; only the scoreboard hides.
+            // match maps only; the pot object itself still works everywhere
             bool hidden = ActiveScene.Name == "Lobby" || ActiveScene.Name == "Menu";
             if (_ui != null && _ui.gameObject.activeSelf == hidden) _ui.gameObject.SetActive(!hidden);
             if (hidden) return;
 
-            // the timer, whole seconds - prep countdown now, rounds later
             int t = TimerSeconds >= 0f ? Mathf.CeilToInt(TimerSeconds) : -1;
             if (_timer != null && t != _shownTimer)
             {
@@ -179,8 +158,7 @@ namespace SpellyZombie
                 _timer.text = t >= 0 ? t.ToString() : "";
             }
 
-            // THE TROPHY HOP - green or empty pot = the acolyte's head,
-            // clean with ink = the wizard's. The slide IS the drama beat.
+            // trophy: corrupt or empty pot = acolyte side, clean = wizard side
             if (_trophy != null && _trophy.enabled)
             {
                 bool acolyteWinning = Corrupt || Fill <= 0.001f;
@@ -197,7 +175,7 @@ namespace SpellyZombie
 
             var frt = (RectTransform)_fill.transform;
             frt.sizeDelta = new Vector2((Mathf.Max(120f, BarWidth) - 2f) * f, frt.sizeDelta.y);
-            // the pot's colour is the scoreboard - the same two inks as the wands
+            // same two ink colours as the wands
             _fill.color = Corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
             if (_icon != null)
             {

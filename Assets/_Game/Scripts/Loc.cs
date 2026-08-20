@@ -24,8 +24,6 @@ namespace SpellyZombie
             ["perk.brewed"] = "{0} is already brewed",
             ["grimoire.open"] = "open the grimoire",
             ["grimoire.close"] = "close the grimoire",
-            // (the multi-fact pose lines are gone - the block law converted
-            // every mode to one-fact chips; pose-grab was the last violator)
             ["chip.done"] = "done",
             ["carry.down"] = "put it down",
 

@@ -3,10 +3,8 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Match start: you're offered THREE random rune families and pick ONE -
-    /// that's your primary rune for the whole match . Everything
-    /// else is out there - carried by zombies, dropped when they die.
-    /// Bootstraps itself; shows until the local player owns at least one card.
+    /// Match start: three random rune families offered, pick one as your
+    /// primary. Bootstraps itself; shows until the local player owns a card.
     public class StartingRuneChooser : MonoBehaviour
     {
         static readonly RuneCardType[] AllCards =
@@ -84,9 +82,8 @@ namespace SpellyZombie
             }
             _offers = new[] { pool[0], pool[1], pool[2] };
 
-            // at least one offer must be able to FIGHT alone (ship test:
-            // a hand of pure utility families vs a boarding party = "does
-            // nothing"). Heat burns, Direction shoves, Luminance smites.
+            // at least one offer must be able to fight alone: Heat, Direction
+            // or Luminance
             var teeth = new[] { RuneCardType.Heat, RuneCardType.Direction, RuneCardType.Luminance };
             bool hasTeeth = System.Array.IndexOf(teeth, _offers[0]) >= 0
                 || System.Array.IndexOf(teeth, _offers[1]) >= 0
@@ -131,18 +128,15 @@ namespace SpellyZombie
                 var desc = UIKit.Label(card, RuneLibrary.CardDescription(_offers[i]), 14,
                     new Color(0.25f, 0.19f, 0.12f), TextAnchor.UpperLeft);
 
-                // LIVE DATA overrides adopted prefab text: cards baked into
-                // SZ_UI keep their words verbatim, so this run's ACTUAL offers
-                // must be written explicitly ("I'm getting wrong runes
-                // on selection" — was reading last bake's labels)
+                // baked SZ_UI cards keep their baked labels - write this run's
+                // offers explicitly
                 name.text = _offers[i].ToString().ToUpper();
                 desc.text = RuneLibrary.CardDescription(_offers[i]);
                 desc.horizontalOverflow = HorizontalWrapMode.Wrap;
                 UIKit.Place((RectTransform)desc.transform, new Vector2(0f, 1f), new Vector2(14f, -46f), new Vector2(w - 28f, 52f));
 
-                // clicking the card works too (Meccha rule: direct manipulation).
-                // GET-or-add: a prefab-adopted card was BAKED with its Button,
-                // and AddComponent on a duplicate returns null (NRE of 14 July)
+                // get-or-add: an adopted card already carries its Button, and
+                // AddComponent of a duplicate returns null
                 var btn = card.gameObject.GetComponent<UnityEngine.UI.Button>();
                 if (btn == null) btn = card.gameObject.AddComponent<UnityEngine.UI.Button>();
                 btn.targetGraphic = back;

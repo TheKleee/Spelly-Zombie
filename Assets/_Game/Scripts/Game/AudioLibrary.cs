@@ -3,31 +3,14 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE SOUND OF A PROPERTY CHANGING, NOT THE SOUND OF A SPELL (
-    /// "each increase in something can have its own sound => we don't need a
-    /// sound for all spells as they all just change some parameters and those
-    /// parameters can create sounds").
-    ///
-    /// This is the audio half of the master law - state is DERIVED from
-    /// properties, so audio is too. Twelve clips cover the entire grammar
-    /// instead of one per spell, and combinations layer themselves for free:
-    /// Steam plays heat-up and heat-down together because that is exactly what
-    /// Steam IS. A new rune pair invented next year needs no new audio.
-    ///
-    /// the CLIPS WIN, ALWAYS. Every slot is empty by default and the game keeps
-    /// using Juice's synthesised placeholders until drops a file in - nothing
-    /// ever goes silent waiting for art. Drop this component on one object in
-    /// the scene (or let PrefabVault load an "AudioLibrary" prefab) and fill in
-    /// whatever you have.
-    ///
-    /// USE `Spelly Zombie  Audio  What Needs A Sound` to print the checklist
-    /// of every slot still empty — that is the "find what we're missing" tool.
+    /// One clip per rune property change; twelve clips cover every spell and
+    /// combination. Empty slots fall back to Juice's synthesised placeholders.
+    /// Spelly Zombie -> Audio -> What Needs A Sound lists the empty slots.
     public class AudioLibrary : MonoBehaviour
     {
         public static AudioLibrary I { get; private set; }
 
-        // ---- THE PROPERTY LADDER: one per direction, and that is the whole
-        // spell system covered ----------------------------------------------
+        // ---- property ladder: one clip per direction ----
         [Header("HEAT")]
         public AudioClip HeatUp;          // spark, flame, lava, anything warming
         public AudioClip HeatDown;        // frost, glacier, absolute zero
@@ -52,7 +35,7 @@ namespace SpellyZombie
         public AudioClip Push;            // the arrow
         public AudioClip Pull;            // the Y
 
-        // ---- THE MOMENTS THAT ARE NOT PROPERTY CHANGES ---------------------
+        // ---- moments that are not property changes ----
         [Header("THE PEN")]
         public AudioClip PenDraw;         // looping while ink flows
         public AudioClip PenErase;
@@ -92,8 +75,7 @@ namespace SpellyZombie
         void OnDisable() { if (I == this) I = null; }
 
         /// The clip for a rune's property change, or null to let the synth
-        /// placeholder answer. ONE lookup covers every spell that rune appears
-        /// in, including combinations nobody has invented yet.
+        /// placeholder answer.
         public AudioClip ForRune(RuneType r)
         {
             switch (r)
@@ -114,8 +96,7 @@ namespace SpellyZombie
             return null;
         }
 
-        /// EVERY SLOT STILL EMPTY, by name. Reflection rather than a hand-kept
-        /// list, so a slot added later cannot be forgotten off the checklist.
+        /// Every empty slot, by name. Reflection, so new slots are never missed.
         public List<string> Missing()
         {
             var missing = new List<string>();

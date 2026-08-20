@@ -4,15 +4,10 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Menu-style pose setup (layout copied from Meccha Chameleon's menu):
-    /// your character stands in front of the camera with visible grab points on
-    /// its extremities. Grab one and drag the limb into place, drag the body to
-    /// spin the character, click Save - the pose lands in your pose list, and
-    /// pressing 1-9 with a pose selected binds it to that key.
-    ///
-    /// Two modes:
-    ///  - AlwaysOpen (main menu): it IS the screen, no toggling, camera untouched.
-    ///  - Toggle (graybox test scene): B opens/closes it and it borrows the view.
+    /// Pose setup screen: grab a marker to drag a limb into place, drag the
+    /// body to spin the character, Save adds the pose to the list, 1-9 binds
+    /// the selected pose to that key. Two modes: AlwaysOpen (main menu,
+    /// camera untouched) or Toggle (B opens/closes it and borrows the view).
     public class PoseStudio : MonoBehaviour
     {
         public Camera StudioCamera;
@@ -136,7 +131,7 @@ namespace SpellyZombie
             StudioCamera.transform.LookAt(focus);
         }
 
-        // ---- grab point markers (the sketch's little squares) ----
+        // ---- grab point markers ----
 
         void CreateMarkers()
         {
@@ -225,9 +220,8 @@ namespace SpellyZombie
 
             if (_grabbed?.T == null) return;
 
-            // drag across a camera-facing plane THROUGH THE PIVOT - the
-            // handle tracks the mouse 1:1 for the whole swing. Constrain at
-            // every write: what you sculpt is exactly what saves and loads.
+            // drag across a camera-facing plane through the pivot; the handle
+            // tracks the mouse 1:1. Constrain at every write.
             var dragRay = StudioCamera.ScreenPointToRay(mouse.position.ReadValue());
             var plane = new Plane(-StudioCamera.transform.forward, _grabbed.T.position);
             if (plane.Raycast(dragRay, out float d))

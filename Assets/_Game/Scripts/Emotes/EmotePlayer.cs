@@ -4,14 +4,10 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Plays emotes on an EmoteRig - THIRD PERSON ONLY (in first person the
-    /// number keys select weapons). Press a slot to strike the pose: the
-    /// ANIMATION sticks doll-like in it while you keep walking around freely
-    /// . F melts
-    /// back to the regular idle; X forgets your custom pose on that slot so
-    /// the system default returns. A held pose is also a spell trigger: it
-    /// closes a body seal, the spell runs and goes spent, and releasing the
-    /// emote opens the loop so the ink re-arms.
+    /// Plays emotes on an EmoteRig - third person only (first person number
+    /// keys select weapons). A slot key strikes the pose while movement stays
+    /// free; F melts back to idle; X clears the custom binding on that slot.
+    /// A held pose closes a body seal; releasing it re-arms the ink.
     [RequireComponent(typeof(EmoteRig))]
     public class EmotePlayer : MonoBehaviour
     {
@@ -35,10 +31,7 @@ namespace SpellyZombie
 
         void Update()
         {
-            // FIRST PERSON NEVER HOLDS A POSE : posing exists to sculpt
-            // in third person and to reach skin in the draw modes. The moment
-            // you're back in plain first person, regular animations resume.
-            // (Open draw modes keep their pose - that's what it was for.)
+            // plain first person never holds a pose; open draw modes keep theirs
             if (IsPosing && !SimpleFPSController.ThirdPersonActive
                 && !SelfPaint.IsActive && !HeldWeapon.DrawMode)
                 StopToRest();
@@ -47,39 +40,26 @@ namespace SpellyZombie
             ShowPoseHint(); // the hint is cosmetic, it goes last
         }
 
-        /// THE POSE IS STAMPED AFTER THE ANIMATOR, EVERY FRAME. It used to
-        /// run in Update and only write during a frame's transition - so a
-        /// held pose was just RESIDUE that survived because the animator had
-        /// been switched off. That killed locomotion (and left the hips, the
-        /// one bone no emote owns, frozen by omission). Now the animator
-        /// keeps running and the pose overwrites its own joints here.
+        /// The pose is stamped after the animator, every frame: the animator
+        /// keeps running and the pose overwrites only its own joints.
         void LateUpdate() => Animate();
 
-        /// While HOLDING a pose, the outs are one-fact chips (the block
-        /// law). Idle third person says nothing here - ModeGuide's chips
-        /// cover the crossroads, one voice per state. Pose-grab keeps its
-        /// own instruction line untouched.
+        /// While holding a pose the outs are offered as chips; idle third
+        /// person is ModeGuide's job.
         void ShowPoseHint()
         {
             if (!SimpleFPSController.ThirdPersonActive) return;
             if (PoseStudio.IsOpen || SelfPaint.IsActive || Powerups.IsChoosing || GameMenu.IsOpen) return;
             if (PoseGrab.IsOpen)
             {
-                // ONLY WHAT CANNOT BE DISCOVERED ("They only
-                // need info they can't figure out such as Hold 1, 2, 3 to
-                // save the pose... Even pressing 1, 2, 3 to pose will be
-                // figured out from the hold to save indicator"). Dragging
-                // limbs teaches itself; tap-to-recall follows from the hold
-                // chip; only the hold itself is invisible.
+                // only the undiscoverable is hinted: hold-to-save
                 UIPrompt.Offer("R", Loc.T("chip.done"));
                 UIPrompt.Offer("HOLD 1-9", Loc.T("shape.save"));
                 return;
             }
             if (ActiveSlot < 0) return;
-            // holding a pose is a state of its own, so ITS row carries the
-            // crossroads too ("It should have an R to pose mode there
-            // somewhere") — ModeGuide stands down while IsPosing, one voice.
-            // R sculpting is the WIZARD's (acolyte R belongs to the shape).
+            // while posing this row carries the crossroads (ModeGuide stands
+            // down); the R chip is wizard-only (acolyte R belongs to the shape)
             UIPrompt.Offer("F", Loc.T("chip.melt"));
             UIPrompt.Offer("TAB", Loc.T("chip.first"));
             if (Sides.Of(Grimoire.LocalPlayerId) != Side.Acolyte)
@@ -102,8 +82,7 @@ namespace SpellyZombie
             if (Powerups.IsChoosing) return;
             if (kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed) return;
 
-            // F melts the doll back into the regular idle - unless the
-            // grimoire has a target (declare/absorb owns F for that press)
+            // F melts back to idle unless the grimoire has a target (declare/absorb owns F)
             if (kb.fKey.wasPressedThisFrame && ActiveSlot >= 0
                 && !GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach)
             {
@@ -233,9 +212,8 @@ namespace SpellyZombie
                 return;
             }
 
-            // TRANSITION DONE - KEEP STAMPING IT. Returning here is what made
-            // a held pose depend on the animator being dead: nothing wrote
-            // the bones, so the pose was only the last transition's leftovers.
+            // transition done - keep stamping every frame or the animator
+            // overwrites the held pose
             foreach (var p in frame.poses)
             {
                 var j = _rig.Find(p.joint);

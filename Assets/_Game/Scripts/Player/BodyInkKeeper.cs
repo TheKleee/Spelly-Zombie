@@ -3,32 +3,10 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// YOUR BODY INK TRAVELS WITH YOU - WITHIN ONE SITTING (
-    /// "when you draw ink on your body I want it to come with you to the
-    /// game mode... persistent in the multiplayer as well"). Prep combos in
-    /// the lobby; they are on your skin in the match.
-    ///
-    /// NO DISK. The first version also saved to a file and restored at boot,
-    /// and hit both failure modes the same day: ghost ink from an old
-    /// session appearing uninvited, and unerasable strokes (a boot-time
-    /// restore can run before Grimoire.LocalPlayerId exists, so the ink
-    /// belonged to player 0 - nobody - and the eraser refused it). Ink now
-    /// lives exactly as long as the play session.
-    ///
-    /// Nothing new is invented here - this is the NETCODE'S OWN BODY-INK
-    /// CODEC held in memory: strokes are kept in BONE-LOCAL space keyed by
-    /// bone name (exactly what StrokeMsg ships), and the restore is
-    /// ApplyBodyStroke's recipe run on your own skeleton with YOUR owner id.
-    /// Because the restore completes strokes through DrawingWorld like any
-    /// local pen-up, NetSync.OnLocalStrokeFinished fires on its own - so in
-    /// multiplayer the restored ink replicates to everyone through the same
-    /// pipe fresh ink uses. Persistence and parity from one code path.
-    ///
-    /// THE RUNE GATE COSTS NOTHING: recognition only reads runes the owner
-    /// has UNLOCKED (unknown glyphs score None and build no zone), so a body
-    /// seal drawn in the lobby simply does nothing until the wizard collects
-    /// those runes — the "not before you have the runes", already enforced
-    /// where recognition lives.
+    /// Keeps your body ink across scene loads within one play session (never
+    /// disk). Strokes are stored bone-local by bone name - the netcode's own
+    /// body-ink codec - and restored through DrawingWorld like a local pen-up,
+    /// so NetSync replicates restored ink on its own.
     public class BodyInkKeeper : MonoBehaviour
     {
         struct SavedStroke

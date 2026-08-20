@@ -2,20 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE WORKSHOP HOOK ("make sure it's mod-able so people can make
-    /// their custom stuff in modded maps - via Steam Workshop").
-    ///
-    /// A map maker drops this component anywhere in their scene, hooks up
-    /// their own ShapeLibrary asset, and their shapes are live for as long as
-    /// that map is loaded. Nothing else to wire, no code to write, no name to
-    /// get right - the map itself carries its content.
-    ///
-    /// Slots they leave EMPTY fall through to the base game, so a mod that
-    /// only makes a new wooden wheel gets every other shape for free. Two
-    /// mods loaded at once stack in load order, last one winning ties.
-    ///
-    /// The shelf unregisters itself when the map unloads, so leaving a map
-    /// cleanly takes its shapes with it.
+    /// Workshop hook: a modded map drops this component with its own
+    /// ShapeLibrary; the shapes are live while the map is loaded. Empty slots
+    /// fall through to the base game; unregisters itself on unload.
     public class ModShapes : MonoBehaviour
     {
         [Tooltip("Your own Shape Library asset (Create ▸ Spelly Zombie ▸ Shape Library). " +

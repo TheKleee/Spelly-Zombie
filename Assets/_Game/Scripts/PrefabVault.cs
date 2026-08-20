@@ -2,14 +2,11 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// the OVERRIDE SHELF - the one rule for replacing anything the code
-    /// builds: drop a prefab into Assets/_Game/Resources/Custom/ named after
-    /// the thing it replaces, and the game uses YOURS from then on. No lists,
-    /// no registries, no editor tools - drag into the folder, done. Missing
-    /// prefab = the code-built placeholder appears instead, so testing never
-    /// blocks on art.
+    /// Prefab overrides: drop a prefab into Assets/_Game/Resources/Custom/
+    /// named after the thing it replaces and the game uses it. A missing
+    /// prefab falls back to the code-built placeholder.
     ///
-    /// ═══ EVERY HOOK NAME, in one place (drop the prefab in, it's used) ═══
+    /// Hook names:
     ///
     /// CHARACTERS &amp; PROPS
     ///   PlayerBody   - your wizard model. Same Mixamo skeleton = everything works.
@@ -55,24 +52,23 @@ namespace SpellyZombie
     ///   placed on the BONES of a character (several per kind is fine -
     ///   Socket_Burn on the chest, Socket_Burn2 on a shoulder; any suffix
     ///   works). Burn flames, frost crystals, blood drips and blind/glare eye
-    ///   FX spawn as children there, riding animation and ragdoll. No sockets
-    /// authored  code guesses spots on the humanoid bones instead - your
-    ///   empties always win.
+    ///   FX spawn as children there, riding animation and ragdoll. With no
+    ///   authored sockets, code guesses spots on the humanoid bones.
     ///
     /// COSTUME (not via this class - see SocketWardrobe / CostumeLibrary):
     ///   Z&lt;Socket&gt;_*  prefabs, and the SZ_Wardrobe* ScriptableObjects.
     /// ALSO IN Resources/Custom but NOT PrefabVault: Cursor, Music_Chill,
     ///   Music_Action, Loc_&lt;lang&gt;.
     ///
-    /// A prefab whose name matches nothing loads NOTHING - the editor audit
-    /// below warns you the moment you drop one in, so it can't fail silently.
+    /// A prefab whose name matches nothing loads nothing; an editor audit
+    /// warns when one is dropped in.
     public static class PrefabVault
     {
         public static GameObject Get(string name)
             => Resources.Load<GameObject>("Custom/" + name);
 
-            /// Instantiate the prefab under `parent`, locked to identity
-        /// null when hasn't made one yet (caller builds its placeholder).
+        /// Instantiate the prefab under `parent`, locked to identity;
+        /// null when no prefab exists (caller builds its placeholder).
         public static GameObject Spawn(string name, Transform parent)
         {
             var prefab = Get(name);

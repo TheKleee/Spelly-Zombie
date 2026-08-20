@@ -3,37 +3,12 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Finds seals formed by ink MEETING ink - the general rule the design wants:
-    /// "if the ink encloses an area, it's a seal", regardless of endpoints.
-    ///
-    /// Fully general: every place where any ink meets any ink (including a
-    /// stroke meeting itself) becomes a graph vertex; the arcs of ink between
-    /// consecutive vertices become edges. Any cycle in that graph encloses a
-    /// region - so a heptagon drawn as seven overshooting segments, a scribble
-    /// that loops once, or two arcs meeting in a lens all resolve the same way.
-    /// The LARGEST enclosing cycle wins (the rule - a small sub-loop must
-    /// never steal the intended boundary). The caller splits the involved strokes
-    /// at the vertices; the enclosed arcs become boundary, the tails stay ink.
-    ///
-    /// TWO KINDS OF JUNCTION, because TOUCHING IS TOUCHING WHEREVER IT HAPPENS
-    /// :
-    ///   · a CROSSING - the two lines properly cross (needs an overshoot);
-    ///   · a TOUCH - one line's END lands ON another line, anywhere along it.
-    /// The touch half was missing, and that was the whole of the multi-stroke
-    /// bug. GeometryUtil.SegmentsIntersect refuses t==1 by construction, so a
-    /// stroke that STOPS on the line it meets registered nothing - and stopping
-    /// exactly on the line is what a careful drawer does. A square drawn as four
-    /// strokes, each ending on the previous one's mid-span, produced ZERO
-    /// vertices: the better drew, the worse it worked. Endpoint-to-endpoint
-    /// chaining (SealDetector) could not see it either — its model is "a stroke
-    /// is an edge between its two ENDS", i.e. exactly two attachment points per
-    /// stroke, so a line landing on another line's MIDDLE is invisible to it.
-    /// The rune path already had this fix (RuneGraph.SplitTJunctions); this is
-    /// the seal half of it.
+    /// Finds seals formed by ink meeting ink: every junction (a proper crossing, or
+    /// an endpoint landing on ink) is a graph vertex, the arcs between vertices are
+    /// edges, and the largest enclosing cycle wins. The caller splits the strokes.
     public static class CrossingFinder
     {
-        /// Why an ALMOST-junction was refused - surfaced by the caller so a
-        /// near-touch never fails in silence.
+        /// Why an almost-junction was refused - surfaced by the caller.
         public static string LastNearMiss;
 
         /// One arc of the boundary: an inclusive node range on a stroke, walked
@@ -75,9 +50,8 @@ namespace SpellyZombie
         const int MaxCrossings = 400;
         const int MaxNearMisses = 256;
 
-        // ---- pooled scratch (Find runs at 8 Hz on the main thread, never
-        // reentrant - it was the biggest single allocator in the seal path;
-        // nothing pooled here ever escapes: Result carries only Arc structs) ----
+        // pooled scratch: Find runs at 8 Hz, never reentrant; nothing pooled
+        // escapes (Result carries only Arc structs)
         static List<Vector3>[] _pts = new List<Vector3>[16];
         static Vector3[] _norms = new Vector3[16];
         static float[][] _arc = new float[16][];
@@ -145,17 +119,14 @@ namespace SpellyZombie
             return e;
         }
 
-        /// Every endpoint that came close to ink without touching it, WITH the
-        /// two strokes involved - the strokes matter, see SelectNearMiss.
+        /// Endpoints that came close to ink without touching, with the two strokes involved (see SelectNearMiss).
         static readonly List<(float Dist, int SA, int SB)> _nearMisses =
             new List<(float, int, int)>();
 
         /// The closest QUALIFYING near miss this scan (see SelectNearMiss).
         static float _nearMissDist;
 
-        /// Why a ring that was actually FOUND got thrown away. Outranks a near
-        /// miss: "your loop is too small" beats "some line stops short", because
-        /// the ink really did touch all the way round.
+        /// Why a found ring was thrown away. Outranks a near miss.
         static string _cycleReject;
 
         public static Result Find(IReadOnlyList<Stroke> eligible)
@@ -169,10 +140,8 @@ namespace SpellyZombie
             ReleaseScratch(); // nothing pooled escapes via Result (Arc structs only)
             if (result.Valid) return result;
 
-            // NEVER SILENTLY REFUSE. One message, and only
-            // when nothing sealed. A ring that was found and then refused by a
-            // size guard is the more useful complaint, so it wins; otherwise the
-            // nearest gap that was plausibly MEANT to be a join gets named.
+            // one message, only when nothing sealed: a refused ring's reason wins
+            // over the nearest qualifying gap
             float r = DrawingConfig.InkTouchDistance;
             if (_cycleReject != null)
                 LastNearMiss = _cycleReject;
@@ -196,18 +165,12 @@ namespace SpellyZombie
                 WorldPoints(eligible[i], pts[i], out norms[i]);
                 arc[i] = ArcLengths(pts[i], arc[i]);
                 bounds[i] = BoundsOf(pts[i]);
-                // Bounds.Expand grows the SIZE by the amount, i.e. each face by
-                // half of it - so this pushes each face out by one full
-                // InkTouchDistance, and with BOTH boxes expanded the cull keeps
-                // every pair that could possibly touch. Derived, never a literal:
-                // raising InkTouchDistance in sz_tuning.json used to leave this
-                // cull behind at 2cm and the knob quietly stopped working on
-                // cross-stroke pairs while self-touches kept obeying it.
+                // Bounds.Expand grows each face by half the amount, so x2 = one full
+                // InkTouchDistance per face; with both boxes expanded no touching pair is culled
                 bounds[i].Expand(DrawingConfig.InkTouchDistance * 2f);
             }
 
-            // 1) every junction: ink CROSSING ink AND ink ENDING ON ink (pairwise
-            // + self). Both are "the ink meets" — the one law, one graph.
+            // 1) every junction: ink crossing ink and ink ending on ink (pairwise + self)
             var xings = _xings; // pooled, released after Find
             for (int i = 0; i < n && xings.Count < MaxCrossings; i++)
             {
@@ -222,16 +185,11 @@ namespace SpellyZombie
             }
             if (xings.Count == 0) return default; // nothing meets: no ring, and no gap worth naming
 
-            // 1b) decide WHICH near miss (if any) is worth telling him about,
-            //     now that we know what actually touches what.
+            // 1b) decide which near miss (if any) is worth reporting
             SelectNearMiss(n, xings);
 
-            // 2) WELD junctions that are the same physical meeting point.
-            //    Two strokes whose ends meet generate TWO touches - A's end onto
-            //    B's ink, and B's end onto A's ink - a hair apart. They are one
-            //    corner of the drawing and must be one vertex, or each stroke
-            //    gets two vertices at the same spot, the arc between them is
-            //    empty, and the ring never forms.
+            // 2) weld junctions at the same physical meeting point - meeting ends
+            //    generate two touches a hair apart that must be one vertex
             WeldVertices(xings);
 
             // 3) per-stroke sorted vertex appearances (pooled, cleared in EnsureScratch)
@@ -263,24 +221,9 @@ namespace SpellyZombie
             }
             if (edges.Count == 0) return default;
 
-            // a stroke that crosses ITSELF two or more times is a complex
-            // GLYPH being drawn (a five-point star self-crosses five times),
-            // not a lasso - its internal cells must never self-seal and eat
-            // the drawing (the star: "Seal resolved - ink consumed" left
-            // a grey star inside an empty gold circle). ONE self-crossing
-            // stays a seal: that's the overshoot-closed circle, the most
-            // common seal in the game.
-            //
-            // COUNT ONLY REAL SELF-*CROSSINGS*, never self-TOUCHES. A star
-            // CROSSES itself; a closure TOUCHES itself. One overshoot-closed
-            // circle emits up to three self-junctions - the crossing itself,
-            // plus start-onto-tail and tail-tip-onto-head - and those sit an
-            // OVERSHOOT apart, which beats the 1.4cm weld radius the moment the
-            // overshoot is a centimetre and a half. Counting them made an
-            // ordinary 9cm circle read as "self-crosses twice" = a star, and
-            // AllFromOneGlyph then refused it: SIZE deciding shape, in silence,
-            // over the whole palm-sized range config calls legal. Crossings are
-            // welded too, so a star's five stay five.
+            // two or more self-crossings mark a glyph (a star) whose small internal
+            // cells must not seal; one self-crossing is an overshoot-closed circle.
+            // Only real crossings count - self-touches are closures, not glyph marks.
             var selfVerts = new Dictionary<Stroke, HashSet<int>>();
             foreach (var x in xings)
                 if (x.SA == x.SB && x.Crossing)
@@ -297,21 +240,8 @@ namespace SpellyZombie
             return FindLargestCycle(edges, glyphish);
         }
 
-        /// A GAP IS ONLY A COMPLAINT IF IT WAS MEANT TO BE A JOIN.
-        ///
-        /// This scan runs eight times a second over ALL open ink, and "nothing
-        /// sealed" is the normal state while draws runes. Reporting the
-        /// nearest approach anywhere in the world meant two runes drawn 3cm
-        /// apart - deliberately apart, exactly as the law demands - were nagged
-        /// forever with "nudge it ONTO the line", which is the OPPOSITE of the
-        /// law it quotes. A lone open arc accused itself the same way.
-        ///
-        /// So: a near miss counts only when both strokes involved are already
-        /// JOINED to ink, and joined to EACH OTHER through that ink. That is
-        /// precisely "a chain that almost comes back around" — the square whose
-        /// fourth corner stops 2cm short - and nothing else. Ink standing on its
-        /// own says nothing here; a single stroke that nearly closes on itself
-        /// is SealDetector's message to make, and it already makes it.
+        /// A gap counts as a near miss only when both strokes are already joined
+        /// to ink and to each other through it (a chain that almost closed).
         static void SelectNearMiss(int n, List<Xing> xings)
         {
             _nearMissDist = float.MaxValue;
@@ -342,9 +272,7 @@ namespace SpellyZombie
             }
         }
 
-        /// One vertex per PLACE, not per detection. Weld radius is the touch law
-        /// itself: two junctions closer together than the ink is wide are the
-        /// same corner of the drawing.
+        /// One vertex per place: junctions within InkTouchDistance weld together.
         static void WeldVertices(List<Xing> xings)
         {
             float weld2 = DrawingConfig.InkTouchDistance * DrawingConfig.InkTouchDistance;
@@ -369,9 +297,7 @@ namespace SpellyZombie
             // fit a plane from the involved points and work in 2D
             Project(a, b, i == j, norms[i] + norms[j], out var pa, out var pb);
 
-            // ...but the answer has to be true in the WORLD too (below).
-            // Generous by one extra ink width, because ink following a rough or
-            // curved surface doesn't sit exactly in the fitted plane.
+            // world-distance guard below; generous by one extra ink width for rough surfaces
             float maxSep = DrawingConfig.InkTouchDistance * 2f;
             float maxSep2 = maxSep * maxSep;
 
@@ -383,20 +309,12 @@ namespace SpellyZombie
                     if (i == j && s == 0 && t == pb.Count - 2) continue; // the two endpoints: endpoint-closure, not a cross
                     if (GeometryUtil.SegmentsIntersect(pa[s], pa[s + 1], pb[t], pb[t + 1], out float ts, out float tt))
                     {
-                        // the meeting point in the WORLD, for welding: the two
-                        // lines pass within ink width of each other in 3D even
-                        // when the 2D projection says they cross exactly
+                        // world meeting points, for welding and the 3D separation guard
                         Vector3 pA = a[s] + (a[s + 1] - a[s]) * ts;
                         Vector3 pB = b[t] + (b[t + 1] - b[t]) * tt;
 
-                        // TOUCHING IS TOUCHING IN THE WORLD, NOT IN A PROJECTION.
-                        // The test above is done in ONE fitted plane. Ink wrapped
-                        // around a barrel, a tree or a limb has a deep bounding
-                        // box on every axis, so two strokes on OPPOSITE sides of
-                        // the object project onto each other and "cross" through
-                        // a hand's width of solid wood. A visible gap must never
-                        // close - and a whole log is the most visible gap there
-                        // is. Both points are already here, so this is free.
+                        // the 2D test alone lets strokes on opposite sides of an
+                        // object "cross" through it - require 3D proximity too
                         if ((pA - pB).sqrMagnitude > maxSep2) continue;
 
                         var x = TakeXing();
@@ -412,15 +330,8 @@ namespace SpellyZombie
             }
         }
 
-        /// A STROKE THAT STOPS ON ANOTHER STROKE IS TOUCHING IT. Emit a vertex
-        /// wherever an ENDPOINT lands on ink - measured point-to-SEGMENT, so a
-        /// line landing between two of the other line's samples counts exactly
-        /// as much as one landing on a sample. This runs in 3D on purpose: no
-        /// plane fit, no projection, nothing that can collapse (see Project).
-        ///
-        /// Stroke-count independence, which is the whole point: the same square
-        /// drawn in one sweep (self-touch at the start) and in four strokes
-        /// (four end-on-ink touches) now produces the same ring.
+        /// Emit a vertex wherever an endpoint lands on ink, measured point-to-
+        /// segment, in 3D (no plane fit that could collapse - see Project).
         static void CollectTouches(List<Vector3>[] pts, float[][] arc, int i, int j, List<Xing> xings)
         {
             float r = DrawingConfig.InkTouchDistance;
@@ -454,10 +365,8 @@ namespace SpellyZombie
                 Vector3 c = q0 + d * u;
                 float dist = Vector3.Distance(p, c);
 
-                // A LINE IS ALWAYS TOUCHING ITSELF right where it is. Only a
-                // return far enough around to enclose something is a closure -
-                // and "far enough" is the same MinLoopPerimeter every other
-                // closure path uses, so a stroke can't seal a 2cm nub of itself.
+                // self: only a return at least MinLoopPerimeter along the stroke
+                // counts - a line always touches itself where it is
                 if (si == sj)
                 {
                     float alongTouch = arc[sj][t] + u * (arc[sj][t + 1] - arc[sj][t]);
@@ -470,9 +379,7 @@ namespace SpellyZombie
 
             if (bestPos < 0f)
             {
-                // remember the refusal AND who it was between - SelectNearMiss
-                // decides afterwards whether this gap was ever meant to be a
-                // join, which it can only know once the whole graph is built
+                // record the refusal and its strokes; SelectNearMiss filters later
                 if (nearMiss < float.MaxValue && _nearMisses.Count < MaxNearMisses)
                     _nearMisses.Add((nearMiss, si, sj));
                 return;
@@ -490,7 +397,7 @@ namespace SpellyZombie
         static void Project(List<Vector3> a, List<Vector3> b, bool self, Vector3 surfaceNormal,
                             out List<Vector2> pa, out List<Vector2> pb)
         {
-            var all = _projAll; // pooled - this ran per candidate pair per scan
+            var all = _projAll; // pooled
             all.Clear();
             all.AddRange(a);
             if (!self) all.AddRange(b);
@@ -498,12 +405,8 @@ namespace SpellyZombie
             foreach (var p in all) origin += p;
             origin /= all.Count;
 
-            // `all` is stroke A's points CONCATENATED with stroke B's - a garbage
-            // "polygon" whose signed area happily cancels to zero for two
-            // near-straight strokes. When it does, falling back to Vector3.up
-            // flattens a WALL drawing to a line and every crossing test on that
-            // pair becomes noise — silently, per pair, "sometimes". Fall back to
-            // the ink's OWN surface normal instead, exactly as Seal.cs does.
+            // the concatenated "polygon" can have a near-zero Newell normal; fall
+            // back to the ink's surface normal before Vector3.up
             Vector3 normal = GeometryUtil.NewellNormal(all);
             if (normal.sqrMagnitude < 1e-8f) normal = surfaceNormal;
             if (normal.sqrMagnitude < 1e-8f) normal = Vector3.up;
@@ -520,11 +423,7 @@ namespace SpellyZombie
             }
         }
 
-        // ---- LARGEST (by perimeter) valid cycle. Was shortest - which let the
-        // tiny sliver wedge from overshoot-crossed circle ends "win", seal as a
-        // 3-edge 0.3s blip, and CONSUME the shared ink, breaking the intended
-        // big loop. When ink crossings enclose several regions, the big one is
-        // the intent; the overshoot slivers are drawing debris. ----
+        // largest (by perimeter) valid cycle - the big enclosed region is the intent
         static Result FindLargestCycle(List<Edge> edges, HashSet<Stroke> glyphish)
         {
             var adj = new Dictionary<int, List<int>>();
@@ -541,12 +440,7 @@ namespace SpellyZombie
 
             List<int> best = null;
             float bestPerim = -1f;
-            // A RING THAT WAS FOUND AND THEN THROWN AWAY IS STILL A REFUSAL, and
-            // the rule is that a refusal is never silent. Every rejection below
-            // used to leave LastNearMiss null - the ink touched all the way
-            // round, every junction was found, and the HUD said nothing at all.
-            // Keep the reason belonging to the BIGGEST ring we had to drop: that
-            // is the boundary meant.
+            // keep the rejection reason of the biggest dropped ring - refusals are never silent
             string reject = null;
             float rejectPerim = -1f;
             void Refuse(float ringPerim, string reason)
@@ -598,14 +492,9 @@ namespace SpellyZombie
             return BuildResult(edges, best);
         }
 
-        /// True when every arc of the cycle belongs to a single multi-self-
-        /// crossing stroke - the cells inside a star/pentagram-style glyph.
-        /// Mixed-stroke cycles (a lasso over other ink, a polygon of separate
-        /// segments) are never suppressed.
-        /// True only for a SMALL cell entirely inside one self-crossing stroke
-        /// - a star's inner point, not a seal. the rule: ANY real-sized
-        /// loop closes no matter how many times it crosses itself, so we
-        /// suppress only cells below rune scale; a big wobbly loop always seals.
+        /// True for a small cell entirely inside one multi-self-crossing stroke
+        /// (a star's inner cell). Mixed-stroke cycles are never suppressed, and
+        /// any cell larger than GlyphCellMax seals regardless.
         static bool AllFromOneGlyph(List<Edge> edges, List<int> cycle, HashSet<Stroke> glyphish)
         {
             if (cycle == null || cycle.Count == 0 || glyphish.Count == 0) return false;
@@ -631,8 +520,7 @@ namespace SpellyZombie
         static List<int> ShortestPath(List<Edge> edges, Dictionary<int, List<int>> adj,
                                       int start, int goal, int excludeEdge)
         {
-            // pooled scratch - this ran per seed edge per 8 Hz scan and its
-            // three fresh Dictionaries + frontier were steady garbage
+            // pooled scratch (runs per seed edge per scan)
             _spDist.Clear();
             _spPrev.Clear();
             _spVisited.Clear();
@@ -685,17 +573,9 @@ namespace SpellyZombie
         /// One arc of the ring, in the direction the ring travels through it.
         struct Step { public int Edge; public bool Reversed; }
 
-        /// Walk the cycle's arcs end to end, so the ring comes out in RING ORDER.
-        /// Null = the arcs don't chain into one clean cycle.
-        ///
-        /// This must be shared with the area guard, not just the result builder.
-        /// An Edge's points are always stored LoHi (node order), which is the
-        /// order it was DRAWN in, not the direction the ring runs - so simply
-        /// concatenating arcs gives a zig-zag whose signed area partly cancels.
-        /// Newell's normal then collapses toward zero and Encloses refuses an
-        /// honest seal, at random, depending on which way each stroke happened to
-        /// be drawn. That is a "sometimes", and multi-stroke seals — the bug
-        /// (A) - are precisely the case with the most arcs to disagree.
+        /// Walk the cycle's arcs end to end so the ring comes out in ring order
+        /// (null = not one clean cycle). The area guard must use this too: arcs
+        /// are stored in drawn order and unordered concatenation cancels the area.
         static List<Step> OrderCycle(List<Edge> edges, List<int> cycle)
         {
             var localAdj = new Dictionary<int, List<int>>();
@@ -731,9 +611,8 @@ namespace SpellyZombie
             return steps;
         }
 
-        /// True = this ring is a seal. False = it isn't, and `why` says so in the
-        /// words (null only for the internal "these arcs don't chain" case, which
-        /// is not something a player can act on).
+        /// True = this ring is a seal. False = it isn't; `why` explains (null only
+        /// for the internal arcs-don't-chain case).
         static bool Encloses(List<Edge> edges, List<int> cycle, out string why)
         {
             why = null;
@@ -810,9 +689,7 @@ namespace SpellyZombie
         }
 
         // ---- small helpers ----
-        /// World positions AND the ink's averaged surface normal, into a pooled
-        /// buffer. The normal used to be thrown away here, which is why the
-        /// plane fit had nothing to fall back on but Vector3.up.
+        /// World positions and the ink's averaged surface normal, into a pooled buffer.
         static void WorldPoints(Stroke s, List<Vector3> into, out Vector3 surfaceNormal)
         {
             into.Clear();

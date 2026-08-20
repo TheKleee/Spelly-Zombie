@@ -4,20 +4,10 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// THE ACOLYTE'S OVERWATCH - the spec, the mirror of the wizard's R body
-    /// painting. From FIRST PERSON, R looks out through your own dead: the
-    /// camera swings to whichever zombie you name and you watch what it sees.
-    ///
-    /// the rules, kept exactly:
-    ///   · ENTER with R in first person. Nothing happens if you own no zombies.
-    ///   · 1..9 then 0 pick a zombie - TEN keys, which is why the cap is ten.
-    ///     "The cap IS the UI."
-    ///   · YOU CANNOT STEER IT. You see where it is, that is all.
-    ///   · LEAVE with R, TAB or F.
-    ///   · You can DRAW A SEAL ON IT from here, and that is what detonates it.
-    ///
-    /// Runs after ShapeShift (220) so the camera write is the last word, the
-    /// same reason ShapeShift itself sits after the controller.
+    /// Acolyte overwatch: from first person, R looks out through your own
+    /// zombies; 1..9 then 0 pick one (ten keys = the cap of ten); you cannot
+    /// steer it; leave with R, TAB or F. A seal drawn on it detonates it.
+    /// Runs after ShapeShift (220) so the camera write lands last.
     [DefaultExecutionOrder(221)]
     public class ZombieWatch : MonoBehaviour
     {
@@ -32,8 +22,7 @@ namespace SpellyZombie
 
         static ZombieWatch Local;
 
-        /// BLOWN OUT OF OVERWATCH - a blast big enough drops you back into your
-        /// own eyes so your body can be thrown . Driven by Shove.
+        /// A big enough blast closes overwatch. Driven by Shove.
         public static void Blown() { if (Local != null && Local._open) Local.Close(); }
 
         readonly List<SummonedZombie> _mine = new List<SummonedZombie>();
@@ -42,8 +31,7 @@ namespace SpellyZombie
         Vector3 _pin;
         SimpleFPSController _pilot;
 
-        /// The camera lifecycle lives in EaselOrbit now - borrow, orbit,
-        /// release - instead of a private fourth copy of it here.
+        /// Camera lifecycle: EaselOrbit borrow / orbit / release.
         readonly EaselOrbit.Borrowed _view = new EaselOrbit.Borrowed();
 
         SummonedZombie Current =>
@@ -73,10 +61,8 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             if (kb == null || UIKit.Typing || GameMenu.IsOpen || PoseStudio.IsOpen) return;
 
-            // ONLY THE BODY YOU ARE LOOKING OUT OF. SideBootstrap wears these
-            // components onto EVERY controller, so without this a remote player
-            // would read the LOCAL side, answer your R, and have its camera
-            // borrowed and its body pinned.
+            // local viewer only - SideBootstrap adds this to every controller,
+            // and a remote body must not answer the local R
             if (_pilot == null) _pilot = GetComponent<SimpleFPSController>();
             if (_pilot == null || !_pilot.IsLocalViewer) { if (_open) Close(); return; }
 
@@ -107,7 +93,6 @@ namespace SpellyZombie
 
             if (!_open) return;
 
-            // "leave with R, Tab, or F"
             if (kb.tabKey.wasPressedThisFrame || kb.fKey.wasPressedThisFrame
                 || kb.escapeKey.wasPressedThisFrame) { Close(); return; }
 
@@ -154,21 +139,14 @@ namespace SpellyZombie
         {
             if (!_open) return;
 
-            // YOUR BODY STAYS PUT. Overwatch is a place you stand still and
-            // look from, not a way to walk blind - and pinning it here rather
-            // than asking the controller to freeze keeps this out of the file.
+            // the body stays pinned while overwatch is open
             transform.position = _pin;
 
             var z = Current;
             if (z == null || !_view.Held) return;
 
-            // A PEEPHOLE, NOT A DRONE ("the Acolyte has better
-            // navigation info than the wizard"). the spec is "you cannot steer
-            // it, but you see where it is" — my first pass gave free orbit out
-            // to 9m, which made each of ten zombies a scouting camera pointed
-            // wherever the wizards are, since zombies flee whoever chases them.
-            // The leash is now tight to the body, so overwatch tells you which
-            // of your dead is in trouble without mapping the town.
+            // tight camera leash - a free orbit would turn each zombie into a
+            // scouting camera
             float lift = Mathf.Max(0.3f, z.transform.localScale.y * 1.1f);
             float near = lift * 1.8f;
             _view.Orbit(Keyboard.current, Mouse.current,

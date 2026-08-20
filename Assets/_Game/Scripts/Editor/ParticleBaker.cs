@@ -4,15 +4,10 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Bakes live spell particles into editable prefabs. Dragging them out of
-    /// the hierarchy breaks: their materials are created at runtime (MatterFX)
-    /// and die with play mode. This saves each material as a .mat asset and
-    /// rewires the copy before writing the prefab.
-    ///
-    /// Workflow: enter play mode, cast the particles you want baked, then
-    /// Spelly Zombie -> Bake SPELL PARTICLES to prefabs. One prefab per
-    /// ParticleKind found in the scene, written to Assets/_Game/Prefabs/
-    /// Particles. Existing prefabs are never overwritten.
+    /// Bakes live spell particles into prefabs: runtime MatterFX materials are
+    /// saved as .mat assets and rewired first. In play mode, cast the particles,
+    /// then run the menu item. One prefab per ParticleKind, written to
+    /// Assets/_Game/Prefabs/Particles; existing prefabs are never overwritten.
     public static class ParticleBaker
     {
         const string Folder = "Assets/_Game/Prefabs/Particles";
@@ -43,13 +38,13 @@ namespace SpellyZombie
                 if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
                 {
                     skipped++;
-                    continue; // the edits win, always
+                    continue; // existing prefab wins
                 }
 
                 var copy = Object.Instantiate(p.gameObject);
                 copy.name = $"P_{p.Kind}";
 
-                // behavior stays in code; the prefab is the LOOK only
+                // behavior stays in code; the prefab is the look only
                 foreach (var mb in copy.GetComponentsInChildren<MonoBehaviour>(true))
                     Object.DestroyImmediate(mb);
 

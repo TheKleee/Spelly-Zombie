@@ -5,16 +5,9 @@ using UnityEngine.SceneManagement;
 
 namespace SpellyZombie
 {
-    /// TEST SANDBOX - built at the explicit request (July 12) for feature
-    /// testing: floor, one crate, one slide-weapon, and a BEAN PLAYER with
-    /// FAKE POSEABLE ARMS (EmoteRig joints - stand-ins for the real model's
-    /// bones later). Tests: Tab 1st3rd person, weapon slots (E/F/1-2-3),
-    /// R draw modes (weapon engraving / body paint), emotes (3rd person,
-    /// F cancels, X reverts a slot), pose editing (B).
-    ///
-    /// SAFETY: refuses to run in any scene that contains real content
-    /// (SZ_Menu / SZ_Village / SZ_GameMap / an existing player). Use
-    /// File  New Scene first.
+    /// Test sandbox: floor, crate, weapons, and a bean player with poseable
+    /// EmoteRig joints. Refuses to build in any scene that contains real
+    /// content (SZ_Menu / SZ_Village / SZ_GameMap / an existing player).
     public static class TestSandboxBuilder
     {
         [MenuItem("Spelly Zombie/Build TEST Sandbox (empty scene only)")]
@@ -57,7 +50,6 @@ namespace SpellyZombie
                     new Material(floorShader) { color = new Color(0.62f, 0.62f, 0.6f) };
             floor.AddComponent<SurfaceMaterialTag>().Material = SurfaceMaterialType.Stone;
 
-            // the one object in the middle: a breakable wooden crate
             var crate = GameObject.CreatePrimitive(PrimitiveType.Cube);
             crate.name = "Crate";
             crate.transform.SetParent(root, false);
@@ -91,10 +83,8 @@ namespace SpellyZombie
                       "In draw modes: MMB-drag orbits, scroll zooms.");
         }
 
-        /// The bean: CharacterController rig + visible egg body + FAKE ARMS on
-        /// shoulder pivots and a head on a neck pivot - all EmoteRig joints,
-        /// exactly the ids the real boned model will use later
-        /// (shoulder.L / shoulder.R / neck).
+        /// Bean player: CharacterController rig + capsule body + fake arms/head
+        /// on pivots, registered as EmoteRig joints (shoulder.L / shoulder.R / neck).
         public static void BuildBeanPlayer(Transform root) // PhotoBoothBuilder reuses the whole player rig
         {
             var player = new GameObject("SZ_Player");
@@ -117,7 +107,7 @@ namespace SpellyZombie
             if (beanShader != null)
                 body.GetComponent<Renderer>().sharedMaterial = new Material(beanShader) { color = skin };
 
-            // FAKE ARMS + head - poseable stand-ins for the future bones
+            // fake arms + head - poseable stand-ins for the future bones
             var shoulderL = new GameObject("ShoulderPivot.L");
             shoulderL.transform.SetParent(player.transform, false);
             shoulderL.transform.localPosition = new Vector3(-0.45f, 0.45f, 0.05f);

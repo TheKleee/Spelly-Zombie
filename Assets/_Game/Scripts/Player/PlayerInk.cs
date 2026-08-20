@@ -3,11 +3,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The round economy: ink is life. Strokes drain it by drawn length, kills
-    /// refill it (shared - co-op, not competition), intermissions trickle.
-    /// Outside an active run drawing is free (sandbox/testing).
-    /// This is the draw-fast-vs-draw-well tension: a sloppy seal wastes ink AND
-    /// casts worse.
+    /// The per-player ink pool: strokes drain it by drawn length, awards
+    /// refill it.
     public class PlayerInk : MonoBehaviour
     {
         public float Ink = DrawingConfig.InkMax;
@@ -17,33 +14,16 @@ namespace SpellyZombie
         void Awake()
         {
             All.Add(this);
-            // EVERYONE STARTS WITH A WAND (, reversing the Aug 9
-            // wandless-start rule: "it's boring if we start the game with no
-            // wands"). Losing a wand still costs you; being handed an empty one
-            // just makes the first minute a chore.
-            //
-            // Assigned HERE rather than by editing the prefab: Player.prefab
-            // serializes Ink: 100, so the field initializer above never runs for
-            // the real player. Setting it in Awake beats the bake, and taking a
-            // FRACTION of Perks.InkMax means it follows the ceiling instead of
-            // drifting away from it.
-            Ink = Perks.InkMax * Mathf.Clamp01(DrawingConfig.StartInkFraction);
+            // Player.prefab serializes Ink, so the field initializer never
+            // runs there - set in Awake, as a fraction of the Perks ceiling
+            Ink = DrawingConfig.InkMax * Mathf.Clamp01(DrawingConfig.StartInkFraction);
         }
         void OnDestroy() => All.Remove(this);
 
         SimpleFPSController _pilot;
 
-        /// NO FREE INK FOR ANYONE . This used to Award() every
-        /// frame, unconditionally, to every player of both sides - a SECOND
-        /// passive regen sitting on top of CauldronEconomy's distance-scaled
-        /// one. WandState's own header has said since the day it was written
-        /// that it "kills passive regen" once the real map lands; this is that.
-        ///
-        /// the rule, split by side:
-        ///   WIZARD  - nothing passive at all. The pot is the only well, and
-        ///             CauldronEconomy.LocalWandTick already pours it.
-        ///   ACOLYTE - ink EVAPORATES. Corrupt ink does not keep, which is what
-        ///             forces them to keep moving and keep scanning.
+        /// No passive regen. Wizards: the pot is the only well
+        /// (CauldronEconomy.LocalWandTick). Acolytes: ink evaporates.
         void Update()
         {
             if (_pilot == null) _pilot = GetComponent<SimpleFPSController>();
@@ -51,14 +31,10 @@ namespace SpellyZombie
             Ink = Mathf.Max(0f, Ink - DrawingConfig.AcolyteInkEvaporatePerSec * Time.deltaTime);
         }
 
-        // the Drawing perk deepens the well (Perks.InkMax) - no perk = old value
-        public float Fraction => Ink / Perks.InkMax;
+        public float Fraction => Ink / DrawingConfig.InkMax;
 
-        /// Spend ink for drawn line length. THE LOBBY IS NOT A FREE RIDE any
-        /// more ("the game should not be played differently than normal
-        /// just cause it's lobby - same rules should apply"). Ink used to cost
-        /// nothing outside a run, which is why the wand never shrank there.
-        /// The Lobby cauldron refills itself forever, so you can still test.
+        /// Spend ink for drawn line length - the lobby pays too (its cauldron
+        /// refills itself forever).
         public bool TrySpend(float amount)
         {
             if (Ink < amount) return false;
@@ -66,7 +42,7 @@ namespace SpellyZombie
             return true;
         }
 
-        public void Award(float amount) => Ink = Mathf.Min(Perks.InkMax, Ink + amount);
+        public void Award(float amount) => Ink = Mathf.Min(DrawingConfig.InkMax, Ink + amount);
 
         public static void AwardAll(float amount)
         {
@@ -75,7 +51,7 @@ namespace SpellyZombie
 
         public static void RefillAll()
         {
-            foreach (var p in All) p.Ink = Perks.InkMax;
+            foreach (var p in All) p.Ink = DrawingConfig.InkMax;
         }
     }
 }

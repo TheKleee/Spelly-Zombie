@@ -10,19 +10,16 @@ namespace SpellyZombie
     {
         public int More;    // +2 particles per burst
         public int Fast;    // launch speed +50% per stack
-        public int Bond;    // particles carry extra glue ("connection buff")
+        public int Bond;    // particles carry extra glue
         public int Potent;  // payload magnitude +35% per stack
-        public int Big;     // size +30% per stack (rides SrcSize  bigger demons too)
+        public int Big;     // size +30% per stack (rides SrcSize)
         public int Rapid;   // seal re-emits 25% more often per stack
         public int Echo;    // 22%/stack: a landing particle re-emits at half power
     }
 
-    /// the Vampire-Survivors layer: kills level you up; each level offers
-    /// 1-of-3 powerups tied to rune families you actually OWN (so card hunting
-    /// matters), with a reroll. No pause - this is co-op - instead choosing
-    /// wraps you in the INK TRANCE (the existing rule: zombies blissed by
-    /// nearby drawing), so you're safe but being SURROUNDED: double-edged.
-    /// Confirming a choice fires a NOVA of push particles - your escape hatch.
+    /// Kills level you up; each level offers 1-of-3 powerups tied to rune
+    /// families you own, with a reroll. No pause: choosing reads as drawing
+    /// (nearby zombies bliss out); confirming fires a push nova.
     public class Powerups : MonoBehaviour
     {
         public static Powerups Instance { get; private set; }
@@ -130,9 +127,7 @@ namespace SpellyZombie
             }
             if (!_open) return;
 
-            // THE TRANCE BUBBLE: choosing reads as "drawing" to zombie brains —
-            // nearby zombies bliss out (they can't hit you)… and pile up around
-            // you while you shop. the double-edged sword, verbatim.
+            // choosing reports as drawing so nearby zombies bliss out
             var player = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             if (player != null)
                 WorldEvents.Report(WorldEventKind.Ink, player.transform.position, 1f);
@@ -190,16 +185,14 @@ namespace SpellyZombie
             _pending--;
             DrawingWorld.Instance?.LogEvent($"POWERUP: {o.Card} rune, {StatName[o.Stat]}");
 
-            Nova(); // the escape blast - shove the crowd that gathered
+            Nova(); // shove the gathered crowd
 
             _open = _pending > 0;
             if (_open) { Roll(); BuildChooserUI(); }
             else DestroyChooserUI();
         }
 
-        /// Confirming a powerup BLASTS everything nearby with push force -
-        /// real push particles (so it plays by the game's rules) plus a
-        /// guaranteed direct shove, because this is your escape hatch.
+        /// Push blast on confirm: real push particles plus a direct shove.
         void Nova()
         {
             var p = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
@@ -282,8 +275,7 @@ namespace SpellyZombie
                 var desc = UIKit.Label(card, StatDesc[o.Stat]
                     + (stacks > 0 ? $"\n(owned ×{stacks})" : ""),
                     15, new Color(0.25f, 0.19f, 0.12f), TextAnchor.UpperLeft);
-                // live data beats adopted prefab text (same stale-label class
-                // as the rune chooser - the offers change every level-up)
+                // re-set text: adopted prefab labels may hold stale strings
                 title.text = $"{o.Card.ToString().ToUpper()}: {StatName[o.Stat]}";
                 desc.text = StatDesc[o.Stat] + (stacks > 0 ? $"\n(owned ×{stacks})" : "");
                 var dr = (RectTransform)desc.transform;
@@ -303,7 +295,7 @@ namespace SpellyZombie
 
         void DestroyChooserUI()
         {
-            UIKit.Retire(_ui); // reroll rebuilds same-frame - never adopt the corpse
+            UIKit.Retire(_ui); // reroll rebuilds same-frame
             _ui = null;
         }
     }

@@ -32,8 +32,7 @@ namespace SpellyZombie
                 RenderSettings.fogMode = FogMode.Exponential;
                 if (_cam != null)
                 {
-                    // the sky must drown too: skyboxes ignore fog, so the
-                    // camera paints the liquid's color instead of the sky
+                    // skyboxes ignore fog: paint the clear color instead
                     _clear = _cam.clearFlags;
                     _bg = _cam.backgroundColor;
                     _cam.clearFlags = CameraClearFlags.SolidColor;

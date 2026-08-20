@@ -16,12 +16,8 @@ namespace SpellyZombie
         /// The surface normal at this node - LIVE: it turns with the surface.
         public Vector3 SurfaceNormal => SurfaceDelta * _normalAtDraw;
 
-        /// How this ink's surface has ROTATED since the ink was drawn. Ink on
-        /// moving carriers (a tablet riding the camera, a posed body, a turned
-        /// zombie) takes its reference frame WITH it - a rune must read the
-        /// same no matter where its carrier now faces (the consistency
-        /// rule: your orientation in the world never changes what a drawing
-        /// is). Static world ink: identity, exactly the old behavior.
+        /// How this ink's surface has rotated since the ink was drawn - a rune must
+        /// read the same wherever its carrier now faces. Static world ink: identity.
         public Quaternion SurfaceDelta =>
             _hasParentRot && transform.parent != null
                 ? transform.parent.rotation * Quaternion.Inverse(_parentRotAtDraw)
@@ -61,6 +57,20 @@ namespace SpellyZombie
                 node._hasParentRot = true;
             }
             node.OnPersistentSurface = surface != null && surface.GetComponentInParent<PersistentInkSurface>() != null;
+
+            // A soft body's SKIN is bone-driven and lags the root, so ink on
+            // the root swims across a blob that is sloshing. Bind to the
+            // nearest bone at birth - the same handoff the body makes in
+            // CharacterRig.EndBodyPaint, just done immediately.
+            if (surface != null)
+            {
+                var blob = surface.GetComponentInParent<StateBlob>();
+                if (blob != null)
+                {
+                    var bone = blob.NearestBone(go.transform.position);
+                    if (bone != null) node.Rebase(bone);
+                }
+            }
             return node;
         }
 

@@ -1,5 +1,4 @@
-// The one liquid surface: calm stylized water with shoreline foam today,
-// magma or space-liquid tomorrow - same shader, different material colors.
+// One shader for every liquid surface - material colors decide which liquid.
 // Foam and depth shading need the URP asset's Depth Texture ON; without it
 // the surface still renders, just flat-colored and foamless.
 Shader "SpellyZombie/LiquidSurface"
@@ -24,7 +23,7 @@ Shader "SpellyZombie/LiquidSurface"
         Tags { "RenderType"="Transparent" "Queue"="Transparent" "RenderPipeline"="UniversalPipeline" }
         Blend SrcAlpha OneMinusSrcAlpha
         ZWrite Off
-        Cull Off   // the surface must read from below too - divers look up at it
+        Cull Off   // visible from below too
 
         Pass
         {
@@ -88,9 +87,7 @@ Shader "SpellyZombie/LiquidSurface"
 
                 // depth shading: bright shallows into dark deeps
                 half4 col = lerp(_ShallowColor, _DeepColor, saturate(diff / _DepthFade));
-                // deep water is OPAQUE water: the bed fades from view by
-                // ~2x the color fade, so the terrain's underwater rim can
-                // never print a line through the surface - from any height
+                // alpha ramps opaque by ~2x the color fade so the underwater rim never shows
                 col.a = lerp(col.a, 0.97, smoothstep(_DepthFade, _DepthFade * 2.2, diff));
 
                 // gentle surface ripples, purely tonal
@@ -99,8 +96,7 @@ Shader "SpellyZombie/LiquidSurface"
                           * Noise(i.world.xz * _RippleScale * 2.7 - t * 0.13);
                 col.rgb += (rip - 0.28) * _RippleStrength;
 
-                // THE BEACH FOAM: a lapping band where the water thins out.
-                // The band's width breathes (the lap) and noise tears its edge.
+                // foam: a lapping band where the water thins; noise tears its edge
                 float lap = 0.72 + 0.28 * sin(t * _LapSpeed * TWO_PI + Noise(i.world.xz * 0.05) * 6.0);
                 float band = smoothstep(_FoamWidth * lap, _FoamWidth * lap * 0.3, diff);
                 float tear = smoothstep(0.32, 0.62, Noise(i.world.xz * 0.9 + t * 0.22));
@@ -109,11 +105,9 @@ Shader "SpellyZombie/LiquidSurface"
 
                 col.rgb = lerp(col.rgb, _FoamColor.rgb, foam * _FoamColor.a);
                 col.a = saturate(col.a + foam * 0.5);
-                col.a *= smoothstep(0.0, 0.08, diff); // kiss the sand softly, no hard seam
+                col.a *= smoothstep(0.0, 0.08, diff); // no hard seam at the waterline
 
-                // the sea must dissolve into the horizon like everything else -
-                // and go OPAQUE while doing it, so nothing peeks through the
-                // fog wall from beyond the world's edge
+                // fog also drives alpha opaque so nothing shows past the fog wall
                 col.rgb = MixFog(col.rgb, i.fog);
                 col.a = lerp(1.0, col.a, saturate(i.fog));
                 return col;

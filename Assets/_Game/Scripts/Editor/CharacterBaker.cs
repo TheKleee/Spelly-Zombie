@@ -3,18 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// the CONTINUE-FROM-HERE BUTTON (the ruling: "let me copy the
-    /// CURRENT zombie and player, edit them, and never have your system
-    /// recreate them wrongly again").
-    ///
-    /// In play mode, one click clones the LIVE assembled body - mesh, runtime
-    /// materials (saved as real .mat assets), googly eyes, mouth, sockets,
-    /// worn pieces, wand and grimoire - strips only the components the game
-    /// must own (physics rigs, cloth, flavor scripts), and saves it as
-    /// Resources/Custom/ZombieBody.prefab or PlayerBody.prefab.
-    ///
-    /// From then on the game ADOPTS the prefab instead of rebuilding those
-    /// parts: the edits to it are law. Bake again anytime to re-capture.
+    /// In play mode, clones the live assembled body, strips components the game
+    /// re-adds at runtime, saves runtime materials as real .mat assets, and
+    /// writes Resources/Custom/*.prefab. The game adopts the prefab as-is.
     public static class CharacterBaker
     {
         const string Dir = "Assets/_Game/Resources/Custom";
@@ -53,21 +44,9 @@ namespace SpellyZombie
             Bake(rig.ModelGO, "PlayerBody");
         }
 
-        /// THE WHOLE PLAYER, NOT JUST THE BODY. "I don't want
-        /// scripts to be created at run time... I feel like in multiplayer this
-        /// would be felt even more. So having a prefab is a must." is right:
-        /// FishNet wants registered prefabs, and a player assembled by code at
-        /// spawn is awkward to replicate and impossible to inspect.
-        ///
-        /// Unlike the BODY bake this strips NOTHING. Colliders, the
-        /// CharacterController, every script and the animator controller all
-        /// survive, because the point is a player you can drop in a scene and
-        /// press play on. It only turns the runtime-generated materials into
-        /// real assets, which is the one thing that does not survive leaving
-        /// play mode.
-        ///
-        /// CharacterRig adopts an existing "Body" child, so the saved prefab does
-        /// NOT rebuild itself on load.
+        /// Bakes the whole player. Unlike the body bake this strips nothing; it
+        /// only turns runtime-generated materials into real assets. CharacterRig
+        /// adopts an existing "Body" child, so the saved prefab does not rebuild.
         [MenuItem("Spelly Zombie/Bake WHOLE PLAYER To Prefab (play mode)")]
         public static void BakeWholePlayer()
         {
@@ -90,10 +69,7 @@ namespace SpellyZombie
             var clone = Object.Instantiate(src);
             clone.name = "Player";
 
-            // STRIP WHAT THE RUNTIME REBUILDS. Baking these froze throwaway
-            // state into the prefab and, worse, forced SaveRuntimeMaterials to
-            // write every scratch MatterFX material out as an asset, which is
-            // where the pile of "Universal..." materials came from.
+            // strip what the runtime rebuilds:
             //   Ink     - WandInk's ink column, regenerated from the ink level
             //   Shapes  - ShapeShift's worn-prop holder, per round
             foreach (var t in clone.GetComponentsInChildren<Transform>(true))
@@ -123,10 +99,8 @@ namespace SpellyZombie
             else Debug.LogError($"[SpellyZombie] Failed to save {path} (the old one is untouched).");
         }
 
-        /// Runtime materials (MatterFX makes them with `new Material(...)`) are not
-        /// assets, so a prefab referencing them loses them the moment play mode
-        /// ends. Write each one out as a real file, keeping the live reference
-        /// valid so the prefab points at the saved asset.
+        /// Runtime materials are not assets and die when play mode ends. Writes
+        /// each one out as a .mat file; the live reference stays valid.
         static void SaveRuntimeMaterials(GameObject clone)
         {
             System.IO.Directory.CreateDirectory(MatDir);
@@ -164,21 +138,17 @@ namespace SpellyZombie
             var clone = Object.Instantiate(src);
             clone.name = bakeName;
 
-            // THE BAKE MUST NOT WELD THE FIT INTO THE SPECIES: the runtime
-            // MULTIPLIES the per-kind width (charger 1.25 / runner 0.72) and
-            // the flavor jitter onto the prefab's authored scale. Baking a
-            // charger and re-baking would compound it (1.25  1.56  …) and
-            // every walker would inherit it. Root scale returns to neutral;
-            // the authored scale inside the prefab is untouched.
+            // the runtime multiplies per-kind width and flavor jitter onto the
+            // prefab's authored scale; re-baking would compound it. Root scale
+            // resets to neutral, authored scale inside the prefab is untouched.
             clone.transform.localScale = Vector3.one;
 
             // the game OWNS these - they re-add (or re-adopt) at runtime, and
             // baked copies would double up or serialize broken
             Strip<CharacterJoint>(clone);   // joints before their rigidbodies
             Strip<Cloth>(clone);
-            // COLLIDERS/BODIES: the PLAYER rig re-adopts them at runtime, but
-            // nothing rebuilds them on a zombie - stripping there would eat
-            // hand-authored physics on every re-bake, permanently.
+            // the player rig re-adopts colliders/bodies at runtime; nothing
+            // rebuilds them on a zombie, so they are kept there
             if (bakeName != "ZombieBody")
             {
                 Strip<Collider>(clone);
@@ -206,10 +176,8 @@ namespace SpellyZombie
             }
 
             string path = $"{Dir}/{bakeName}.prefab";
-            // AXIOM : NEVER delete the asset before the new one
-            // exists - a failed save used to mean the prefab was simply GONE.
-            // SaveAsPrefabAsset overwrites in place and keeps the GUID, so
-            // every scene reference survives. Back up the old one first.
+            // never delete the asset before the new one exists. SaveAsPrefabAsset
+            // overwrites in place and keeps the GUID; back up the old one first.
             if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
             {
                 System.IO.Directory.CreateDirectory($"{Dir}/_backup");

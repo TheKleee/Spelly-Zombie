@@ -2,10 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The precision-mode cursor: a clean brush circle with a center dot
-    /// (Photoshop / Meccha Chameleon style) instead of the OS arrow - you're
-    /// drawing, and the cursor should say so. Generated once at runtime,
-    /// white ring with a dark outline so it reads on any surface.
+    /// The precision-mode cursor: a brush circle with a center dot instead of
+    /// the OS arrow. Generated once at runtime; white ring with a dark outline
+    /// so it reads on any surface.
     public static class PrecisionCursor
     {
         static Texture2D _tex;
@@ -21,12 +20,9 @@ namespace SpellyZombie
 
         static void Build()
         {
-            // 32×32 IS LOAD-BEARING ("aim appears and
-            // disappears — it should follow the mouse"). Windows only makes
-            // a HARDWARE cursor from a 32×32 texture; this ring was 48 and
-            // silently fell back to Unity's software cursor - drawn a frame
-            // late and skipped entirely on hitch frames, so the brush circle
-            // flickered while the 32px quill never did.
+            // 32×32 is load-bearing: Windows only makes a hardware cursor from
+            // a 32×32 texture; anything larger falls back to the software
+            // cursor, drawn a frame late.
             const int size = 32;
             const float ring = 10f;   // ring radius in px
             const float thick = 1.6f; // ring stroke width

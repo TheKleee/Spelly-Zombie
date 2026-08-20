@@ -4,40 +4,25 @@ namespace SpellyZombie
 {
     public enum MatterPhase { Solid, Liquid, Gas }
 
-    /// A block of conjured matter. State runes are the only thing that makes it:
-    /// Solid conjures ONE block of the surface's material, Liquid conjures the
-    /// same block already in its liquid form (StoneLava, FleshBlood, CoalOil).
-    /// Everything after that is consequences, driven by the material table:
-    /// heat past MeltPoint     melts into its liquid       (stone  lava)
-    /// liquid cooled           re-solidifies / freezes      (lava  stone, water  ice)
-    /// heat past IgnitePoint   burns; WOOD BURNS INTO COAL
-    /// liquid past BoilPoint   gas (steam / fumes)
-    /// density-down on solid   FRAGMENTS into smaller blocks of the same stuff
-    /// density-down on liquid  vapor
-    /// density-up sustained    TRANSMUTES into DenserForm   (coal  diamond!)
-    /// sticky up/down          clumps / slides
-    /// Conjured solids carry a SurfaceMaterialTag, so you can draw ON your own
-    /// conjured matter and chain spells.
+    /// A block of conjured matter: Solid or Liquid of the surface's material.
+    /// The material table drives melt/freeze/boil/burn (wood to coal), fragment
+    /// on density-down, transmute on density-up. Wears SurfaceMaterialTag so seals chain on it.
     public class Matter : MonoBehaviour
     {
         public SurfaceMaterialType Material = SurfaceMaterialType.Unknown;
         public MatterPhase Phase = MatterPhase.Solid;
 
-        /// The seal side-count that made this - its SHAPE identity. When two
-        /// solids merge the one with MORE angles wins , so a
-        /// circle-born lump absorbs a triangle-born one and stays round.
+        /// Seal side-count = shape identity; on merge the higher count wins.
         public int Edges;
-        /// TOUCH = WORLD : once a wizard has held it, it
-        /// is an OBJECT - no spell lifetime, and only SOLID objects can be
-        /// grabbed again (particles of any state grab freely before that).
+        /// Once held it is a world object: no spell lifetime; only solids can be grabbed again.
         public bool Touched;
         public float Temperature = 18f;
         public float Density = 1f;
         public float Stickiness = 0.35f;
 
-        // GRAMMAR v4 (P2): matter chains like particles do
+        // matter chains like particles do
         public ulong Lineage;       // the seal's rune ancestry - matter is a Demon path too
-        public int FormLevel = 1;   // 2 = lvl2 form: a solid GROWS on its own, a liquid SPREADS
+        public int FormLevel = 1;   // 2 = lvl2 form: solid grows on its own, liquid spreads
         public bool DarkAura;       // solid/liquid darkness: blinds whatever touches it
 
         const float MinFragmentSize = 0.07f;   // fragments below this stop splitting
@@ -46,9 +31,7 @@ namespace SpellyZombie
         const int MaxAlive = 90;               // world matter cap (multiplayer grief-proofing)
 
         static readonly System.Collections.Generic.List<Matter> All = new System.Collections.Generic.List<Matter>();
-        /// Spell motes hunt blobs through this (ALL spells look to combine).
-        /// A List, not IReadOnlyList - foreach over the interface boxed the
-        /// enumerator every frame for every live push/essence particle.
+        /// List, not IReadOnlyList: foreach over the interface boxes the enumerator.
         public static System.Collections.Generic.List<Matter> Living => All;
 
         MaterialInfo _info;
@@ -84,12 +67,10 @@ namespace SpellyZombie
             if (mat == SurfaceMaterialType.Diamond || mat == SurfaceMaterialType.Gold)
                 _life = 60f; // treasure sticks around long enough to be carried home
 
-            // a meltable material's liquid form IS hot - drawing Liquid on stone
-            // makes lava, and lava is born glowing (it cools back to stone later)
+            // a meltable material's liquid form is born hot (stone -> lava)
             Temperature = phase == MatterPhase.Liquid && _info.Meltable ? _info.MeltPoint + 150f : 18f;
 
-            // conjured solid WATER is ice, and ice MELTS - without this flag the
-            // glacier shards and snowballs were permanent fireproof blocks (verified)
+            // conjured solid water is ice, and ice must melt
             _ice = mat == SurfaceMaterialType.Water && phase == MatterPhase.Solid;
 
             // conjured matter is a real surface: you can draw your next seal on it
@@ -109,7 +90,7 @@ namespace SpellyZombie
             if (All.Count > MaxAlive && All[0] != null)
             {
                 var oldest = All[0];
-                All.RemoveAt(0); // NOW - deferred OnDestroy let burst spawns overshoot the cap
+                All.RemoveAt(0); // remove now; deferred OnDestroy overshoots the cap
                 Destroy(oldest.gameObject);
             }
         }
@@ -120,23 +101,15 @@ namespace SpellyZombie
             if (_rb != null) _rb.isKinematic = false;
         }
 
-        /// the LIQUID RULE: you WALK THROUGH liquid (it slows you and pulls
-        /// you downstream) - but the blob itself still rests on the GROUND.
-        /// The trick is a SPLIT: the real collider stays (so the puddle sits on
-        /// floors/slopes and matter-vs-matter chemistry keeps colliding), but
-        /// it pair-IGNORES every creature/player that comes near, and a bigger
-        /// TRIGGER SHELL applies the wading effects (viscous slow, downstream
-        /// drag, coatings, lava burn). Freeze the puddle and the ignores are
-        /// restored - ice is a floor again.
+        /// Liquids are walk-through: the real collider stays (puddle rests on
+        /// ground, chemistry still collides) but pair-ignores creatures/players;
+        /// a trigger shell applies wading effects. Freezing restores the ignores.
         void SyncPhaseCollision()
         {
             if (Phase == _shellPhase) return;
             _shellPhase = Phase;
             bool passable = Phase != MatterPhase.Solid;
-            // liquids live on the built-in Water layer: the player capsule
-            // EXCLUDES that layer outright (SimpleFPSController), which makes
-            // walk-through bulletproof for the CharacterController while the
-            // ground (layer 0) still holds the puddle up
+            // layer 4 (Water): the player capsule excludes it (SimpleFPSController); layer 0 ground still holds the puddle
             gameObject.layer = passable ? 4 : 0;
             if (passable && _shell == null)
             {
@@ -150,7 +123,7 @@ namespace SpellyZombie
             }
             else if (!passable && _shell != null)
             {
-                _shell.RestoreCollisions(); // a frozen puddle is a FLOOR
+                _shell.RestoreCollisions(); // a frozen puddle is a floor
                 Destroy(_shell.gameObject);
                 _shell = null;
             }
@@ -160,8 +133,7 @@ namespace SpellyZombie
 
         public void AddHeat(float d) => Temperature += d / Mathf.Max(0.2f, _info.HeatCapacity);
         public void AddDensity(float d) => Density = Mathf.Clamp(Density + d, 0.05f, 6f);
-        // full [-1, 1] range: NEGATIVE stickiness is the slick payload (the old
-        // Clamp01 silently erased Liquid+Slick - the slip pool was inert)
+        // full [-1, 1] range: negative stickiness is the slick payload; Clamp01 would erase it
         public void AddStickiness(float d) => Stickiness = Mathf.Clamp(Stickiness + d, -1f, 1f);
 
         void Update()
@@ -170,12 +142,10 @@ namespace SpellyZombie
             _age += dt;
             Temperature = Mathf.MoveTowards(Temperature, 18f, DrawingConfig.AmbientDriftPerSec * 0.4f * dt);
 
-            // gravity belongs to things with WEIGHT - gas has none
+            // gas gets no gravity
             if (_rb != null) _rb.useGravity = Phase != MatterPhase.Gas;
 
-            // blobs SEEK each other while spell-phase, and LIQUIDS/GASSES keep
-            // merging even as world objects ("it makes sense that
-            // liquids combine" + the perf ruling — nearby puddles become ONE)
+            // spell-phase blobs seek each other; liquids/gasses keep merging as world objects
             if (Phase != MatterPhase.Solid || !Touched)
             {
                 _kinTick -= dt;
@@ -192,15 +162,12 @@ namespace SpellyZombie
                     }
                     if (near != null && _rb != null)
                     {
-                        // CLOSE ENOUGH = THE LAW FIRES NOW (liquid cores are
-                        // walk-through triggers, so collision events can't be
-                        // trusted to announce the meeting - proximity is)
+                        // merge by proximity: liquid cores are pair-ignored, collision events can't be trusted
                         float reach = (transform.localScale.x + near.transform.localScale.x) * 0.55f;
                         if (best < reach * reach && GetInstanceID() < near.GetInstanceID())
                             CombineWith(near);
                         else if (!Touched)
-                            // only spell-phase blobs actively CHASE - a claimed
-                            // puddle merges when things meet, it never crawls
+                            // only spell-phase blobs chase; a claimed puddle never crawls
                             _rb.AddForce((near.transform.position - transform.position).normalized * 1.6f,
                                 ForceMode.VelocityChange);
                     }
@@ -214,14 +181,11 @@ namespace SpellyZombie
                     else if (_info.Meltable && Temperature < _info.MeltPoint - 120f) { Phase = MatterPhase.Solid; _slump = 0f; } // lava cools to stone
                     else if (Temperature >= _info.BoilPoint) Phase = MatterPhase.Gas;
                     else if (Density <= 0.4f) Phase = MatterPhase.Gas;  // thinned to vapor - floats away
-                    // merges no longer snap the scale - the pool swells into
-                    // its new volume. This is the ONLY thing that ever moves
-                    // a liquid's size, and only upward, only after a merge
-                    //. Nothing shrinks a liquid, ever.
+                    // the only place a liquid's size moves: swell up after a merge; nothing shrinks a liquid
                     if (transform.localScale.x < _baseSize)
                         transform.localScale = Vector3.one * Mathf.MoveTowards(
                             transform.localScale.x, _baseSize, _baseSize * 0.9f * dt);
-                    else if (Density >= 2.5f)                           // compressed liquid SOLIDIFIES
+                    else if (Density >= 2.5f)                           // compressed liquid solidifies
                     {
                         Phase = MatterPhase.Solid;
                         _ice = _info.Type == SurfaceMaterialType.Water; // water  ice; heat melts it back
@@ -238,24 +202,21 @@ namespace SpellyZombie
                     break;
 
                 case MatterPhase.Gas:
-                // A CLOUD, NOT A BALLOON : barely rises, mostly GROWS
+                // barely rises, mostly grows
                     if (_rb)
                     {
                         _rb.AddForce(Vector3.up * Mathf.Max(0.04f, (2.6f - Density) * 0.06f),
                             ForceMode.Acceleration);
                         var v = _rb.linearVelocity;
                         if (v.y > DrawingConfig.GasRiseSpeed) v.y = DrawingConfig.GasRiseSpeed;
-                        // sideways drift bleeds off too, so it settles and
-                        // hangs where it was made instead of sailing away
+                        // sideways drift bleeds off so the cloud hangs where it was made
                         v.x *= 1f - Mathf.Clamp01(0.9f * dt);
                         v.z *= 1f - Mathf.Clamp01(0.9f * dt);
                         _rb.linearVelocity = v;
                     }
-                    // the SPREAD eases in over 0.4s - no frame-one pop, and short
-                    // enough to keep the growable window
+                    // spread eases in over 0.4s to avoid a frame-one pop
                     float bloom = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(_age / 0.4f));
-                    // same law as the liquid: the spread stops when the fade
-                    // begins, so the cloud dies cleanly instead of fighting it
+                    // spread stops when the fade begins
                     if (_age < DrawingConfig.GasLifeSeconds - 1.5f)
                         transform.localScale = Vector3.one * Mathf.MoveTowards(
                             transform.localScale.x,
@@ -264,7 +225,7 @@ namespace SpellyZombie
                     break;
             }
 
-            // flammable material boiled into GAS wears the green warning cloud
+            // flammable material boiled into gas wears the green warning cloud
             if (Phase != _lastPhase && Phase == MatterPhase.Gas && _info.Flammable && FxLibrary.I != null)
                 FxLibrary.Spawn(FxLibrary.I.GasCloud, transform.position, transform, 3f);
             _lastPhase = Phase;
@@ -289,11 +250,9 @@ namespace SpellyZombie
                         Vector3 dirOut = Random.insideUnitSphere; dirOut.y = 0f;
                         var child = Spawn(Material, MatterPhase.Liquid, _baseSize * 0.55f,
                             transform.position + dirOut.normalized * _baseSize * 0.9f + Vector3.up * 0.1f);
-                        child.Temperature = Temperature; // burning sap spreads BURNING
+                        child.Temperature = Temperature; // burning sap spreads burning
                         child.Lineage = Lineage;
-                        // the whole spread spares itself while huddled (see
-                        // _shedFamily below) - a pair-only grace let SIBLING
-                        // sheds merge into fresh lvl2 shedders, a colony
+                        // sheds share a family id (see _shedFamily)
                         if (_shedFamily == 0) _shedFamily = _nextShedFamily++;
                         child._shedFamily = _shedFamily;
                     }
@@ -308,7 +267,7 @@ namespace SpellyZombie
             if (_burning)
             {
                 _integrity -= dt * 0.5f / Mathf.Max(0.3f, _info.Strength);
-                Temperature += 40f * dt; // feeds itself - but frost can still WIN
+                Temperature += 40f * dt; // feeds itself; frost can still win
                 if (Temperature < _info.IgnitePoint - 30f)
                 {
                     _burning = false; // doused
@@ -330,24 +289,21 @@ namespace SpellyZombie
             ApplyPhysics();
             Refresh();
 
-            // touched = EVERLASTING (the law: everlasting is an
-            // equilibrium, not a flag - but a held thing left the spell world
-            // for good). Gas still disperses: low density is a one-way exit.
+            // touched matter never expires; gas still disperses
             if (!Touched || Phase == MatterPhase.Gas)
             {
                 // a cloud grows for most of its life, then fades
                 float life = Phase == MatterPhase.Gas ? DrawingConfig.GasLifeSeconds : _life;
                 if (Phase == MatterPhase.Gas)
                 {
-                    // the end-of-life disperse is the one fade approved
+                    // end-of-life disperse
                     if (_age > life - 1.5f)
                         transform.localScale = transform.localScale * Mathf.Max(0.01f, 1f - dt / 1.5f);
                     if (_age > life || transform.localScale.x < 0.02f) Destroy(gameObject);
                 }
                 else if (_age > life)
                 {
-                    // A BLOB NEVER CHANGES SIZE - no shrink, just
-                    // gone; a liquid leaves the splash approved
+                    // no shrink-out: the blob just goes; a liquid leaves a splash
                     if (Phase == MatterPhase.Liquid && FxLibrary.I != null)
                         FxLibrary.Spawn(FxLibrary.I.Splash, transform.position);
                     Destroy(gameObject);
@@ -355,37 +311,15 @@ namespace SpellyZombie
             }
         }
 
-        /// FAKE JOINTS :
-        /// same-material, same-phase blobs are linked by a spring toward a rest
-        /// distance. Strength is graded by phase - LIQUID strongest (bond IS
-        /// Stickiness: glue makes goo, repel makes mist), SOLID weak (rubble
-        /// loosely piles), GAS weakest (clouds barely hold). Liquids also match
-        /// velocities (soft-body: the blob cluster moves and jiggles as one)
-        /// and MERGE on contact. Splash a puddle apart and it re-pools; freeze
-        /// it and the bonds lock rigid. Different materials never bond -
-        /// chemistry (React) decides for them. Cost: a distance sweep 3×/sec
-        /// under the 90-matter cap - no physics solver, nothing on the wire.
+        /// Fake joints: same-material, same-phase blobs spring toward a rest
+        /// distance. Liquid strength = Stickiness (strongest), solid weak, gas
+        /// weakest; liquids also velocity-match and merge on contact.
         float _cohereTimer;
         float _spreadTick; // lvl2 liquid: cadence of shedding smaller blobs
 
-        // A SHED FAMILY SPARES ITSELF WHILE HUDDLED (liquid
-        // "bounces from the small size to the large size too much"). The lvl2
-        // spread shed a child 0.9× away - 5% outside merge reach - the social
-        // chase pulled it straight back in, and CombineWith snapped the
-        // parent's scale up: a ~1.4s small/large loop, forever (each merge
-        // also reset _age, so the pair never even aged out). And a pair-only
-        // grace wasn't enough: SIBLING sheds from the same source merged
-        // same+same into fresh lvl2 shedders with reset ages - a self-feeding
-        // blob colony that marched to the world matter cap and evicted OTHER
-        // players' conjures, popping at every sibling merge.
-        //
-        // So everything shed from one source shares a FAMILY id, and family
-        // members don't fuse (or chase, or cohere-drink each other) while
-        // within 1.5× merge reach - the cohere spring rests a settled spread
-        // at ~1.0× reach, so it stays a quiet pool of blobs instead of
-        // popping. Family that has GENUINELY separated (a splash, a throw, a
-        // slope) is social again, exactly like strangers. The merge law for
-        // every other pairing is untouched.
+        // Sheds from one source share a family id; family members don't fuse,
+        // chase, or cohere-drink each other while within 1.5x merge reach -
+        // prevents a shed/merge size oscillation. Separated family is social again.
         int _shedFamily;              // 0 = no family - fuses freely
         static int _nextShedFamily = 1;
 
@@ -424,9 +358,7 @@ namespace SpellyZombie
                 {
                     bool iAbsorb = _baseSize > o._baseSize
                         || (Mathf.Approximately(_baseSize, o._baseSize) && GetInstanceID() < o.GetInstanceID());
-                    // the shed grace must gate THIS drink too - the cohere
-                    // spring rests a shed child near the absorb distance, so
-                    // without the check the size-bounce just moved house here
+                    // shed grace gates the drink too; the spring rests a shed child near absorb distance
                     if (d < 0.22f && iAbsorb && _baseSize < 1.3f && !FuseGraced(this, o))
                     {
                         // the bigger blob drinks the smaller - volumes add
@@ -440,8 +372,7 @@ namespace SpellyZombie
                     }
                 }
 
-                // the spring: pull toward rest distance, push apart when
-                // overlapping - the cluster holds SHAPE instead of collapsing
+                // spring toward rest distance; overlap pushes apart
                 float rest = (_baseSize + o._baseSize) * 0.55f;
                 _rb.AddForce(to.normalized * (d - rest) * k, ForceMode.Acceleration);
 
@@ -452,22 +383,13 @@ namespace SpellyZombie
             }
         }
 
-        /// Liquids don't shoot around - the conjured block relaxes into a puddle
-        /// where it stands (flattens, widens, slides by its own stickiness).
+        /// Relaxes a liquid into a puddle where it stands.
         void Slump(float dt)
         {
             _slump = Mathf.MoveTowards(_slump, 1f, dt / 1.2f);
 
-            // THE SOFT BODY OWNS THE SILHOUETTE ("liquid is still a
-            // disk... it should be deforming properly"). This used to squash
-            // transform.localScale to 30% height × 170% width - a hard-coded
-            // pancake stamped on top of the bones every frame, which is why
-            // no amount of rig work could stop the disk. The scale stays
-            // UNIFORM now; any sagging/pooling look is the shader's, and
-            // they only do it once the blob is actually resting on something.
-
-            // feed the shader's soft-body squash so the surface CONFORMS as it
-            // settles (per-renderer MPB - the material itself stays shared)
+            // scale stays uniform; the shader's squash owns the pooling look
+            // (per-renderer MPB - the material itself stays shared)
             if (_rend != null)
             {
                 if (_mpb == null) _mpb = new MaterialPropertyBlock();
@@ -510,7 +432,7 @@ namespace SpellyZombie
         void Transmute()
         {
             Rebecome(_info.DenserForm, _baseSize * 0.8f);
-            WorldEvents.Report(WorldEventKind.Sparkle, transform.position, 1.2f); // ooooh, shiny
+            WorldEvents.Report(WorldEventKind.Sparkle, transform.position, 1.2f);
             // a short glint so the upgrade reads on camera
             var glow = new GameObject("TransmuteGlint");
             glow.transform.position = transform.position;
@@ -534,7 +456,7 @@ namespace SpellyZombie
             if (_tag != null) _tag.Material = mat;
         }
 
-        /// Contact chemistry - where the clips come from.
+        /// Contact chemistry.
         void OnCollisionEnter(Collision col) => React(col, true);
         void OnCollisionStay(Collision col)
         {
@@ -547,12 +469,11 @@ namespace SpellyZombie
 
         void React(Collision col, bool impact)
         {
-            // a liquid blob LANDING throws a real splash
+            // a landing liquid blob throws a splash
             if (impact && Phase == MatterPhase.Liquid && col.contactCount > 0 && FxLibrary.I != null)
                 FxLibrary.Spawn(FxLibrary.I.Splash, col.GetContact(0).point);
 
-                // WEIGHT × SPEED on a wizard : a flying
-            // block bills by its momentum, nothing below the threshold
+            // a flying block damages by momentum, nothing below the threshold
             if (impact && _rb != null)
             {
                 var hitPl = col.collider.GetComponentInParent<SimpleFPSController>();
@@ -563,12 +484,10 @@ namespace SpellyZombie
                     if (dmg > 0.5f)
                     {
                         hitPl.TakeHit(-col.relativeVelocity * 0.4f, dmg, "hit by flying matter");
-                        // HEAVY THINGS BOWL YOU OVER ("a heavy stone
-                        // onto my head should knock me down") — MOMENTUM
-                        // decides the ragdoll, not the damage math
+                        // momentum decides the knockdown, not the damage math
                         if (momentum > 22f)
                             hitPl.KnockDown(Mathf.Min(2f, 0.6f + momentum * 0.03f));
-                            if (FxLibrary.I != null) // getting beaned READS
+                            if (FxLibrary.I != null)
                             FxLibrary.Spawn(FxLibrary.I.TextPow,
                                 hitPl.transform.position + Vector3.up * 1.9f);
                     }
@@ -576,18 +495,14 @@ namespace SpellyZombie
             }
             var other = col.collider.GetComponent<Matter>();
 
-            // FORMS COMBINE LIKE ANY OTHER PARTICLES (no exceptions
-            // never stated one), and liquids/gasses keep fusing even as
-            // world objects. Spell-phase blobs MERGE on
-            // contact: same+same grows a level, SOLID meets LIQUID and they
-            // knead into MUD. Molten pairs stay with the chemistry below.
+            // merge on contact: same+same grows a level; solid+liquid joins into liquid
             if (CanFuse(this, other) && GetInstanceID() < other.GetInstanceID())
             {
                 CombineWith(other);
                 return;
             }
 
-            // LAVA + WATER  stone + steam, the classic
+            // lava + water: stone + steam
             if (other != null && Phase == MatterPhase.Liquid && Temperature > 300f
                 && other.Material == SurfaceMaterialType.Water && other.Phase == MatterPhase.Liquid)
             {
@@ -596,7 +511,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // hot matter ignites/heats what it touches - lava is a weapon
+            // hot matter heats what it touches
             if (Temperature > 150f)
             {
                 if (other != null) other.AddHeat(Temperature * 0.25f);
@@ -604,17 +519,15 @@ namespace SpellyZombie
                 if (thermal != null) thermal.AddHeat(Temperature * 0.15f);
             }
 
-            // COLD matter chills what touches it - ice spikes and snowballs
-            // are weapons the same way lava is (mirror of the hot rule)
+            // cold matter chills what touches it
             if (Temperature < -20f)
                 SpellParticle.GiveHeatTo(col.collider, Temperature * 0.15f);
 
-            // solid/liquid DARKNESS: touching it blinds (identity preserved -
-            // it still counts as darkness, whatever shape it wears)
+            // solid/liquid darkness blinds on touch
             var creatureEarly = col.collider.GetComponentInParent<Creature>();
             if (DarkAura && creatureEarly != null) creatureEarly.ApplyBlind(2f);
 
-            // puddle coatings: oil = lose footing (they topple!), slime/sap = glued
+            // puddle coatings: oil = slip, slime/sap = glued
             var creature = col.collider.GetComponentInParent<Creature>();
             if (creature != null && Phase == MatterPhase.Liquid && Temperature < 150f)
             {
@@ -623,8 +536,7 @@ namespace SpellyZombie
                 else if (Material == SurfaceMaterialType.Wood) creature.ApplyStuck(1.5f);  // sap
             }
 
-            // sticky SOLID is a carrier: what lands on it RIDES it (
-            // "stick a zombie or a player and carry them like this")
+            // sticky solid is a carrier: what lands on it rides it
             if (impact && Phase == MatterPhase.Solid && Stickiness > 0.7f)
             {
                 if (creature != null) creature.ApplyStuck(1.2f);
@@ -634,15 +546,13 @@ namespace SpellyZombie
                 {
                     var joint = rider.gameObject.AddComponent<FixedJoint>();
                     joint.connectedBody = _rb;
-                    // the stickiness law decides how hard the ride holds on -
-                    // at full Sticky3 the bond is unbreakable (strongest in game)
+                    // break force scales with stickiness; full Sticky3 is unbreakable
                     joint.breakForce = StickyBonds.BreakForce(Stickiness);
                     joint.breakTorque = joint.breakForce;
                 }
             }
 
-            // solid blocks crush by momentum (creatures AND crates); frozen
-            // shatter - and a HEAVY liquid (liquid rock) crushes too
+            // solids crush by momentum; heavy liquid (density > 1.8) crushes too
             if (impact && _rb != null
                 && (Phase == MatterPhase.Solid
                     || (Phase == MatterPhase.Liquid && Density > 1.8f)))
@@ -656,8 +566,7 @@ namespace SpellyZombie
                         var d = col.collider.GetComponentInParent<Damageable>();
                         if (d != null) d.TakeDamage(dmg, $"crushed by {Material}");
                     }
-                    // the CRUNCH shows : thud at the point
-                    // of impact, comic _WHAM_ when something really got flattened
+                    // thud at the impact point, comic WHAM on big damage
                     if (FxLibrary.I != null && col.contactCount > 0)
                     {
                         Vector3 hitAt = col.GetContact(0).point;
@@ -669,56 +578,35 @@ namespace SpellyZombie
             }
         }
 
-        /// Two spell-phase form blobs merge into ONE - the particle law kept
-        /// for matter. Same+same grows; opposite forms make the MUD boundary.
-        /// Who may MERGE with whom. LIQUIDS AND GASSES STAY SOCIAL FOREVER
-        /// ("they can just increase in size to combine even when not
-        /// in spell form... it makes sense that liquids combine" — and two
-        /// puddles becoming one blob is the perf win). Solids still go inert
-        /// when claimed. A claimed thing fuses only with its OWN phase (no
-        /// kneading mud out of world objects), gas only mixes with gas, and
-        /// molten pairs are left to the lava/water chemistry instead.
+        /// Merge rules: same material only; gas only with gas; liquids/gasses
+        /// keep merging as world objects; two claimed solids stay separate;
+        /// molten pairs go to the lava/water chemistry instead.
         static bool CanFuse(Matter a, Matter b)
         {
             if (a == null || b == null || a == b) return false;
-            // a shed family spares itself while huddled (see _shedFamily) -
-            // this one check kills both the merge AND the chase, since the
-            // chase only targets CanFuse partners (the cohere drink asks too)
+            // shed-family grace (see _shedFamily); also kills the chase, which targets CanFuse partners
             if (FuseGraced(a, b)) return false;
-            // MATERIALS KEEP THEIR OWN LIVES ("particles of different
-            // materials do not combine - rock, metal and wood keep their
-            // separate states"). Two rocks pool; rock and metal never do.
+            // different materials never combine
             if (a.Material != b.Material) return false;
             // gas mixes only with gas
             if ((a.Phase == MatterPhase.Gas) != (b.Phase == MatterPhase.Gas)) return false;
 
-            // SOLID MEETS LIQUID → THEY ALWAYS JOIN ("liquid is not
-            // combining with solid", and the ore rule: "solid ink ore touching
-            // liquid ink ore simply becomes liquid"). This holds even when the
-            // solid is a settled world object - a puddle poured over a lump of
-            // its own stuff takes the lump in. That used to be blocked twice:
-            // claimed solids were inert, and claimed things were restricted to
-            // their own phase.
+            // solid + liquid of the same material always join, even when the solid is a claimed world object
             if (a.Phase != b.Phase) return a.Temperature < 300f && b.Temperature < 300f;
 
-            // same phase: two CLAIMED solids stay separate objects, so the
-            // world doesn't quietly weld itself together
+            // two claimed solids stay separate so the world doesn't weld itself together
             if (a.Phase == MatterPhase.Solid && (a.Touched || b.Touched)) return false;
             return a.Temperature < 300f && b.Temperature < 300f;
         }
 
         void CombineWith(Matter o)
         {
-            // SOLID + LIQUID SIMPLY BECOMES LIQUID. It
-            // used to knead into MUD; different materials can't meet at all
-            // any more, so the only pairing left is a substance with itself -
-            // and stone dropped in lava is just more lava.
+            // solid + liquid becomes liquid
             bool melted = Phase != o.Phase;
             float merged = Mathf.Pow(
                 Mathf.Pow(transform.localScale.x, 3f) + Mathf.Pow(o.transform.localScale.x, 3f), 1f / 3f);
             Lineage |= o.Lineage;
-            // absorbing a family member JOINS the family - otherwise a
-            // stranger could bridge the shed grace and restart the popping
+            // absorbing a family member joins the family, else a stranger bridges the shed grace
             if (_shedFamily == 0) _shedFamily = o._shedFamily;
             if (melted)
             {
@@ -728,23 +616,19 @@ namespace SpellyZombie
             }
             else
             {
-                FormLevel = Mathf.Min(2, Mathf.Max(FormLevel, o.FormLevel) + 1); // same+same grows
+                FormLevel = Mathf.Min(2, Mathf.Max(FormLevel, o.FormLevel) + 1);
+                // LEVEL 2 IS A GOLEM, NOT A BIGGER LUMP. Same phase meeting
+                // same phase stands up and walks - solid, liquid or gas alike.
+                if (FormLevel >= 2 && RiseAsGolem(merged, o)) return;
             }
-            // MORE ANGLES WINS : the survivor takes the shape
-            // identity of whichever seal had more sides - a circle-born lump
-            // absorbing a triangle-born one stays round, never the reverse.
+            // the survivor keeps the higher seal side-count
             Edges = Mathf.Max(Edges, o.Edges);
             _baseSize = merged;
-            // ONLY A SOLID SNAPS TO ITS NEW SIZE - a lump is simply bigger.
-            // Fluids GROW into the merged volume over a moment instead (,
-            // Aug 4: the liquid "changes the whole shape size from large to
-            // small and oscillates" — every merge popped the scale instantly).
-            // The smooth-grow lives in the Liquid case of Update; gas already
-            // eases via its own spread.
+            // only a solid snaps to the new size; fluids grow into it in Update
             if (Phase == MatterPhase.Solid)
                 transform.localScale = Vector3.one * merged;
             _age = 0f; // a fresh thing
-            var lib = FxLibrary.I; // the juice rule: both halves SHOW at the meeting
+            var lib = FxLibrary.I; // both halves show FX at the meeting
             if (lib != null)
             {
                 FxLibrary.Spawn(lib.Poof, transform.position);
@@ -755,11 +639,37 @@ namespace SpellyZombie
             Destroy(o.gameObject);
         }
 
-        /// THE SEAL'S LINE COUNT IS THE SHAPE (the ruling: "3 sides => 1
-        /// shape, 4 => another … 10 would be a wheel for wood, but default
-        /// for rock"). WHICH shape lives entirely in the ShapeLibrary asset —
-        /// a slot per material per line count, filled whenever likes. No
-        /// shape logic in code; an empty shelf behaves exactly as before.
+        /// LEVEL 2 STANDS UP. Two of the same phase meeting no longer make a
+        /// bigger lump - they make a GOLEM, whatever the phase: a solid one,
+        /// a liquid one, a gas one. It inherits this matter's size, material
+        /// and the ground it was born on. Returns false (and leaves the merge
+        /// alone) when there is no golem prefab to raise.
+        bool RiseAsGolem(float mergedSize, Matter eaten)
+        {
+            var g = Golem.Spawn(transform.position, mergedSize);
+            if (g == null) return false;
+
+            var view = g.GetComponent<StateView>();
+            if (view == null) view = g.gameObject.AddComponent<StateView>();
+            view.Set(Phase);                       // solid, liquid or gas golem
+            view.Tint = _info.SolidColor;
+            view.DriveTint = true;
+
+            var tag = g.GetComponent<SurfaceMaterialTag>();
+            if (tag == null) tag = g.gameObject.AddComponent<SurfaceMaterialTag>();
+            tag.Material = Material;
+
+            var lib2 = FxLibrary.I;
+            if (lib2 != null) FxLibrary.Spawn(lib2.Poof, transform.position);
+            DrawingWorld.Instance?.LogEvent($"the {Material} stands up");
+
+            if (eaten != null) Destroy(eaten.gameObject);
+            Destroy(gameObject);
+            return true;
+        }
+
+        /// Seal line count picks the shape from the ShapeLibrary asset (a slot
+        /// per material per line count); an empty slot falls back to a primitive.
         public static Matter Spawn(SurfaceMaterialType mat, MatterPhase phase, float size,
             Vector3 pos, int edges = 0)
         {
@@ -790,13 +700,11 @@ namespace SpellyZombie
             var m = Adopt.Component<Matter>(go);
             m.Init(mat, phase, size);
             m.Edges = edges;
-            // GRABBABLE FROM BIRTH - FreeForAll InkMark, the ink-ore pattern
+            // grabbable from birth (FreeForAll InkMark)
             Adopt.Component<InkMark>(go).FreeForAll = true;
             if (authored && go.GetComponent<Collider>() == null)
                 go.AddComponent<BoxCollider>();      // only if authored none
-                // EVERY matter wears the soft body (frozen liquid was
-            // "cubes instead of the spherical ice ball"). Restored Aug 5 —
-            // the removal order meant the Blob Style CREATION MENU, not this.
+            // non-authored matter wears the soft-body StateBlob
             if (!authored) go.AddComponent<StateBlob>();
             return m;
         }
@@ -839,20 +747,16 @@ namespace SpellyZombie
         }
     }
 
-    /// The walk-through half of the liquid rule: a trigger shell riding a
-    /// liquid/gas blob. Any creature or player it touches gets pair-IGNORED
-    /// against the blob's real collider (so you wade instead of bump) and,
-    /// while inside, WADING effects apply: viscous slow, downstream drag when
-    /// the blob is flowing, the material's coating (oil slip, slime stick),
-    /// and heat from molten blobs. Frozen puddles restore every ignore.
+    /// Trigger shell riding a liquid/gas blob: pair-ignores waders against the
+    /// real collider and applies wading effects (slow, downstream drag,
+    /// coatings, heat). Freezing restores every ignore.
     public class LiquidVolume : MonoBehaviour
     {
         public Matter Owner;
 
         readonly System.Collections.Generic.List<Collider> _ignored =
             new System.Collections.Generic.List<Collider>();
-        // collider  its pilot/creature root, resolved ONCE (the walk used to
-        // run per limb collider per physics step - a wader is ~a dozen limbs)
+        // collider -> pilot/creature root, resolved once and cached
         readonly System.Collections.Generic.Dictionary<Collider, Component> _roots =
             new System.Collections.Generic.Dictionary<Collider, Component>();
         float _coatTick;
@@ -887,9 +791,7 @@ namespace SpellyZombie
             var pilot = root as SimpleFPSController;
             if (pilot != null)
             {
-                // GAS never slows a wader - but its
-                // TEMPERATURE still finds you, and the cloud SHOWS you it's
-                // working
+                // gas never slows a wader; its temperature still applies
                 if (Owner.Phase == MatterPhase.Gas)
                 {
                     if (Mathf.Abs(Owner.Temperature - 18f) > 40f && Tick(0.5f))
@@ -914,11 +816,7 @@ namespace SpellyZombie
                 if (flowing) pilot.AddSpellForce(flow * 2.5f, dt);
                 if (Owner.Stickiness < -0.3f && Random.value < 0.02f)
                     pilot.KnockDown(1f); // the slick pool takes your feet eventually
-                    // SCALDING STARTS AT SCALDING (the hot vapor
-                // could "never hit anyone" — partly area, partly THIS: the
-                // burn gate was 150° and steam is born at 130°, so the
-                // scalding cloud literally could not scald). Anything past
-                // boiling bites; lava just bites harder.
+                // burn gate is 100°C: steam is born around 130° and must scald
                 if (Owner.Temperature > 100f && Tick(0.5f))
                     pilot.TakeHit(Vector3.zero, Owner.Temperature > 150f ? 6f : 3f);
                 else if (Owner.Temperature < -20f && Tick(0.5f))
@@ -931,28 +829,24 @@ namespace SpellyZombie
             {
                 if (Tick(0.4f))
                 {
-                    // cold liquid chills waders (mirror of lava - pair-ignores
-                    // mean collision chemistry never fires for them)
+                    // cold liquid chills waders (collision chemistry never fires for them)
                     if (Owner.Temperature < -20f)
                         SpellParticle.GiveHeatTo(other, Owner.Temperature * 0.15f);
 
-                    // DARK liquid blinds whoever wades it (identity preserved -
-                    // it's still darkness, just wet)
+                    // dark liquid blinds waders
                     if (Owner.DarkAura) creature.ApplyBlind(2f);
 
-                    // SLICK liquid: negative stickiness = the slip-ragdoll pool
+                    // negative stickiness = the slip pool
                     if (Owner.Stickiness < -0.3f) creature.ApplySlip(2f);
 
-                    // HEAVY liquid (liquid rock): a flowing blob crushes waders -
-                    // the weight IS the damage (the pair-ignore bypasses React)
+                    // heavy flowing liquid crushes waders (pair-ignore bypasses React)
                     if (Owner.Density > 1.8f && flow.magnitude > 2f)
                     {
                         var dmgc = creature.GetComponent<Damageable>();
                         if (dmgc != null) dmgc.TakeDamage(flow.magnitude * 3f, "crushed by heavy liquid");
                     }
 
-                    // the coating rules that used to live on collision - the
-                    // pair-ignore means collision never fires for waders now
+                    // coating rules live here; collision never fires for waders
                     if (Owner.Temperature > 100f) // past boiling = it burns (steam included)
                         SpellParticle.GiveHeatTo(other, Owner.Temperature * 0.15f);
                     else if (Owner.Material == SurfaceMaterialType.Coal) creature.ApplySlip(2f);   // oil

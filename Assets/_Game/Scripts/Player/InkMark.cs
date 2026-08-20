@@ -3,17 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// YOUR CLAIM ON A THING : you don't grab, you
-    /// LEVITATE what you MARKED — and "the more ink you spend on something the
-    /// higher your levitational power".
-    ///
-    /// This is that ledger. Marking IS drawing: every stroke you lay on an
-    /// object records its ink cost here, per player. No new verb, no new key,
-    /// and the wand shrinks exactly as it always did.
-    ///
-    /// Control is SHARED BY SHARE: two wizards on one crate each steer it in
-    /// proportion to the ink they poured in, resolved into ONE vector - never
-    /// winner-takes-all, so nobody can freeze an objective by pulling back.
+    /// Per-object ledger of ink laid on a thing - levitation authority comes
+    /// from it (marking IS drawing). Shared control: stakes resolve into one
+    /// proportional vector, never winner-takes-all.
     public class InkMark : MonoBehaviour
     {
         readonly Dictionary<int, float> _byOwner = new Dictionary<int, float>();
@@ -21,18 +13,15 @@ namespace SpellyZombie
         /// Everyone's ink on this object combined.
         public float Total { get; private set; }
 
-        /// FULL-WAND OWNERSHIP: a thing YOU conjured answers to you as if you
-        /// had poured a WHOLE wand into it - a full one, not your current
-        /// stub, because you need the advantage on your own spells. Ink ores
-        /// set FreeForAll so anyone can lift them with no wand at all, and
-        /// extra ink on top still buffs you for a tug-of-war.
+        /// BornOf: your own conjuration counts as a full wand of your ink.
+        /// FreeForAll (ink ores) grants that full-wand authority to everyone.
         public int BornOf = -1;
         public bool FreeForAll;
 
         public float Authority(int ownerId)
         {
             _byOwner.TryGetValue(ownerId, out float ink);
-            if (FreeForAll || (BornOf >= 0 && BornOf == ownerId)) ink += Perks.InkMax;
+            if (FreeForAll || (BornOf >= 0 && BornOf == ownerId)) ink += DrawingConfig.InkMax;
             return ink;
         }
 
@@ -59,22 +48,16 @@ namespace SpellyZombie
         public IEnumerable<KeyValuePair<int, float>> Stakes => _byOwner;
 
         /// ALL your ink anywhere under this object. Strokes land on whichever
-        /// collider they hit, which may be a child, a sibling or the root -
-        /// so the lift must look at the whole thing, not one exact transform.
-        /// Getting this wrong made ink you'd clearly drawn count as zero.
+        /// collider they hit, so the lift must look at the whole subtree.
         public static float AuthorityIn(Transform root, int ownerId)
         {
             if (root == null) return 0f;
             return AuthorityIn(root.GetComponentsInChildren<InkMark>(true), ownerId);
         }
 
-        /// Same law over a pre-fetched ledger set - HandGrab caches the held
-        /// subtree once at grab time (no per-frame GetComponentsInChildren).
-        /// LIVE INK ONLY ("you can only lift based on how much
-        /// of your ink it has THE MOMENT you try to lift it"). The ledger
-        /// remembered every stroke ever drawn, so ERASED ink kept granting
-        /// lift. Authority is now counted from the strokes actually alive on
-        /// the object right now; the ledger only carries ownership flags.
+        /// Same law over a pre-fetched ledger set (HandGrab caches at grab
+        /// time). Counts only strokes currently alive on the object; the
+        /// ledger itself only carries ownership flags.
         public static float AuthorityIn(InkMark[] marks, int ownerId)
         {
             if (marks == null) return 0f;
@@ -83,7 +66,7 @@ namespace SpellyZombie
             foreach (var m in marks)
             {
                 if (m == null) continue;
-                if (m.FreeForAll || m.BornOf == ownerId) total += Perks.InkMax;
+                if (m.FreeForAll || m.BornOf == ownerId) total += DrawingConfig.InkMax;
                 if (world == null) continue;
                 var host = m.transform;
                 for (int i = 0; i < world.Strokes.Count; i++)
@@ -91,7 +74,7 @@ namespace SpellyZombie
                     var s = world.Strokes[i];
                     if (s == null || !s.Alive || s.OwnerId != ownerId || s.Surface == null) continue;
                     if (s.Surface != host && !s.Surface.IsChildOf(host)) continue;
-                    total += s.PathLength() * DrawingConfig.InkCostPerMeter * Perks.InkCostMul;
+                    total += s.PathLength() * DrawingConfig.InkCostPerMeter;
                 }
             }
             return total;
@@ -118,36 +101,15 @@ namespace SpellyZombie
             return col != null ? col.transform : t;
         }
 
-        /// WHAT HOLDS IT DOWN: static scenery is rooted, and you must overpower
-        /// that before it will ever float. Estimated from its size so no
-        /// per-prop authoring is needed - a bench yields, a house doesn't.
-        /// Once torn free it stays free.
-        /// ROOT IS NEVER STRONGER THAN THE LIFT ("root should never be
-        /// that strong - the moment you can easily lift it you should be able
-        /// to unroot it"). So there is no second gate: tearing a thing out of
-        /// the ground costs exactly what holding it up costs. If you can carry
-        /// it, you can free it.
+        /// What holds rooted scenery down. Tearing a thing free costs exactly
+        /// what holding it up costs; once torn free it stays free.
         public static float AnchorHold(Transform host)
         {
             return EstimateMass(host) * DrawingConfig.LiftInkPerKg;
         }
 
-        /// The weight of a prop nobody has authored a mass on.
-        ///
-        /// GUESSING FROM SIZE WAS NONSENSE ("this is making the chair
-        /// somehow heavier than the cauldron and books as well"). Bounding
-        /// boxes are world-space and axis-aligned, so a chair's splayed legs
-        /// and tall back inflate its box far past the real object while a
-        /// compact cauldron measures small - the number tracked a shape's
-        /// bounding box, not its heft, and no amount of tuning fixes that.
-        ///
-        /// So: everything unauthored weighs the SAME, and it's light. If a
-        /// specific thing should be heavy, put a Liftable on it and type a
-        /// Mass - one number, in your hands, doing exactly what it says.
-        /// WEIGHT = WHAT IT'S MADE OF × HOW BIG IT IS . This is
-        /// the first half: the base weight of a small object in that material.
-        /// Bounding boxes never enter into it - a chair outweighing a cauldron
-        /// was the whole problem with measuring shapes.
+        /// Base kg of a small object in the host's material - the first half
+        /// of weight = material × size. An authored Liftable.Mass overrides.
         public static float MaterialBaseKg(Transform host)
         {
             var tag = host != null ? host.GetComponentInChildren<SurfaceMaterialTag>(true) : null;

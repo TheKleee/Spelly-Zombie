@@ -5,7 +5,8 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// The clip generator: after a kill burst near a seal (or a wipe), a 5s overlay replays the seal being drawn; P saves a PNG - manufactures the shareable moment.
+    /// After a kill burst near a seal (or a wipe), a 5s overlay replays the
+    /// seal being drawn; P saves a PNG.
     public class SealAutopsy : MonoBehaviour
     {
         const int Size = 256;
@@ -37,7 +38,7 @@ namespace SpellyZombie
             if (seal != null) Play(seal, $"{_recentKills.Count} KILLS FROM ONE SEAL");
         }
 
-        /// Team wipe: show what doomed them (comedically, whatever fired last).
+        /// Team wipe: show whatever fired last.
         public static void OnWipe()
         {
             var seal = LastRecentSeal(30f);

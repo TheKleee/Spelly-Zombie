@@ -3,24 +3,19 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// One drawn rune, possibly made of several strokes.
-    ///
-    /// Glyphs don't exist while drawing - ink is just ink, with no timers and no
-    /// grouping. Only when a seal closes (or a template is recorded) do the
-    /// strokes involved get clustered by PURE spatial proximity: ink lying close
-    /// together reads as one glyph, no matter when each stroke was drawn.
-    /// Runes drawn on top of one another therefore merge into mush and fizzle -
-    /// simple, and the player's lesson to learn.
+    /// One drawn rune, possibly made of several strokes. Glyphs don't exist
+    /// while drawing - only when a seal closes (or a template is recorded)
+    /// are strokes clustered, by spatial proximity alone; runes drawn on top
+    /// of one another merge and fizzle.
     public class RuneGlyph
     {
-        /// TESTING ONLY: the compound-sigil word parse casts 2+ runes from a
-        /// scribble that FAILED single-rune recognition - a direct violation of
-        /// "the right rune or none". Default OFF until rules otherwise.
+        /// Testing only: the compound-sigil word parse casts 2+ runes from a
+        /// scribble that failed single-rune recognition. Default off.
         public static bool CompoundSigilsEnabled = false;
 
         public readonly List<Stroke> Members = new List<Stroke>();
         public RuneType Rune = RuneType.None;
-        public float Score;      // raw $P match confidence 0..1
+        public float Score;      // raw match confidence 0..1
         public float SizeRatio;  // glyph size / seal size, 0..1
         public float Strength;   // final per-rune power fed to the spell system
 
@@ -62,10 +57,9 @@ namespace SpellyZombie
         /// recognition or template recording.
         public List<List<Vector2>> BuildRawStrokes() => RawStrokesOf(Members);
 
-        /// Flatten a set of strokes into one shared 2D frame - IN THE SURFACE'S
-        /// OWN PLANE, oriented to how the drawer saw it. Projecting onto raw
-        /// camera axes perspective-squashed floor drawings (looking down at 60°
-        /// halved every "away" stroke), which wrecked recognition on the ground.
+        /// Flatten a set of strokes into one shared 2D frame in the surface's
+        /// own plane, oriented to how the drawer saw it (raw camera axes would
+        /// perspective-squash floor drawings).
         public static List<List<Vector2>> RawStrokesOf(IReadOnlyList<Stroke> members)
         {
             var result = new List<List<Vector2>>();
@@ -84,38 +78,28 @@ namespace SpellyZombie
             Vector3 origin = lead.First.transform.position;
             // "right" = the drawer's screen-right laid flat onto the surface;
             // "up" = up the wall / away from the drawer on the floor.
-            // The frame RIDES the surface (SurfaceDelta): an engraved tablet or
-            // a posed body re-reads identically no matter where its carrier now
-            // faces - orientation in the world never changes what a drawing is.
+            // The frame rides the surface (SurfaceDelta): a carried or posed
+            // surface re-reads identically wherever it now faces.
             Vector3 right = Vector3.ProjectOnPlane(
                 lead.First.SurfaceDelta * lead.BasisRight, normal);
             if (right.sqrMagnitude < 1e-4f) right = Vector3.ProjectOnPlane(Vector3.forward, normal);
             right.Normalize();
-            // THE HANDEDNESS LAW. Every path that writes or repaints ink must
-            // build its frame with THIS line. Note what it implies:
+            // the handedness law: every path that writes or repaints ink must
+            // build its frame with THIS line. It implies
             //     Cross(right, up) == -normal
-            // which is the OPPOSITE sign to a raw Unity transform basis, where
-            // Cross(transform.right, transform.up) == +transform.forward.
-            // Mixing the two conventions is a reflection, not a rotation - it
-            // mirrors every glyph. RuneWall's repaint did exactly that and gave
-            // back a wall of runes never drew (see RuneWall.LoadSaved).
-            // ZombieScribe.PlaneBasis ends with this same line; use it rather
+            // the OPPOSITE sign to a raw Unity transform basis; mixing the two
+            // conventions is a reflection and mirrors every glyph.
+            // ZombieScribe.PlaneBasis ends with this same line - use it rather
             // than hand-rolling a basis anywhere else.
             Vector3 up = Vector3.Cross(right, normal).normalized;
 
-            // UNROLL THE SURFACE ("fix recognition on uneven
-            // surfaces"): every pen step — including the pen-up jumps
-            // BETWEEN strokes - is measured in a parallel-transported local
-            // tangent frame and laid flat, one CONTINUOUS unroll for the
-            // whole glyph. Ink over slopes and bumps keeps its true drawn
-            // shape; strokes that touch in 3D still touch in 2D (the
-            // stitcher's 5cm law survives terrain); on flat surfaces the sum
-            // telescopes to the old planar projection EXACTLY. Transporting
-            // the frame node-to-node (instead of re-projecting the global
-            // axis) prevents mirror-flips on high-curvature surfaces like
-            // limbs and trunks. [Fleet-verified: the first draft anchored
-            // each stroke planar-side and split multi-stroke glyphs on
-            // bumps - this version is the corrected one.]
+            // unroll the surface: every pen step, pen-up jumps included, is
+            // measured in a parallel-transported local tangent frame and laid
+            // flat as one continuous unroll, so ink over slopes keeps its
+            // drawn shape and strokes touching in 3D still touch in 2D. On
+            // flat surfaces this telescopes to the planar projection exactly;
+            // transporting node-to-node prevents mirror-flips on
+            // high-curvature surfaces.
             Vector3 prevPos = default;
             Vector2 pen = default;
             Vector3 lrPrev = right;
@@ -155,9 +139,8 @@ namespace SpellyZombie
             return result;
         }
 
-        /// Group strokes into glyphs by spatial proximity - touching-only law
-        /// . (The size-scaled join is gone: every caller passed a
-        /// sizeFactor of 0, so join is always `baseDist`.)
+        /// Group strokes into glyphs by spatial proximity - touching only,
+        /// joined at `baseDist`.
         public static List<RuneGlyph> Cluster(IReadOnlyList<Stroke> strokes, float baseDist)
         {
             int n = strokes.Count;
@@ -181,8 +164,7 @@ namespace SpellyZombie
                 {
                     if (Find(i) == Find(j)) continue;
                     // Bounds.Expand grows the SIZE (each face moves half), so
-                    // × 2 keeps every pair InkTouches could accept (culling at
-                    // `baseDist` refused touching ink inside the touch law)
+                    // × 2 keeps every pair InkTouches could accept
                     var bi = bounds[i]; bi.Expand(baseDist * 2f);
                     if (!bi.Intersects(bounds[j])) continue;
                     if (InkTouches(strokes[i], strokes[j], baseDist))
@@ -206,11 +188,9 @@ namespace SpellyZombie
             return result;
         }
 
-        /// Split the enclosed ink into runes. DECLARED strokes (zombie-scribed
+        /// Split the enclosed ink into runes. Declared strokes (zombie-scribed
         /// glyphs) are perfect matches if the seal's owner knows the rune;
-        /// everything hand-drawn goes through RECOGNITION - draw your runes,
-        /// circle them, they're read when the seal closes. No stamping, no
-        /// choosing, no timers.
+        /// hand-drawn ink goes through recognition when the seal closes.
         public static List<RuneGlyph> Segment(IReadOnlyList<Stroke> strokes, int ownerId)
         {
             var result = new List<RuneGlyph>();
@@ -222,27 +202,16 @@ namespace SpellyZombie
                 else handDrawn.Add(s);
             }
 
-            // DECLARED strokes group by touch + same rune: a multi-stroke
-            // drawing the player declared is ONE glyph (one cast), never one
-            // per pen lift. Zombie scribes draw single strokes, so their
-            // behavior is unchanged; two SEPARATE drawings declared as the
-            // same rune stay two glyphs - one cast per drawing.
-            //
-            // A DECLARED DRAWING IS ATOMIC ("It should create
-            // exactly what I forced it to regardless of the art", on top of
-            // the one-touch law: connected ink is ONE drawing). Undeclared
-            // ink that TOUCHES a declared drawing belongs to that drawing -
-            // it inherits the declaration instead of going to recognition.
-            // Before this, a declared arrow whose loose head strokes missed
-            // the declare cluster kept firing as extra Direction runes: the
-            // art overruling the player, inside the forced drawing.
+            // declared strokes group by touch + same rune: a multi-stroke
+            // declared drawing is ONE glyph (one cast), never one per pen
+            // lift; two separate drawings stay two casts. Undeclared ink that
+            // touches a declared drawing inherits the declaration instead of
+            // going to recognition.
             while (declared.Count > 0)
             {
                 var glyph = new RuneGlyph();
                 glyph.Members.Add(declared[0]);
                 declared.RemoveAt(0);
-                // TOUCHING ONLY - the main rule for everything (the law;
-                // the vector gap exception is dead)
                 var groupRune = glyph.Members[0].DeclaredRune;
                 float join = DrawingConfig.RuneTouchDistance;
                 bool grew = true;
@@ -287,21 +256,17 @@ namespace SpellyZombie
             }
             result.AddRange(SegmentByRecognition(handDrawn, ownerId));
 
-            // COMPOUND SIGILS: a glyph that fizzled as a single rune might be a
-            // WORD - several runes drawn as one connected scribble. Parse its
-            // letter-sentence; if it decomposes into 2+ readable runes, they
-            // ALL fire (sharing the scribble's location and size).
-            // DEFAULT OFF: casting spells FROM a fizzled scribble violates
-            // "the right rune or none" — any mush could fire something.
+            // compound sigils: a glyph that fizzled as a single rune might be
+            // several runes drawn as one connected scribble - if it decomposes
+            // into 2+ readable runes they all fire (sharing the scribble's
+            // location and size)
             if (CompoundSigilsEnabled)
             for (int i = result.Count - 1; i >= 0; i--)
             {
                 var glyph = result[i];
                 if (glyph.Rune != RuneType.None || glyph.Members.Count == 0) continue;
-                // only true mush gets the word-parse: a glyph that ALMOST read
-                // as one rune (or fizzled as ambiguous) must never be
-                // reinterpreted as several other runes - that's an accidental
-                // cast waiting to happen
+                // only true mush gets the word-parse: a near-miss or ambiguous
+                // fizzle must never be reinterpreted as several other runes
                 if (glyph.Score >= DrawingConfig.MinRuneScore) continue;
                 var parts = RuneLibrary.ClassifyCompound(ownerId, RawStrokesOf(glyph.Members));
                 if (parts.Count < 2) continue;
@@ -322,9 +287,8 @@ namespace SpellyZombie
             return result;
         }
 
-        // the RULE (the sticky-vs-heat misfire): physically CONNECTED ink
-        // is ONE glyph, components are atomic - Cluster IS that grouping, so
-        // this is just Cluster + one recognition per component.
+        // connected ink is ONE glyph, components are atomic: Cluster + one
+        // recognition per component
         static List<RuneGlyph> SegmentByRecognition(IReadOnlyList<Stroke> strokes, int ownerId)
         {
             var result = new List<RuneGlyph>();
@@ -334,20 +298,15 @@ namespace SpellyZombie
             return result;
         }
 
-        // RESULT CACHE ("the game still lags whenever I close a
-        // seal") — the ensemble runs ONCE per distinct drawing: pen-up warms
-        // the cache via Precognize, the seal close hits it for free. Keyed
-        // by stroke ids + node counts (ink is immutable while Open; erasing
-        // changes the node count and misses cleanly). Body ink only needs
-        // its FIRST honest read - after that the stamp bypasses recognition.
+        // result cache: recognition runs once per distinct drawing - pen-up
+        // warms it via Precognize, the seal close hits it for free. Keyed by
+        // stroke ids + node counts (ink is immutable while Open; erasing
+        // changes the node count and misses cleanly).
         static readonly Dictionary<long, (RuneType rune, float score)> _recogCache =
             new Dictionary<long, (RuneType, float)>();
 
-        /// …AND IT DROPS WHEN THE TEMPLATES CHANGE. The key is stroke ids only,
-        /// so after a Rune Studio wall save, re-reading UNCHANGED ink handed
-        /// back the pre-save verdict — which looks exactly like "the matcher
-        /// ignored what I just drew". RuneLibrary bumps PoolGeneration on every
-        /// pool edit; one int compare per read keeps the test loop honest.
+        /// Drops when the templates change: RuneLibrary bumps PoolGeneration
+        /// on every pool edit; one int compare per read invalidates the cache.
         static int _cacheGen = -1;
 
         static long CacheKey(List<Stroke> members, int ownerId)
@@ -403,25 +362,16 @@ namespace SpellyZombie
             return (g.Rune, g.Score);
         }
 
-        /// THE one touching-cluster flood (touching-only law, ):
-        /// grow `members` with every open stroke whose ink touches the cluster,
-        /// using the SEAL-TRUTH filter set - residue, declared, hidden and dead
-        /// ink never join, so the preview label and the seal read the same ink.
+        /// The one touching-cluster flood: grow `members` with every open
+        /// stroke whose ink touches the cluster, using the seal-truth filter
+        /// set - residue, declared, hidden and dead ink never join, so the
+        /// preview label and the seal read the same ink.
         public static void GrowTouchingCluster(List<Stroke> members, IReadOnlyList<Stroke> all)
         {
-            // THE PEN-UP HITCH LIVED HERE. This flood ran InkTouches (a full
-            // node-vs-segment double loop, BOTH directions) against every open
-            // stroke in the world on every pass, with no proximity test at all,
-            // and it fires 2-3 times the instant you lift the pen. Cost grew
-            // with how much ink was already lying on the ground, which is
-            // exactly the lag reported.
-            //
-            // Cluster() above has always had the cure. Same cull, same maths:
-            // Bounds.Expand grows the SIZE (each face moves half), so x2 keeps
-            // every pair InkTouches could still accept. Ink that is nowhere near
-            // the cluster now costs one AABB test instead of thousands of
-            // distance tests. The touching law is untouched: nothing that used
-            // to join stops joining.
+            // AABB cull before InkTouches: far ink costs one bounds test
+            // instead of a node-vs-segment sweep. Bounds.Expand grows the SIZE
+            // (each face moves half), so x2 keeps every pair InkTouches could
+            // accept.
             float join = DrawingConfig.RuneTouchDistance;
 
             _memberBounds.Clear();
@@ -498,18 +448,15 @@ namespace SpellyZombie
             return b;
         }
 
-        /// TOUCHING MEANS THE INK MEETS THE INK - node-to-LINE, never node-to-node
-        /// (the law: "everything must touch exactly"; node-to-node sampling
-        /// error forced a visible 5cm threshold, the Aug 1 report). Run both ways
-        /// round so the coarser-sampled stroke is measured against the other's LINE.
+        /// Touching = node-to-LINE, never node-to-node (node-to-node sampling
+        /// error would force a visibly loose threshold). Run both ways round
+        /// so the coarser-sampled stroke is measured against the other's line.
         public static bool InkTouches(Stroke a, Stroke b, float maxDist)
         {
             if (a == null || b == null) return false;
-            // FAR APART = NEVER TOUCHING, answered from two bounding boxes
-            // instead of the node-times-segment sweep below - this is the
-            // cluster flood's hottest inner call, paid per stroke pair per
-            // grow iteration (a doodled floor or an inked body = thousands
-            // of pairs, the "camera on the ink = lag" family)
+            // far apart = never touching, answered from two bounding boxes -
+            // this is the cluster flood's hottest inner call, paid per stroke
+            // pair per grow iteration
             var ba = StrokeBounds(a);
             ba.Expand(maxDist * 2f);
             if (!ba.Intersects(StrokeBounds(b))) return false;

@@ -2,17 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Physical identity of a material — the "ingredient" half of spell
-    /// resolution. Objects are marked with SurfaceMaterialTag; anything unmarked
-    /// resolves to Unknown (conjures Stone / Water by default).
-    ///
-    /// The whole Noita-style reaction table lives in these numbers:
-    /// Liquid rune on X   X's liquid form (StoneLava, FleshBlood, CoalOil…)
-    /// Heat past Ignite   burns (Wood burns down to Coal)
-    /// Heat past Melt     melts into the liquid form
-    /// Liquid cooled      re-solidifies (lavastone) / freezes (waterice)
-    /// Density-up long enough  transmutes into DenserForm (CoalDiamond)
-    /// Density-down on solid   fragments into smaller pieces of the same stuff
+    /// Physical identity of a material - the ingredient half of spell
+    /// resolution. Unmarked objects resolve to Unknown. These numbers drive the
+    /// reaction table: ignite/melt/boil, freeze, transmute to DenserForm, fragment.
     public struct MaterialInfo
     {
         public SurfaceMaterialType Type;
@@ -64,13 +56,13 @@ namespace SpellyZombie
                         SolidColor = new Color(0.6f, 0.4f, 0.2f), LiquidColor = new Color(0.85f, 0.6f, 0.15f, 0.85f),
                         LiquidName = "Sap", DenserForm = SurfaceMaterialType.Coal };
 
-                case SurfaceMaterialType.Earth: // Mud when liquid; compresses to Stone ( Diamond)
+                case SurfaceMaterialType.Earth: // Mud when liquid; compresses to Stone
                     return new MaterialInfo { Type = type, Meltable = true, MeltPoint = 900f, BoilPoint = 2000f,
                         HeatCapacity = 1.2f, BaseStickiness = 0.55f, Strength = 0.7f,
                         SolidColor = new Color(0.5f, 0.4f, 0.28f), LiquidColor = new Color(0.42f, 0.3f, 0.18f, 0.9f),
                         LiquidName = "Mud", DenserForm = SurfaceMaterialType.Stone };
 
-                case SurfaceMaterialType.Metal: // melts bright; compresses to Gold (alchemy!)
+                case SurfaceMaterialType.Metal: // melts bright; compresses to Gold
                     return new MaterialInfo { Type = type, Meltable = true, MeltPoint = 900f, BoilPoint = 2500f,
                         HeatCapacity = 2.2f, BaseStickiness = 0.25f, Strength = 1.5f,
                         SolidColor = new Color(0.7f, 0.72f, 0.8f), LiquidColor = new Color(1f, 0.55f, 0.15f, 0.95f),
@@ -94,7 +86,7 @@ namespace SpellyZombie
                         SolidColor = new Color(0.12f, 0.12f, 0.13f), LiquidColor = new Color(0.08f, 0.07f, 0.05f, 0.95f),
                         LiquidName = "Oil", DenserForm = SurfaceMaterialType.Diamond };
 
-                case SurfaceMaterialType.Diamond: // endpoint - nearly indestructible, worth clipping
+                case SurfaceMaterialType.Diamond: // endpoint - nearly indestructible
                     return new MaterialInfo { Type = type, BoilPoint = 4000f,
                         HeatCapacity = 4f, BaseStickiness = 0.15f, Strength = 3f,
                         SolidColor = new Color(0.75f, 0.95f, 1f), LiquidColor = new Color(0.75f, 0.95f, 1f, 0.8f),

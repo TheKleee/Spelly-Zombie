@@ -2,19 +2,15 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// SPELL-BORN RUBBLE IS TEMPORARY ("debris should also break
-    /// apart in time. The overall spell effect should not last forever") and
-    /// it NEVER DEFORMS - a hard hit pops it into SMALLER debris instead
-    /// ("It should pop up more debris"), down to dust that simply expires.
-    /// Merged debris keeps whichever body survives the merge, so the grown
-    /// stone tossed stays covered: strike it and it shatters again.
+    /// Spell-born rubble: temporary, never deforms - a hard hit pops it into
+    /// smaller debris, down to dust that expires.
     public class SpellDebris : MonoBehaviour
     {
         SurfaceMaterialType _mat;
         MatterPhase _phase;
         float _size;
         float _life;
-        float _grace = 0.8f; // let the scatter LAND first - pops come later
+        float _grace = 0.8f; // let the scatter land first - pops come later
 
         public void Init(SurfaceMaterialType mat, MatterPhase phase, float size)
         {
@@ -41,7 +37,7 @@ namespace SpellyZombie
             Pop();
         }
 
-        /// The no-deform law for rubble: break, never bend.
+        /// Breaks into smaller chunks instead of deforming.
         void Pop()
         {
             if (_size <= 0.16f) { Destroy(gameObject); return; } // dust just dies

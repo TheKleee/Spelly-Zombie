@@ -3,12 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The map orchestrator: reads every Biome box in the scene and grows a
-    /// real Unity Terrain out of them - the box decides where and how high,
-    /// its noise decides how wild, layers cut through each other, cliffs
-    /// paint themselves by slope. Preview: right-click this component's
-    /// header -> Generate Preview. Same code runs at match load later with
-    /// the daily seed.
+    /// Builds a Unity Terrain from the Biome boxes in the scene: each box
+    /// sets place and height, higher layers cut lower ones, cliffs paint by
+    /// slope. Preview: right-click the component header -> Generate Preview.
     public class SpellyMap : MonoBehaviour
     {
         [Tooltip("The loop: +-this many metres from center is the playable universe - the wrap seam and the spawn clip. The TERRAIN's size comes from the biome boxes alone; keep the water box comfortably larger than the loop.")]
@@ -53,20 +50,22 @@ namespace SpellyZombie
         [Tooltip("Seed used by the editor preview button. Matches use the daily pool instead.")]
         public int PreviewSeed = 12345;
 
+        [Tooltip("Draw the path network as purple lines in the Scene view, updating live as you move nodes and boxes. Needs one Generate first.")]
+        public bool AlwaysPreviewPaths = true;
+
+        [Tooltip("Rebuild the whole map automatically about a second after you stop editing boxes or nodes. Edit-mode only.")]
+        public bool AutoRegenerate = false;
+
         const string GeneratedName = "~SpellyTerrain";
 
         void Start()
         {
-            // playing the scene grows the map by itself: the match seed when
-            // a lobby set one, the preview seed when just pressing Play
             Generate(MatchLobby.Seed != 0 ? MatchLobby.Seed : PreviewSeed);
 
-            // the camera learns to feel liquids (underwater tint)
             var cam = Camera.main;
             if (cam != null && cam.GetComponent<LiquidSense>() == null)
                 cam.gameObject.AddComponent<LiquidSense>();
 
-            // players wrap at the loop: the ocean never ends
             foreach (var p in SimpleFPSController.All)
             {
                 if (p == null) continue;
@@ -80,7 +79,7 @@ namespace SpellyZombie
 
         void Update()
         {
-            // late joiners wrap too: a 1Hz ensure, never per-frame work
+            // late joiners: ensure LoopWrap at 1Hz
             if (!Application.isPlaying || (_wrapCheck -= Time.deltaTime) > 0f) return;
             _wrapCheck = 1f;
             foreach (var p in SimpleFPSController.All)
@@ -116,8 +115,7 @@ namespace SpellyZombie
             var root = new GameObject(GeneratedName);
             root.transform.SetParent(transform, false);
 
-            // sort once: highest layer first, so the first box containing a
-            // point IS the cut winner
+            // highest layer first: the first box containing a point wins
             System.Array.Sort(biomes, (a, b) => b.Layer.CompareTo(a.Layer));
 
             // the vertical range the terrain must be able to express
@@ -132,23 +130,20 @@ namespace SpellyZombie
 
             int res = Mathf.ClosestPowerOfTwo(Mathf.Clamp(Resolution - 1, 32, 1024)) + 1;
 
-            // seeded noise offsets: same seed, same island, every machine
             var rng = new System.Random(seed);
             float nx = (float)rng.NextDouble() * 4096f;
             float nz = (float)rng.NextDouble() * 4096f;
 
-            // the coastline warp: space itself bends before the boxes are
-            // asked, so every straight border turns organic - together
             _sorted = biomes;
             _warpX = (float)rng.NextDouble() * 4096f;
             _warpZ = (float)rng.NextDouble() * 4096f;
 
-            // Randomized: shuffle box positions on X,Z (virtually - authored
-            // transforms are never touched), then bake the effective rects
             PrepareLayout(biomes, rng);
 
-            // THE BIOMES DEFINE THE WORLD: the terrain sizes itself to fit
-            // every box and nothing else - grow the water box, the world grows
+            // who owns which ground: one wizard home, the rest acolyte
+            SpawnPlan.Build(biomes, seed);
+
+            // terrain bounds = union of the biome boxes
             float wMinX = float.MaxValue, wMaxX = float.MinValue;
             float wMinZ = float.MaxValue, wMaxZ = float.MinValue;
             for (int i = 0; i < _sorted.Length; i++)
@@ -170,7 +165,7 @@ namespace SpellyZombie
                     float wz = _south + world * z / (res - 1);
                     Biome win = WinnerAt(wx, wz);
                     float h;
-                    if (win == null) h = baseY + 0.5f; // outside everything: the abyss floor
+                    if (win == null) h = baseY + 0.5f; // outside all biomes
                     else
                     {
                         float n = Mathf.PerlinNoise(nx + wx / Mathf.Max(1f, win.NoiseScale),
@@ -181,15 +176,12 @@ namespace SpellyZombie
                 }
             }
 
-            // soften the cuts: each 3x3 pass widens the layer seams by about
-            // a sample and leaves the calm noise almost untouched
+            // each 3x3 pass widens the layer seams by about a sample
             var raw = (float[,])heights.Clone();
             for (int s = 0; s < Softness; s++)
                 Smooth(heights, res);
 
-            // give plateaus their tops back: deep inside one region the band
-            // re-asserts itself, so small terraces keep a standable crest -
-            // only the borders stay soft
+            // interiors revert toward the raw heights so only borders stay soft
             float probe = Mathf.Max(2f, Softness) * (world / (res - 1)) * 1.5f;
             for (int z = 0; z < res; z++)
             {
@@ -205,23 +197,21 @@ namespace SpellyZombie
                 }
             }
 
-            // ---- the verified path network: carved INTO the heights ----
+            // ---- paths: carved into the heights ----
             float[,] pathMask = BuildPaths(heights, biomes, res, world, heightRange);
+            _maskRef = pathMask; _resRef = res; _worldRef = world;
 
             var data = new TerrainData();
             data.heightmapResolution = res;
             data.size = new Vector3(world, heightRange, world);
             data.SetHeights(0, 0, heights);
 
-            // ---- brushes: each biome paints its floor, slope paints stone ----
-            PaintSplats(data, biomes, res, world, heightRange, pathMask);
-
             var terrainGo = Terrain.CreateTerrainGameObject(data);
             terrainGo.name = "Terrain";
             terrainGo.transform.SetParent(root.transform, false);
             terrainGo.transform.position = new Vector3(_west, baseY, _south);
 
-            // ---- liquid surfaces: his plane prefab stretched across each box top ----
+            // ---- liquid surfaces: the Surface prefab stretched across each box top ----
             foreach (var b in biomes)
             {
                 var liquid = b as LiquidBiome;
@@ -230,17 +220,14 @@ namespace SpellyZombie
                 plane.name = liquid.name + "Surface";
                 Vector2 lc = CenterOf(liquid);
                 plane.transform.position = new Vector3(lc.x, liquid.Area.max.y, lc.y);
-                // Unity plane = 10m at scale 1; padded just past the border
-                // waves (over-shore water reads as foam, never as a shelf).
-                // The box IS the size - grow the water box, the sea grows.
+                // Unity plane = 10m at scale 1; padded just past the border waves
                 float pad = Mathf.Min(CoastWobble,
                     Mathf.Min(liquid.Size.x, liquid.Size.z) * 0.25f) * 2f + 1f;
                 plane.transform.localScale = new Vector3(
                     (liquid.Size.x + pad) / 10f, 1f, (liquid.Size.z + pad) / 10f);
             }
 
-            // ---- landmarks: his centerpiece prefabs, standing at each
-            // biome's (possibly shuffled) center on the real ground ----
+            // ---- landmarks: centerpiece prefabs at each biome's center ----
             foreach (var b in biomes)
             {
                 if (b.Landmark == null) continue;
@@ -251,15 +238,14 @@ namespace SpellyZombie
                 mark.name = b.name + "Landmark";
             }
 
-            // ---- the horizon: fog swallows the map edge and the wrap seam ----
+            // ---- fog hides the map edge and the wrap seam ----
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = FogColor;
             RenderSettings.fogStartDistance = FogStart;
             RenderSettings.fogEndDistance = FogEnd;
 
-            // ---- cauldron lottery: candidate biomes (slot filled) roll for
-            // up to CauldronLimit pots, one per winning biome ----
+            // ---- cauldron lottery: up to CauldronLimit pots, one per winning biome ----
             _potWinners.Clear();
             var candidates = new List<Biome>();
             foreach (var b in biomes)
@@ -271,24 +257,35 @@ namespace SpellyZombie
                 candidates.RemoveAt(pick);
             }
 
-            // ---- the fill: every biome rains its Props onto its own ground ----
+            // ---- fill: each biome places its Props on its own ground ----
+            _spurs.Clear();
             Physics.SyncTransforms(); // the fresh terrain collider must answer rays
             int placed = FillBiomes(biomes, rng, pathMask, res, world, root.transform);
+
+            // ---- door spurs: carve a trail from each entrance to the network ----
+            foreach (var (door, target) in _spurs)
+                CarveRoute(heights, pathMask, res, world, heightRange,
+                    FindRoute(door, target, heights, res, world, heightRange));
+            _spurs.Clear();
+            data.SetHeights(0, 0, heights);
+
+            // ---- brushes last, over the final ground: floors, cliffs, paths ----
+            PaintSplats(data, biomes, res, world, heightRange, pathMask);
+
+            _heightsRef = heights;
+            _rangeRef = heightRange;
+            _baseRef = baseY;
+            _previewKey = 0; // force a fresh preview
 
             Debug.Log($"[SpellyZombie] SpellyMap grew {biomes.Length} biomes, {placed} props, seed {seed}.");
         }
 
-        /// The cut rule: highest layer containing the point wins (_sorted is
-        /// highest-first; rects are the baked, possibly shuffled ones).
-        /// Organic borders: every FACE waves around its authored line by
-        /// noise - zero-mean, so a small box never translates, it only
-        /// wobbles in place. Faces at the same coordinate share the same
-        /// wave, so snapped neighbours stay seamless.
+        /// Highest layer containing the point wins. Each face waves by
+        /// zero-mean noise; faces at the same coordinate share the wave, so
+        /// snapped neighbours stay seamless.
         Biome WinnerRaw(float wx, float wz)
         {
-            // ABSOLUTE AUTHORITY FIRST: inside a protected core the owner
-            // wins outright - no layers, no border waves, and the core is a
-            // CIRCLE (ellipse of the box), never a square
+            // a protected core wins outright; the core is an ellipse, not a square
             for (int i = 0; i < _sorted.Length; i++)
             {
                 float pc = _sorted[i].ProtectedCore;
@@ -303,8 +300,7 @@ namespace SpellyZombie
             float s = Mathf.Max(2f, WobbleScale);
             for (int i = 0; i < _sorted.Length; i++)
             {
-                // the wave never exceeds a quarter of the box: a big island
-                // gets the full coast, a small lake gets a gentle rim
+                // wobble capped at a quarter of the box
                 float wob = Mathf.Min(CoastWobble,
                     Mathf.Min(_maxX[i] - _minX[i], _maxZ[i] - _minZ[i]) * 0.25f);
                 if (wx < _minX[i] - wob || wx > _maxX[i] + wob
@@ -326,13 +322,13 @@ namespace SpellyZombie
         float _warpX, _warpZ;
         float _west, _south;                     // terrain's south-west corner
         readonly HashSet<Biome> _potWinners = new HashSet<Biome>();
+        readonly List<Bounds> _reserved = new List<Bounds>();   // roundabout plazas: no spawns
+        readonly List<(Vector2 door, Vector2 target)> _spurs = new List<(Vector2, Vector2)>();
         float[] _minX, _maxX, _minZ, _maxZ;      // effective rects, _sorted order
         Dictionary<Biome, Vector2> _shift;       // this generation's virtual moves
 
-        /// The layout shuffle. Order of laws: a box only moves within its
-        /// immediate lower-layer HOST; whatever carries you moves you too
-        /// (stacks travel as one); nobody may cover a protected core; listed
-        /// boxes stay inside their container; Y and sizes never change.
+        /// Seeded shuffle: a box moves only within its lower-layer host, host
+        /// moves carry it, protected cores and containers constrain it.
         /// Authored transforms are never written - moves live in _shift.
         void PrepareLayout(Biome[] biomes, System.Random rng)
         {
@@ -407,17 +403,15 @@ namespace SpellyZombie
             }
         }
 
-        /// HIS LAW, implemented: each biome has ITS OWN GRID (FieldSize);
-        /// per field one ray from box top to box bottom - never beyond the
-        /// band; miss = silent skip; hit needs slope, a free path bed, and
-        /// room for the object's claim, or the field is SKIPPED ("better to
-        /// have less objects than a janky objects"). Liquids float their
-        /// fill inside the volume instead.
+        /// Grid fill per biome (FieldSize): one ray per field from box top to
+        /// box bottom; a hit must pass slope, path and claim checks or the
+        /// field is skipped. Liquids float their fill inside the volume.
         int FillBiomes(Biome[] biomes, System.Random rng, float[,] pathMask,
             int res, float world, Transform root)
         {
             int total = 0;
             var claims = new List<Bounds>(); // world-space claimed boxes
+            claims.AddRange(_reserved);      // roundabout plazas stay empty
 
             foreach (var b in biomes)
             {
@@ -432,8 +426,7 @@ namespace SpellyZombie
                 Vector2 c = CenterOf(b);
                 int count = 0, cap = 400;
                 bool liquid = b is LiquidBiome;
-                // hidden riders: sources authored INSIDE placed props,
-                // disabled - "a house may have a torch or not"
+                // riders: disabled Sources authored inside placed props
                 var riders = new List<GameObject>();
 
                 // nearest-sample mask read for placement rules
@@ -445,8 +438,7 @@ namespace SpellyZombie
                     return pathMask[qz, qx];
                 }
 
-                // one door for both lists: every rule (his ray, slope, path
-                // bed, claims, borders) asked in exactly one place
+                // every placement rule in one place
                 bool TryPlace(GameObject prefab, float wx, float wz)
                 {
                     if (prefab == null) return false;
@@ -464,8 +456,7 @@ namespace SpellyZombie
                     }
                     else
                     {
-                        // HIS RAY: box top straight down, stopping at box
-                        // bottom - a band only dresses its own band
+                        // ray from box top down, stopping at box bottom
                         var rayFrom = new Vector3(wx, area.max.y + 0.5f, wz);
                         if (!Physics.Raycast(rayFrom, Vector3.down, out var hit,
                                 area.size.y + 1f, Physics.DefaultRaycastLayers,
@@ -473,7 +464,7 @@ namespace SpellyZombie
                         if (!(hit.collider is TerrainCollider)) return false; // ground only, never on a prop
                         if (hit.point.y < area.min.y - 0.5f) return false;
                         if (hit.normal.y < 0.7f) return false; // too steep = wall
-                        // paths are sacred: nothing spawns on the bed
+                        // nothing spawns on the path bed
                         int hx = Mathf.Clamp(Mathf.RoundToInt((wx - _west) / world * (res - 1)), 0, res - 1);
                         int hz = Mathf.Clamp(Mathf.RoundToInt((wz - _south) / world * (res - 1)), 0, res - 1);
                         if (pathMask != null && pathMask[hz, hx] > 0.45f) return false;
@@ -487,11 +478,9 @@ namespace SpellyZombie
                     Vector3 claimCenter = at + (box != null ? box.Center : Vector3.up * claimSize.y * 0.5f);
                     var claim = new Bounds(claimCenter, claimSize);
                     for (int i = 0; i < claims.Count; i++)
-                        if (claims[i].Intersects(claim)) return false; // fewer beats janky
+                        if (claims[i].Intersects(claim)) return false;
 
-                    // NOTHING SPAWNS ON THE PATH - the WHOLE claim area is
-                    // tested at finer-than-path density, so no trail can
-                    // slip between sample points however wide the object
+                    // the whole claim area is tested against the path mask
                     if (!liquid && pathMask != null)
                     {
                         for (float mx = claim.min.x; mx <= claim.max.x + 0.01f; mx += 1.5f)
@@ -500,16 +489,37 @@ namespace SpellyZombie
                                           Mathf.Min(mz, claim.max.z)) > 0.45f) return false;
                     }
 
-                    float yaw = (float)rng.NextDouble() * 360f;
+                    // entrances face the nearest path, else the biome center.
+                    // Author doors on the prefab's +Z.
+                    float yaw;
+                    Vector2 spurTarget = default;
+                    bool hasSpur = false;
+                    if (!liquid && prefab.GetComponentInChildren<PathPoint>(true) != null)
+                    {
+                        Vector2 flat = new Vector2(at.x, at.z);
+                        if (NearestPath(flat, 27f, out spurTarget))
+                        {
+                            Vector2 d = (spurTarget - flat).normalized;
+                            yaw = Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg;
+                            hasSpur = true;
+                        }
+                        else
+                        {
+                            Vector2 d = CenterOf(b) - flat;
+                            yaw = d.sqrMagnitude > 0.01f
+                                ? Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg
+                                : (float)rng.NextDouble() * 360f;
+                        }
+                    }
+                    else yaw = (float)rng.NextDouble() * 360f;
+
                     var go = Instantiate(prefab, at,
                         Quaternion.AngleAxis(yaw, Vector3.up), fill);
-                    // gentle tilt onto slopes so trees don't levitate a root
+                    // gentle tilt onto slopes
                     if (!liquid && up.y < 0.995f)
                         go.transform.rotation = Quaternion.FromToRotation(Vector3.up,
                             Vector3.Slerp(Vector3.up, up, 0.35f)) * go.transform.rotation;
 
-                    // auto-outfit, minimal first slice: everything at least
-                    // exists physically (adopt, never dictate)
                     if (go.GetComponentInChildren<Collider>() == null)
                         foreach (var mf in go.GetComponentsInChildren<MeshFilter>())
                             if (mf.sharedMesh != null)
@@ -518,13 +528,22 @@ namespace SpellyZombie
                     foreach (var a in go.GetComponentsInChildren<Analyzable>(true))
                         if (!a.gameObject.activeSelf) riders.Add(a.gameObject);
 
+                    // the placed door's position feeds the spur pass
+                    if (hasSpur)
+                    {
+                        var doorNow = go.GetComponentInChildren<PathPoint>(true);
+                        if (doorNow != null)
+                            _spurs.Add((new Vector2(doorNow.transform.position.x,
+                                doorNow.transform.position.z), spurTarget));
+                    }
+
                     claims.Add(claim);
                     count++;
                     total++;
                     return true;
                 }
 
-                // THE ABUNDANCE: the grid fill that makes the place a place
+                // the Props grid fill
                 if (hasProps)
                 {
                     int nx = Mathf.Max(1, Mathf.FloorToInt(b.Size.x / b.FieldSize));
@@ -543,9 +562,8 @@ namespace SpellyZombie
                     }
                 }
 
-                // THE SCARCITY: one quota, two pools - hidden riders get
-                // REVEALED, standalones get spawned, drawn at random until
-                // MinSources..MaxSources exist. Unrevealed riders never exist.
+                // sources: riders get revealed, standalones get spawned, at
+                // random until MinSources..MaxSources exist
                 if (hasSources || riders.Count > 0)
                 {
                     int want = rng.Next(Mathf.Max(0, b.MinSources),
@@ -575,8 +593,7 @@ namespace SpellyZombie
                         Debug.LogWarning($"[SpellyZombie] '{b.name}' placed only {placedSrc}/{b.MinSources} sources - not enough valid ground or riders.", b);
                 }
 
-                // THE CAULDRON: this biome won the lottery - its pot stands
-                // at a random valid spot inside it
+                // lottery winner: the pot stands at a random valid spot
                 if (_potWinners.Contains(b))
                 {
                     bool stood = false;
@@ -593,9 +610,96 @@ namespace SpellyZombie
             return total;
         }
 
-        /// The truth overlay: select Spelly Map after generating and the
-        /// SHUFFLED layout draws itself - colored boxes with names, exactly
-        /// where the seed actually put every biome.
+        float[,] _maskRef, _heightsRef;
+        int _resRef;
+        float _worldRef, _rangeRef, _baseRef;
+        bool _logRoutes;
+        readonly List<Vector3[]> _routeLog = new List<Vector3[]>();
+        List<Vector3[]> _previewLines;
+        int _previewKey;
+        float _keyCheckAt;
+
+        /// A cheap fingerprint of everything that shapes the network - when
+        /// it changes, the preview (and auto-rebuild) know to refresh.
+        public int LayoutKey()
+        {
+            unchecked
+            {
+                int h = 17;
+                foreach (var b in FindObjectsByType<Biome>(FindObjectsSortMode.None))
+                {
+                    h = h * 31 + b.transform.position.GetHashCode();
+                    h = h * 31 + b.Size.GetHashCode();
+                    h = h * 31 + b.Layer;
+                    h = h * 31 + (b.CanPath ? 1 : 0);
+                    h = h * 31 + Mathf.RoundToInt(b.PathCurve * 100f);
+                }
+                foreach (var nd in FindObjectsByType<PathNode>(FindObjectsSortMode.None))
+                {
+                    h = h * 31 + nd.transform.position.GetHashCode();
+                    h = h * 31 + Mathf.RoundToInt(nd.Radius * 10f);
+                    h = h * 31 + (nd.JoinWeb ? 1 : 0);
+                    if (nd.LinksTo != null)
+                        foreach (var l in nd.LinksTo)
+                            if (l != null) h = h * 31 + l.GetInstanceID();
+                }
+                return h;
+            }
+        }
+
+        /// Re-route the network over the LAST generated ground (no terrain
+        /// touch, no spawns) purely to harvest the polylines for drawing.
+        void RebuildPreview()
+        {
+            _previewLines = null;
+            if (_heightsRef == null || _sorted == null) return;
+            _routeLog.Clear();
+            _logRoutes = true;
+            var scratch = (float[,])_heightsRef.Clone();
+            BuildPaths(scratch, _sorted, _resRef, _worldRef, _rangeRef);
+            _logRoutes = false;
+            _previewLines = new List<Vector3[]>(_routeLog);
+            _routeLog.Clear();
+        }
+
+        /// Path preview lines, refreshed when any box or node changes.
+        void OnDrawGizmos()
+        {
+            if (!AlwaysPreviewPaths || _heightsRef == null) return;
+            if (Time.realtimeSinceStartup > _keyCheckAt)
+            {
+                _keyCheckAt = Time.realtimeSinceStartup + 0.4f;
+                int key = LayoutKey();
+                if (key != _previewKey) { _previewKey = key; RebuildPreview(); }
+            }
+            if (_previewLines == null) return;
+            Gizmos.color = new Color(0.8f, 0.4f, 1f, 0.95f);
+            foreach (var line in _previewLines)
+                for (int i = 1; i < line.Length; i++)
+                    Gizmos.DrawLine(line[i - 1], line[i]);
+        }
+
+        /// The nearest point of the path network within reach: a widening
+        /// ring scan over the bed mask. Entrances face this; spurs grow to it.
+        bool NearestPath(Vector2 at, float maxR, out Vector2 hit)
+        {
+            hit = default;
+            if (_maskRef == null) return false;
+            for (float r = 3f; r <= maxR; r += 3f)
+            {
+                for (int k = 0; k < 16; k++)
+                {
+                    float ang = k / 16f * Mathf.PI * 2f;
+                    Vector2 p = at + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * r;
+                    int qx = Mathf.Clamp(Mathf.RoundToInt((p.x - _west) / _worldRef * (_resRef - 1)), 0, _resRef - 1);
+                    int qz = Mathf.Clamp(Mathf.RoundToInt((p.y - _south) / _worldRef * (_resRef - 1)), 0, _resRef - 1);
+                    if (_maskRef[qz, qx] > 0.6f) { hit = p; return true; }
+                }
+            }
+            return false;
+        }
+
+        /// When selected, draws the shuffled layout: colored boxes with names.
         void OnDrawGizmosSelected()
         {
             if (_sorted == null || _minX == null || _minX.Length != _sorted.Length) return;
@@ -637,9 +741,20 @@ namespace SpellyZombie
             return false;
         }
 
-        /// Kept as the one name everything asks - the waving borders live in
-        /// WinnerRaw itself now (the old point-warp translated small boxes).
         Biome WinnerAt(float wx, float wz) => WinnerRaw(wx, wz);
+
+        static SpellyMap _live;
+        void OnEnable() { _live = this; }
+        void OnDisable() { if (_live == this) _live = null; }
+
+        /// Which biome owns a world position at runtime, or null where there
+        /// is no generated map (the lobby). Callers treat null as "natural".
+        public static Biome BiomeAt(Vector3 world)
+        {
+            if (_live == null || _live._sorted == null || _live._minX == null
+                || _live._minX.Length != _live._sorted.Length) return null;
+            return _live.WinnerRaw(world.x, world.z);
+        }
 
         static void Smooth(float[,] h, int res)
         {
@@ -652,22 +767,46 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------------------ paths --
-        /// Connect every CanPath biome into ONE network (spanning tree over
-        /// adjacency), then carve each route: heights along the ribbon are
-        /// relaxed until the grade never exceeds PathSlope - the ramp through
-        /// a cliff is literally cut out of it. Returns the ribbon mask for
-        /// painting now and spawn-reservation later.
+        /// Connects every CanPath biome into one network, then carves each
+        /// route so the grade never exceeds PathSlope. Returns the ribbon
+        /// mask used for painting and spawn reservation.
         float[,] BuildPaths(float[,] heights, Biome[] sorted, int res, float world, float heightRange)
         {
             var mask = new float[res, res];
 
-            // WAYPOINTS: several per biome, spread apart - the path must run
-            // THROUGH places, not just touch them (his sketch: the purple web)
             var pts = new List<Vector2>();
             var own = new List<Biome>();
+            var ring = new List<float>();     // >0 = this node is a roundabout
+            var joinWeb = new List<bool>();
+            _reserved.Clear();
+
+            // authored PathNodes first: a biome containing any gets no auto
+            // nodes; nodes ride their biome's shuffle
+            var authored = FindObjectsByType<PathNode>(FindObjectsSortMode.None);
+            var authoredIdx = new Dictionary<PathNode, int>();
+            var authoredBiomes = new HashSet<Biome>();
+            foreach (var mk in authored)
+            {
+                Vector2 p = new Vector2(mk.transform.position.x, mk.transform.position.z);
+                // a node parented under a Biome belongs to it; unparented
+                // nodes are world-fixed junctions
+                Biome host = mk.GetComponentInParent<Biome>();
+                if (host != null && _shift.ContainsKey(host))
+                {
+                    p += _shift[host];
+                    authoredBiomes.Add(host);
+                }
+                authoredIdx[mk] = pts.Count;
+                pts.Add(p);
+                own.Add(host);
+                ring.Add(Mathf.Max(0f, mk.Radius));
+                joinWeb.Add(mk.JoinWeb);
+            }
+
+            // auto waypoints only in biomes with no authored nodes
             foreach (var b in sorted)
             {
-                if (!b.CanPath) continue;
+                if (!b.CanPath || authoredBiomes.Contains(b)) continue;
                 var owned = new List<Vector2>();
                 for (int z = 0; z < res; z += 6)
                 {
@@ -707,9 +846,25 @@ namespace SpellyZombie
                     if (fd < 100f) break; // 10m spacing floor: too small for more
                     mine.Add(far);
                 }
-                foreach (var p in mine) { pts.Add(p); own.Add(b); }
+                for (int i = 0; i < mine.Count; i++)
+                {
+                    pts.Add(mine[i]);
+                    own.Add(b);
+                    ring.Add(0f); // roundabouts are hand-placed only (PathNode.Radius)
+                    joinWeb.Add(true);
+                }
             }
             if (pts.Count < 2) return mask;
+
+            // authored links first, exactly as linked
+            var edgesEarly = new List<(int a, int b)>();
+            foreach (var mk in authored)
+            {
+                if (mk.LinksTo == null) continue;
+                foreach (var other in mk.LinksTo)
+                    if (other != null && authoredIdx.ContainsKey(other))
+                        edgesEarly.Add((authoredIdx[mk], authoredIdx[other]));
+            }
 
             int n = pts.Count;
             var edges = new List<(int a, int b)>();
@@ -721,7 +876,9 @@ namespace SpellyZombie
                 if (seen.Add(lo * 4096 + hi)) edges.Add((lo, hi));
             }
 
-            // the TRUNK: a spanning tree keeps every waypoint reachable
+            foreach (var (a, b) in edgesEarly) AddEdge(a, b);
+
+            // spanning tree keeps every waypoint reachable
             var inTree = new bool[n];
             inTree[0] = true;
             for (int added = 1; added < n; added++)
@@ -743,15 +900,16 @@ namespace SpellyZombie
                 AddEdge(bi, bj);
             }
 
-            // the WEB: every waypoint also joins its nearest neighbour, so
-            // junctions and loops appear - paths connect to one another
+            // each willing waypoint also joins its nearest neighbour;
+            // JoinWeb=false nodes get only authored links and the tree bridge
             for (int i = 0; i < n; i++)
             {
+                if (!joinWeb[i]) continue;
                 int bj = -1;
                 float bd = float.MaxValue;
                 for (int j = 0; j < n; j++)
                 {
-                    if (j == i) continue;
+                    if (j == i || !joinWeb[j]) continue;
                     float d = (pts[i] - pts[j]).sqrMagnitude;
                     if (d < bd) { bd = d; bj = j; }
                 }
@@ -760,23 +918,41 @@ namespace SpellyZombie
 
             foreach (var (a, b) in edges)
             {
+                // spokes stop at a roundabout's RING, not its center
+                Vector2 pa = pts[a] + (pts[b] - pts[a]).normalized * ring[a];
+                Vector2 pb = pts[b] + (pts[a] - pts[b]).normalized * ring[b];
                 Vector2? via = own[a] != own[b]
-                    ? RouteVia(own[a], own[b], pts[a], pts[b]) : null;
+                    ? RouteVia(own[a], own[b], pa, pb) : null;
                 var route = new List<Vector2>();
                 if (via.HasValue)
                 {
-                    route.AddRange(FindRoute(pts[a], via.Value, heights, res, world, heightRange));
-                    route.AddRange(FindRoute(via.Value, pts[b], heights, res, world, heightRange));
+                    route.AddRange(FindRoute(pa, via.Value, heights, res, world, heightRange));
+                    route.AddRange(FindRoute(via.Value, pb, heights, res, world, heightRange));
                 }
-                else route = FindRoute(pts[a], pts[b], heights, res, world, heightRange);
+                else route = FindRoute(pa, pb, heights, res, world, heightRange);
                 CarveRoute(heights, mask, res, world, heightRange, route);
+            }
+
+            // ROUNDABOUTS: the ring path itself + the keep-clear plaza inside
+            for (int i = 0; i < pts.Count; i++)
+            {
+                if (ring[i] <= 0f) continue;
+                var circle = new List<Vector2>();
+                for (int k = 0; k <= 20; k++)
+                {
+                    float ang = k / 20f * Mathf.PI * 2f;
+                    circle.Add(pts[i] + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * ring[i]);
+                }
+                CarveRoute(heights, mask, res, world, heightRange, circle);
+                float side = Mathf.Max(1f, (ring[i] - 1.2f) * 2f);
+                _reserved.Add(new Bounds(new Vector3(pts[i].x, 0f, pts[i].y),
+                    new Vector3(side, 400f, side)));
             }
             return mask;
         }
 
-        /// The trail finder: A* over a coarse lattice where steepness is
-        /// expensive - so routes fold into switchbacks and slide around
-        /// ridges by themselves instead of asking the carver to dig.
+        /// A* over a coarse lattice where steepness is expensive, so routes
+        /// fold into switchbacks instead of forcing deep carves.
         List<Vector2> FindRoute(Vector2 from, Vector2 to, float[,] heights, int res, float world, float heightRange)
         {
             const int stride = 4;
@@ -832,8 +1008,7 @@ namespace SpellyZombie
 
                     float dist = step * (d < 4 ? 1f : 1.41421f);
                     float grade = Mathf.Abs(HeightOf(nb) - HeightOf(cur)) / dist;
-                    // steepness is quadratic pain, water is worse - both stay
-                    // finite so a route ALWAYS exists, just prefers the trail
+                    // quadratic steepness cost, water worse; finite so a route always exists
                     float cost = dist * (1f + Mathf.Pow(grade / Mathf.Max(0.05f, walkTan), 2f) * 6f);
                     if (WinnerAt(PosOf(nb).x, PosOf(nb).y) is LiquidBiome) cost *= 40f;
 
@@ -873,7 +1048,7 @@ namespace SpellyZombie
             float best = float.MaxValue;
             foreach (var biome in new[] { a, b })
             {
-                if (biome.Entries == null) continue;
+                if (biome == null || biome.Entries == null) continue;
                 Vector2 s = _shift[biome];
                 foreach (var e in biome.Entries)
                 {
@@ -898,6 +1073,18 @@ namespace SpellyZombie
         {
             float step = world / (res - 1);
 
+            // PathCurve bends the route sideways with noise before carving
+            for (int i = 1; i < route.Count - 1; i++)
+            {
+                var w = WinnerAt(route[i].x, route[i].y);
+                float amp = (w != null ? w.PathCurve : 0.3f) * 3.5f;
+                if (amp <= 0.01f) continue;
+                Vector2 dir = (route[i + 1] - route[i - 1]).normalized;
+                Vector2 perp = new Vector2(-dir.y, dir.x);
+                float nz = Mathf.PerlinNoise(_warpX + i * 0.37f, _warpZ + route[i].x * 0.05f) - 0.5f;
+                route[i] += perp * nz * 2f * amp;
+            }
+
             // resample the trail at heightmap density
             var pts = new List<Vector2>();
             for (int i = 0; i < route.Count - 1; i++)
@@ -908,8 +1095,7 @@ namespace SpellyZombie
             pts.Add(route[route.Count - 1]);
             if (pts.Count < 2) return;
 
-            // the trail already avoids steepness; this relax only grooms what
-            // little the lattice missed
+            // relax the line to the PathSlope grade
             var lineH = new float[pts.Count];
             for (int i = 0; i < pts.Count; i++)
                 lineH[i] = SampleH(heights, res, world, pts[i]);
@@ -923,8 +1109,18 @@ namespace SpellyZombie
                     lineH[i] = Mathf.Clamp(lineH[i], lineH[i + 1] - maxDh, lineH[i + 1] + maxDh);
             }
 
-            // stamp: flat bed, and BANKED shoulders - the deeper the cut or
-            // fill at a point, the wider its blend, so no vertical walls ever
+            // preview harvesting: the relaxed line IS the drawable route
+            if (_logRoutes)
+            {
+                var line = new Vector3[pts.Count];
+                for (int i = 0; i < pts.Count; i++)
+                    line[i] = new Vector3(pts[i].x,
+                        _baseRef + lineH[i] * heightRange + 0.35f, pts[i].y);
+                _routeLog.Add(line);
+                return; // preview never stamps
+            }
+
+            // stamp: flat bed; shoulder width grows with cut/fill depth
             float half = PathWidth * 0.5f;
             for (int i = 0; i < pts.Count; i++)
             {
@@ -983,8 +1179,7 @@ namespace SpellyZombie
             float slopeTan = Mathf.Tan(CliffSlope * Mathf.Deg2Rad);
             float texel = world / (ares - 1);
 
-            // the mask read SMOOTHLY: bilinear over the heightmap cells, so
-            // the ribbon paints as a drawn stroke, never as blocks
+            // bilinear mask read so the ribbon paints smoothly
             float MaskAt(float fx, float fz)
             {
                 if (pathMask == null) return 0f;
@@ -997,8 +1192,7 @@ namespace SpellyZombie
                     Mathf.Lerp(pathMask[z0 + 1, x0], pathMask[z0 + 1, x0 + 1], tx), tz);
             }
 
-            // one tap: floor + GRADUAL cliff (slope fades stone in over a
-            // band) + GRADUAL path (the ribbon feathers into the floor)
+            // one tap: floor + slope-faded cliff + feathered path
             void Tap(float wx, float wz, int z, int x, float share)
             {
                 float fx = Mathf.Clamp01((wx - _west) / world);
@@ -1032,8 +1226,7 @@ namespace SpellyZombie
                 if (pathIdx >= 0) maps[z, x, pathIdx] += share * pathW;
             }
 
-            // SOFT ROUND BRUSH: five taps in a circle per texel - borders
-            // blend across a couple of texels, never stamp squares
+            // five taps in a circle per texel so borders blend, never stamp squares
             float r = texel * 1.1f;
             for (int z = 0; z < ares; z++)
             {

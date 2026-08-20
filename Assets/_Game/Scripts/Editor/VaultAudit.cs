@@ -5,11 +5,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE SILENT-FAILURE KILLER (AXIOM, ). Dropping a prefab into
-    /// Resources/Custom with a name no hook asks for loads NOTHING and says
-    /// nothing - the GooglyEyes.prefab sat unused for weeks because the hook
-    /// wanted "Eyes". This warns the moment a file lands, names the closest
-    /// valid hook, and costs the shipped build exactly nothing (editor-only).
+    /// Warns when a prefab lands in Resources/Custom under a name no hook asks
+    /// for (such files silently load nothing), naming the closest valid hook.
+    /// Editor-only.
     class VaultAudit : AssetPostprocessor
     {
         const string Dir = "Assets/_Game/Resources/Custom";
@@ -61,7 +59,7 @@ namespace SpellyZombie
             return set;
         }
 
-        /// tiny Levenshtein — good enough to say "did you mean Eyes?"
+        /// tiny Levenshtein distance
         static int Distance(string a, string b)
         {
             var d = new int[a.Length + 1, b.Length + 1];

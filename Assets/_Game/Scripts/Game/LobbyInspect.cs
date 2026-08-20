@@ -4,9 +4,8 @@ using UnityEngine.InputSystem;
 namespace SpellyZombie
 {
     /// Lobby only: aim at another player and a floating I appears. Press it
-    /// for a small card with their name and a Steam add-friend button (the
-    /// Steam overlay handles the actual request). Commends join this card
-    /// when the commend system lands.
+    /// for a card with their name and a Steam add-friend button (the Steam
+    /// overlay handles the actual request).
     public static class LobbyInspect
     {
         public static bool PanelOpen { get; private set; }
@@ -104,7 +103,7 @@ namespace SpellyZombie
                 UIKit.Place((RectTransform)add.transform, new Vector2(0.5f, 1f), new Vector2(0f, -66f), new Vector2(240f, 42f));
             }
 
-            // the host disciplines from here too: exact target, no stand walk
+            // host kick/ban from the card too
             if (NetGame.IsHost)
             {
                 int cid = who.Id;

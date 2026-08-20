@@ -36,18 +36,9 @@ namespace SpellyZombie
         public int rigVersion; // 0/1 = graybox bean pivots, 2 = the Mixamo skeleton
     }
 
-    /// The player's pose list: poses authored in the Pose Studio, saved to disk,
-    /// bound to number slots for in-game use. Joints are referenced by string id,
-    /// so a pose authored on the graybox mannequin plays unchanged on any future
-    /// character whose EmoteRig registers the same joint names.
-    ///
-    /// Slots resolve in two layers : the player's own CUSTOM
-    /// binding sits on top of the SYSTEM DEFAULT for that slot. Defaults are
-    /// built in code, load every game, and can never be deleted - X in third
-    /// person clears the custom binding and the default shows through again.
-    ///
-    /// A pose emote is the somatic trigger of whatever seal the player drew
-    /// across their own joints: authoring poses = choosing how you cast.
+    /// The player's pose list: authored in the Pose Studio, saved to disk,
+    /// bound to number slots; joints are referenced by string id so poses
+    /// survive a character swap. Slots layer a custom binding over a default.
     public static class EmoteLibrary
     {
         public const int SlotCount = 10;
@@ -71,10 +62,8 @@ namespace SpellyZombie
             if (_data == null) _data = new EmoteSaveFile();
             while (_data.slots.Count < SlotCount) _data.slots.Add(-1);
 
-            // ONE-TIME MIGRATION: poses saved on the graybox bean target
-            // completely different bone axes - on the Mixamo rig they bend
-            // backwards and, being CUSTOM bindings, they override the correct
-            // baked defaults. Unbind them (the pose list itself is kept).
+            // one-time migration: bean-era poses use different bone axes and
+            // would override the baked defaults - unbind them, keep the pose list
             const int currentRigVersion = 2;
             if (_data.rigVersion < currentRigVersion)
             {
@@ -114,9 +103,8 @@ namespace SpellyZombie
             return _defaults.TryGetValue(slot, out var def) ? def : null;
         }
 
-        /// The character rig OVERRIDES the built-ins at runtime with poses
-        /// baked on the REAL skeleton - hardcoded eulers only fit the graybox
-        /// bean's pivots; on Mixamo bones they bend the wrong way.
+        /// The character rig overrides the built-ins at runtime with poses
+        /// baked on the real skeleton.
         public static void SetDefault(int slot, string name, EmoteKeyframe frame)
         {
             BuildDefaults();

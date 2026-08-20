@@ -3,20 +3,11 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE WIGGLE ENGINE (the scarf design: the collar stands rigid, the
-    /// tail trails and wiggles behind you - clipping allowed, cloth banned).
-    ///
-    /// the MODELING CONTRACT - works on ANY costume piece, player or zombie:
-    ///   name a child transform "Wiggle" (or "Wiggle_1" → "Wiggle_2" → …
-    ///   nested as a chain, pivot at each joint) and that part comes alive:
-    ///   it lags behind movement, swings on turns, droops with gravity, and
-    ///   settles when you stand still. Everything not named Wiggle stays
-    /// exactly where modeled it.
-    ///
-    /// One component sits on each chain's TOP segment and updates the whole
-    /// chain top-down (per-segment components would update in undefined
-    /// order and jitter). Springs are simple tip-mass physics - deterministic
-    /// enough, zero network cost, impossible to wrap around a neck.
+    /// Wiggle engine for costume pieces. Contract: name a child "Wiggle"
+    /// ("Wiggle_1" → "Wiggle_2" … nested as a chain, pivot at each joint) and
+    /// it lags, swings, droops and settles; everything else stays as modeled.
+    /// One component on each chain's TOP segment updates the whole chain
+    /// top-down (per-segment updates run in undefined order and jitter).
     public class ScarfWiggle : MonoBehaviour
     {
         [Tooltip("Spring pull toward the modeled pose")]

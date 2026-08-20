@@ -2,26 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// AN ACOLYTE CAN BECOME THIS. the rule: "You can only become an object
-    /// that is scan-able." Nothing is a valid shape by accident; you mark what is.
-    ///
-    /// This is the acolyte's half of the world, the way `Analyzable` is the
-    /// wizard's. They are deliberately separate components because they mark
-    /// different populations: a handful of authored teaching objects (torch,
-    /// puddle, log) teach runes, while hundreds of ordinary props are shapes.
-    ///
-    /// Scanning does two jobs at once, which is the whole acolyte economy:
-    ///   1. it refills their wand, since scanning is their ONLY source of ink
-    ///   2. it teaches the shape, permanently for the round
-    ///
-    /// AND IT CONSUMES THE PROP (per instance, the ruling). So the map is a finite
-    /// ink pool, an acolyte has to keep leaving cover to stay armed, and the props
-    /// they used are a trail a wizard can read. In the LOBBY this is reversed:
-    /// nothing is consumed there, or a practising acolyte is dry in a minute.
-    ///
-    /// AXIOM: everything here is yours. Put this on your props, supply your own
-    /// spent look, and nothing about the object is altered except what you asked
-    /// for.
+    /// Per-prop scan data for acolytes: ink reward, spent look, consume rules.
+    /// A scan refills the wand and teaches the shape; a consumed prop is the
+    /// trail wizards read. Lobby props set Consume off.
     public class Scannable : MonoBehaviour
     {
         [Header("WHAT SCANNING THIS GIVES BACK")]

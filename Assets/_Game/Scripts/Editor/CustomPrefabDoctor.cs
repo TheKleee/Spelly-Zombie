@@ -4,22 +4,10 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE DRAG-AND-DROP GUARANTEE (the rule: "no buttons for everything
-    /// let me drag ANYTHING into a prefab and your code picks it up"):
-    /// every prefab saved anywhere under Resources/Custom is automatically
-    /// healed the moment it lands, play mode or edit mode:
-    ///
-    /// · runtime-only materials  saved as real .mat assets and remapped
-    ///     (kills the magenta prefab forever)
-    ///   · missing/unloadable scripts → stripped (kills the "script can not
-    ///     be loaded" corpse components)
-    /// · ink nodes  stripped (doodles don't become part of a species)
-    /// · dead material slots  a loud warning naming the object, so a
-    ///     prefab dragged AFTER play stopped (references already dead) says
-    ///     exactly how to redo it instead of silently rendering pink
-    ///
-    /// So the workflow is just: drag it from the Hierarchy into
-    /// Resources/Custom, name it for its hook (see ART_TODO registry), edit.
+    /// AssetPostprocessor: every prefab under Resources/Custom is healed on
+    /// import - runtime-only materials are saved as real .mat assets and
+    /// remapped; missing scripts, ink nodes, and dead material slots are
+    /// reported, never stripped (see Clean Selected Custom Prefab).
     public class CustomPrefabDoctor : AssetPostprocessor
     {
         static bool _healing;
@@ -45,17 +33,12 @@ namespace SpellyZombie
             try
             {
                 root = PrefabUtility.LoadPrefabContents(path);
-                // AXIOM opt-out: a HandsOff component means "never touch this"
+                // a HandsOff component means "never touch this"
                 if (root.GetComponentInChildren<HandsOff>(true) != null) return;
                 int fixes = 0;
                 var report = new List<string>();
 
-                // AXIOM : this runs automatically on EVERY import
-                // and every prefab-mode save. It must NEVER delete the work.
-                // Both passes below are now REPORT-ONLY - a renamed .cs file
-                // used to silently eat components (and their Inspector values)
-                // out of the authored prefabs with no undo.
-                // ---- corpse scripts: report, never strip ----
+                // ---- missing scripts: report, never strip ----
                 foreach (var t in root.GetComponentsInChildren<Transform>(true))
                 {
                     int broken = GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(t.gameObject);
@@ -110,9 +93,8 @@ namespace SpellyZombie
             }
         }
 
-        /// The DESTRUCTIVE strip, now opt-in only (AXIOM: decides, not the
-        /// importer). Select a prefab and run it when you actually want the
-        /// broken scripts / stray ink gone.
+        /// The destructive strip, opt-in only. Select a prefab and run it to
+        /// remove broken scripts / stray ink.
         [MenuItem("Spelly Zombie/Clean Selected Custom Prefab")]
         static void CleanSelected()
         {

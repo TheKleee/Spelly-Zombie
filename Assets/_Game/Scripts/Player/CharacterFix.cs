@@ -3,27 +3,12 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// the ULTIMATE-CONTROL LAYER for the runtime-built character. the
-    /// ruling (July 17): "I must be in full control of all creative decisions
-    /// anywhere" — and prefabbing the runtime player can NEVER work (the rig
-    /// is assembled at runtime; runtime-added components serialize broken:
-    /// that's the "managed part missing" error, by design not by bug).
-    ///
-    /// THE WORKFLOW INSTEAD:
-    /// Play  Hierarchy  SZ_Player  select any FIXABLE piece (wand,
-    ///   grimoire, eyes, anything under a Socket.*, any IKAnchor_* stance
-    /// target)  move/rotate/scale it in the Inspector until it looks
-    ///   right → menu "Spelly Zombie → Save CHARACTER Fix (play mode)" →
-    ///   stop play. The edit re-applies on every rig build, forever.
-    ///
-    /// SCOPE (deliberate): held props, worn socket pieces, the googly-eye
-    /// rig, and the IK stance anchors (where the wand/book HOVER in view -
-    /// raise IKAnchor_ReadSupport and the open book rides higher). Animated
-    /// BONES are excluded on purpose: poses and emotes own those.
-    ///
-    /// Storage: Assets/_Game/Resources/sz_character_fix.json, path-keyed.
-    /// LimbFit lesson applies: renaming rig pieces in code orphans keys -
-    /// check the json after prop refactors.
+    /// Play-mode tweak layer for the runtime-built character: move a fixable
+    /// piece (held props, Socket.* contents, IKAnchor_* targets - never
+    /// animated bones), save via "Spelly Zombie → Save CHARACTER Fix (play
+    /// mode)", and the edit re-applies on every rig build.
+    /// Storage: Assets/_Game/Resources/sz_character_fix.json, path-keyed -
+    /// renaming rig pieces orphans keys.
     public class CharacterFix : MonoBehaviour
     {
         [System.Serializable]
@@ -79,10 +64,8 @@ namespace SpellyZombie
 
         void LateUpdate()
         {
-            // AXIOM: pieces that appear (or get rebuilt) after the old 8-second
-            // window used to be invisible to the fix table forever. Keep
-            // rescanning at ~2 Hz, and re-apply when a path's Transform was
-            // replaced - a rebuilt piece must get its saved offset back.
+            // rescan at ~2 Hz and re-apply when a path's Transform was replaced
+            // - a rebuilt piece must get its saved offset back
             if (Time.time < _nextScan) return;
             _nextScan = Time.time + 0.5f;
             foreach (var t in GetComponentsInChildren<Transform>(true))
@@ -103,17 +86,12 @@ namespace SpellyZombie
         }
 
 #if UNITY_EDITOR
-        /// Called by the editor menu in play mode: every fixable piece's
-        /// CURRENT local transform becomes law. Simple and total - what you
-        /// see when you save is what every future session shows.
+        /// Called by the editor menu in play mode: saves every fixable piece's
+        /// current local transform.
         public static int SaveNow()
         {
-            // AXIOM : this used to rebuild the file from an EMPTY
-            // table containing only pieces seen in this session - so every
-            // adjustment saved in an earlier session was silently deleted, and
-            // saving from a scene with no rig wrote "{}" and called it success.
-            // Now it MERGES onto what is already saved, and refuses to write
-            // when there is no live rig to read.
+            // MERGES onto what is already saved; refuses to write when there
+            // is no live rig to read
             if (Active.Count == 0)
             {
                 Debug.LogError("[SpellyZombie] Save CHARACTER Fix: no live character in the scene. " +

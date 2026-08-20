@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE CAULDRON : ores are DESTROYED into ink, the pool is the meter, standing close refills the wand; HEATING CUT Jul 25 - put ore in, get ink, one rule.
-    /// (Class name kept - rename to InkCauldron in a calm moment, it touches saved scenes.)
+    /// Ores are destroyed into ink; the pool level is the meter; standing close refills the wand.
+    /// (Class name kept: renaming touches saved scenes.)
     public class CaveCauldron : MonoBehaviour
     {
         public static readonly List<CaveCauldron> All = new List<CaveCauldron>();
@@ -31,12 +31,10 @@ namespace SpellyZombie
             pot.GetComponent<Renderer>().sharedMaterial =
                 MatterFX.Get(new Color(0.16f, 0.15f, 0.17f), MoteShade.Opaque);
 
-            // the visible INK POOL - rises as ores are fed (no bars, no text)
+            // the visible ink pool rises as ores are fed
             var pool = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             pool.name = "InkPool";
-            // Conjure also runs from the EDITOR build menu, where Destroy is
-            // illegal (logs an error, destroys nothing - the ghost collider
-            // then blocked the pen above the pot)
+            // Conjure also runs from the editor build menu, where Destroy is illegal
             var poolCol = pool.GetComponent<Collider>();
             if (Application.isPlaying) Object.Destroy(poolCol);
             else Object.DestroyImmediate(poolCol);
@@ -56,18 +54,16 @@ namespace SpellyZombie
             fire.color = new Color(1f, 0.55f, 0.2f);
 
             var rb = root.AddComponent<Rigidbody>();
-            rb.isKinematic = true; // particles DONATE to rigidbodies - sparks can heat it
+            rb.isKinematic = true; // particles donate to rigidbodies - sparks can heat it
 
             root.AddComponent<SurfaceMaterialTag>().Material = SurfaceMaterialType.Metal;
             var dmg = root.AddComponent<Damageable>();
             dmg.Destructible = false;  // the pot survives the mayhem around it
-            dmg.Health = 999999f;      // and heat can't "kill" it either — a hot
-                                       // pot burning itself to death broke the
-                                       // refill loop (the wand-test bug)
+            dmg.Health = 999999f;      // heat can't kill it
 
             var c = root.AddComponent<CaveCauldron>();
             c._thermal = root.AddComponent<Thermal>();
-            c._thermal.HeatCapacity = 2.5f; // heat is flavour now, not a gate
+            c._thermal.HeatCapacity = 2.5f; // heat is flavour, not a gate
             c._fire = fire;
             c._pool = pool.transform;
             return c;
@@ -80,10 +76,10 @@ namespace SpellyZombie
         {
             float dt = Time.deltaTime;
 
-            // THE LOBBY WELL NEVER RUNS DRY — only the SOURCE is bottomless
+            // outside a run the well stays full
             if (!RoundDirector.RunActive) Fill = Capacity;
 
-            // the fire under the pot is pure flavour since the heating cut
+            // the fire under the pot is pure flavour
             if (_fire != null)
             {
                 float target = Burning ? 1.6f + Mathf.PerlinNoise(Time.time * 6f, 0.3f) * 0.9f : 0f;
@@ -107,13 +103,13 @@ namespace SpellyZombie
                 {
                     if (p == null) continue;
                     if ((p.transform.position - transform.position).sqrMagnitude > 2.8f * 2.8f) continue;
-                    if (p.Ink >= Perks.InkMax - 0.5f) continue;
+                    if (p.Ink >= DrawingConfig.InkMax - 0.5f) continue;
                     p.Award(DrawingConfig.CauldronInkPerSec * dt);
                     Fill = Mathf.Max(0f, Fill - dt * 0.14f); // an ore ≈ 7s of drinking
                 }
         }
 
-        /// A carried ore meets the pot: the ore DIES, the ink LIVES. HEATING CUT - one rule: put ore in, get ink.
+        /// A carried ore feeds the pot: the ore is spent, the pool gains one.
         public void FeedOre(InkRuneStone ore)
         {
             if (ore == null) return;
@@ -124,7 +120,7 @@ namespace SpellyZombie
         }
     }
 
-    /// A fuel stone: WHITE and glowing until fed to the cauldron, then BLACK ; PICKABLE : E takes, E drops.
+    /// A fuel stone: white and glowing until fed to the cauldron, then black. E takes, E drops.
     public class InkRuneStone : MonoBehaviour
     {
         public bool Spent { get; private set; }
@@ -167,7 +163,7 @@ namespace SpellyZombie
 
             if (Carried != null) { Carried.TickCarried(UnityEngine.InputSystem.Keyboard.current, player); return; }
 
-            // AIM, NOT PROXIMITY : you take the ore you're LOOKING at - most centred wins
+            // aim, not proximity: the most centred ore wins
             InkRuneStone best = null;
             float bestAim = 0f;
             foreach (var s in All)
@@ -194,7 +190,7 @@ namespace SpellyZombie
             var t = player.transform;
             transform.position = t.position + t.forward * 0.65f + Vector3.up * 0.35f;
 
-            // near ANY cauldron, E means FEED, not drop (heating cut Jul 25)
+            // near any cauldron, E means feed, not drop
             CaveCauldron pot = null;
             foreach (var c in CaveCauldron.All)
                 if (c != null
@@ -229,9 +225,6 @@ namespace SpellyZombie
             rb.isKinematic = false;
             rb.mass = 2f;
             rb.linearVelocity = forward * 2.2f + Vector3.up * 1.2f; // a gentle toss
-
-            // TOUCH = WORLD: a handled ore is an object now (and can never
-            // have been spell-born - ores only spawn from the map)
         }
 
         void OnDestroy()

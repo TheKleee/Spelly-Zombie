@@ -3,11 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The hands work through the Animator's IK pass - upper body grips while
-    /// the legs keep running . A held weapon gets both hands on
-    /// it; the wand slot holds PEN + GRIMOIRE positions in front of the view,
-    /// so you always see your hands while drawing. Lives on the model object
-    /// (OnAnimatorIK must share the Animator's GameObject).
+    /// Hand IK through the Animator's IK pass: a held weapon gets both hands,
+    /// the pen slot holds wand + grimoire in front of the view. Lives on the
+    /// model object (OnAnimatorIK must share the Animator's GameObject).
     public class HandIK : MonoBehaviour
     {
         public WeaponSlots Slots;
@@ -18,22 +16,13 @@ namespace SpellyZombie
         float _supportWeight; // the book hand: raised only while the grimoire is OPEN
         Vector3 _grip, _support; // last targets, for the ease-out
 
-        // pen stance blends between READING (book up, you consult it) and
-        // CASTING (wand hand thrusts at the surface, book tucks away).
-        // The stances live in IKAnchor_* child transforms under the camera
-        // pivot - MOVES THEM in play mode and saves via Character Fix
-        // ("the grimoire is way too low": raise IKAnchor_ReadSupport).
+        // pen stance blends READING (book up) and CASTING (wand thrust, book
+        // tucked). Stances live in IKAnchor_* children under the camera pivot,
+        // adjustable in play mode via Character Fix.
         Vector3 _penGrip, _penSupport;
         static readonly Vector3 ReadGripDefault = new Vector3(0.17f, -0.25f, 0.38f);
-        // the open book must be SEEN, but not OWN the screen
-        // "It's still hovering over most of the screen". Down and left into the
-        // corner, and slightly further out so the big grimoire reads smaller.
-        //
-        // THE ANCHOR IN Player.prefab IS THE ONE THAT RUNS. All four IKAnchor_*
-        // transforms were auto-created from these constants and then BAKED into
-        // the prefab, so Anchor() finds them and this number is dead weight on
-        // the baked rig - the prefab value has to be edited alongside it or the
-        // change silently does nothing (it did, twice).
+        // the baked Player.prefab IKAnchor_* transforms override these
+        // defaults - edit the prefab values, or changes here silently do nothing
         static readonly Vector3 ReadSupportDefault = new Vector3(-0.26f, -0.21f, 0.52f);
         static readonly Vector3 CastGripDefault = new Vector3(0.14f, -0.16f, 0.56f);
         static readonly Vector3 CastSupportDefault = new Vector3(-0.25f, -0.36f, 0.28f);
@@ -65,10 +54,9 @@ namespace SpellyZombie
 
             if (weaponHold)
             {
-                // the weapon is GLUED to this hand - the IK holds the hand at
-                // the camera-anchored aim point, so the weapon points where
-                // you look while the animation adds the sway. In draw mode the
-                // weapon sits at screen center; the hands follow it there.
+                // IK holds the hand at the camera-anchored aim point so the
+                // weapon points where you look; in draw mode the weapon sits
+                // at screen center and the hands follow it
                 _grip = HeldWeapon.DrawMode || Pivot == null
                     ? weapon.transform.TransformPoint(new Vector3(0.02f, -0.08f, -0.1f))
                     : Pivot.TransformPoint(new Vector3(0.3f, -0.26f, 0.55f));
@@ -76,15 +64,8 @@ namespace SpellyZombie
             }
             else if (penHold)
             {
-                // ink flowing = the wand hand lunges forward and the book gets
-                // out of the way; otherwise an OPEN grimoire is held up to
-                // READ (G raised it) - closed, the book hand hangs free.
-                // Stances read from the IKAnchor transforms .
-                // CARRYING = THE BOOK DROPS OUT OF THE WAY ("the
-                // grimoire is too big... it's covering more than half of the
-                // screen and you can't see what you're lifting and where to
-                // throw it"). The cast stance already tucks the book low, so a
-                // full hand borrows it.
+                // casting stance while ink flows or hands are full; open
+                // grimoire = read stance; closed, the book hand hangs free
                 bool casting = SurfaceDrawer.IsPenActive || HandGrab.LocalHolding;
                 var readGrip = Anchor(ref _aReadGrip, "IKAnchor_ReadGrip", ReadGripDefault);
                 var readSupport = Anchor(ref _aReadSupport, "IKAnchor_ReadSupport", ReadSupportDefault);
@@ -103,10 +84,7 @@ namespace SpellyZombie
                 _support = Pivot.TransformPoint(_penSupport);
             }
 
-            // CARRYING — both
-            // hands reach the carried load, overriding pen/weapon stances.
-            // The sticky hand's cargo counts too: rocks, blobs, held spells -
-            // the wizard VISIBLY grips what carries.
+            // carrying: both hands reach the load, overriding pen/weapon stances
             var carried = InkRuneStone.Carried;
             var grabbed = HandGrab.LocalHeldBody;
             var grabbedMote = HandGrab.LocalHeldMote;

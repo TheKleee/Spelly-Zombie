@@ -21,8 +21,7 @@ namespace SpellyZombie
         public float LookSensitivity = 0.12f;
         public float PushStrength = 1.6f;
 
-        /// Live player registry - replaces FindObjectsByType in per-frame paths
-        /// (zombie perception ran one scene scan per zombie per frame).
+        /// Live player registry - replaces FindObjectsByType in per-frame paths.
         public static readonly System.Collections.Generic.List<SimpleFPSController> All
             = new System.Collections.Generic.List<SimpleFPSController>();
 
@@ -33,30 +32,25 @@ namespace SpellyZombie
         float _airTime;           // continuous seconds off the ground
         float _tumbleRecover;     // the flop-on-the-floor beat after a tumble
 
-        /// Airborne past AirTumbleSeconds = you were SENT - the body ragdolls
-        /// for the rest of the arc (the comedy rule; jumps never trigger
-        /// it). Ends a short flop after touching down.
+        /// Airborne past AirTumbleSeconds: the body ragdolls for the rest of
+        /// the arc (jumps never trigger it). Ends a short flop after touchdown.
         public bool IsAirTumbling { get; private set; }
 
         /// Camera pitch in degrees (+ = looking down) - the rig bends the
-        /// head/neck to match, and NetSync ships it so friends see it too.
-        /// Zero in third person: the mouse stops driving _pitch there, and a
-        /// wizard frozen mid-stare at the feet ruins every emote clip.
+        /// head/neck to match, and NetSync ships it. Zero in third person.
         public float LookPitch => ThirdPersonActive ? 0f : _pitch;
 
         BodyState _body;          // the slider board - speed/jump/gravity all read it
         Rigidbody _ragdollFollow; // CharacterRig hands us the hips while ragdolling
 
-        /// While ragdolling, the CAPSULE chases the doll - not the other way
-        /// around - so the camera follows the body wherever the launch sent
-        /// it, and standing back up happens where the body actually landed.
+        /// While ragdolling the capsule chases the doll, so the camera follows
+        /// the body and the get-up happens where it actually landed.
         public void SetRagdollFollow(Rigidbody hips) => _ragdollFollow = hips;
         bool _wasPrecision;
         Vector3 _shove; // external impulse (zombie swipes, explosions) - decays fast
 
-        // ---- crouch: hold LeftCtrl (gamepad East). Squeeze through broken
-        // windows, duck behind barricades. Crouch-jump springs a bit higher -
-        // exactly enough to clear a window sill.
+        // ---- crouch: hold LeftCtrl (gamepad East). Crouch-jump springs a
+        // bit higher - enough to clear a window sill.
         public bool IsCrouched { get; private set; }
         float _crouchHeight = 1.15f; // refit by CharacterRig to the real model
         float _standHeight, _camStandY;
@@ -67,10 +61,8 @@ namespace SpellyZombie
                             // with pitch so your own head/torso never clip in
         Vector3 _standCenter;
 
-        // ---- TAB = third person : camera above and behind,
-        // whole bean in frame. 1-9 emote (and FREEZE you doll-still until F),
-        // R paints your body, B opens the pose editor. No world drawing, no
-        // cursor, no Alt - that's all first-person business.
+        // ---- TAB = third person: camera above and behind. 1-9 emote,
+        // R paints the body, B opens the pose editor. No world drawing there.
         public static bool ThirdPersonActive { get; private set; }
         Camera _cam;
         Vector3 _camDefaultLocal;
@@ -92,8 +84,7 @@ namespace SpellyZombie
         {
             _spellFedAt = Time.time; // the engine is still burning
             _spellVel += accel * dt;
-            // terminal velocity raised for the mayhem pass (white hole
-            // should YEET) - big fields now actually express their strength
+            // terminal velocity for spell flight
             _spellVel = Vector3.ClampMagnitude(_spellVel, 34f);
         }
 
@@ -107,11 +98,9 @@ namespace SpellyZombie
         /// signal from this (slope flicker is the caller's problem).
         public bool IsGrounded => _cc != null && _cc.isGrounded;
 
-        /// THE AIM GATE : E takes what you are LOOKING AT within
-        /// reach - never whichever thing happens to be nearest. Returns how
-        /// CENTRED the point is (1 = dead centre, used to pick between several
-        /// candidates), or -1 when it's out of range, outside the cone, or
-        /// behind something. Every E interaction should ask this.
+        /// E takes what you are looking at within reach. Returns how centred
+        /// the point is (1 = dead centre), or -1 when out of range, outside
+        /// the cone, or behind something. Every E interaction should ask this.
         public float AimScore(Vector3 point, float range, float cone = 0.78f, Transform self = null)
         {
             Vector3 eye = CameraPivot != null ? CameraPivot.position : transform.position + Vector3.up * 1.4f;
@@ -135,14 +124,12 @@ namespace SpellyZombie
             return aim;
         }
 
-        /// Shift is held and we're actually moving - the ANIMATION rule
-        /// : no shift = walk look, shift = run look, regardless of
-        /// how fast the controller really covers ground.
+        /// Shift held and actually moving: no shift = walk look, shift = run
+        /// look, regardless of true ground speed.
         public bool IsSprinting { get; private set; }
 
-        // ---- ragdoll-feel knockdown: hit hard enough and you SPRAWL - camera
-        // keels over, control cuts out, momentum slides you, then you stagger
-        // back up. Funny, brief, and never while properly downed.
+        // ---- knockdown sprawl: camera keels over, control cuts out, momentum
+        // slides you, then you stagger back up. Never while properly downed.
         float _knockLeft;
         public bool IsSprawled => _knockLeft > 0f;
 
@@ -152,22 +139,21 @@ namespace SpellyZombie
             _knockLeft = Mathf.Max(_knockLeft, seconds);
         }
 
-        // ---- glued boots : the lvl2 grip and the
-        // time zone hold you where you STAND - no walking, no jumping, until
-        // the glue lets go. Re-applied on a beat while you remain in it.
+        // ---- glued boots: lvl2 grip and the time zone hold you in place -
+        // no walking or jumping. Re-applied on a beat while you remain in it.
         float _feetStuckUntil;
         public bool FeetStuck => Time.time < _feetStuckUntil;
         public void StickFeet(float seconds) =>
             _feetStuckUntil = Mathf.Max(_feetStuckUntil, Time.time + seconds);
         public void UnstickFeet() => _feetStuckUntil = 0f;
 
-        // ---- downed / revive (the co-op moment) ----
+        // ---- downed / revive ----
         public bool IsDowned { get; private set; }
         public bool IsDead => IsDowned && _bleedOut <= 0f;
         public float BleedOut => _bleedOut;
         public float ReviveProgress { get; private set; }
         float _bleedOut;
-        GameObject _heartFx; // broken heart over the downed body (ally-dying gap)
+        GameObject _heartFx; // broken heart over the downed body
         bool _soulFled;      // Souls Escape fired once for this death
 
         void OnDeathCrossed()
@@ -193,9 +179,8 @@ namespace SpellyZombie
         /// Physical hits shove the player and chip health. At 0 HP the ghost
         /// rises at once; revival is the ghost flying home, with a teammate
         /// meeting it there in matches.
-        // EVERY hit has a NAME .
-        // Small chips don't shake the camera, but they all land in a rolled-up
-        // console line every couple of seconds: "hurt: standing in fire −6.2"
+        // every hit has a name; small chips roll up into one console line
+        // every couple of seconds: "hurt: standing in fire −6.2"
         static readonly System.Collections.Generic.Dictionary<string, float> _dmgLog =
             new System.Collections.Generic.Dictionary<string, float>();
         static float _dmgFlushAt;
@@ -223,7 +208,7 @@ namespace SpellyZombie
             if (Barrier.Protects(this)) return; // isolated - NOTHING gets in
             if (IsDowned)
             {
-                _bleedOut -= 1.5f; // kicking someone who's down. rude. effective.
+                _bleedOut -= 1.5f; // hits while downed accelerate the bleed-out
                 OnDeathCrossed();
                 return;
             }
@@ -231,12 +216,8 @@ namespace SpellyZombie
             Health -= damage;
             _lastHurt = Time.time;
             if (damage > 0f) NoteDamage(cause ?? "hit", damage);
-            // FEEL belongs to REAL hits. Damage-over-time ticks (steam clouds,
-            // ember auras, a stalking spark grazing you) arrive every fraction
-            // of a second - shaking on each one meant permanent earthquake and
-            // "drawing way too difficult" . Small ticks show on the
-            // hurt vignette only; the camera reacts to blows, on a cooldown,
-            // and gentler while the pen is down.
+            // DoT ticks show on the hurt vignette only; the camera shakes for
+            // real blows, on a cooldown, gentler while the pen is down
             if (damage >= 5f && Time.time - _lastFeelShake > 0.6f)
             {
                 _lastFeelShake = Time.time;
@@ -251,7 +232,7 @@ namespace SpellyZombie
                 if (RoundDirector.RunActive || ActiveScene.Name == "Lobby") GoDown();
                 else
                 {
-                    Health = Perks.MaxHealth; // sandbox mercy respawn-in-place
+                    Health = Sides.MaxHealthFor(Grimoire.LocalPlayerId); // sandbox mercy respawn-in-place
                     Debug.Log("[SpellyZombie] Player DOWN - shaking it off (sandbox)");
                 }
             }
@@ -259,16 +240,13 @@ namespace SpellyZombie
         float _lastHurt;
         float _lastFeelShake; // camera-shake cooldown - DoT ticks must not machine-gun the view
 
-        /// The void's price (FallCatcher): floored on arrival - revivable,
-        /// bleeding out, and fair game for the horde. Never kills outright.
+        /// FallCatcher arrival: floored, revivable, never kills outright.
         public void DropDowned()
         {
             if (!IsDowned && RoundDirector.RunActive) GoDown();
         }
 
-        /// Straight to DEAD - skips the sandbox mercy AND the bleedout (the
-        /// ghost practice kill in the lobby; K used to hit the mercy heal
-        /// and "I didn't remain dead").
+        /// Straight to dead - skips the sandbox mercy and the bleed-out.
         public void DieOutright()
         {
             if (!IsDowned) GoDown();
@@ -299,8 +277,7 @@ namespace SpellyZombie
             Juice.Sting(transform.position);
             Juice.Shake(0.8f, 0.5f);
             Juice.HitStop(0.2f, 0.25f);
-            // the JMO layer answers the ally-dying gap: a broken heart floats
-            // over the crawling body - readable across a courtyard, no HUD
+            // a broken heart floats over the crawling body - readable at range, no HUD
             _soulFled = false;
             if (_heartFx == null && FxLibrary.I != null)
                 _heartFx = FxLibrary.Spawn(FxLibrary.I.BrokenHeart, transform.position + Vector3.up * 2.1f, transform);
@@ -323,10 +300,8 @@ namespace SpellyZombie
             _soulFled = false;
             if (_heartFx != null) { Destroy(_heartFx); _heartFx = null; } // mended
             _lastHurt = Time.time;
-            // while the corpse lay somewhere the capsule couldn't ground itself
-            // (ledge, table, pressed to a wall) gravity kept integrating into
-            // _verticalVelocity the whole bleed-out - wipe it, or the first Move
-            // after standing slams the fresh revive straight back to 1 hp
+            // gravity kept integrating into _verticalVelocity while down -
+            // wipe it or the first Move slams the fresh revive back to 1 hp
             CancelMomentum();
             Debug.Log("[SpellyZombie] Player revived!");
         }
@@ -351,28 +326,20 @@ namespace SpellyZombie
             Grimoire.LocalPlayerId = NetGame.Connected && NetSync.LocalOwnerId >= 0
                 ? NetSync.LocalOwnerId : gameObject.GetInstanceID();
 
-                // BODY INK IS FOREVER, ON EVERY BODY IN EVERY SCENE (
-            // drawings on the body "should never expire completely"). Only
-            // the test-sandbox builder ever attached this marker - in the
-            // hand-built Lobby the player had none, so body drawings counted
-            // as WORLD ink and the seal CONSUMED them when the spell ended
-            // ("disappeared as if it expired"). Structural now: the player
-            // class carries its own marker, no scene setup can forget it.
+            // body ink never expires: the player class carries its own marker
+            // so no scene setup can forget it
             if (GetComponent<PersistentInkSurface>() == null)
                 gameObject.AddComponent<PersistentInkSurface>();
 
-            // the player is googly too - other players (and clips) see your eyes
-            // dart to explosions and shrink in terror. Hidden from your own
-            // first-person camera; third person and remote avatars re-enable them.
+            // the player is googly too - other players and clips see the eyes react
             _eyes = GooglyEyes.Attach(transform, 1.55f, 1.4f);
             if (CameraPivot != null)
             {
                 _cam = CameraPivot.GetComponentInChildren<Camera>();
                 if (_cam != null) _camDefaultLocal = _cam.transform.localPosition;
             }
-            // eyes stay visible in EVERY mode: the camera rides in front of
-            // the face now, so your own eyes are always behind the lens -
-            // hiding them only produced eyeless shadows
+            // eyes stay visible in every mode: the camera rides in front of
+            // the face, so they are always behind the lens
             _eyes.SetVisible(true);
             ThirdPersonActive = false;
 
@@ -387,10 +354,8 @@ namespace SpellyZombie
             if (GetComponent<CharacterRig>() == null) gameObject.AddComponent<CharacterRig>();
             if (GetComponent<PoseGrab>() == null) gameObject.AddComponent<PoseGrab>();
 
-            // spell physics (burn/freeze/crush) speaks Damageable - bridge it
-            // into the controller's health so players are exactly as
-            // FLAMMABLE as everything else (burning characters is the
-            // fun). The bridge never dies itself; the controller owns downs.
+            // spell physics speaks Damageable - bridge it into the controller's
+            // health. The bridge never dies itself; the controller owns downs.
             var dmg = GetComponent<Damageable>();
             if (dmg == null) dmg = gameObject.AddComponent<Damageable>();
             dmg.Health = float.MaxValue;
@@ -402,30 +367,23 @@ namespace SpellyZombie
 
         void OnDestroy() => All.Remove(this);
 
-        /// CharacterRig fits the gameplay body to the imported model: capsule
         /// Where the static first-person eye point sits right now (world) -
         /// CharacterRig calibrates its head-bone camera anchor against this.
         public Vector3 EyeCenterWorld => transform.TransformPoint(new Vector3(0f, _camY, 0f));
 
-        /// THIS body is the local viewer (its camera is live). Cached _cam -
-        /// replaces the per-frame GetComponentInChildren&lt;Camera&gt; probes that
-        /// WandState and BodyState each ran on their own.
+        /// This body is the local viewer (its camera is live). Cached _cam.
         public bool IsLocalViewer => _cam != null && _cam.isActiveAndEnabled;
 
-        /// CharacterRig feeds the eye point RIDING THE HEAD BONE every frame:
-        /// sprint leans, bob and wobble move the camera WITH the face, so the
-        /// hat and googly eyes can never end up in front of the lens. Must be
-        /// re-fed each frame - a stale anchor (ragdoll, third person) simply
-        /// falls back to the static eye height.
+        /// CharacterRig feeds the head-bone eye point every frame so the
+        /// camera moves with the face. Must be re-fed each frame - a stale
+        /// anchor falls back to the static eye height.
         public void SetEyeAnchor(Vector3 world)
         {
             _eyeAnchorLocal = transform.InverseTransformPoint(world);
             _eyeAnchorFresh = true;
 
-            // RIGID GLUE, same frame: a sprint start lurches the head forward
-            // faster than next frame's gentle chase - for a few frames the
-            // face would outrun the lens and the googly eyes eat the screen.
-            // This runs in LateUpdate (post-animation), so snap hard here.
+            // runs in LateUpdate (post-animation) - snap hard here so the
+            // face can't outrun the lens on a sprint start
             if (_cam != null && !ThirdPersonActive && !SelfPaint.IsActive
                 && !PoseGrab.IsOpen && CameraPivot != null && _camForward > 0f)
             {
@@ -436,9 +394,8 @@ namespace SpellyZombie
             }
         }
 
-        /// height/radius (feet stay planted), eye height, crouch proportion.
-        /// eyeForward pushes the camera just in front of the face so the whole
-        /// head can stay rendered (no headless shadows) without blocking view.
+        /// Fits capsule height/radius (feet stay planted), eye height, crouch
+        /// proportion. eyeForward pushes the camera just in front of the face.
         public void FitBody(float height, float radius, float eyeLocalY, float eyeForward = 0f)
         {
             if (_cc == null) return;
@@ -474,14 +431,8 @@ namespace SpellyZombie
             // field (the IP box must not steer the wizard); they own the input
             if (PoseStudio.IsOpen || GameMenu.IsOpen || UIKit.Typing) return;
 
-            // THE EYES ARE NEVER HIDDEN. the tuned fit keeps them out of
-            // the first-person view; hiding them was tried twice and hated
-            // twice. Leave them alone.
-
             // ---- cursor handling ----
-            // TAB flips the camera; third person = the emote stage. Either
-            // direction lands on the plain idle - a saved emote pose only
-            // replays when its key is pressed again .
+            // TAB flips the camera; either direction lands on the plain idle
             if (kb.tabKey.wasPressedThisFrame && !IsDowned && !SelfPaint.IsActive
                 && ShapeShift.ThirdPersonAllowed) // acolyte with no stored shape: refused
                 ToggleThirdPerson();
@@ -489,13 +440,9 @@ namespace SpellyZombie
             {
                 if (ThirdPersonActive)
                 {
-                    // Meccha framing: boom up and back off the pivot, camera
-                    // LOOKS AT the bean - pitch orbits vertically, yaw spins
-                    // around, the whole body stays in frame
-                    // boom in ROOT space, never pivot space (pressing
-                    // 1-9 made the camera "float outside the body" — the
-                    // pivot rides the HEAD bone, and a held pose drags the
-                    // head, so a pivot-local boom sailed off with it)
+                    // boom up and back, camera looks at the body. Boom in ROOT
+                    // space, never pivot space - the pivot rides the head bone
+                    // and a held pose would drag the boom with it
                     Vector3 boom = transform.position + Vector3.up * 1.15f
                         - Quaternion.Euler(0f, transform.eulerAngles.y, 0f) * Vector3.forward * 3.6f;
                     _cam.transform.position = Vector3.Lerp(_cam.transform.position,
@@ -508,13 +455,9 @@ namespace SpellyZombie
                 }
                 else
                 {
-                    // rotation is the look block's business in first person -
-                    // touching it here would drift the view during Alt precision.
-                    // The eye-forward offset PITCHES with the view (orbits the
-                    // eye point), so looking down never shows your own head.
-                    // The eye point itself RIDES THE HEAD BONE when the rig
-                    // feeds one (sprint leans move the camera WITH the face -
-                    // hat and eyes can never swallow the screen).
+                    // rotation belongs to the look block in first person. The
+                    // eye-forward offset pitches with the view; the eye point
+                    // rides the head bone when the rig feeds one.
                     Vector3 eyeLocal = _eyeAnchorFresh ? _eyeAnchorLocal : new Vector3(0f, _camY, 0f);
                     _eyeAnchorFresh = false;
                     Vector3 fpTarget = _camForward > 0f
@@ -529,10 +472,7 @@ namespace SpellyZombie
             // draw modes and R pose mode free the cursor themselves.
             bool altPrecision = !ThirdPersonActive && kb.leftAltKey.isPressed
                 && (_slots == null || _slots.PenSelected);
-                // teach the precision pen once ("users have no idea that by
-            // clicking ALT they can draw more accurately"). Retire only when
-            // Alt is used WHILE INKING - a stray Alt tap (or an alt-tab) used
-            // to burn the one-shot lesson before it was ever seen.
+            // teach the precision pen once; retire only when Alt is used while inking
             if (!ThirdPersonActive && (_slots == null || _slots.PenSelected))
             {
                 if (altPrecision && SurfaceDrawer.IsPenActive) Hints.Retire(Hints.Id.FreeHand);
@@ -564,10 +504,9 @@ namespace SpellyZombie
             }
             _wasPrecision = precision;
 
-            // draw modes (weapon engraving / body paint): you're IDLING, not
-            // frozen - no move/jump/crouch commands (WASD steers the view
-            // instead), but gravity, shoves, spell forces, damage and revives
-            // all keep running. Getting floored kicks you out of the mode.
+            // draw modes: idling, not frozen - no move/jump/crouch (WASD steers
+            // the view), but gravity, damage and revives keep running. Getting
+            // floored kicks you out of the mode.
             bool drawingMode = SelfPaint.IsActive || HeldWeapon.DrawMode || PoseGrab.IsOpen;
             if ((IsDowned || IsSprawled || IsAirTumbling) && HeldWeapon.DrawMode)
                 HeldWeapon.CancelDrawMode();
@@ -594,7 +533,7 @@ namespace SpellyZombie
                 }
             }
 
-            // ---- downed: crawl, bleed, hope ----
+            // ---- downed ----
             if (IsDowned)
             {
                 if (!IsDead)
@@ -638,8 +577,7 @@ namespace SpellyZombie
                 }
                 if (fallen != null)
                 {
-                    // rebuild the prompt string only when the percent CHANGES
-                    // (it was allocated every frame while standing by a friend)
+                    // rebuild the prompt string only when the percent changes
                     int pct = fallen.ReviveProgress > 0f
                         ? Mathf.RoundToInt(fallen.ReviveProgress * 100f) : -1;
                     if (pct != _revivePctShown || _revivePrompt == null)
@@ -668,6 +606,8 @@ namespace SpellyZombie
                         QueryTriggerInteraction.Ignore))
                     wantCrouch = true;
             }
+            // load past the walk limit folds you whether you chose it or not
+            if (_body != null && _body.CrawlOnly) wantCrouch = true;
             IsCrouched = wantCrouch;
             float targetHeight = IsCrouched ? _crouchHeight : _standHeight;
             if (!Mathf.Approximately(_cc.height, targetHeight))
@@ -717,10 +657,8 @@ namespace SpellyZombie
             {
                 bool justLanded = !_wasGrounded;
 
-                // FALL DAMAGE (non-damage runes kill through physics
-                // a FLOAT running out over a cliff must mean something).
-                // But a fall NEVER finishes you by itself : the
-                // worst cliff leaves you at 1 hp, floored and humiliated.
+                // fall damage never finishes you by itself: the worst cliff
+                // leaves you at 1 hp, floored
                 float landing = -_verticalVelocity;
                 if (justLanded && landing > DrawingConfig.SafeFallSpeed && !IsDowned)
                 {
@@ -735,10 +673,8 @@ namespace SpellyZombie
                 _wasGrounded = true;
                 _airTime = 0f;
 
-                // an air tumble ends with a short FLOP on the ground - half a
-                // beat of limp wizard, then you're back up. EVERY touchdown
-                // re-arms the full flop, so a one-frame rooftop skim can't
-                // pre-spend it and hand control back mid-fall.
+                // every touchdown re-arms the full flop, so a one-frame
+                // rooftop skim can't pre-spend it
                 if (IsAirTumbling)
                 {
                     if (justLanded) _tumbleRecover = DrawingConfig.AirTumbleRecover;
@@ -750,14 +686,20 @@ namespace SpellyZombie
                 bool jump = kb.spaceKey.wasPressedThisFrame
                     || (gp != null && gp.buttonSouth.wasPressedThisFrame);
                 if (jump && !IsDowned && !IsSprawled && !IsAirTumbling && !drawingMode && !FeetStuck)
-                    _verticalVelocity = (IsCrouched ? JumpSpeed * 1.15f : JumpSpeed)
-                        * (_body != null ? _body.JumpMul : 1f); // light wizards spring higher
+                {
+                    // JumpMul is 0 when weight beats strength - the feet simply
+                    // do not leave the ground, and it is worth saying why once.
+                    if (_body != null && !_body.CanJump)
+                        DrawingWorld.Instance?.LogEvent("too heavy to jump");
+                    else
+                        _verticalVelocity = (IsCrouched ? JumpSpeed * 1.15f : JumpSpeed)
+                            * (_body != null ? _body.JumpMul : 1f); // light wizards spring higher
+                }
             }
             else if (swimIn != null)
             {
-                // SWIMMING: the ruled mechanic - you sink slowly (buoyancy
-                // eats most of gravity) and every jump press is a stroke.
-                // No air, no drowning, no tumble clock: water is just time.
+                // swimming: sink slowly (buoyancy eats most of gravity), every
+                // jump press is a stroke. No drowning, no tumble clock.
                 _wasGrounded = false;
                 _airTime = 0f;
                 float sink = Gravity * (1f - Mathf.Clamp01(swimIn.Buoyancy));
@@ -773,17 +715,20 @@ namespace SpellyZombie
                 _wasGrounded = false;
                 // light bodies fall soft (gradual - jump higher, fall
                 // slower, and only the REALLY light float outright)
+                // GravityMul goes negative once the medium is denser than you,
+                // so rising is the same line that makes you fall - no float
+                // flag, no swim mode. Drag scales with how much the medium
+                // holds you, which is what stops a drift becoming a rocket.
                 float gscale = _body != null ? _body.GravityMul : 1f;
                 _verticalVelocity += Gravity * gscale * Time.deltaTime;
-                if (_body != null && _body.Floating)
-                    _verticalVelocity = Mathf.MoveTowards(_verticalVelocity, 0f, 30f * Time.deltaTime);
+                float hold = _body != null ? _body.MediumControl : 0f;
+                if (hold > 0.01f)
+                    _verticalVelocity = Mathf.MoveTowards(_verticalVelocity, 0f,
+                        DrawingConfig.FloatDrag * hold * 20f * Time.deltaTime);
 
-                    // AIRBORNE TOO LONG = you were SENT :
-                // no jump lasts this long - only launches and cliffs. SPELL
-                // FLIGHT is exempt: a broom seal holding you up is a
-                // mechanic, not a mishap - the clock only runs on ballistic
-                // air. The body ragdolls for the rest of the arc; fall
-                // damage and the flop are waiting at the bottom.
+                // airborne too long = launched. Spell flight is exempt - the
+                // clock only runs on ballistic air; the body ragdolls for the
+                // rest of the arc.
                 if (_spellVel.y > 0.5f) _airTime = 0f;
                 else _airTime += Time.deltaTime;
                 if (!IsAirTumbling && _airTime >= DrawingConfig.AirTumbleSeconds
@@ -803,20 +748,14 @@ namespace SpellyZombie
             // external shoves decay quickly but land with punch
             _shove = Vector3.MoveTowards(_shove, Vector3.zero, 18f * Time.deltaTime);
 
-            // Flight lasts as long as the spell feeds it. Unfed it decays
-            // fast, because the lift below overwrites gravity outright and a
-            // slow afterburn left players hanging in the sky.
+            // flight lasts as long as the spell feeds it; unfed it decays
+            // fast (the lift below overwrites gravity outright)
             bool burning = Time.time - _spellFedAt < 0.15f;
             _spellVel = Vector3.MoveTowards(_spellVel, Vector3.zero,
                 (burning ? 5f : 26f) * Time.deltaTime);
 
-                // THE EASEL IS AN ANCHOR (the pose-mode ruling: external
-            // forces must not move the body while sculpting/painting - and
-            // the body runes casting mid-pose were shoving the capsule
-            // out from under the camera, then the get-up snapped the body
-            // back to wherever it ended up): while a pose/paint/draw mode is
-            // open, shoves and spell forces are dropped outright. Gravity
-            // stays; leaving the mode re-arms the forces.
+            // while a pose/paint/draw mode is open, shoves and spell forces
+            // are dropped outright. Gravity stays; leaving re-arms the forces.
             if (SelfPaint.IsActive || PoseGrab.IsOpen || HeldWeapon.DrawMode)
             {
                 _shove = Vector3.zero;
@@ -826,40 +765,31 @@ namespace SpellyZombie
             if (_spellVel.y > 0.5f) _verticalVelocity = _spellVel.y;
             Vector3 spellPlanar = new Vector3(_spellVel.x, 0f, _spellVel.z);
 
-            // slow health regen once out of danger (never while down);
-            // the Survival perk raises both the ceiling and the mend rate
-            if (!IsDowned && Health < Perks.MaxHealth && Time.time - _lastHurt > 5f)
-                Health = Mathf.MoveTowards(Health, Perks.MaxHealth, Perks.HealthRegenPerSec * Time.deltaTime);
+            // slow mending once out of danger, never while down and never
+            // past the side's own ceiling. Acolytes mend faster - the healing
+            // SPELL is a wizard tool, so this is their only way back.
+            if (!IsDowned && IsLocalViewer && Time.time - _lastHurt > DrawingConfig.RegenCalmSeconds)
+            {
+                int me = Grimoire.LocalPlayerId;
+                float cap = Sides.MaxHealthFor(me);
+                if (Health < cap)
+                    Health = Mathf.MoveTowards(Health, cap,
+                        Sides.RegenPerSecFor(me) * Time.deltaTime);
+            }
 
             if (_ragdollFollow != null)
             {
-                // the doll leads, the capsule (and camera) follows - downed
-                // included: crawling now SCOOTS the doll along the floor and
-                // the camera stays with your actual body (it used to crawl
-                // away invisibly while the corpse stayed behind). Vertical
-                // velocity mirrors the doll's WORST fall so the landing
-                // damage stays honest (the capsule touches down a beat after
-                // the body does, when the doll's own velocity is already 0).
+                // the doll leads, the capsule (and camera) follows. Vertical
+                // velocity mirrors the doll's worst fall so landing damage
+                // stays honest.
                 _verticalVelocity = Mathf.Min(_verticalVelocity, _ragdollFollow.linearVelocity.y);
                 if (IsDowned && planar.sqrMagnitude > 0.01f)
                     _ragdollFollow.AddForce(planar * 6f, ForceMode.Acceleration);
                 Vector3 gap = _ragdollFollow.worldCenterOfMass - (transform.position + _cc.center);
-                // The doll is PARENTED to this capsule, so Moving to "catch" it
-                // also drags it: a prone corpse's hips centre-of-mass sits low and
-                // offset, leaving a gap our own Move never closes - capsule AND
-                // body then skate forever (a transform teleport, which friction,
-                // damping and the velocity settle can't fight). So chase only a
-                // doll that is genuinely TRAVELLING - crawling (planar input) or
-                // still in motion (a tumble/knockback arc). A settled body - a
-                // corpse, a friend waiting for revive - we leave where it lies.
-                // per-SECOND ceiling (a per-frame clamp let the doll outrun the
-                // capsule to the leash on low-fps machines).
-                // A FAST DOLL IS TRACKED 1:1 ("keeps falling out of
-                // frame and then re-appearing") — the soft 12/s spring let a
-                // free-fall open a gap until the lost-doll guard teleported
-                // the body back into frame, over and over. Flying/falling
-                // the camera rides the doll steadily until it hits something;
-                // the gentle spring remains for crawls and slow settles.
+                // the doll is parented to this capsule, so Moving to catch it
+                // also drags it - chase only a doll that is travelling; a
+                // settled body stays where it lies. Fast dolls track hard,
+                // crawls and slow settles get the gentle spring.
                 float dollSpeed = _ragdollFollow.linearVelocity.magnitude;
                 if (planar.sqrMagnitude > 0.01f || dollSpeed > 0.2f)
                 {
@@ -898,26 +828,17 @@ namespace SpellyZombie
             _prevY = transform.position.y;
         }
 
-        /// TAB'S toggle, and only Tab's - the one caller that genuinely means
-        /// "the other mode, whichever that is". Everything that wants a SPECIFIC
-        /// mode calls EnterFirstPerson / EnterThirdPerson below instead.
+        /// Tab's toggle only. Anything that wants a specific mode calls
+        /// EnterFirstPerson / EnterThirdPerson instead.
         public void ToggleThirdPerson()
         {
             if (ThirdPersonActive) EnterFirstPerson();
             else EnterThirdPerson();
         }
 
-        /// ASK FOR THE MODE BY NAME ("this is why we put the third
-        /// person aspects in one method so you would call it when we need the
-        /// mode. The same should be done for the first person. No more confusion
-        /// please").
-        ///
-        /// Callers that need a SPECIFIC mode must say so instead of flipping the
-        /// toggle and hoping the current state was the one they assumed -
-        /// getting that wrong lands you in the opposite mode. Both are
-        /// idempotent, so asking twice is free, and BOTH ARE FULL MODE CHANGES:
-        /// everything downstream keys off ThirdPersonActive, which is what hands
-        /// the wand and grimoire back on the way into first person.
+        /// Both modes are idempotent full mode changes: everything downstream
+        /// keys off ThirdPersonActive, which hands the wand and grimoire back
+        /// on the way into first person.
         public void EnterThirdPerson()
         {
             if (ThirdPersonActive) return;

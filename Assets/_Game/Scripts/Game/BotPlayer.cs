@@ -3,8 +3,7 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// The test-match bot: dumb on purpose. It wanders, faces you, and drops
-    /// a clumsy curse on your position now and then. It advertises the
-    /// multiplayer, it does not replace it.
+    /// a clumsy curse on your position now and then.
     public class BotPlayer : MonoBehaviour
     {
         public const int OwnerId = 777;

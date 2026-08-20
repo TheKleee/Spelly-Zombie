@@ -2,10 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The lobby's "who owns this room" marker: HIS crown prefab floating
-    /// and spinning above the host's head, on every machine. It hovers well
-    /// clear of the hat everyone already wears, so it reads as a marker and
-    /// never as clothing. Lives in the Lobby scene - leaving takes it along.
+    /// Lobby host marker: the assigned crown prefab floats and spins above
+    /// the host's head on every machine, clear of the hat. Lives in the
+    /// Lobby scene.
     public class HostCrown : MonoBehaviour
     {
         [Tooltip("Your crown model. Floats over the lobby host's head.")]

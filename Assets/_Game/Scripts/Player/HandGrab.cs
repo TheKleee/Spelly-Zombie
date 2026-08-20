@@ -3,28 +3,32 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// THE STICKY HAND : E grabs what you're
-    /// AIMING at - grabbing IS stickiness. If you can lift it you carry it
-    /// (no artificial cap): the cargo's weight lands on YOUR body, so the
-    /// movement gates are the strength limit - sprint refuses, then you're
-    /// crouch-hauling a boulder. A hard snag still tears the grip loose.
-    ///
-    /// Spell particles are ALL grabbable (claiming one harvests the seal -
-    /// the rune re-emits); world objects only when they're raw tagged
-    /// material that no other system owns. While holding: the hand is
-    /// occupied, so no drawing. E again THROWS toward the aim point - the
-    /// push ability fired down your own cursor. Switching to the wand
-    /// (slot 1) or to third person simply drops it.
+    /// E grabs the aimed object; the cargo's weight lands on the body, so the
+    /// movement gates are the strength limit. Spell particles are all grabbable;
+    /// holding blocks drawing, E again throws, wand/third person drops it.
     public class HandGrab : MonoBehaviour
     {
         const float GrabRange = 2.8f;
         const float AimCone = 0.78f;   // same cone as every other E interaction
-        // particles: push, aimed down the cursor (host reuses - netcode §4).
-        // Now a TUNING KNOB ("a bit underwhelming... 1.5x
-        // stronger might be the sweet spot or 2x, need to test") — default
-        // 33 = 1.5x the old 22; try 44 in sz_tuning.json for the 2x feel.
-        public static float ThrowSpeed => DrawingConfig.ThrowSpeed;
-        public const float ThrowImpulse = 14f; // rigidbodies: velocity change - doubled by the same ruling
+        // particle push speed, aimed down the cursor (host reuses - netcode §4);
+        // overridable via sz_tuning.json
+        public static float ThrowSpeed => DrawingConfig.ThrowSpeed * LocalStrength();
+
+        /// STRENGTH IS HEALTH: what you can lift and how hard you throw scale
+        /// with how much of your ceiling you still have. Wounded = weaker, so
+        /// healing is what buys back your carrying power.
+        /// Never reaches 0 - a dying wizard still shoves, just feebly.
+        public static float LocalStrength()
+        {
+            foreach (var p in SimpleFPSController.All)
+            {
+                if (p == null || !p.IsLocalViewer) continue;
+                float f = Sides.StrengthFraction(Grimoire.LocalPlayerId, p.Health);
+                return Mathf.Lerp(DrawingConfig.StrengthFloorMul, 1f, f);
+            }
+            return 1f;
+        }
+        public const float ThrowImpulse = 14f; // rigidbodies: velocity change
         const float HandLerp = 14f;
         static readonly float TurnSensitivity = DrawingConfig.Overlay("GrabTurnSensitivity", 0.6f);
         static readonly float LiftRangeMax = DrawingConfig.Overlay("LiftRangeMax", 9f);
@@ -56,13 +60,9 @@ namespace SpellyZombie
 
         void OnDisable() { if (LocalHolding) DropHeld(Vector3.zero); LocalHolding = false; }
 
-        /// IT STAYS WHERE YOU GRABBED IT : nothing is yanked into your
-        /// face - the cargo keeps the distance it had when you took it, and
-        /// simply follows your movement and your aim from there.
+        /// The cargo keeps the distance it had when grabbed.
         float _holdDist = 0.92f;
-        /// THE WHEEL FLIPS IT, NO MODIFIER : wheel UP tips it up,
-        /// wheel DOWN rolls it to the right. Shift stays free for RUNNING -
-        /// design to sprint around with a bench and hit things with it.
+        /// Accumulated turn applied on top of the facing.
         Quaternion _spinRot = Quaternion.identity;
         // the shared arcball drag state (same feel as the shape pose mode)
         Vector3 _turnGrabLocal;
@@ -81,18 +81,16 @@ namespace SpellyZombie
         /// Where the cargo should be facing: your heading, then your flips.
         Quaternion HoldRot() => YawRot() * _spinRot * _grabRelRot;
 
-        /// Physics-rate cargo tracking - the hold floats on ink ,
-        /// no joints, no kinematic holds.
+        /// Physics-rate cargo tracking - the hold floats on ink; no joints,
+        /// no kinematic holds.
         void FixedUpdate()
         {
             if (_heldBody == null) return;
             LevitateTick();
         }
 
-        /// 0 = you can't shift it, 1 = it obeys completely. This ONE number
-        /// cancels gravity AND caps acceleration, so "heavy things resist and
-        /// you overcome them slowly" needs no separate code — and a partial
-        /// hold naturally just SLOWS a falling object instead of lifting it.
+        /// 0 = you can't shift it, 1 = it obeys completely. One number cancels
+        /// gravity and caps acceleration; a partial hold slows a falling object.
         /// One-off callers (TryGrab) scan fresh; the hold passes _heldMarks.
         float AuthorityOver(Rigidbody rb, out float share)
             => AuthorityOver(rb,
@@ -107,9 +105,8 @@ namespace SpellyZombie
             share = 1f;
             if (rb == null) return 0f;
 
-            // the SPELL LIFTS FREE : spell-form matter is
-            // the caster's magic - no ink required, weight ignored. The moment
-            // it is THROWN it stops being a spell and the ink law rules again.
+            // spell-form matter lifts free (no ink, weight ignored); once
+            // thrown, the ink law rules again
             var spellMatter = rb.GetComponent<MatterStrike>();
             if (spellMatter != null && spellMatter.SpellForm && spellMatter.OwnerId == ownerId)
                 return 1f;
@@ -125,13 +122,14 @@ namespace SpellyZombie
                 if (mark == null) continue;
                 // everyone's pull, so the share is honest when two of you lift one thing
                 foreach (var kv in mark.Stakes) all += kv.Value;
-                if (mark.FreeForAll || mark.BornOf >= 0) all += Perks.InkMax;
+                if (mark.FreeForAll || mark.BornOf >= 0) all += DrawingConfig.InkMax;
             }
             if (mine <= 0f) return 0f;
             share = all > 0f ? Mathf.Clamp01(mine / all) : 1f;
 
-            // lifting power per ink 5x stronger
-            return Mathf.Clamp01(mine / Mathf.Max(0.01f, rb.mass * DrawingConfig.LiftInkPerKg));
+            // a wounded lifter needs more ink for the same mass
+            float need = rb.mass * DrawingConfig.LiftInkPerKg / Mathf.Max(0.05f, LocalStrength());
+            return Mathf.Clamp01(mine / Mathf.Max(0.01f, need));
         }
 
         /// The hold, at physics rate. It keeps the distance you grabbed it at
@@ -156,10 +154,7 @@ namespace SpellyZombie
             _heldBody.useGravity = false;
             _heldBody.AddForce(Physics.gravity * (1f - auth), ForceMode.Acceleration);
 
-            // IF YOU CAN'T LIFT IT, YOU CAN'T TURN IT . This used
-            // to run at ANY authority, so merely holding a too-heavy bench let
-            // your own turning swing it around - nonsense. Below a full lift
-            // its rotation is left completely alone.
+            // below a full lift, rotation is left alone
             if (auth < 1f) return;
 
             // heavy things still turn grudgingly once you CAN lift them
@@ -173,11 +168,8 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             if (kb == null || _pilot == null) return;
 
-            // A HELD BLOB CAN DIE IN YOUR HAND: a nearby puddle proximity-
-            // merges it away, or it ages out or burns. That destruction never
-            // went through ClearBodyHold, so CarriedWeight stayed on your
-            // back and the ball just silently vanished - a merge is loud
-            // everywhere else, so it is loud here too.
+            // the held body can be destroyed externally (merge/age/burn) -
+            // clear the hold state and CarriedWeight here
             if (!ReferenceEquals(_heldBody, null) && _heldBody == null)
             {
                 _heldBody = null;
@@ -204,8 +196,7 @@ namespace SpellyZombie
             }
             if (!holding)
             {
-                // third person is for emoting (E belongs to poses there), and
-                // a downed wizard's hands are busy dying
+                // third person: E belongs to poses; no grabbing while downed
                 if (SimpleFPSController.ThirdPersonActive || _pilot.IsDowned) return;
                 if (kb.eKey.wasPressedThisFrame) TryGrab();
                 return;
@@ -213,23 +204,12 @@ namespace SpellyZombie
 
             if (_pilot.IsDowned) { DropHeld(Vector3.zero); return; }
 
-            // HOLD ALT AND TURN IT WITH THE MOUSE : alt already frees
-            // the cursor, so the whole hand is available for turning - no
-            // wheel, no modifier gymnastics.
-            //
-            // AND YOU CAN ONLY TURN WHAT YOU CAN LIFT : a hold that
-            // is merely slowing a falling bench has no business spinning it.
+            // Alt + left-drag turns the cargo; only a full lift can turn it
             var mouse = Mouse.current;
             bool canTurn = _heldParticle != null || _remoteHolding // host clamps by real authority
                 || (_heldBody != null && AuthorityOver(_heldBody, _heldMarks, out _) >= 1f);
-            // ALT frees the cursor, then HOLD LEFT-MOUSE AND DRAG to turn it -
-            // so moving the free cursor around doesn't spin your cargo by
-            // accident. Axes follow the drag: pull right and it turns right,
-            // pull up and it tips up (both were inverted).
-            // THE SAME DRAG AS THE SHAPE POSE MODE (the ruling, Aug 10: "when
-            // lifting it should work the same way as well => reuse the code").
-            // Grab a point on the cargo, drag, and it turns so that point
-            // follows your hand - ArcballDrag, shared with ShapeShift.
+            // ArcballDrag, shared with ShapeShift: grab a point on the cargo,
+            // drag, and it turns so that point follows the hand
             if (mouse != null && canTurn
                 && (kb.leftAltKey.isPressed || kb.rightAltKey.isPressed))
             {
@@ -253,8 +233,7 @@ namespace SpellyZombie
                     else if (!mouse.leftButton.isPressed) _turning = false;
                     else if (_turning)
                     {
-                        // the turn is applied to the SPIN, so the hold keeps
-                        // following your heading exactly as it always did
+                        // the turn is applied to the spin, so the hold keeps following the heading
                         Quaternion before = HoldRot();
                         Quaternion after = ArcballDrag.Turn(cam, screen, center, _turnRadius,
                             held.TransformDirection(_turnGrabLocal), before, Time.deltaTime);
@@ -264,7 +243,7 @@ namespace SpellyZombie
                 }
             }
 
-            // F PUTS IT DOWN, E THROWS IT
+            // F puts it down, E throws it
             if (kb.fKey.wasPressedThisFrame)
             {
                 DropHeld(Vector3.zero);
@@ -279,9 +258,7 @@ namespace SpellyZombie
                     _heldParticle.transform.position, HandPoint(), HandLerp * Time.deltaTime);
             }
 
-            // (nothing tears loose any more - it floats on ink, not on a joint)
-
-            // wand out (slot 1) or third person: CHANGING MODE RELEASES IT
+            // wand out (slot 1) or third person: changing mode releases it
             if ((_slots != null && _slots.Current == 1 && _slotAtGrab != 1)
                 || SimpleFPSController.ThirdPersonActive)
             {
@@ -340,34 +317,18 @@ namespace SpellyZombie
                 return;
             }
 
-            // WHAT YOU ARE AIMING AT, LITERALLY (the rule: E takes whatever
-            // the raycast hits first - you point at the thing you mean).
-            //
-            // AND THE RAY MUST SEE THE BLOB ("Grabbing the liquid ball
-            // made me fall through the ground indefinitely"). A liquid's big
-            // collider is its walk-through trigger SHELL and its core is
-            // shrunk deep inside the visible skin, so the old ignore-triggers
-            // ray sailed straight THROUGH the ball and hit the floor behind
-            // it - and the floor is what tore loose. The ray reads triggers
-            // now: the nearest MATTER along the aim line is the thing you
-            // meant, while trigger zones that aren't matter still never block
-            // a grab (the first solid hit behaves exactly as before).
+            // the ray reads triggers: the nearest Matter along the aim line
+            // wins (liquid cores hide inside trigger shells); non-matter
+            // triggers never block a grab
             Rigidbody bestB = null;
             var piv0 = _pilot.CameraPivot;
             if (piv0 == null) return;
 
-            // E IS THE ORE'S KEY WHILE YOU CARRY ONE: InkRuneStone consumes
-            // this very press to feed or drop, and the carried stone's own
-            // collider is off - so the grab ray reached PAST it and could
-            // tear up whatever stood behind the cauldron mid-feed.
+            // while carrying an ink ore, E belongs to InkRuneStone (feed/drop)
             if (InkRuneStone.Carried != null) return;
 
-            // NOT ~0: layer 2 is your OWN body ("the pen ignores our own
-            // body") — a sprint-crossing forearm was winning the aim — and
-            // layer 30 is the ink CANVASES, invisible planes floating outside
-            // every facade that soak up wall ink by design; aiming at any
-            // house met the canvas first and refused with world-scale spam.
-            // Every world-purpose cast here masks them out; so does the grab.
+            // mask out layer 2 (own body) and the ink-canvas layer, like every
+            // world-purpose cast
             int mask = Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer)
                 & ~(1 << VesselShell.Layer); // the true-bowl follower is a kinematic ghost - grabbing must reach the POT behind it
             var along = Physics.RaycastAll(piv0.position, piv0.forward, LiftRangeMax, mask,
@@ -382,10 +343,8 @@ namespace SpellyZombie
                 var blob = h.collider.GetComponentInParent<Matter>();
                 if (blob != null)
                 {
-                    // STATE RULE : any state grabs while it's still a
-                    // SPELL; once touched, only SOLID can be picked up again.
-                    // A refused blob never blocks the ray - like the old
-                    // scan, the grab simply looks past it.
+                    // any state grabs while still a spell; once touched, only
+                    // SOLID grabs again. A refused blob never blocks the ray.
                     if (blob.Touched && blob.Phase != MatterPhase.Solid)
                     { stateRefused = blob; continue; }
                     aimed = h; foundHit = true; // the blob IS what you aimed at
@@ -395,12 +354,12 @@ namespace SpellyZombie
                 // InkRuneStone) - the grab never competes for that press
                 if (h.collider.GetComponentInParent<InkRuneStone>() != null) return;
                 if (h.collider.isTrigger) continue; // invisible zones don't block aim
-                aimed = h; foundHit = true;         // the solid hit the old ray saw
+                aimed = h; foundHit = true;
                 break;
             }
             if (!foundHit)
             {
-                if (stateRefused != null) // the law, out loud - no silently eaten press
+                if (stateRefused != null)
                     DrawingWorld.Instance?.LogEvent(
                         $"the {stateRefused.Material} has been handled. only a SOLID grabs again");
                 return;
@@ -428,9 +387,8 @@ namespace SpellyZombie
             _slotAtGrab = _slots != null ? _slots.Current : 1;
             _spinRot = Quaternion.identity;
             var pv1 = _pilot.CameraPivot;
-            // a body whose own colliders are parked (the pot rides a shell)
-            // reports its PIVOT as the center of mass - re-teach it the true
-            // middle once, by the same bounds law everything else lifts with
+            // a body with no enabled colliders reports its pivot as center of
+            // mass - re-teach the true middle from bounds
             bool hasBody = false;
             foreach (var c in bestB.GetComponentsInChildren<Collider>(true))
                 if (c != null && c.enabled && !c.isTrigger) { hasBody = true; break; }
@@ -438,9 +396,7 @@ namespace SpellyZombie
                 bestB.centerOfMass = bestB.transform.InverseTransformPoint(
                     ShapeShift.FindObjectBounds(bestB.transform).center);
 
-            // clamp to the RAY's reach, not GrabRange - the ray grabs out to
-            // LiftRangeMax, and "it stays where you grabbed it" (the rule
-            // above) forbids yanking a 9m grab in to arm's length
+            // clamp to LiftRangeMax, not GrabRange - the hold keeps the grab distance
             if (pv1 != null) _holdDist = Mathf.Clamp(
                 Vector3.Distance(pv1.position, bestB.worldCenterOfMass), 0.7f, LiftRangeMax);
             _heldHadGravity = bestB.useGravity;
@@ -451,9 +407,7 @@ namespace SpellyZombie
             bestB.interpolation = RigidbodyInterpolation.Interpolate;
             bestB.angularDamping = 4f;
 
-            // THE CARGO IS FLOATING, NOT SHOULDERED - it rides on your ink, so
-            // it barely weighs on you and you can still RUN with it (
-            // wants to sprint around holding a bench and hit things with it).
+            // floating cargo barely weighs on the carrier
             var board = _pilot != null ? _pilot.GetComponent<BodyState>() : null;
             if (board != null) board.CarriedWeight = bestB.mass / 420f;
 
@@ -465,24 +419,9 @@ namespace SpellyZombie
                 : $"too heavy to lift. your ink is {haveInk:0} of {needInk:0}. draw more on it");
         }
 
-        /// THE ACQUIRE LAW, owner-parameterized - one implementation for the local
-        /// grab and for the host applying a client's GrabIntent (netcode §4).
-        /// Returns the freed body, or null with the refusal logged.
-        /// WOULD THE GRAB SUCCEED? The same law as AcquireBody below with every
-        /// mutation and every log stripped out, so the badge asks the question
-        /// the keypress will actually answer.
-        ///
-        /// "The E pops up even on things I can't interact with
-        /// which is a clear bug." The badge had its OWN lookalike test — any
-        /// InkMark under the collider against a prop-mass threshold - which knew
-        /// nothing about the world-scale refusal, about InkMark.Host, or about
-        /// anchor hold. Aiming at ground had drawn seals on passed the
-        /// lookalike and failed the real one. Two implementations of one rule is
-        /// the bug; this is the one rule.
-        /// The pot's LIQUID is the economy, not a prop ("the ink
-        /// in cauldron should not be liftable on its own") — the POT is
-        /// stealable, the ink inside it only pours. One test for both the
-        /// badge's promise and the keypress.
+        /// One acquire law for the local grab and the host's GrabIntent (netcode §4).
+        /// CanAcquire = AcquireBody with mutations and logs stripped; AcquireBody
+        /// returns the freed body or null. Pot ink only pours - the pot is stealable.
         static bool IsPotInk(Collider c)
         {
             var pot = c != null ? c.GetComponentInParent<CauldronEconomy>() : null;
@@ -535,17 +474,9 @@ namespace SpellyZombie
             }
             var hitRb = aimedCollider.attachedRigidbody;
 
-            // NEVER a wizard, a creature or a held weapon - and the refusal
-            // must come BEFORE any physics change: the old order made an
-            // excluded kinematic body dynamic first and said "you can't lift
-            // it" after, leaving it fallen loose forever.
-            // ZOMBIES ARE LIFTABLE ("I want to be able to lift and
-            // throw zombies"). They are Creatures, so the blanket creature refusal
-            // below used to catch them. Everything else on this path already
-            // works for one: their body is non-kinematic, so it falls through to
-            // the ink check, which means you draw on a zombie and then pick it up
-            // exactly like a barrel. Demons stay exempt, being unkillable and
-            // roughly the size of the problem.
+            // never a wizard, creature or held weapon - refuse BEFORE any
+            // physics change. Zombies are liftable (draw on one, lift it like
+            // a barrel); demons are exempt.
             var zomb = aimedCollider.GetComponentInParent<Zombie>();
             bool liftableCreature = zomb != null && !zomb.IsDemon;
 
@@ -557,14 +488,12 @@ namespace SpellyZombie
                 return null;
             }
 
-            // A KINEMATIC BODY CANNOT BE MOVED BY VELOCITY. The old grab
-            // skipped these; the raycast version "grabbed" them and then every
-            // physics tick failed. If you have the ink, it becomes dynamic instead.
+            // a kinematic body cannot be moved by velocity - with enough ink
+            // it becomes dynamic instead
             if (hitRb != null && hitRb.isKinematic)
             {
-                // THE WORLD ITSELF REFUSES
-                // kinematic world machinery must never become a free body,
-                // no matter how much ink is on it. Same cap as tear-loose.
+                // world-scale machinery never becomes a free body, whatever
+                // the ink. Same cap as tear-loose.
                 if (Liftable.WorldScale(hitRb.transform, out var kd))
                 {
                     DrawingWorld.Instance?.LogEvent(
@@ -600,9 +529,8 @@ namespace SpellyZombie
             var lift = host.GetComponentInParent<Liftable>();
             if (lift != null) host = lift.transform;
 
-            // BUT THE WORLD ITSELF REFUSES (the ground got a
-            // rigidbody and fell through forever). Size decides world vs
-            // prop and ink never overrules it - this runs BEFORE the ink math.
+            // size decides world vs prop; ink never overrules it - this runs
+            // BEFORE the ink math
             if (Liftable.WorldScale(host, out var wd))
             {
                 DrawingWorld.Instance?.LogEvent(
@@ -614,8 +542,6 @@ namespace SpellyZombie
             float hold = lift != null ? lift.HoldStrength : InkMark.AnchorHold(host);
             if (mine < hold)
             {
-                // SAY THE NUMBERS. "It won't budge" is useless; knowing
-                // you're 9 ink short tells you to keep drawing.
                 DrawingWorld.Instance?.LogEvent(
                     $"it is rooted. your ink is {mine:0} of {hold:0} needed");
                 return null;

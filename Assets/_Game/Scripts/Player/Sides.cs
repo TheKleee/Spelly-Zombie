@@ -1,44 +1,111 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// WHICH SIDE ARE YOU ON. Two classes, both of them wizards, both of them
-    /// drawing: the WIZARD casts spells, the ACOLYTE summons the dead and hides
-    /// inside the furniture.
-    ///
-    /// This is not a fixed team. In the acolyte mode you change sides mid-round
-    /// by being corrupted, so every system that cares has to ask rather than
-    /// cache. In the LOBBY you just pick, and switch as often as you like, which
-    /// is how anybody learns the other half of the game.
+    /// The two sides. Sides change mid-round (corruption), so systems must
+    /// ask rather than cache; in the lobby you pick freely.
     public enum Side
     {
         Wizard = 0,
         Acolyte = 1
     }
 
-    /// Per-player side, keyed by owner id exactly like Grimoire's rune tables, so
-    /// there is one identity scheme in the project rather than two.
-    ///
-    /// DELIBERATELY NOT ON SimpleFPSController: that file is the and off
-    /// limits. Keeping the side in its own registry also means anything can ask
-    /// about any player without holding a reference to them, which is what the
-    /// zombies, the cauldron and the HUD all need.
+    /// Per-player side registry, keyed by the same owner id as Grimoire.
+    /// Its own registry so anything can ask about any player by id alone.
     public static class Sides
     {
         /// Same id Grimoire uses, so a player's runes and their side always agree.
         public static int LocalPlayerId => Grimoire.LocalPlayerId;
 
-        /// Wizards are tankier than acolytes. Tune in sz_tuning.json.
-        public static float MaxHealthFor(int owner) =>
-            Of(owner) == Side.Acolyte
+        // ---- STRENGTH IS HEALTH ----
+        // One stat: the pool you lift, throw and slam with, and 0 = death.
+        // Three layers: your OWN ceiling (side default + buffs), the BIOME's
+        // ceiling, and the current value healing toward whichever is lower.
+
+        /// A player's own ceiling before the world has a say - side default
+        /// plus anything that raised it. Buffs raise this; that is what a buff IS.
+        public static float OwnCapFor(int owner)
+        {
+            float b = Of(owner) == Side.Acolyte
                 ? DrawingConfig.AcolyteMaxHealth
                 : DrawingConfig.WizardMaxHealth;
+            return b + BuffFor(owner);
+        }
+
+        static readonly Dictionary<int, float> _buff = new Dictionary<int, float>();
+
+        /// Raise (or lower) a ceiling. A buff cast on an ENEMY is a real
+        /// attack: a ceiling they cannot fill, and mending slows with it.
+        public static void AddBuff(int owner, float amount)
+        {
+            _buff.TryGetValue(owner, out float had);
+            _buff[owner] = had + amount;
+        }
+
+        public static float BuffFor(int owner) =>
+            _buff.TryGetValue(owner, out float v) ? v : 0f;
+
+        public static void ClearBuffs() => _buff.Clear();
+
+        /// THE EFFECTIVE CEILING: the lower of your own and the ground's.
+        /// A 90-cap acolyte in a 100 biome stays at 90 and feels strong; a
+        /// 140-cap wizard there is dragged down to 100 and feels it. A biome
+        /// with StrengthCap 0 has no opinion, so the natural world is unchanged.
+        public static float MaxHealthFor(int owner) =>
+            CapWithGround(OwnCapFor(owner), GroundCapFor(owner));
+
+        public static float CapWithGround(float ownCap, float groundCap) =>
+            groundCap > 0f ? Mathf.Min(ownCap, groundCap) : ownCap;
+
+        /// The local biome's ceiling for this player, 0 where the ground has none.
+        public static float GroundCapFor(int owner)
+        {
+            var b = BiomeUnder(owner);
+            return b != null ? b.StrengthCap : 0f;
+        }
+
+        static Biome BiomeUnder(int owner)
+        {
+            if (owner != LocalPlayerId) return null; // remote bodies: host authority, see netcode
+            foreach (var p in SimpleFPSController.All)
+                if (p != null && p.IsLocalViewer)
+                    return SpellyMap.BiomeAt(p.transform.position);
+            return null;
+        }
+
+        /// 0..1 of your effective ceiling - what every strength-scaled thing
+        /// (lift, throw, slam) multiplies by. Wounded means weaker, always.
+        public static float StrengthFraction(int owner, float current)
+        {
+            float max = MaxHealthFor(owner);
+            return max <= 0f ? 0f : Mathf.Clamp01(current / max);
+        }
+
+        /// Mending speed is a FUNCTION OF THE CEILING, not of the side: the
+        /// lower your max the faster you come back. So acolytes recover faster
+        /// than wizards without a rule saying so, and raising a ceiling
+        /// (buffing) buys power at the price of recovery.
+        /// Derived from your OWN ceiling, not the ground's - buffing yourself
+        /// must cost recovery even where a biome is capping you. The biome
+        /// then scales the result: hostile ground mends you slower.
+        public static float RegenPerSecFor(int owner)
+        {
+            var b = BiomeUnder(owner);
+            float scale = b != null ? Mathf.Max(0f, b.RegenScale) : 1f;
+            return RegenForMax(OwnCapFor(owner)) * scale;
+        }
+
+        public static float RegenForMax(float max)
+        {
+            float m = Mathf.Max(1f, max);
+            return DrawingConfig.RegenAtRefMax
+                * Mathf.Pow(DrawingConfig.RegenRefMax / m, DrawingConfig.RegenFalloff);
+        }
 
         static readonly Dictionary<int, Side> _byOwner = new Dictionary<int, Side>();
 
-        /// Unknown players are WIZARDS. That keeps the co-op mode and every
-        /// existing scene behaving exactly as they do today: nothing has to opt
-        /// out of being an acolyte, it has to opt in.
+        /// Unknown players default to Wizard.
         public static Side Of(int owner) =>
             _byOwner.TryGetValue(owner, out var s) ? s : Side.Wizard;
 
@@ -63,15 +130,8 @@ namespace SpellyZombie
         public static void Toggle(int owner) =>
             Set(owner, IsAcolyte(owner) ? Side.Wizard : Side.Acolyte);
 
-        /// WHICH SIDE IS THAT BODY ON. Zombies need this to know who to leave
-        /// alone, and they only have a Transform to go on.
-        ///
-        /// Only the local player can be resolved today: the owner id lives in
-        /// Grimoire and nothing exposes a per-controller id, and SimpleFPSController
-        /// is the file. Anyone unresolved counts as a WIZARD, which is the safe
-        /// default: a zombie still hunts them, so the worst case is the old
-        /// behaviour rather than a zombie standing around ignoring an enemy.
-        /// When multiplayer gets tested this is the one seam to fill in.
+        /// Side of a body. Only the local player resolves today; anyone
+        /// unresolved counts as Wizard (a zombie still hunts them).
         public static bool IsAcolytePlayer(SimpleFPSController p)
         {
             if (p == null) return false;
@@ -79,13 +139,10 @@ namespace SpellyZombie
             return LocalIsAcolyte;
         }
 
-        /// Wipe on round start / scene change. Sides are per round, never saved:
-        /// the whole point of the mode is that you might not end on the side you
-        /// began on.
-        public static void ResetAll() => _byOwner.Clear();
+        /// Wipe on round start / scene change - sides are per round, never saved.
+        public static void ResetAll() { _byOwner.Clear(); _buff.Clear(); }
 
-        /// Everyone currently on a side. Used by the win checks later, and by the
-        /// lobby to show who picked what.
+        /// How many players are on a side.
         public static int CountOn(Side side)
         {
             int n = 0;

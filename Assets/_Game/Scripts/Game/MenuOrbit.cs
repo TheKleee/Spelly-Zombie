@@ -2,10 +2,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// the menu staging v2: the WORLD stays put (it's a real terrain
-    /// now) and the CAMERA circles it the way a turntable used to feel -
-    /// same relative motion, zero moving geometry. Spinning pauses the
-    /// moment ink flows and resumes after 3 consecutive quiet seconds.
+    /// Orbits the menu camera around a fixed pivot. Spinning pauses while
+    /// ink flows and resumes after 3 consecutive quiet seconds.
     public class MenuOrbit : MonoBehaviour
     {
         [Tooltip("Point the camera circles: the cauldron / diorama center. If empty, the legacy Turntable wiring is used as the pivot.")]
@@ -27,7 +25,7 @@ namespace SpellyZombie
                 : Camera.main != null ? Camera.main.transform : null;
             if (cam == null) return;
 
-            if (Time.time - MenuCauldron.LastDrawTime < 3f) return; // ink wins
+            if (Time.time - MenuCauldron.LastDrawTime < 3f) return;
             cam.RotateAround(pivot.position, Vector3.up, DegreesPerSecond * Time.deltaTime);
         }
     }

@@ -3,23 +3,15 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    // (CostumeLibrary moved to its own file - Unity refuses to bind
-    //  ScriptableObject assets whose class hides in a mismatched filename.
-    //  It serves WEAPON SKINS only now; costumes live in the three
-    //  SocketWardrobe catalogs.)
-
-    /// Dresses bodies: library pieces when has made them, placeholder
-    /// hat + cloak until then. Demo look = team-colored hat and cloak; the
-    /// cloak's back carries your STARTING RUNE icon (the locked cape design).
+    /// Dresses bodies: catalog pieces, with placeholder hat + cloak until art
+    /// exists. The cloak's back carries your starting rune icon.
     public static class Wardrobe
     {
         // ------------------------------------------------------- attaching --
 
-        /// Player outfit. the SocketWardrobe catalog dresses FIRST - the
-        /// local player wears their saved choices, remote avatars wear the
-        /// outfitCode that arrived over the wire; hat/cape placeholders only
-        /// fill sockets the catalog left bare. Returns the pieces so callers
-        /// can retint when the team changes.
+        /// Player outfit. The catalog dresses first (local = saved choices,
+        /// remote = outfitCode); placeholders only fill sockets it left bare.
+        /// Returns the pieces so callers can retint when the team changes.
         public static List<GameObject> DressPlayer(SocketSet set, Color team, RuneCardType? capeIcon,
             string outfitCode = null)
         {
@@ -27,10 +19,8 @@ namespace SpellyZombie
                 outfitCode != null ? SocketManager.ChooserFromCode(outfitCode)
                                    : SocketManager.GetChoice);
 
-                                   // THE CATALOG IS LAW : once SZ_WardrobePlayer
-            // exists, an EMPTY slot means "design nothing there" — no
-            // placeholder sneaks in behind the back. Delete the WizardCape
-            // option from the Cape slot and the cape is gone, permanently.
+            // once the catalog exists, an empty slot means nothing worn there -
+            // no placeholder fills it
             bool catalogRules = SocketManager.Player != null;
 
             var hatSocket = set.Get("Hat");
@@ -50,10 +40,8 @@ namespace SpellyZombie
                 if (cape == null) cape = PlaceholderCloak(capeSocket);
                 if (cape != null) pieces.Add(cape);
             }
-            // CLOTH RETIRED (, after three rounds of Unity Cloth
-            // misbehaving: stiff board  fell off  wrapped the neck).
-            // Capes are RIGID pieces that inherit the body's clumsy wobble
-            // through the spine socket - life without simulation.
+            // capes are RIGID pieces - no cloth simulation; they wobble
+            // through the spine socket
 
             Retint(pieces, team);
             if (cape != null && capeIcon.HasValue) StampRune(cape.transform, capeIcon.Value);
@@ -63,9 +51,6 @@ namespace SpellyZombie
             ScarfWiggle.AttachAll(set.gameObject);
             return pieces;
         }
-
-        // (MakeCloth DELETED with the cloth retirement - see the CLOTH RETIRED
-        //  ruling above; capes are rigid pieces now, nothing converts them.)
 
         /// Zombies: the zombie catalog rolls RANDOM pieces per socket (a
         /// non-zero seed makes the roll deterministic - host and clients dress
@@ -87,8 +72,7 @@ namespace SpellyZombie
                     Attach(set, socketName, zombiePool: true);
                 }
 
-            // zombie accessories wiggle too (a dangling chain, a droopy hood
-            // tip — same "Wiggle" naming contract as the player scarf)
+            // zombie accessories use the same "Wiggle" naming contract
             ScarfWiggle.AttachAll(set.gameObject);
         }
 
@@ -98,10 +82,9 @@ namespace SpellyZombie
         public static List<GameObject> DressDemon(SocketSet set, int seed = 0)
             => SocketManager.DressRandom(set, SocketManager.Demon, 1f, seed);
 
-        /// A weapon's Blender-made look, or null while primitives stand in.
-        /// THE OVERRIDE SHELF WINS (one rule everywhere): a prefab named
-        /// after the weapon in Resources/Custom beats the costume catalog, so
-        /// weapons need no wizard run and no "Weapon_" prefix — drag, done.
+        /// A weapon's authored look, or null while primitives stand in. A
+        /// prefab named after the weapon in Resources/Custom beats the costume
+        /// catalog (no "Weapon_" prefix needed there).
         public static GameObject WeaponSkin(string key)
         {
             var shelf = PrefabVault.Get(key);
@@ -136,12 +119,9 @@ namespace SpellyZombie
 
         // --------------------------------------------------------- tinting --
 
-        /// "_Team"-named renderers take the color. AXIOM : a
-        /// piece with NO _Team renderer KEEPS the MATERIALS - the old fallback
-        /// blanket-replaced sharedMaterial on every renderer of the authored
-        /// costume.
-        /// Only empty material slots get filled, so code-built placeholders
-        /// (which ship with none) still show up.
+        /// "_Team"-named renderers take the color; a piece with no _Team
+        /// renderer keeps its own materials. Only empty material slots get
+        /// filled, so code-built placeholders still show up.
         static readonly HashSet<string> _untinted = new HashSet<string>();
 
         public static void Retint(List<GameObject> pieces, Color team)
@@ -180,7 +160,7 @@ namespace SpellyZombie
         {
             if (socket == null) return null;
             var hat = new GameObject("Hat_Placeholder");
-            hat.transform.SetParent(socket, false); // sits ON the crown - it was right before
+            hat.transform.SetParent(socket, false); // sits ON the crown
             void Part(string partName, Vector3 pos, Vector3 scale, float tilt)
             {
                 var p = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -200,9 +180,8 @@ namespace SpellyZombie
             return hat;
         }
 
-        /// A subdivided plane hanging from the shoulder line - RIGID, like all
-        /// capes since the CLOTH RETIRED ruling (it wobbles with the body
-        /// through the spine socket; the art replaces it wholesale).
+        /// A subdivided plane hanging from the shoulder line - rigid, like all
+        /// capes; the art replaces it wholesale.
         static GameObject PlaceholderCloak(Transform socket)
         {
             if (socket == null) return null;
@@ -251,8 +230,8 @@ namespace SpellyZombie
 
         // ------------------------------------------------ the cape's rune --
 
-        /// The locked design: the cloak's back shows the STARTING rune you
-        /// chose, rasterized from the actual glyph template at runtime.
+        /// The cloak's back shows your starting rune, rasterized from the
+        /// glyph template at runtime.
         public static void StampRune(Transform cape, RuneCardType card)
         {
             var poly = RuneLibrary.GlyphPolyline(IconRune(card));
@@ -262,7 +241,7 @@ namespace SpellyZombie
             quad.name = "RuneIcon";
             Object.Destroy(quad.GetComponent<Collider>());
             quad.transform.SetParent(cape, false);
-            // near the pinned top edge, where simulated cloth barely moves
+            // near the pinned top edge
             quad.transform.localPosition = new Vector3(0f, -0.06f, -0.125f);
             quad.transform.localRotation = Quaternion.Euler(-6f, 180f, 0f); // face out the back
             quad.transform.localScale = Vector3.one * 0.2f;
@@ -275,8 +254,7 @@ namespace SpellyZombie
         }
 
         /// A rune glyph as a texture (grimoire pages, cape icons, cards…).
-        /// Prefers YOUR recorded handwriting (the F-key templates) - the book
-        /// shows the alphabet you actually taught the game, not the seed shapes.
+        /// Prefers recorded handwriting over the seed polyline.
         public static Texture2D RuneIcon(RuneType rune, Color ink)
         {
             var recorded = RuneLibrary.RecordedStrokes(rune);

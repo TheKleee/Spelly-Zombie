@@ -2,25 +2,15 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The ZOMBIE-NESS layer ("zombies look terrible" — they were
-    /// naked green wizard clones wearing the player's body). Per-zombie seeded
-    /// variation + an undead POSTURE composed over the shared animations every
-    /// frame, so the horde reads as a horde instead of a clone army:
-    ///   · scale + tint jitter (quantized steps - the material cache stays small)
-    ///   · classic reach-for-brains arms, hunch, head tilt, slow sway -
-    ///     per-kind presets, per-zombie personality on top
-    ///   · a dark gaping MOUTH under the googly eyes (players are eyeless
-    ///     beans - the mouth is the friend-or-food tell at a glance)
-    /// All of it is seeded by the zombie's id, so client proxies can later
-    /// roll the identical look from the snapshot id (B6) for free.
-    /// (Locomotion speed is the animator's business - the zombie controller's
-    /// Shamble blend already carries idle/walk/run across the speed range.)
+    /// Per-zombie seeded variation + undead posture composed over the shared
+    /// animations: scale/tint jitter, per-kind reach/hunch/sway, placeholder
+    /// mouth. Seeded by the zombie's id so client proxies roll the identical look.
     public class ZombieFlavor : MonoBehaviour
     {
-        /// the kill-switch if the placeholder maw offends the art.
+        /// Kill-switch for the placeholder mouth.
         public static bool GiveMouths = true;
 
-        [Header("Flavour passes: YOUR switches (AXIOM: nothing is forced)")]
+        [Header("Flavour passes")]
         [SerializeField] bool _posture = true;      // per-frame bone posing
         [SerializeField] bool _scaleJitter = true;  // random size variety
         [SerializeField] bool _mouth = true;        // placeholder mouth quad
@@ -53,9 +43,8 @@ namespace SpellyZombie
             _head = Bone("Head");
             _spine = Bone("Spine1");
 
-            // ---- a body of one's own: quantized tint + scale jitter ----
-            // (tint only on the shared placeholder body - the custom
-            // ZombieBody prefab keeps the materials verbatim)
+            // ---- quantized tint + scale jitter ----
+            // (tint only on the shared placeholder body; a custom prefab keeps its materials)
             if (!customBody)
             {
                 float hueJ = (rng.Next(5) - 2) * 0.016f;
@@ -65,10 +54,7 @@ namespace SpellyZombie
                     Mathf.Clamp01(s + valJ * 0.5f), Mathf.Clamp01(v + valJ));
                 if (smr != null) smr.sharedMaterial = MatterFX.Get(varied, MoteShade.Opaque);
             }
-            // AXIOM : tint and mouths correctly stand down for the
-            // body - the scale jitter did not, so the authored proportions got
-            // randomised anyway. Now every flavour pass respects customBody,
-            // and each is an Inspector switch can turn off.
+            // every flavour pass respects customBody and has an Inspector switch
             if (_scaleJitter && !customBody)
             {
                 float wj = R(0.92f, 1.1f), hj = R(0.97f, 1.03f);
@@ -109,11 +95,10 @@ namespace SpellyZombie
                     break;
             }
             if (_tiltRoll == 0f) _tiltRoll = R(4f, 12f) * (rng.Next(2) == 0 ? -1f : 1f);
-            _tiltPitch = R(-9f, 3f); // mostly looking up at you. creepily.
+            _tiltPitch = R(-9f, 3f); // mostly looking up
             _phase = R(0f, 6.28f);
 
-            // ---- the maw: players are eyeless beans; zombies get a MOUTH ----
-            // (never on the custom body - the face is the)
+            // ---- placeholder mouth (never on the custom body) ----
             if (GiveMouths && _mouth && !customBody && _head != null)
             {
                 var mouth = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -137,9 +122,8 @@ namespace SpellyZombie
             bool animated = _anim != null && _anim.enabled
                 && _anim.runtimeAnimatorController != null;
 
-            // the animator rewrites the pose every frame, so composing OVER it
-            // never accumulates. Without one, pose ONCE and stand still -
-            // multiplying a static pose per-frame would corkscrew the bones.
+            // an animator rewrites the pose every frame, so composing over it never
+            // accumulates; without one, pose ONCE or the bones corkscrew
             if (animated)
             {
                 ApplyPosture();
@@ -153,7 +137,7 @@ namespace SpellyZombie
 
         void ApplyPosture()
         {
-            if (!_posture) return; // the switch - code must never own the bones outright
+            if (!_posture) return;
             _phase += Time.deltaTime * _swayRate;
             float sway = Mathf.Sin(_phase) * _swayAmp;
 
@@ -172,8 +156,7 @@ namespace SpellyZombie
             Reach(_foreR, _handR, (reachR + Vector3.up * 0.14f).normalized, _reach * 0.7f);
         }
 
-        /// Partial FromToRotation toward the grope direction - the walk swing
-        /// survives underneath, so the arms LIVE instead of pointing rigidly.
+        /// Partial FromToRotation so the walk swing survives underneath.
         static void Reach(Transform bone, Transform tip, Vector3 dir, float weight)
         {
             if (bone == null || tip == null || weight <= 0f) return;

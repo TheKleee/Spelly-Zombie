@@ -5,15 +5,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The palette pipeline (one source of color truth):
-    ///   1 - Generate Palette PNG: a swatch grid built FROM SurfaceMaterialDB
-    /// (so visuals match the chemistry) + team colors + accents.
-    /// UV-maps the Blender/Asset Forge models onto these cells; my
-    ///       generated materials sample the same rows - everything matches.
-    ///   2 - Build Surface Materials: one SZSurface material per material
-    ///       type, colored from the same table.
-    ///   3 - Apply To Tagged Scene: every SurfaceMaterialTag'd renderer wears
-    ///       its material (skips creatures, conjured matter, and ink lines).
+    /// Palette pipeline: 1 - Generate Palette PNG (swatch grid from
+    /// SurfaceMaterialDB + team colors + accents), 2 - Build Surface Materials
+    /// (one SZSurface material per type), 3 - Apply To Tagged Scene.
     public static class PaletteBuilder
     {
         const string ArtDir = "Assets/_Game/Art";
@@ -54,7 +48,7 @@ namespace SpellyZombie
             foreach (var type in PaletteRows)
                 PaintRamp(tex, row++, SurfaceMaterialDB.Info(type).SolidColor);
 
-            // team row: 4 colors × 2 shades each (colorblind-safe already)
+            // team row: 4 colors × 2 shades each
             for (int t = 0; t < MatchLobby.TeamColors.Length; t++)
             {
                 var c = MatchLobby.TeamColors[t];
@@ -133,7 +127,7 @@ namespace SpellyZombie
             Debug.Log($"[SpellyZombie] Surface materials built in {MatDir}");
         }
 
-        // menu removed (scene-modifying - applies materials himself)
+        // no menu item; modifies the scene directly
         public static void ApplyToScene()
         {
             int applied = 0;

@@ -3,10 +3,8 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// Tracks an object's temperature. Heat zones push it up or down; every frame
-    /// it drifts back toward ambient (second law of thermodynamics), tints the
-    /// object (glowing hot / frosted cold), and bleeds burn or freeze damage when
-    /// it crosses a threshold. Added on demand the first time a heat zone touches
-    /// an object.
+    /// it drifts back toward ambient, tints the object (glowing hot / frosted
+    /// cold), and bleeds burn or freeze damage past a threshold. Added on demand.
     public class Thermal : MonoBehaviour
     {
         public float Temperature = 18f;
@@ -34,23 +32,18 @@ namespace SpellyZombie
                 _canTint = true;
             }
             _dmg = GetComponent<Damageable>();
-            // cached once (cache-once law) - creatures wear their own flames
+            // cached once; creatures wear their own flames
             _creatureLimb = GetComponentInParent<Creature>() != null;
         }
 
-        /// delta is raw heat energy; heavy/high-capacity materials change
-        /// slower. Clamped: no dose can bank an hour of stored inferno.
+        /// delta is raw heat energy; high-capacity materials change slower. Clamped.
         public void AddHeat(float delta) => Temperature = Mathf.Clamp(
             Temperature + delta / Mathf.Max(0.25f, HeatCapacity), -320f, 900f);
 
         void Update()
         {
             float dt = Time.deltaTime;
-            // LAW 7 WITH TEETH ("the world determines the baseline
-            // where all naturally falls towards in time" — a meteor-baked
-            // object sat ablaze for MINUTES on the flat 6°/s crawl): cooling
-            // is PROPORTIONAL. The further from ambient, the faster the fall:
-            // infernos burn themselves out, a warm mug lingers.
+            // cooling is proportional: the further from ambient, the faster the fall
             float drift = DrawingConfig.AmbientDriftPerSec
                 + Mathf.Abs(Temperature - Ambient) * DrawingConfig.AmbientDriftFactor;
             Temperature = Mathf.MoveTowards(Temperature, Ambient, drift * dt);
@@ -65,9 +58,7 @@ namespace SpellyZombie
                 _rend.SetPropertyBlock(_mpb);
             }
 
-            // one late look - GiveHeat adds the Damageable right AFTER this
-            // Thermal, so Awake missed it; re-probing every frame violated the
-            // cache-once law (the null was never remembered)
+            // one late look: GiveHeat adds the Damageable after this Thermal, so Awake missed it
             if (_dmg == null && !_dmgSearched)
             {
                 _dmgSearched = true;
@@ -81,8 +72,7 @@ namespace SpellyZombie
                     _dmg.TakeDamage(DrawingConfig.FreezeDamagePerSec * dt, "freezing");
             }
 
-            // burning WOOD visibly burns (cartoon flames) - creatures have
-            // their own flame system, so they're skipped here
+            // burning wood visibly burns; creatures have their own flame system
             bool ablaze = Temperature > DrawingConfig.BurnThreshold;
             if (ablaze && _flames == null && !_creatureLimb)
             {
@@ -91,9 +81,7 @@ namespace SpellyZombie
                 {
                     _flames = Object.Instantiate(lib.Fire, transform);
                     _flames.transform.localPosition = Vector3.zero;
-                    // the flame at ITS authored size ("why is the fire
-                    // so large?") — parenting inherits the object's scale, so
-                    // a burning HOUSE was wearing house-sized flames. Undo it.
+                    // undo the parent's scale so the flame keeps its authored size
                     var ls = transform.lossyScale;
                     float inv = 1f / Mathf.Max(0.01f, Mathf.Max(ls.x, Mathf.Max(ls.y, ls.z)));
                     _flames.transform.localScale = Vector3.one * inv;

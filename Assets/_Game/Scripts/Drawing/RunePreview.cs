@@ -3,10 +3,8 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The little truth-teller : finish a stroke and a small
-    /// label floats over the ink saying what the game READS it as - keep
-    /// editing and the label updates (each new reading replaces the old), so
-    /// you always know what a seal will fire before you close one.
+    /// Floating label over freshly drawn ink showing what the game reads it as;
+    /// each new reading replaces the old.
     public class RunePreview : MonoBehaviour
     {
         static RunePreview _current; // one at a time - the newest reading wins
@@ -17,14 +15,7 @@ namespace SpellyZombie
         const float Hold = 1.1f; // fully visible…
         const float Fade = 1.8f; // …then fades away slowly
 
-        /// POOLED — ONE label for the whole session ("those tmp's
-        /// should be pooled like all effects"). It used to Destroy the old label
-        /// and `new GameObject` + AddComponent<TextMeshPro> a fresh one on every
-        /// reading, and building a TMP is not cheap: mesh, material and font
-        /// atlas work each time. Harmless on the floor, where one drag is one
-        /// reading - brutal on the BODY, where the pen crosses a bone every few
-        /// centimetres and each crossing used to end a stroke and read again.
-        /// (That second half is fixed at the source in SurfaceDrawer.)
+        /// Pooled - one label for the whole session.
         public static void Show(Vector3 worldPos, string text, Color color)
         {
             // == null also catches a label destroyed by a scene load
@@ -41,12 +32,8 @@ namespace SpellyZombie
         /// The expensive half, paid exactly once.
         void BuildOnce()
         {
-            // legacy TextMesh has ONE font atlas and no sprite support, so a
-            // rune's emoji could only ever be a tofu box (only  survived -
-            // it's the one glyph of the twelve that lives in a normal font)
             _tm = gameObject.AddComponent<TextMeshPro>();
-            // Midline = centred BOTH ways. TMP's "Center" is horizontal-only
-            // and top-anchored, which parked every icon up-left of the ink.
+            // Midline = centred both ways (TMP's "Center" is horizontal-only)
             _tm.alignment = TextAlignmentOptions.Midline;
             _tm.fontSize = 1.4f;
             _tm.enableWordWrapping = false;
@@ -66,10 +53,8 @@ namespace SpellyZombie
             _tm.text = Ghost(text);
         }
 
-        /// A reading is a HINT, not a billboard - the icon sits back so the
-        /// ink stays the loudest thing on screen. Sprites ignore the label's
-        /// colour (TMP tints sprites only if "Tint All Sprites" is on), so
-        /// the alpha tag is what actually softens them.
+        /// Sprites ignore the label colour (TMP tints sprites only with "Tint All
+        /// Sprites" on) - the alpha tag is what softens them.
         static string Ghost(string s) => $"<alpha=#B4>{s}";
 
         void LateUpdate()

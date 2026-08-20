@@ -3,22 +3,10 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// WHAT CHANGING SIDES LOOKS LIKE. `Sides` records which team you are on;
-    /// this is the only thing that makes it visible.
-    ///
-    /// the calls, in order of how much they matter:
-    ///   - THE WAND IS THE IDENTITY SIGNAL. Green means corrupt, and it is the
-    ///     one indicator that can also show a HALF-turned wizard later, which a
-    ///     model swap never could.
-    ///   - Same model, different colour. Not a different body and NOT a smaller
-    ///     one: changing size mid-round would move the collider and the camera
-    ///     height at the exact moment somebody converts.
-    ///   - Nothing is created or destroyed, so switching cannot hitch.
-    ///
-    /// Tints through a MaterialPropertyBlock rather than touching `.material`,
-    /// which would instantiate a copy per player and quietly break batching.
-    /// Reverting is therefore exact: clear the block and the original look is
-    /// back, whatever the art was.
+    /// Makes a player's side visible: the wand goes fully corrupt green for
+    /// acolytes, the body takes only a hint. Same model and size both sides.
+    /// Tints via MaterialPropertyBlock (no material copies), so reverting is
+    /// exact.
     public class SideLook : MonoBehaviour
     {
         [Tooltip("How strongly an acolyte's robe takes the corrupt green. The WAND goes " +
@@ -92,23 +80,9 @@ namespace SpellyZombie
             foreach (var r in _bodyRends) Tint(r, paint, BodyTint);
         }
 
-        /// Cache the body's renderers once. THE ROBE IS NOT EVERYTHING YOU CARRY:
-        /// the wand is the signal (tinted fully, above) and the grimoire is the
-        /// art, so neither is robe.
-        ///
-        /// AXIOM (, "why is grimoire from acolyte green? It looks
-        /// strange"): this used to exclude them by SOCKET LOOKUP, which silently
-        /// stopped working on a baked player. Runtime-built props did not exist
-        /// yet the first time this ran, so they were never collected. A BAKED
-        /// prefab carries its book and wand from frame one, but the sockets do
-        /// not resolve until the rig's first LateUpdate - so the lookup was
-        /// still null here and both got cached as body. The wand suffered too:
-        /// the robe pass ran after the wand pass and diluted its full green
-        /// down to a 45% mix.
-        ///
-        /// Testing BY NAME instead is immune to when the rig finishes, and the
-        /// names are already a hard contract (CharacterRig and SideLook both do
-        /// an exact-name Find for "Wand" and "Grimoire").
+        /// Cache the body's renderers once, excluding carried pieces (wand,
+        /// grimoire) BY NAME - socket lookups may not have resolved yet when
+        /// this first runs.
         void CollectBody()
         {
             if (_bodyRends.Count > 0) return;
@@ -139,11 +113,8 @@ namespace SpellyZombie
         {
             if (r == null) return;
 
-            // ONLY UNDO WHAT WE DID. This used to clear the property block on
-            // every body renderer whenever you were a wizard, which wiped
-            // colours other systems had set through a block. That is how the
-            // hat lost its colour: nothing set it grey, something stopped
-            // setting it coloured.
+            // only clear blocks this component set - clearing every renderer
+            // wipes colours other systems set through blocks
             if (colour == null)
             {
                 if (_mine.Remove(r)) r.SetPropertyBlock(null);

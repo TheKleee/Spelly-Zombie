@@ -4,11 +4,9 @@ using UnityEngine.SceneManagement;
 
 namespace SpellyZombie
 {
-    /// The travel egg: from match start until the map is ready (and again on
-    /// the way home), the local player stands frozen inside a dark shell.
-    /// Nothing of the world renders, a few spell motes float around to grab
-    /// and throw, then the shell dissolves and the world appears. Purely
-    /// local, one per client, never replicated.
+    /// The travel egg: during scene loads the local player stands frozen in a
+    /// dark shell; only egg-layer objects render, a few spell motes float
+    /// around, then the shell dissolves. Purely local, never replicated.
     public class LoadEgg : MonoBehaviour
     {
         const float Radius = 8f;   // covers the third person camera with room

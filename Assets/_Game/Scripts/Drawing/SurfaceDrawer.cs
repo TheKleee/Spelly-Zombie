@@ -4,13 +4,8 @@ using UnityEngine.InputSystem;
 namespace SpellyZombie
 {
     /// The pen: raycasts from the camera onto any surface in range and lays down
-    /// DrawNodes as the aim point moves. Aiming works two ways with the same code -
-    /// locked cursor (draw at the crosshair by moving the view) or precision mode
-    /// (hold LeftAlt: cursor is freed and the ray follows it).
-    ///
-    /// Drawing is just drawing: ink is ink, loops are seals, runes are read by
-    /// recognition when a seal closes around them. (The draft/choose-and-stamp
-    /// system was removed - it made drawing slow and unplayable.)
+    /// DrawNodes as the aim point moves. Locked cursor draws at the crosshair;
+    /// precision mode (hold LeftAlt) frees the cursor and the ray follows it.
     public class SurfaceDrawer : MonoBehaviour
     {
         public Camera Cam;
@@ -34,9 +29,7 @@ namespace SpellyZombie
         PlayerInk _inkPool;       // scoop target - erased ink refills the wand
         bool _wasErasing;         // falling edge  re-preview the edited ink
         int _holdEraseStart;      // ErasedTotal at rub start - a rub that kills nothing speaks
-        float _pilotRetry;        // controller lookup throttle - the old every-frame
-                                  // FindAnyObjectByType was a whole-scene scan per
-                                  // frame, forever, in scenes with no controller
+        float _pilotRetry;        // controller lookup throttle
 
         void Update()
         {
@@ -48,10 +41,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // the Pose Studio / pause menu own the mouse while open.
-            // A SHAPED ACOLYTE CANNOT DRAW either : hiding is safe
-            // and powerless, and everything that wins the round happens in your
-            // own body. This is the whole trade the class is built on.
+            // menus own the mouse while open; a shaped acolyte cannot draw
             if (PoseStudio.IsOpen || GameMenu.IsOpen || ShapeShift.LocalIsShaped)
             {
                 IsPenActive = false;
@@ -59,8 +49,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // no doodling while bleeding out on the floor (lookup throttled to
-            // 1s so a late-spawning controller is still found, cheaply)
+            // no drawing while downed (controller lookup throttled to 1s)
             if (_pilot == null && (_pilotRetry -= Time.deltaTime) <= 0f)
             {
                 _pilotRetry = 1f;
@@ -74,8 +63,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // third person is for EMOTING - the pen only comes out there for
-            // body paint (R)
+            // in third person the pen only comes out for body paint
             if (SimpleFPSController.ThirdPersonActive && !SelfPaint.IsActive)
             {
                 IsPenActive = false;
@@ -91,8 +79,7 @@ namespace SpellyZombie
                 return;
             }
 
-            // THE WAND TETHER: no ink in hand = no wand = no drawing. Refill at
-            // a cauldron. (Defaults open, so the lobby/studio still draw free.)
+            // no ink = no drawing; WandState defaults open so lobby/studio draw free
             if (!WandState.LocalCanDraw)
             {
                 IsPenActive = false;
@@ -100,9 +87,8 @@ namespace SpellyZombie
                 return;
             }
 
-            // weapons 2/3 own the mouse buttons; the pen belongs to the wand +
-            // grimoire (slot 1) and to the two draw modes (engraving a raised
-            // weapon / painting your body)
+            // weapons 2/3 own the mouse buttons; the pen belongs to slot 1 and
+            // the two draw modes (weapon engraving / body paint)
             if (!SelfPaint.IsActive && !HeldWeapon.DrawMode)
             {
                 if (_slots == null) _slots = GetComponentInParent<WeaponSlots>();
@@ -114,15 +100,12 @@ namespace SpellyZombie
                 }
             }
 
-            // the wand's other end: right-click (or left trigger) rubs ink out
-            // (R belongs to weapon-draw mode / the emote editor now)
+            // eraser: right-click or left trigger
             var gp = Gamepad.current;
             bool gpDraw = gp != null && gp.rightTrigger.ReadValue() > 0.4f;
             bool gpErase = gp != null && gp.leftTrigger.ReadValue() > 0.4f;
 
-            // ANY OPEN MENU OWNS THE MOUSE ("We need to disable
-            // drawing while menu is active (any menu that pops up)") — the hat
-            // picker's sliders were painting ink straight through the panel
+            // any open menu owns the mouse - no drawing through panels
             if (GameMenu.IsOpen || HatPillar.PanelOpen || LobbyStand.PanelOpen
                 || PoseStudio.IsOpen || Powerups.IsChoosing || UIKit.Typing
                 || LobbyInspect.PanelOpen)
@@ -134,16 +117,14 @@ namespace SpellyZombie
                 return;
             }
 
-            // no wand (or dry) = no drawing - the melted wand was still writing
+            // no wand (or dry) = no drawing
             bool penHeld = (mouse.leftButton.isPressed || gpDraw) && WandState.LocalCanDraw;
             bool erasing = mouse.rightButton.isPressed || gpErase;
             // eraser lifted: the ink changed - re-read what's left (preview)
             if (_wasErasing && !erasing && DrawingWorld.Instance != null)
             {
                 DrawingWorld.Instance.PreviewNear(_lastErasePoint);
-                // A WHOLE RUB THAT ERASED NOTHING SAYS WHY (never silently
-                // refuse): if ink sat just out of the eraser's touch, name
-                // the gap instead of looking broken.
+                // a rub that erased nothing names the nearest gap
                 if (DrawingWorld.ErasedTotal == _holdEraseStart
                     && Time.time < DrawingWorld.LastEraseMissTime + 1f)
                     DrawingWorld.Instance.LogEvent(
@@ -175,12 +156,8 @@ namespace SpellyZombie
                     if (_inkPool == null) _inkPool = GetComponentInParent<PlayerInk>();
                     // rubbed-out ink flows back to YOUR wand
                     DrawingWorld.Instance.EraseAlong(from, eraseHit.point, DrawingConfig.EraseRadius, _inkPool);
-                    // BODY INK DEPTH SLACK (easel only): ink from an earlier
-                    // sitting can hover a few centimetres off TODAY'S pen
-                    // surface (capsule canvas vs skin shell), and the surface
-                    // sweep alone never reached it ("not allowing me
-                    // to erase the old drawing on my body"). Same pen width,
-                    // forgiving depth, along the aim.
+                    // body-paint depth slack: older body ink can hover a few cm off
+                    // today's pen surface - same pen width, forgiving depth, along the aim
                     if (SelfPaint.IsActive)
                     {
                         Vector3 depth = eraseRay.direction * 0.03f;
@@ -217,10 +194,9 @@ namespace SpellyZombie
             return Cam.ScreenPointToRay(mouse.position.ReadValue());
         }
 
-        /// Body-painting: the pen sees ONLY the painter's body (the rule
-        /// never ink the world behind you by accident); a fat sphere-cast backs
-        /// up the thin ray so limb-capsule gaps don't break the line.
-        static readonly RaycastHit[] _aimHits = new RaycastHit[32]; // NonAlloc buffer - RaycastAll here allocated EVERY frame while body-painting
+        /// Body-painting: the pen sees only the painter's body; a fat sphere-cast
+        /// backs up the thin ray so limb-capsule gaps don't break the line.
+        static readonly RaycastHit[] _aimHits = new RaycastHit[32]; // NonAlloc buffer
 
         static bool AimHit(Ray ray, out RaycastHit hit)
         {
@@ -257,9 +233,7 @@ namespace SpellyZombie
             for (int i = 0; i < count; i++)
             {
                 var h = hits[i];
-                // the floated grimoire rides the CAMERA (a child of this same
-                // root) 0.8m from the lens - nearest-hit would hand it every
-                // stroke that crosses it, and the book is a book, not skin
+                // skip the floated grimoire riding the camera - it would catch every stroke
                 if (SelfPaint.FloatingBook != null
                     && h.collider.transform.IsChildOf(SelfPaint.FloatingBook)) continue;
                 if (h.distance < best && h.collider.transform.IsChildOf(SelfPaint.ActiveRoot))
@@ -273,16 +247,14 @@ namespace SpellyZombie
 
         void HandleDrawHit(RaycastHit hit)
         {
-            // ink cannot exist on water - the pen just refuses (design: water is the seal-killer)
+            // ink cannot exist on water - the pen refuses
             if (hit.collider.GetComponent<WaterSurface>() != null)
             {
                 EndStroke();
                 return;
             }
 
-            // BODY INK RIDES BONES FROM BIRTH ("the drawing is floating
-            // in air... not linked with the arms") — the shell is just the
-            // canvas; the ink parents to the nearest LIMB.
+            // the shell is just the canvas - body ink parents to the nearest limb
             Transform surface = hit.collider.transform;
             if (surface.name == "PaintShell" && SelfPaint.ActiveRoot != null)
             {
@@ -291,18 +263,8 @@ namespace SpellyZombie
                 if (limb != null) surface = limb;
             }
 
-            // A ZOMBIE'S SKIN IS A CANVAS FOR ITS BODY ("you
-            // can't draw on a zombie the same way you can draw on a player").
-            // The shell you hit is a raycast-only catcher on the DRESS, which
-            // lives outside the zombie's hierarchy - so the ink parents to the
-            // ZOMBIE ROOT instead: it rides the body, counts toward lifting it,
-            // and a seal closed on it can detonate it. Same shape as the
-            // player's shelllimb routing above.
-            // ANOTHER PLAYER'S BODY, hit through their BodyCanvas (
-            // "make your body paintable by others cause it's funny") — the ink
-            // parents to their nearest LIMB, exactly the routing the self-paint
-            // shell uses, so it rides their animation and replicates through the
-            // existing mixamorig body-ink path.
+            // a zombie's dress shell is a raycast-only catcher - ink parents to the
+            // zombie root. Another player's BodyCanvas routes to their nearest limb.
             if (surface.name == "BodyCanvas")
             {
                 var victimRig = hit.collider.GetComponentInParent<CharacterRig>();
@@ -314,16 +276,13 @@ namespace SpellyZombie
             if (zombieOwner != null)
             {
                 surface = zombieOwner.transform;
-                // THE PEN PINS IT ("if you hit it, it enters the
-                // paint mode") — the body freezes into the shell's pose while
-                // ink is flowing onto it, and for a grace period after, so the
-                // seal's second stroke doesn't start on a walking target.
+                // painting freezes the zombie into the shell's pose (plus a grace
+                // period) so the next stroke doesn't start on a walking target
                 zombieOwner.PaintFreeze(DrawingConfig.ZombiePaintFreezeSeconds);
             }
 
-            // one stroke, ONE surface - crossing a joint ends it; SEAM WELD
-            // puts
-            // one last node AT the crossing so both sides keep kissing in every pose
+            // one stroke, one surface - crossing a joint ends it; a seam-weld node
+            // at the crossing keeps both sides touching in every pose
             if (_current != null && _current.Surface != null && surface != _current.Surface)
             {
                 var weld = DrawNode.Create(_current, _current.Nodes.Count,
@@ -336,23 +295,15 @@ namespace SpellyZombie
             // of wall at 8m, and silent stroke splits break closing shapes
             float allowedJump = Mathf.Max(DrawingConfig.MaxStrokeJump, hit.distance * DrawingConfig.MaxStrokeJumpPerMeter);
 
-            // THE JUMP IS MEASURED AGAINST THE SURFACE, NOT THE WORLD (
-            // Aug 11, drawing on zombies: console full of "aim jumped 25cm").
-            // Two world points a frame apart confuse two different motions: the
-            // HAND flicking (a real split) and the SURFACE walking away under a
-            // steady hand (not a split - the ink should follow). Remembering
-            // the last hit in the surface's OWN space and re-projecting it
-            // through that surface's CURRENT transform cancels the surface's
-            // motion, leaving only what the hand actually did. On a wall the
-            // two are identical, so nothing changes for the world.
+            // the jump is measured against the surface, not the world: re-projecting
+            // the last hit through the surface's current transform cancels the
+            // surface's own motion, leaving only what the hand did
             Vector3 lastPoint = _lastHitSurface != null
                 ? _lastHitSurface.TransformPoint(_lastHitLocal)
                 : _lastHitPoint;
             if (_current != null && Vector3.Distance(hit.point, lastPoint) > allowedJump)
             {
-                // diagnostic: silent splits turn self-crossings into unbridgeable
-                // cross-stroke gaps - if this fires during honest circles, the
-                // pen-continuity weld gets built next
+                // diagnostic: silent splits turn self-crossings into cross-stroke gaps
                 DrawingWorld.Instance.LogEvent(
                     $"stroke split mid-draw: aim jumped {Vector3.Distance(hit.point, lastPoint) * 100f:0}cm (limit {allowedJump * 100f:0}cm)");
                 EndStroke(penLifted: false); // new stroke, but the pen never came up
@@ -395,7 +346,7 @@ namespace SpellyZombie
             if (_ink != null && last != null)
             {
                 float cost = Vector3.Distance(_smoothedPoint, last.transform.position)
-                    * DrawingConfig.InkCostPerMeter * Perks.InkCostMul;
+                    * DrawingConfig.InkCostPerMeter;
                 if (!_ink.TrySpend(cost))
                 {
                     DrawingWorld.Instance.LogEvent("OUT OF INK. kills refill the well");
@@ -411,10 +362,9 @@ namespace SpellyZombie
             TryCloseMidDraw(node);
         }
 
-        /// Closing while drawing - against ANY earlier point of the stroke, not
-        /// just its start. Returning to the start closes the whole loop; crossing
-        /// your own line closes the crossed portion (lasso rule) and the tail
-        /// before the crossing survives as its own ordinary stroke.
+        /// Closing while drawing: returning to the start closes the whole loop;
+        /// crossing your own line closes the crossed portion (lasso rule) and the
+        /// tail before the crossing survives as its own stroke.
         void TryCloseMidDraw(DrawNode newNode)
         {
             var nodes = _current.Nodes;
@@ -426,14 +376,9 @@ namespace SpellyZombie
             {
                 for (int j = 0; j <= last - DrawingConfig.MinLoopNodes; j++)
                 {
-                    // mid-draw closure = RETURNING TO THE START (the circle
-                    // gesture). Crossing your own line deeper into the stroke
-                    // no longer truncates the drawing on the spot - a five-
-                    // point star crosses itself five times and used to get
-                    // cut mid-glyph (slow stars died here, fast ones later at
-                    // the detect tick; "most were not recognized").
-                    // Deeper crossings resolve at pen-up, where the crossing
-                    // finder's star-guard tells lassos from glyphs.
+                    // mid-draw closure only near the stroke's start (the circle
+                    // gesture); deeper self-crossings resolve at pen-up where the
+                    // star-guard tells lassos from glyphs
                     if (_current.LengthBetween(0, j) > DrawingConfig.MidDrawCloseStartRegion) break;
                     float loopLen = _current.LengthBetween(j, last);
                     if (loopLen < DrawingConfig.MinLoopPerimeter) break; // loops only shrink from here
@@ -477,14 +422,8 @@ namespace SpellyZombie
             DrawingWorld.Instance.CloseSingleStroke(stroke);
         }
 
-        /// `penLifted: false` = the pen is STILL DOWN and this is only a
-        /// structural split (a bone seam, an aim jump). "the
-        /// recognition should only run after the ink release just like on the
-        /// floor." On the floor one drag is one stroke, so nobody noticed that
-        /// every split re-reads the whole connected drawing and rebuilds the
-        /// preview label. On the BODY the pen crosses a bone every few
-        /// centimetres, so one drag fired dozens of reads. The ink, the welds
-        /// and seal closure are unchanged - only the READING waits for release.
+        /// `penLifted: false` = the pen is still down and this is a structural
+        /// split (bone seam, aim jump) - only the rune reading waits for release.
         void EndStroke(bool penLifted = true)
         {
             if (_current == null) return;
@@ -507,7 +446,5 @@ namespace SpellyZombie
             GUI.color = Color.white;
         }
 
-        // (F-key template recording REMOVED by the ruling - the Rune
-        // Studio walls are the one and only recording surface now.)
     }
 }

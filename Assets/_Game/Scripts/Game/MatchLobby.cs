@@ -4,8 +4,8 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Pre-match lobby: PURE CO-OP, NO PILLARS; color = join order, ENTER readies, NO auto-start, host picks the map with M.
-    /// (TeamNames/TeamColors/LocalTeam keep their names - they're the player-COLOR api and wire byte now, renaming would churn net + saves.)
+    /// Pre-match lobby: color = join order, ready toggle, host picks the map.
+    /// (TeamNames/TeamColors/LocalTeam are the player-color api and net wire byte; renaming churns net + saves.)
     public class MatchLobby : MonoBehaviour
     {
         public static MatchLobby Instance { get; private set; }
@@ -29,15 +29,10 @@ namespace SpellyZombie
             Instance != null && !string.IsNullOrEmpty(Instance._netMap)
                 ? Instance._netMap : SelectedMap;
 
-                /// The game MODE (the book stand picks "not just maps but
-        /// game modes as well => if we decide to put in more game modes"). One
-        /// exists today - Wizards vs Acolytes - so this is the named slot the
-        /// second mode will drop into, not a menu yet.
+        /// The game mode; only Wizards vs Acolytes exists today.
         public static string SelectedMode { get; private set; } = "Acolytes";
 
-        /// HOST cycles the map - same rule as the M key (Among Us style: host
-        /// picks, everyone sees the pick on the board). Public so the BOOK
-        /// STAND menu is the same action, not a second implementation.
+        /// Host cycles the map; public so the book stand menu reuses this action.
         public static void CycleMap() => CycleMap(1);
 
         public static void CycleMap(int dir)
@@ -216,9 +211,8 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             bool client = NetGame.Connected && !NetGame.IsHost;
 
-            // COLOR = JOIN ORDER, automatically (no pillars, no picking):
-            // host/offline RED; a client locks in by how many players were
-            // already here when it arrived
+            // color = join order: host/offline RED; a client locks in by
+            // how many players were already here when it arrived
             if (!NetGame.Connected) { LocalTeam = 0; _colorSet = false; }
             else if (NetGame.IsHost) LocalTeam = 0;
             else if (!_colorSet)
@@ -249,7 +243,6 @@ namespace SpellyZombie
                     if (CallActive && _readyLocal) _callUntil = -1f; // answered
                 }
 
-                // (the M map hotkey is gone: the book stand owns map picking)
             }
 
             if (CallActive)

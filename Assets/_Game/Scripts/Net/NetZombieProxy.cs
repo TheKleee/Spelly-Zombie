@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// B4: client-side stand-in for a HOST-simulated zombie - no brain, lerps to snapshots, valid spell target, damage RELAYED to the host; vanishes when snapshots stop listing it.
+    /// Client-side stand-in for a host-simulated zombie - no brain, lerps to snapshots, valid spell target, damage relayed to the host; vanishes when snapshots stop listing it.
     public class NetZombieProxy : MonoBehaviour
     {
         Vector3 _targetPos;
@@ -58,7 +58,7 @@ namespace SpellyZombie
                 Quaternion.Euler(0f, _targetYaw, 0f), Time.deltaTime * 8f);
         }
 
-        /// Snapshot stopped listing it: the host says it's gone. Poof politely.
+        /// Snapshot stopped listing it: the host says it's gone.
         public void Vanish()
         {
             for (int i = 0; i < 4; i++)

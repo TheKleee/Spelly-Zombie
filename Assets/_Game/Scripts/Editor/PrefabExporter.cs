@@ -3,17 +3,14 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Exports the map-building vocabulary as PREFABS into _Game/Prefabs so
-    /// composes the world BY HAND - houses, towers, sky islands, props,
-    /// story clusters. Each prefab is fully wired: colliders, chemistry tags,
-    /// ink canvases, breakables, lights. Drag, place, done.
+    /// Exports the map-building pieces as prefabs into _Game/Prefabs. Each
+    /// prefab is fully wired: colliders, chemistry tags, ink canvases,
+    /// breakables, lights.
     public static class PrefabExporter
     {
         const string Dir = "Assets/_Game/Prefabs";
 
-        // AXIOM : these are prefabs OWNS and hand-edits. The
-        // export used to replace all 20 at fixed paths with no dialog, no
-        // backup and no undo. Default is now "only create the missing ones".
+        // exported prefabs may be hand-edited; default is "only create missing"
         static bool _replaceExisting;
         static readonly System.Collections.Generic.List<string> _kept = new System.Collections.Generic.List<string>();
         static readonly System.Collections.Generic.List<string> _wrote = new System.Collections.Generic.List<string>();
@@ -112,7 +109,7 @@ namespace SpellyZombie
                 var e = new GameObject("ZombieEntry");
                 e.transform.SetParent(GameObject.Find("__export").transform, false);
                 e.AddComponent<ZombieEntryPoint>();
-                // a rock pile so the entry reads as a place in the world
+                // rock pile marks the entry visually
                 VillageBuilder.PlacePT(
                     "Assets/Polytope Studio/Lowpoly_Environments/Prefabs/Rocks/PT_River_Rock_Pile_02.prefab",
                     new Vector3(1.2f, 0f, 0.5f), 0f, 1.1f, SurfaceMaterialType.Stone);
@@ -143,8 +140,6 @@ namespace SpellyZombie
 
         static void Save(string name, System.Action build)
         {
-            // check the PATH FIRST - the old order built the whole hierarchy
-            // and then threw it away, and overwrote the prefab regardless
             string path = $"{Dir}/{name}.prefab";
             bool exists = AssetDatabase.LoadAssetAtPath<GameObject>(path) != null;
             if (exists && !_replaceExisting) { _kept.Add(name); return; }

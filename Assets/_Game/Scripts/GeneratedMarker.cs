@@ -2,20 +2,17 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE AXIOM'S MARKER ("You have no control, I can change
-    /// anything freely and easily"). Generators stamp this on everything THEY
-    /// create, so a rebuild can delete its own output and never touch what he
-    /// placed by hand. Rule for every clear/rebuild pass in the project:
-    /// **delete only what is marked, and name what you kept.**
+    /// Generators stamp this on everything they create, so a rebuild can
+    /// delete its own output and never touch hand-placed objects. Clear
+    /// passes delete only what is marked.
     public class CaveGenerated : MonoBehaviour { }
 
     /// Drop this on anything you want the tooling to leave completely alone -
     /// the prefab doctor and any future auto-healer skip it.
     public class HandsOff : MonoBehaviour { }
 
-    /// ADOPT, NEVER DICTATE - the helper the axiom audit found would close five
-    /// violation classes at once. Code must use the component authored and
-    /// only create one when it is genuinely absent.
+    /// Use the authored component when present; create one only when it is
+    /// genuinely absent.
     public static class Adopt
     {
         /// Returns the existing component if the prefab already carries one,

@@ -2,51 +2,37 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE INK COMET (v2: "that effect must be simple and
-    /// beautiful... just use a long trail on flying object") — the ink LEAVES
-    /// as a bright drop climbing to the sky with a long trail, and ARRIVES as
-    /// the same drop falling out of the sky onto the pot. Direction is the
-    /// meaning, the trail is the beauty, one flying object each way.
-    ///
-    /// Dark ink gets BRIGHTENED for the additive material: v1 was a black
-    /// additive beam, which adds nothing to any pixel and was therefore
-    /// literally invisible — the "where was the falling from the sky effect?"
+    /// Ink comet: a bright drop with a long trail. It climbs to the sky when
+    /// ink leaves and falls out of the sky onto the pot when ink arrives.
     public class SkyBeam : MonoBehaviour
     {
         const float Height = 70f;
         const float UpTime = 2.2f;
-        /// How long the falling drop takes - PUBLIC because the ink must
-        /// appear the MOMENT it lands , so callers fire the comet
-        /// this many seconds before they fill the pot.
+        /// Fall duration; callers fire the comet this many seconds before
+        /// filling the pot so the ink appears at contact.
         public const float DownSeconds = 1.5f;
 
         Vector3 _from, _to;
         float _age, _time;
-        Transform _target;        // a pot mid-toss: the drop CHASES it down
-        System.Action _onArrive;  // the ink spawns HERE - arrival, not a timer
+        Transform _target;        // homing target while falling
+        System.Action _onArrive;  // fired at contact; the caller spawns the ink then
         bool _arrived;
 
-        /// The ink LEFT here - the drop climbs away and is gone.
+        /// Ink leaves: the drop climbs away.
         public static void Up(Vector3 at, Color c) => Spawn(at, null, c, true, null);
 
-        /// The ink LANDS here - the drop falls onto a fixed spot.
+        /// Ink arrives: the drop falls onto a fixed spot.
         public static void Down(Vector3 at, Color c) => Spawn(at, null, c, false, null);
 
-        /// The drop falls onto a LIVING target - it homes while it falls
-        /// ("you never know what cauldron might be doing... people
-        /// might even be tossing it. You can't time it perfectly") and fires
-        /// onArrive at true contact. The caller spawns the ink THERE.
+        /// The drop homes onto a moving target while it falls and fires
+        /// onArrive at contact; the caller spawns the ink then.
         public static void Down(Transform target, Color c, System.Action onArrive)
             => Spawn(target.position, target, c, false, onArrive);
 
         static void Spawn(Vector3 at, Transform target, Color c, bool rising, System.Action onArrive)
         {
-            // THE TRAIL IS THE INK ("trail needs to be the ink's
-            // current color... the ink is saved along with the team it
-            // belongs to") — no substitute colors. Dark ink cannot glow
-            // additively (black adds nothing to any pixel - why v1 was
-            // invisible), so it rides an opaque streak instead: black ink
-            // writes a BLACK line across the sky; corrupt green glows.
+            // trail uses the ink's actual color; dark ink cannot glow
+            // additively (black adds nothing), so it rides an opaque streak
             bool dark = Mathf.Max(c.r, Mathf.Max(c.g, c.b)) < 0.3f;
             var mat = dark
                 ? MatterFX.Get(new Color(c.r, c.g, c.b, 0.95f), MoteShade.Transparent)
@@ -81,10 +67,8 @@ namespace SpellyZombie
             t *= t; // a drop gathering speed, both directions
             if (_target != null)
             {
-                // A FLARE, ALWAYS VERTICAL ("spawning directly above
-                // the cauldron and then it flies down"): both ends ride the
-                // pot's own column, so a tossed pot slides the whole line
-                // with it and the drop still falls straight down onto it.
+                // both endpoints track the target so the drop still falls
+                // straight down onto a moving pot
                 Vector3 basePos = _target.position;
                 _from = basePos + Vector3.up * Height;
                 _to = basePos + Vector3.up * 0.4f;
@@ -93,7 +77,7 @@ namespace SpellyZombie
             if (!_arrived && _age >= _time)
             {
                 _arrived = true;
-                _onArrive?.Invoke(); // contact - NOW the ink may exist
+                _onArrive?.Invoke();
             }
             if (_age >= _time + 1.3f) Destroy(gameObject); // the trail finishes fading
         }

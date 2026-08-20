@@ -2,11 +2,6 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    // NOTE: the ComboBook (named combo recipes, banners, resonance boosts) was
-    // REMOVED by design verdict: no predetermined outcomes — "I want mayhem."
-    // Zones run, physics composes, nothing announces or nudges. Only the
-    // generic banner component below survives (round announcements use it).
-
     /// Big centered announcement on the curtain banner that fades and rises -
     /// used by the RoundDirector for round starts, wipes, and victories.
     public class ComboBanner : MonoBehaviour
@@ -19,17 +14,14 @@ namespace SpellyZombie
 
         public static void Show(string text, Color color)
         {
-            // newest wins: a second banner inside the first's 2.4s used to
-            // ADOPT the live group mid-fade (stale text, shared corpse)
+            // newest banner wins; the old one is destroyed
             if (_live != null)
             {
                 UIKit.Retire(_live._ui);
                 Destroy(_live.gameObject);
             }
             var go = new GameObject("ComboBanner");
-            DontDestroyOnLoad(go); // its group lives on the persistent canvas -
-                                   // dying with the scene stranded a frozen
-                                   // banner there showing the OLD text forever
+            DontDestroyOnLoad(go); // its group lives on the persistent canvas, so survive scene loads
             var b = go.AddComponent<ComboBanner>();
             _live = b;
             b.BuildUI(text, color);
@@ -47,8 +39,8 @@ namespace SpellyZombie
             UIKit.Stretch((RectTransform)cloth.transform);
 
             var label = UIKit.Label(_ui, text, 40, color, TextAnchor.MiddleCenter, true);
-            label.text = text;   // an ADOPTED prefab label keeps its authored
-            label.color = color; // words - a live banner must say ITS line
+            label.text = text;   // an adopted prefab label keeps its authored text - override it
+            label.color = color;
             var lr = (RectTransform)label.transform;
             UIKit.Stretch(lr);
             lr.offsetMin = new Vector2(60f, 8f);

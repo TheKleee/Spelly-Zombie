@@ -4,19 +4,12 @@ using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// ONE RANDOM HINT PER LOADING SCREEN ("We could add hints
-    /// on the loading screen... 1 random hint per loading screen. So that
-    /// they can potentially learn something new").
-    ///
-    /// Scene loads here are blocking, so the veil actually shows through the
-    /// NEW scene's first seconds (rig assembly, spawns - the real stutter),
-    /// masks them, holds long enough to read one fact, and fades. Call
-    /// Show() right before any SceneManager.LoadScene.
+    /// One random hint per loading screen. Scene loads are blocking, so the
+    /// veil masks the new scene's first seconds, holds long enough to read,
+    /// then fades. Call Show() right before any SceneManager.LoadScene.
     public class LoadingHints : MonoBehaviour
     {
-        // the teaching split (Aug 13): chips show only the undiscoverable
-        // moment-to-moment; SYSTEMS (like the revive law) teach here, one
-        // random fact per load, "so that they can learn things as they play"
+        // split with the chips: chips teach moment-to-moment keys, these teach systems
         static readonly string[] Keys =
         {
             "hint.alt", "hint.combine", "hint.lift", "hint.erase",
@@ -24,7 +17,7 @@ namespace SpellyZombie
             "hint.declare", "hint.trance", "hint.wake", "hint.ghost",
         };
 
-        const float HoldSeconds = 2.2f; // readable, never hostage
+        const float HoldSeconds = 2.2f;
         const float FadeSeconds = 0.5f;
 
         static LoadingHints _live;
@@ -37,8 +30,7 @@ namespace SpellyZombie
         bool _sceneArrived;
         float _arrivedAt;
 
-        // the ink void: runes and ink specks drift up through the dark while
-        // the map loads (the Meccha transition beat, wearing our glyphs)
+        // runes and ink specks drift up through the dark while the map loads
         readonly System.Collections.Generic.List<Graphic> _drift
             = new System.Collections.Generic.List<Graphic>();
         readonly System.Collections.Generic.List<Vector2> _driftVel
@@ -138,7 +130,6 @@ namespace SpellyZombie
             if (_ui == null) { Destroy(gameObject); return; }
             _ui.SetAsLastSibling(); // newly built scene UI must not cover the veil
 
-            // the void drifts, slow and endless, wrapping at the top
             float dt = Time.unscaledDeltaTime;
             for (int i = 0; i < _drift.Count; i++)
             {

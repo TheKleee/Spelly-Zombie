@@ -5,20 +5,13 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// "Spelly Zombie → Group House Parts": gathers every piece belonging to
-    /// a house under a "House 1", "House 2", … root so can drag each
-    /// straight to the Project window as a prefab.
-    ///
-    /// How it decides what belongs: every house has exactly one HouseFloor
-    /// (the drawable floor the builder made) - its footprint is the house's
-    /// ground truth. Structural pieces (walls, roofs, windows, shutters,
-    /// balconies, chimneys, canvases…) join if they stand on or lean over
-    /// the footprint (edge tolerance for walls); everything else (furniture)
-    /// joins only if it stands strictly INSIDE, so street props leaning on a
-    /// facade stay in the street. Fully undoable (Ctrl+Z), safe to re-run.
+    /// Gathers every piece belonging to a house under a "House N" root, ready
+    /// to drag to the Project window as a prefab. Each house is anchored by its
+    /// one HouseFloor footprint: structure joins with edge tolerance, furniture
+    /// only if strictly inside. Fully undoable, safe to re-run.
     public static class HouseGrouper
     {
-        // name prefixes that read as house STRUCTURE (edge-tolerant match)
+        // name prefixes treated as house structure (edge-tolerant match)
         static readonly string[] StructureNames =
         {
             "Wall", "Roof", "Window", "Shutter", "Balcony", "Chimney",

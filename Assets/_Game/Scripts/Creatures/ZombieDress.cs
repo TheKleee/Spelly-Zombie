@@ -3,18 +3,12 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The zombie's WARDROBE: dresses the physics capsule in the shared
-    /// character model with the zombie animation set. The capsule stays the
-    /// physics/chemistry/ink body (nothing about trance, tagging or crushing
-    /// changes) - the model is a pure visual that follows it.
-    ///
-    /// Lives OUTSIDE the zombie hierarchy on purpose: the capsule's per-kind
-    /// scale is non-uniform (0.7,1,0.7…), and skinned bones rotating under a
-    /// non-uniform parent shear. A world-space follower stays clean and
-    /// self-destructs when its zombie pops.
+    /// Dresses the zombie capsule in the shared character model; the capsule
+    /// stays the physics/ink body, the model is a visual follower. Lives outside
+    /// the zombie hierarchy: skinned bones shear under a non-uniform parent scale.
     public class ZombieDress : MonoBehaviour
     {
-        // warn ONCE per authored prefab, never per zombie (a horde would spam)
+        // warn once per prefab, not per zombie
         static readonly HashSet<int> _warnedNoCrown = new HashSet<int>();
         static readonly HashSet<int> _warnedNoHead = new HashSet<int>();
         static readonly HashSet<int> _warnedNoAnim = new HashSet<int>();
@@ -43,9 +37,7 @@ namespace SpellyZombie
         public void PaintHold(float seconds) =>
             _paintHoldUntil = Mathf.Max(_paintHoldUntil, Time.time + seconds);
 
-        /// Birth: crawl out of the ground - the StandUp clip the knockdown
-        /// recovery already owns, played from frame one. The stride matcher
-        /// leaves one-shots alone, so nothing stomps it mid-climb.
+        /// Spawn rise: plays the StandUp clip.
         public void Rise()
         {
             if (_anim != null) _anim.SetTrigger("StandUp");
@@ -60,9 +52,7 @@ namespace SpellyZombie
 
         bool _customBody; // the prefab is dressing this zombie - hands off
 
-        /// the prefab is wearing this body, so no code may recolour it. Read by
-        /// SummonedZombie, which tints code-built zombies green and must leave
-        /// the materials completely alone.
+        /// True when a custom prefab body is worn; code must not recolour it.
         public bool IsCustomBody => _customBody;
         float _fidgetIn = 6f;
 
@@ -73,18 +63,13 @@ namespace SpellyZombie
         /// the graybox capsule look continues unchanged.
         public static ZombieDress DressUp(Zombie z, Color skin, float widthMul, GooglyEyes eyes)
         {
-            // the ZOMBIE, the WAY: a prefab at Resources/Custom/ZombieBody
-            // replaces the shared model entirely - the mesh, the materials,
-            // untouched by code (no tint, no placeholder mouth). Rig it on the
-            // same Mixamo skeleton (or copy SZ_Body's avatar on import) and
-            // the zombie animation set plays on it as-is.
+            // ZombieBody prefab replaces the shared model, materials untouched;
+            // rigged on the same skeleton, the zombie animation set plays as-is
             var custom = PrefabVault.Get("ZombieBody");
             var prefab = custom != null ? custom : CharacterLibrary.Model;
             var ctrl = CharacterLibrary.ZombieAnim;
             if (prefab == null || z == null) return null;
-            // the BODY IS WORN EVEN WITH NO CONTROLLER (axiom: an unwired
-            // animator must never silently discard the prefab - it dresses,
-            // stands still, and the console says why)
+            // no controller: a custom body is still worn, stands still, warns once
             if (ctrl == null)
             {
                 if (custom == null) return null;
@@ -106,16 +91,11 @@ namespace SpellyZombie
             body.name = "Body";
             body.transform.localPosition = Vector3.zero;
             body.transform.localRotation = Quaternion.identity; // humanoid retarget faces +Z
-            // AXIOM: the prefab's authored scale is a decision, not a mistake -
-            // the fit MULTIPLIES it instead of assigning over it (assigning
-            // meant a body authored at 0.5 came out double height).
+            // the fit MULTIPLIES the authored scale, never assigns over it
             Vector3 authoredScale = body.transform.localScale;
 
-            // measure the model, scale it to the capsule's height, then widen
-            // or slim it per kind (stocky charger, lanky runner).
-            // AXIOM: the head bone is found by HUMANOID first, then loose name
-            // tiers — the old exact "mixamorig:Head" match meant a Blender rig
-            // with a bone simply named "Head" silently lost its eyes and hat.
+            // measure the model, scale to the capsule height, widen/slim per kind;
+            // head bone: humanoid mapping first, then loose name tiers
             Transform head = null, crown = null;
             var bodyAnim = body.GetComponent<Animator>();
             if (bodyAnim != null && bodyAnim.isHuman)
@@ -140,8 +120,7 @@ namespace SpellyZombie
             }
             else
             {
-                // no crown bone on the rig - don't invent a height, keep the
-                // authored proportions and say so once
+                // no crown bone: keep the authored scale, warn once
                 s = 1f;
                 if (_warnedNoCrown.Add(prefab.GetInstanceID()))
                     Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no 'HeadTop' bone. " +
@@ -150,40 +129,20 @@ namespace SpellyZombie
             }
             body.transform.localScale = Vector3.Scale(authoredScale, new Vector3(s * widthMul, s, s * widthMul));
             d._halfHeight = capsuleHeight * 0.5f;
-            // THE CAPSULE CAN BE RESIZED AFTER IT IS DRESSED ("the
-            // zombie is now floating"). A summon multiplies the zombie's scale
-            // once Spawn has already returned, so a one-time _halfHeight left the
-            // outfit hanging 0.82*(SizeMul-1) above the feet - floating for a big
-            // draw, sunk into the floor for a small one. Remember the fit so Sync
-            // can re-derive both numbers from the capsule's LIVE scale.
+            // the capsule can be resized after dressing (summons); remember the
+            // fit so Sync re-derives from the live capsule scale
             d._fitCapsuleY = z.transform.localScale.y;
             d._fitBodyScale = body.transform.localScale;
 
-            // THE REST POSE, remembered while it is still true: the body was
-            // just instantiated and no animator has run, so every bone sits
-            // where the prefab authored it - which is the pose the paint shell's
-            // sharedMesh describes. The paint freeze settles back to THIS, so
-            // shell and mesh agree while someone draws .
-            // RestPose is the ONE spelling of capture-and-return - the player's
-            // three private copies migrate onto it when says go.
+            // rest pose captured before any animator runs: the authored pose the
+            // paint shell's sharedMesh describes; the paint freeze settles back to it
             d._rest = RestPose.Capture(body.transform);
 
-            // EVERY skinned renderer, not just the first - a multi-material or
-            // multi-piece body would otherwise leave the rest culling wrongly
+            // every skinned renderer, not just the first
             var smr = body.GetComponentInChildren<SkinnedMeshRenderer>();
             var skins = body.GetComponentsInChildren<SkinnedMeshRenderer>(true);
-            // COLOUR PER KIND, WITHOUT TOUCHING the MATERIAL ("All
-            // my zombies are brown now. Can you make them change color?").
-            //
-            // baked ONE ZombieBody, a brown Charger, and the old rule here was
-            // that the prefab keeps the materials always, so every kind wore that
-            // one colour. Swapping the material out would throw away the shader
-            // and textures, and making a material asset per kind is five files he
-            // has to maintain.
-            //
-            // A MaterialPropertyBlock is neither: the material, the shader, the
-            // maps, with only the colour overridden per renderer. Clearing the
-            // block puts the exact look back.
+            // per-kind colour via MaterialPropertyBlock: material, shader and maps
+            // survive, only the colour is overridden; clearing the block restores it
             if (_tintBlock == null) _tintBlock = new MaterialPropertyBlock();
             foreach (var sk in skins)
             {
@@ -200,16 +159,9 @@ namespace SpellyZombie
                 }
                 sk.updateWhenOffscreen = true;
             }
-            // DRAW ON THE ZOMBIE, NOT ON ITS CAPSULE ("you
-            // can't draw on a zombie the same way you can draw on a player").
-            //
-            // The physics body is a capsule; the thing you SEE is this skinned
-            // mesh, and the pen was hitting the capsule - so ink landed nowhere
-            // near where you aimed. The player solved this long ago and I got
-            // the reason wrong twice: it is NOT a per-frame BakeMesh. Per
-            // CharacterRig's axiom, BakeMesh is unusable on the rig, so the
-            // shell is the SHARED MESH mounted at identity under the renderer.
-            // One collider, built once, no per-frame cost.
+            // paint shell: the pen must hit the visible mesh, not the capsule.
+            // BakeMesh is unusable on the rig (see CharacterRig), so the shell is
+            // the shared mesh mounted at identity - one collider, built once.
             if (smr != null && smr.sharedMesh != null)
             {
                 var shell = new GameObject("PaintShell");
@@ -219,26 +171,14 @@ namespace SpellyZombie
                 shell.transform.localScale = Vector3.one;
                 shell.AddComponent<MeshCollider>().sharedMesh = smr.sharedMesh;
 
-                // THE SHELL LIVES ON THE INK-CANVAS LAYER, AND THIS LINE IS
-                // WHY ZOMBIES WERE "MEGA BUGGED" when it
-                // was missing. On the Default layer this is a SOLID mesh wrapped
-                // around the zombie's own dynamic capsule: PhysX finds the
-                // capsule inside it every step and ejects it, the dress follows
-                // the capsule, the shell follows the dress - a feedback loop
-                // that flings the zombie across the map while the animator,
-                // seeing no ground speed of its own making, plays nothing.
-                //
-                // Layer 30 is the game's own answer, already carrying every
-                // wall canvas: Physics.IgnoreLayerCollision against ALL layers,
-                // but raycasts still hit - a pen target that physics cannot
-                // touch. The grab ray masks 30 out, so lifting still finds the
-                // capsule; the chew SphereCast masks it out too.
+                // MUST stay on the ink-canvas layer: on Default this solid mesh
+                // wraps the zombie's own capsule and PhysX ejects it, flinging the
+                // zombie. Layer 30 ignores collisions with every layer but stays
+                // raycast-visible; the grab ray and chew SphereCast mask it out.
                 shell.layer = InkCanvasLayer.Layer;
 
-                // NO PersistentInkSurface here: ink routes to the ZOMBIE ROOT
-                // (SurfaceDrawer, via ZombieOwner below), which already carries
-                // one - so marks live where lift authority, detonation and the
-                // netcode guards have always looked for them.
+                // no PersistentInkSurface here: ink routes to the zombie root via
+                // ZombieOwner, where detonation and the netcode guards look for it
                 d.gameObject.AddComponent<ZombieOwner>().Of = z;
             }
 
@@ -246,8 +186,7 @@ namespace SpellyZombie
                 Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no SkinnedMeshRenderer. " +
                     "a static mesh can't be animated by the zombie rig.", prefab);
 
-            // ANIMATOR ANYWHERE IN the HIERARCHY (it needn't sit on the root -
-            // silently missing it meant a T-posing statue with no explanation)
+            // the animator may sit anywhere in the hierarchy
             d._anim = body.GetComponentInChildren<Animator>(true);
             if (d._anim != null)
             {
@@ -258,12 +197,8 @@ namespace SpellyZombie
                 Debug.LogWarning($"[SpellyZombie] ZombieBody '{prefab.name}' has no Animator. " +
                     "it will stand still. Add one (humanoid avatar) to the prefab root.", prefab);
 
-            // the zombie-ness: seeded posture/variation over the body. With
-            // the custom body the LOOK layers (tint, placeholder mouth)
-            // stand down - only motion variety remains.
-            // AXIOM: ADOPT the ZombieFlavor if put one on the prefab - a
-            // second component would run with default switches while the
-            // configured one sat inert.
+            // seeded posture/variation; with a custom body only motion variety
+            // remains. Adopt an existing ZombieFlavor rather than adding a second.
             var flavor = Adopt.Component<ZombieFlavor>(body);
             flavor.Init(z.Kind, z.gameObject.GetInstanceID(),
                 d._anim, skin, smr, body, customBody);
@@ -279,12 +214,8 @@ namespace SpellyZombie
                 if (hr != null) hr.enabled = false;
             }
 
-            // a BAKED body brings its own googly eyes (edited them on
-            // the prefab) - the spawn-built pair bows out and the brain's
-            // mood system re-points at the. A DEAD baked rig (bake lost the
-            // wiring, or the eyeballs were renamed) is discarded instead, so
-            // the zombie never ends up with frozen saucer eyes - same guard
-            // the player rig uses.
+            // baked eyes replace the spawn-built pair; a dead pair (lost wiring)
+            // is discarded so the code-built eyes stay
             var bakedEyes = body.GetComponentInChildren<GooglyEyes>(true);
             if (bakedEyes != null && !(bakedEyes.IsAlive && bakedEyes.enabled
                 && bakedEyes.gameObject.activeSelf))
@@ -305,9 +236,7 @@ namespace SpellyZombie
 
             if (head != null)
             {
-                // the googly soul moves onto the animated head .
-                // AXIOM: IsCustom eyes carry the placement - mount them and
-                // touch nothing else (the contract on GooglyEyes says so).
+                // eyes mount on the animated head; IsCustom eyes keep their own placement
                 if (eyes != null && eyes != bakedEyes)
                 {
                     eyes.transform.SetParent(head, false);
@@ -317,11 +246,8 @@ namespace SpellyZombie
                         eyes.transform.localRotation = Quaternion.identity;
                     }
                 }
-                // the wizard hat rides the head bone too (collect first -
-                // reparenting while enumerating children throws). Its
-                // coordinates were authored against the GRAYBOX capsule, so
-                // on the rig it must be re-seated on the head instead of
-                // keeping a world position that belongs to another body.
+                // the hat rides the head bone (collect first: reparenting while
+                // enumerating throws); on a custom rig it is re-seated on the head
                 var hats = new System.Collections.Generic.List<Transform>();
                 foreach (Transform c in z.transform)
                     if (c.name == "Hat") hats.Add(c);
@@ -359,29 +285,19 @@ namespace SpellyZombie
             }
             Sync();
 
-            // first LateUpdate: the zombie animator has posed the body - now
-            // the costume sockets are safe to build (undead fashion optional)
+            // first LateUpdate: the animator has posed the body, sockets are safe to build
             if (!_socketed && _body != null)
             {
                 _socketed = true;
-                // seed = this zombie's instance id - the SAME id rides the
-                // zombie snapshots, so client proxies can roll the identical
-                // look without a single extra byte (B6 wires that side).
-                // AXIOM: on the body the random costume rolls stand down
-                // entirely - a socket deliberately left bare stays bare,
-                // exactly as tint and the placeholder mouth already do.
-                // Pieces parented to sockets on the prefab are untouched
-                // (an occupied socket is never rolled over anyway).
+                // seed = instance id, the same id in the zombie snapshots so client
+                // proxies roll the identical look; on a custom body random costume
+                // rolls stand down (occupied sockets are never rolled over)
                 Wardrobe.DressZombie(SocketSet.Build(_body, transform),
                     _customBody ? 0f : 0.35f, gameObject.GetInstanceID());
             }
 
-            // THE PAINT FREEZE . While the pen is on this body the
-            // animator is silenced and every bone settles into the captured rest
-            // pose - the pose the paint shell's mesh describes - so the ink
-            // lands exactly on the body you see. The trance already stopped the
-            // FEET (ZombieBrain); this stops the POSE. Released, the animator
-            // simply resumes.
+            // paint freeze: animator off, bones settle to the rest pose so ink
+            // lands on the shell shape; released, the animator resumes
             bool held = Time.time < _paintHoldUntil;
             if (held != _paintHeld)
             {
@@ -390,7 +306,7 @@ namespace SpellyZombie
             }
             if (held)
             {
-                // a soft settle, not a snap - the magic taking hold
+                // a soft settle, not a snap
                 _rest?.Settle(Time.deltaTime);
                 return; // no stride matching, no fidget - it is a statue
             }
@@ -405,34 +321,11 @@ namespace SpellyZombie
                 speed = v.magnitude;
             }
 
-            // LOCOMOTION IN THE BODY'S OWN UNITS ("they barely
-            // move their legs yet somehow their bodies travel in a direction").
-            //
-            // The Shamble tree is authored in m/s for a 1.0-scale body - idle 0,
-            // walk 1.4, run 4.5 - and the raw world speed went straight into it.
-            // Two things were wrong with that:
-            //
-            //   a WANDERING zombie only moves at 0.55 * WalkSpeed = 0.72 m/s
-            //   (ZombieBrain), which lands squarely between idle and walk. Half
-            //   the leg motion, all of the travel: it slides.
-            //
-            //   the body is SCALED - 0.82 base, times whatever a summon
-            //   multiplied it by - so a giant covering 1.3 m/s is barely moving
-            //   relative to its own legs and blends even further toward idle.
-            //
-            // THE PROPER WALK . The
-            // flying was never this code - it was the paint shell's collider
-            // ejecting the capsule (see DressUp) - but with that fixed, the walk
-            // still had feet sliding: the walk clip is authored to cover
-            // 1.4 m/s and a wandering zombie moves at 0.72, so the cycle
-            // overran the ground by 2x. The stride is matched to the ground
-            // HERE, under three guards that each answer one past failure:
-            //   · playback rate touches LOCOMOTION STATES ONLY - Animator.speed
-            //     gates every clip, and a bad value froze attacks and standups
-            //   · the reference speed is the CURRENT state's own authored
-            //     ground speed, so Run is not judged against the walk clip
-            //   · clamped tight, so no input can produce slow-motion or
-            //     fast-forward, only honest stride matching
+            // stride matching: clips are authored in m/s for a 1.0-scale body, so
+            // raw world speed makes scaled or slow zombies slide. Guards:
+            //   · playback rate touches locomotion states only (Animator.speed gates every clip)
+            //   · reference speed is the current state's own authored ground speed
+            //   · clamped tight, so only honest stride matching
             _anim.SetFloat("Speed", speed);
             var st = _anim.GetCurrentAnimatorStateInfo(0);
             bool walking = st.shortNameHash == HashWalk;
@@ -444,8 +337,7 @@ namespace SpellyZombie
             }
             else
             {
-                // idle, one-shots, and the OLD blend-tree controller (state
-                // "Shamble", which blends by Speed itself) all run untouched
+                // idle, one-shots, and the Shamble blend-tree controller run at 1x
                 _anim.speed = 1f;
             }
 
@@ -457,7 +349,7 @@ namespace SpellyZombie
                 _wasGettingUp = gettingUp;
             }
 
-            // idle boredom: scratch that itch every so often
+            // idle fidget timer
             if (speed < 0.2f)
             {
                 _fidgetIn -= Time.deltaTime;
@@ -475,9 +367,7 @@ namespace SpellyZombie
 
         void Sync()
         {
-            // the capsule's CURRENT size, not the one it wore when it was
-            // dressed - a summon resizes it after the fact and the outfit has
-            // to grow with it or hover over its own feet
+            // use the capsule's live scale: a summon resizes it after dressing
             float capsuleY = _target.localScale.y;
             if (!Mathf.Approximately(capsuleY, _fitCapsuleY) && _fitCapsuleY > 0.0001f)
             {

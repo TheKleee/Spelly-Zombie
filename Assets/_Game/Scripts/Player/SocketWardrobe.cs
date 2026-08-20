@@ -3,13 +3,10 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// the SOCKET CATALOG: one asset per body family - SZ_WardrobePlayer,
-    /// SZ_WardrobeZombie, SZ_WardrobeDemon (created via Spelly Zombie
-    /// Wardrobe  Create Wardrobe Catalogs). For every socket, an EXPANDABLE
-    /// list of prefabs builds in Blender and adds by hand; OPTION 0 IS THE
-    /// DEFAULT LOOK. Pieces instantiate LOCKED to the socket at identity -
-    /// model them in plain character space (+Z facing, +Y up, pivot at the
-    /// attachment point). Renderers named "*_Team" take the team tint.
+    /// Socket catalog, one asset per body family (SZ_WardrobePlayer / Zombie /
+    /// Demon). Option 0 is the default look. Pieces instantiate LOCKED to the
+    /// socket at identity - model them in plain character space (+Z facing,
+    /// +Y up, pivot at the attachment point). "*_Team" renderers take the tint.
     public class SocketWardrobe : ScriptableObject
     {
         [System.Serializable]
@@ -57,10 +54,8 @@ namespace SpellyZombie
         public static void SetChoice(string socket, int index)
             => PlayerPrefs.SetInt("sz_outfit_" + socket, index);
 
-            // AXIOM : a catalog slot filled used to be skipped in
-        // total silence when the socket name didn't resolve (a typo, a trailing
-        // space, or a rig whose bone SocketSet couldn't find). Say it once, and
-        // list the sockets this body DOES have so the fix is obvious.
+        // warn once when a filled slot's socket doesn't resolve, listing the
+        // sockets the body does have
         static readonly HashSet<string> _warnedSockets = new HashSet<string>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

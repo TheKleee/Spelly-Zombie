@@ -3,9 +3,8 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// The map-center marker where vessel-less ink pools. Put this component
-    /// ON the authored ink blob placed at the center: the blob stays hidden
-    /// until ink actually grounds here, then the pot pipeline drives its
-    /// size and colour like any pot's ink.
+    /// on the authored ink blob at the center: hidden until ink grounds here,
+    /// then the pot pipeline drives its size and colour.
     public class InkGrave : MonoBehaviour
     {
         public static InkGrave I { get; private set; }

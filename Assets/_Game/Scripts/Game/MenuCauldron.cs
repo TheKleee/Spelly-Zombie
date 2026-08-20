@@ -3,17 +3,15 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// The menu's INTRO TESTING AREA : draw straight into the
-    /// cauldron's brew with the mouse - real strokes, real seals, real spells,
-    /// with every rune unlocked so newcomers can try the whole alphabet while
-    /// the glyph ring around the cauldron teaches the shapes. The camera orbit
-    /// pauses while you draw and stays paused until 3 quiet seconds pass.
+    /// Menu drawing area: mouse strokes on the cauldron brew make real seals
+    /// and spells, with every rune unlocked. The camera orbit pauses while
+    /// drawing and stays paused until 3 quiet seconds pass.
     public class MenuCauldron : MonoBehaviour
     {
         public Collider Canvas; // the brew disc
         public static float LastDrawTime = -999f;
 
-        const int OwnerId = 777001; // the menu's phantom witch
+        const int OwnerId = 777001; // menu-local owner id
         Stroke _stroke;
         Vector3 _lastNode;
         Vector3 _lastErase;   // swept-erase track
@@ -23,13 +21,11 @@ namespace SpellyZombie
         {
             LastDrawTime = -999f;
             foreach (RuneCardType card in System.Enum.GetValues(typeof(RuneCardType)))
-                Grimoire.Unlock(OwnerId, card); // the menu knows every rune
+                Grimoire.Unlock(OwnerId, card);
         }
 
-        /// Where does the mouse land on the brew? First a REAL surface hit on
-        /// the Canvas collider (works on a curved cauldron interior - assign
-        /// the cauldron's own MeshCollider as Canvas and draw right in it),
-        /// then flat plane math as the fallback for thin invisible discs.
+        /// Raycast the Canvas collider first (works on curved interiors),
+        /// then fall back to flat plane math for thin invisible discs.
         bool AimAtBrew(Vector2 mousePos, out Vector3 point, out Vector3 normal)
         {
             var ray = Camera.main.ScreenPointToRay(mousePos);
@@ -73,7 +69,7 @@ namespace SpellyZombie
             }
             End();
 
-            if (mouse.rightButton.isPressed // the other end of the wand
+            if (mouse.rightButton.isPressed
                 && AimAtBrew(mouse.position.ReadValue(), out var erasePoint, out _))
             {
                 LastDrawTime = Time.time;

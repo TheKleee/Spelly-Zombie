@@ -3,191 +3,78 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE TURN-SEQUENCE RUNE MATCHER - the alphabet, read the way he
-    /// actually draws it.
+    /// The turn-sequence rune matcher. Ten of the twelve runes are a single
+    /// continuous open polyline and differ only by their sequence of signed
+    /// turns; only PUSH (arrow) and PULL (Y) carry a branch, and the branched
+    /// and unbranched families are never compared to each other.
     ///
-    /// the CORRECTION (Aug 1), verbatim: "actually all of my runes are 1 long
-    /// line except for push and pull… there's no difference with light and
-    /// dark."
+    /// The descriptor: the signed turns along the stitched polyline, each
+    /// paired with the leading segment's length as a fraction of the whole.
+    /// Rotation-invariant by construction; mirroring negates every sign, so
+    /// mirror pairs separate; size, stroke count and pen lifts cannot matter;
+    /// a bare straight line has no sentence and reads as nothing. Corner
+    /// count is a coarse index: GRIP/SLICK 2, HEAT/CHILL/SOLID/LIQUID 3,
+    /// COMPRESS/SPREAD 4, LIGHT/DARK 5, PUSH/PULL branched.
     ///
-    /// That sentence rewrites this file. TEN OF THE TWELVE RUNES ARE A SINGLE
-    /// CONTINUOUS OPEN POLYLINE - one line, with corners - and they differ from
-    /// one another ONLY BY THEIR SEQUENCE OF TURNS. HEAT, CHILL, SOLID, LIQUID,
-    /// GRIP, SLICK, COMPRESS, SPREAD, LIGHT and DARK are all one line each.
-    /// LIGHT and DARK are NOT rings, NOT closed and NOT special: their star-like
-    /// look is just a zigzag path, and there is no protrusion-versus-indentation
-    /// distinction between them to model. Only PUSH (an arrow: shaft plus two
-    /// barbs folding BACK) and PULL (a Y: stem plus two arms opening FORWARD)
-    /// carry a BRANCH.
-    ///
-    /// WHAT WAS HERE BEFORE, AND WHY IT HAD TO GO. The previous descriptor was
-    /// "a dominant STEM plus shorter LIMBS angled off it". That model fits PUSH
-    /// and PULL exactly and nothing else, and it half-worked on the other ten by
-    /// accident. It died outright on LIGHT and DARK, and the post-mortem is
-    /// worth keeping because it is the whole argument for the descriptor below:
-    ///   - "the stem" was only ever THE LONGEST SINGLE SEGMENT. The chain-walk
-    ///     that was supposed to grow it used a 22° collinearity test, and the
-    /// SMALLEST corner anywhere in the alphabet is 47°, so it never once
-    ///     fired on a real rune.
-    ///   - LIGHT's six segments measure 19/18/18/17/14/13 percent of its ink.
-    ///     The longest beats the runner-up by 4%. Which segment won was decided
-    /// by that 4% - and a different one won in each of the two drawings, so
-    ///     the two descriptors were expressed in frames ~120° apart. Every
-    ///     length ratio, attachment position and angle in them was measured
-    ///     against a different line. LIGHT scored 0.18 AGAINST ITS OWN TWIN, and
-    ///     0.61 against a copy of itself nudged by half a percent.
-    ///   - the LIGHT/DARK "region flip" apparatus (convex hull, Out, MeanOut,
-    /// Bite) modelled a distinction says does not exist. Measured, it was
-    ///     not merely idle: it read DARK's two drawings as 0.46 and 1.00 and
-    ///     charged DARK 34% for disagreeing with itself.
-    ///
-    /// THE DESCRIPTOR THAT ACTUALLY FITS the ALPHABET: the SIGNED TURN SEQUENCE
-    /// along the stitched polyline, each turn paired with the length of the
-    /// segment leading into it as a FRACTION of the whole. Every one of the laws
-    /// is satisfied BY CONSTRUCTION rather than by a penalty term:
-    ///   - each corner is measured RELATIVE TO THE PREVIOUS SEGMENT, so the
-    ///     descriptor is ROTATION-INVARIANT by construction. No rotation clamp,
-    ///     no alignment search, no world axes, ever. "Measure in the rune's own
-    ///     frame, never the world's."
-    ///   - MIRRORING NEGATES EVERY SIGN, so the mirror pairs separate for free -
-    ///     no chirality scalar, no hand-tuned mirror hammer. Rotate freely,
-    ///     mirror never, and that asymmetry is now the shape of the metric
-    ///     instead of a term bolted onto it.
-    ///   - angles are unitless and lengths are fractions, so SIZE AND OVERALL
-    ///     LENGTH CANNOT MATTER. "The overall length of the runes shouldn't
-    ///     matter, only their shape."
-    ///   - stitching and collinear-collapse run first, so PEN LIFTS AND STROKE
-    ///     COUNT CANNOT MATTER. An arrow drawn in three strokes and one drawn in
-    ///     a single sweep produce the same sentence.
-    ///   - A BARE STRAIGHT LINE HAS ZERO CORNERS, therefore no sentence,
-    /// therefore no rune. the rule ("a straight line should be detected as
-    ///     NOTHING automatically") is now the definition rather than a heuristic.
-    /// the recordings, measured, are why this is the right descriptor -
-    /// LIGHT's two drawings agree within 15° on EVERY turn:
-    ///     LIGHT0  -119   68 -128   77 -113      LIGHT1  -112   65 -128   62 -124
-    ///     DARK0   -108  -47  100  -51 -131      DARK1   -112  -47   76  -52 -124
-    /// and the corner count alone is already a clean coarse index across all
-    /// twelve: GRIP/SLICK 2, HEAT/CHILL/SOLID/LIQUID 3, COMPRESS/SPREAD 4,
-    /// LIGHT/DARK 5, PUSH/PULL branched.
-    ///
-    /// BRANCHING IS THE SECONDARY TRAIT, and the ONLY thing it decides is which
-    /// of two families a drawing belongs to. A junction means PUSH or PULL; no
-    /// junction means one of the ten. Those two families are never compared to
-    /// each other. Inside the branched family the old stem-plus-limbs matcher is
-    /// kept verbatim - its own header describes an arrow and a Y and nothing
-    /// else, it separates them by whether the branches fold BACK (obtuse to the
-    /// shaft) or open FORWARD (acute), and says PUSH and PULL are fine as
-    /// they are. Do not regress them by "unifying" the two paths.
-    ///
-    /// the STANDING LAW, unchanged: "All shapes are distinct - I made them that
-    /// way exactly because they can be flipped." No glyph resembles any other
-    /// under ANY rotation or reflection, so full rotation invariance is SAFE and
-    /// EVERY cross-fire is a bug in this file, never an ambiguity in the
-    /// alphabet. "Re-record it with a more distinct shape" is always the wrong
-    /// answer.
-    ///
-    /// Deterministic and allocation-light: Build touches only pooled scratch
-    /// lists and allocates exactly one graph plus its segment array; Compare
-    /// allocates nothing at all. Both are main-thread only (same discipline the
-    /// old matcher's scratch buffers were written under - a fresh buffer per
-    /// call once cost ~1.5M allocations in a single template audit). No LINQ.
+    /// Build touches only pooled scratch lists and allocates one graph plus
+    /// its segment array; Compare allocates nothing. Both main-thread only.
     public sealed class RuneGraph
     {
         // ---------------------------------------------------------- tuning --
-        // ALL of these are FRACTIONS OF THE DRAWING'S OWN SIZE (see Extent), of
-        // its own ink length, or plain angles. Never introduce a threshold in
-        // metres here: that is the bug that keeps coming back, and it makes a
-        // rune's reading depend on how big it was drawn. Never take the size
-        // from an axis-aligned bounding box either - see Extent for why.
+        // All fractions of the drawing's own size (see Extent), of its ink
+        // length, or plain angles. Never introduce a threshold in metres, and
+        // never take the size from an axis-aligned bounding box (see Extent).
 
         /// Douglas-Peucker tolerance: a bend that moves the line less than this
         /// fraction of the drawing's own size is a shaky hand, not a corner.
-        /// Much coarser than the stitcher's denoise pass on purpose - this pass
-        /// decides what a SEGMENT is, and therefore what a TURN is, and a
-        /// phantom corner does not merely blur the sentence, it inserts a letter
-        /// into it.
-        ///
-        /// SWEPT, not guessed. Identity on the 24 recordings is flat from 0.035
-        /// to 0.09 (22/24 either way), but noise immunity is not: with random
-        /// per-point jitter at 2% of the drawing's diameter, wrong-rune reads
-        /// across 400 draws of all twelve runes go 768 at 0.035  80 at 0.055
-        /// 1 at 0.075. The ceiling is just above: at 0.10 the tolerance starts
-        /// eating DARK's shallowest real corner, DARK drops to five segments,
-        /// and it cross-fires with LIGHT at 0.73 vs 0.72 - a coin flip, and
-        /// exactly the kind says is always a bug in this file. 0.075 sits
-        /// with noise immunity won and a clear gap to that cliff.
+        /// Coarser than the stitcher's denoise pass on purpose - this pass
+        /// decides what a segment (and so a turn) is. Above ~0.10 it starts
+        /// eating DARK's shallowest real corner.
         const float SimplifyFrac = 0.075f;
 
         /// Two vertices this close are the SAME node, and a vertex this close
-        /// to the middle of a segment splits it (a T-junction). Same tight
-        /// scale-relative rule the endpoint stitcher and the old connectivity
-        /// test used — "looks connected" must mean "is connected".
+        /// to the middle of a segment splits it (a T-junction). Scale-relative.
         const float WeldFrac = 0.06f;
 
-        /// Segments meeting within this angle are the SAME straight line, so a
-        /// line drawn as two slightly-kinked strokes is still one line. This is
-        /// load-bearing for the turn sentence, not merely tidy: a pen lift in
-        /// the middle of a straight run would otherwise appear in the sentence
-        /// as a 0° corner and shift every turn after it by one position. Tight
-        /// enough that a real corner (47° and up) is never swallowed.
+        /// Segments meeting within this angle are the SAME straight line - a
+        /// mid-run pen lift must not appear as a 0° corner and shift the
+        /// sentence. Tight enough that a real corner (47° and up) is never
+        /// swallowed.
         const float CollinearDeg = 22f;
 
-        /// BRANCHED FAMILY ONLY. How straight the stem walk must be to continue
-        /// STRAIGHT THROUGH A FORK.
-        ///
-        /// At a degree-2 node there is only one way onward, so CollinearDeg is
-        /// just a "is this a corner" test. At a FORK there are two, and picking
-        /// "whichever is straighter" with a 22° window turns the stem into a
-        /// coin flip - measured, PULL's arms open at roughly 25-35° from its
-        /// stem, so a wobble of half a percent was enough to drop an arm under
-        /// 22° and let the stem SWALLOW it. The descriptor then had one limb
-        /// instead of two and PULL scored 0.05 AGAINST ITS OWN TEMPLATE, on 3%
-        /// of draws at 0.5% wobble and 12% at 1%. That is the same failure that
-        /// killed LIGHT, wearing a different hat.
-        ///
-        /// Passing straight through a fork is still legal and still needed - an
-        /// arrow whose barbs land halfway up the shaft has its shaft SPLIT in
-        /// two at a degree-4 node, and those two halves are one line and must
-        /// chain. But they are near-0° apart, so the test can afford to be
-        /// strict, and strict is what removes the flip.
+        /// Branched family only: how straight the stem walk must be to continue
+        /// straight through a fork. PULL's arms open ~25-35° from the stem, so
+        /// a loose (22°) window could let the stem swallow an arm; shaft halves
+        /// split at a junction are near-0° apart, so strict still chains them.
         const float ForkCollinearDeg = 8f;
 
-        /// BRANCHED FAMILY ONLY (PUSH / PULL). Below this the stem's two ends
-        /// are genuinely interchangeable - the shape is symmetric end-to-end, so
-        /// its own 180° rotation looks identical and BOTH orientations must be
-        /// allowed. (Rotation is legal; this is not a mirror licence.)
+        /// Branched family only (PUSH / PULL). Below this the stem's two ends
+        /// are interchangeable - the shape is symmetric end-to-end, so both
+        /// orientations must be allowed (rotation, not a mirror licence).
         const float OrientTol = 0.06f;
 
         // ------------------------------------------------------ descriptor --
 
-        /// ONE SEGMENT OF THE RUNE'S SINGLE LINE - the letter of the sentence.
-        /// Both fields are measured in the rune's own terms; neither refers to
-        /// the world, and neither carries a unit that a bigger drawing would
-        /// change.
+        /// One segment of the rune's single line - the letter of the sentence.
+        /// Both fields are measured in the rune's own terms, never the world's.
         public struct Seg
         {
-            /// This segment's length ÷ the whole line's length. A PROPORTION,
-            /// never a size. This is what separates the glyph families that
-            /// share a turn sequence: SOLID, LIQUID, COMPRESS and SPREAD are all
-            /// three or four near-90° corners and differ ONLY in where the long
-            /// run and the short tick sit. "measure proportional line
-            /// length and angles."
+            /// This segment's length ÷ the whole line's length - a proportion,
+            /// never a size. Length placement is all that separates glyphs
+            /// sharing a turn sequence (SOLID, LIQUID, COMPRESS, SPREAD).
             public float Len;
-            /// The SIGNED turn from this segment onto the NEXT one, degrees,
-            /// (-180..180], positive = left. Measured against the PREVIOUS
-            /// segment rather than any fixed axis, which is what makes the whole
-            /// descriptor rotation-invariant without a single alignment search.
-            /// NaN on the last segment, which has nothing to turn onto - that is
-            /// a real value the matcher reads, not a hole (see Cell).
+            /// The signed turn onto the NEXT segment, degrees, (-180..180],
+            /// positive = left, measured against the previous segment (this is
+            /// the rotation invariance). NaN on the last segment - a real value
+            /// the matcher reads, not a hole (see Cell).
             public float Turn;
         }
 
         static readonly Seg[] NoSegs = new Seg[0];
         static readonly Limb[] NoLimbs = new Limb[0];
 
-        /// THE PRIMARY DESCRIPTOR: the rune's line, segment by segment, in walk
-        /// order. Empty for the branched family, which is read by stem and limbs
-        /// instead.
+        /// The primary descriptor: the rune's line, segment by segment, in walk
+        /// order. Empty for the branched family (read by stem and limbs).
         public Seg[] Segs = NoSegs;
 
         // (corner count = Segs.Length - 1; the coarse identity - see class header)
@@ -199,28 +86,19 @@ namespace SpellyZombie
         /// Junctions (degree-3-or-more nodes).
         public int Junctions;
 
-        /// THE FAMILY GATE. A junction means the drawing is an arrow or a Y; no
-        /// junction means it is one of the ten single-line runes. The two
-        /// families carry different descriptors and are never scored against
-        /// each other (see Compare).
+        /// The family gate: a junction means arrow or Y; none means one of the
+        /// ten single-line runes. The two families carry different descriptors
+        /// and are never scored against each other (see Compare).
         public bool Branched => Junctions > 0;
 
-        /// No corners at all: a bare line. the RULE: "a straight line should be
-        /// detected as NOTHING automatically." A bare line has no turn sequence
-        /// to read, so it matches nothing, ever. It is still BUILT, never
-        /// deleted — RuneLibrary needs a non-null descriptor to tell "unreadable
-        /// drawing" from "no drawing at all".
+        /// No corners at all: a bare line has no turn sequence, so it matches
+        /// nothing, ever. Still BUILT, never deleted - RuneLibrary needs a
+        /// non-null descriptor to tell "unreadable" from "no drawing at all".
         public bool BareLine;
 
         // ---- branched family only (PUSH / PULL): stem plus limbs ------------
-        // Kept verbatim from the previous matcher, because it is a faithful
-        // model of exactly those two glyphs — "a dominant line plus shorter
-        // lines angled off it… if PUSH has one line longer and other smaller
-        // lines are angled toward that line it's a PUSH, and the opposite is a
-        // PULL" — and reports the pair works. The parts that modelled the
-        // OTHER ten (the convex hull, Out/MeanOut/Bite, Chirality) are deleted:
-        // measured, they never fired on an arrow or a Y, and they actively cost
-        // DARK 34% against its own twin.
+        // A faithful model of exactly those two glyphs: a dominant stem plus
+        // shorter limbs angled off it.
 
         /// One shorter line hanging off the stem, measured ENTIRELY in the
         /// rune's own frame. Nothing here refers to the world.
@@ -243,14 +121,12 @@ namespace SpellyZombie
 
         /// Limbs, longest first (deterministic pairing order in MatchLimbs).
         public Limb[] Limbs = NoLimbs;
-        /// stem length ÷ total ink length. the "one line longer" proportion:
-        /// an arrow is shaft-dominated, a Y splits its ink much more evenly.
+        /// stem length ÷ total ink length: an arrow is shaft-dominated, a Y
+        /// splits its ink much more evenly.
         public float StemFrac;
         /// The stem's two ends were interchangeable, so this shape looks the
-        /// same rotated 180°. Compare may then try either orientation - that is
-        /// rotation tolerance, not mirror tolerance. It exists ONLY because a
-        /// stem frame needs a direction; the turn sentence has none and needs
-        /// no such flag.
+        /// same rotated 180°; Compare may then try either orientation
+        /// (rotation tolerance, not mirror tolerance).
         public bool Reversible;
 
         // ------------------------------------------------------- scratch ----
@@ -282,25 +158,16 @@ namespace SpellyZombie
         static readonly float[,] _dp = new float[MaxEdges + 2, MaxEdges + 2];
 
         /// Above this the pairwise Extent pass strides instead of visiting
-        /// every point. Striding picks the same INDICES whatever the drawing's
-        /// angle, so the answer stays exactly rotation-invariant - it just gets
-        /// slightly conservative on absurdly dense ink.
+        /// every point. Striding picks the same indices at any angle, so the
+        /// answer stays rotation-invariant - just slightly conservative on
+        /// very dense ink.
         const int ExtentSampleCap = 256;
 
-        /// THE DRAWING'S OWN SIZE: the greatest distance between any two of its
-        /// points. Every scale-relative threshold in the recognizer is a
-        /// fraction of THIS.
-        ///
-        /// It is not the bounding box. An axis-aligned bounding box is a
-        /// WORLD-frame measurement - its diagonal breathes by up to 41% (23%
-        /// measured on a real glyph) as the same drawing is rotated, which
-        /// silently modulates the simplify tolerance, the weld radius and the
-        /// stitch distance with hand tilt. Measured: at 50° of tilt the weld
-        /// radius overtook a real tick, two segments were welded away and the
-        /// glyph's score against its OWN template collapsed from 1.00 to 0.11 -
-        /// a fizzle at 4 of 36 orientations, from a file whose header promises
-        /// it never looks at the world. The point-set diameter is invariant
-        /// under rotation and reflection by construction.
+        /// The drawing's own size: the greatest distance between any two of
+        /// its points. Every scale-relative threshold is a fraction of this.
+        /// NOT a bounding box: an axis-aligned box is a world-frame measure
+        /// whose diagonal breathes up to 41% as the drawing rotates; the
+        /// point-set diameter is invariant under rotation and reflection.
         public static float Extent(IReadOnlyList<IReadOnlyList<Vector2>> paths)
         {
             if (paths == null) return 0f;
@@ -327,21 +194,15 @@ namespace SpellyZombie
         // ========================================================== BUILD ====
 
         /// Build the descriptor from already-stitched, denoised paths.
-        ///
-        /// Returns null ONLY for genuinely degenerate input (no path with two
-        /// distinct points). That contract is load-bearing: RuneLibrary treats
-        /// a null descriptor as "this template does not exist", and a stricter
-        /// gate here would silently disable the studio walls. A straight
-        /// line is NOT degenerate - it builds fine and comes back BareLine, so
-        /// it reads as nothing without ever being deleted.
+        /// Returns null only for degenerate input (no path with two distinct
+        /// points) - RuneLibrary reads null as "this template does not exist".
+        /// A straight line is not degenerate: it builds and comes back BareLine.
         public static RuneGraph Build(IReadOnlyList<IReadOnlyList<Vector2>> paths)
         {
             if (paths == null) return null;
 
-            // ---- the drawing's own scale. EVERY threshold below is a
-            // fraction of this, so a rune reads identically drawn tiny or huge
-            // - and, because Extent is the point-set diameter rather than a
-            // world-axis bounding box, identically drawn at any ANGLE too.
+            // ---- the drawing's own scale: every threshold below is a
+            // fraction of this
             float diag = Extent(paths);
             if (diag < 1e-5f) return null;
 
@@ -350,10 +211,9 @@ namespace SpellyZombie
             float weld2 = weld * weld;
 
             // ---- 1. straight segments as edges, welded vertices as nodes ----
-            // Douglas-Peucker IS the corner extractor. What survives it is the
-            // straight-line skeleton of the drawing, and the turn sentence reads
-            // straight off it. There is exactly one simplifier in this project;
-            // do not write a second.
+            // Douglas-Peucker is the corner extractor: what survives is the
+            // straight-line skeleton the turn sentence reads off. There is
+            // exactly one simplifier in this project; do not write a second.
             _nodePos.Clear();
             _edgeA.Clear();
             _edgeB.Clear();
@@ -373,24 +233,15 @@ namespace SpellyZombie
             }
             if (_edgeA.Count == 0) return null;
 
-            // ---- 2. T-junctions. Endpoint welding alone misses the line that
-            // lands on the MIDDLE of another - which is exactly how PUSH's barbs
-            // and PULL's arms attach. Without this the same rune reads as two
-            // shapes when drawn in two lines and one shape when drawn in one,
-            // which is exactly what the pen-lift law forbids. It is also what
-            // makes the branch test below trustworthy: a junction has to be
-            // FOUND before it can gate anything.
+            // ---- 2. T-junctions: endpoint welding misses a line landing on
+            // the MIDDLE of another - how PUSH's barbs and PULL's arms attach.
+            // Without this, stroke count would change the topology.
             SplitTJunctions(weld, weld2);
 
-            // ---- 2b. A PEN LIFT IN THE MIDDLE OF A STRAIGHT LINE IS NOT A
-            // CORNER. Douglas-Peucker runs per path, so lifting the pen halfway
-            // along a run forces a vertex there and the run arrives as two
-            // segments. For the turn sentence that is not a cosmetic problem: it
-            // inserts a phantom 0° letter and shifts every real turn after it by
-            // one position, so the same drawing would read as a different word
-            // depending on how many times lifted the pen. Any degree-2 node
-            // whose two segments are within CollinearDeg of being one line is
-            // dissolved back into that line.
+            // ---- 2b. a pen lift mid-line is not a corner: per-path
+            // Douglas-Peucker forces a vertex there, which would insert a
+            // phantom 0° letter and shift every turn after it. Dissolve
+            // degree-2 nodes whose segments are within CollinearDeg.
             CollapseCollinear();
 
             // ---- 3. degrees = the topology fingerprint ----
@@ -411,9 +262,9 @@ namespace SpellyZombie
                 else if (_deg[i] >= 3) junctions++;
             }
 
-            // ---- 4. WHICH FAMILY? This is the ONE thing branching decides.
-            // A junction = PUSH or PULL, read as a stem plus limbs. No junction
-            // = one of the ten single-line runes, read as a turn sentence.
+            // ---- 4. which family - the one thing branching decides. A
+            // junction = PUSH or PULL, read as stem plus limbs; no junction =
+            // one of the ten single-line runes, read as a turn sentence.
             if (junctions > 0)
             {
                 int tail = -1, tip = -1;
@@ -428,12 +279,10 @@ namespace SpellyZombie
 
         // ------------------------------------- the ten: a turn sentence ------
 
-        /// Walk the single line and write down what it does.
-        ///
-        /// The walk starts at a free end, which is the only canonical place to
-        /// start; a polyline has two of them and no preferred one, so Compare
-        /// tries the sentence in both directions (see Compare - reversing a WALK
-        /// is not a mirror, and that distinction is the whole mirror law).
+        /// Walk the single line and write down what it does. The walk starts
+        /// at a free end; a polyline has two and no preferred one, so Compare
+        /// tries the sentence in both directions (reversing a walk is not a
+        /// mirror).
         static RuneGraph Sentence(int ends, int junctions)
         {
             var g = new RuneGraph { Edges = _edgeA.Count, Ends = ends, Junctions = junctions };
@@ -453,43 +302,27 @@ namespace SpellyZombie
 
             for (int i = 0; i < nSeg; i++)
             {
-                // LENGTH AS A FRACTION OF THE WHOLE LINE. Divide before anything
-                // else looks at it: the moment a raw length reaches the metric,
-                // how big drew the rune starts deciding what it is.
+                // length as a fraction of the whole line - raw lengths never
+                // reach the metric
                 segs[i].Len /= total;
-                // THE SIGNED TURN, measured against the PREVIOUS segment. This
-                // one line is the entire reason the matcher needs no rotation
-                // clamp, no alignment search and no world axes: turn the drawing
-                // and every one of these is unchanged; mirror it and every one
-                // of them negates.
+                // the signed turn against the PREVIOUS segment: rotation
+                // leaves it unchanged, mirroring negates it
                 segs[i].Turn = i + 2 < _walk.Count
                     ? Vector2.SignedAngle(_walk[i + 1] - _walk[i], _walk[i + 2] - _walk[i + 1])
                     : float.NaN;
             }
 
             g.Segs = segs;
-            // the RULE, now a definition rather than a heuristic: "a straight
-            // line should be detected as NOTHING automatically." One segment
-            // means zero corners means no sentence to read.
+            // one segment = zero corners = no sentence to read
             g.BareLine = nSeg < 2;
             return g;
         }
 
         /// The longest continuous run of segments, walked from a free end.
-        ///
-        /// With no junctions every node has degree 2 at most, so each connected
-        /// piece is a simple path and the walk is unambiguous - there is never a
-        /// choice to make and therefore never a coin flip to lose. (That is the
-        /// precise failure the old stem search had: LIGHT's longest segment beat
-        /// the runner-up by 4%, so which one framed the descriptor was decided
-        /// by hand noise, and the two drawings of LIGHT ended up measured in
-        /// frames 120° apart.)
-        ///
-        /// Stitching normally leaves exactly one path, so "longest piece" is
-        /// simply "the drawing". It matters only for ink that could not be
-        /// stitched, where reading the largest piece beats reading nothing.
-        /// No free end at all means the ink closes on itself - that is a SEAL,
-        /// not a rune, and it walks away with no sentence.
+        /// With no junctions each connected piece is a simple path, so the
+        /// walk is unambiguous. Stitching normally leaves one piece;
+        /// unstitchable ink reads its largest. No free end means the ink
+        /// closes on itself - a seal, not a rune, and no sentence.
         static bool WalkChain(List<Vector2> outVerts)
         {
             outVerts.Clear();
@@ -502,10 +335,9 @@ namespace SpellyZombie
             {
                 if (_deg[s] != 1) continue;
                 float len = ChainFrom(s, null);
-                // Strict improvement: both ends of the same piece measure the
-                // same length, so the first one found wins deterministically.
-                // Which end that is does not matter - Compare reads the sentence
-                // in both directions anyway.
+                // strict improvement: both ends measure the same length, so
+                // the first found wins deterministically; Compare reads both
+                // directions anyway
                 if (len > bestLen) { bestLen = len; bestStart = s; }
             }
             if (bestStart < 0) return false;
@@ -546,10 +378,9 @@ namespace SpellyZombie
 
         // ------------------------------- the branched pair: stem and limbs ---
 
-        /// Everything that depends on WHICH line is the stem. PUSH and PULL
-        /// only: for an arrow and a Y "the stem" is unambiguous — the shaft is
-        /// twice the length of a barb - which is exactly the condition the ten
-        /// single-line runes fail and why they are read a different way.
+        /// Everything that depends on which line is the stem. PUSH and PULL
+        /// only: for an arrow and a Y the stem is unambiguous (the shaft is
+        /// about twice a barb's length).
         static RuneGraph Frame(int tail, int tip, List<int> chain,
                                float inkLen, int ends, int junctions)
         {
@@ -604,23 +435,18 @@ namespace SpellyZombie
             if (k == 0) { g.BareLine = true; return g; }
             if (k < limbCount) System.Array.Resize(ref limbs, k);
 
-            // ---- ORIENT THE STEM, mirror-neutrally.
-            // A stem frame needs to know which end is the tail, or the limbs of
-            // two drawings of the same arrow are measured from opposite ends.
-            // The vote uses ONLY quantities a mirror leaves untouched - node
-            // degrees and where the ink mass sits along the stem. It must never
-            // use a signed angle or a side: canonicalising by chirality would
-            // erase the mirror distinction, which is the one thing this matcher
-            // exists to preserve.
+            // ---- orient the stem, mirror-neutrally: the vote uses only
+            // quantities a mirror leaves untouched (node degrees, ink mass
+            // along the stem). Never use a signed angle or a side -
+            // canonicalising by chirality would erase the mirror distinction.
             float pref = 0.5f * Mathf.Clamp(_deg[tip] - _deg[tail], -2, 2);
             if (limbLenSum > 1e-6f)
                 for (int i = 0; i < k; i++)
                     pref += (limbs[i].Ratio * stemLen / limbLenSum) * (limbs[i].Along - 0.5f);
 
             if (pref < -OrientTol) ReverseInto(limbs, k, limbs); // flip in place
-            // A near-tie means the shape genuinely looks the same end-for-end,
-            // i.e. its own 180° ROTATION. Allowing both orientations is then
-            // required by the rotation law, not a loophole in the mirror law.
+            // a near-tie means the shape looks the same end-for-end (its own
+            // 180° rotation), so both orientations are allowed
             g.Reversible = Mathf.Abs(pref) <= OrientTol;
 
             // longest limb first - deterministic greedy pairing in MatchLimbs
@@ -631,30 +457,17 @@ namespace SpellyZombie
 
         // ========================================================= COMPARE ===
 
-        /// Similarity of two descriptors, 0..1. 1 = the same shape.
-        /// `a` is the DRAWING, `b` is the template. Every caller passes them in
-        /// that order.
-        ///
-        /// Calibrated against the score band the rest of the game reads
-        /// (DrawingConfig). The turn sentence is a far tighter metric than the
-        /// stem-and-limb score it replaced, so that band was re-measured on the
-        /// own recordings and DrawingConfig moved with it. Leave-one-out - a
-        /// drawing against the OTHER drawings, one template per rune, the
-        /// harshest case there is:
-        ///     right rune  0.89 to 1.00        best WRONG rune  never above 0.84
-        /// where the old matcher put an honest LIGHT at 0.18 against its own
-        /// twin. Under random rotation, scale x0.14 to x7, one to four pen lifts
-        /// and 1.2% hand wobble, 11,474 draws produced ZERO wrong-rune wins.
+        /// Similarity of two descriptors, 0..1. 1 = the same shape. `a` is the
+        /// drawing, `b` is the template; every caller passes them in that
+        /// order. The score band is calibrated against DrawingConfig.
         public static float Compare(RuneGraph a, RuneGraph b)
         {
             if (a == null || b == null) return 0f;
-            // the RULE: a bare line is NOTHING. Not a weak match - nothing.
+            // a bare line matches nothing
             if (a.BareLine || b.BareLine) return 0f;
 
-            // THE FAMILY GATE. An arrow has a junction; a zigzag does not. The
-            // two families carry different descriptors, so there is nothing to
-            // compare across them - and nothing to gain: designed no glyph to
-            // resemble another, least of all across that divide.
+            // the family gate: the two families carry different descriptors,
+            // so there is nothing to compare across them
             if (a.Branched != b.Branched) return 0f;
 
             return a.Branched ? CompareBranched(a, b) : CompareSentence(a, b);
@@ -662,61 +475,38 @@ namespace SpellyZombie
 
         // ------------------------------- the ten: sequence alignment ---------
 
-        /// A MISSING OR EXTRA CORNER IS A MISSING FEATURE, not a rounding error.
-        /// Turn count is most of a rune's identity here (2 corners = GRIP/SLICK,
-        /// 3 = HEAT/CHILL/SOLID/LIQUID, 4 = COMPRESS/SPREAD, 5 = LIGHT/DARK), so
-        /// the alignment is allowed to skip a corner but pays nearly the full
-        /// price of a completely wrong one when it does. It is not free, and it
-        /// is not fatal either: hands genuinely do drop a tick.
+        /// A missing or extra corner is a missing feature: turn count is most
+        /// of a rune's identity, so a skipped corner pays nearly the full
+        /// price of a wrong one - costly, not fatal (hands do drop a tick).
         const float GapCost = 0.90f;
 
         /// Free play before a turn counts as wrong, and the span over which it
-        /// goes fully wrong. 12° is comfortably inside the spread of the
-        /// hand - the two LIGHTs agree within 15° on every corner and the two
-        /// HEATs within 26° - while 47° (the smallest real corner in the
-        /// alphabet) still lands most of the way to a full miss.
+        /// goes fully wrong. 12° sits inside the hand's spread; 47° (the
+        /// smallest real corner in the alphabet) lands most of the way to a
+        /// full miss.
         const float TurnFree = 12f;
         const float TurnSpan = 68f;
 
-        /// Same, for the length proportions. Relative difference, so a segment
-        /// that is 40% of the line and one that is 20% disagree by the same
-        /// amount whichever way round they are read. The +0.05 keeps a pair of
-        /// genuinely tiny ticks from reading as wildly different just because
-        /// they are small.
+        /// Same, for the length proportions. Relative difference, symmetric
+        /// either way round; the +0.05 keeps a pair of tiny ticks from reading
+        /// as wildly different just because they are small.
         const float LenFree = 0.15f;
         const float LenSpan = 0.70f;
 
-        /// How the two halves of a letter split. The TURN is the headline - it
-        /// is what separates HEAT from SOLID from LIGHT - but the LENGTH is not
-        /// a tie-break, it is the ONLY thing separating SOLID from LIQUID and
-        /// COMPRESS from SPREAD. Read the recordings:
-        ///     SOLID0  turns  -98  -90  -97      LIQUID0  turns  -95  -84  -91
-        /// Those are the same three right-angle corners. What differs is where
-        /// the long run and the short tick sit along the line - proportion, and
-        /// nothing else. Exactly the rule: "measure proportional line length AND
-        /// angles."
-        ///
-        /// Swept on the recordings against the thinnest correct margin anywhere
-        /// in the alphabet: 0.30 length  0.11 (SOLID/LIQUID), 0.50  0.14,
-        /// 0.58  0.11 again but now HEAT/CHILL is the bottleneck and random
-        /// scribbles reaching 0.85 climb from 5.0% to 6.0%. An even split is
-        /// where the turn-family and the length-family bottlenecks balance.
+        /// How the two halves of a letter split. The turn separates most
+        /// glyphs, but the length is the ONLY thing separating SOLID from
+        /// LIQUID and COMPRESS from SPREAD (same corners, different
+        /// placement); an even split balances the two bottlenecks.
         const float TurnWeight = 0.50f;
         const float LenWeight = 0.50f;
 
         static float CompareSentence(RuneGraph a, RuneGraph b)
         {
-            // A POLYLINE HAS NO CANONICAL START. Both of its ends are equally
-            // valid places to begin reading, so the drawing is offered in both
-            // directions and the better reading wins.
-            //
-            // THIS IS NOT A MIRROR LICENCE, and the difference is the whole
-            // mirror law. Walking a line backwards reverses the ORDER of the
-            // turns and negates each one; MIRRORING the line negates each turn
-            // and leaves the order alone. Only the first is accepted. So HEAT
-            // still cannot read as CHILL, SOLID cannot read as LIQUID and GRIP
-            // cannot read as SLICK - measured, each mirror pair separates with
-            // no penalty term anywhere, purely from this asymmetry.
+            // A polyline has no canonical start, so the drawing is read in
+            // both directions and the better reading wins. Not a mirror
+            // licence: walking backwards reverses the ORDER of the turns and
+            // negates each one; mirroring negates each turn but keeps the
+            // order. Only the first is accepted, so mirror pairs stay apart.
             float best = Align(a, false, b);
             float rev = Align(a, true, b);
             return rev > best ? rev : best;
@@ -746,11 +536,9 @@ namespace SpellyZombie
 
             float ta = SegTurn(sa, i, ra), tb = sb[j].Turn;
             float angC;
-            // The terminal NaN is REAL INFORMATION, not a hole: it says "the
-            // line stops here". Two lines that both stop agree; a line that
-            // stops where the other turns disagrees, but only half - the
-            // alignment can usually explain that better by taking a gap, and
-            // this keeps it from being forced into one.
+            // terminal NaN = "the line stops here". Both stop: agree. One
+            // stops where the other turns: half a miss, so the alignment can
+            // explain it with a gap instead.
             if (float.IsNaN(ta) && float.IsNaN(tb)) angC = 0f;
             else if (float.IsNaN(ta) || float.IsNaN(tb)) angC = 0.5f;
             else angC = Mathf.Clamp01((Mathf.Abs(Mathf.DeltaAngle(ta, tb)) - TurnFree) / TurnSpan);
@@ -759,11 +547,8 @@ namespace SpellyZombie
         }
 
         /// Elastic alignment of two sentences - a Levenshtein/DTW hybrid over
-        /// letters that are graded rather than equal-or-not. Tolerates one
-        /// extra or missing corner (at GapCost each) without ever pretending a
-        /// wrong turn is a right one. Deliberately NOT a fixed-length compare:
-        /// hands add and lose corners, and a rune that grew a tick must still
-        /// read as itself.
+        /// graded letters. Tolerates an extra or missing corner (at GapCost
+        /// each) without pretending a wrong turn is a right one.
         static float Align(RuneGraph ga, bool rev, RuneGraph gb)
         {
             Seg[] sa = ga.Segs, sb = gb.Segs;
@@ -818,11 +603,8 @@ namespace SpellyZombie
 
         static float MatchLimbs(RuneGraph ga, Limb[] la, int na, RuneGraph gb, Limb[] lb, int nb)
         {
-            // ---- TOPOLOGY FIRST ----
-            // Segment count "within one" is free: hands add and lose a corner
-            // constantly. The junction count is not checked here any more - it
-            // is the family gate in Compare, so by the time we are in this
-            // function both shapes are already known to be branched.
+            // ---- topology first: segment count "within one" is free (hands
+            // add and lose corners); the junction gate lives in Compare ----
             float topo = 1f;
             int dE = Mathf.Abs(ga.Edges - gb.Edges);
             if (dE > 1) topo *= Mathf.Lerp(1f, 0.45f, Mathf.Clamp01((dE - 1) / 4f));
@@ -863,11 +645,8 @@ namespace SpellyZombie
             float misses = Mathf.Max(0, extra - 1) + (extra > 0 ? 0.5f : 0f);
             float limbScore = sum / (paired + misses);
 
-            // ---- the PROPORTION RULE: "if PUSH has one line longer…" ----
-            // How much of the ink IS the dominant line. An arrow is
-            // shaft-heavy (0.58), a Y splits far more evenly (0.36). This is the
-            // size-free proportion the old AspectPenalty was reaching for with a
-            // world-aligned bounding box.
+            // how much of the ink is the dominant line: an arrow is
+            // shaft-heavy (0.58), a Y splits far more evenly (0.36)
             float dom = 1f - 0.55f * Mathf.Clamp01(
                 (Mathf.Abs(ga.StemFrac - gb.StemFrac) - 0.05f) / 0.28f);
 
@@ -876,8 +655,7 @@ namespace SpellyZombie
 
         static float LimbSim(in Limb a, in Limb b)
         {
-            // PROPORTION, never size - and it GATES, it does not merely shade.
-            // "measure proportional line length and angles."
+            // proportion, never size - and it gates, not merely shades
             float rel = Mathf.Abs(a.Ratio - b.Ratio) / (0.5f * (a.Ratio + b.Ratio) + 0.15f);
             float rTerm = 1f - Mathf.Clamp01((rel - 0.12f) / 0.55f);
 
@@ -886,11 +664,9 @@ namespace SpellyZombie
             float oTerm = 1f - Mathf.Clamp01((Mathf.Abs(a.Off - b.Off) - 0.10f) / 0.40f);
             float pos = 0.55f * aTerm + 0.45f * oTerm;
 
-            // THE ANGLE DECIDES, and on this pair it is the ONLY thing that has
-            // to. PUSH's barbs fold BACK toward the tail (obtuse to the shaft);
-            // PULL's arms open FORWARD (acute). Same topology, ~110° apart - so
-            // the angle gate nearly zeroes the pair when it disagrees, and only
-            // a sliver of the geometry survives.
+            // the angle decides: PUSH's barbs fold BACK (obtuse to the shaft),
+            // PULL's arms open FORWARD (acute) - same topology, ~110° apart,
+            // so the gate nearly zeroes a disagreeing pair
             float dAng = Mathf.Abs(Mathf.DeltaAngle(a.Angle, b.Angle));
             float angTerm = 1f - Mathf.Clamp01((dAng - 15f) / 70f);
 
@@ -900,12 +676,10 @@ namespace SpellyZombie
                       * (0.20f + 0.80f * rTerm)
                       * (0.12f + 0.88f * angTerm);
 
-            // MIRRORING FLIPS A SIGNED ANGLE; ROTATION DOES NOT. Two limbs
-            // leaning opposite ways are opposite runes, full stop - and the
-            // wrapped angle difference alone cannot see it (a limb at +160°
-            // and one at -160° differ by only 40° yet are reflections). Skip
-            // the test near 0° and 180°, where the sign is just noise on a
-            // limb that runs along the stem either way.
+            // mirroring flips a signed angle; rotation does not. The wrapped
+            // angle difference alone cannot see it (+160° vs -160° differ by
+            // 40° yet are reflections). Skip near 0° and 180°, where the sign
+            // is noise on a limb running along the stem.
             float ma = Mathf.Abs(a.Angle), mb = Mathf.Abs(b.Angle);
             if ((a.Angle < 0f) != (b.Angle < 0f)
                 && ma > 22f && ma < 158f && mb > 22f && mb < 158f)
@@ -966,14 +740,9 @@ namespace SpellyZombie
                 {
                     if (n == a || n == b) continue;
                     float t = Vector2.Dot(_nodePos[n] - pa, ab) / len2;
-                    // AN END HIT IS ALREADY A SHARED NODE — and "already
-                    // shared" means "inside the weld radius", which is the only
-                    // definition of touching this file has. A fixed 0.12/0.88
-                    // window left a BAND between the weld radius and the window
-                    // edge where a limb attaching near the end of the stem was
-                    // neither welded nor split: drawn in one stroke it made a
-                    // junction, drawn as two it floated free. That is stroke
-                    // count changing the topology, which the law forbids.
+                    // an end hit is already a shared node, where "shared"
+                    // means inside the weld radius - the same definition of
+                    // touching used everywhere else
                     if (t * len < weld || (1f - t) * len < weld) continue;
                     if ((_nodePos[n] - (pa + ab * t)).sqrMagnitude > weld2) continue;
                     _edgeB[e] = n;
@@ -984,11 +753,9 @@ namespace SpellyZombie
             }
         }
 
-        /// Dissolve every degree-2 node that is not really a corner. A pen lift
-        /// halfway along a straight line plants a vertex there; so does a
-        /// stroke that overshoots and gets stitched. Neither is a feature of
-        /// the rune, and both would otherwise insert a phantom letter into the
-        /// turn sentence and shift every real turn after it.
+        /// Dissolve every degree-2 node that is not really a corner (a pen
+        /// lift or stitched overshoot plants one). Left alone it would insert
+        /// a phantom letter and shift every real turn after it.
         static void CollapseCollinear()
         {
             bool changed = true;
@@ -1030,15 +797,9 @@ namespace SpellyZombie
         }
 
         /// The longest near-collinear chain of segments, walked outward from
-        /// every seed edge in both directions. BRANCHED FAMILY ONLY - this is
-        /// the arrow's shaft and the Y's stem.
-        ///
-        /// It is NOT used on the other ten any more, and that is the single
-        /// biggest fix in this file. On a glyph whose segments are all roughly
-        /// equal (LIGHT: 19/18/18/17/14/13 percent of its ink) "the longest
-        /// line" is a coin flip, the whole descriptor was framed on the winner,
-        /// and LIGHT scored 0.18 against its own twin. An arrow's shaft wins by
-        /// 2:1 and no coin is flipped.
+        /// every seed edge in both directions. Branched family only - the
+        /// arrow's shaft and the Y's stem, where the winner is unambiguous
+        /// (a shaft wins ~2:1; the ten single-line runes have no such line).
         static void FindStem(ref int tail, ref int tip)
         {
             int n = _edgeA.Count;
@@ -1059,11 +820,8 @@ namespace SpellyZombie
                 endA = Extend(endB, endA);
 
                 float len = Vector2.Distance(_nodePos[endA], _nodePos[endB]);
-                // A STRICT improvement, by a relative margin: refusing to swap
-                // on a near-tie makes the choice deterministic across rotation
-                // instead of noise-driven. Edge indices come from the pen order
-                // and a rotation-invariant simplification, so they are the same
-                // list at every angle.
+                // strict improvement by a relative margin: refusing to swap on
+                // a near-tie keeps the choice deterministic across rotation
                 if (len > bestLen * (1f + 1e-4f))
                 {
                     bestLen = len;
@@ -1084,8 +842,7 @@ namespace SpellyZombie
                 dir.Normalize();
 
                 int bestE = -1, bestOther = -1;
-                // A FORK IS NOT A CORNER, IT IS A CHOICE - and a loose test on
-                // a choice is a coin flip. See ForkCollinearDeg.
+                // a fork is a choice, not a corner - see ForkCollinearDeg
                 float bestAng = _deg[at] >= 3 ? ForkCollinearDeg : CollinearDeg;
                 for (int e = 0; e < _edgeA.Count; e++)
                 {
@@ -1128,12 +885,9 @@ namespace SpellyZombie
 
         // ------------------------------------------------ Douglas-Peucker ---
 
-        /// Keep only the points that change the shape by more than `eps`.
-        /// This is the CORNER EXTRACTOR: what survives IS the straight-line
-        /// skeleton of the drawing, and the turn sentence is read directly off
-        /// it. Shared with RuneLibrary.Denoise so there is exactly one
-        /// straightening rule in the project - write a second one and the
-        /// matcher and the stitcher will disagree about what a corner is.
+        /// Keep only the points that change the shape by more than `eps` - the
+        /// corner extractor. Shared with RuneLibrary.Denoise so there is
+        /// exactly one straightening rule in the project.
         public static List<Vector2> Simplify(IReadOnlyList<Vector2> pts, float eps)
         {
             var outp = new List<Vector2>(pts != null ? pts.Count : 0);
@@ -1154,9 +908,8 @@ namespace SpellyZombie
             for (int i = 0; i < pts.Count; i++) if (_keep[i]) outp.Add(pts[i]);
         }
 
-        /// Same simplification, but reports the kept point INDICES (endpoints
-        /// included) - GeometryUtil.ClosedLoopCorners needs corner indices, and
-        /// this keeps "exactly one simplifier in this project" true.
+        /// Same simplification, but reports the kept point indices (endpoints
+        /// included) - GeometryUtil.ClosedLoopCorners needs corner indices.
         public static void SimplifyIndices(IReadOnlyList<Vector2> pts, float eps, List<int> keepIdx)
         {
             keepIdx.Clear();

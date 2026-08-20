@@ -32,15 +32,26 @@ namespace SpellyZombie
         Material _pupilMatL, _pupilMatR;   // whatever the pupils wore before a tint
         bool _tinted;
 
-        /// MIND CONTROL SHOWS IN THE EYES . A zombie under an
-        /// acolyte's order gets red pupils, so a wizard can tell across a
-        /// courtyard which of them are being driven and which are just wandering.
-        /// That makes the acolyte's command visible in the world, the same way
-        /// their green ink and their spent props already are.
-        ///
-        /// Passing null restores EXACTLY what the pupils wore before, including
-        /// the materials if these are the custom eyes, so this borrows the
-        /// look rather than overwriting it.
+        /// Eyes go WIDE for a moment - the charge tell, and later the
+        /// proximity-voice tell (bigger the louder you are). Size is its own
+        /// channel: pupil COLOUR carries buffs, so the two never collide.
+        public void Swell(float seconds, float amount)
+        {
+            _swellUntil = Time.time + Mathf.Max(0.01f, seconds);
+            _swellAmount = Mathf.Max(1f, amount);
+        }
+
+        float _swellUntil, _swellAmount = 1f, _swellShown = 1f;
+
+        /// 1 = resting, above = wide. Applied on top of the built scale.
+        float SwellNow()
+        {
+            if (Time.time >= _swellUntil) return 1f;
+            return Mathf.Lerp(1f, _swellAmount, 0.6f + 0.4f * Mathf.Sin(Time.time * 18f));
+        }
+
+        /// Red pupils mark a mind-controlled zombie. Passing null restores
+        /// exactly what the pupils wore before.
         public void SetPupilTint(Color? c)
         {
             if (_leftPupil == null || _rightPupil == null) return;
@@ -84,18 +95,12 @@ namespace SpellyZombie
                 e._scale = scale;
                 if (e.WireEyeballs(out var pupil))
                 {
-                    // pupil DEPTH is the styling; RATIO is behavior - bakes froze mid-dilation saucers
+                    // pupil depth is styling; the ratio drives dilation
                     e._pupilDepth = pupil.localPosition.z;
 
-                    // DO NOT adopt the pupil's authored localScale as _pupilBase.
-                    // Tried it Aug 6 and reverted the same minute: the Eyes prefab
-                    // authors pupils at a local scale near 1 (sized by the MESH,
-                    // not by the transform), so using it drove them to full eye
-                    // size at rest and every character stared like a saucer.
-                    // The hardcoded 0.45 is not an oversight, it NORMALISES any
-                    // eyes to a known ratio so dilation behaves the same on all of
-                    // them. Respecting the authored size would mean measuring the
-                    // pupil against the EYE in world space, not reading localScale.
+                    // never adopt the authored pupil localScale as _pupilBase:
+                    // prefab pupils are sized by mesh, not transform. The 0.45
+                    // normalises dilation across all eyes.
                 }
                 else
                     Debug.LogWarning("[SpellyZombie] Eyes prefab has no Eye→Pupil pair. " +
@@ -194,10 +199,19 @@ namespace SpellyZombie
         {
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
-            // a custom Eyes prefab without the Eye/Pupil naming contract is
-            // pure decoration - it rides the head, nothing to animate
+            // unwired custom eyes are decoration only
             if (_leftEye == null || _rightEye == null
                 || _leftPupil == null || _rightPupil == null) return;
+
+            // wide eyes: the charge tell now, voice volume later
+            float swell = SwellNow();
+            if (!Mathf.Approximately(swell, _swellShown))
+            {
+                _swellShown = swell;
+                Vector3 s = Vector3.one * (0.16f * _scale * swell);
+                _leftEye.localScale = s;
+                _rightEye.localScale = s;
+            }
 
             // ---- auto behavior unless a brain is holding a mood ----
             if (_moodHold > 0f) _moodHold -= dt;
@@ -208,7 +222,7 @@ namespace SpellyZombie
                            Mood == EyeMood.Scared ? 0.45f :
                            Mood == EyeMood.Mad ? 0.7f : 1f;
 
-            // head jiggle: pupils get kicked opposite to head movement (googly!)
+            // head jiggle: pupils get kicked opposite to head movement
             Vector3 headDelta = transform.position - _lastHeadPos;
             _lastHeadPos = transform.position;
             Vector3 kick = -transform.InverseTransformVector(headDelta) * 14f;
@@ -247,7 +261,7 @@ namespace SpellyZombie
             Vector3 dirLocal = eye.InverseTransformDirection((LookTarget - eye.position).normalized);
             Vector3 target = new Vector3(dirLocal.x, dirLocal.y, 0f) * 0.32f;
 
-            if (Mood == EyeMood.Dizzy) // pupils orbit — universal cartoon for "stunned"
+            if (Mood == EyeMood.Dizzy) // pupils orbit (stunned)
             {
                 _dizzyPhase += dt * 9f;
                 target = new Vector3(Mathf.Cos(_dizzyPhase), Mathf.Sin(_dizzyPhase), 0f) * 0.3f;

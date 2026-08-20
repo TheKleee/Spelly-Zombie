@@ -6,18 +6,10 @@ using UnityEngine.SceneManagement;
 
 namespace SpellyZombie
 {
-    /// STEAM LOBBIES - two modes:
-    ///   PRIVATE: invite only through Steam (overlay or friends-list "Join
-    ///   Game"). Steam-typed private, invisible to every search.
-    ///   PUBLIC: listed in the in-game browser with name, size, region,
-    ///   language, tags and estimated ping; optional password; a ping gate
-    ///   refuses joiners over the lobby's limit before they ever connect.
-    /// Transport: FishySteamworks is swapped onto the NetworkManager at
-    /// connect time - the H/J LAN panel keeps Tugboat for dev testing.
-    ///
-    /// The NetworkManager lives in the LOBBY scene, so menu-started flows
-    /// run deferred: make/join the Steam lobby, load "Lobby", connect the
-    /// moment the NetworkManager exists.
+    /// Steam lobbies: private (invite-only) or public (browser-listed, optional
+    /// password, join-time ping gate). FishySteamworks is swapped onto the
+    /// NetworkManager at connect time (the LAN panel keeps Tugboat); the
+    /// NetworkManager lives in the Lobby scene, so menu-started flows connect deferred.
     public class SteamLobby : MonoBehaviour
     {
         public const int MaxPlayers = 4; // demo cap
@@ -42,7 +34,7 @@ namespace SpellyZombie
         Callback<GameLobbyJoinRequested_t> _cbJoinRequested;
         CallResult<LobbyMatchList_t> _crBrowse;
 
-        // ---- the public lobby browser (Meccha style: pick a row, join it) ----
+        // ---- the public lobby browser ----
         public struct PublicLobby
         {
             public CSteamID Id;
@@ -62,11 +54,10 @@ namespace SpellyZombie
             SteamMatchmaking.SetLobbyData(I._lobby, "sz_ingame", on ? "1" : "0");
         }
 
-        /// Region codes; display names live in Loc. Mandatory when hosting
-        /// public .
+        /// Region codes; display names live in Loc. Mandatory when hosting public.
         public static readonly string[] Regions = { "eu", "na", "sa", "asia", "oce", "mea" };
 
-        /// Server tag Loc keys, bitmask order (Meccha-style vibe tags).
+        /// Server tag Loc keys, bitmask order.
         public static readonly string[] TagKeys =
             { "tag.welcome", "tag.beginners", "tag.casual", "tag.tryhard", "tag.mic", "tag.quiet" };
 
@@ -75,7 +66,7 @@ namespace SpellyZombie
         public static string PendingLang = "";  // "" = adopt the player's game language
         public static int PendingTags;
         public static string PendingName = "";
-        /// Host-picked lobby size, 2..MaxPlayers (Meccha lets hosts size their rooms).
+        /// Host-picked lobby size, 2..MaxPlayers.
         public static int PendingSize = MaxPlayers;
 
         public static readonly List<PublicLobby> Lobbies = new List<PublicLobby>();
@@ -129,7 +120,7 @@ namespace SpellyZombie
         public static bool Hosting => NetGame.IsHost;
 
         /// Refill the public lobby list. Worldwide on purpose: the list shows
-        /// each row's estimated ping and the player picks, WC3 style.
+        /// each row's estimated ping and the player picks.
         public static void RefreshList()
         {
             if (I == null || !SteamReady) return;

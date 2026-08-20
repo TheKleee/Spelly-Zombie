@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// One CSV row per finished run - playtest evidence for tuning and the GO/NO-GO gate; lives at persistentDataPath/runstats.csv.
+    /// One CSV row per finished run; lives at persistentDataPath/runstats.csv.
     public static class RunStats
     {
         static string PathFile => Path.Combine(Application.persistentDataPath, "runstats.csv");

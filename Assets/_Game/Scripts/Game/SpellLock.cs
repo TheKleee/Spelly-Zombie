@@ -3,18 +3,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// THE FABLE GATE : a barrier that demands a SPECIFIC
-    /// spell - draw a seal ON the gate containing every demanded rune and it
-    /// opens. The demanded glyphs hover in front of it in the player's own
-    /// handwriting (no words - the localization rule), so the door SHOWS you
-    /// the spell it hungers for. Zombies drop rune cards, so a player who
-    /// lacks the runes farms the horde until it coughs them up.
-    ///
-    /// the SIDE: put this component on any blocking object (door, rubble,
-    /// portcullis - anything with a collider so it's drawable), pick the
-    /// demanded runes in the inspector. Opened gates sink into the ground.
-    /// When a map contains gates, the DEMO WIN becomes: open them all, then
-    /// clear the round (RoundDirector checks AllOpen).
+    /// A barrier that opens when a seal drawn on it contains every demanded
+    /// rune. The demanded glyphs hover in front in the player's recorded
+    /// handwriting. Opened gates sink into the ground.
     public class SpellLock : MonoBehaviour
     {
         [Tooltip("Every one of these runes must appear inside one seal drawn ON the gate.")]
@@ -53,8 +44,7 @@ namespace SpellyZombie
             BuildSigils();
         }
 
-        /// The demanded glyphs, floating in a row before the gate - dim ember
-        /// sigils in the player's own recorded handwriting.
+        /// The demanded glyphs, floating in a row before the gate.
         void BuildSigils()
         {
             var center = _col != null ? _col.bounds.center : transform.position;
@@ -66,11 +56,9 @@ namespace SpellyZombie
                 var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
                 quad.name = "LockSigil_" + name;
                 Destroy(quad.GetComponent<Collider>()); // never catches the pen
-                // UNPARENTED on purpose: gates built from kit pieces carry
-                // ~x121 import scale fixes - a local 0.34 under that parent
-                // made 40-meter sky glyphs over the workshop, and the parent's
-                // non-uniform stretch would skew the billboard. Update() owns
-                // their world pose every frame; Open() destroys them by hand.
+                // unparented on purpose: kit-piece parents carry import scale
+                // fixes that would blow up localScale and skew the billboard.
+                // Update() owns their world pose; Open() destroys them by hand.
                 quad.transform.position = center + Vector3.up * 0.2f;
                 quad.transform.localScale = Vector3.one * 0.34f;
                 var shader = Shader.Find("Sprites/Default");
@@ -85,8 +73,7 @@ namespace SpellyZombie
         {
             if (Opened || _sigils.Count == 0) return;
 
-            // sigils hover, bob, and face the nearest player - readable from
-            // whichever side the wizard approaches
+            // sigils hover, bob, and face the nearest player
             _bob += Time.deltaTime;
             var p = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             var center = _col != null ? _col.bounds.center : transform.position;
@@ -108,8 +95,7 @@ namespace SpellyZombie
             }
         }
 
-        /// DrawingWorld calls this for every activated seal - each gate checks
-        /// "was that ON me, and does it contain everything I demand?"
+        /// DrawingWorld calls this for every activated seal.
         public static void NotifySeal(Seal seal)
         {
             for (int i = 0; i < All.Count; i++)
@@ -129,7 +115,7 @@ namespace SpellyZombie
                 bool found = false;
                 foreach (var glyph in seal.Runes)
                     if (glyph.Rune == need) { found = true; break; }
-                if (!found) return; // the gate stays hungry
+                if (!found) return;
             }
             Open();
         }
@@ -161,8 +147,7 @@ namespace SpellyZombie
                 transform.position = Vector3.Lerp(from, to, t * t); // accelerating grind
                 yield return null;
             }
-            // gone from play, but the component stays REGISTERED so the
-            // all-gates-open win check still counts it
+            // stays registered so the all-gates-open check still counts it
             if (_col != null) _col.enabled = false;
             foreach (var r in GetComponentsInChildren<Renderer>())
                 r.enabled = false;

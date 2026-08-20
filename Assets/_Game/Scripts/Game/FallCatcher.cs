@@ -2,14 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// The safety net under the world. The trigger slab (placed by the map
-    /// builders) catches falls over the map itself; the controller ALSO
-    /// checks KillY every frame, so a player flung past the slab's edges is
-    /// caught anyway - nobody falls forever, no matter how far they went.
-    ///
-    /// The catch has a price mid-run : back at the map middle
-    /// but DOWNED - a teammate's E picks you up, the bleed-out or the horde
-    /// finishes you. In the lobby it's a free ride home.
+    /// Safety net under the world: a trigger slab catches falls over the map,
+    /// and the controller also checks KillY every frame. Mid-run the caught
+    /// player returns to the map middle downed; in the lobby it is free.
     public class FallCatcher : MonoBehaviour
     {
         /// The world's absolute floor - below this you're caught, always.
@@ -36,7 +31,7 @@ namespace SpellyZombie
             if (cc != null) cc.enabled = false; // CharacterController fights teleports
             pilot.transform.position = home;
             if (cc != null) cc.enabled = true;
-            pilot.CancelMomentum(); // the fall's speed must not land WITH you
+            pilot.CancelMomentum();
 
             if (RoundDirector.RunActive && !pilot.IsDowned)
             {
@@ -51,10 +46,8 @@ namespace SpellyZombie
 
         void OnTriggerEnter(Collider other)
         {
-            // PARENT lookup, not GetComponent: every player BONE carries a
-            // rigidbody+collider (ragdoll/ink), and a falling body's bones
-            // enter the net before the capsule does - the junk branch below
-            // was DELETING the player's skeleton ("my body vanished").
+            // parent lookup: player bones carry rigidbody+colliders and enter
+            // the net before the capsule; the junk branch must not eat them
             var pilot = other.GetComponentInParent<SimpleFPSController>();
             if (pilot != null)
             {
@@ -62,10 +55,8 @@ namespace SpellyZombie
                 return;
             }
 
-            // creatures die PROPERLY in the void (drops + kill credit fire -
-            // the silent Destroy used to eat the death, so a shoved zombie
-            // dropped nothing and made no sound). Matter and junk still just
-            // vanish quietly.
+            // creatures die via TakeDamage so drops and kill credit fire;
+            // matter and junk just vanish
             if (other.attachedRigidbody != null)
             {
                 var creature = other.attachedRigidbody.GetComponentInParent<Creature>();
@@ -80,11 +71,9 @@ namespace SpellyZombie
         }
     }
 
-    /// Layer 30 = INK CANVASES: flat drawable planes spanning whole facades so
-    /// strokes never split at wall-module seams. Nothing collides with them
-    /// (players walk through the doorways they span; particles fly through to
-    /// hit the real walls) - but raycasts still hit them, which is the point:
-    /// the pen sees one perfect surface.
+    /// Layer 30 = ink canvases: drawable planes spanning whole facades so
+    /// strokes never split at module seams. Nothing collides with them, but
+    /// raycasts still hit them.
     public static class InkCanvasLayer
     {
         public const int Layer = 30;

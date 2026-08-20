@@ -12,8 +12,7 @@ namespace SpellyZombie
         RectTransform _group;
         Image _vignette;
         Text _bannerText;
-        RectTransform _banner, _badgeRow;
-        string _badgesShown = "";
+        RectTransform _banner;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -48,15 +47,7 @@ namespace SpellyZombie
             _vignette.color = new Color(0.55f, 0f, 0f, 0f);
             _vignette.transform.SetAsFirstSibling(); // under everything in the HUD
 
-            // bottom-left: perk badges only — no riches, no XP line
-            var corner = UIKit.Group(_group, "Vitals");
-            UIKit.Place(corner, new Vector2(0f, 0f), new Vector2(18f, 18f), new Vector2(320f, 96f));
-
-            _badgeRow = UIKit.Group(corner, "Perks");
-            UIKit.Place(_badgeRow, new Vector2(0f, 1f), new Vector2(0f, -58f), new Vector2(260f, 30f));
-
-            // ---- top-center: the round banner (near native ribbon proportions
-            // - one line, generous side insets so text stays off the border art)
+            // top-center round banner; side insets keep text off the ribbon border art
             _banner = UIKit.Group(_group, "RoundBanner");
             UIKit.Place(_banner, new Vector2(0.5f, 1f), new Vector2(0f, 2f), new Vector2(560f, 78f));
             var cloth = UIKit.Panel(_banner, skin != null ? skin.BannerHanging : null,
@@ -67,8 +58,6 @@ namespace SpellyZombie
             UIKit.Stretch(btr);
             btr.offsetMin = new Vector2(70f, 20f); // off the tails
             btr.offsetMax = new Vector2(-70f, -16f);
-
-            // (no downed or death overlay: death has no UI, the world says it)
         }
 
         /// Radial blood-edge texture: clear center, red creeping in from the
@@ -107,7 +96,7 @@ namespace SpellyZombie
             // hurt = red edges creeping in as health drops
             if (player != null && _vignette != null)
             {
-                float f = Mathf.Clamp01(player.Health / Perks.MaxHealth);
+                float f = Mathf.Clamp01(player.Health / Sides.MaxHealthFor(Grimoire.LocalPlayerId));
                 float a = (1f - f) * (1f - f) * 0.85f;
                 // panic pulse only under 20%
                 if (f < 0.2f && !player.IsDowned)
@@ -115,37 +104,11 @@ namespace SpellyZombie
                 _vignette.color = new Color(0.55f, 0f, 0f, Mathf.Clamp01(a));
             }
 
-            // perk badges (rebuilt only when they change)
-            string tag = Perks.HudTag();
-            if (tag != _badgesShown)
-            {
-                _badgesShown = tag;
-                // immediate: dying children must not linger where the prefab
-                // adoption pass could claim them this same frame
-                for (int i = _badgeRow.childCount - 1; i >= 0; i--)
-                    DestroyImmediate(_badgeRow.GetChild(i).gameObject);
-                float x = 0f;
-                foreach (char letter in tag)
-                {
-                    var badge = UIKit.Group(_badgeRow, "Badge_" + letter);
-                    UIKit.Place(badge, new Vector2(0f, 0.5f), new Vector2(x, 0f), new Vector2(26f, 32f));
-                    var hex = UIKit.Panel(badge, UISkin.I != null ? UISkin.I.HexBrown : null,
-                        UISkin.I != null ? Color.white : new Color(0.5f, 0.35f, 0.2f));
-                    UIKit.Stretch((RectTransform)hex.transform);
-                    var l = UIKit.Label(badge, letter.ToString(), 15, UIKit.Parchment, TextAnchor.MiddleCenter, true);
-                    UIKit.Stretch((RectTransform)l.transform);
-                    x += 30f;
-                }
-            }
-
-            // round banner - the GAME's voice only; stale wipe/round text in the lobby just confuses
+            // round banner; suppressed in the lobby
             string status = ActiveScene.Name == "Lobby" ? "" : RoundDirector.HudStatus();
             if (_banner.gameObject.activeSelf != !string.IsNullOrEmpty(status))
                 _banner.gameObject.SetActive(!string.IsNullOrEmpty(status));
             _bannerText.text = status;
-
-            // no downed or death text, ever: the vignette, the body and the
-            // revive glow carry all of it
         }
     }
 }

@@ -2,14 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// DRAGGING A THING BY A POINT ON IT : "take the
-    /// point, draw a line from the centre to that point, and when the mouse
-    /// moves draw a new line from the centre - then rotate so the original
-    /// line aligns with the new one," slerped. It reads as a hand on the
-    /// object rather than an axis nudge.
-    ///
-    /// Shared on purpose: the acolyte's shape pose mode and lifted cargo both
-    /// turn things this way, and they should FEEL identical.
+    /// Arcball drag: grab a point on a ball around the object; as the cursor
+    /// moves, rotate so the grabbed direction follows it, slerped. Shared by
+    /// the shape pose mode and lifted cargo so they feel identical.
     public static class ArcballDrag
     {
         /// Where the cursor's ray meets the ball around the object. Off the

@@ -2,10 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A volume you float and sink in: water, magma, dark space liquid -
-    /// the tint and the name decide what it is, the behavior is shared.
-    /// The generator shapes the floor BENEATH it from the base fields and
-    /// floats this biome's fill INSIDE the volume instead of on the bed.
+    /// A volume you float and sink in: water, magma, space liquid. The
+    /// generator shapes the floor beneath it and floats this biome's fill
+    /// inside the volume instead of on the bed.
     public class LiquidBiome : Biome
     {
         [Header("LIQUID")]

@@ -3,12 +3,9 @@ using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// Put this on a Text or TMP_Text authored in a prefab and give it a key.
-    /// The words then come from the language files instead of what was typed,
-    /// and re-read themselves when the language changes.
-    ///
-    /// UIKit adopts prefab UI but keeps its captions, so this is how authored
-    /// text gets translated. Works on both legacy Text and TextMeshPro.
+    /// Put this on a Text or TMP_Text authored in a prefab and give it a key:
+    /// the text comes from the language files and refreshes on language change.
+    /// UIKit keeps adopted captions, so this is how authored text is translated.
     [DisallowMultipleComponent]
     public class LocText : MonoBehaviour
     {

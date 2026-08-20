@@ -2,13 +2,9 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A SPELL PAGE dropped by a slain zombie (design rule 4) - walk over it
-    /// to learn that rune family. the rule: dropped pages look EXACTLY
-    /// like the pages in the grimoire - the page art if he's authored it
-    /// (Resources/Custom/GrimoirePage_&lt;Family&gt;, or Custom/SpellPage as the
-    /// generic sheet), parchment placeholder otherwise, with the family's two
-    /// runes stamped on in the player's recorded handwriting. A soft gold
-    /// halo keeps it readable across the arena.
+    /// A spell page pickup - walk over it to learn that rune family. Uses the
+    /// authored page art when present, parchment placeholder otherwise, with the
+    /// family's two runes stamped on.
     public class RuneCardPickup : MonoBehaviour
     {
         static readonly Color PageInk = new Color(0.15f, 0.1f, 0.2f);

@@ -4,35 +4,25 @@ using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// BODY PAINT : R in third person - or in first person with
-    /// the wand (slot 1) selected - parks you IDLING exactly as you stand
-    /// (current emote pose included) and turns the camera into an easel orbit:
-    ///
-    /// MMB-drag  rotate all the way around (even the feet)
-    /// WASD  move the camera up/down/left/right · scroll  zoom
-    ///   LMB inks, RMB erases - brush cursor, no aiming
-    /// R (or Esc)  done, camera returns
-    ///
-    /// You can't walk while painting, but you're NOT safe: gravity, shoves and
-    /// damage keep applying (the controller keeps simulating), and getting
-    /// floored kicks you out of the mode.
-    /// Your own body is invisible to the pen in normal play (Ignore Raycast);
-    /// while painting it flips to Default so the ray can land, then flips back.
+    /// Body paint mode: R in third person, or in first person with the wand
+    /// (slot 1) selected. Parks you idling in your current pose and turns the
+    /// camera into an easel orbit: MMB-drag rotates, WASD moves, scroll zooms,
+    /// LMB inks, RMB erases, R or Esc exits.
+    /// Gravity, shoves and damage keep applying; getting floored exits the mode.
+    /// The body flips from Ignore Raycast to Default while painting so the pen
+    /// ray can land, then flips back.
     public class SelfPaint : MonoBehaviour
     {
         public static bool IsActive { get; private set; }
 
         static SelfPaint _live;
 
-        /// BLOWN OFF THE EASEL ("whenever you're in any mode like
-        /// posing or shapeshift mode... you drop into either first person or
-        /// third person mode so that your body can ragdoll"). A hit big enough
-        /// ends the mode instead of being swallowed by it - see Shove.
+        /// A hit big enough to floor you ends the mode instead of being
+        /// swallowed by it - see Shove.
         public static void Blown() { if (IsActive && _live != null) _live.Exit(); }
 
-        /// The painter's root while the mode is open - the pen raycasts ONLY
-        /// against this hierarchy (a miss draws NOTHING; never ink on the
-        /// world behind you = no accidental spells).
+        /// The painter's root while the mode is open - the pen raycasts only
+        /// against this hierarchy; a miss draws nothing.
         public static Transform ActiveRoot { get; private set; }
 
         SimpleFPSController _pilot;
@@ -79,11 +69,8 @@ namespace SpellyZombie
             PosePicker(kb);
             Orbit();
 
-            // THE BOOK FLOATS AT THE EASEL ("grimoire doesn't
-            // open and you can't list it" — it DID open, but it sat at the
-            // first-person read anchor, which the orbit camera cannot see).
             // While painting, an open grimoire hangs beside the canvas facing
-            // the camera; pages and arrows keep working untouched.
+            // the camera; pages and arrows keep working.
             if (_book == null) _book = GetComponentInChildren<GrimoirePages>(true);
             if (_book != null && GrimoirePages.BookOpen && _cam != null)
             {
@@ -96,37 +83,26 @@ namespace SpellyZombie
                     _bookLocalPos = bt.localPosition;
                     _bookLocalRot = bt.localRotation;
                     _bookLocalScale = bt.localScale;
-                    // riding the CAMERA, not pinned per frame: the hand bone
-                    // (its real parent) keeps animating and would drag a
-                    // world-pose pin into one-frame jitter. Reparent once and
-                    // the orbit carries the book perfectly.
+                    // reparent once to the camera: a per-frame pin against the
+                    // animating hand bone jitters
                     var ct = _cam.transform;
                     bt.SetParent(ct, true);
                     bt.position = ct.position + ct.forward * 0.8f
                         - ct.right * 0.4f - ct.up * 0.08f;
-                    // paper normal is the book's +Y (PageAnchor law: "+Y off
-                    // the paper, +Z toward the top edge") — aim the SPREAD at
-                    // the lens, top edge up. the model needed the flip (the
-                    // first guess floated the book upside down at the easel).
+                    // paper normal is the book's +Y; aim the spread at the
+                    // lens, top edge up
                     bt.rotation = Quaternion.LookRotation(-ct.up, -ct.forward);
                 }
             }
             else if (_bookFloated) RestoreBook();
 
-            // THE WAY OUT LIVES ON SCREEN, NOT IN THE CONSOLE (
-            // "when painting the body no one knows how to turn it off, or that
-            // clicking numbers will pose you") — as one-fact chips. The book's
-            // own pages chip takes the third slot of the extreme maximum now
-            // ,
-            // so the MMB orbit chip retired: dragging is how orbits are found.
+            // exit and pose keys as one-fact chips
             UIPrompt.Offer("R", Loc.T("paint.done"));
             UIPrompt.Offer("1-9", Loc.T("paint.pose"));
 
-            // I = DRINK THE BODY INK (sacrifice every drawing on your
-            // body to regrow the wand - a deliberate, out-of-the-way key).
-            // Enough ink = full wand, surplus wasted; less = a partial wand.
-            // (Shown AFTER the exit line so the rarer, more urgent state wins
-            // the single slot: a melted wand outranks the tour.)
+            // I = drink the body ink to regrow the wand; enough ink = full
+            // wand, surplus wasted. Shown after the exit line so the rarer,
+            // more urgent state wins the slot.
             var wand = GetComponent<WandState>();
             if (wand != null && !wand.HasWand)
                 UIPrompt.Show("I", "drink body ink to regrow your wand",
@@ -137,10 +113,9 @@ namespace SpellyZombie
         static readonly System.Collections.Generic.List<Stroke> _drunkStrokes =
             new System.Collections.Generic.List<Stroke>(); // reused buffer (no-alloc law)
 
-        /// Every persistent drawing on THIS body flows back into the well.
-        /// The worth is exactly the ink the lines are made of (length ×
-        /// cost-per-meter); Award clamps at the well's ceiling, so surplus
-        /// is honestly wasted - the rule.
+        /// Every persistent drawing on this body flows back into the well.
+        /// Worth = line length × cost-per-meter; Award clamps at the ceiling,
+        /// surplus is wasted.
         void DrinkBodyInk()
         {
             var world = DrawingWorld.Instance;
@@ -214,13 +189,9 @@ namespace SpellyZombie
             _rebakeIn = PoseSettle;
         }
 
-        /// Move ink drawn in the old pose onto the bones (rides the new pose),
-        /// then re-bake the paint shell against the body's current shape.
-        /// A POSE THE SHELL CANNOT COVER MUST NOT KILL THE PEN (
-        /// "not allowing me to erase the old drawing on my body") — this used
-        /// to ignore a failed bake, leaving NO canvas at all: no drawing, no
-        /// erasing, rays sailing through the body. The capsules step in, and
-        /// step back out the moment a later pose bakes an honest shell.
+        /// Move ink drawn in the old pose onto the bones, then re-bake the
+        /// paint shell against the current shape. A failed bake must not kill
+        /// the pen: the capsules step in until a later pose bakes a shell.
         void RebakeShell()
         {
             var body = GetComponent<CharacterRig>();
@@ -230,14 +201,11 @@ namespace SpellyZombie
             else ArmCapsules(body);
         }
 
-        /// FIRST person + the wand slot only: with a weapon selected R engraves
-        /// the WEAPON, and in third person R belongs to POSE MODE (PoseGrab) -
-        /// the split: draw on yourself with the wand, pose from outside.
+        /// First person + the wand slot only: with a weapon selected R engraves
+        /// the weapon; in third person R belongs to pose mode (PoseGrab).
         bool CanEnter()
         {
-            // ACOLYTES CANNOT DRAW ON THEIR OWN BODY - and
-            // R belongs to rotating the worn shape for them, so body paint
-            // must never steal the key
+            // acolytes cannot body-paint; R rotates their worn shape instead
             if (Sides.Of(Grimoire.LocalPlayerId) == Side.Acolyte) return false;
             if (_pilot != null
                 && (_pilot.IsDowned || _pilot.IsSprawled || _pilot.IsAirTumbling)) return false;
@@ -253,10 +221,7 @@ namespace SpellyZombie
             IsActive = true;
             _live = this;
 
-            // THE BOOK IS ALWAYS OPEN AT THE EASEL ("we can't expect
-            // people to learn the runes so quickly - it makes sense for me
-            // but not for others"): painting means reading; the reference
-            // opens with the mode and refuses to close until you leave.
+            // the grimoire opens with the mode and stays open until you leave
             GrimoirePages.RequestOpen();
 
             _camLocalPos = _cam.transform.localPosition;
@@ -268,18 +233,15 @@ namespace SpellyZombie
             _dist = 2.3f;
             _pan = Vector3.zero;
 
-            // the pen paints the LIMB CAPSULES on the bones - the body's
-            // official ink surfaces (one stroke per limb, joints bridged by
-            // strokes meeting: the seal design). The skinned mesh is never a
-            // pen target; it's looks-only. Relax the pose first so the canvas
-            // is a neutral stance that holds perfectly still.
+            // the limb capsules on the bones are the official ink surfaces;
+            // the skinned mesh is looks-only, never a pen target. Relax the
+            // pose first so the canvas holds still.
             var body = GetComponent<CharacterRig>();
             if (body != null && body.HasBody) body.RelaxForPaint();
 
-            // THE CANVAS IS THE SKIN: the frozen pose bakes into an invisible
-            // collider glued over the visible mesh - ink lands exactly where
-            // you see it, capsules never enter into it. Only when the bake is
-            // impossible (mesh not readable) do the ragdoll capsules step in.
+            // the frozen pose bakes an invisible collider over the visible
+            // mesh; ragdoll capsules step in only when the bake is impossible
+            // (mesh not readable)
             bool skin = body != null && body.HasBody && body.BeginBodyPaint();
             Debug.Log(skin
                 ? "[SpellyZombie] CANVAS: skin shell ('PaintShell' in the Hierarchy)"
@@ -354,13 +316,9 @@ namespace SpellyZombie
                         var cap = t.GetComponent<CapsuleCollider>();
                         if (cap != null)
                         {
-                            // the auto-fit capsules are fat (ragdoll
-                            // padding) - slim them so ink sits nearer
-                            // the skin, restored on exit. The TORSO
-                            // capsules barely clear the mesh already:
-                            // halving them sank chest ink UNDER the
-                            // skin (invisible strokes), so they keep
-                            // most of their girth.
+                            // slim the fat ragdoll capsules toward the skin
+                            // (restored on exit); torso capsules barely clear
+                            // the mesh, so they keep most of their girth
                             _slimmed.Add((cap, cap.radius));
                             cap.radius *= body != null && body.IsTorsoBone(t) ? 0.85f : 0.5f;
                         }
@@ -391,8 +349,7 @@ namespace SpellyZombie
             var mouse = Mouse.current;
             if (mouse == null || _cam == null) return;
 
-            // MMB-drag rotates; WASD MOVES the camera - the ONE
-            // shared easel language (EaselOrbit, same as pose mode)
+            // shared easel controls (EaselOrbit, same as pose mode)
             var rot = EaselOrbit.Tick(Keyboard.current, mouse,
                 ref _yaw, ref _pitch, ref _dist, ref _pan,
                 allowZoom: true, zoomMin: 0.9f);

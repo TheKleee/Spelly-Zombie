@@ -75,8 +75,7 @@ namespace SpellyZombie
 
             if (!IsGhost)
             {
-                // K = die on purpose, lobby AND matches for now: playtesters
-                // get to try ghost-early play before we decide if it stays
+                // K = die on purpose, lobby and matches for now
                 if (_pilot.IsLocalViewer && !_pilot.IsDowned)
                 {
                     var kb0 = Keyboard.current;
@@ -101,9 +100,8 @@ namespace SpellyZombie
 
             bool acolyte = Sides.Of(OwnerId) == Side.Acolyte;
 
-            // reference check first: a DESTROYED zombie compares equal to null
-            // through Unity's overload, which used to skip this whole block and
-            // leave the ghost stuck in the third person view forever
+            // ReferenceEquals: a destroyed zombie compares equal to null
+            // through Unity's overload
             if (!ReferenceEquals(_zombie, null))
             {
                 // dead counts as gone: the corpse object can linger a while
@@ -337,8 +335,7 @@ namespace SpellyZombie
                 _yaw = eye.eulerAngles.y;
                 _pitch = 10f;
 
-                // dying in precise-draw mode left the cursor free, and the
-                // disabled controller could never re-lock it
+                // re-lock: the disabled controller cannot, and precise-draw death leaves it free
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
 

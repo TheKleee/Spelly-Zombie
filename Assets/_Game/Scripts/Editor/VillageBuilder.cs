@@ -5,24 +5,15 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Assembles the LOBBY VILLAGE SQUARE from the Quaternius kits:
-    /// a paved plaza with a cauldron centerpiece, a ring of module-built
-    /// houses (walls/roofs assembled per house), market / smithy / study
-    /// corners, torch ring, fences with deliberate zombie gaps, and the dusk
-    /// atmosphere on top. Placement is BOUNDS-DRIVEN (pieces are measured at
-    /// build time and dropped so their render bounds sit on the ground), so
-    /// it adapts to the kit's real dimensions instead of guessing a grid.
-    /// Every placed piece gets mesh colliders (ink is a raycast - everything
-    /// must be drawable) and a SurfaceMaterialTag (the village joins the
-    /// chemistry: plaster/wood burns, brick melts).
-    /// Rebuild-safe: everything lives under one "SZ_Village" root.
+    /// Assembles the lobby village square from the Quaternius kits. Placement
+    /// is bounds-driven (pieces measured at build time, dropped onto the ground).
+    /// Every piece gets mesh colliders and a SurfaceMaterialTag; root: "SZ_Village".
     public static class VillageBuilder
     {
         const string VillageFbx = "Assets/Medieval Village MegaKit[Standard]/FBX/";
         const string PropsFbx = "Assets/Fantasy Props/Exports/FBX/";
 
-        // Polytope nature prefab folders (used by House doorstep grass and
-        // NatureCluster - both alive for PrefabExporter)
+        // Polytope nature prefab folders
         const string PTTrees = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs/Trees/";
         const string PTPlants = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs/Plants/";
         const string PTFlowers = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs/Flowers/";
@@ -31,7 +22,6 @@ namespace SpellyZombie
         const string PTMushrooms = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs/Mushrooms/";
         const string RootName = "SZ_Village";
 
-        // one-knob fixes if the kit's conventions differ from my assumptions
         const float WallYawOffset = 0f;   // if every wall faces inward, set 180
         const float PlazaRadius = 13.5f;
 
@@ -41,10 +31,8 @@ namespace SpellyZombie
         static Transform _root;
         static float _wallW = 2f, _wallH = 3f;
 
-        // kit-level scale correction: BOTH kits import ~1/100 scale (measured
-        // village ×83, props ×115). Each pack gets a multiplier from a probe
-        // piece. _wallYawAuto corrects the kit's wall axis convention (walls
-        // running along local Z read as gap-toothed rows without it).
+        // both kits import ~1/100 scale; each pack gets a multiplier from a
+        // probe piece. _wallYawAuto corrects the kit's wall axis convention.
         static float _villageFix = 1f, _propsFix = 1f, _wallYawAuto;
 
         public static float WallW => _wallW;
@@ -63,16 +51,14 @@ namespace SpellyZombie
             _root = root;
             _villageFix = _propsFix = 1f;
 
-            // scale anchor: a DOOR wall must be person-height (~2.7m). More
-            // reliable than "longest dimension" — that picked width last time
-            // and produced 1.5m-tall houses.
+            // scale anchor: a door wall must be person-height (~2.7m)
             var probe = Place("Wall_Plaster_Door_Round", new Vector3(0f, -50f, 0f), 0f);
             if (probe != null)
             {
                 var raw = BoundsOf(probe).size;
                 float maxDim = Mathf.Max(raw.x, Mathf.Max(raw.y, raw.z));
                 float anchor = raw.y >= maxDim * 0.5f ? raw.y : maxDim; // trust Y if it's plausibly the height
-                // OBJ ground truth: walls are AUTHORED 2.00m wide × 3.12m tall
+                // walls are authored 2.00m wide × 3.12m tall
                 if (anchor < 1.4f) _villageFix = 3.12f / Mathf.Max(0.001f, anchor);
                 Object.DestroyImmediate(probe);
 
@@ -82,7 +68,7 @@ namespace SpellyZombie
                     var s = BoundsOf(probe2).size;
                     _wallH = s.y;                     // authored 3.12 - exact stacking
                     _wallW = Mathf.Max(s.x, s.z);     // authored 2.00 - exact snapping
-                    _wallYawAuto = s.z > s.x ? 90f : 0f; // authored: walls run along X  expect 0
+                    _wallYawAuto = s.z > s.x ? 90f : 0f; // authored: walls run along X
                     Debug.Log($"[SpellyZombie] wall probe (fixed): {s.x:0.00} × {s.y:0.00} × {s.z:0.00}, yawAuto {_wallYawAuto}°");
                     Object.DestroyImmediate(probe2);
                 }
@@ -105,10 +91,9 @@ namespace SpellyZombie
         static float KitFix(string model) =>
             _fromVillage.Contains(model) ? _villageFix : _propsFix;
 
-        // the props kit has PER-FILE export scales (barrel needed ×114, chest
-        // was already true size  the kit multiplier made it a building).
-        // Expected real-world size of each piece's LARGEST dimension; pieces
-        // more than 2× off after the kit fix get normalized to this.
+        // the props kit has per-file export scales. Expected real-world size of
+        // each piece's largest dimension; pieces more than 2× off after the kit
+        // fix get normalized to this.
         static readonly Dictionary<string, float> ExpectedMax = new Dictionary<string, float>
         {
             { "Cauldron", 1.2f }, { "Bench", 1.6f }, { "Coin_Pile", 0.5f }, { "Coin_Pile_2", 0.5f },
@@ -135,12 +120,11 @@ namespace SpellyZombie
             float maxDim = Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z));
             if (maxDim < 0.001f) return;
             float ratio = maxDim / target;
-            if (ratio > 2f || ratio < 0.5f) // way off  trust the table, not the file
+            if (ratio > 2f || ratio < 0.5f) // trust the table, not the file
                 inst.transform.localScale *= target / maxDim;
         }
 
-        // NOTE: all scene-BUILDING code was deleted at the order - he
-        // composes scenes by hand. The helpers below exist for PrefabExporter.
+        // the helpers below exist for PrefabExporter
 
         /// A floating slide-weapon pickup (temp look, real mechanism).
         public static void PlaceWeaponPickup(Vector3 pos)
@@ -183,8 +167,6 @@ namespace SpellyZombie
                         if (Random.value < 0.55f)
                             PlacePivot("WindowShutters_Wide_Flat_Open", frontWall.transform.position,
                                 frontWall.transform.rotation, SurfaceMaterialType.Wood);
-                        // upper-floor windows sometimes grow BALCONIES - flyers
-                        // and crouch-jumpers get perches (verticality!)
                         if (f > 0 && Random.value < 0.45f)
                             PlacePivot("Balcony_Simple_Straight", frontWall.transform.position,
                                 frontWall.transform.rotation, SurfaceMaterialType.Wood);
@@ -209,14 +191,12 @@ namespace SpellyZombie
                 }
             }
 
-            // a chimney poking through most roofs - houses read as LIVED IN
             if (Random.value < 0.7f)
                 PlaceFloat("Prop_Chimney",
                     center + right * (halfW * 0.45f) + Vector3.up * (floors * _wallH + 2.3f),
                     facingDeg, 1f, SurfaceMaterialType.Stone);
 
-            // GABLE CAPS close the triangular void between wall-top and roof
-            // ridge at both ends (user: "something that fits below these roofs")
+            // gable caps close the triangular void between wall top and roof ridge
             float topY = floors * _wallH;
             Place("Roof_Front_Brick4", center + right * halfW + Vector3.up * topY,
                 facingDeg + 90f, 1f, SurfaceMaterialType.Stone);
@@ -225,8 +205,7 @@ namespace SpellyZombie
 
             if (furnish) Interior(center, fwd, right, wide, deep, facingDeg);
 
-            // one seamless drawing plane per facade (plaza-canvas fix, but
-            // for walls - big seals across a house front never split again)
+            // one seamless drawing plane per facade
             float canvasH = floors * _wallH;
             AddCanvas(center + fwd * (halfD + 0.24f), facingDeg, wide * _wallW, canvasH, wallTag);
             AddCanvas(center - fwd * (halfD + 0.24f), facingDeg + 180f, wide * _wallW, canvasH, wallTag);
@@ -244,7 +223,6 @@ namespace SpellyZombie
 
             Roof(center, facingDeg, wide * _wallW, deep * _wallW, floors * _wallH);
 
-            // face candy: a wall lantern by the door, a banner upstairs
             PlaceFloat("Lantern_Wall", center + fwd * (halfD + 0.12f) + right * (_wallW * 0.7f)
                 + Vector3.up * 2.1f, facingDeg, 1f, SurfaceMaterialType.Metal, warmLight: true);
             if (Random.value < 0.6f)
@@ -255,8 +233,6 @@ namespace SpellyZombie
                     center + fwd * (halfD + 0.06f) - right * (_wallW * 0.8f) + Vector3.up * 1.4f,
                     facingDeg, 1f, SurfaceMaterialType.Wood);
 
-            // lived-in doorstep: a small prop cluster beside the door + grass
-            // hugging the wall corner (life grows at EDGES, not in middles)
             if (Random.value < 0.85f)
             {
                 Vector3 stoop = center + fwd * (halfD + 0.9f) + right * (_wallW * 1.1f);
@@ -272,9 +248,8 @@ namespace SpellyZombie
                 SurfaceMaterialType.Unknown, keepColliders: false);
         }
 
-        /// A lived-in room behind every broken-open door: wooden plank floor
-        /// (visuals + one solid walkable canvas), bed, storage, a chest worth
-        /// robbing, and candlelight that glows through the windows at dusk.
+        /// Furnishes a house interior: plank floor visuals over one solid
+        /// walkable collider, furniture, and candlelight.
         static void Interior(Vector3 center, Vector3 fwd, Vector3 right, int wide, int deep, float facingDeg)
         {
             float halfW = wide * _wallW * 0.5f, halfD = deep * _wallW * 0.5f;
@@ -322,10 +297,9 @@ namespace SpellyZombie
             AddWarmLight(candle, 1.1f, 5f);
         }
 
-        /// A wall plus its DETAIL: window walls get the actual window insert
-        /// (glass frame) and often open shutters; door walls get a door leaf.
-        /// Inserts are placed at the WALL'S OWN PIVOT with its exact rotation -
-        /// the kit's pieces are authored to slot together that way.
+        /// A wall plus its insert (window glass/shutters or door leaf). Inserts
+        /// sit at the wall's own pivot with its exact rotation; the kit's pieces
+        /// are authored to slot together that way.
         static void PlaceWallDetailed(string wallPiece, Vector3 groundPos, float yaw, SurfaceMaterialType tag)
         {
             var wall = Place(wallPiece, groundPos, yaw, 1f, tag);
@@ -345,10 +319,9 @@ namespace SpellyZombie
             }
         }
 
-        /// Door frame + a breakable leaf, BOUNDS-centered in the doorway
-        /// (hinge-pivot math kept flipping with import axes - bounds can't
-        /// lie), widened to fill the 1.4m arch (local X stays a world
-        /// horizontal here, so the stretch can't shear).
+        /// Door frame + a breakable leaf, bounds-centered in the doorway and
+        /// widened to fill the 1.4m arch (local X is world-horizontal here, so
+        /// the stretch cannot shear).
         static void PlaceWallDoorDetail(GameObject wall, float yaw)
         {
             PlacePivot("DoorFrame_Round_WoodDark", wall.transform.position,
@@ -364,23 +337,19 @@ namespace SpellyZombie
                 leaf.transform.position += new Vector3(
                     wall.transform.position.x - lb.center.x, 0f,
                     wall.transform.position.z - lb.center.z);
-                    // the rules: doors BREAK (burn/smash) - or open politely
-                // with E when you're close
                 MakeBreakable(leaf, 45f);
                 leaf.AddComponent<DoorInteract>();
             }
         }
 
-        /// Kinematic body + health: heat particles can ignite it (Thermal grows
-        /// on the rigidbody), thrown matter crushes it, and at 0 HP it's gone -
-        /// the doorway stands open.
+        /// Kinematic rigidbody + health; heat can ignite it, impacts crush it.
         public static void MakeBreakable(GameObject go, float health)
         {
             if (go == null || go.GetComponent<Rigidbody>() != null) return; // once only
             var rb = go.AddComponent<Rigidbody>();
             rb.isKinematic = true;
             go.AddComponent<Damageable>().Health = health;
-            go.AddComponent<Breakable>(); // death  chunks + splinters + poof
+            go.AddComponent<Breakable>();
         }
 
         public static void StripColliders(GameObject inst)
@@ -390,10 +359,9 @@ namespace SpellyZombie
                 Object.DestroyImmediate(col);
         }
 
-        /// A facade-sized invisible drawing plane on the ink-canvas layer:
-        /// the pen hits ONE flat surface per house side (strokes don't split
-        /// at wall-module seams), while players and particles pass through it
-        /// to the real geometry.
+        /// Invisible facade-sized drawing plane on the ink-canvas layer so
+        /// strokes don't split at wall-module seams; players and particles pass
+        /// through to the real geometry.
         public static void AddCanvas(Vector3 basePos, float yaw, float width, float height, SurfaceMaterialType tag)
         {
             var canvas = new GameObject("WallCanvas") { layer = InkCanvasLayer.Layer };
@@ -406,8 +374,7 @@ namespace SpellyZombie
         }
 
         /// Exact-pivot placement for kit pieces that slot into other pieces
-        /// (window inserts, door leaves) - no bounds-dropping, the author's
-        /// pivots line up by design. (Public: WorkshopBuilder slots inserts too.)
+        /// (window inserts, door leaves) - no bounds-dropping.
         public static GameObject PlacePivot(string model, Vector3 pivotPos, Quaternion rotation, SurfaceMaterialType tag)
         {
             var prefab = Load(model);
@@ -422,12 +389,9 @@ namespace SpellyZombie
 
         public static void Roof(Vector3 center, float facingDeg, float footW, float footD, float topY)
         {
-            // OBJ ground truth: "Roof_RoundTiles_AxB" covers EXACTLY A×B meters
-            // (plus ~0.78m eaves all around), pivot centered, base 0.52 BELOW
-            // the pivot so the eaves hug the wall top. Pick the SMALLEST kit
-            // roof that covers the footprint from the sizes that actually
-            // exist (asking for a 16m roof got the hall a 4×6 hat and a sky
-            // view) - never invent names, never scale.
+            // "Roof_RoundTiles_AxB" covers exactly A×B meters (~0.78m eaves all
+            // around), pivot centered, base 0.52 below the pivot. Pick the
+            // smallest listed roof that covers the footprint; never scale.
             int w = Mathf.RoundToInt(footW), d = Mathf.RoundToInt(footD);
             int lo = Mathf.Min(w, d), hi = Mathf.Max(w, d);
             Vector2Int[] roofSizes = // (A, B) as named - A is the X extent
@@ -453,9 +417,8 @@ namespace SpellyZombie
 
             var inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab, _root);
             inst.transform.localScale = Vector3.one * _villageFix;
-            // roof local X must land on the house axis its name-number covers:
-            // yaw=facing maps local X onto the house DEPTH axis? No - onto
-            // 'right' (width). If the name's X-cover is the depth, turn 90°.
+            // yaw=facing maps roof local X onto the house width; if the name's
+            // X-cover is the depth, turn 90°
             float yaw = coverXisD ? facingDeg + 90f : facingDeg;
             inst.transform.rotation = Quaternion.Euler(0f, yaw, 0f) * inst.transform.rotation;
             inst.transform.position = center + Vector3.up * topY; // pivot AT wall top
@@ -530,9 +493,8 @@ namespace SpellyZombie
             var prefab = Load(model);
             if (prefab == null) return null;
             var inst = (GameObject)PrefabUtility.InstantiatePrefab(prefab, _root);
-            // COMPOSE the yaw on top of the import rotation - Blender FBX
-            // stands up via a baked -90° root rotation; overwriting it laid
-            // every wall flat on its back (the "nothing changed" build)
+            // compose the yaw on top of the import rotation: Blender FBX stands
+            // up via a baked -90° root rotation; overwriting it lays pieces flat
             inst.transform.rotation = Quaternion.Euler(0f, yRot, 0f) * inst.transform.rotation;
             inst.transform.localScale = Vector3.one * (scale * KitFix(model));
             NormalizeSize(inst, model);
@@ -576,9 +538,7 @@ namespace SpellyZombie
             if (tag != SurfaceMaterialType.Unknown && inst.GetComponent<SurfaceMaterialTag>() == null)
                 inst.AddComponent<SurfaceMaterialTag>().Material = tag;
 
-                // THE CoD-ZOMBIES RULE : wooden PROPS burn and break
-            // fences, window inserts, shutters, doors, crates, stalls, benches.
-            // Structure itself (walls/roofs/floors) stays standing.
+            // wooden props are breakable; structure (walls/roofs/floors) is not
             if (tag == SurfaceMaterialType.Wood && !IsStructural(inst.name))
             {
                 var b = BoundsOf(inst);

@@ -5,10 +5,8 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// Declares which transforms on a character can be posed by emotes.
-    /// Works on anything - graybox pivots today, Mixamo bones later - as long as
-    /// the joint ids stay consistent ("shoulder.L", "shoulder.R", "neck", ...).
-    /// Saved emotes reference joints only by id; unknown ids are skipped, so
-    /// emotes survive a character swap.
+    /// Joint ids ("shoulder.L", "neck", ...) are the contract: saved emotes
+    /// reference joints by id and skip unknown ids, surviving character swaps.
     public class EmoteRig : MonoBehaviour
     {
         [Serializable]
@@ -21,10 +19,9 @@ namespace SpellyZombie
             public Transform GrabHint;
             [NonSerialized] public Quaternion Rest;
 
-            /// HINGE limit (elbows/knees - the rule: constrained joints make
-            /// body-seal PLACEMENT a puzzle). Axis lives in the joint's rest
-            /// frame; the allowed pose is Rest rotated [MinDeg..MaxDeg] around
-            /// it, nothing else. Unlimited joints leave Limited false.
+            /// Hinge limit (elbows/knees). Axis lives in the joint's rest
+            /// frame; the allowed pose is Rest rotated [MinDeg..MaxDeg]
+            /// around it. Unlimited joints leave Limited false.
             public bool Limited;
             public Vector3 HingeAxis;
             public float MinDeg, MaxDeg;
@@ -32,10 +29,9 @@ namespace SpellyZombie
 
         public List<JointEntry> Joints = new List<JointEntry>();
 
-        /// Enforce a limited joint's hinge: whatever was just written to the
-        /// bone is reduced to its component around the hinge axis, clamped to
-        /// the range. Runs at EVERY write site (grab, pose playback) so saved
-        /// files with illegal angles obey the same anatomy as live posing.
+        /// Enforce a limited joint's hinge: the written rotation is reduced
+        /// to its component around the hinge axis, clamped to the range.
+        /// Runs at every write site (grab, pose playback).
         public static void Constrain(JointEntry j)
         {
             if (j == null || !j.Limited || j.T == null) return;
@@ -54,20 +50,9 @@ namespace SpellyZombie
 
         void Awake() => CaptureRest();
 
-        /// REST IS RUNTIME-ONLY and must be read AFTER the animator's first
-        /// frame, or every value lives in the wrong basis.
-        ///
-        /// AXIOM (, "drawing on the body doesn't work properly
-        /// again... probably something happened cause of the prefab"): this
-        /// used to be captured in Awake and never again. That was safe only
-        /// while EmoteRig was ADDED AT RUNTIME, after the model was worn and
-        /// the animator had evaluated. On a BAKED PLAYER PREFAB it is a
-        /// serialized component, so Awake fires at scene load and Rest takes
-        /// the raw FBX bind pose. RelaxForPaint then snapped the body into
-        /// that on every R, and the paint shell baked against a pose nobody
-        /// could see. CharacterRig re-captures at its first LateUpdate, the
-        /// same moment it builds the sockets, which is the earliest point the
-        /// pose is real. Awake still runs so nothing is ever uninitialised.
+        /// Rest must be captured after the animator's first evaluated frame:
+        /// on a baked prefab, Awake sees the raw FBX bind pose. CharacterRig
+        /// re-captures at its first LateUpdate; Awake only pre-initialises.
         public void CaptureRest()
         {
             foreach (var j in Joints)
@@ -81,9 +66,8 @@ namespace SpellyZombie
             return null;
         }
 
-        /// The first registered joint at or above a clicked transform (walk up,
-        /// stop at the rig root) - the ONE limb-resolve both PoseStudio and
-        /// PoseGrab use.
+        /// The first registered joint at or above a clicked transform (walk
+        /// up, stop at the rig root). Used by PoseStudio and PoseGrab.
         public JointEntry JointAtOrAbove(Transform t)
         {
             while (t != null)

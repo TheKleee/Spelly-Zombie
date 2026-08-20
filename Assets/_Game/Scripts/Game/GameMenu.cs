@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// Cached active-scene name - SceneManager.GetActiveScene().name allocates a fresh string EVERY access (was hit per frame in HUD/MatchLobby/NetGame/GameMenu).
+    /// Cached active-scene name - GetActiveScene().name allocates a fresh string per access.
     public static class ActiveScene
     {
         public static string Name { get; private set; } = "";
@@ -129,16 +129,11 @@ namespace SpellyZombie
                 });
                 UIKit.Place((RectTransform)vol.transform, new Vector2(0.5f, 1f), new Vector2(0f, -150f), new Vector2(300f, 26f));
 
-                // THE LANGUAGE BUTTON. One
-                // button cycling every language, each written in its own
-                // script, and the whole menu rebuilds in it immediately so
-                // you can always read your way back out.
+                // one button cycles every language; the menu rebuilds in it immediately
                 OptionButton(Loc.F("opt.language", Loc.NativeName(Loc.LanguageCode)), -198f,
                     () => { Loc.SetLanguage(Loc.NextLanguage()); BuildUI(); });
 
-                // IMMERSIVE MODE : the whole HUD off. Expert
-                // players play clean, and every screenshot taken in it sells
-                // pure gameplay in no language at all.
+                // immersive mode: the whole HUD off
                 OptionButton(Loc.T(UIKit.Immersive ? "opt.immersive.on" : "opt.immersive.off"), -248f,
                     () => { UIKit.Immersive = !UIKit.Immersive; BuildUI(); });
 
