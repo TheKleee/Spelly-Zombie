@@ -80,12 +80,12 @@ namespace SpellyZombie
             foreach (var r in _bodyRends) Tint(r, paint, BodyTint);
         }
 
-        /// Cache the body's renderers once, excluding carried pieces (wand,
-        /// grimoire) BY NAME - socket lookups may not have resolved yet when
-        /// this first runs.
+        /// Re-collected every Apply: the model and costume build over a few
+        /// frames, and a list cached before they existed tinted the old
+        /// placeholders forever while the real robe stayed pale.
         void CollectBody()
         {
-            if (_bodyRends.Count > 0) return;
+            _bodyRends.Clear();
             foreach (var r in GetComponentsInChildren<Renderer>(true))
             {
                 if (r == null) continue;

@@ -515,6 +515,12 @@ namespace SpellyZombie
 
                     var go = Instantiate(prefab, at,
                         Quaternion.AngleAxis(yaw, Vector3.up), fill);
+                    // EVERYTHING PLACED IS AN ELEMENT. A prop with no Element
+                    // is outside the world entirely - it cannot be burnt,
+                    // broken or read, and nothing tells you. Prefabs should
+                    // carry their own (Spelly Zombie/Elements/Set Up Prefabs);
+                    // this is the net for the ones that do not.
+                    EnsureElements(go);
                     // gentle tilt onto slopes
                     if (!liquid && up.y < 0.995f)
                         go.transform.rotation = Quaternion.FromToRotation(Vector3.up,
@@ -1243,5 +1249,25 @@ namespace SpellyZombie
             }
             data.SetAlphamaps(0, 0, maps);
         }
-    }
+    
+        /// ONE ELEMENT PER OBJECT, AT ITS ROOT - matching the editor pass.
+        /// `go` IS the prefab root here, so children are parts of this one
+        /// thing and never get their own. A prop with no solid collider is not
+        /// in the world at all and is left alone.
+        static void EnsureElements(GameObject go)
+        {
+            if (go == null) return;
+            // authored anywhere in the object - root OR a child someone chose
+            // to put one on - means it is already spoken for
+            if (go.GetComponentInParent<Element>() != null) return;
+            if (go.GetComponentInChildren<Element>(true) != null) return;
+            var cols = go.GetComponentsInChildren<Collider>(true);
+            for (int i = 0; i < cols.Length; i++)
+                if (cols[i] != null && !cols[i].isTrigger)
+                {
+                    go.AddComponent<Element>();
+                    return;
+                }
+        }
+}
 }

@@ -74,7 +74,7 @@ namespace SpellyZombie
 
             // same numbers as the FlameBurst ultimate; damage hits everyone in the area
             float r = DrawingConfig.UltimateRadius;
-            var seen = new System.Collections.Generic.HashSet<Damageable>();
+            var seen = new System.Collections.Generic.HashSet<Element>();
             var hits = Physics.OverlapSphere(at, r);
             foreach (var c in hits)
             {
@@ -86,7 +86,7 @@ namespace SpellyZombie
                     continue;
                 }
                 SpellParticle.GiveHeatTo(c, 200f); // houses catch, wood burns
-                var alive = c.GetComponentInParent<Damageable>();
+                var alive = c.GetComponentInParent<Element>();
                 if (alive != null && seen.Add(alive))
                     alive.TakeDamage(30f, "meteor impact");
                 var rb2 = c.attachedRigidbody;

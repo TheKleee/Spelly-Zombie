@@ -18,15 +18,29 @@ namespace SpellyZombie
         bool _loadFailed;  // repaint blew up - this session must NOT save
         bool _sawInk;      // the census saw ink at least once this session
         bool _firstCensus = true;
+        float _handErasedAt = -999f;
         int _prevSig = int.MinValue;      // last census signature (settle detector)
         int _lastSavedSig = int.MinValue; // what's already on disk
         int _slowBeat;                    // idle-wall heartbeat divider
+
+        /// The player's own eraser worked this wall just now - the only key
+        /// that can clear its saved pool.
+        public void NoteHandErase() => _handErasedAt = Time.time;
 
         void Awake() => _slowBeat = GetInstanceID() & 7; // stagger idle walls across beats
 
         void Start()
         {
             _label = GetComponentInChildren<TMPro.TextMeshPro>();
+            if (_label != null)
+            {
+                // sit just over the slab's top edge and read from the walkway
+                // side - built scenes had the label huge, high and mirrored
+                _label.transform.localPosition = new Vector3(0f, 1.5f, 0f);
+                _label.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                _label.fontSize = 2.6f;
+                _label.rectTransform.sizeDelta = new Vector2(4.2f, 0.8f);
+            }
 
             // wipe-proofing: a session that never managed to show the saved
             // ink is never allowed to overwrite it
@@ -111,7 +125,7 @@ namespace SpellyZombie
             if (snap.Count == 0 && !_sawInk && RuneLibrary.AllSamples(Rune).Count > 0)
                 return;
 
-            RuneLibrary.ReplaceSamples(Rune, snap);
+            RuneLibrary.ReplaceSamples(Rune, snap, Time.time - _handErasedAt < 3f);
             _lastSavedSig = sig;
         }
 
@@ -297,7 +311,7 @@ namespace SpellyZombie
         void RefreshLabel(int count)
         {
             if (_label != null)
-                _label.text = $"{RuneLibrary.IconInline(Rune)}\n{count} drawing(s), auto-saved";
+                _label.text = $"{RuneLibrary.IconInline(Rune)}  {count} saved";
         }
     }
 }

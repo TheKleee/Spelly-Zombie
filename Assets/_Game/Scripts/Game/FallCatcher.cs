@@ -73,7 +73,7 @@ namespace SpellyZombie
             if (other.attachedRigidbody != null)
             {
                 var creature = other.attachedRigidbody.GetComponentInParent<Creature>();
-                var victim = creature != null ? creature.GetComponent<Damageable>() : null;
+                var victim = creature != null ? creature.GetComponent<Element>() : null;
                 if (victim != null)
                 {
                     victim.TakeDamage(99999f, "the void");

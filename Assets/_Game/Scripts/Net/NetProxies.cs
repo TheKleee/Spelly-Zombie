@@ -108,52 +108,137 @@ namespace SpellyZombie
         Vector3 _tp;
         float _ts = 0.14f;
 
-        public static NetMoteProxy Build(int id, ParticleKind kind, Vector3 pos)
+        public static NetMoteProxy Build(int id, byte shape, Color32 tint, Vector3 pos)
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            go.name = "NetMote_" + kind;
-            Object.Destroy(go.GetComponent<Collider>()); // visual only - never blocks a ray
-            go.transform.position = pos;
-            go.transform.localScale = Vector3.one * (kind == ParticleKind.Push ? 0.09f : 0.14f);
+            // ★ THE SAME POSED BLOB THE HOST IS WEARING. The shape index is
+            // into the authored list, which is identical in every copy of a
+            // build - so a client shows a tornado as a tornado without a name
+            // being sent for every particle in every snapshot.
+            var art = CollectionManager.ParticleShapeAt(shape) ?? CollectionManager.ParticleBlob;
 
-            // SpellParticle.RefreshLook's palette, condensed - one look per kind
-            Color c;
-            MoteShade shade = MoteShade.Additive;
-            switch (kind)
+            GameObject go;
+            if (art != null)
             {
-                case ParticleKind.Spark: c = new Color(1f, 0.55f, 0.12f); break;
-                case ParticleKind.Frost: c = new Color(0.6f, 0.85f, 1f); break;
-                case ParticleKind.Light: c = new Color(1f, 0.97f, 0.8f); break;
-                case ParticleKind.Dark: c = new Color(0.2f, 0.1f, 0.3f); shade = MoteShade.Transparent; break;
-                case ParticleKind.Glue: c = new Color(0.4f, 0.8f, 0.35f); break;
-                case ParticleKind.Repel: c = new Color(0.85f, 0.85f, 0.9f); break;
-                case ParticleKind.Dense: c = new Color(0.75f, 0.55f, 0.3f); break;
-                case ParticleKind.Spread: c = new Color(0.7f, 1f, 0.8f); break;
-                case ParticleKind.Push: c = new Color(1f, 0.95f, 0.4f); break;
-                case ParticleKind.Lightning: c = new Color(0.75f, 0.9f, 1f); break;
-                case ParticleKind.Flame: c = new Color(1f, 0.45f, 0.08f); break;
-                case ParticleKind.BlackHole: c = new Color(0.03f, 0.01f, 0.06f); shade = MoteShade.Transparent; break;
-                case ParticleKind.BarrierMote: c = new Color(0.6f, 0.9f, 1f, 0.7f); shade = MoteShade.Transparent; break;
-                default: c = Color.white; break;
+                go = Instantiate(art, pos, Quaternion.identity);
+                foreach (var col in go.GetComponentsInChildren<Collider>(true))
+                    Destroy(col);   // a proxy is a picture, never a body
             }
-            go.GetComponent<Renderer>().sharedMaterial = MatterFX.Particle(c, shade, 0.04f,
-                shade == MoteShade.Additive ? 0.9f : 0.35f);
-
-            if (kind == ParticleKind.Light)
+            else
             {
-                var l = go.AddComponent<Light>();
-                l.type = LightType.Point;
-                l.range = 4.5f;
-                l.intensity = 2.2f;
-                l.color = new Color(1f, 0.96f, 0.8f);
+                // nothing authored yet: the old sphere, so a client is never
+                // left looking at empty air
+                go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                Destroy(go.GetComponent<Collider>());
+                go.transform.position = pos;
+                go.transform.localScale = Vector3.one * 0.14f;
             }
 
+            go.name = "NetMote";
             var p = go.AddComponent<NetMoteProxy>();
-            p.HostId = id;
-            p.Kind = kind;
-            p._tp = pos;
+            p.Shape = shape;
+            p.Target(pos, go.transform.localScale.x);
+            p.Wear(tint, 1);
             return p;
         }
+
+        /// Which posed blob this is showing; a change means rebuild.
+        public byte Shape;
+
+        /// Colour and level, pushed through a property block so the authored
+        /// material survives. The host computes both off the payload; a client
+        /// has no payload, so it is told.
+        public void Wear(Color32 tint, byte level)
+        {
+            if (_block == null) _block = new MaterialPropertyBlock();
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null || r.sharedMaterial == null
+                    || !r.sharedMaterial.HasProperty("_StateT")) continue;   // eyes keep their own
+                r.GetPropertyBlock(_block);
+                _block.SetColor("_BaseColor", tint);
+                r.SetPropertyBlock(_block);
+                _tint = tint;
+            }
+            if (level >= 2 && _ring == null)
+                _ring = GrammarFX.GroundRing(transform, new Color(1f, 1f, 1f, 0.35f));
+            else if (level < 2 && _ring != null) { Destroy(_ring.gameObject); _ring = null; }
+
+            WearRow(level);
+        }
+
+        /// ★ THE SLIDERS AND THE TRAIL COST NOTHING TO REPLICATE. The shape
+        /// index already says which row this is, and every client has the same
+        /// table - so a tornado spins on every screen because each machine
+        /// looks up the same numbers, not because they were sent.
+        void WearRow(byte level)
+        {
+            var art = CollectionManager.ParticleShapeAt(Shape);
+            if (art == null) return;
+            var row = SpellTable.ByName(art.name) ?? SpellTable.ByName(StripLevel(art.name));
+            if (row == null) return;
+
+            if (row.TrailWidth > 0f)
+            {
+                if (_tail == null) _tail = gameObject.AddComponent<TrailRenderer>();
+                _tail.time = Mathf.Max(0.05f, row.TrailSeconds);
+                _tail.widthMultiplier = row.TrailWidth;
+                _tail.minVertexDistance = 0.08f;
+                _tail.sharedMaterial = MatterFX.Get(_tint, MoteShade.Additive);
+            }
+            else if (_tail != null) { Destroy(_tail); _tail = null; }
+
+            if (row.Skin == null || _skinned) return;
+            _skinned = true;
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null || r.sharedMaterial == null
+                    || !r.sharedMaterial.HasProperty("_StateT")) continue;   // eyes keep their own
+                r.GetPropertyBlock(_block);
+                Put(_block, "_Wobble", row.Skin.Wobble);
+                Put(_block, "_WobbleSpeed", row.Skin.WobbleSpeed);
+                Put(_block, "_Swirl", row.Skin.Swirl);
+                Put(_block, "_SwirlSpeed", row.Skin.SwirlSpeed);
+                Put(_block, "_Turbulence", row.Skin.Turbulence);
+                Put(_block, "_Bubbles", row.Skin.Bubbles);
+                Put(_block, "_BubbleScale", row.Skin.BubbleSize);
+                Put(_block, "_BubbleRise", row.Skin.BubbleRise);
+                Put(_block, "_Holes", row.Skin.Holes);
+                Put(_block, "_HoleScale", row.Skin.HoleSize);
+                Put(_block, "_Rim", row.Skin.Rim);
+                r.SetPropertyBlock(_block);
+            }
+            if (!string.IsNullOrEmpty(row.Skin.Fx))
+                FxLibrary.SpawnNamed(row.Skin.Fx, transform.position, transform);
+        }
+
+        /// "Attract 2" is the level-2 look of the Attract row.
+        static string StripLevel(string n)
+        {
+            int sp = n.LastIndexOf(' ');
+            return sp > 0 && sp == n.Length - 2 && char.IsDigit(n[n.Length - 1]) ? n.Substring(0, sp) : n;
+        }
+
+        static void Put(MaterialPropertyBlock b, string id, float v) => b.SetFloat(id, Mathf.Max(0f, v));
+
+        int _rides;
+
+        /// Hang onto what the host says it caught, so it travels with its
+        /// victim on every screen instead of being lerped after them.
+        public void Ride(int hostNetId)
+        {
+            if (hostNetId == _rides) return;
+            _rides = hostNetId;
+            if (hostNetId == 0) { transform.SetParent(null, true); return; }
+            var host = Element.ById(hostNetId);
+            if (host != null) transform.SetParent(host.transform, true);
+        }
+
+        TrailRenderer _tail;
+        Color32 _tint = new Color32(255, 255, 255, 255);
+        bool _skinned;
+
+        MaterialPropertyBlock _block;
+        Transform _ring;
 
         void Awake() => _all.Add(this);
         void OnDestroy() => _all.Remove(this);

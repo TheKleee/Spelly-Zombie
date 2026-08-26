@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Bulk-adds only what is missing to selected scenery: Damageable (HP by
+    /// Bulk-adds only what is missing to selected scenery: Element (HP by
     /// size), Breakable (empty prefab slots), SurfaceMaterialTag (guessed from
     /// the name). Never adds/replaces colliders, materials, or values already
     /// set. Warns about mesh colliders and pre-attached Thermal.
@@ -26,13 +26,13 @@ namespace SpellyZombie
                 {
                     // the hierarchy decides the breakable unit, not this tool
                     var go = rend.gameObject;
-                    if (go.GetComponentInParent<Damageable>() != null
+                    if (go.GetComponentInParent<Element>() != null
                      && go.GetComponentInParent<Breakable>() != null) { alreadyOk++; continue; }
 
                     var bounds = rend.bounds;
                     float maxDim = Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z));
 
-                    var dmg = Adopt.Component<Damageable>(go, out bool madeDmg);
+                    var dmg = Adopt.Component<Element>(go, out bool madeDmg);
                     if (madeDmg)
                     {
                         Undo.RegisterCreatedObjectUndo(dmg, "Make Breakable");

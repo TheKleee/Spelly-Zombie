@@ -9,8 +9,50 @@ namespace SpellyZombie
     /// LOOKS. Ambient drift is separate - that is where you are standing NOW.
     public class BiomeStamp : MonoBehaviour
     {
-        public float Heat, Light, Density, Stick;
-        public MatterPhase Phase = MatterPhase.Solid;
+        /// WHAT THIS THING WAS BORN AS. Stamped once and never re-read: a
+        /// forest rock carried to the frozen peak keeps forest as its natural
+        /// point, which is exactly why it suffers there. Thresholds are
+        /// measured from here, not from wherever it happens to be standing.
+        /// ★ THE ELEMENT'S, not a second copy. Element.Awake already composes
+        /// what a thing was born as - itself plus its ground - and having this
+        /// hold its own meant two answers to one question, with whichever ran
+        /// last quietly winning.
+        ///
+        /// What survives here is the LOOK: turning those numbers into the
+        /// colour a thing wears.
+        public SpellPayload Natural
+        {
+            get => El != null ? El.Natural : _loose;
+            set { if (El != null) El.Natural = value; else _loose = value; }
+        }
+        SpellPayload _loose;
+
+        Element _el;
+        Element El
+        {
+            get
+            {
+                if (_el == null) _el = GetComponent<Element>();
+                if (_el == null && this != null) _el = gameObject.AddComponent<Element>();
+                return _el;
+            }
+        }
+
+        /// The medium it was born in, read off the state number like everywhere
+        /// else - solid, liquid and gas are regions, never a stored label.
+        public MatterPhase Phase
+        {
+            get => SpellPayload.PhaseOf(Natural.State);
+            set { var n = Natural; n.State = value == MatterPhase.Solid ? 1f
+                                          : value == MatterPhase.Liquid ? 0f : -1f;
+                  Natural = n; }
+        }
+
+        // the old four, kept as views so nothing that reads them has to change
+        public float Heat => Natural.Temp;
+        public float Light => Natural.Lum;
+        public float Density => Natural.Pressure;
+        public float Stick => Natural.Balance;
 
         /// True once a biome actually wrote this; unstamped things are natural.
         public bool Stamped { get; private set; }
@@ -24,24 +66,13 @@ namespace SpellyZombie
             var b = SpellyMap.BiomeAt(at);
             if (b == null) return null;
 
+            // ELEMENT.AWAKE ALREADY DID THE STAMPING - itself plus its ground,
+            // capacities taking the lesser, its ceiling capped by the place.
+            // Repeating it here applied the biome a second time and doubled
+            // every offset the ground carried.
             var s = go.GetComponent<BiomeStamp>();
             if (s == null) s = go.AddComponent<BiomeStamp>();
-            s.Heat = b.HeatOffset;
-            s.Light = b.LightOffset;
-            s.Density = b.DensityOffset;
-            s.Stick = b.StickOffset;
-            s.Phase = b.NaturalPhase;
             s.Stamped = true;
-
-            // the ground's ceiling caps what it raised, same rule as bodies
-            var dmg = go.GetComponent<Damageable>();
-            if (dmg != null && b.StrengthCap > 0f)
-            {
-                dmg.MaxStrength = Mathf.Min(
-                    dmg.MaxStrength > 0f ? dmg.MaxStrength : dmg.Health, b.StrengthCap);
-                dmg.Health = Mathf.Min(dmg.Health, dmg.MaxStrength);
-            }
-
             s.Show();
             return s;
         }

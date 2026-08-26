@@ -113,6 +113,7 @@ Material:
     - _QueueOffset: 0
     - _ReceiveShadows: 1
     - _Rim: 0.9
+    - _Skinned: 0
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SolidAlpha: 1

@@ -348,7 +348,7 @@ namespace SpellyZombie
             if (go == null || go.GetComponent<Rigidbody>() != null) return; // once only
             var rb = go.AddComponent<Rigidbody>();
             rb.isKinematic = true;
-            go.AddComponent<Damageable>().Health = health;
+            go.AddComponent<Element>().Health = health;
             go.AddComponent<Breakable>();
         }
 

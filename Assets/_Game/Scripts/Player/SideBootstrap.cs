@@ -78,9 +78,7 @@ namespace SpellyZombie
                     if (p.GetComponent<ShapeShift>() == null) p.gameObject.AddComponent<ShapeShift>();
                     if (p.GetComponent<SideLook>() == null) p.gameObject.AddComponent<SideLook>();
                     if (p.GetComponent<ZombieWatch>() == null) p.gameObject.AddComponent<ZombieWatch>();
-                    // every body is someone else's canvas
-                    if (p.GetComponent<BodyCanvas>() == null) p.gameObject.AddComponent<BodyCanvas>();
-                    // and your own body ink follows you across scenes and sessions
+                    // your own body ink follows you across scenes and sessions
                     if (p.GetComponent<BodyInkKeeper>() == null) p.gameObject.AddComponent<BodyInkKeeper>();
                     // death is a mode, not a menu: the ghost and the rescue
                     if (p.GetComponent<GhostState>() == null) p.gameObject.AddComponent<GhostState>();

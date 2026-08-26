@@ -112,9 +112,12 @@ namespace SpellyZombie
                     Phase = Random.value * 6.28f,
                     Glyph = g
                 };
-                z.PushDir = (g.Rune == RuneType.DirectionAway || g.Rune == RuneType.DirectionToward)
-                    ? ArrowDirection(g, seal.PlaneNormal, g.Rune)
-                    : seal.PlaneNormal;
+                // ★ ATTRACT/REPEL ARE PARTICLES NORMALLY (his rule): they rise
+                // from the seal like every rune - the drawn direction is no
+                // longer a launch vector; the Affinity numbers do the pulling.
+                // (The acolyte ARROW summon order still reads the drawn
+                // direction - that path is separate and untouched.)
+                z.PushDir = seal.PlaneNormal;
                 spell.BuildVisual(z);
                 spell._zones.Add(z);
             }
@@ -151,8 +154,9 @@ namespace SpellyZombie
             Mathf.Sqrt(Mathf.Max(0.0004f, seal.Area) / Mathf.PI);
 
         /// Size from the rune's own drawn diameter; unclamped above, floored
-        /// below.
-        static float RuneSizeMul(float glyphDiameter)
+        /// below. THE sizing curve - zombie summons and particle bodies both
+        /// use it (particles via SpellParticle.DrawnSizeK).
+        public static float RuneSizeMul(float glyphDiameter)
         {
             float range = Mathf.Max(0.001f,
                 DrawingConfig.SummonRuneMax - DrawingConfig.SummonRuneMin);
@@ -225,6 +229,11 @@ namespace SpellyZombie
             foreach (var g in seal.Runes)
             {
                 if (g.Strength <= 0.02f) continue;
+                // ★ A RUNE YOU HAVE NOT EARNED DOES NOTHING (his Aug 24 call:
+                // no ranged summon of any kind before Liquid is unlocked).
+                // Through RuneLibrary so AllRunesUnlockedForTesting still
+                // lets a dev summon - the direct Grimoire ask ignored it.
+                if (!RuneLibrary.IsUnlocked(seal.OwnerId, g.Rune)) continue;
                 if (g.Rune == RuneType.StateSolid || g.Rune == RuneType.StateLiquid)
                 {
                     float glyphSpan = g.WorldBounds().size.magnitude * 0.5f;
@@ -332,8 +341,38 @@ namespace SpellyZombie
 
                 // Charger is the brute; ranged uses Walker for now (Scribbler
                 // can cast, and zombies never cast)
-                var z = Zombie.Spawn(spot, isRanged ? ZombieKind.Walker : ZombieKind.Charger);
+                // ★ THE BOOK SAYS WHAT THIS RUNE RAISES. Solid is a melee
+                // zombie and Liquid a ranged one only because two entries in
+                // the spellbook say so; an author can make Solid raise
+                // something else, or raise three things, without touching this.
+                // THE WHOLE SEAL DECIDES, counting runes. Two Liquids can
+                // raise a body that one cannot, and the most demanding match
+                // wins - so those two Liquids raise one bigger zombie, not two
+                // small ones, and a demon needs all twelve.
+                _sealRunes.Clear();
+                foreach (var sr in seal.Runes)
+                    if (sr.Strength > 0.02f && RuneLibrary.IsUnlocked(seal.OwnerId, sr.Rune))
+                        _sealRunes.Add(sr.Rune);
+                SpellDef def = SpellBook.Live.BodyForSeal(_sealRunes, Grimoires.HeldBy(seal.OwnerId));
+
+                // ★ THE DEFINITION SAYS WHAT BODY STANDS UP. An acolyte's Solid
+                // raises a zombie; a wizard's Solid raises a golem - same rune,
+                // different book, different body. Nothing here knows which.
+                if (def != null && def.Body == SpellBody.Golem)
+                {
+                    var g = Golem.Spawn(spot, sizeMul);
+                    if (g != null) { g.OwnerId = seal.OwnerId; g.Wear(def); }
+                    continue;
+                }
+
+                var z = Zombie.Spawn(spot);
                 if (z == null) continue;
+                // the summon component exists BEFORE Wear, or the worn spell
+                // never reaches it and Begin paints plain green instead of
+                // the authored look
+                var summon = z.gameObject.AddComponent<SummonedZombie>();
+                if (def != null) z.Wear(def);
+                else z.Abilities.Add(isRanged ? "Goo" : Zombie.Charge);   // no book entry: the old two
 
                 // multiplies the kind's own shape, so a big Solid still
                 // raises a stocky brute and a big Liquid a lanky one
@@ -349,7 +388,7 @@ namespace SpellyZombie
                 // strength IS health, and a body's strength comes from its own
                 // size and weight - a giant is strong because it is big. The
                 // seal's potency still counts on top.
-                var sdmg = z.GetComponent<Damageable>();
+                var sdmg = z.GetComponent<Element>();
                 if (sdmg != null)
                 {
                     float kg = srb != null ? srb.mass : 0f;
@@ -360,8 +399,7 @@ namespace SpellyZombie
                 }
                 z.AttackDamage *= sizeMul * power;
 
-                z.gameObject.AddComponent<SummonedZombie>()
-                    .Begin(seal.OwnerId, isRanged, life, _summonBuf[i].GasRadius);
+                summon.Begin(seal.OwnerId, isRanged, life, _summonBuf[i].GasRadius);
 
                 // THE GROUND MAKES THE CREATURE: raised on the peak = a frost
                 // thing for life, tinted and capped by that place. After Begin
@@ -376,6 +414,10 @@ namespace SpellyZombie
                     if (hasArrow) brain.Order(MarchPoint(i, total)); // how many, and which way
                 }
             }
+
+            // the Liquid deed counts AFTER they stand: more than one of your
+            // zombies alive at once, across seals
+            AcolyteDeeds.ZombiesAlive(seal.OwnerId);
 
             DrawingWorld.Instance?.LogEvent(total == 1
                 ? "one of them gets up"
@@ -630,17 +672,20 @@ namespace SpellyZombie
                 }
             Vector3 pa = _dirPts[ai], pb = _dirPts[bi];
 
-            // centroid test: the barbed/forked end holds more ink, so the ink
-            // centroid sits closer to it
-            Vector3 centroid = Vector3.zero;
-            foreach (var p in _dirPts) centroid += p;
-            centroid /= _dirPts.Count;
-            float da = Vector3.Distance(centroid, pa);
-            float db = Vector3.Distance(centroid, pb);
+            // the branching end IS the head for both glyphs: arrow barbs meet
+            // at the tip, Y arms open at the fork. Count ink near each shaft
+            // end - the centroid version flipped on long folded-back barbs
+            // that reach past mid-shaft.
+            int na = 0, nb = 0;
+            float endR2 = best * 0.16f; // (0.4 x shaft)^2
+            foreach (var p in _dirPts)
+            {
+                if ((p - pa).sqrMagnitude < endR2) na++;
+                if ((p - pb).sqrMagnitude < endR2) nb++;
+            }
 
             Vector3 head, tail;
-            float shaft = Mathf.Sqrt(best);
-            if (Mathf.Abs(da - db) < shaft * 0.06f)
+            if (Mathf.Abs(na - nb) <= Mathf.Max(1, _dirPts.Count / 12))
             {
                 // symmetric (a plain line) - the pen's travel decides
                 bool aIsLater = Vector3.Distance(pa, lastDrawn) < Vector3.Distance(pb, lastDrawn);
@@ -649,17 +694,17 @@ namespace SpellyZombie
             }
             else
             {
-                head = da < db ? pa : pb;
-                tail = da < db ? pb : pa;
+                head = na > nb ? pa : pb;
+                tail = na > nb ? pb : pa;
             }
 
             Vector3 inPlane = Vector3.ProjectOnPlane(head - tail, normal);
             if (inPlane.sqrMagnitude < 1e-6f) return normal;
             inPlane.Normalize();
 
-            return rune == RuneType.DirectionToward
-                ? (-inPlane - normal * 0.3f).normalized  // pull back and into the surface
-                : (inPlane + normal * 0.3f).normalized;   // fire along the spear and off the surface
+            // both runes fire where the glyph points - the old "Y pulls back
+            // into the surface" inversion was the pre-V2 vector law
+            return (inPlane + normal * 0.3f).normalized;
         }
 
         void TickZone(Zone z, float dt)
@@ -718,6 +763,25 @@ namespace SpellyZombie
             for (int i = 0; i < n; i++) Apply(z, GrammarFX.ScanBuffer[i], dt);
         }
 
+        static readonly System.Collections.Generic.List<SpellDef> _bodiesFor =
+            new System.Collections.Generic.List<SpellDef>();
+        static readonly System.Collections.Generic.List<RuneType> _sealRunes =
+            new System.Collections.Generic.List<RuneType>();
+
+        /// ★ A RUNE IS A RUNE (his rule: nobody said bad drawings become
+        /// weaker runes). Recognition is the only quality gate - once a glyph
+        /// is accepted it seeds the FULL 25 human units, identical to the
+        /// book's bare spell, every time.
+        static SpellPayload RuneSeed(RuneType rune, float intensity)
+        {
+            var axes = SpellPayload.Of(rune, 1f);
+            var seed = new SpellPayload();
+            for (int i = 0; i < SpellPayload.AxisCount; i++)
+                if (Mathf.Abs(axes[i]) > 0.001f)
+                    seed[i] = SpellPayload.FromHuman(i, 25f * Mathf.Sign(axes[i]));
+            return seed;
+        }
+
         void EmitParticles(Zone z)
         {
             if (ProducesMatter(z.Rune)) { SpawnMatter(z); return; }
@@ -755,13 +819,20 @@ namespace SpellyZombie
                 // size is the rune's own drawn size, NOT z.Radius (which
                 // means reach, the rune-to-seal ratio)
                 p.SrcSize = z.GlyphSize * DrawingConfig.ZoneRadiusScale * bigMul;
+                p.Reach = z.Radius;   // influence radius = rune-to-seal ratio (his rule)
+                // ★ THE BODY WEARS ITS DRAWN SIZE (his rule): the zombie
+                // summon's own curve, applied as a ratio - visuals scale,
+                // the trigger compensates (the collider is the impact judge)
+                p.ApplySizeRatio(SpellParticle.DrawnSizeK(p.SrcSize));
                 p.Lineage = RuneGrammar.Bit(z.Rune); // GRAMMAR v4: ancestry starts here -
                                                      // all 12 in one chain = THE DEMON
                 p.SealId = GetHashCode();            // siblings of one DRAWING pair up first
-                // the vectors remember WHERE THE GLYPH POINTED - the arrow
-                // drags along this, the Y reverses against it. Kept apart
-                // from the mote's own drift, which changes as it flies.
-                if (kind == ParticleKind.Push) p._aimDir = z.PushDir;
+                // ★ THE RUNE'S NUMBERS RIDE THE MOTE (his rule: attract and
+                // repel - and everything - are particles NORMALLY). Without
+                // this seed a drawn mote flew EMPTY and only the legacy Kind
+                // machinery gave it any behaviour at all; with it, fusion,
+                // the book regions and the axis laws finally get real input.
+                p.Data = RuneSeed(z.Rune, z.Intensity);
                 p.OwnerId = _ownerId;                // dormant wake rules ask whose spell this is
                 if (i == 0) z.Tracked = p;           // sustain law: the rune WATCHES this one
                                                      // (powerup extras are untracked bonuses)
@@ -770,15 +841,20 @@ namespace SpellyZombie
                 // and throwing activates
                 if (bodyCast)
                     p.ThrowFrom(z.Normal * DrawingConfig.BodyCastThrowSpeed + p.Vel);
-                else if (kind != ParticleKind.Push)
-                    // anchored to its rune's spot on the seal plane; vectors
-                    // skip this - they are never dormant
+                else
+                    // anchored to its rune's spot on the seal plane - EVERY
+                    // rune, attract and repel included (his rule: dormant
+                    // ghost first, F releases in place, E grabs to throw)
                     p.Sleep(z.Center, z.Normal);
                 p.Temp *= potent;
                 p.Lum *= potent;
                 p.Density *= potent;
                 p.Stick = p.Stick * potent + 0.35f * buff.Bond;
                 p.Echo = buff.Echo;
+                // the mote knows WHAT IT IS the frame it is born: dormant
+                // motes never reach the drift beat, so without this a ghost
+                // wears the kind fallback blob instead of the authored spell
+                p.RefreshIdentity_Public();
                 if (bigMul > 1f) p.transform.localScale *= bigMul;
             }
         }
@@ -802,8 +878,11 @@ namespace SpellyZombie
             p.OwnerId = _ownerId;
             p.Lineage = RuneGrammar.Bit(z.Rune);
             p.SealId = GetHashCode();
+            p.Data = RuneSeed(z.Rune, z.Intensity);   // the numbers ride the ghost too
+            p.Reach = z.Radius;                       // and the seal's ratio-reach
             p.PendingConjure = conjure;
             p.Sleep(z.Center, z.Normal);
+            p.RefreshIdentity_Public();               // authored look, asleep too
             // when the caller names the real thing's size, the ghost is that
             // at preview scale; otherwise a plain 2x
             if (realSize > 0f)
@@ -888,7 +967,7 @@ namespace SpellyZombie
                 case RuneType.LuminanceUp: // holy light sears the undead
                     var seared = c.GetComponentInParent<Creature>();
                     if (seared != null)
-                        seared.GetComponent<Damageable>()?.TakeDamage(
+                        seared.GetComponent<Element>()?.TakeDamage(
                             DrawingConfig.HolyLightPerSec * z.Intensity * dt, "holy light");
                     break;
             }

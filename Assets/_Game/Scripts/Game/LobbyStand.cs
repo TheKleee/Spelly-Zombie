@@ -10,7 +10,7 @@ namespace SpellyZombie
         [Tooltip("How close the player must stand for the menu to appear, meters.")]
         public float Range = 0.5f;
 
-        [Tooltip("The stand shrugs off casual spell splash — its Damageable is raised to at least this.")]
+        [Tooltip("The stand shrugs off casual spell splash — its Element is raised to at least this.")]
         public float Toughness = 600f;
 
         [Tooltip("Your grimoire's Animator on the stand (same controller as the worn book). Its 'Open' bool follows the host: open while the host is in the stand menu, closed otherwise, visible to everyone.")]
@@ -25,7 +25,7 @@ namespace SpellyZombie
         void Start()
         {
             // raise durability so casual splash can't kill the menu; LobbyRespawn still covers a real kill
-            var dmg = GetComponentInParent<Damageable>();
+            var dmg = GetComponentInParent<Element>();
             if (dmg != null && dmg.Health < Toughness) dmg.Health = Toughness;
             BuildOpenBook();
         }

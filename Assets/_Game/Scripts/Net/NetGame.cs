@@ -232,10 +232,10 @@ namespace SpellyZombie
                 () => { MatchLobby.CycleMap(-1); BuildUI(); },
                 () => { MatchLobby.CycleMap(1); BuildUI(); });
             ry -= 30f;
-            LobbyBrowserUI.ArrowRow(_ui, rx, ry, 270f, Loc.F("stand.duration", MatchLobby.DurationMin),
-                () => { MatchLobby.DurationMin = Mathf.Max(5, MatchLobby.DurationMin - 5); BuildUI(); },
+            LobbyBrowserUI.ArrowRow(_ui, rx, ry, 270f, Loc.F("stand.duration", MatchLobby.DurationLabel),
+                () => { MatchLobby.DurationMin = Mathf.Max(0, MatchLobby.DurationMin - 5); BuildUI(); },
                 () => { MatchLobby.DurationMin = Mathf.Min(15, MatchLobby.DurationMin + 5); BuildUI(); },
-                MatchLobby.DurationMin > 5, MatchLobby.DurationMin < 15);
+                MatchLobby.DurationMin > 0, MatchLobby.DurationMin < 15);
             ry -= 30f;
             LobbyBrowserUI.ArrowRow(_ui, rx, ry, 270f, Loc.F("stand.share", MatchLobby.AcolytePercent),
                 () => { MatchLobby.AcolytePercent = Mathf.Max(10, MatchLobby.AcolytePercent - 10); BuildUI(); },

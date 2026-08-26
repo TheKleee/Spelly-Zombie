@@ -117,7 +117,7 @@ namespace SpellyZombie
                 }
 
                 // strength follows the new body: smaller means weaker
-                var dmg = copy.GetComponent<Damageable>();
+                var dmg = copy.GetComponent<Element>();
                 if (dmg != null) dmg.SetStrengthFromBody(copy.transform.localScale.x, pieceMass);
 
                 var s = copy.GetComponent<DensitySplit>();

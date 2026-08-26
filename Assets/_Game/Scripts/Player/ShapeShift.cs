@@ -27,9 +27,12 @@ namespace SpellyZombie
         /// precision mode (free cursor, look stops turning the body).
         public static bool PoseOpen => Local != null && Local._posing;
 
-        /// The last scan's name, for the ModeGuide's "become the barrel" line.
-        public static string StoredShapeName =>
-            Local != null && Local._storedShape != null ? Local._storedShape.name : null;
+        /// Whether a scan is stored at all. NOT its name: a prefab name is
+        /// English and untranslatable, and TAB twice already tells you what you
+        /// were - at the cost of a puff of gas, which is a fair price for
+        /// forgetting.
+        public static bool HasStoredShape =>
+            Local != null && Local._storedShape != null;
 
         /// A big enough blast ends shape posing. Driven by Shove.
         public static void Blown() { if (Local != null && Local._posing) Local.SetPosing(false); }

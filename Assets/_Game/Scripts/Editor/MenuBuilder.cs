@@ -8,10 +8,10 @@ namespace SpellyZombie
     /// It does not generate scenes.
     public static class MenuBuilder
     {
-        [MenuItem("Spelly Zombie/Register Scenes In Build (Menu, Lobby, Game)")]
+        [MenuItem("Spelly Zombie/Register Scenes In Build (Menu, Lobby, Spelly Island)")]
         public static void RegisterScenes()
         {
-            var wanted = new[] { "Menu", "Lobby", "Game" };
+            var wanted = new[] { "Menu", "Lobby", "Spelly Island" };
             var list = new List<EditorBuildSettingsScene>();
             foreach (var sceneName in wanted)
             {

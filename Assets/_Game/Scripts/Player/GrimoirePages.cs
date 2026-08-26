@@ -258,7 +258,7 @@ namespace SpellyZombie
             _acoPages.Clear();
             int me = Grimoire.LocalPlayerId;
             foreach (var r in RuneLibrary.AcolyteKit)      // canonical order
-                if (Grimoire.HasRune(me, r)) _acoPages.Add(r);
+                if (RuneLibrary.IsUnlocked(me, r)) _acoPages.Add(r);
             return _acoPages;
         }
         /// Page zero is the verb: scan (acolyte) or absorb (wizard), then the
@@ -278,8 +278,8 @@ namespace SpellyZombie
             foreach (var fam in Families)
             {
                 Pair(fam, out var up, out var down);
-                if (Grimoire.HasRune(me, up)) _wizPages.Add(up);
-                if (Grimoire.HasRune(me, down)) _wizPages.Add(down);
+                if (RuneLibrary.IsUnlocked(me, up)) _wizPages.Add(up);
+                if (RuneLibrary.IsUnlocked(me, down)) _wizPages.Add(down);
             }
             return _wizPages;
         }
@@ -420,11 +420,7 @@ namespace SpellyZombie
         /// naming lives in one place.
         public static Texture2D PageArt(RuneType rune, bool acolyte)
         {
-            Texture2D Load(string n)
-            {
-                var t = Resources.Load<Texture2D>($"Custom/{n}");
-                return t != null ? t : Resources.Load<Texture2D>($"Custom/{n}_Full");
-            }
+            Texture2D Load(string n) => PageImage(n);
             if (acolyte)
             {
                 var acolytePage = Load($"GrimoirePage_{rune}_Acolyte");
@@ -436,16 +432,35 @@ namespace SpellyZombie
 
         bool CustomPage(string pageName, bool owned)
         {
-            Color tint = owned ? Color.white : new Color(1f, 1f, 1f, 0.45f);
-
-            var mine = Resources.Load<Texture2D>($"Custom/{pageName}");
-            if (mine != null) { ArtQuad(mine, tint); return true; }
-
-            var full = Resources.Load<Texture2D>($"Custom/{pageName}_Full");
-            if (full != null) { ArtQuad(full, tint); return true; }
-
-            return false;
+            var art = PageImage(pageName);
+            if (art == null) return false;
+            ArtQuad(art, owned ? Color.white : new Color(1f, 1f, 1f, 0.45f));
+            return true;
         }
+
+        /// ONE place page art is found. The CollectionManager's list is the
+        /// real home - set there, a page lives with the game and shows in every
+        /// scene, lobby included. Resources is only the old path, kept until
+        /// the slots are filled, and it complains once per page so nothing
+        /// stays there quietly.
+        public static Texture2D PageImage(string pageName)
+        {
+            if (string.IsNullOrEmpty(pageName)) return null;
+
+            var mine = CollectionManager.PageNamed(pageName);
+            if (mine != null) return mine;
+
+            var old = Resources.Load<Texture2D>($"Custom/{pageName}")
+                   ?? Resources.Load<Texture2D>($"Custom/{pageName}_Full");
+            if (old != null && _warnedResources.Add(pageName))
+                Debug.LogWarning($"[SpellyZombie] '{pageName}' is still coming from Resources. "
+                    + "Add a row for it in CollectionManager > Grimoire Pages and the image can "
+                    + "leave that folder - Resources ships readable to everyone.");
+            return old;
+        }
+
+        static readonly System.Collections.Generic.HashSet<string> _warnedResources
+            = new System.Collections.Generic.HashSet<string>();
 
         void ArtQuad(Texture2D tex, Color tint)
         {
@@ -562,7 +577,7 @@ namespace SpellyZombie
             tm.fontSize = charSize * 1400f; // legacy characterSize to TMP point size
             tm.alignment = TMPro.TextAlignmentOptions.Top;
             tm.color = color;
-            tm.enableWordWrapping = false;
+            tm.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
             tm.rectTransform.sizeDelta = new Vector2(charSize * 3000f, charSize * 1200f);
         }
 
@@ -616,7 +631,7 @@ namespace SpellyZombie
             if (shader != null)
             {
                 var m = new Material(shader) { color = new Color(0.96f, 0.93f, 0.82f) };
-                var tex = Resources.Load<Texture2D>("Custom/GrimoirePage_Flip");
+                var tex = GrimoirePages.PageImage("GrimoirePage_Flip");
                 if (tex != null) m.mainTexture = tex;
                 quad.GetComponent<Renderer>().material = m;
             }

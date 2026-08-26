@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// Death debris: goes beside a Damageable and spawns authored debris/FX
+    /// Death debris: goes beside a Element and spawns authored debris/FX
     /// (code-built fallbacks when slots are empty), adopting any authored
     /// components. No Update - the work happens once, on OnDeath.
     public class Breakable : MonoBehaviour
@@ -33,7 +33,7 @@ namespace SpellyZombie
 
         void Awake()
         {
-            var dmg = GetComponent<Damageable>();
+            var dmg = GetComponent<Element>();
             if (dmg != null) dmg.OnDeath += _ => Shatter();
         }
 

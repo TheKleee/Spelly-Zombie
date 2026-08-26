@@ -49,8 +49,12 @@ namespace SpellyZombie
         static float Tune(string key, float def) => DrawingConfig.Overlay(key, def);
 
         // ---- the biome under my feet, sampled on a beat, not per frame ----
-        float _ambHeat, _ambLight, _ambStick, _ambDensity, _ambNext;
+        float _ambHeat, _ambLight, _ambStick, _ambDensity, _ambAffinity, _ambNext;
         MatterPhase _ambPhase = MatterPhase.Gas;   // what the place is made of
+
+        /// What is natural where this body is standing right now. The whole
+        /// parameter set, so capacities can read it without a second lookup.
+        SpellPayload _here = new SpellPayload { Int = 1f, Courage = 1f };
 
         void TickAmbient(float dt)
         {
@@ -62,7 +66,13 @@ namespace SpellyZombie
             _ambLight = b != null ? b.LightOffset : 0f;
             _ambStick = b != null ? b.StickOffset : 0f;
             _ambDensity = b != null ? b.DensityOffset : 0f;
+            // map biome plus any spell-made air standing here (lingers, lvl3)
+            _ambAffinity = (b != null ? SpellPayload.FromHuman(5, b.AffinityOffset) : 0f)
+                + ArtificialBiome.SampleAt(transform.position).Affinity;
             _ambPhase = b != null ? b.NaturalPhase : MatterPhase.Gas; // no map = ordinary air
+            // no map (the lobby) means nothing is imposed and no capacity is
+            // capped - you are simply yourself
+            _here = b != null ? b.Natural : Natural;
         }
 
         /// Recovery speeds up with the size of the effect: a slider pushed to
@@ -72,11 +82,37 @@ namespace SpellyZombie
             Mathf.Max(1f, Mathf.Abs(dev) / span * DriftExpo);
 
         // ---- the sliders ----
-        public float Temp = NaturalTemp;
+        /// ★ THE ELEMENT'S, not its own. A player is hot in the same place a
+        /// crate is. Before this there were four separate temperatures in the
+        /// game and heating one never showed up in the others.
+        public float Temp
+        {
+            get => _el != null ? _el.Data.Temp : _looseTemp;
+            set
+            {
+                if (_el == null) { _looseTemp = value; return; }
+                var d = _el.Data; d.Temp = value; _el.Data = d;
+            }
+        }
+        float _looseTemp = NaturalTemp;
+        Element _el;
         public float Lum = NaturalLum;
         public float Grip;          // 0 natural · + sticky · − slick
         public float Weight = 1f;   // mass multiplier
         public float Move;          // 0 center · + arrow buff · − Y inversion
+
+        /// ★ THE ELEMENT'S, like Temp. Hit by attract or repel you CARRY the
+        /// axis - your own gravity on everything near - until it drifts home.
+        public float Affinity
+        {
+            get => _el != null ? _el.Data.Affinity : _looseAffinity;
+            set
+            {
+                if (_el == null) { _looseAffinity = value; return; }
+                var d = _el.Data; d.Affinity = value; _el.Data = d;
+            }
+        }
+        float _looseAffinity;
 
         /// The body's own phase - Transparency drops it to liquid, Cloud to
         /// gas. Written through StateView so the art shows it, and read by the
@@ -123,6 +159,16 @@ namespace SpellyZombie
         {
             _pilot = GetComponent<SimpleFPSController>();
             _creature = GetComponent<Creature>();
+            _el = GetComponentInParent<Element>();
+
+            // A BODY RUNS WARM. Its natural temperature is body heat, not the
+            // room - so "how far from natural" means the right thing for flesh
+            // and for stone with one subtraction.
+            if (_el != null)
+            {
+                var n = _el.Natural; n.Temp = NaturalTemp + (n.Temp - Element.RoomTemp); _el.Natural = n;
+                var d = _el.Data;    d.Temp = n.Temp;                                  _el.Data = d;
+            }
         }
 
         // ---- pushes (the ONLY thing spells are allowed to do) ----
@@ -140,6 +186,8 @@ namespace SpellyZombie
         public void PushGrip(float d) => Grip = Mathf.Clamp(Grip + d, -1.4f, 1.6f);
         public void PushWeight(float d) => Weight = Mathf.Clamp(Weight + d, 0.12f, 4f);
         public void PushMove(float d) => Move = Mathf.Clamp(Move + d, -2.2f, 2.2f);
+        public void PushAffinity(float d) =>
+            Affinity = Mathf.Clamp(Affinity + d, -DrawingConfig.AxisCap, DrawingConfig.AxisCap);
 
         /// Resets every slider to natural. Used by the sky catch.
         public void ClearSpellEffects()
@@ -149,7 +197,7 @@ namespace SpellyZombie
             Grip = 0f;
             Weight = 1f;
             Move = 0f;
-
+            Affinity = 0f;
         }
 
         // ---- readings ----
@@ -163,7 +211,7 @@ namespace SpellyZombie
 
         /// STRENGTH IS THE OLD HP - one stat for players, creatures and
         /// scenery. A player's ceiling comes from Sides (side, buffs, the
-        /// ground); everything else reads its own Damageable, which owns the
+        /// ground); everything else reads its own Element, which owns the
         /// definition. 0.35..1, never 0.
         public float StrengthMul
         {
@@ -174,12 +222,12 @@ namespace SpellyZombie
                     float f = Sides.StrengthFraction(Grimoire.LocalPlayerId, _pilot.Health);
                     return Mathf.Lerp(DrawingConfig.StrengthFloorMul, 1f, f);
                 }
-                if (_dmg == null) _dmg = GetComponent<Damageable>();
+                if (_dmg == null) _dmg = GetComponent<Element>();
                 return _dmg != null ? _dmg.StrengthMul : 1f;
             }
         }
 
-        Damageable _dmg;
+        Element _dmg;
 
         /// WEIGHT MEASURED AGAINST STRENGTH. The same load crushes a wounded
         /// body and is carried by a healthy one - wounds make the world
@@ -199,6 +247,36 @@ namespace SpellyZombie
 
         /// THE DENSITY OF WHAT YOU ARE STANDING IN. A biome is normally gas,
         /// sometimes liquid, and its phase sets the base while its
+        /// INT and COURAGE, and anything else that is a CAPACITY. They do not
+        /// work like Temp: a mindless place drags a sharp mind down, but a
+        /// clever place never makes a stupid thing clever. That is
+        /// min(what you are, what the place allows) - and the ONE function
+        /// that knows the difference is SpellPayload.TargetFor.
+        public float Int { get; private set; } = 1f;
+        public float Courage { get; private set; } = 1f;
+
+        /// What this body was BORN as. Stamped once; thresholds measure from
+        /// here, so a naturally fearless thing is not the same as a brave one
+        /// standing somewhere safe.
+        public SpellPayload Natural = new SpellPayload { Int = 1f, Courage = 1f };
+
+        void DriftCapacities(float dt)
+        {
+            var here = _here;
+            float rate = DrawingConfig.CapacityDriftPerSec * dt;
+
+            Int = Mathf.MoveTowards(Int,
+                SpellPayload.TargetFor(7, Natural.Int, here.Int), rate);
+            Courage = Mathf.MoveTowards(Courage,
+                SpellPayload.TargetFor(8, Natural.Courage, here.Courage), rate);
+        }
+
+        /// A spell pushes a capacity directly; drift then pulls it back toward
+        /// what the ground allows, which is why a spell lasts as long as the
+        /// place agrees with it and no longer.
+        public void PushInt(float d) => Int = Mathf.Clamp(Int + d, 0f, 4f);
+        public void PushCourage(float d) => Courage = Mathf.Clamp(Courage + d, 0f, 4f);
+
         /// DensityOffset shifts it - so thin peak air is just a negative
         /// offset on a box stacked high, never altitude maths.
         /// SWIMMING IS NOT A MODE: water is simply a medium dense enough to
@@ -287,32 +365,30 @@ namespace SpellyZombie
             }
             if (_pilot != null)
             {
-                float homeTemp = NaturalTemp + _ambHeat;
+                // TEMPERATURE DRIFTS ON THE ELEMENT BEAT now - a second loop
+                // here pulled against it. Luminance is still the board's own.
                 float homeLum = NaturalLum + _ambLight;
-                Temp = Mathf.MoveTowards(Temp, homeTemp, TempDriftPerSec * Rush(Temp - homeTemp, 40f) * dt);
                 Lum = Mathf.MoveTowards(Lum, homeLum, LumDriftPerSec * Rush(Lum - homeLum, 1.5f) * dt);
             }
             Grip = Mathf.MoveTowards(Grip, _ambStick, GripDriftPerSec * Rush(Grip - _ambStick, 1.5f) * dt);
             Weight = Mathf.MoveTowards(Weight, 1f + _ambDensity, WeightDriftPerSec * Rush(Weight - 1f - _ambDensity, 0.9f) * dt);
             Move = Mathf.MoveTowards(Move, 0f, MoveDriftPerSec * Rush(Move, 2.2f) * dt);
-
-
-            // ---- temp band damage (players only - Thermal burns creatures) ----
-            if (_pilot != null && !_pilot.IsDead)
+            // element bodies shed and radiate affinity on the element beat;
+            // loose bodies do both here - a high-affinity biome makes the
+            // things standing in it the magnets, never its own center
+            if (_el == null)
             {
-                float off = Temp < TempBandLow ? TempBandLow - Temp
-                    : Temp > TempBandHigh ? Temp - TempBandHigh : 0f;
-                if (off > 0f)
-                {
-                    _hurtCarry += off * TempDamagePerDegree * dt;
-                    if (_hurtCarry >= 0.75f)
-                    {
-                        _pilot.TakeHit(Vector3.zero, _hurtCarry,
-                            Temp < NaturalTemp ? "freezing" : "burning");
-                        _hurtCarry = 0f;
-                    }
-                }
+                _looseAffinity = Mathf.MoveTowards(_looseAffinity, _ambAffinity, SpellLaw.RateFor(5) * dt);
+                if (Mathf.Abs(_looseAffinity) > 0.05f)
+                    SpellParticle.AffinityField(transform, _looseAffinity, dt);
             }
+
+            DriftCapacities(dt);
+
+
+            // TEMP BAND DAMAGE MOVED TO Element. It used to live here because
+            // "Thermal burns creatures" and players were the exception; now one
+            // law burns everything, and leaving this would bill a player twice.
 
             // ---- crushed by your own weight (strength IS health) ----
             // Past the crush limit you are holding up more than you can, and
@@ -339,7 +415,13 @@ namespace SpellyZombie
                 if (_slipTick <= 0f)
                 {
                     _slipTick = Mathf.Lerp(1.7f, 0.75f, depth);
-                    if (Random.value < Mathf.Lerp(0.08f, 0.75f, depth))
+                    // HIS BALANCE LAW: speed is what costs you. Move slowly
+                    // and even deep slick holds; run and you lose it.
+                    float v = _pilot != null ? _pilot.Velocity.magnitude
+                        : _creature != null && _creature.TryGetComponent<Rigidbody>(out var crb)
+                            ? crb.linearVelocity.magnitude : 2f;
+                    float pace = Mathf.Clamp01(v / 4.5f);
+                    if (Random.value < Mathf.Lerp(0.08f, 0.75f, depth) * pace)
                     {
                         float sprawl = Mathf.Lerp(0.45f, 1.6f, depth);
                         if (_pilot != null) _pilot.KnockDown(sprawl);

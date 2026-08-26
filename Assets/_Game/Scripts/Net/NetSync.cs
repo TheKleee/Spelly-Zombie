@@ -145,12 +145,79 @@ namespace SpellyZombie
             public Vector3[] Pos;
             public float[] Yaw;
             public byte[] Kinds;
+            public Vector3[] Scale;   // a summon's size is not in its kind
         }
 
-        public struct ZombieHit : IBroadcast // client  host: my magic hurt your zombie
+        public struct GolemSnap : IBroadcast // host  clients, 10 Hz unreliable
         {
-            public int Id;
+            public int[] Ids;
+            public Vector3[] Pos;
+            public float[] Yaw;
+            public Vector3[] Scale;
+            public Color[] Skin;      // the biome that raised it, not re-derived
+        }
+
+        public struct BiomeMsg : IBroadcast // host  clients: a lvl3 spell opened
+        {
+            public Vector3 At;
+            public float Temp, Lum, Pressure, Balance, State;
+            public float Affinity, Strength, Int, Courage, Clones;
+            public float Radius;
+            public float Seconds; // 0 = the lvl3 default; short = a terrain-burst linger
+        }
+
+        /// host -> all: something happened TO a body. ONE channel for every
+        /// effect that lands on a player, because a remote player is only a
+        /// puppet on the host - their real body, health and state live on their
+        /// own machine, and nothing could reach it before this.
+        public struct PlayerFxMsg : IBroadcast
+        {
+            public int Owner;     // whose body
+            public byte Kind;     // 0 hurt, 1 heal, 2 buff, 3 phase, 4 blink, 5 trail, 6 fade
+            public float Amount;  // damage / heal / buff / seconds
+            public byte Phase;    // Kind 3 only: the MatterPhase to wear
+            public Vector3 Point; // Kind 4: where to. Kind 0: the shove
+        }
+
+        /// client -> host: I want to hurt the thing with this id.
+        /// The client does NOT subtract anything itself.
+        public struct HurtIntent : IBroadcast
+        {
+            public int NetId;
             public float Amount;
+        }
+
+        /// host -> all: a mark was left on something. Curses read these, so
+        /// every machine has to agree about who did what to whom.
+        public struct MarkMsg : IBroadcast
+        {
+            public int Owner;
+            public byte What;
+            public int Value;
+        }
+
+        /// host -> all: this is what that thing's health IS. Applied verbatim,
+        /// so one tree cannot end up on two different numbers.
+        /// ★ WHAT THINGS IN THE WORLD CURRENTLY ARE. Health already crossed;
+        /// nothing else did - so on a client a burning crate was not hot, a
+        /// thing turning to gas never faded, and a frozen zombie looked fine.
+        ///
+        /// Only the axes you can SEE travel, and only for things that have
+        /// actually left their natural, which is a small minority at any moment.
+        /// Simulation stays entirely on the host; this is the picture of it.
+        public struct StateMsg : IBroadcast
+        {
+            public int[] Ids;
+            public short[] Temp;    // degrees, rounded - a degree is not visible
+            public sbyte[] State;   // -100..100, so transparency and phase read
+            public sbyte[] Lum;
+        }
+
+        public struct HealthMsg : IBroadcast
+        {
+            public int NetId;
+            public float Health;
+            public float Max;
         }
 
         public struct KillFeed : IBroadcast // host  clients: shared ink for the kill
@@ -173,6 +240,13 @@ namespace SpellyZombie
             public int Owner;
             public int Card; // -1 = none
             public int Rune; // -1 = none
+        }
+
+        /// ★ ONE BOOK FOR EVERYONE (his law): the host's spellbook is the
+        /// match's spellbook, carried whole as JSON.
+        public struct BookMsg : IBroadcast
+        {
+            public string Json;
         }
 
         public struct DeclareRuneMsg : IBroadcast // any → host → others: declare a rune for strokes
@@ -239,7 +313,20 @@ namespace SpellyZombie
         public struct ParticleSnap : IBroadcast // host  clients, 10 Hz unreliable
         {
             public int[] Ids;
+            /// WHICH POSED BLOB, by its index in the authored shape list - the
+            /// same list on every machine in a build, so a client wears what
+            /// the host wears without a name per particle per snapshot.
             public byte[] Kinds;
+            /// The colour its ten numbers came out as. A client cannot compute
+            /// this: it never sees the payload.
+            public Color32[] Tints;
+            /// 1 · 2 · 3 - a lvl2 shows its ring, a lvl3 shows it is a place.
+            public byte[] Levels;
+            /// WHAT IT IS RIDING, by that thing's net id - 0 for a free mote.
+            /// An attached particle moves with its host, so a client that does
+            /// not know the host would show a hook hanging in mid air while the
+            /// person it caught walks off.
+            public int[] Rides;
             public Vector3[] Pos;
             public float[] Scale;
         }
@@ -492,6 +579,7 @@ namespace SpellyZombie
                 {
                     _zombieTimer = 0.1f;
                     SendZombieSnap();
+                    SendGolemSnap();   // nature's own, same beat
                     SendMatterSnap();   // host-simulated matter (netcode §3)
                     SendParticleSnap(); // host-simulated particles (netcode §3)
                     SendPropSnap();     // lifted/torn scene props (netcode §4)
@@ -512,6 +600,12 @@ namespace SpellyZombie
         Vector3[] _snapPos = System.Array.Empty<Vector3>();
         float[] _snapYaw = System.Array.Empty<float>();
         byte[] _snapKinds = System.Array.Empty<byte>();
+        Vector3[] _snapScale = System.Array.Empty<Vector3>();
+        int[] _gIds = System.Array.Empty<int>();
+        Vector3[] _gPos = System.Array.Empty<Vector3>();
+        float[] _gYaw = System.Array.Empty<float>();
+        Vector3[] _gScale = System.Array.Empty<Vector3>();
+        Color[] _gSkin = System.Array.Empty<Color>();
 
         void SendZombieSnap()
         {
@@ -522,22 +616,61 @@ namespace SpellyZombie
                 _snapPos = new Vector3[n];
                 _snapYaw = new float[n];
                 _snapKinds = new byte[n];
+                _snapScale = new Vector3[n];
             }
             for (int i = 0; i < n; i++)
             {
                 var z = Zombie.All[i];
                 if (z == null) // zero the slot - reused buffers would otherwise leak a stale zombie
                 {
-                    _snapIds[i] = 0; _snapPos[i] = default; _snapYaw[i] = 0f; _snapKinds[i] = 0;
+                    _snapIds[i] = 0; _snapPos[i] = default; _snapYaw[i] = 0f;
+                    _snapKinds[i] = 0; _snapScale[i] = Vector3.one;
                     continue;
                 }
                 _snapIds[i] = z.gameObject.GetInstanceID();
                 _snapPos[i] = z.transform.position;
                 _snapYaw[i] = z.transform.eulerAngles.y;
-                _snapKinds[i] = (byte)z.Kind;
+                // one body, but MELEE VS RANGED still has to reach every
+                // screen: it is the colour that tells a player which zombie
+                // is about to throw something at them
+                var sz = z.GetComponent<SummonedZombie>();
+                _snapKinds[i] = (byte)(sz != null && sz.Ranged ? 1 : 0);
+                _snapScale[i] = z.transform.localScale;
             }
-            var snap = new ZombieSnap { Ids = _snapIds, Pos = _snapPos, Yaw = _snapYaw, Kinds = _snapKinds };
+            var snap = new ZombieSnap { Ids = _snapIds, Pos = _snapPos, Yaw = _snapYaw,
+                Kinds = _snapKinds, Scale = _snapScale };
             InstanceFinder.ServerManager.Broadcast(snap, true, Channel.Unreliable);
+        }
+
+        void SendGolemSnap()
+        {
+            int n = Golem.All.Count;
+            if (_gIds.Length != n) // receivers read Ids.Length - size must match exactly
+            {
+                _gIds = new int[n];
+                _gPos = new Vector3[n];
+                _gYaw = new float[n];
+                _gScale = new Vector3[n];
+                _gSkin = new Color[n];
+            }
+            for (int i = 0; i < n; i++)
+            {
+                var g = Golem.All[i];
+                if (g == null) // zero the slot - a reused buffer would leak a stale golem
+                {
+                    _gIds[i] = 0; _gPos[i] = default; _gYaw[i] = 0f;
+                    _gScale[i] = Vector3.one; _gSkin[i] = Color.gray;
+                    continue;
+                }
+                _gIds[i] = g.gameObject.GetInstanceID();
+                _gPos[i] = g.transform.position;
+                _gYaw[i] = g.transform.eulerAngles.y;
+                _gScale[i] = g.transform.localScale;
+                _gSkin[i] = g.Skin;
+            }
+            InstanceFinder.ServerManager.Broadcast(new GolemSnap
+            { Ids = _gIds, Pos = _gPos, Yaw = _gYaw, Scale = _gScale, Skin = _gSkin },
+                true, Channel.Unreliable);
         }
 
         // reusable matter/particle/prop snapshot buffers - same law as the zombie ones
@@ -588,6 +721,9 @@ namespace SpellyZombie
 
         int[] _pIds = System.Array.Empty<int>();
         byte[] _pKinds = System.Array.Empty<byte>();
+        Color32[] _pTints = System.Array.Empty<Color32>();
+        byte[] _pLevels = System.Array.Empty<byte>();
+        int[] _pRides = System.Array.Empty<int>();
         Vector3[] _pPos = System.Array.Empty<Vector3>();
         float[] _pScale = System.Array.Empty<float>();
 
@@ -599,6 +735,9 @@ namespace SpellyZombie
             {
                 _pIds = new int[n];
                 _pKinds = new byte[n];
+                _pTints = new Color32[n];
+                _pLevels = new byte[n];
+                _pRides = new int[n];
                 _pPos = new Vector3[n];
                 _pScale = new float[n];
             }
@@ -611,12 +750,19 @@ namespace SpellyZombie
                     continue;
                 }
                 _pIds[i] = p.gameObject.GetInstanceID();
-                _pKinds[i] = (byte)p.Kind;
+                // ITS LOOK IS ITS NUMBERS, and the client has no numbers -
+                // so the shape and the colour have to travel. Sending the KIND
+                // was enough when a kind was all a particle was.
+                _pKinds[i] = p.ShapeId;
+                _pTints[i] = p.WireTint;
+                _pLevels[i] = p.WireLevel;
+                _pRides[i] = p.RidingId;
                 _pPos[i] = p.transform.position;
                 _pScale[i] = p.transform.localScale.x;
             }
             InstanceFinder.ServerManager.Broadcast(new ParticleSnap
-                { Ids = _pIds, Kinds = _pKinds, Pos = _pPos, Scale = _pScale }, true, Channel.Unreliable);
+                { Ids = _pIds, Kinds = _pKinds, Tints = _pTints, Levels = _pLevels,
+                  Rides = _pRides, Pos = _pPos, Scale = _pScale }, true, Channel.Unreliable);
         }
 
         int[] _prIds = System.Array.Empty<int>();
@@ -756,7 +902,6 @@ namespace SpellyZombie
             InstanceFinder.ServerManager.RegisterBroadcast<StrokeMsg>(OnStrokeServer);
             InstanceFinder.ClientManager.RegisterBroadcast<StrokeMsg>(OnStrokeClient);
             InstanceFinder.ClientManager.RegisterBroadcast<PlayerLeft>(OnPlayerLeftClient);
-            InstanceFinder.ServerManager.RegisterBroadcast<ZombieHit>(OnZombieHitServer);
             InstanceFinder.ClientManager.RegisterBroadcast<ZombieSnap>(OnZombieSnapClient);
             InstanceFinder.ClientManager.RegisterBroadcast<KillFeed>(OnKillFeedClient);
             InstanceFinder.ClientManager.RegisterBroadcast<RoundState>(OnRoundStateClient);
@@ -773,6 +918,13 @@ namespace SpellyZombie
             InstanceFinder.ClientManager.RegisterBroadcast<StandMsg>(OnStandClient);
             InstanceFinder.ServerManager.RegisterBroadcast<SpawnAskMsg>(OnSpawnAskServer);
             InstanceFinder.ClientManager.RegisterBroadcast<SpawnGiveMsg>(OnSpawnGiveClient);
+            InstanceFinder.ClientManager.RegisterBroadcast<GolemSnap>(OnGolemSnapClient);
+            InstanceFinder.ClientManager.RegisterBroadcast<BiomeMsg>(OnBiomeClient);
+            InstanceFinder.ClientManager.RegisterBroadcast<PlayerFxMsg>(OnPlayerFxClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<HurtIntent>(OnHurtServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<HealthMsg>(OnHealthClient);
+            InstanceFinder.ClientManager.RegisterBroadcast<StateMsg>(OnElementStateClient);
+            InstanceFinder.ClientManager.RegisterBroadcast<MarkMsg>(OnMarkClient);
 
             // host-authoritative channels (netcode §1-§4)
             InstanceFinder.ServerManager.RegisterBroadcast<UnlockMsg>(OnUnlockServer);
@@ -793,6 +945,7 @@ namespace SpellyZombie
             InstanceFinder.ServerManager.RegisterBroadcast<MapLikeMsg>(OnMapLikeServer);
             InstanceFinder.ClientManager.RegisterBroadcast<MapLikesMsg>(OnMapLikesClient);
             InstanceFinder.ClientManager.OnClientConnectionState += OnLocalClientState;
+            InstanceFinder.ClientManager.RegisterBroadcast<BookMsg>(OnBookClient);
 
             // the pot
             InstanceFinder.ClientManager.RegisterBroadcast<PotMsg>(OnPotClient);
@@ -966,12 +1119,6 @@ namespace SpellyZombie
 
         // ---------------------------------------------- outgoing helpers --
         /// A proxy took damage on a client: tell the host (called by NetZombieProxy).
-        public static void SendZombieHit(int id, float amount)
-        {
-            if (_instance == null || !NetGame.Connected || NetGame.IsHost) return;
-            InstanceFinder.ClientManager.Broadcast(new ZombieHit { Id = id, Amount = amount });
-        }
-
         /// Host RoundDirector streams round state to clients (2 Hz).
         public static void PushRoundState(byte phase, int round, int left, float timer, int kills)
         {
@@ -1057,6 +1204,22 @@ namespace SpellyZombie
             if (_instance == null || !NetGame.Connected) return;
             if (owner != Grimoire.LocalPlayerId) return;
             InstanceFinder.ClientManager.Broadcast(new UnlockMsg { Owner = owner, Card = card, Rune = rune });
+        }
+
+        /// ★ A HOST-SIDE GRANT FOR A REMOTE OWNER (summon deeds run in host
+        /// code): relayed to everyone, so the earner celebrates and every
+        /// mirror agrees.
+        public static void PushUnlockFor(int owner, int rune)
+        {
+            if (_instance == null || !NetGame.Connected || !NetGame.IsHost) return;
+            InstanceFinder.ServerManager.Broadcast(new UnlockMsg { Owner = owner, Card = -1, Rune = rune });
+        }
+
+        /// The host's book, to everyone - on join and on every save.
+        public static void PushBook()
+        {
+            if (_instance == null || !NetGame.Connected || !NetGame.IsHost) return;
+            InstanceFinder.ServerManager.Broadcast(new BookMsg { Json = SpellBook.LiveJson() });
         }
 
         /// Declare a rune: every machine stamps the same strokes (netcode §1).
@@ -1219,17 +1382,6 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------- server relaying --
-        void OnZombieHitServer(NetworkConnection conn, ZombieHit msg, Channel channel)
-        {
-            foreach (var z in Zombie.All)
-            {
-                if (z == null || z.gameObject.GetInstanceID() != msg.Id) continue;
-                z.GetComponent<Damageable>()?.TakeDamage(
-                    Mathf.Min(msg.Amount, 60f), "a friend's magic"); // per-hit cap: no one-packet nukes
-                return;
-            }
-        }
-
         void OnPlayerStateServer(NetworkConnection conn, PlayerState msg, Channel channel)
         {
             msg.Id = conn.ClientId; // trust the connection, not the packet
@@ -1332,6 +1484,13 @@ namespace SpellyZombie
 
         void OnRemoteConnection(NetworkConnection conn, RemoteConnectionStateArgs args)
         {
+            if (args.ConnectionState == RemoteConnectionState.Started)
+            {
+                // ★ the joiner plays by the HOST's book, from the first frame
+                InstanceFinder.ServerManager.Broadcast(conn,
+                    new BookMsg { Json = SpellBook.LiveJson() });
+                return;
+            }
             if (args.ConnectionState != RemoteConnectionState.Stopped) return;
             RemoveAvatar(conn.ClientId);
             ReleaseHold(conn.ClientId, Vector3.zero); // leavers let go (netcode §4)
@@ -1351,8 +1510,22 @@ namespace SpellyZombie
         void OnUnlockClient(UnlockMsg msg, Channel channel)
         {
             if (InstanceFinder.ServerManager.Started) return;
-            if (msg.Owner == Grimoire.LocalPlayerId) return;
+            if (msg.Owner == Grimoire.LocalPlayerId)
+            {
+                // ★ A DEED THE HOST GRANTED ME (summon deeds run in host
+                // code): taken the FULL way - toast, pages, recognition.
+                // Self-echoes no-op inside UnlockRune's already-known check.
+                if (msg.Rune >= 0 && !Grimoire.HasRune(msg.Owner, (RuneType)msg.Rune))
+                    Grimoire.UnlockRune(msg.Owner, (RuneType)msg.Rune);
+                return;
+            }
             Grimoire.UnlockRemote(msg.Owner, msg.Card, msg.Rune);
+        }
+
+        void OnBookClient(BookMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            SpellBook.Adopt(msg.Json);
         }
 
         void OnDeclareRuneServer(NetworkConnection conn, DeclareRuneMsg msg, Channel channel)
@@ -1559,7 +1732,9 @@ namespace SpellyZombie
                 _seen.Add(id);
                 if (!_proxies.TryGetValue(id, out var proxy) || proxy == null)
                 {
-                    proxy = NetZombieProxy.Build(id, (ZombieKind)msg.Kinds[i], msg.Pos[i]);
+                    Vector3 scale = msg.Scale != null && i < msg.Scale.Length
+                        ? msg.Scale[i] : Vector3.zero;   // zero = fall back to the kind table
+                    proxy = NetZombieProxy.Build(id, msg.Pos[i], scale, msg.Kinds[i] == 1);
                     _proxies[id] = proxy;
                 }
                 proxy.Target(msg.Pos[i], msg.Yaw[i]);
@@ -1574,6 +1749,236 @@ namespace SpellyZombie
                 if (_proxies[id] != null) _proxies[id].Vanish();
                 _proxies.Remove(id);
             }
+        }
+
+        readonly Dictionary<int, NetGolemProxy> _golems = new Dictionary<int, NetGolemProxy>();
+
+        void OnGolemSnapClient(GolemSnap msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return; // host has the real ones
+            if (msg.Ids == null) return;
+
+            _seen.Clear();
+            for (int i = 0; i < msg.Ids.Length; i++)
+            {
+                int id = msg.Ids[i];
+                if (id == 0) continue;   // a zeroed slot is not a golem
+                _seen.Add(id);
+                if (!_golems.TryGetValue(id, out var proxy) || proxy == null)
+                {
+                    Vector3 scale = msg.Scale != null && i < msg.Scale.Length
+                        ? msg.Scale[i] : Vector3.zero;
+                    Color skin = msg.Skin != null && i < msg.Skin.Length
+                        ? msg.Skin[i] : Color.gray;
+                    proxy = NetGolemProxy.Build(id, msg.Pos[i], scale, skin);
+                    if (proxy == null) continue;   // no prefab in the slot
+                    _golems[id] = proxy;
+                }
+                proxy.Target(msg.Pos[i], msg.Yaw[i]);
+            }
+
+            // gone from the host's list = it came apart; poof the proxy
+            _gone.Clear();
+            foreach (var kv in _golems)
+                if (!_seen.Contains(kv.Key)) _gone.Add(kv.Key);
+            foreach (int id in _gone)
+            {
+                if (_golems[id] != null) _golems[id].Vanish();
+                _golems.Remove(id);
+            }
+        }
+
+        /// A client's spell hurt a golem: only the host may actually wound it.
+        /// A lvl3 spell opened a biome on the host. Clients open their own copy
+        /// so body drift, strength caps and buoyancy agree on every machine -
+        /// without this, only the caster was standing in their own spell.
+        void OnBiomeClient(BiomeMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            ArtificialBiome.OpenLocal(msg.At, new SpellPayload
+            {
+                Temp = msg.Temp, Lum = msg.Lum, Pressure = msg.Pressure,
+                Balance = msg.Balance, State = msg.State, Affinity = msg.Affinity,
+                Strength = msg.Strength, Int = msg.Int,
+                Courage = msg.Courage, Clones = msg.Clones,
+            }, msg.Radius, msg.Seconds);
+        }
+
+        /// A client asked to hurt something. ONLY the host does the arithmetic,
+        /// and it answers to everybody at once - that is what keeps the same
+        /// tree on the same health on every machine.
+        void OnHurtServer(NetworkConnection conn, HurtIntent msg, Channel channel)
+        {
+            var d = Element.ById(msg.NetId);
+            if (d == null) return;              // not a thing we know; drop it
+            // WHO asked comes from the CONNECTION, never the packet - the same
+            // rule the identity handshake uses, so nobody can frame anybody.
+            int by = Element.IdFor("player:" + OwnerIdOf(conn.ClientId));
+            // per-hit cap the old zombie channel carried: no one-packet nukes
+            d.TakeDamage(Mathf.Min(msg.Amount, DrawingConfig.NetHitCap), "a friend's magic", by);
+        }
+
+        void OnMarkClient(MarkMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            Marks.SetLocal(msg.Owner, (Mark)msg.What, msg.Value);
+        }
+
+        /// HOST: publish a mark so every machine can answer the same curse.
+        public static void PushMark(int owner, Mark what, int value)
+        {
+            if (_instance == null || !NetGame.IsHost) return;
+            InstanceFinder.ServerManager.Broadcast(new MarkMsg
+                { Owner = owner, What = (byte)what, Value = value });
+        }
+
+        void OnHealthClient(HealthMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            Element.ById(msg.NetId)?.TakeNetHealth(msg.Health, msg.Max);
+        }
+
+        /// CLIENT: ask the host to hurt something. Safe offline - it does
+        /// nothing and the caller stays authoritative.
+        public static void AskHurt(int netId, float amount)
+        {
+            if (_instance == null || !NetGame.Connected || NetGame.IsHost) return;
+            InstanceFinder.ClientManager.Broadcast(new HurtIntent
+                { NetId = netId, Amount = amount });
+        }
+
+        /// HOST: publish the truth after it changed something's health.
+        static readonly List<int> _stIds = new List<int>();
+        static readonly List<short> _stTemp = new List<short>();
+        static readonly List<sbyte> _stState = new List<sbyte>();
+        static readonly List<sbyte> _stLum = new List<sbyte>();
+
+        /// Called on the host beat. Sends only what has MOVED from its natural,
+        /// so a quiet map sends nothing at all and a burning one sends the
+        /// things that are burning.
+        public static void PushElementState()
+        {
+            if (!NetGame.IsHost || !NetGame.Connected) return;
+            _stIds.Clear(); _stTemp.Clear(); _stState.Clear(); _stLum.Clear();
+
+            foreach (var e in Element.Live)
+            {
+                if (e == null) continue;
+                var d = e.Data; var n = e.Natural;
+                float dT = d.Temp - n.Temp, dS = d.State - n.State, dL = d.Lum - n.Lum;
+                if (Mathf.Abs(dT) < 4f && Mathf.Abs(dS) < 0.08f && Mathf.Abs(dL) < 0.15f) continue;
+
+                _stIds.Add(e.NetId);
+                _stTemp.Add((short)Mathf.Clamp(Mathf.RoundToInt(d.Temp), -30000, 30000));
+                _stState.Add((sbyte)Mathf.Clamp(Mathf.RoundToInt(d.State * 100f), -100, 100));
+                _stLum.Add((sbyte)Mathf.Clamp(Mathf.RoundToInt(d.Lum * 100f), -100, 100));
+                if (_stIds.Count >= 200) break;   // a snapshot, not a census
+            }
+            if (_stIds.Count == 0) return;
+
+            InstanceFinder.ServerManager.Broadcast(new StateMsg
+            {
+                Ids = _stIds.ToArray(), Temp = _stTemp.ToArray(),
+                State = _stState.ToArray(), Lum = _stLum.ToArray()
+            }, true, Channel.Unreliable);
+        }
+
+        /// A client APPLIES the host's answer and never computes its own. Its
+        /// element beat does not run, so these numbers are the only ones it has.
+        void OnElementStateClient(StateMsg msg, Channel channel)
+        {
+            if (msg.Ids == null) return;
+            for (int i = 0; i < msg.Ids.Length; i++)
+            {
+                var e = Element.ById(msg.Ids[i]);
+                if (e == null) continue;
+                var d = e.Data;
+                d.Temp = msg.Temp[i];
+                d.State = msg.State[i] / 100f;
+                d.Lum = msg.Lum[i] / 100f;
+                e.Data = d;
+                e.ShowState();
+            }
+        }
+
+        public static void PushHealth(int netId, float health, float max)
+        {
+            if (_instance == null || !NetGame.IsHost) return;
+            InstanceFinder.ServerManager.Broadcast(new HealthMsg
+                { NetId = netId, Health = health, Max = max });
+        }
+
+        /// Which player a collider IS - the local one, or the owner behind a
+        /// remote puppet. -1 when it is not a body at all.
+        public static int OwnerOfBody(Collider c)
+        {
+            if (c == null) return -1;
+            if (c.GetComponentInParent<SimpleFPSController>() != null)
+                return Grimoire.LocalPlayerId;
+            var av = c.GetComponentInParent<NetAvatar>();
+            return av != null ? OwnerIdOf(av.Id) : -1;
+        }
+
+        /// HOST: land an effect on a body, wherever that body actually lives.
+        /// True means it was shipped to a remote owner, so the caller must NOT
+        /// also apply it to the puppet standing here.
+        public static bool PushPlayerFx(int owner, byte kind, float amount,
+            MatterPhase phase = MatterPhase.Solid, Vector3 point = default)
+        {
+            if (owner < 0 || owner == Grimoire.LocalPlayerId) return false;
+            if (_instance == null || !NetGame.IsHost) return false;
+            InstanceFinder.ServerManager.Broadcast(new PlayerFxMsg
+            {
+                Owner = owner, Kind = kind, Amount = amount,
+                Phase = (byte)phase, Point = point,
+            });
+            return true;
+        }
+
+        void OnPlayerFxClient(PlayerFxMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            if (msg.Owner != Grimoire.LocalPlayerId) return;   // not my body
+
+            SimpleFPSController me = null;
+            foreach (var pl in SimpleFPSController.All)
+                if (pl != null && pl.IsLocalViewer) { me = pl; break; }
+            if (me == null) return;
+
+            switch (msg.Kind)
+            {
+                case 0: me.TakeHit(msg.Point, msg.Amount, "magic"); break;
+                case 1:
+                    if (!me.IsDowned)
+                        me.Health = Mathf.Min(Sides.MaxHealthFor(msg.Owner),
+                            me.Health + msg.Amount);
+                    break;
+                case 2: Sides.AddBuff(msg.Owner, msg.Amount); break;
+                case 3: BodyState.Of(me.transform)?.SetPhase((MatterPhase)msg.Phase, msg.Amount); break;
+                case 4:
+                    FallCatcher.Teleport(me, msg.Point + Vector3.up * 0.3f);
+                    Juice.Chime(msg.Point);
+                    break;
+                case 5: TrailMark.Wear(me.transform, msg.Amount); break;
+                case 6:
+                    // Point.x carries how visible to become, Amount how long
+                    me.GetComponentInChildren<StateView>()?.Fade(msg.Point.x, msg.Amount);
+                    break;
+            }
+        }
+
+        /// HOST: tell everyone a biome just opened.
+        public static void PushBiome(Vector3 at, SpellPayload p, float radius, float seconds = 0f)
+        {
+            if (_instance == null || !NetGame.IsHost) return;
+            InstanceFinder.ServerManager.Broadcast(new BiomeMsg
+            {
+                At = at, Radius = radius, Seconds = seconds,
+                Temp = p.Temp, Lum = p.Lum, Pressure = p.Pressure,
+                Balance = p.Balance, State = p.State, Affinity = p.Affinity,
+                Strength = p.Strength, Int = p.Int,
+                Courage = p.Courage, Clones = p.Clones,
+            });
         }
 
         void OnKillFeedClient(KillFeed msg, Channel channel)
@@ -1733,17 +2138,22 @@ namespace SpellyZombie
                 int id = msg.Ids[i];
                 if (id == 0) continue;
                 _seen.Add(id);
-                var kind = (ParticleKind)msg.Kinds[i];
-                if (_moteProxies.TryGetValue(id, out var proxy) && proxy != null && proxy.Kind != kind)
+                byte shape = msg.Kinds[i];
+                var tint = msg.Tints != null && i < msg.Tints.Length ? msg.Tints[i] : (Color32)Color.white;
+                byte level = msg.Levels != null && i < msg.Levels.Length ? msg.Levels[i] : (byte)1;
+
+                if (_moteProxies.TryGetValue(id, out var proxy) && proxy != null && proxy.Shape != shape)
                 {
-                    Destroy(proxy.gameObject); // it combined into something else - rebuild the look
+                    Destroy(proxy.gameObject); // it became something else - rebuild the body
                     proxy = null;
                 }
                 if (proxy == null)
                 {
-                    proxy = NetMoteProxy.Build(id, kind, msg.Pos[i]);
+                    proxy = NetMoteProxy.Build(id, shape, tint, msg.Pos[i]);
                     _moteProxies[id] = proxy;
                 }
+                proxy.Wear(tint, level);
+                proxy.Ride(msg.Rides != null && i < msg.Rides.Length ? msg.Rides[i] : 0);
                 proxy.Target(msg.Pos[i], msg.Scale[i]);
             }
 
@@ -1938,10 +2348,46 @@ namespace SpellyZombie
         /// typed at the stand. The host ignores empty-password lobbies.
         void OnLocalClientState(FishNet.Transporting.ClientConnectionStateArgs args)
         {
+            if (args.ConnectionState == FishNet.Transporting.LocalConnectionState.Stopped)
+            {
+                HostGone();
+                return;
+            }
             if (args.ConnectionState != FishNet.Transporting.LocalConnectionState.Started) return;
+            _wasClient = !InstanceFinder.ServerManager.Started;
             if (InstanceFinder.ServerManager.Started) return; // the host trusts itself
             InstanceFinder.ClientManager.Broadcast(new JoinAuthMsg
                 { Password = NetGame.JoinPassword ?? "" });
+        }
+
+        bool _wasClient;   // we were a guest, not the host running its own client
+
+        /// THE HOST WENT AWAY. Nothing used to catch this: every orphan kept
+        /// its dead proxies standing, and `IsAuthority` (!Connected || IsHost)
+        /// quietly promoted each of them to referee a match that no longer
+        /// existed. Tear the borrowed world down and go home.
+        void HostGone()
+        {
+            if (!_wasClient) return;   // the host stopping its own server is not this
+            _wasClient = false;
+
+            foreach (var kv in _proxies) if (kv.Value != null) Destroy(kv.Value.gameObject);
+            _proxies.Clear();
+            foreach (var kv in _golems) if (kv.Value != null) Destroy(kv.Value.gameObject);
+            _golems.Clear();
+            foreach (var kv in _avatars) if (kv.Value != null) Destroy(kv.Value.gameObject);
+            _avatars.Clear();
+            foreach (var kv in _rings) if (kv.Value != null) Destroy(kv.Value.gameObject);
+            _rings.Clear();
+            HasRound = false;
+
+            DrawingWorld.Instance?.LogEvent("the host left. back to the lobby");
+            ComboBanner.Show("THE HOST LEFT", new Color(1f, 0.6f, 0.5f));
+
+            if (ActiveScene.Name == "Lobby") return;   // already home
+            LoadEgg.Cover();
+            LoadingHints.Show();
+            UnityEngine.SceneManagement.SceneManager.LoadScene("Lobby");
         }
 
         /// Wrong password = disconnected on the spot. No password set = open
@@ -2136,6 +2582,21 @@ namespace SpellyZombie
                 var eyes = GooglyEyes.Attach(go.transform, 0.6f, 1.4f);
                 eyes.SetVisible(true);
             }
+
+            // A REMOTE BODY WEARS THE SAME NAME ITS OWNER GAVE ITSELF, so a
+            // spell that hits the puppet reaches the real person. Nothing has
+            // to search for a network component: the id IS on the object.
+            int owner = NetSync.OwnerIdOf(id);
+            var hurtBox = go.GetComponent<Element>();
+            if (hurtBox == null) hurtBox = go.AddComponent<Element>();
+            hurtBox.Rename(Element.IdFor("player:" + owner));
+            hurtBox.RemoveOnDeath = false;   // a puppet is never destroyed locally
+
+            // ON THE HOST THIS IS THE REAL STORE for that player's strength -
+            // it does the subtracting and answers with HealthMsg, and the owner
+            // mirrors it. So it has to start at their true ceiling, not 100.
+            hurtBox.MaxStrength = Sides.MaxHealthFor(owner);
+            hurtBox.Health = hurtBox.MaxStrength;
 
             var a = go.AddComponent<NetAvatar>();
             a.Id = id;

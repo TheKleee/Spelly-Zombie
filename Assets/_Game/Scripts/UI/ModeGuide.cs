@@ -54,16 +54,15 @@ namespace SpellyZombie
             // acolyte crossroads: third person is the disguise
             if (ShapeShift.LocalIsShaped) return; // ShapeShift's own line covers it
 
-            string shape = ShapeShift.StoredShapeName;
             bool dead = OwnsAZombie();
-            if (shape == null)
+            if (!ShapeShift.HasStoredShape)
             {
                 UIPrompt.Offer("G", Loc.T("chip.grimoire"));
                 if (dead) UIPrompt.Offer("R", Loc.T("chip.watch"));
             }
             else
             {
-                UIPrompt.Offer("TAB", Loc.F("chip.become", shape));
+                UIPrompt.Offer("TAB", Loc.T("chip.become"));
                 if (dead) UIPrompt.Offer("R", Loc.T("chip.watch"));
                 else UIPrompt.Offer("G", Loc.T("chip.grimoire"));
             }

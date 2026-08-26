@@ -57,8 +57,8 @@ namespace SpellyZombie
             rb.isKinematic = true; // particles donate to rigidbodies - sparks can heat it
 
             root.AddComponent<SurfaceMaterialTag>().Material = SurfaceMaterialType.Metal;
-            var dmg = root.AddComponent<Damageable>();
-            dmg.Destructible = false;  // the pot survives the mayhem around it
+            var dmg = root.AddComponent<Element>();
+            dmg.RemoveOnDeath = false;  // the pot survives the mayhem around it
             dmg.Health = 999999f;      // heat can't kill it
 
             var c = root.AddComponent<CaveCauldron>();

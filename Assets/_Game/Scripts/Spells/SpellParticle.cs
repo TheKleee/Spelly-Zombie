@@ -15,11 +15,20 @@ namespace SpellyZombie
         BarrierMote                   // GRAMMAR v4: Dense+Spread paradox - isolates what it touches
     }
 
-    /// Particles carry attributes; on collision the lower level dissolves into
-    /// the higher. ResolveLaw applies GRAMMAR v4 (leveling / paradox / exotics).
-    public class SpellParticle : MonoBehaviour
+    /// A particle is its numbers. It drifts toward whatever the place around
+    /// it is natural for, it takes in whatever it meets, and what it IS at any
+    /// moment is read off those numbers - never looked up and dispatched.
+    /// Particles are the only things that COMBINE; everything else absorbs.
+    public class SpellParticle : MonoBehaviour, ISpellData
     {
-        public ParticleKind Kind;
+        /// Read off the numbers. Nothing assigns this any more.
+        public ParticleKind Kind => KindOf(PayloadNow);
+
+        /// Which pool this object came out of, fixed at Emit. The LOOK moves
+        /// with the numbers; the recycled GameObject must not, or a particle
+        /// that drifted would be handed back to a stack whose art it never had.
+        ParticleKind _poolKind;
+
         public float Power = 1f;
         public Vector3 Vel;
         /// Fused size is the SUM of both parents, capped. Every fusion path
@@ -33,12 +42,65 @@ namespace SpellyZombie
         public static float SizeMul(float srcSize) =>
             Mathf.Clamp(0.55f + srcSize * 0.5f, 1f, DrawingConfig.FusedSizeMulMax);
 
-        public float SrcSize = 1f; // zone radius of the emitting rune; rides the fusion chain
+        public float SrcSize = 1f; // the rune's own drawn size; rides the fusion chain
+
+        /// ★ REACH = the rune's size RELATIVE TO ITS SEAL (his rule, same as
+        /// the zombie gas): a rune filling its seal reaches far, a small rune
+        /// in a big seal barely past itself. 0 = no seal lineage (fall back
+        /// to drawn size).
+        public float Reach;
+
+        /// The effect-radius factor every aura and area shares: ratio-driven
+        /// when the seal said so, drawn-size otherwise.
+        float ReachK => Reach > 0.01f
+            ? Mathf.Clamp(Reach / DrawingConfig.RuneSizeMin, 0.6f, 3f)
+            : Mathf.Clamp(SizeMul(SrcSize), 0.6f, 3f);
+
+        /// ★ THE ONE BODY-SIZE CURVE (his rule: reuse, one method): the
+        /// zombie summon's Spell.RuneSizeMul, normalized so the smallest
+        /// legal rune is exactly 1. Clamped into the existing fused cap so
+        /// summed merges grow visibly without breaking blast reach.
+        public static float DrawnSizeK(float srcSize)
+        {
+            float d = 2f / DrawingConfig.ZoneRadiusScale; // SrcSize -> drawn diameter
+            return Mathf.Clamp(
+                Spell.RuneSizeMul(srcSize * d)
+                / Spell.RuneSizeMul(DrawingConfig.ParticleSizeNeutral * d),
+                0.3f, DrawingConfig.FusedSizeMulMax);
+        }
+
+        /// Body-size changes go through here: visuals scale by the ratio,
+        /// the trigger compensates so the impact judge never inflates.
+        public void ApplySizeRatio(float ratio)
+        {
+            if (ratio <= 0f || Mathf.Approximately(ratio, 1f)) return;
+            transform.localScale *= ratio;
+            var sc = GetComponent<SphereCollider>();
+            if (sc != null) sc.radius /= ratio;
+        }
+
+        /// A merge grew SrcSize (already summed by the caller) - grow the
+        /// body by the curve's own ratio. Relative, so it respects dormant
+        /// shrink, decay, and whatever base a transform gave the body.
+        void GrowToSize(float oldSrcSize) =>
+            ApplySizeRatio(DrawnSizeK(SrcSize) / DrawnSizeK(oldSrcSize));
+
+        /// A transformation SETS its own body size - the trigger returns to
+        /// the primitive base so the impact judge stays honest whatever the
+        /// drawn-size compensation was before the change.
+        void SetBodyScale(float scale)
+        {
+            transform.localScale = Vector3.one * scale;
+            var baseSc = GetComponent<SphereCollider>();
+            if (baseSc != null) baseSc.radius = 0.5f;
+        }
         public int Echo;           // ECHO powerup stacks: landing may re-emit
 
         // GRAMMAR v4 (SPELL_PARTICLES.md): same+same levels up, opposites
         // synthesize; all 12 runes in one lineage summons the Demon.
-        public int GrammarLevel = 1;  // 1 = base · 2 = radiant self · 3 = ultimate
+        /// Kept as the runtime's own notion for the paths that still set it;
+        /// Level is the authored truth and wins wherever both are asked.
+        public int GrammarLevel = 1;
         public ulong Lineage;         // union of every rune that fed this chain
         public int SealId;            // which SEAL emitted this; same-seal siblings combine first
 
@@ -93,8 +155,6 @@ namespace SpellyZombie
         {
             Vel = velocity;
             _settled = false;
-            // vectors are never dormant; push/pull fly live from birth
-            if (Kind == ParticleKind.Push) return;
             if (!Dormant) Sleep();
             WakeIn(DrawingConfig.WakeDelaySeconds);
         }
@@ -123,6 +183,7 @@ namespace SpellyZombie
 
         Vector3 _anchorPos, _anchorNrm;
         bool _hasAnchor;
+        bool _areasDeferred;   // fused asleep: the areas wait for Wake
 
         /// A ground/wall preview remembers its seal's spot and surface normal;
         /// hover point = anchor + normal × hover range. The anchor outlives
@@ -151,8 +212,9 @@ namespace SpellyZombie
             a._pendingSrc = b.SrcSize;
             a._pendingLin = b.Lineage;
             a._hasPending = true;
+            float aWasSrc = a.SrcSize;
             a.SrcSize = FuseSize(a.SrcSize, b.SrcSize);
-            a.transform.localScale *= 1.25f;
+            a.GrowToSize(aWasSrc); // same curve as every other merge
             a.InheritAnchor(b);
             a.Vel = Vector3.zero;
             a.GhostLook();
@@ -169,7 +231,9 @@ namespace SpellyZombie
             live.InheritAnchor(live == a ? b : a);
             live.Vel = Vector3.zero;
             if (!live.Dormant) return;
-            live.transform.localScale *= DrawingConfig.DormantPreviewScale;
+            // scale is already state-correct: merges grow by the curve
+            // ratio (GrowToSize) - re-applying the preview shrink here
+            // halved the ghost on every merge
             live.GhostLook();
         }
 
@@ -190,8 +254,6 @@ namespace SpellyZombie
         public void Sleep()
         {
             if (Dormant || _dead) return;
-            // vectors are never dormant
-            if (Kind == ParticleKind.Push) return;
             Dormant = true;
             _dormantLeft = DrawingConfig.DormantLifeSeconds;
             _wakeAt = -1f;
@@ -214,8 +276,19 @@ namespace SpellyZombie
             _wakeAt = -1f;
             transform.localScale /= DrawingConfig.DormantPreviewScale;
             _age = 0f; // the clock was FROZEN - a stockpiled spell wakes fresh
+            // the ghost turns fully real at once
+            if (_shapeBody != null) _shapeBody.GetComponent<StateView>()?.ClearFade();
             RefreshLook();
             ImpactFx(); // the pop of becoming real
+            if (_areasDeferred)
+            {
+                _areasDeferred = false;
+                for (int i = 0; i < Fusions.Count; i++)
+                {
+                    var a = SpellBook.Live.Aoe(Fusions[i].Aoe);
+                    if (a != null) StartCoroutine(RaiseArea(a));
+                }
+            }
 
             // a carried conjure fires where it woke; a moving ghost casts
             // along its heading, flight line continued to the ground
@@ -257,7 +330,28 @@ namespace SpellyZombie
 
         /// The reach the spell will have live - the preview's visible area,
         /// the trap's tripwire and the helper's range, all one number.
-        float AreaReach() => Mathf.Max(1.2f, 1.6f * Mathf.Clamp(SizeMul(SrcSize), 0.6f, 3f));
+        float AreaReach() => Mathf.Max(1.2f, 1.6f * ReachK);
+
+        /// ★ HOW FAR THIS PARTICLE REACHES. Was a flat constant, so a barely
+        /// warm flame and a raging one covered exactly the same ground and
+        /// nobody could tell them apart until they were standing in it.
+        ///
+        /// Now it grows with how far past its thresholds the numbers sit, and
+        /// with the size of the rune that was drawn. The ring you can see is
+        /// this same number, so the tell never lies about the reach.
+        public float AuraRadius
+        {
+            get
+            {
+                var p = PayloadNow;
+                float influence = 1f;
+                for (int i = 0; i < Fusions.Count; i++)
+                    influence = Mathf.Max(influence, Fusions[i].Influence(p));
+                return DrawingConfig.Lvl2AuraRadius
+                     * Mathf.Clamp(influence, 1f, DrawingConfig.AuraInfluenceMax)
+                     * ReachK;
+            }
+        }
 
         Transform _dormantSeek;   // a BODY the preview drifts toward (enemy/ally)
         float _seekLift;          // aim at chest height for bodies
@@ -269,9 +363,12 @@ namespace SpellyZombie
         /// until expiry. Flying only closes distance; waking obeys area rules.
         void DormantTick(float dt)
         {
-            // however it got here, a vector wakes at once
-            if (Kind == ParticleKind.Push) { Wake(); return; }
             if (_wakeAt > 0f && Time.time >= _wakeAt) { Wake(); return; }
+
+            // the ghost IS the authored spell (his rule: dormant differs by
+            // size and transparency ONLY) - the pose morph must run asleep
+            // too, or the preview stays a raw blob
+            TickShape(dt);
 
             if (Holder == null && !_settled)
             {
@@ -297,6 +394,9 @@ namespace SpellyZombie
                         Vel = Vel.normalized * DrawingConfig.DormantSeekSpeed;
                 }
                 transform.position += Vel * dt;
+                // a thrown ghost faces where it is going, same as a live one
+                if (inFlight && Vel.sqrMagnitude > 1.2f)
+                    transform.rotation = Quaternion.LookRotation(Vel);
 
                 // leash: an anchored preview never strays beyond a short
                 // radius of its seal; a ghost chasing a body is exempt
@@ -405,7 +505,7 @@ namespace SpellyZombie
             foreach (var q in All)
             {
                 if (q == null || q == this || q._dead || !q.Dormant) continue;
-                if (q.Kind != Kind || Kind == ParticleKind.Flame || Kind == ParticleKind.Push) continue;
+                if (q.Kind != Kind || Kind == ParticleKind.Flame) continue;
                 float d2q = (q.transform.position - transform.position).sqrMagnitude;
                 if (d2q <= seek2) { _dormantSeek = q.transform; return; }
             }
@@ -443,6 +543,46 @@ namespace SpellyZombie
             var lib = FxLibrary.I;
             if (lib == null) return;
             Vector3 at = transform.position;
+
+            // ★ DETONATION IS THE NUMBERS (his rule): every loud axis
+            // detonates as what it IS - heat as flame, chill as ice, light
+            // as a flash, dark as a poof, liquid as a splash in its own
+            // colour. Several loud axes burst together.
+            var p = PayloadNow;
+            bool any = false;
+            bool Loud(int axis) =>
+                Mathf.Abs(SpellPayload.ToHuman(axis, p[axis])) >= SpellPayload.LineFor(axis);
+
+            if (Loud(0))
+            {
+                FxLibrary.Spawn(p.Temp > 0f ? lib.HitSpark : lib.IceHit, at);
+                if (p.Temp > 0f) { var b = FxLibrary.Spawn(lib.FireBurst, at);
+                    if (b != null) b.transform.localScale *= 0.55f; }
+                any = true;
+            }
+            if (Loud(1))
+            {
+                if (p.Lum > 0f) FxLibrary.Spawn(lib.HitLight, at);
+                else FxLibrary.SpawnTinted(lib.Poof, at, p.Tint());
+                any = true;
+            }
+            if (Loud(2)) { FxLibrary.Spawn(lib.HitThud, at); any = true; }
+            if (Loud(5)) { FxLibrary.Spawn(lib.HitVector, at); any = true; }
+            switch (SpellPayload.PhaseOf(p.State))
+            {
+                case MatterPhase.Liquid:
+                    FxLibrary.SpawnTinted(lib.Splash, at, p.Tint()); any = true; break;
+                case MatterPhase.Gas:
+                    var g = FxLibrary.Spawn(lib.GasCloud, at, null, 1.2f);
+                    if (g != null) g.transform.localScale *= 0.4f;
+                    any = true; break;
+                default:
+                    if (Loud(4)) { FxLibrary.Spawn(lib.GroundHit, at); any = true; }
+                    break;
+            }
+            if (any) return;
+
+            // nothing loud: the old kind-family fallback still pops
             var fam = Family(Kind);
             if (Kind == ParticleKind.Flame || fam == ParticleKind.Spark)
             {
@@ -464,48 +604,35 @@ namespace SpellyZombie
                 FxLibrary.Spawn(lib.Poof, at);
         }
 
-        /// A Y (Toward-rune) vector: flies its way, POINTS the other way.
-        public bool IsY =>
-            (Lineage & RuneGrammar.Bit(RuneType.DirectionToward)) != 0
-            && (Lineage & RuneGrammar.Bit(RuneType.DirectionAway)) == 0;
+        /// ★ ATTRACT AND REPEL ARE PARTICLES NORMALLY (his rule): the sign of
+        /// their own Affinity says which way they act - the old lineage-read
+        /// IsY vector identity is gone with the rest of the vector specials.
 
-        /// Push particles render as an arrow glyph (Y forks), built once
-        /// lineage says which; an FX_Push prefab overrides the look outright.
-        bool _vectorShaped;
-        void EnsureVectorShape()
-        {
-            if (_vectorShaped || _dead || Kind != ParticleKind.Push) return;
-            if (_age < 0.06f) return; // let the seal stamp lineage first
-            _vectorShaped = true;
-            if (PrefabVault.Get("FX_Push") != null) return;
-            // both vectors are arrows; colour tells them apart
-            var mat = IsY ? MatterFX.Get(new Color(0.7f, 0.35f, 0.95f), MoteShade.Additive)
-                : _rend != null ? _rend.sharedMaterial : null;
-            if (_rend != null) _rend.enabled = false;
+        /// THE CONTAINER - all ten, not four. A field, not a property, so
+        /// Data.Temp += x writes in place.
+        public SpellPayload Data;
 
-            void Bar(Vector3 pos, float yaw, float len)
-            {
-                var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                g.name = "Glyph";
-                Destroy(g.GetComponent<Collider>());
-                g.transform.SetParent(transform, false);
-                g.transform.localPosition = pos;
-                g.transform.localEulerAngles = new Vector3(0f, yaw, 0f);
-                g.transform.localScale = new Vector3(0.32f, 0.32f, len);
-                if (mat != null) g.GetComponent<Renderer>().sharedMaterial = mat;
-            }
+        /// What it was born as: the biome it was cast in. Every carrier is
+        /// stamped once at birth and measures its capacities from there.
+        public SpellPayload Natural { get; private set; }
 
-            Bar(new Vector3(0f, 0f, -0.1f), 0f, 2.4f);        // shaft
-            Bar(new Vector3(0.44f, 0f, 0.78f), -38f, 1.1f);   // barb
-            Bar(new Vector3(-0.44f, 0f, 0.78f), 38f, 1.1f);   // barb
-        }
+        SpellPayload ISpellData.Data { get => Data; set => Data = value; }
 
-        // the attribute payload every particle carries
-        public float Temp, Lum, Density, Stick;
+        /// The caster. Already carried for the dormant wake rules; now it is
+        /// the same field every transfer passes along.
+        int ISpellData.Owner { get => OwnerId; set => OwnerId = value; }
+
+        // the four names the rest of the code still speaks - views on the
+        // container, not storage. Delete once the call sites move over.
+        public float Temp { get => Data.Temp; set => Data.Temp = value; }
+        public float Lum { get => Data.Lum; set => Data.Lum = value; }
+        public float Density { get => Data.Pressure; set => Data.Pressure = value; }
+        public float Stick { get => Data.Balance; set => Data.Balance = value; }
 
         const float AirDensity = 0.55f;      // below this effective density the particle rises
         const float PlasmaDensity = 1.0f;    // at/above this density elementals transform
 
+        static int _nextKey;   // hands each particle its own clock phase
         static readonly List<SpellParticle> All = new List<SpellParticle>();
 
         /// Every live particle - the sticky hand scans this for grab targets.
@@ -514,8 +641,24 @@ namespace SpellyZombie
         Renderer _rend;
         float _age, _fearTick, _strikeTick;
         float _chaosLeft;      // ChaosGrip paradox: random impulses, uncontrollable
-        float _isolatedUntil;  // barrier-moted: refuses ALL chemistry until this
-        float _auraTick;       // lvl2 particles radiate their effect around them
+        Transform _reachRing;  // the visible edge of AuraRadius; tracks it every beat
+        /// Riding something. Set when it lands carrying a row that attaches.
+        public bool Attached { get; private set; }
+
+        /// Does anything it currently IS want to ride rather than burst?
+        /// ★ NOT A FLAG ANY MORE. A thing with no strength cannot be
+        /// destroyed by contact, so touching something does not end it - it
+        /// rides along instead. Sticky keeps it there. Both are numbers the
+        /// author already set, so nothing needed a checkbox.
+        bool WantsToAttach => !Physical && PayloadNow.Balance > 0.05f;
+
+        long _auraBeat = -1;   // the world beat this particle last radiated on
+        long _driftBeat = -1;  // and the one it last drifted on
+
+        /// This particle's phase on the world clock. Stable for its whole
+        /// life, so its beats stay evenly spread rather than jumping about.
+        int ClockKey => _clockKey;
+        int _clockKey;
         float _donateTick;     // persistent particles (Flame, lvl2 Glue) re-donate on a beat
         float _patchTick;      // ground patches (settled Glue/Repel) act on their own beat
         float _appetite;       // 0..1 personality: how much this mote stalks LIVING things
@@ -551,10 +694,13 @@ namespace SpellyZombie
         {
             _dead = false;
             _age = 0f;
+            // pool rebirth: the primitive's own trigger size (emission and
+            // the settle path both rescale it per life)
+            var resetSc = GetComponent<SphereCollider>();
+            if (resetSc != null) resetSc.radius = 0.5f;
             _settled = false;
             _chaosLeft = 0f;
-            _isolatedUntil = 0f;
-            _auraTick = _donateTick = _patchTick = 0f;
+            _donateTick = _patchTick = 0f;
             _fearTick = _strikeTick = _lureRetarget = 0f;
             _impactFxAt = 0f;
             _lure = null;
@@ -576,7 +722,31 @@ namespace SpellyZombie
             _wakeOnLand = false;
             PendingConjure = null;
             OwnerId = 0;
-            Temp = Lum = Density = Stick = 0f;
+            Data = new SpellPayload();
+            _lookKind = ParticleKind.Push;
+            if (_reachRing != null) { Destroy(_reachRing.gameObject); }
+            _reachRing = null;
+            Fusions.Clear();      // or a reused husk acts as its previous life's spell for a beat
+            _isAreaChild = false;
+            _wornArea = null;
+            _areaHome = null;
+            Natural = new SpellPayload();
+            _biomes.Remove(this);
+            Attached = false;
+            if (_tail != null) { Destroy(_tail); _tail = null; }
+            if (_rowFx != null) { Destroy(_rowFx); _rowFx = null; }
+            if (_areaLook != null) { Destroy(_areaLook); _areaLook = null; }
+            _newest = null;
+            _wearing = null;
+            _morph = 1f;
+            _poseP = null; _poseR = null; _poseS = null;
+            _bones.Clear(); _boneList.Clear();
+            if (_shapeBody != null) { Destroy(_shapeBody); _shapeBody = null; }
+            if (_rend != null) _rend.enabled = true;
+            _auraBeat = _driftBeat = -1;
+            _areasDeferred = false;
+            Reach = 0f;
+            _clockKey = _nextKey++;
             Vel = Vector3.zero;
             SrcSize = DrawingConfig.RuneSizeMin;
             Echo = 0;
@@ -592,8 +762,12 @@ namespace SpellyZombie
         int _strikeGen; // burst children don't burst again
 
         /// Vectors keep their own flight law; the sky-scale kinds never hover.
-        bool StrikeKind => Kind != ParticleKind.Push && Kind != ParticleKind.Lightning
-            && Kind != ParticleKind.BlackHole && Kind != ParticleKind.BarrierMote;
+        /// ★ THE ROW SAYS SO. It used to be a list of particle kinds that
+        /// happened not to hunt, which no author could extend.
+        /// ★ HUNTING IS MIND. "0 mindless, high follows its task perfectly" -
+        /// so a spell with a mind picks a target and goes for it, and a mindless
+        /// one drifts. That was a checkbox and it did not need to be.
+        bool StrikeKind => PayloadNow.Int >= DrawingConfig.FusionAt;
 
         /// Pick a slam target at birth; no target = fly off and hover as a
         /// turret.
@@ -629,17 +803,73 @@ namespace SpellyZombie
             var hits = Physics.OverlapSphere(transform.position, aoe);
             foreach (var h in hits)
                 if (h != null && !h.isTrigger) Touch(h);
-            if (_strikeGen > 0) { Die(); return; } // debris doesn't re-shatter
-            int n = Mathf.Max(2, DrawingConfig.StrikeBurstPieces);
+            Scatter();
+            Juice.Thud(transform.position);
+            Die();
+        }
+
+        /// ★ CAST A ROW DIRECTLY. For the Spell Window, so an author can see
+        /// the thing they just described without owning the runes for it,
+        /// finding a target, or drawing anything.
+        ///
+        /// It builds the payload from the row's own thresholds, pushed past
+        /// them, which is exactly what a player's runes would have added up to.
+        public static SpellParticle Cast(SpellTable.Row row, Vector3 at, Vector3 dir,
+            float strength = 2.2f, int level = 1)
+        {
+            if (row == null) return null;
+            var load = new SpellPayload();
+            for (int i = 0; i < SpellPayload.AxisCount; i++)
+                load[i] = row[i] * SpellPayload.UnitOf(i) * DrawingConfig.FusionAt * strength;
+
+            var p = Emit(ParticleKind.Push, at, dir, 1.4f);
+            if (p == null) return null;
+            p.Data = load.Clamped();
+            p.OwnerId = Grimoire.LocalPlayerId;
+            p.SrcSize = DrawingConfig.RuneSizeMin * 2f;
+            p.GrammarLevel = Mathf.Clamp(level, 1, 3);
+            p.Vel = dir.normalized * 6f;
+            p.Wake();
+            if (level >= 2) p.RefreshIdentity_Public();
+            return p;
+        }
+
+        /// The window needs the identity pass to run right after it sets the
+        /// numbers, or the particle spends a beat not knowing what it is.
+        public void RefreshIdentity_Public() => RefreshIdentity();
+
+        /// ★ WHAT IT DIES HOLDING, SCATTERED. Not a debris feature - debris is
+        /// simply numbers that were still there when something ended.
+        ///
+        /// WHAT KILLED IT DECIDES WHAT IT LEAVES. A flame that went out in a
+        /// frost biome died BECAUSE its heat reached zero, so there is no heat
+        /// in the leftovers and the fragments meet nothing and are nothing. A
+        /// meteor died because its STRENGTH ran out while its heat and solidity
+        /// were untouched - so the fragments are still hot rock, still fall,
+        /// still hurt, and theirs will be too until one generation is not hot
+        /// or solid enough and they simply stop being anything.
+        ///
+        /// Which is why there is no generation guard here. The condition
+        /// already stops it.
+        void Scatter()
+        {
+            var left = PayloadNow;
+            if (left.Strongest < DrawingConfig.FusionAt * 0.5f) return;   // nothing worth leaving
+
+            int n = Mathf.Max(2, DrawingConfig.ScatterPieces);
+            var each = left.Scaled(1f / n);
             for (int i = 0; i < n; i++)
             {
                 Vector3 d = (Random.onUnitSphere + Vector3.up * 0.6f).normalized;
-                var piece = Emit(Kind, transform.position + d * 0.3f, d, 0.5f, 1);
-                if (piece != null) piece.SrcSize = SrcSize;   // debris is the same SIZE of spell
-                if (piece != null) piece.Vel = d * (DrawingConfig.StrikeSpeed * 0.45f);
+                var piece = Emit(ParticleKind.Push, transform.position + d * 0.35f, d,
+                                 0.5f, _generation + 1);
+                if (piece == null) continue;
+                piece.Data = each.Clamped();
+                piece.OwnerId = OwnerId;
+                piece.SrcSize = SrcSize * 0.6f;
+                piece.Vel = d * DrawingConfig.ScatterSpeed;
+                piece.Wake();
             }
-            Juice.Thud(transform.position);
-            Die();
         }
 
         public static SpellParticle Emit(ParticleKind kind, Vector3 pos, Vector3 dir,
@@ -665,7 +895,7 @@ namespace SpellyZombie
                 var rb = go.AddComponent<Rigidbody>();
                 rb.isKinematic = true; // moves by script; triggers do the touching
                 p = go.AddComponent<SpellParticle>();
-                p.Kind = kind;
+                p._poolKind = kind;
             }
             go.name = "P_" + kind;
             go.transform.position = pos;
@@ -677,6 +907,12 @@ namespace SpellyZombie
             p.SrcSize = DrawingConfig.RuneSizeMin;  // callers that know better overwrite it
             p._generation = generation;
             p._appetite = Random.value; // personality: some motes stalk, some are lazy
+
+            // stamped once from the ground it was cast on. Every carrier
+            // inherits its spawn biome the same way, and capacities are
+            // measured from here ever after.
+            var born = SpellyMap.BiomeAt(pos);
+            p.Natural = born != null ? born.Natural : new SpellPayload();
 
             // the payload is the rune: fixed per kind, symmetric both ways
             float k = Mathf.Lerp(0.75f, 1.5f, Mathf.Clamp01(intensity));
@@ -692,11 +928,9 @@ namespace SpellyZombie
                 case ParticleKind.Repel: p.Stick = -k; break;
             }
 
-            // vectors fly; everything else blooms slowly and stays near the
-            // seal until a force moves it
-            float speed = kind == ParticleKind.Push ? 4.2f : 0.9f; // vectors FLY
-            p.Vel = dir.normalized * speed
-                + Random.insideUnitSphere * (kind == ParticleKind.Push ? 0.2f : 0.22f);
+            // every particle blooms slowly and stays near the seal until a
+            // force moves it - attract and repel included (his rule)
+            p.Vel = dir.normalized * 0.9f + Random.insideUnitSphere * 0.22f;
 
             if (kind == ParticleKind.Light && go.GetComponent<Light>() == null)
             {
@@ -728,20 +962,10 @@ namespace SpellyZombie
             _dead = true;
             All.Remove(this);
             // pooled, keeping its kind-specific look for the next cast
-            var stack = PoolFor(Kind);
+            var stack = PoolFor(_poolKind);
             if (stack.Count < PoolKeep)
             {
                 transform.SetParent(null); // a hand may still be holding us
-                if (_vectorShaped)
-                {
-                    // glyph tint is per-life; the next life re-shapes it
-                    _vectorShaped = false;
-                    for (int i = transform.childCount - 1; i >= 0; i--)
-                    {
-                        var c = transform.GetChild(i);
-                        if (c.name == "Glyph") Destroy(c.gameObject);
-                    }
-                }
                 gameObject.SetActive(false);
                 stack.Push(this);
             }
@@ -754,11 +978,21 @@ namespace SpellyZombie
             if (_dead) return;
             float dt = Time.deltaTime;
             _age += dt;
-            EnsureVectorShape();
 
             // dormant: everything below (auras, strikes, lures, fear,
-            // chemistry, decay) is frozen, held or free alike
+            // chemistry, decay) is frozen, held or free alike - and that
+            // INCLUDES drift. A preparation is inactive: it hovers up to
+            // DormantLifeSeconds waiting to be thrown, so a mote that relaxed
+            // toward ambient while it waited would be empty by the time it
+            // was cast.
             if (Dormant) { DormantTick(dt); return; }
+
+            // WHERE IT IS STANDING CHANGES WHAT IT IS. A chill mote in a fire
+            // biome heats until it is no longer a chill mote; a liquid one
+            // heated far enough crosses into gas. Nothing casts that - it is
+            // just the numbers moving.
+            TickShape(dt);
+            TickDrift(dt);
 
             // claimed: no lure; held, the hand drives the position (HandGrab),
             // free, plain physics. Auras keep burning everyone else, and the
@@ -766,6 +1000,19 @@ namespace SpellyZombie
             if (Claimed)
             {
                 if (GrammarLevel >= 2 || Kind == ParticleKind.Flame) TickAura(dt);
+                // ★ AN AREA CHASES ITS LIVING SPELL and parks where it died -
+                // the one-shot homing aimed at the BIRTH spot, which left
+                // every poison puddle at the zombie's mouth.
+                if (_isAreaChild && !Attached && _areaHome != null)
+                {
+                    if (_areaHome.Dead) { _areaHome = null; Vel = Vector3.zero; }
+                    else
+                    {
+                        Vector3 to = _areaHome.transform.position - transform.position;
+                        Vel = to.sqrMagnitude > 0.04f
+                            ? to.normalized * DrawingConfig.AreaHomingSpeed : Vector3.zero;
+                    }
+                }
                 if (Holder == null && !_settled)
                 {
                     Vel += Vector3.down * (EffDensity() - AirDensity) * 2.5f * dt;
@@ -865,7 +1112,8 @@ namespace SpellyZombie
                             // arrows seek arrows, Ys seek Ys
                             if (o.Kind == ParticleKind.Push)
                             {
-                                if (o.IsY != IsY) continue; // arrow×Y stays undefined - no bending
+                                // opposite pulls stay undefined - no bending
+                                if (Mathf.Sign(o.Data.Affinity) != Mathf.Sign(Data.Affinity)) continue;
                                 float vd = (o.transform.position - transform.position).sqrMagnitude;
                                 if (vd <= vecRange && vd < bestSqr)
                                 { near = o; bestSqr = vd; nearIsVector = true; }
@@ -966,18 +1214,17 @@ namespace SpellyZombie
                 {
                     Vel *= Mathf.Max(0f, 1f - (Kind == ParticleKind.Push ? 0.25f : 1.4f) * dt);
                     transform.position += Vel * dt;
-                    // arrows point WHERE THEY'RE GOING; Ys point the other way
-                    if (_vectorShaped && Vel.sqrMagnitude > 0.02f)
-                        transform.rotation = Quaternion.LookRotation(IsY ? -Vel : Vel);
-                    // a vector at rest dies; the sustain law re-emits a fresh one
-                    if (Kind == ParticleKind.Push && _age > 0.6f && Vel.sqrMagnitude < 0.12f)
-                    {
-                        Die();
-                        return;
-                    }
+                    // ★ A FLYING SPELL FACES ITS TRAVEL (his rule): the same
+                    // glyph rotated IS a different rune, so the orientation is
+                    // a tell of what is coming. Standing motes keep their pose.
+                    if (Vel.sqrMagnitude > 1.2f)
+                        transform.rotation = Quaternion.LookRotation(Vel);
+                    // the vector-at-rest death is GONE (his rule: attract and
+                    // repel are mute particles like every other spell - a
+                    // released mote stands where you left it)
                 }
             }
-            else if (Kind != ParticleKind.Push && Kind != ParticleKind.BarrierMote)
+            else if (Kind != ParticleKind.BarrierMote)
             {
                 // a SETTLED ember still watches: prey wandering close wakes it
                 // (TickLure clears _settled, and next frame it moves again)
@@ -1093,7 +1340,11 @@ namespace SpellyZombie
 
         /// Persistent = delivers on a beat and STAYS: flames, lvl2 grip/slip,
         /// and settled Glue/Repel ground patches (one predicate, two callers).
-        bool Persistent => Kind == ParticleKind.Flame
+        /// A BIOME NEVER DETONATES. You walk into it - that is what being a
+        /// place means - so it delivers to whatever stands in it and stays put
+        /// rather than spending itself on the first thing it touches.
+        bool Persistent => GrammarLevel >= 3
+            || Kind == ParticleKind.Flame
             || (GrammarLevel >= 2 && (Kind == ParticleKind.Glue || Kind == ParticleKind.Repel))
             || (_settled && (Kind == ParticleKind.Glue || Kind == ParticleKind.Repel));
 
@@ -1108,20 +1359,6 @@ namespace SpellyZombie
             if (Persistent) Touch(other);
         }
 
-        static int Level(ParticleKind k)
-        {
-            switch (k)
-            {
-                case ParticleKind.Push: return 0;
-                case ParticleKind.Light:
-                case ParticleKind.Dark: return 1;
-                case ParticleKind.Dense:
-                case ParticleKind.Spread:
-                case ParticleKind.Glue:
-                case ParticleKind.Repel: return 2;
-                default: return 3; // spark, frost, and the condensed states
-            }
-        }
 
         /// GRAMMAR v4 collision resolution (SPELL_PARTICLES.md). Order:
         ///   1. barrier isolation (nothing combines through a barrier)
@@ -1132,6 +1369,10 @@ namespace SpellyZombie
         static void ResolveLaw(SpellParticle a, SpellParticle b)
         {
             if (a._dead || b._dead) return;
+            // AN ATTACHED PARTICLE DOES NOT COMBINE. It is riding something and
+            // doing its own job; a passing mote must not absorb it or be
+            // absorbed by it.
+            if (a.Attached || b.Attached) return;
 
             // a live particle wakes a sleeper on contact (in a holder's hand
             // too), then the full law runs on the woken pair
@@ -1202,28 +1443,67 @@ namespace SpellyZombie
         static int EffLevel(SpellParticle p) =>
             p.Kind == ParticleKind.Lightning || p.Kind == ParticleKind.BlackHole ? 2 : p.GrammarLevel;
 
+        /// What a caster actually put into this: how big they drew the rune and
+        /// how well they drew it.
+        static float Invested(SpellParticle p) => p.Power * p.SrcSize;
+
         static void LevelMerge(SpellParticle a, SpellParticle b)
         {
             // both ingredients flash at the meeting
             a.ImpactFx(); b.ImpactFx();
             int la = EffLevel(a), lb = EffLevel(b);
-            var hi = la >= lb ? a : b;
+            // ON A TIE, THE OLDER ONE SURVIVES. It used to be whichever collider
+            // the physics engine reported first, which is arbitrary and not even
+            // reproducible between two runs of the same match - and it decided
+            // who OWNED the result. Two wizards feeding one fire had the kill go
+            // to a coin flip. Spawn order is stable, and it reads right: you lit
+            // it, they fed it, it is still your fire.
+            var hi = la != lb ? (la > lb ? a : b)
+                   : (a._clockKey >= b._clockKey ? a : b);   // the NEWER one
+            var other = hi == a ? b : a;
+
+            // THE CREDIT GOES TO WHOEVER INVESTED MORE, which is a different
+            // question from which object survives. The further-along particle
+            // carries on as the body; the kill belongs to whoever drew bigger
+            // and cast better.
+            //
+            // On an exact tie the NEWER body survives - his call, and it buys
+            // something real: lifetime runs off the survivor age, so keeping the
+            // younger one means a merge refreshes the clock instead of handing
+            // the result an almost-expired one. Spawn order is stable either
+            // way, so a match still replays the same twice.
+            if (Invested(other) > Invested(hi) && other.OwnerId >= 0)
+                hi.OwnerId = other.OwnerId;
             var lo = hi == a ? b : a;
 
             if (Mathf.Max(la, lb) >= 3) { hi.Absorb(lo); return; } // capped: eats its kin
 
             // pool payload + ancestry into the survivor
             hi.Lineage |= lo.Lineage;
-            hi.Temp += lo.Temp; hi.Lum += lo.Lum; hi.Density += lo.Density; hi.Stick += lo.Stick;
+            hi.Data = (hi.Data + lo.Data).Clamped();   // tops out, then drift pulls it back
             // mismatched levels: the weaker half rules the product (law 6);
             // equals pool their power instead
             hi.Power = la != lb
                 ? Mathf.Min(3f, Mathf.Min(hi.Power, lo.Power) * 1.25f)
                 : Mathf.Min(3f, hi.Power + lo.Power * 0.5f);
+            float hiWasSrc = hi.SrcSize;
             hi.SrcSize = FuseSize(hi.SrcSize, lo.SrcSize);
+            hi.Reach = Mathf.Max(hi.Reach, lo.Reach);
+            hi.GrowToSize(hiWasSrc);
 
-            Vector3 at = (a.transform.position + b.transform.position) * 0.5f;
-            int target = Mathf.Min(3, Mathf.Max(la, lb) + 1);
+            // MOMENTUM ADDS. His rule, and it is literally vector addition -
+            // two motes flying at each other at the same speed sum to nothing
+            // and the result hangs where they met, while anything else carries
+            // on along the sum. There is no cancel rule; the stopping IS the
+            // addition. Nothing was doing this at all before.
+            hi.Vel = a.Vel + b.Vel;
+
+            // and it survives where the two of them MET, not wherever the
+            // winner happened to be standing - on a tie the winner is whichever
+            // collider reported first, which is no place to put the result
+            hi.transform.position = (a.transform.position + b.transform.position) * 0.5f;
+
+            Vector3 at = hi.transform.position;
             lo.BecameObj = hi; // sustain law: lo's rune waits on the survivor
             lo.Die();
             RuneGrammar.TryDemon(hi.Lineage, at, hi.SrcSize);
@@ -1231,49 +1511,153 @@ namespace SpellyZombie
             // the sum may have crossed into a named region - the table decides
             hi.RefreshIdentity();
 
-            if (target == 2) { hi.BecomeLevel2(); return; }
+            // ★ ONE PARTICLE, ONE LOOK (his rule): combining pools the data
+            // and ONE survivor keeps ONE look, changing only when the summed
+            // numbers cross a region threshold - which RefreshIdentity just
+            // read. Level is the matched region's own, never a count of how
+            // many motes met (the two-lvl1s-make-a-lvl2 ladder was pre-V2).
+            int lvl = 1;
+            for (int i = 0; i < hi.Fusions.Count; i++)
+                lvl = Mathf.Max(lvl, hi.Fusions[i].Level);
 
-            // LVL 3 IS A BIOME (fusions never go there - MaxLevel caps them).
-            // The rewritten nature opens at the drawing's own summed size.
-            if (hi.Fusion != null) { hi.GrammarLevel = 2; return; }
-            float power = hi.Power; float srcSize = hi.SrcSize;
-            var offsets = hi.PayloadNow;
-            hi.Die();
-            hi.BecameObj = ArtificialBiome.Open(at, offsets,
-                Mathf.Max(2f, srcSize * DrawingConfig.RuneReachScale * 3f), power);
+            // ★ A BIOME MUST OUT-POWER THE GROUND IT STANDS IN (his rule) -
+            // falling short parks it at area strength until it eats more.
+            if (lvl >= 3 && hi.OutPowers(SpellLaw.Here(hi)))
+            {
+                hi.GrammarLevel = 3;
+                hi.BecomeBiome();
+            }
+            else hi.GrammarLevel = Mathf.Min(lvl, 2);
         }
 
-        void BecomeLevel2()
+        /// ★ IS THIS AXIS AT BIOME STRENGTH? Read off the numbers every time,
+        /// never stored - the same way phase and kind are. An axis is a biome
+        /// when it carries more than the ground does, so chilling a fire
+        /// particle takes its heat below the ground and the marking is simply
+        /// gone. Nothing has to un-mark anything.
+        ///
+        /// PER AXIS, because a particle can be a heat biome and an ordinary
+        /// dark mote at the same time - which is what happens when a flame
+        /// picks up lightning on the way.
+        public bool BiomeOn(int axis) => (_imposeMask & (1 << axis)) != 0;
+
+        /// The mask, recomputed once per drift beat while the ground reading is
+        /// already in hand.
+        ///
+        /// It CANNOT be worked out on demand: asking the ground what it is
+        /// means asking every imposing particle what it imposes, which would
+        /// come straight back here and never return. Once per beat, from a
+        /// ground reading that excludes this particle, is both correct and the
+        /// only shape that terminates.
+        int _imposeMask;
+        float _biomeLeft;   // seconds of ground it has borrowed
+
+        void RemarkBiome(SpellPayload ground)
         {
-            GrammarLevel = 2;
-            _settled = false;
-            switch (Kind)
+            if (GrammarLevel < 3) { _imposeMask = 0; return; }
+            var mine = PayloadNow;
+            int mask = 0;
+            for (int i = 0; i < SpellPayload.AxisCount; i++)
             {
-                case ParticleKind.Light: BecomeLightning(); return; // Light+Light = LIGHTNING
-                case ParticleKind.Dark: BecomeBlackHole(); return;       // Dark+Dark = BLACK HOLE
-                case ParticleKind.Glue:
-                    _settled = true; // lvl2 grip doesn't move - and won't let go
-                    break;
+                float m = Mathf.Abs(mine.Unit(i));
+                if (m < DrawingConfig.FusionAt) continue;
+                // what the ground says WITHOUT me - otherwise it out-powers
+                // itself and every axis stays marked forever
+                float theirs = Mathf.Abs(ground.Unit(i) - (BiomeOn(i) ? mine.Unit(i) : 0f));
+                if (m >= theirs) mask |= 1 << i;
             }
-            transform.localScale = Vector3.one * 0.26f;
-            // a faint ground ring announces the aura's reach
-            var reach = GrammarFX.GroundRing(transform, new Color(1f, 1f, 1f, 0.35f));
-            reach.localScale = Vector3.one * (DrawingConfig.Lvl2AuraRadius / 0.26f);
+            _imposeMask = mask;
+
+            // ★ PUSHED OUT OF BEING A BIOME. Chill a heat biome far enough and
+            // its heat falls under the ground's, the axis unmarks, and with no
+            // axis left it is an ordinary lvl2 area again. Nothing demotes it -
+            // it just stops qualifying, the same way it stopped being a spark.
+            if (mask == 0)
+            {
+                GrammarLevel = 2;
+                _biomes.Remove(this);
+                DrawingWorld.Instance?.LogEvent("the biome collapses");
+            }
+        }
+
+        /// Every particle currently imposing on the world. Only lvl3 ones ever
+        /// join, so this stays short.
+        static readonly List<SpellParticle> _biomes = new List<SpellParticle>();
+
+        /// What the particle-biomes impose at a point. Read by SpellLaw.Here,
+        /// exactly like a map biome - a lvl3 particle IS a biome, it does not
+        /// spawn one and leave.
+        public static SpellPayload SampleAt(Vector3 at)
+        {
+            var sum = new SpellPayload();
+            for (int i = 0; i < _biomes.Count; i++)
+            {
+                var b = _biomes[i];
+                if (b == null || b._dead) continue;
+                float r = b.AuraRadius;
+                if ((b.transform.position - at).sqrMagnitude > r * r) continue;
+                var p = b.PayloadNow;
+                for (int k = 0; k < SpellPayload.AxisCount; k++)
+                    if (b.BiomeOn(k)) sum[k] += p[k];
+            }
+            return sum;
+        }
+
+        /// Does this particle carry more than the place does, on the axes it
+        /// actually carries? Measured in UNITS so degrees and units can be
+        /// compared at all, and only where the particle has something to say -
+        /// a pure heat mote is not held back by a dark biome it is not arguing
+        /// with.
+        public bool OutPowers(SpellPayload ground)
+        {
+            var mine = PayloadNow;
+            bool said = false;
+            for (int i = 0; i < SpellPayload.AxisCount; i++)
+            {
+                float m = Mathf.Abs(mine.Unit(i));
+                if (m < DrawingConfig.FusionAt) continue;   // not an axis it speaks on
+                said = true;
+                if (m < Mathf.Abs(ground.Unit(i))) return false;
+            }
+            return said;
+        }
+
+        /// It grows to its summed size and starts imposing. Nothing else
+        /// changes - the aura it had at lvl2 keeps running, which is why a
+        /// biome both HOLDS you at its numbers and keeps pushing more at you.
+        void BecomeBiome()
+        {
+            if (!_biomes.Contains(this)) _biomes.Add(this);
+            RemarkBiome(SpellLaw.Here(this));
+            // A SPELL BIOME IS TEMPORARY. Wizards rewriting the island for good
+            // would be the end of the map - it borrows the ground and hands it
+            // back. Bigger ones last longer, because they cost more to make.
+            _biomeLeft = DrawingConfig.BiomeSeconds
+                       * Mathf.Clamp(SrcSize / DrawingConfig.RuneSizeMin, 1f, 3f);
+            _settled = true;                 // a biome sits where it was made
+            Vel = Vector3.zero;
+            SetBodyScale(DrawingConfig.BiomeMoteScale);
+            if (_reachRing == null)
+                _reachRing = GrammarFX.GroundRing(transform, new Color(1f, 1f, 1f, 0.5f));
+            DrawingWorld.Instance?.LogEvent("the ink becomes a BIOME");
             RefreshLook();
         }
+
+
 
 
         void Absorb(SpellParticle food)
         {
             if (_dead || food._dead) return;
-            Temp += food.Temp; Lum += food.Lum; Density += food.Density; Stick += food.Stick;
-            if (food.Kind == ParticleKind.Push || food.Kind == Kind) Vel += food.Vel * 0.55f;
+            Data = (Data + food.Data).Clamped();
+            Vel += food.Vel;   // same law when one simply eats another: vectors add
             Power = Mathf.Min(3f, Power + food.Power * 0.35f);
+            float wasSrc = SrcSize;
             SrcSize = FuseSize(SrcSize, food.SrcSize);
             Lineage |= food.Lineage; // ancestry rides EVERY combination
             food.BecameObj = this;   // the food's rune now waits on ME (sustain law)
             _settled = false; // fresh attributes knock it loose
-            transform.localScale = Vector3.one * Mathf.Min(0.45f, transform.localScale.x * 1.18f);
+            GrowToSize(wasSrc);
             // spread on either side multiplies
             bool split = food.Density < -0.5f || Density < -0.5f;
             int spreadLevel = Family(food.Kind) == ParticleKind.Spread ? EffLevel(food)
@@ -1308,20 +1692,41 @@ namespace SpellyZombie
         // ------------------------------------- transformations (GRAMMAR v4) --
         /// The Dense payload turns an essence particle into its persistent
         /// physical object.
+        /// The look this particle was last wearing. The moment the numbers put
+        /// it in a different one, the transition runs - once.
+        ParticleKind _lookKind = ParticleKind.Push;
+
+        /// Ask the NUMBERS what this has become. Never the derived label: it
+        /// already reads Flame the instant the numbers say Flame, so the old
+        /// "Kind == Spark && dense" test could no longer ever be true.
+        ///
+        /// Because drift calls this too, a mote that merely FLOATS somewhere
+        /// hot enough will change form on its own with nothing cast at it.
         void CheckTransform()
         {
-            if (Kind == ParticleKind.Spark && Density >= PlasmaDensity) { BecomeFlame(); return; }
-            if (Kind == ParticleKind.Frost && Density >= PlasmaDensity) BecomeSnowball();
+            // cold and heavy stops being a mote at all: it becomes real
+            // matter and leaves the particle world, so it is asked first
+            if (Data.Temp < 0f && Density >= PlasmaDensity) { BecomeSnowball(); return; }
+
+            var now = Kind;
+            if (now == _lookKind) return;
+            _lookKind = now;
+            switch (now)
+            {
+                case ParticleKind.Flame: BecomeFlame(); break;
+                case ParticleKind.Lightning: BecomeLightning(); break;
+                case ParticleKind.BlackHole: BecomeBlackHole(); break;
+                default: RefreshLook(); break;
+            }
         }
 
         /// HeatUp+Dense - FLAME: a persistent fire that stays where it lands,
         /// burns what's near, and merges with other flames into bigger flames.
         void BecomeFlame()
         {
-            Kind = ParticleKind.Flame;
             GrammarLevel = Mathf.Max(GrammarLevel, 1);
             Temp = Mathf.Max(Temp, 60f);
-            transform.localScale = Vector3.one * 0.3f;
+            SetBodyScale(0.3f);
             Vel *= 0.2f;
             DrawingWorld.Instance?.LogEvent("the fire becomes a FLAME");
             RefreshLook();
@@ -1346,10 +1751,9 @@ namespace SpellyZombie
         /// more darkness and it goes lvl3: the GROWING black hole area.
         void BecomeBlackHole()
         {
-            Kind = ParticleKind.BlackHole;
             Lum = Mathf.Min(Lum, -1.5f);
             _settled = false;
-            transform.localScale = Vector3.one * 0.4f;
+            SetBodyScale(0.4f);
             var l = GetComponent<Light>();
             if (l != null) Destroy(l);
             DrawingWorld.Instance?.LogEvent("the dark becomes a BLACK HOLE");
@@ -1380,59 +1784,354 @@ namespace SpellyZombie
         }
 
         /// lvl2 particles radiate their effect on a beat.
+        /// WHERE IT STANDS CHANGES WHAT IT IS. The ground pulls its numbers
+        /// toward what is natural here, and the threshold set is re-read after
+        /// - so a particle becomes a different particle with nothing casting
+        /// anything. This is also the only route to gas: heat a liquid mote
+        /// far enough and State crosses on its own.
+        const float DriftPeriod = 0.25f;
+
+        void TickDrift(float dt)
+        {
+            if (!WorldClock.IsBeat(DriftPeriod, ClockKey, ref _driftBeat)) return;
+
+            // AN AXIS AT BIOME STRENGTH DOES NOT FALL. That is the whole
+            // meaning of the marking: it stops being affected by the place and
+            // starts being the place. Every OTHER axis still drifts normally,
+            // so a heat biome standing in the dark still goes dark.
+            if (GrammarLevel >= 3)
+            {
+                _biomeLeft -= DriftPeriod;
+                if (_biomeLeft <= 0f)
+                {
+                    // the ground goes back to whatever it was; the mote itself
+                    // is spent along with it
+                    _biomes.Remove(this);
+                    DrawingWorld.Instance?.LogEvent("the biome fades");
+                    Die();
+                    return;
+                }
+            }
+
+            var was = Data;
+            RemarkBiome(SpellLaw.Here(this));
+            SpellLaw.Drift(this, DriftPeriod);
+            if (GrammarLevel >= 3)
+            {
+                var held = Data;
+                for (int i = 0; i < SpellPayload.AxisCount; i++)
+                    if (BiomeOn(i)) held[i] = was[i];
+                Data = held;
+            }
+
+            // ★ AFFINITY WORKS FROM WHERE IT STANDS (his rule: attract and
+            // repel are normal particles) - a released mote pulls or pushes
+            // its surroundings on this same beat, no level required. The
+            // sign of its own Affinity picks the direction.
+            if (!Dormant && Mathf.Abs(Data.Affinity) > 0.05f)
+            {
+                int an = Physics.OverlapSphereNonAlloc(transform.position,
+                    DrawingConfig.AffinityReach, GrammarFX.ScanBuffer, ~0,
+                    QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < an; i++)
+                {
+                    var ac = GrammarFX.ScanBuffer[i];
+                    if (ac == null || ac.GetComponentInParent<SpellParticle>() == this) continue;
+                    Pull(ac, DriftPeriod);
+                }
+            }
+            RefreshIdentity();
+            CheckTransform();   // the ground alone can change what it is
+        }
+
         void TickAura(float dt)
         {
-            _auraTick -= dt;
-            if (_auraTick > 0f) return;
-            _auraTick = DrawingConfig.Lvl2AuraPeriod;
-            int n = Physics.OverlapSphereNonAlloc(transform.position, DrawingConfig.Lvl2AuraRadius,
+            // ONE WORLD BEAT, not a private countdown. Phase comes off this
+            // particle's own key, so a hundred flames do not all sweep on the
+            // same frame and every machine picks the same frames anyway.
+            if (!WorldClock.IsBeat(DrawingConfig.Lvl2AuraPeriod, ClockKey, ref _auraBeat)) return;
+
+            // a hook has one victim and it is already holding it
+            if (Attached && transform.parent != null)
+            {
+                var host = transform.parent.GetComponentInChildren<Collider>();
+                if (host != null) Pull(host, 1f);
+            }
+            float reach = AuraRadius;
+            // the ring is drawn in the particle's own scale, so divide it out
+            if (_reachRing != null)
+                _reachRing.localScale = Vector3.one *
+                    (reach / Mathf.Max(0.01f, transform.localScale.x));
+
+            int n = Physics.OverlapSphereNonAlloc(transform.position, reach,
                 GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < n; i++)
             {
                 var c = GrammarFX.ScanBuffer[i];
                 if (c == null || c.GetComponent<SpellParticle>() != null) continue;
-                var pl = c.GetComponentInParent<SimpleFPSController>();
-                if (pl != null)
-                {
-                    // limb capsules ride the same player - the ROOT pays, once
-                    if (c.attachedRigidbody != null) continue;
-                    // no holder immunity; auras only push sliders - the
-                    // board does the rest
-                    var plBoard = BodyState.Of(pl);
-                    if (Mathf.Abs(Temp) > 25f) plBoard?.PushTemp(Temp * 0.03f);
-                    // a friend's LIGHT washes the darkness off you
-                    var auraFam = Family(Kind);
-                    if (auraFam == ParticleKind.Light) plBoard?.PushLum(0.12f);
-                    else if (auraFam == ParticleKind.Dark) plBoard?.PushLum(-0.1f);
-                    continue;
-                }
-                if (Kind == ParticleKind.Flame || Family(Kind) == ParticleKind.Spark)
-                GiveHeat(c, 50f * Power); // lvl2 radiance BURNS
-                else if (Family(Kind) == ParticleKind.Frost)
-                    GiveHeat(c, -45f * Power);
-                else if (Kind == ParticleKind.Glue) // lvl2 grip: nothing near it moves
-                {
-                    var cr = c.GetComponentInParent<Creature>();
-                    if (cr != null) cr.ApplyStuck(2f);
-                    var rb = c.attachedRigidbody;
-                    if (rb != null && !rb.isKinematic)
-                        rb.linearVelocity = Vector3.MoveTowards(rb.linearVelocity, Vector3.zero, 7f);
-                }
-                else if (Kind == ParticleKind.Repel) // lvl2 slip: nothing near it stands
-                {
-                    var cr = c.GetComponentInParent<Creature>();
-                    if (cr != null) cr.ApplySlip(1.8f);
-                }
+                // limb capsules ride the same body - the ROOT pays, once
+                if (c.attachedRigidbody != null
+                    && c.GetComponentInParent<SimpleFPSController>() != null) continue;
+
+                // STRONGEST AT CENTRE, which is his own words for what a lvl2
+                // area does. Nothing else in here asks what KIND of particle it
+                // is or what kind of thing it found.
+                // non-convex mesh colliders refuse ClosestPoint - bounds are
+                // close enough for a falloff weight
+                var meshC = c as MeshCollider;
+                Vector3 near = meshC != null && !meshC.convex
+                    ? c.ClosestPointOnBounds(transform.position)
+                    : c.ClosestPoint(transform.position);
+                float d = (near - transform.position).magnitude;
+                float w = Mathf.Clamp01(1f - d / Mathf.Max(0.01f, reach));
+                HandOver(c, w * DrawingConfig.AuraShare * Power);
+                Pull(c, w);
             }
+        }
+
+        /// ★ THE ONLY THING A PARTICLE DOES TO ANYTHING: give away some of its
+        /// numbers. Burning, freezing, sticking, slipping, floating, dying are
+        /// all consequences the receiver works out for itself from what it now
+        /// holds - none of them are written here, and nothing asks whether it
+        /// found a player, a zombie, a crate or a wall.
+        ///
+        /// This replaced a branch that knew about exactly two kinds of victim,
+        /// which is why a zombie in a fire used to feel nothing at all.
+        /// ★ EVERY SPELL DETONATES ITS AXES ON IMPACT. It spends what it was
+        /// carrying into whatever it hit - that IS the hit.
+        ///
+        /// A biome spends only the axes that are NOT its biome. Throw a rock at
+        /// a heat biome and the luminance and compression it happened to be
+        /// carrying discharge into the rock; the heat stays, because that axis
+        /// is not cargo any more, it is the place. So a flame-and-lightning
+        /// biome does not keep both forever - anything that touches it strips
+        /// whatever it has not become.
+        /// ★ RIDE IT. No detonation, no combining, no expiry on contact - it
+        /// hangs on and keeps handing over its numbers on the aura beat, which
+        /// is what makes a trail keep marking you and a poison cling.
+        ///
+        /// It comes off on its own: the moment its numbers stop putting it in
+        /// an attaching region it is an ordinary particle again and behaves
+        /// like one. Nothing has to remember to remove it.
+        void AttachTo(Collider c)
+        {
+            var host = c.attachedRigidbody != null ? c.attachedRigidbody.transform
+                     : c.GetComponentInParent<Element>()?.transform;
+            if (host == null) host = c.transform;
+
+            Attached = true;
+            Holder = null;
+            _settled = true;
+            Vel = Vector3.zero;
+            transform.SetParent(host, true);
+            GrammarLevel = Mathf.Max(GrammarLevel, 2);   // it works by radiating
+            DrawingWorld.Instance?.LogEvent("the ink clings on");
+        }
+
+        /// Does anything it currently IS get spent on the first thing it
+        /// touches? A carried teleport does; a flame riding the same parent
+        /// does not, and keeps burning.
+        /// ★ WHAT A LEVEL 1 IS. It carries no area, so there is nothing to
+        /// leave behind and the hit is the whole of it. Anything carrying an
+        /// area survives its own impact, because the area does.
+        bool SpentOnContact => Level <= 1;
+
+        void Detonate(Collider c)
+        {
+            var carried = PayloadNow;
+
+            if (GrammarLevel < 3)
+            {
+                HandOver(c, carried, DrawingConfig.TouchShare * Power);
+                return;
+            }
+
+            var spend = new SpellPayload();
+            var keep = new SpellPayload();
+            for (int i = 0; i < SpellPayload.AxisCount; i++)
+                if (BiomeOn(i)) keep[i] = carried[i];
+                else spend[i] = carried[i];
+
+            HandOver(c, spend, DrawingConfig.TouchShare * Power);
+            Data = keep;              // discharged; what it IS remains
+            RefreshIdentity();        // it may have stopped being a flame
+        }
+
+        /// ★ AFFINITY IS A FORCE, and until now it was a number nothing read.
+        /// Positive gathers things toward this particle, negative drives them
+        /// off - "its own gravity, on everything near", which is the axis
+        /// description and now also what it does.
+        ///
+        /// An ATTACHED one pulls its host toward the seal it was drawn at
+        /// instead of toward itself, which is the whole of a hook: catch
+        /// something, and it comes to you.
+        void Pull(Collider c, float w)
+        {
+            float aff = PayloadNow.Affinity;
+            if (Mathf.Abs(aff) < 0.05f) return;
+            // a hook reels its host toward the seal and takes no recoil;
+            // a free mote is one light end of the pair - attracting something
+            // heavy mostly flings ITSELF there, payload delivered on arrival
+            bool hooked = Attached && _hasAnchor;
+            Vel += AffinityPair(c, hooked ? _anchorPos : transform.position, aff, w,
+                hooked ? float.PositiveInfinity : MoteMass);
+        }
+
+        /// A body is ~70kg (the constant creatures already use), so the tuned
+        /// force numbers keep meaning "enough to move a person".
+        public const float ReferenceMass = 70f;
+        const float MoteMass = 1f;
+
+        /// What a collider weighs for the gravity law - density fully
+        /// determines weight (his rule). Immovables weigh infinity.
+        public static float MassOf(Collider c)
+        {
+            var rb = c.attachedRigidbody;
+            if (rb != null) return rb.isKinematic ? float.PositiveInfinity : rb.mass;
+            var pl = c.GetComponentInParent<SimpleFPSController>();
+            if (pl != null)
+            {
+                var bd = BodyState.Of(pl);
+                return ReferenceMass * (bd != null ? bd.TotalWeight : 1f);
+            }
+            return float.PositiveInfinity;
+        }
+
+        static void Nudge(Collider c, Vector3 dv)
+        {
+            var rb = c.attachedRigidbody;
+            if (rb != null && !rb.isKinematic) rb.AddForce(dv, ForceMode.VelocityChange);
+            else
+                // AddSpellForce integrates accel x dt - feed this frame's
+                // worth so dv lands as written
+                c.GetComponentInParent<SimpleFPSController>()
+                    ?.AddSpellForce(dv / Mathf.Max(0.001f, Time.deltaTime), Time.deltaTime);
+        }
+
+        /// ★ THE GRAVITY IS A PAIR (his rule): one force lands on both ends
+        /// and density decides who yields - repel something heavier than you
+        /// and you repel yourself. `w` is the caller's beat span, so applied
+        /// and returned values are VELOCITY CHANGE over that span (the old
+        /// acceleration mode delivered one physics-step's worth per beat -
+        /// the pull existed and did nothing you could feel).
+        public static Vector3 AffinityPair(Collider c, Vector3 center, float aff, float w, float selfMass)
+        {
+            Vector3 toward = center - c.transform.position;
+            if (toward.sqrMagnitude < 0.01f) return Vector3.zero;
+            float mc = MassOf(c);
+            // terrain and other immovables have no density - they are outside
+            // the data game entirely, so no force pair forms with them (a
+            // mote must not drag itself into the floor it hovers over)
+            if (float.IsPositiveInfinity(mc)) return Vector3.zero;
+            // dv for a reference body; density decides who yields, capped so
+            // a feather is flung hard, never teleported
+            Vector3 dv = toward.normalized * (aff * w * DrawingConfig.AffinityForce);
+            Nudge(c, dv * Mathf.Min(8f, ReferenceMass / mc));
+            return float.IsPositiveInfinity(selfMass) ? Vector3.zero
+                : -dv * Mathf.Min(8f, ReferenceMass / selfMass);
+        }
+
+        /// A body or object CARRYING the axis radiates it - hit by attract or
+        /// repel, the target is its own gravity until the drift sheds it.
+        /// The carrier is resolved once here, so every caller recoils the
+        /// same way: rigidbodies by mass, players by body weight, walls never.
+        public static void AffinityField(Transform self, float aff, float w)
+        {
+            if (Mathf.Abs(aff) < 0.05f) return;
+            var selfRb = self.GetComponentInParent<Rigidbody>();
+            var selfPl = self.GetComponentInParent<SimpleFPSController>();
+            float selfMass;
+            if (selfRb != null && !selfRb.isKinematic) selfMass = selfRb.mass;
+            else if (selfPl != null)
+            {
+                var bd = BodyState.Of(selfPl);
+                selfMass = ReferenceMass * (bd != null ? bd.TotalWeight : 1f);
+            }
+            else selfMass = float.PositiveInfinity;
+
+            Vector3 back = Vector3.zero;
+            int n = Physics.OverlapSphereNonAlloc(self.position, DrawingConfig.AffinityReach,
+                GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = GrammarFX.ScanBuffer[i];
+                if (c == null || c.transform.IsChildOf(self)) continue;
+                back += AffinityPair(c, self.position, aff, w, selfMass);
+            }
+            if (back == Vector3.zero) return;
+            if (selfRb != null && !selfRb.isKinematic) selfRb.AddForce(back, ForceMode.VelocityChange);
+            else selfPl?.AddSpellForce(back / Mathf.Max(0.001f, Time.deltaTime), Time.deltaTime);
+        }
+
+        void HandOver(Collider c, float share) => HandOver(c, PayloadNow, share);
+
+        void HandOver(Collider c, SpellPayload what, float share)
+        {
+            if (share <= 0.001f) return;
+            var el = c.GetComponentInParent<Element>();
+            if (el == null) return;
+
+            // A ROW MAY CHOOSE ITS VICTIMS. Nothing else can - a payload
+            // reaches whatever it lands on - so this is the one gate, and it
+            // is a checkbox a Workshop author ticks.
+            // A SPELL MAY CHOOSE ITS VICTIMS - the one selective rule, and
+            // the only one, because a payload reaches whatever it lands on.
+            // Shoving is not here any more: that is Affinity, which pulls and
+            // pushes on its own.
+            bool living = el.Data.Alive;
+            for (int i = 0; i < Fusions.Count; i++)
+                if (Fusions[i].OnlyLiving && !living) return;
+
+            // ★ POISON NEVER EATS ITS OWN (his standing law): an OnlyLiving
+            // spell spares living things on its caster's side. Without this
+            // the goo's own area rooted the very zombie that spat it - sticky
+            // payload, Stuck, canMove=False, the spinning-in-place zombie.
+            if (living && OwnerId >= 0
+                && Sides.SideOfThing(el.gameObject) == Sides.Of(OwnerId))
+                for (int i = 0; i < Fusions.Count; i++)
+                    if (Fusions[i].OnlyLiving) return;
+
+            // SENT BACK TO WHERE THE SPELL WAS DRAWN is not a flag any more:
+            // an attached particle already pulls its host toward its own seal
+            // with Affinity, so a recall is a sticky strengthless spell that
+            // attracts. Pull() does it.
+
+            var give = what.Scaled(share);
+            el.Data = (el.Data + give).Clamped();
+
+            if (OwnerId >= 0) el.Owner = OwnerId;   // blame rides along
+
+            // Luminance still lives on the body board for players - the last
+            // number that has not moved onto the element yet.
+            if (Mathf.Abs(give.Lum) > 0.001f)
+            {
+                var pl = c.GetComponentInParent<SimpleFPSController>();
+                if (pl != null) BodyState.Of(pl)?.PushLum(give.Lum);
+            }
+
+            // BALANCE IS GRIP, and a rigidbody cannot read a number - so the
+            // one place a payload turns into physics. Positive is sticky and
+            // holds things still; negative is slick and takes their feet away.
+            float grip = give.Balance;
+            if (Mathf.Abs(grip) < 0.02f) return;
+            var cr = c.GetComponentInParent<Creature>();
+            if (grip > 0f)
+            {
+                if (cr != null) cr.ApplyStuck(grip * DrawingConfig.GripSeconds);
+                var rb = c.attachedRigidbody;
+                if (rb != null && !rb.isKinematic)
+                    rb.linearVelocity = Vector3.MoveTowards(rb.linearVelocity,
+                        Vector3.zero, grip * DrawingConfig.GripBrake);
+            }
+            else if (cr != null) cr.ApplySlip(-grip * DrawingConfig.GripSeconds);
         }
 
         void BecomeLightning()
         {
-            Kind = ParticleKind.Lightning;
             Lum = Mathf.Max(Lum, 2.5f);
             _settled = false;
             _strikeTick = 0.3f;
-            transform.localScale = Vector3.one * 0.22f;
+            SetBodyScale(0.22f);
             if (GetComponent<Light>() == null)
             {
                 var l = gameObject.AddComponent<Light>();
@@ -1463,7 +2162,7 @@ namespace SpellyZombie
                 var c = GrammarFX.ScanBuffer[i];
                 if (c == null || c.GetComponent<SpellParticle>() != null) continue;
                 bool interesting = c.attachedRigidbody != null
-                    || c.GetComponentInParent<Damageable>() != null
+                    || c.GetComponentInParent<Element>() != null
                     || c.GetComponent<SimpleFPSController>() != null;
                 if (!interesting) continue; // strikes THINGS, not the map itself
                 // dice roll so it doesn't always pick the tallest thing
@@ -1480,7 +2179,7 @@ namespace SpellyZombie
 
             var pl = best.GetComponent<SimpleFPSController>();
             if (pl != null) { pl.TakeHit(Vector3.down * 4f, 24f); return; }
-            var d = best.GetComponentInParent<Damageable>();
+            var d = best.GetComponentInParent<Element>();
             if (d != null) d.TakeDamage(50f * Power, "struck by lightning");
             GiveHeat(best, 150f); // a strike IGNITES what it hits
             var rb = best.attachedRigidbody;
@@ -1504,6 +2203,41 @@ namespace SpellyZombie
 
         /// The 12 runes' particle identities - look and feel only; what
         /// combinations become is the table's business, never this map's.
+        /// ★ THE KIND IS READ OFF THE NUMBERS, never stored - the same way a
+        /// biome's phase is. It is a LOOK and a pool tag, not a state: which
+        /// art this particle wears right now. The dominant axis says which
+        /// family, and how far out it sits says plain form or condensed one.
+        ///
+        /// Which is why the old BecomeFlame / BecomeLightning / BecomeBlackHole
+        /// were redundant: each one set a kind and then shoved the numbers to
+        /// where that kind's region already was. The numbers were always the
+        /// real answer.
+        ///
+        /// Thresholds are the ones those methods used, so nothing about when a
+        /// particle changes its look has moved.
+        public const float FlameDensity = PlasmaDensity;  // hot AND heavy = a flame that stays
+        public const float LightningAt = 2f;              // two lights merged
+        public const float BlackHoleAt = -1.5f;           // two darks merged
+
+        public static ParticleKind KindOf(SpellPayload d)
+        {
+            int ax = d.Dominant;
+            if (ax < 0) return ParticleKind.Push;   // nothing in particular: a bare vector
+            float u = d.Unit(ax);
+            switch (ax)
+            {
+                case 0: return u > 0f
+                    ? (d.Pressure >= FlameDensity ? ParticleKind.Flame : ParticleKind.Spark)
+                    : ParticleKind.Frost;
+                case 1: return d.Lum >= LightningAt ? ParticleKind.Lightning
+                     : d.Lum <= BlackHoleAt ? ParticleKind.BlackHole
+                     : u > 0f ? ParticleKind.Light : ParticleKind.Dark;
+                case 2: return u > 0f ? ParticleKind.Dense : ParticleKind.Spread;
+                case 3: return u > 0f ? ParticleKind.Glue : ParticleKind.Repel;
+                default: return ParticleKind.Push;  // affinity and the capacities wear the vector
+            }
+        }
+
         public static ParticleKind KindOf(RuneType r)
         {
             switch (r)
@@ -1520,6 +2254,14 @@ namespace SpellyZombie
             }
         }
 
+        /// The fusion that makes this a biome, if any axis is locked.
+        SpellDef BiomeFusion()
+        {
+            for (int i = 0; i < Fusions.Count; i++)
+                if (Fusions[i].AnyBiome) return Fusions[i];
+            return null;
+        }
+
         /// A condensed state maps to its base family (Lightning -> Light).
         public static ParticleKind Family(ParticleKind k)
         {
@@ -1534,36 +2276,234 @@ namespace SpellyZombie
 
         /// What this particle IS on the shared axes - the threshold engine's
         /// whole view of it. Vectors carry their push as Affinity.
-        public SpellPayload PayloadNow => new SpellPayload
+        public SpellPayload PayloadNow
         {
-            Heat = Temp, Lum = Lum, Weight = Density, Stick = Stick,
-            Affinity = Kind == ParticleKind.Push ? (IsY ? -Power : Power) : 0f
+            get
+            {
+                // ★ PURE NUMBERS. Every emission seeds the rune's real
+                // payload now, so the old Push-vector Affinity injection -
+                // the last place a particle's behaviour lived outside its
+                // Data - is gone.
+                return Data;
+            }
+        }
+
+        /// EVERY region this particle's numbers sit in, all at once. A mote
+        /// that satisfies both flame and lightning wears both areas rather
+        /// than picking one - nothing here beats anything else.
+        /// ★ EVERY SPELL THESE NUMBERS ARE, all at once. Authored in the
+        /// Spell Creator, not written in code - which is the whole point.
+        public readonly List<SpellDef> Fusions = new List<SpellDef>();
+        static readonly List<SpellDef> _reread = new List<SpellDef>();
+
+        /// The last region this particle crossed INTO. Null until it is
+        /// anything more than its own strongest axis.
+        SpellDef _newest;
+
+        /// ★ THE AREA IT CARRIES, if any. One per spell, and it has no numbers
+        /// of its own - it works from this particle's, which is why a hot spell
+        /// has a hot area and the two can never disagree.
+        AoeDef Area
+        {
+            get
+            {
+                for (int i = 0; i < Fusions.Count; i++)
+                {
+                    var a = SpellBook.Live.Aoe(Fusions[i].Aoe);
+                    if (a != null) return a;
+                }
+                return null;
+            }
+        }
+
+        /// What art it should be wearing right now: the newest spell it became,
+        /// or failing that the axis it mostly IS. Both are just names, and a
+        /// name is all CollectionManager needs - drop a posed blob called
+        /// "Tornado" into Particle Shapes and tornadoes are tornado-shaped,
+        /// with no code touched and no enum extended.
+        public string ShapeName
+        {
+            get
+            {
+                string baseName = _newest != null ? _newest.Name
+                                : AxisName(PayloadNow.Dominant, PayloadNow);
+                if (baseName == null) return null;
+
+                // A LEVEL CAN HAVE ITS OWN SHAPE. Attract is an arrow of force;
+                // Attract at lvl2 is a TORNADO - same axis, completely
+                // different thing to look at. So "Attract 2" and "Attract 3"
+                // are asked for first and the bare name is the fallback, which
+                // means only the levels that deserve their own silhouette need
+                // one authored.
+                if (GrammarLevel >= 2)
+                {
+                    string levelled = baseName + " " + GrammarLevel;
+                    if (SpellBook.Live.Shape(levelled) != null
+                        || CollectionManager.ParticleShapeFor(levelled) != null) return levelled;
+                }
+                return baseName;
+            }
+        }
+
+        static string AxisName(int axis, SpellPayload p) => axis switch
+        {
+            0 => p.Temp > 0f ? "Heat" : "Chill",
+            1 => p.Lum > 0f ? "Light" : "Dark",
+            2 => p.Pressure > 0f ? "Compress" : "Spread",
+            3 => p.Balance > 0f ? "Sticky" : "Slick",
+            4 => p.State > 0f ? "Solid" : "Liquid",
+            5 => p.Affinity > 0f ? "Attract" : "Repel",
+            _ => null,      // nothing in particular: the plain blob
         };
 
-        /// The threshold region this particle currently sits in, or null while
-        /// it is still its strongest single axis. Set after every merge.
-        public SpellTable.Row Fusion;
-
-        /// Re-read the table after the payload changed. A particle that
-        /// crossed into a named region SAYS so and wears the blended colour.
+        /// Re-read the table after the numbers moved - by a merge, or by the
+        /// ground drifting them. Regions get entered and left; the particle
+        /// says so and wears the blended colour.
         void RefreshIdentity()
         {
-            var was = Fusion;
-            Fusion = SpellTable.Resolve(PayloadNow);
-            if (Fusion != null && Fusion != was)
+            // THE CASTER'S BOOK decides which regions exist for this mote. A
+            // particle with no owner - the demon's, a biome's leftovers - reads
+            // from every book, because nobody is holding one.
+            if (OwnerId >= 0) SpellBook.All(PayloadNow, Grimoires.HeldBy(OwnerId), _reread);
+            else SpellBook.All(PayloadNow, _reread);
+            bool changed = _reread.Count != Fusions.Count;
+            if (!changed)
+                for (int i = 0; i < _reread.Count; i++)
+                    if (_reread[i] != Fusions[i]) { changed = true; break; }
+            if (!changed) return;
+
+            // ★ THE NEWEST THING IT BECAME decides its shape. A particle can
+            // wear several spells at once, so no coat can be "the" one - but
+            // the LATEST crossing is always single, and it is also the most
+            // useful thing to show: what just happened to this mote.
+            for (int i = 0; i < _reread.Count; i++)
+                if (!Fusions.Contains(_reread[i])) _newest = _reread[i];
+            if (Fusions.Count > 0 && _reread.Count == 0) _newest = null;
+
+            // ★ BECOMING SOMETHING WITH AN AREA IS WHAT SUMMONS IT. Not a
+            // separate "summons" setting - the area appears because the spell
+            // it belongs to now exists. A DORMANT ghost summons nothing (a
+            // mute preview) - its areas raise the moment it wakes.
+            for (int i = 0; i < _reread.Count; i++)
+                if (!Fusions.Contains(_reread[i]))
+                {
+                    var a = SpellBook.Live.Aoe(_reread[i].Aoe);
+                    if (a == null) continue;
+                    if (Dormant) { _areasDeferred = true; continue; }
+                    StartCoroutine(RaiseArea(a));
+                }
+
+            Fusions.Clear();
+            Fusions.AddRange(_reread);
+            RefreshTrail();
+
+            // stopped being the thing that clings: let go and be a mote again
+            // (a clinging AREA is exempt - its ride is the Spreading law's)
+            if (Attached && !WantsToAttach && !_isAreaChild)
             {
-                DrawingWorld.Instance?.LogEvent($"the ink becomes {Fusion.Name.ToUpperInvariant()}");
-                if (_rend != null) _rend.sharedMaterial =
-                    MatterFX.Get(PayloadNow.Tint(), MoteShade.Additive);
+                Attached = false;
+                _settled = false;
+                transform.SetParent(null, true);
             }
+            if (Fusions.Count > 0)
+            {
+                string names = string.Join(" + ", Fusions.ConvertAll(r => r.Name.ToUpperInvariant()));
+                DrawingWorld.Instance?.LogEvent($"the ink becomes {names}");
+            }
+            ReshapeBody();
+            // AFTER the body exists - skinning before ReshapeBody painted a
+            // body that was not there yet, and the first frame flew white
+            RefreshSkin();
+            if (_rend != null) _rend.sharedMaterial =
+                MatterFX.Get(PayloadNow.Tint(), MoteShade.Additive);
         }
 
         // ------------------------------------------------- touching the world --
         void Touch(Collider c)
         {
-            // a fusion delivers its named effect to whatever it touches
-            if (Fusion != null && !Dormant)
-                SpellEffects.Apply(Fusion, c, transform.position, Power, Time.deltaTime, OwnerId);
+            // A DIRECT HIT IS THE WHOLE PAYLOAD, not a share of it - that is
+            // the only difference between lvl1 touching a target and lvl2
+            // radiating at it.
+            if (!Dormant)
+            {
+                if (!Attached && WantsToAttach) { AttachTo(c); return; }
+
+                // ★ A LVL2 HIT LANDS ON EVERYTHING IN ITS AREA - each BODY
+                // once, not once per collider it happens to own.
+                if (GrammarLevel >= 2)
+                {
+                    float r = AuraRadius;
+                    int n = Physics.OverlapSphereNonAlloc(transform.position, r,
+                        GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
+                    _hitOnce.Clear();
+                    for (int i = 0; i < n; i++)
+                    {
+                        var h = GrammarFX.ScanBuffer[i];
+                        if (h == null || h.GetComponent<SpellParticle>() != null) continue;
+                        Object body = h.GetComponentInParent<Element>();
+                        if (body == null) body = h.attachedRigidbody;
+                        if (body == null) body = h;
+                        if (!_hitOnce.Add(body)) continue;
+                        Detonate(h);
+                    }
+                }
+                else Detonate(c);
+
+                // ★ ALWAYS SPENT ON IMPACT (his Aug 25 ruling) - the THROWN
+                // spell particle only. Areas, biomes and bare unfused motes
+                // fall THROUGH to the classic contact handling below (players,
+                // matter, the demon, settling); the first version of this
+                // gate returned on every path and orphaned all of it.
+                // ★ ONLY THE COLLIDER JUDGES IMPACT (his correction): contact
+                // hands the data to a catcher or bursts on a non-catcher - no
+                // speed threshold. A released spell persists because it HOVERS
+                // and touches nothing, not because of a velocity rule.
+                if (Fusions.Count > 0 && !_isAreaChild)
+                {
+                    var bio = BiomeFusion();
+                    bool runtimeBiome = GrammarLevel >= 3;
+                    if (bio == null && !runtimeBiome)
+                    {
+                        ImpactFx();
+                        // ANYTHING THAT CANNOT CATCH THE DATA (his rule) -
+                        // terrain, props with no axes defined - takes the
+                        // burst and the payload hangs in the air where it
+                        // happened, until the biome clears the spot
+                        bool catchable = c.GetComponentInParent<Element>() != null
+                            || c.GetComponentInParent<SimpleFPSController>() != null
+                            || c.GetComponentInParent<Creature>() != null;
+                        if (!catchable)
+                            ArtificialBiome.Open(transform.position, Data,
+                                AreaReach(), 1f, DrawingConfig.LingerSeconds);
+                        Die();
+                        return;
+                    }
+                    if (bio != null)
+                        for (int i = 0; i < SpellPayload.AxisCount; i++)
+                            if (!(bio.BiomeAxis[i] && bio.Axis[i] != 0)) Data[i] = 0f;
+                    ImpactFx();   // the unmarked axes just detonated; it lives on
+                }
+
+                // ★ SPREADING POISON CLINGS (his call): an area whose AoeDef
+                // spreads rides the living thing that walked into it, the
+                // way flame carries - contagion, not a parked puddle.
+                if (_isAreaChild && !Attached && _wornArea != null && _wornArea.Spreading)
+                {
+                    var host = c.GetComponentInParent<Element>();
+                    if (host != null && host.Data.Alive && host.transform != transform.parent
+                        // never rides its own side - poison spares its own
+                        && !(OwnerId >= 0 && Sides.SideOfThing(host.gameObject) == Sides.Of(OwnerId)))
+                    {
+                        transform.SetParent(host.transform, true);
+                        Attached = true;
+                        _areaHome = null;   // it found a better ride
+                    }
+                }
+            }
+
+            // ENGINE HOOKS ARE GONE. Teleport is Affinity, invisibility is
+            // State, a trail is the area's. Nothing is left that a number
+            // could not say, so nothing is dispatched by name any more.
 
             // any player collider counts (a foot capsule can reach patches
             // the root never overlaps); TouchPlayer branches self-throttle,
@@ -1582,15 +2522,9 @@ namespace SpellyZombie
 
             // bare world geometry (floor/walls): SETTLE instead of dying - a
             // spark on the ground is a waiting ember, a light is a torch, a
-            // dark spot is a trap. A push particle can knock them loose again.
+            // dark spot is a trap, an attract mote is a waiting magnet.
             if (m == null && creature == null && rb == null)
             {
-                // a push bounces off bare rock instead of dying
-                if (Kind == ParticleKind.Push)
-                {
-                    Vel = Vector3.Reflect(Vel, Vector3.up) * 0.7f;
-                    return;
-                }
                 // lvl2 slip CANNOT be stopped by anything - it bounces
                 if (GrammarLevel >= 2 && Kind == ParticleKind.Repel)
                 {
@@ -1642,6 +2576,10 @@ namespace SpellyZombie
             // a preview touches nobody; a live particle bites everyone,
             // holder included
             if (Dormant) return;
+            // ★ A GHOST IS NOT A BODY. The ghost hovers at the driven
+            // zombie's head, so its own cast spawned INTO it - the hit
+            // re-downed the pilot and threw them out of the body every time.
+            if (pilot.IsDowned) return;
             var board = BodyState.Of(pilot); // the slider board takes it from here
             if (Kind == ParticleKind.Flame)
             {
@@ -1684,60 +2622,37 @@ namespace SpellyZombie
                 return;
             }
             if (Kind == ParticleKind.Push)
-            {
-                pilot.TakeHit(VectorImpulse(pilot.Velocity), 0f);
-                board?.PushMove((IsY ? -0.8f : 0.8f) * Power); // and the slider remembers
-                ImpactFx();
-                Die();
-                return;
-            }
-            // friendly fire stays on
-            if (Kind == ParticleKind.Dark)
-            {
-                board?.PushLum(-0.45f); // darkness steals sight
-                board?.PushTemp(-4f); // and chills
-                Die(); return;
-            }
-            if (Kind == ParticleKind.Light)
-            {
-                board?.PushLum(0.5f); // see better - or glare, if someone overdoes it
-                board?.PushTemp(3f);  // light warms
-                Die(); return;
-            }
-            if (Kind == ParticleKind.Dense) { board?.PushWeight(0.45f * Power); Die(); return; }
-            if (Kind == ParticleKind.Spread) { board?.PushWeight(-0.45f * Power); Die(); return; }
-            if (Mathf.Abs(Temp) > 12f) board?.PushTemp(Temp * 0.3f); // a mote is FELT
-            if (Mathf.Abs(Stick) > 0.4f) board?.PushGrip(Stick * 0.9f); // flying glue grips, flying soap strips
+                pilot.TakeHit(VectorImpulse(pilot.Velocity, pilot.transform.position), 0f); // the felt kick
+
+            // ★ ABSORB ITS VALUES (his rule): a spell that spends itself on a
+            // body hands over EVERYTHING it carries, whatever kind it wears -
+            // friendly fire included, your own release included. The per-kind
+            // fixed handouts were eating every other axis a fusion carried.
+            var give = Data;
+            if (Mathf.Abs(give.Temp) > 0.5f) board?.PushTemp(give.Temp * 0.3f);
+            if (Mathf.Abs(give.Lum) > 0.05f) board?.PushLum(give.Lum * 0.5f);
+            if (Mathf.Abs(give.Pressure) > 0.05f) board?.PushWeight(give.Pressure * 0.45f);
+            if (Mathf.Abs(give.Balance) > 0.05f) board?.PushGrip(give.Balance * 0.9f);
+            if (Mathf.Abs(give.Affinity) > 0.05f) board?.PushAffinity(give.Affinity);
             ImpactFx();
             Die();
         }
 
-        /// THE TWO VECTORS, lvl1 (Spells V2). The glyphs kept their names but
-        /// swapped jobs - the enum still says Away/Toward, read it as:
-        ///
-        ///   ARROW = ATTRACT. It drags what it hits ALONG THE WAY IT WAS
-        ///   POINTING - the drawn heading, not the mote's drift. Point it at
-        ///   yourself and things come to you; point it away and they go.
-        ///
-        ///   Y = REPEL. It reverses the target: opposite to where it WAS
-        ///   going, and opposite to where the Y itself is heading. Both terms
-        ///   negative, so a charging thing is turned around rather than
-        ///   merely slowed.
-        Vector3 VectorImpulse(Vector3 targetVel)
+        /// Attract gathers the target toward the mote, Repel drives it off
+        /// and turns an incoming charge around - the sign of Affinity does
+        /// the work, same law as the ambient pull.
+        Vector3 VectorImpulse(Vector3 targetVel, Vector3 targetPos)
         {
-            Vector3 heading = _aimDir.sqrMagnitude > 0.01f ? _aimDir.normalized
+            Vector3 off = targetPos - transform.position;
+            Vector3 away = off.sqrMagnitude > 0.01f ? off.normalized
                 : Vel.sqrMagnitude > 0.01f ? Vel.normalized : transform.forward;
 
-            if (!IsY)
-                return heading * (DrawingConfig.VectorPull * Power);
+            if (Data.Affinity >= 0f)
+                return -away * (DrawingConfig.VectorPull * Power);
 
             return -targetVel * DrawingConfig.VectorReverse
-                   - heading * (DrawingConfig.VectorPull * Power);
+                   + away * (DrawingConfig.VectorPull * Power);
         }
-
-        /// The drawn heading of the vector - where the arrow POINTED, kept
-        /// separate from wherever the mote has drifted since.
-        [System.NonSerialized] public Vector3 _aimDir;
 
         /// Level 5 - the world absorbs everything: the payload becomes real
         /// temperature, light, blindness, weight, glue, and shove.
@@ -1760,18 +2675,31 @@ namespace SpellyZombie
                     FxLibrary.Spawn(FxLibrary.I.IceHit, transform.position);
             }
 
-            // the vectors move THINGS by the same law they move players:
-            // the arrow drags along where it pointed, the Y turns it around
+            // AFFINITY LANDS LIKE ANY OTHER AXIS, on any object (his rule) -
+            // the target carries it and radiates until the drift sheds it
+            if (Mathf.Abs(Data.Affinity) > 0.05f)
+            {
+                var bd = BodyState.Of(c);
+                if (bd != null) bd.PushAffinity(Data.Affinity);
+                else
+                {
+                    var ea = c.GetComponentInParent<Element>();
+                    if (ea != null)
+                    { var da = ea.Data; da.Affinity += Data.Affinity; ea.Data = da.Clamped(); }
+                }
+            }
+
+            // attract and repel move THINGS by the same law they move players
             if (Kind == ParticleKind.Push)
             {
                 if (rb != null && !rb.isKinematic)
-                    rb.AddForce(VectorImpulse(rb.linearVelocity) / Mathf.Max(0.2f, rb.mass * 0.1f),
-                        ForceMode.VelocityChange);
+                    rb.AddForce(VectorImpulse(rb.linearVelocity, rb.position)
+                        / Mathf.Max(0.2f, rb.mass * 0.1f), ForceMode.VelocityChange);
                 else if (creature != null)
                 {
                     var crb = creature.GetComponent<Rigidbody>();
                     if (crb != null && !crb.isKinematic)
-                        crb.AddForce(VectorImpulse(crb.linearVelocity)
+                        crb.AddForce(VectorImpulse(crb.linearVelocity, crb.position)
                             / Mathf.Max(0.2f, crb.mass * 0.1f), ForceMode.VelocityChange);
                 }
                 ImpactFx();
@@ -1822,17 +2750,6 @@ namespace SpellyZombie
                 else if (rb != null) rb.mass = Mathf.Max(0.05f, rb.mass * (1f + 0.28f * Density));
             }
 
-            if (Kind == ParticleKind.Push && rb != null)
-            {
-                // vector law for objects: amplify-or-invert velocity plus
-                // the mote's own add along its travel
-                Vector3 travel = Vel.sqrMagnitude > 0.01f ? Vel.normalized : transform.forward;
-                Vector3 impulse = (IsY ? -rb.linearVelocity * 1.6f : rb.linearVelocity * 0.6f)
-                + travel * (18f * Power);
-                rb.AddForce(impulse, ForceMode.VelocityChange);
-                if (creature != null)
-                    BodyState.Of(creature)?.PushMove((IsY ? -0.8f : 0.8f) * Power);
-            }
         }
 
         /// Changes a creature's SIZE. Density no longer routes here -
@@ -1853,36 +2770,21 @@ namespace SpellyZombie
         /// Public doorway for the grammar's area fields (GrammarAreas.cs).
         public static void GiveHeatTo(Collider c, float delta) => GiveHeat(c, delta);
 
+        /// ★ ONE DESTINATION. Heat goes into the thing's own numbers, and
+        /// what happens next - burning, melting, boiling, spreading - falls out
+        /// of those numbers on the element beat.
+        ///
+        /// This used to be a three-way branch: Matter got its own store, a
+        /// player got a different one, and everything else had a Thermal added
+        /// to it on the spot. A zombie was on none of those paths, which is
+        /// exactly why a zombie could stand in a fire and not care.
         static void GiveHeat(Collider c, float delta)
         {
-            var m = c.GetComponent<Matter>();
-            if (m != null) { m.AddHeat(delta); return; }
-            var go = c.attachedRigidbody ? c.attachedRigidbody.gameObject : c.gameObject;
-
-            // a player's temperature lives on the body board only - never
-            // add a Thermal to the player
-            var pilot = c.GetComponentInParent<SimpleFPSController>();
-            if (pilot != null)
-            {
-                BodyState.Of(pilot)?.PushTemp(delta * 0.12f); // same scale as mote touches
-                return;
-            }
-            var creature = c.GetComponentInParent<Creature>();
-            if (creature != null) go = creature.gameObject;
-
-            // don't cook giant static surfaces
-            var rend = go.GetComponentInChildren<Renderer>();
-            if (rend != null && c.attachedRigidbody == null
-                && rend.bounds.size.magnitude > DrawingConfig.MaxThermalObjectSize) return;
-            var t = go.GetComponent<Thermal>();
-            if (t == null)
-            {
-                t = go.AddComponent<Thermal>();
-                t.HeatCapacity = SurfaceMaterialDB.Info(SurfaceMaterialDB.Resolve(go)).HeatCapacity;
-                if (go.GetComponent<Rigidbody>() != null && go.GetComponent<Damageable>() == null)
-                    go.AddComponent<Damageable>();
-            }
-            t.AddHeat(delta);
+            var el = c.GetComponentInParent<Element>();
+            if (el == null) return;
+            var d = el.Data;
+            d.Temp += delta;
+            el.Data = d.Clamped();
         }
 
         void AttachLantern(Collider c)
@@ -2002,6 +2904,363 @@ namespace SpellyZombie
                 case ParticleKind.BlackHole: c = new Color(0.03f, 0.01f, 0.06f); shade = MoteShade.Transparent; break;
                 case ParticleKind.BarrierMote: c = new Color(0.6f, 0.9f, 1f, 0.7f); shade = MoteShade.Transparent; break;
                 default: c = Color.white; break;
+            }
+        }
+
+        string _wearing;
+        GameObject _shapeBody;
+
+        // ONE BLOB, POSED. Every shape is the same model with its bones moved,
+        // which is how they are authored - so changing shape is not swapping an
+        // object, it is moving the bones to where the other pose has them. That
+        // is also why it can be gradual: there is nothing to pop between.
+        readonly Dictionary<string, Transform> _bones = new Dictionary<string, Transform>();
+        readonly List<Transform> _boneList = new List<Transform>();
+        Vector3[] _poseP; Quaternion[] _poseR; Vector3[] _poseS;
+        float _morph;   // 0 = still in the old pose, 1 = arrived
+
+        /// Put on the pose its current name asks for. Only acts when the name
+        /// actually changed, so a flame that stays a flame is not re-posed
+        /// every beat.
+        /// ★ A SPELL CASTING A SPELL. The children are ordinary particles
+        /// carrying a share of this one's numbers - so a meteor is hot, bright
+        /// and solid on the way down, and burns what it lands on for exactly
+        /// the reason anything else does.
+        ///
+        /// A child never summons again: only a first-generation particle can,
+        /// or a meteor would rain meteors forever.
+        /// ★ RAISE THE AREA. It appears at its offset and rushes back toward
+        /// the spell - twenty metres up is a meteor, no offset at all is an
+        /// aura sitting on it.
+        ///
+        /// It carries THIS particle's numbers, because an area has none of its
+        /// own. And it is NOT parented: it outlives the spell that raised it,
+        /// staying as long as those numbers hold, which is why a fire keeps
+        /// burning after the mote that lit it is gone.
+        /// The area's authored look, on the particle that is the area.
+        GameObject _areaLook;
+
+        /// Set the moment a particle is dressed as an area (WearArea) and
+        /// cleared on pool reuse. Deriving this from the LOOK meant areas
+        /// whose prefab only resolves in the editor died on first contact in
+        /// builds - and a look-less authored area was never an area at all.
+        bool _isAreaChild;
+
+        /// The authored area this child wears - its Spreading flag decides
+        /// whether it clings to what walks in.
+        AoeDef _wornArea;
+
+        /// The spell this area rides toward while it lives; where the spell
+        /// DIES is where the area parks. Homing at a snapshot of the birth
+        /// position left every poison puddle at the zombie's mouth instead of
+        /// the landing site.
+        SpellParticle _areaHome;
+
+        /// One body per lvl2 sweep - without this a zombie with N colliders
+        /// took N full payload shares from a single impact.
+        static readonly HashSet<Object> _hitOnce = new HashSet<Object>();
+        public void WearArea(AoeDef area)
+        {
+            if (area == null) return;
+            _isAreaChild = true;
+            _wornArea = area;
+            var prefab = area.Prefab;
+            if (prefab != null && _areaLook == null)
+            {
+                _areaLook = Instantiate(prefab, transform);
+                _areaLook.transform.localPosition = Vector3.zero;
+                _areaLook.transform.localRotation = Quaternion.identity;
+                foreach (var col in _areaLook.GetComponentsInChildren<Collider>(true)) Destroy(col);
+                if (_rend != null) _rend.enabled = false;
+            }
+            if (area.TrailWidth > 0f)
+            {
+                if (_tail == null) _tail = gameObject.AddComponent<TrailRenderer>();
+                _tail.time = Mathf.Max(0.05f, area.TrailSeconds);
+                _tail.widthMultiplier = area.TrailWidth;
+                _tail.minVertexDistance = 0.08f;
+                _tail.sharedMaterial = MatterFX.Get(PayloadNow.Tint(), MoteShade.Additive);
+            }
+        }
+
+        System.Collections.IEnumerator RaiseArea(AoeDef area)
+        {
+            if (_generation > 0) yield break;   // an area does not raise areas
+            Vector3 home = transform.position;
+            int owner = OwnerId;
+            var load = PayloadNow;
+            float size = SrcSize;
+
+            {
+                Vector3 at = home + area.Offset;
+                Vector3 back = (home - at);
+                Vector3 aim = back.sqrMagnitude < 0.01f ? Vector3.zero : back.normalized;
+
+                var child = Emit(ParticleKind.Push, at, aim == Vector3.zero ? Vector3.up : aim,
+                                 1f, _generation + 1);
+                if (child != null)
+                {
+                    child.Data = load.Clamped();
+                    child.OwnerId = owner;
+                    child.SrcSize = size;
+                    child.Reach = Reach; // the area's span keeps the seal's ratio
+                    child.Vel = aim * DrawingConfig.AreaHomingSpeed;
+                    child.Wake();
+                    child.WearArea(area);
+                    child._areaHome = this;   // ride the LIVING spell, park where it dies
+                }
+            }
+            yield break;
+        }
+
+
+        /// ★ PUSH THE ROW'S SLIDERS INTO THE MATERIAL. Through a property
+        /// block, so the authored material is never replaced and two particles
+        /// wearing the same blob can still move completely differently.
+        ///
+        /// A field left at -1 is not written at all, so a row only overrides
+        /// what it cares about.
+        void RefreshSkin()
+        {
+            if (_shapeBody == null) return;
+
+            SpellTable.Look look = null;
+            for (int i = 0; i < Fusions.Count; i++)
+                if (Fusions[i].Skin != null) look = Fusions[i].Skin;   // newest wins
+            // a shape saved with its own material brings it along - the book
+            // first, then legacy prefabs
+            if (look == null)
+            {
+                var data = SpellBook.Live.Shape(ShapeName);
+                if (data != null && data.Look != null) look = data.Look;
+            }
+            if (look == null)
+            {
+                var shapeAsset = CollectionManager.ParticleShapeFor(ShapeName);
+                var ss = shapeAsset != null ? shapeAsset.GetComponent<ShapeSkin>() : null;
+                if (ss != null) look = ss.Look;
+            }
+            // ★ ONE WRITER. The same StateView that paints the preview, the
+            // zombies and the golems paints the flying particle: tint, state
+            // and the sliders together, from birth. The hand-written property
+            // block it replaces left the blob white until something else
+            // happened to touch it - the exact two-writer bug the preview
+            // already taught us, re-made here.
+            var view = _shapeBody.GetComponent<StateView>();
+            if (view == null) view = _shapeBody.AddComponent<StateView>();
+            view.Tint = PayloadNow.Tint();
+            view.DriveTint = true;
+            view.StateT = SpellPayload.StateT01(PayloadNow.State);
+            if (look != null) view.Look = look;
+            // ★ A GHOST IS SEE-THROUGH (his complaint: dormant looked exactly
+            // like awake). The ghost dress only ever touched the hidden code
+            // sphere; the blob needs its own fade, cleared on Wake.
+            if (Dormant) view.Fade(0.35f, 999999f);
+            view.PushNow();
+
+            // and the authored effects, if this row asked for any
+            if (look != null && !string.IsNullOrEmpty(look.Fx) && _rowFx == null)
+                _rowFx = FxLibrary.SpawnNamed(look.Fx, transform.position, transform);
+        }
+
+        GameObject _rowFx;
+
+        /// What a client needs to look like this one: which posed blob, and the
+        /// colour its numbers came out as. Both are read off the payload, so
+        /// neither can drift from what the host sees.
+        public byte ShapeId => CollectionManager.ParticleShapeIndex(ShapeName);
+        public Color32 WireTint => PayloadNow.Tint();
+        public byte WireLevel => (byte)Mathf.Clamp(Level, 1, 3);
+
+        /// ★ NOBODY TYPES A LEVEL. No area is a hit, an area makes it an area,
+        /// a locked axis makes it a place - read back from what the author
+        /// actually made, every time it is asked.
+        public int Level
+        {
+            get
+            {
+                int lv = 1;
+                for (int i = 0; i < Fusions.Count; i++)
+                    lv = Mathf.Max(lv, Fusions[i].Level);
+                return lv;
+            }
+        }
+
+        /// ★ NO STRENGTH MEANS FORCE CANNOT TOUCH IT. Not "very fragile" -
+        /// not in the physical damage system at all, the same way Mind 0 means
+        /// not living rather than very stupid. So it rides things instead of
+        /// dying on them, and it can only ever go out when its own numbers run
+        /// down - which is also why it leaves nothing behind.
+        public bool Physical => Mathf.Abs(PayloadNow.Strength) > 0.001f;
+
+        /// The net id of whatever this is riding, or 0. An attached particle
+        /// is only in the right place if the other machines know what it
+        /// caught - otherwise a hook hangs in the air while its victim leaves.
+        public int RidingId
+        {
+            get
+            {
+                if (!Attached || transform.parent == null) return 0;
+                var host = transform.parent.GetComponentInParent<Element>();
+                return host != null ? host.NetId : 0;
+            }
+        }
+
+        TrailRenderer _tail;
+
+        /// The widest trail anything it currently IS asks for. A meteor gets a
+        /// fat short one, a tracking mark a thin long one, and a particle that
+        /// stops being either drops it.
+        void RefreshTrail()
+        {
+            // THE TRAIL IS THE AREA'S, because a trail is part of how an
+            // area looks and a bare spell has no look of its own beyond its
+            // body.
+            var area = Area;
+            float w = area != null ? area.TrailWidth : 0f;
+            float t = area != null ? area.TrailSeconds : 0f;
+            if (w <= 0f)
+            {
+                if (_tail != null) { Destroy(_tail); _tail = null; }
+                return;
+            }
+            if (_tail == null) _tail = gameObject.AddComponent<TrailRenderer>();
+            _tail.time = Mathf.Max(0.05f, t);
+            _tail.widthMultiplier = w;
+            _tail.minVertexDistance = 0.08f;
+            _tail.sharedMaterial = MatterFX.Get(PayloadNow.Tint(), MoteShade.Additive);
+        }
+
+        void ReshapeBody()
+        {
+            string want = ShapeName;
+            if (want == _wearing) return;
+            // ★ A SHAPE ONCE WORN IS KEPT (his rule): fading numbers never
+            // strip a spell back to the anonymous blob - the unique look IS
+            // the information. Death is the only floor; a NEW earned shape
+            // still replaces the old one.
+            if (string.IsNullOrEmpty(want) && !string.IsNullOrEmpty(_wearing)) return;
+            _wearing = want;
+
+            EnsureBlob();
+            if (_shapeBody == null) return;      // no blob authored yet: code look stands
+
+            // ★ THE BOOK FIRST: a shape is data, so a Workshop spell poses the
+            // blob with no prefab anywhere. Legacy prefabs still count after.
+            var data = SpellBook.Live.Shape(want);
+            if (data != null && data.Bones.Count > 0)
+            {
+                CapturePose(data);
+                _morph = 0f;
+                return;
+            }
+
+            var pose = CollectionManager.ParticleShapeFor(want);
+            if (pose == null) pose = CollectionManager.ParticleBlob;   // back to rest
+            if (pose == null) return;
+
+            CapturePose(pose);
+            _morph = 0f;
+        }
+
+        /// The body itself, made once and kept for this particle's whole life.
+        void EnsureBlob()
+        {
+            if (_shapeBody != null) return;
+            var blob = CollectionManager.ParticleBlob;
+            if (blob == null) return;
+
+            _shapeBody = Instantiate(blob, transform);
+            _shapeBody.name = "Body";
+            _shapeBody.transform.localPosition = Vector3.zero;
+            _shapeBody.transform.localRotation = Quaternion.identity;
+            foreach (var col in _shapeBody.GetComponentsInChildren<Collider>(true))
+                Destroy(col);                    // the mote already has its own trigger
+            if (_rend != null) _rend.enabled = false;   // authored art replaces the sphere
+
+            _bones.Clear(); _boneList.Clear();
+            foreach (var t in _shapeBody.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == _shapeBody.transform) continue;
+                if (!_bones.ContainsKey(t.name)) { _bones[t.name] = t; _boneList.Add(t); }
+            }
+        }
+
+        /// Read where the target pose keeps each bone. Matched BY NAME, so a
+        /// pose prefab only has to be the same blob - it can be missing bones
+        /// and the ones it does not mention simply stay where they are.
+        void CapturePose(GameObject pose)
+        {
+            int n = _boneList.Count;
+            if (_poseP == null || _poseP.Length != n)
+            { _poseP = new Vector3[n]; _poseR = new Quaternion[n]; _poseS = new Vector3[n]; }
+
+            var want = new Dictionary<string, Transform>();
+            foreach (var t in pose.GetComponentsInChildren<Transform>(true))
+                if (!want.ContainsKey(t.name)) want[t.name] = t;
+
+            for (int i = 0; i < n; i++)
+            {
+                var mine = _boneList[i];
+                if (want.TryGetValue(mine.name, out var theirs))
+                {
+                    _poseP[i] = theirs.localPosition;
+                    _poseR[i] = theirs.localRotation;
+                    _poseS[i] = theirs.localScale;
+                }
+                else
+                {
+                    _poseP[i] = mine.localPosition;
+                    _poseR[i] = mine.localRotation;
+                    _poseS[i] = mine.localScale;
+                }
+            }
+        }
+
+        /// The same, from book data instead of a prefab.
+        void CapturePose(ShapeDef pose)
+        {
+            int n = _boneList.Count;
+            if (_poseP == null || _poseP.Length != n)
+            { _poseP = new Vector3[n]; _poseR = new Quaternion[n]; _poseS = new Vector3[n]; }
+
+            var want = new Dictionary<string, BonePose>();
+            foreach (var b in pose.Bones)
+                if (!string.IsNullOrEmpty(b.Bone) && !want.ContainsKey(b.Bone)) want[b.Bone] = b;
+
+            for (int i = 0; i < n; i++)
+            {
+                var mine = _boneList[i];
+                if (want.TryGetValue(mine.name, out var theirs))
+                {
+                    _poseP[i] = theirs.P;
+                    _poseR[i] = theirs.R;
+                    _poseS[i] = theirs.S;
+                }
+                else
+                {
+                    _poseP[i] = mine.localPosition;
+                    _poseR[i] = mine.localRotation;
+                    _poseS[i] = mine.localScale;
+                }
+            }
+        }
+
+        /// Ease the bones toward the pose. A particle that becomes a tornado
+        /// GROWS into one over a moment, which also reads as the transformation
+        /// it is rather than a cut.
+        void TickShape(float dt)
+        {
+            if (_poseP == null || _morph >= 1f || _boneList.Count == 0) return;
+            _morph = Mathf.Min(1f, _morph + dt / Mathf.Max(0.01f, DrawingConfig.ShapeMorphSeconds));
+            float k = _morph * _morph * (3f - 2f * _morph);   // ease, so it settles
+            for (int i = 0; i < _boneList.Count; i++)
+            {
+                var t = _boneList[i];
+                if (t == null) continue;
+                t.localPosition = Vector3.Lerp(t.localPosition, _poseP[i], k);
+                t.localRotation = Quaternion.Slerp(t.localRotation, _poseR[i], k);
+                t.localScale = Vector3.Lerp(t.localScale, _poseS[i], k);
             }
         }
 

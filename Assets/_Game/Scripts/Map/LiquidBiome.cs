@@ -13,21 +13,21 @@ namespace SpellyZombie
         [Tooltip("YOUR surface prefab (water shader plane, magma sheet), stretched across the box top so it reads from above. Empty = no visible surface.")]
         public GameObject Surface;
         [Tooltip("1 = you float on top, just under 1 = the slow sink (water), 0 = no lift at all.")]
-        public float Buoyancy = 0.92f;
+        [Range(0f, 1f)] public float Buoyancy = 0.92f;
 
         public override Color GizmoTint => Tint;
 
-        static readonly System.Collections.Generic.List<LiquidBiome> _all =
+        static readonly System.Collections.Generic.List<LiquidBiome> _liquids =
             new System.Collections.Generic.List<LiquidBiome>();
-        void OnEnable() => _all.Add(this);
-        void OnDisable() => _all.Remove(this);
+        protected override void OnEnable() { base.OnEnable(); _liquids.Add(this); }
+        protected override void OnDisable() { base.OnDisable(); _liquids.Remove(this); }
 
         /// The liquid volume containing this world point, or null. Cheap:
         /// a couple of box tests, safe in any per-frame path.
         public static LiquidBiome At(Vector3 p)
         {
-            for (int i = 0; i < _all.Count; i++)
-                if (_all[i] != null && _all[i].Area.Contains(p)) return _all[i];
+            for (int i = 0; i < _liquids.Count; i++)
+                if (_liquids[i] != null && _liquids[i].Area.Contains(p)) return _liquids[i];
             return null;
         }
 

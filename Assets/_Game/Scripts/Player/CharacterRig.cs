@@ -102,8 +102,7 @@ namespace SpellyZombie
         SkinnedMeshRenderer _smr;
 
         /// Which renderer is the body: the BodyRenderer slot first, the
-        /// guarded search otherwise. BodyCanvas reads this instead of running
-        /// its own search.
+        /// guarded search otherwise.
         public SkinnedMeshRenderer BodySmr => _smr;
         Transform _hips, _spine1, _head;
         Transform _armL, _armR, _foreL, _foreR, _handL, _handR;
@@ -420,7 +419,6 @@ namespace SpellyZombie
         SocketSet _sockets;
         System.Collections.Generic.List<GameObject> _costume;
         byte _teamShown = 255;
-        bool _capeStamped;
 
         /// Slot 1's hands are never empty: a wand in the right, the grimoire
         /// in the left. Uses the Weapon_Wand / Weapon_Grimoire skins when
@@ -930,27 +928,17 @@ namespace SpellyZombie
                     // relaxes into a T-pose
                     GetComponent<EmoteRig>()?.CaptureRest();
                     _teamShown = MatchLobby.LocalTeam;
-                    _capeStamped = StartingRuneChooser.HasChosen;
-                    _costume = Wardrobe.DressPlayer(_sockets, TeamColor(_teamShown),
-                        _capeStamped ? StartingRuneChooser.ChosenCard : (RuneCardType?)null);
+                    _costume = Wardrobe.DressPlayer(_sockets, TeamColor(_teamShown), null);
                 }
             }
 
-            // the outfit follows your choices: pillar picks retint, the
-            // starting rune stamps the cape's back the moment it's chosen
+            // the outfit follows the pillar picks
             if (_costume != null)
             {
                 if (MatchLobby.LocalTeam != _teamShown)
                 {
                     _teamShown = MatchLobby.LocalTeam;
                     Wardrobe.Retint(_costume, TeamColor(_teamShown));
-                }
-                if (!_capeStamped && StartingRuneChooser.HasChosen)
-                {
-                    _capeStamped = true;
-                    foreach (var piece in _costume)
-                        if (piece != null && piece.name.StartsWith("Cape"))
-                            Wardrobe.StampRune(piece.transform, StartingRuneChooser.ChosenCard);
                 }
             }
 

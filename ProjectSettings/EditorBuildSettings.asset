@@ -6,8 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/_Game/Scenes/Game.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/_Game/Scenes/Maps/Spelly Island.unity
+    guid: 8cc2ff6efd9f16b40bb8d83d9542d6e3
   - enabled: 1
     path: Assets/_Game/Scenes/Menu.unity
     guid: 66f19f7720d526548bf29f7000f2c0b3

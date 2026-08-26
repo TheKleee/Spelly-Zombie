@@ -198,6 +198,90 @@ namespace SpellyZombie
             return null;
         }
 
+        /// ★ REPAIR: wire Walk/Run into the existing zombie controller. It was
+        /// built when Art/Zombie had no walking/running clip, so its machine
+        /// only knows Idle and the one-shots - a zombie at any speed stands in
+        /// Idle and slides. Put a walking + running FBX into
+        /// Assets/_Game/Art/Zombie and run this once.
+        [MenuItem("Spelly Zombie/Characters/Repair Zombie Locomotion")]
+        static void RepairZombieLocomotion()
+        {
+            const string zombieDir = "Assets/_Game/Art/Zombie";
+            const string ctrlPath = "Assets/_Game/Art/SZ_ZombieAnim.controller";
+            var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(ctrlPath);
+            if (ctrl == null) { Debug.LogWarning($"[SpellyZombie] no controller at {ctrlPath}"); return; }
+
+            var body = CollectionManager.ZombieBody;
+            var anim = body != null ? body.GetComponentInChildren<Animator>(true) : null;
+            var avatar = anim != null ? anim.avatar : null;
+            if (avatar == null)
+            {
+                Debug.LogWarning("[SpellyZombie] ZombieBody has no Animator/avatar - wire that first.");
+                return;
+            }
+
+            string walkPath = null, runPath = null;
+            foreach (var guid in AssetDatabase.FindAssets("t:Model", new[] { zombieDir }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                string file = System.IO.Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
+                if (file.Contains("walking") && (walkPath == null || path.Length < walkPath.Length)) walkPath = path;
+                if (file.Contains("running") && (runPath == null || path.Length < runPath.Length)) runPath = path;
+            }
+            if (walkPath == null && runPath == null)
+            {
+                Debug.LogWarning($"[SpellyZombie] no walking/running FBX in {zombieDir} - " +
+                    "drop the clips there and run this again.");
+                return;
+            }
+
+            var sm = ctrl.layers[0].stateMachine;
+            AnimatorState Find(string name)
+            {
+                foreach (var s in sm.states) if (s.state.name == name) return s.state;
+                return null;
+            }
+            if (Find("Walk") != null || Find("Run") != null)
+            {
+                Debug.Log("[SpellyZombie] Walk/Run already wired - nothing to repair.");
+                return;
+            }
+            var idleSt = Find("Idle");
+
+            AnimationClip Load(string p)
+            {
+                if (p == null) return null;
+                ConfigureClipFbx(p, avatar, true);
+                return LoadClip(p);
+            }
+            var walk = Load(walkPath);
+            var run = Load(runPath);
+
+            AnimatorState walkSt = null, runSt = null;
+            if (walk != null) { walkSt = sm.AddState("Walk"); walkSt.motion = walk; }
+            if (run != null) { runSt = sm.AddState("Run"); runSt.motion = run; }
+
+            void Cross(AnimatorState from, AnimatorState to, AnimatorConditionMode mode, float at, float dur)
+            {
+                if (from == null || to == null) return;
+                var tr = from.AddTransition(to);
+                tr.hasExitTime = false;
+                tr.duration = dur;
+                tr.AddCondition(mode, at, "Speed");
+            }
+            Cross(idleSt, runSt, AnimatorConditionMode.Greater, 3.0f, 0.20f);
+            Cross(idleSt, walkSt, AnimatorConditionMode.Greater, 0.15f, 0.18f);
+            Cross(walkSt, runSt, AnimatorConditionMode.Greater, 3.0f, 0.20f);
+            Cross(walkSt, idleSt, AnimatorConditionMode.Less, 0.10f, 0.18f);
+            Cross(runSt, idleSt, AnimatorConditionMode.Less, 0.10f, 0.20f);
+            Cross(runSt, walkSt, AnimatorConditionMode.Less, 2.6f, 0.20f);
+
+            EditorUtility.SetDirty(ctrl);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[SpellyZombie] locomotion wired: walk={(walk != null ? walkPath : "NONE")} " +
+                $"run={(run != null ? runPath : "NONE")}. Zombies walk now.");
+        }
+
         /// Retargets everything in Art/Zombie to the shared avatar and builds
         /// the zombie controller: locomotion + one-shot triggers.
         /// Duplicate clips ("(2)", "(3)") lose to the shortest filename.

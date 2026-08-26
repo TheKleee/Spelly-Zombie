@@ -16,7 +16,34 @@ namespace SpellyZombie
         public int Edges;
         /// Once held it is a world object: no spell lifetime; only solids can be grabbed again.
         public bool Touched;
-        public float Temperature = 18f;
+        /// ★ NOT A FIELD ANY MORE. Temperature lives on the Element, once, so
+        /// a crate and a zombie and a wall are all hot in the same place and by
+        /// the same number. Matter used to keep its own, which is why heating
+        /// a crate and heating a zombie were two unrelated pieces of code.
+        public float Temperature
+        {
+            get => El != null ? El.Data.Temp : _looseTemp;
+            set
+            {
+                if (El == null) { _looseTemp = value; return; }
+                var d = El.Data; d.Temp = value; El.Data = d;
+            }
+        }
+        float _looseTemp = Element.RoomTemp;   // only before an Element exists
+
+        Element _el;
+        Element El
+        {
+            get
+            {
+                if (_el == null) _el = GetComponent<Element>();
+                // matter is spawned at runtime, so it may arrive before any
+                // editor pass has seen it; it is a solid thing in the world and
+                // therefore an element, always
+                if (_el == null && this != null) _el = gameObject.AddComponent<Element>();
+                return _el;
+            }
+        }
         public float Density = 1f;
         public float Stickiness = 0.35f;
 
@@ -305,7 +332,7 @@ namespace SpellyZombie
                 {
                     // no shrink-out: the blob just goes; a liquid leaves a splash
                     if (Phase == MatterPhase.Liquid && FxLibrary.I != null)
-                        FxLibrary.Spawn(FxLibrary.I.Splash, transform.position);
+                        FxLibrary.SpawnTinted(FxLibrary.I.Splash, transform.position, BodyColor());
                     Destroy(gameObject);
                 }
             }
@@ -467,11 +494,28 @@ namespace SpellyZombie
         float _kinTick; // spell-phase blob attraction beat
         MatterPhase _lastPhase = MatterPhase.Solid; // gas-cloud FX fires on the flip
 
+        static MaterialPropertyBlock _colorProbe;
+
+        /// The blob's current visible colour - a tinted blob (the goo) hands
+        /// it to every effect it makes, so a green thing splashes green.
+        Color BodyColor()
+        {
+            var r = GetComponentInChildren<Renderer>();
+            if (r == null) return Color.white;
+            if (_colorProbe == null) _colorProbe = new MaterialPropertyBlock();
+            r.GetPropertyBlock(_colorProbe);
+            var c = _colorProbe.GetColor("_BaseColor");
+            if (c.maxColorComponent > 0.01f) return c;
+            return r.sharedMaterial != null && r.sharedMaterial.HasProperty("_BaseColor")
+                ? r.sharedMaterial.GetColor("_BaseColor") : Color.white;
+        }
+
         void React(Collision col, bool impact)
         {
-            // a landing liquid blob throws a splash
+            // a landing liquid blob throws a splash - in ITS colour, so green
+            // goo splashes green (his rule: the effect inherits the parent)
             if (impact && Phase == MatterPhase.Liquid && col.contactCount > 0 && FxLibrary.I != null)
-                FxLibrary.Spawn(FxLibrary.I.Splash, col.GetContact(0).point);
+                FxLibrary.SpawnTinted(FxLibrary.I.Splash, col.GetContact(0).point, BodyColor());
 
             // a flying block damages by momentum, nothing below the threshold
             if (impact && _rb != null)
@@ -563,7 +607,7 @@ namespace SpellyZombie
                     float dmg = force * 3f * _info.Strength;
                     if (creature == null || !creature.TryShatter(dmg))
                     {
-                        var d = col.collider.GetComponentInParent<Damageable>();
+                        var d = col.collider.GetComponentInParent<Element>();
                         if (d != null) d.TakeDamage(dmg, $"crushed by {Material}");
                     }
                     // thud at the impact point, comic WHAM on big damage
@@ -631,9 +675,9 @@ namespace SpellyZombie
             var lib = FxLibrary.I; // both halves show FX at the meeting
             if (lib != null)
             {
-                FxLibrary.Spawn(lib.Poof, transform.position);
-                FxLibrary.Spawn(melted || Phase == MatterPhase.Liquid ? lib.Splash : lib.HitThud,
-                    o.transform.position);
+                FxLibrary.SpawnTinted(lib.Poof, transform.position, BodyColor());
+                FxLibrary.SpawnTinted(melted || Phase == MatterPhase.Liquid ? lib.Splash : lib.HitThud,
+                    o.transform.position, BodyColor());
             }
             RuneGrammar.TryDemon(Lineage, transform.position, merged);
             Destroy(o.gameObject);
@@ -653,6 +697,13 @@ namespace SpellyZombie
             var g = Golem.Spawn(transform.position,
                 mergedSize * DrawingConfig.GolemSizePerMatter);
             if (g == null) return false;
+
+            // conjured stone remembers its caster (MatterStrike.Init) - the
+            // golem it stands up as WORKS FOR THEM (his rule). Ownerless
+            // debris keeps raising wild golems.
+            var ms = GetComponent<MatterStrike>();
+            if (ms == null && eaten != null) ms = eaten.GetComponent<MatterStrike>();
+            if (ms != null) g.OwnerId = ms.OwnerId;
 
             var view = g.GetComponent<StateView>();
             if (view == null) view = g.gameObject.AddComponent<StateView>();
@@ -847,7 +898,7 @@ namespace SpellyZombie
                     // heavy flowing liquid crushes waders (pair-ignore bypasses React)
                     if (Owner.Density > 1.8f && flow.magnitude > 2f)
                     {
-                        var dmgc = creature.GetComponent<Damageable>();
+                        var dmgc = creature.GetComponent<Element>();
                         if (dmgc != null) dmgc.TakeDamage(flow.magnitude * 3f, "crushed by heavy liquid");
                     }
 

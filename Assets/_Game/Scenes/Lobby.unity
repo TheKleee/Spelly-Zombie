@@ -252,9 +252,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.112392
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.112392
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &178657
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1057,9 +1068,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 54.600002
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 54.600002
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &13649276
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1523,9 +1545,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &18056995
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1706,9 +1739,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &19441083
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -2344,9 +2388,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &23860639
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -3692,9 +3747,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 36.600002
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 36.600002
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &41175689
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -4310,9 +4376,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &45352841
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -4486,9 +4563,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.23989
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.23989
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &49221960
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -9520,9 +9608,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.23988
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.23988
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &51360808
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -9899,9 +9998,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 20
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 20
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &59840911
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -10101,9 +10211,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.218773
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.218773
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &61455831
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -10513,9 +10634,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.521217
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.521217
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &67297820
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -11604,9 +11736,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 55.93626
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 55.93626
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &85614900
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -11942,9 +12085,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.521217
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.521217
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &87036759
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -13091,9 +13245,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.24303
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.24303
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &107724405
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -14525,9 +14690,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 20
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 20
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &118991666
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -15102,9 +15278,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.24303
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.24303
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &128534277
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -17347,9 +17534,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 39.323936
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 39.323936
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &172513804
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -18083,9 +18281,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.630836
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.630836
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &188702485
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -18278,9 +18487,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 41.166206
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 41.166206
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &189243718
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -18640,9 +18860,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &191184487
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -19125,9 +19356,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 55.93626
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 55.93626
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &199897476
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -19323,9 +19565,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.112392
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.112392
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &201284797
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -20335,9 +20588,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 20
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 20
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &220792672
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -20537,9 +20801,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.16546
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.16546
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &221297882
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -23966,9 +24241,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 24
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 24
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &279883398
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -25485,9 +25771,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 20
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 20
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &296316818
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -25815,9 +26112,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &299250462
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -26123,9 +26431,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 20
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 20
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &301777773
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -26683,9 +27002,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 51
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 51
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &313671981
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -27136,9 +27466,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 53.19318
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 53.19318
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &324689244
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -27470,9 +27811,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.23989
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.23989
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &325557431
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -27930,9 +28282,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.791584
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.791584
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &327289861
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -31804,9 +32167,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 61.805603
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 61.805603
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &393471287
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -32006,9 +32380,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.218773
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.218773
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &393896808
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -32212,9 +32597,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 61.8
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 61.8
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &394437017
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -32410,9 +32806,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.4502
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.4502
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &396506753
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -32616,9 +33023,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 31.199999
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 31.199999
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &398428205
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -33743,9 +34161,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 43.8
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 43.8
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &419085636
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -35293,9 +35722,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.243034
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.243034
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &452713230
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -35735,9 +36175,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.11238
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.11238
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &455558252
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -35941,9 +36392,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 54.600006
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 54.600006
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &456135039
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -36541,9 +37003,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.11239
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.11239
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &469742834
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -37703,9 +38176,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 21.3
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 21.3
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &493740351
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -37901,9 +38385,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 55.93626
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 55.93626
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &496198260
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -38578,9 +39073,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.11239
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.11239
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &512846363
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -38995,9 +39501,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &513801973
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -39297,9 +39814,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.243034
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.243034
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &517032230
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -39499,9 +40027,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.165462
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.165462
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &517256938
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -39704,9 +40243,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &518215897
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -40098,9 +40648,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 43.8
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 43.8
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &529115940
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -40560,9 +41121,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.11238
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.11238
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &531761840
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -41751,9 +42323,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 54.600002
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 54.600002
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &557142907
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -42192,9 +42775,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.521217
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.521217
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &565634344
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -43442,9 +44036,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 25.800001
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 25.800001
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &582735233
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -43822,9 +44427,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &584774299
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -44002,9 +44618,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 20
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 20
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &585936485
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -44652,9 +45279,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 53.193172
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 53.193172
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &591210033
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -46287,9 +46925,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 25.800001
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 25.800001
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &620503684
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -47804,9 +48453,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.243034
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.243034
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &638629545
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -48105,9 +48765,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 20
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 20
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &642781259
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -48311,9 +48982,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 25.800001
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 25.800001
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &645365159
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -48509,9 +49191,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.11518
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.11518
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &646496240
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -49301,9 +49994,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.115185
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.115185
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &666092401
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -49639,9 +50343,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 20
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 20
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &669070311
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -50282,9 +50997,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.115185
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.115185
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &673615573
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -50743,9 +51469,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &681345222
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -51039,9 +51776,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &681603994
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -51578,9 +52326,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.16546
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.16546
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &691616519
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -51976,9 +52735,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.218773
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.218773
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &698506995
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -53163,9 +53933,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.4502
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.4502
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &729591008
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -53966,9 +54747,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.11239
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.11239
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &747900214
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -54436,9 +55228,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.218773
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.218773
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &754324335
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -54861,9 +55664,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.078423
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.078423
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &756837579
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -55059,9 +55873,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.45019
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.45019
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &758218399
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -55397,9 +56222,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 31.199999
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 31.199999
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &759715137
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -56176,9 +57012,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.243034
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.243034
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &768177732
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -57367,9 +58214,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.17408
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.17408
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &787439198
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -59066,9 +59924,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 31.199999
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 31.199999
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &817668332
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -59268,9 +60137,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.79158
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.79158
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &818106640
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -59831,9 +60711,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.165455
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.165455
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &823402532
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -60239,9 +61130,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &828279503
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -60419,9 +61321,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.21878
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.21878
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &831419401
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -60670,9 +61583,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.243034
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.243034
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &834470023
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -61013,9 +61937,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 31.2
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 31.2
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &836868391
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -61603,9 +62538,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.165462
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.165462
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &844834093
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -62130,9 +63076,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &850579694
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -62389,9 +63346,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &851444693
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -62845,9 +63813,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.21878
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.21878
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &855804273
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -63997,9 +64976,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.791584
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.791584
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &877914587
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -64848,9 +65838,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 25.800001
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 25.800001
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &889915753
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -65129,9 +66130,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &890796180
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -66057,9 +67069,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &898158570
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -66489,9 +67512,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &909430920
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -67209,9 +68243,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 70
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 70
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &918754317
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -67427,9 +68472,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.79158
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.79158
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &919209396
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -67942,9 +68998,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.630836
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.630836
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &924105945
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -68361,9 +69428,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.17409
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.17409
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &928231169
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -68563,9 +69641,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.630836
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.630836
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &928320679
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -68835,9 +69924,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.078423
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.078423
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &932215442
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -69412,9 +70512,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 31.2
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 31.2
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &937270037
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -70037,9 +71148,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 24
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 24
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &943949197
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -70940,9 +72062,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.11238
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.11238
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &959414735
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -71142,9 +72275,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.16546
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.16546
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &961151582
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -71447,9 +72591,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.630836
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.630836
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &961770416
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -72357,9 +73512,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.45019
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.45019
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &976117647
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -72559,9 +73725,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.218773
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.218773
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &976663561
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -72964,9 +74141,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.243034
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.243034
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &982905194
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -73557,9 +74745,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 55.936264
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 55.936264
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &996746266
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -76715,9 +77914,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.4502
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.4502
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1042970140
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -78690,9 +79900,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.078423
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.078423
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1083066377
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -79157,9 +80378,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.922104
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.922104
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1088108880
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -79529,56 +80761,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
   m_PrefabInstance: {fileID: 1098835862}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1099989335
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1099989337}
-  - component: {fileID: 1099989336}
-  m_Layer: 0
-  m_Name: CollectionManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1099989336
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1099989335}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ced83d282c64c344f86be439382ed9e5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.CollectionManager
-  _player: {fileID: 1383278764837111838, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-  _playerBody: {fileID: 5413070822181651772, guid: 0100782c60628e644b721f3f90ebac77, type: 3}
-  _zombieBody: {fileID: 8723309985505290705, guid: dd5751df7ff985341b02d1f6a4339be8, type: 3}
-  _golem: {fileID: 6266521347309620899, guid: 5a758cfbf90b20a488e2cd66d749af4c, type: 3}
-  _particleBlob: {fileID: 2575264486969568327, guid: fd1e77cdf8bf57f4f8adce5617d40d25, type: 3}
-  _particleShapes: []
---- !u!4 &1099989337
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1099989335}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1101365990
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -80470,9 +81652,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 53.193176
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 53.193176
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1110516927
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -80947,9 +82140,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.078426
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.078426
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1118484107
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -82908,9 +84112,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1146270113
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -83331,9 +84546,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 31.199999
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 31.199999
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1153916620
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -83536,9 +84762,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 43.8
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 43.8
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1154656211
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -84335,9 +85572,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 31.199999
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 31.199999
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1161560776
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -85263,9 +86511,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 43.8
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 43.8
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1171759345
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -85638,9 +86897,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.4502
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.4502
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1175183560
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -86321,9 +87591,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.078423
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.078423
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1188073107
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -86729,9 +88010,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.11239
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.11239
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1192017712
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -87347,9 +88639,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 25.800001
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 25.800001
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1201852079
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -88736,9 +90039,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.999996
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.999996
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1225320751
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -88938,9 +90252,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.630836
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.630836
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1225581384
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -91853,9 +93178,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.23989
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.23989
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1278961264
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -92182,9 +93518,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 24
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 24
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1280219033
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -93534,9 +94881,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 54.600002
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 54.600002
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1293537934
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -93736,9 +95094,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.521217
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.521217
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1293843923
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -94550,9 +95919,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.791584
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.791584
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1314343347
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -94953,9 +96333,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.165462
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.165462
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1322550346
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -95414,9 +96805,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 36.600002
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 36.600002
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1324869832
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -95612,9 +97014,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.115185
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.115185
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1326405215
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -96631,9 +98044,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.79158
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.79158
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1344339093
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -96826,9 +98250,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.712982
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.712982
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1345167460
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -97241,9 +98676,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 68.696686
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 68.696686
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1346745173
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -97443,9 +98889,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.999996
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.999996
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1348500848
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -100290,9 +101747,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 51
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 51
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1392749639
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -101257,9 +102725,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.630836
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.630836
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1408917737
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -101455,9 +102934,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 36.6
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 36.6
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1409529348
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -102224,9 +103714,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 54.600002
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 54.600002
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1416017801
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -102505,9 +104006,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1416628861
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -103232,9 +104744,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 55.936264
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 55.936264
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1434247235
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -103665,9 +105188,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.23989
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.23989
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1437571562
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -104262,9 +105796,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.23988
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.23988
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1441321423
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -104567,9 +106112,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.218773
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.218773
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1442241906
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -105041,9 +106597,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 25.800001
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 25.800001
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1451394860
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -105933,9 +107500,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.45019
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.45019
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1462634363
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -106983,9 +108561,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.17409
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.17409
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1481077966
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -107390,9 +108979,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 25.800001
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 25.800001
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1494790945
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -107921,9 +109521,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.791584
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.791584
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1501923458
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -108267,9 +109878,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.11519
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.11519
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1510005294
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -108846,9 +110468,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 54.6
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 54.6
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1516415264
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -109899,9 +111532,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.218773
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.218773
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1526042670
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -110335,9 +111979,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.6
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.6
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1537829649
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -111114,9 +112769,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 20
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 20
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1551823903
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -111526,9 +113192,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.630836
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.630836
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1554668011
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -111910,9 +113587,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1559299624
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -112169,9 +113857,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1566996619
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -112349,9 +114048,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.218777
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.218777
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1568570839
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -112630,9 +114340,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1569850475
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -112889,9 +114610,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1570456809
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -113342,9 +115074,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.174088
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.174088
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1587036041
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -114530,9 +116273,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1601204818
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -114828,9 +116582,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.23988
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.23988
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1605437405
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -115034,9 +116799,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 43.8
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 43.8
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1605667555
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -116191,9 +117967,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 31.199999
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 31.199999
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1622743199
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -116386,9 +118173,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.105865
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.105865
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1623599141
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -116927,9 +118725,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.521217
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.521217
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1630003478
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -117129,9 +118938,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.630836
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.630836
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1630069538
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -118007,9 +119827,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.521214
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.521214
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1649178622
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -118761,9 +120592,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.21878
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.21878
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1667898168
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -119518,6 +121360,106 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -7945174478372592435, guid: 11b8a91e15088c044bf50aa18f4f63cd, type: 3}
+--- !u!1 &1685984172
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1685984174}
+  - component: {fileID: 1685984173}
+  m_Layer: 0
+  m_Name: Collection Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1685984173
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1685984172}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ced83d282c64c344f86be439382ed9e5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.CollectionManager
+  _player: {fileID: 1383278764837111838, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
+  _playerBody: {fileID: 5413070822181651772, guid: 0100782c60628e644b721f3f90ebac77, type: 3}
+  _zombieBody: {fileID: 8723309985505290705, guid: dd5751df7ff985341b02d1f6a4339be8, type: 3}
+  _golem: {fileID: 6266521347309620899, guid: 5a758cfbf90b20a488e2cd66d749af4c, type: 3}
+  _particleBlob: {fileID: 2575264486969568327, guid: fd1e77cdf8bf57f4f8adce5617d40d25, type: 3}
+  _particleShapes:
+  - {fileID: 8726103719728137381, guid: 9e52d6ffd25ee654a94e3d433ebdff41, type: 3}
+  - {fileID: 9145546620201818180, guid: 88649d5bd4960234ead44b055a0999c1, type: 3}
+  - {fileID: 190727005467868344, guid: 97b45b9067d842b44b1644654eaca889, type: 3}
+  - {fileID: 316271221292428590, guid: 22b35496d395b8f43b735215edd85daa, type: 3}
+  - {fileID: 6505824572698753984, guid: e797a7b65d7908445b9e7bfab05f87f4, type: 3}
+  - {fileID: 1826681536665996830, guid: 883f39e075f37a7488e4d1cc44725f59, type: 3}
+  - {fileID: 7733330322397392032, guid: 3af4244d031439a47bf8850727047dd3, type: 3}
+  - {fileID: 763438903866600352, guid: 446cd80aa5158744aa144fd5a9fd8a2a, type: 3}
+  - {fileID: 8358547962694006953, guid: 7bb4a06cd789cbe42aa13a0510d03095, type: 3}
+  - {fileID: 9127711972978878142, guid: cf3cf4ce8a8d9764b94f15fccdfd2d6d, type: 3}
+  - {fileID: 4968851840649407155, guid: 540d290a46fd6974ea3025d1f30b5f9c, type: 3}
+  - {fileID: 1814640587433626825, guid: 2a14084a90f18624d83bf0cd10268d4e, type: 3}
+  - {fileID: 7691052295123373384, guid: eb9c682c811f5af4cbf20da14b253b89, type: 3}
+  - {fileID: 1564738283749311758, guid: c5c469b8a4279b849b890d7c602b4613, type: 3}
+  - {fileID: 7022346708555293358, guid: d556cda59e4e3bd41a6c02603aaeb18d, type: 3}
+  - {fileID: 6622137165576686432, guid: 7c91ff9e3d2b3d1458e8fa5dd0f716fe, type: 3}
+  - {fileID: 9031826849829606988, guid: 7a2972f23d9842b4683be42216f84cbf, type: 3}
+  - {fileID: 1527473852814531150, guid: 60a6d59393200f84e94327f11e6c46e7, type: 3}
+  - {fileID: 4439639651578119736, guid: 4d66ff0008996ef479cfbb3cd0c7a9cb, type: 3}
+  - {fileID: 3695560570296831566, guid: ef771dbc9b8b7984f8acf86d4364fe07, type: 3}
+  - {fileID: 993002361977753789, guid: 1d2645c6c4cdca147850f92348e904ce, type: 3}
+  - {fileID: 2208875873137850574, guid: 4531100c6204a874fb8be2aedc37e1d5, type: 3}
+  - {fileID: 8184302200794817126, guid: 480c1f30c00f7164ab21c56f4c29adb5, type: 3}
+  - {fileID: 8038179859461810676, guid: a69da0522f04c2e4785276bf47a208c5, type: 3}
+  - {fileID: 9037936508961008317, guid: a39264db875ab6646a3cf07dee01bfe8, type: 3}
+  - {fileID: 2552809150446325347, guid: 81d96304b14b7514a833508bc849c72f, type: 3}
+  - {fileID: 1253942562426169948, guid: 38110f1f2e4a117468ee3a226b09de71, type: 3}
+  - {fileID: 3386980095127353415, guid: 94c3c3327e514094ea5b228723f71335, type: 3}
+  - {fileID: 7688178592400254390, guid: f158f86ad1b9ed74e92ff5934cf0ce86, type: 3}
+  - {fileID: 4916408152287126361, guid: 918904707618ef44395d371c40798bcc, type: 3}
+  _bookPages:
+  - {fileID: 2800000, guid: 57c5c0dbf98a3d044903aead489b8a81, type: 3}
+  - {fileID: 2800000, guid: e0fe5ea72f76c754cabf5a9abaa5b597, type: 3}
+  - {fileID: 2800000, guid: aa454893b91e0a0438a578a3a139687f, type: 3}
+  - {fileID: 2800000, guid: 9f818b153dcd0664fb5766bcf3a534c7, type: 3}
+  - {fileID: 2800000, guid: 31985aca23010f045ab6b71b10c6770b, type: 3}
+  - {fileID: 2800000, guid: 9ebbd5f640eff3b459b1fc29d082eac6, type: 3}
+  - {fileID: 2800000, guid: 4e2f6584dee0735498f5e65a7883d49d, type: 3}
+  - {fileID: 2800000, guid: 6697ee5bdf2fa3447a258eb399ae8121, type: 3}
+  - {fileID: 2800000, guid: d4228c94ec300f247b6cbf7e4ca2e650, type: 3}
+  - {fileID: 2800000, guid: dbb5654a240dd3e42acfb19865573c96, type: 3}
+  - {fileID: 2800000, guid: f789721437387da458b131f7cb87586b, type: 3}
+  - {fileID: 2800000, guid: d4a4751a5fb6ad443a3c4f67cc7fe734, type: 3}
+  - {fileID: 2800000, guid: d626d222b87123c498d4aaef9e218327, type: 3}
+  - {fileID: 2800000, guid: 1882310f9b78f504f928548ce6b3da0f, type: 3}
+  - {fileID: 2800000, guid: 3a57bc8b382c3d64692f776f58f13ebe, type: 3}
+  - {fileID: 2800000, guid: 4416a957cc7a9cb45b4cc8b54c559e3d, type: 3}
+  - {fileID: 2800000, guid: 6578d623f097608468dac779bd4930cb, type: 3}
+  - {fileID: 2800000, guid: ec165d82e0537e3479947280b99fb981, type: 3}
+  - {fileID: 2800000, guid: afec7491a2d52f74bb3e57116b48eb4d, type: 3}
+--- !u!4 &1685984174
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1685984172}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 8.31955, y: 0.058, z: -2.98529}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1686169759
 GameObject:
   m_ObjectHideFlags: 0
@@ -119926,9 +121868,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 53.193172
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 53.193172
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1691087561
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -120227,9 +122180,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 36.6
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 36.6
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1692418879
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -120910,9 +122874,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1700386446
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -120953,6 +122928,95 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
   Type: 0
+--- !u!1 &1700719126
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1700719128}
+  - component: {fileID: 1700719127}
+  m_Layer: 0
+  m_Name: Map Spells
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1700719127
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1700719126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c73af502a1d3d714a8dab56d34bdf8c5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.MapSpells
+  Spells:
+  - Heat
+  - Chill
+  - Light
+  - Dark
+  - Compress
+  - Spread
+  - Sticky
+  - Slick
+  - Solid
+  - Liquid
+  - Attract
+  - Repel
+  - Heat Area
+  - Freeze Area
+  - Blinding
+  - Tornado
+  - Flame
+  - Lightning
+  - Heal
+  - Steam
+  - Teleportation
+  - Buff
+  - Track
+  - Transparency
+  - Plasma
+  - Cloud
+  - Explosion
+  - Meteor
+  - Goo
+  - Fire Biome
+  - Frost Biome
+  - Melee Zombie
+  - Ranged Zombie
+  - Demon
+  - Decoy
+  - Reveal
+  - Death Needle
+  - Life Needle
+  - Evaporation Ink
+  - Transformation Ink
+  - Aggressive
+  - Spreading
+  - Solid Golem
+  - Liquid Golem
+--- !u!4 &1700719128
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1700719126}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 13.85511, y: 0.058, z: -5.29691}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!21 &1704121679
 Material:
   serializedVersion: 8
@@ -121315,9 +123379,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.521214
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.521214
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1706664480
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -122321,9 +124396,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.23988
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.23988
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1724454640
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -122758,9 +124844,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 53.193176
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 53.193176
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1732469511
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -123520,9 +125617,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1743550729
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -123843,9 +125951,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 43.8
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 43.8
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1748628639
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -124403,9 +126522,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.17408
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.17408
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1751656648
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -125220,9 +127350,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1760324699
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -126999,9 +129140,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1775113786
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -127425,9 +129577,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.4502
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.4502
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1777478098
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -128265,9 +130428,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 50.999996
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 50.999996
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1791896914
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -128690,9 +130864,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.11519
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.11519
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1794796413
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -129326,9 +131511,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 51
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 51
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1807506537
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -129532,9 +131728,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.600002
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.600002
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1808179863
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -132861,9 +135068,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.243034
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.243034
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1852888562
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -133753,9 +135971,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 43.8
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 43.8
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1870653903
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -134234,9 +136463,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.791584
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.791584
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1881173883
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -135000,9 +137240,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.630836
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.630836
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1886608233
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -135301,9 +137552,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 21.3
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 21.3
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1890049604
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -136395,9 +138657,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.078423
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.078423
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1906101111
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -137244,9 +139517,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.630836
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.630836
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1912805450
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -137509,9 +139793,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60.115185
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60.115185
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1915998905
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -138050,9 +140345,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 54.600002
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 54.600002
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1921165094
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -141276,9 +143582,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1976023691
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -141659,9 +143976,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 45.966835
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 45.966835
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1979498701
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -142661,9 +144989,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 24
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 24
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &1996103020
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -143433,9 +145772,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 25.800001
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 25.800001
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2010483391
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -143734,9 +146084,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.16546
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.16546
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2020407566
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -144232,9 +146593,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 54.600002
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 54.600002
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2027236192
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -144513,9 +146885,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2028003507
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -145568,9 +147951,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2043238766
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -146709,9 +149103,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 43.29807
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 43.29807
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2068367529
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -147766,9 +150171,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 46.243034
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 46.243034
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2086929004
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -148202,9 +150618,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 58.199997
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 58.199997
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2090309867
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -148693,9 +151120,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2094518142
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -149083,9 +151521,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 54.6
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 54.6
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2097253086
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -151050,9 +153499,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 68.696686
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 68.696686
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2119081321
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -151437,9 +153897,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 44.79158
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 44.79158
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2124385709
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -152466,9 +154937,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 38.399998
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 38.399998
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2132239249
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -152898,9 +155380,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 60
-  Destructible: 1
-  MaxStrength: 0
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 60
+  _authoredMax: 0
+  RemoveOnDeath: 1
 --- !u!54 &2134258620
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -153423,147 +155916,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a7f2bb1632d86634bbf858792dafbf64, type: 3}
---- !u!1001 &6676247858305611394
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 1383278764837111838, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_Name
-      value: Player
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[0].T
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[1].T
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[2].T
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[3].T
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[4].T
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[5].T
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[6].T
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[7].T
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[8].T
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[9].T
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[0].GrabHint
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[1].GrabHint
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[2].GrabHint
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[3].GrabHint
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[4].GrabHint
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[5].GrabHint
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[6].GrabHint
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[7].GrabHint
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[8].GrabHint
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 1986782870187205552, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: Joints.Array.data[9].GrabHint
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 2342276599172787768, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: BodyRenderer
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 4744955359373208029, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4744955359373208029, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0.9
-      objectReference: {fileID: 0}
-    - target: {fileID: 4744955359373208029, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -5
-      objectReference: {fileID: 0}
-    - target: {fileID: 4744955359373208029, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4744955359373208029, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4744955359373208029, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4744955359373208029, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4744955359373208029, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4744955359373208029, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4744955359373208029, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 45798674bafa9bb43af10793cde6a144, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -153572,7 +155924,6 @@ SceneRoots:
   - {fileID: 410087041}
   - {fileID: 832575519}
   - {fileID: 130998029}
-  - {fileID: 6676247858305611394}
   - {fileID: 2085067819}
   - {fileID: 883935794}
   - {fileID: 1429116874}
@@ -153583,4 +155934,5 @@ SceneRoots:
   - {fileID: 2132239244}
   - {fileID: 1227210680600497048}
   - {fileID: 1698947956}
-  - {fileID: 1099989337}
+  - {fileID: 1685984174}
+  - {fileID: 1700719128}

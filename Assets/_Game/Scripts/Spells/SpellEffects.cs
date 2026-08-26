@@ -2,6 +2,23 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
+    /// ★ WHAT IS ALLOWED TO BE AN EFFECT.
+    ///
+    /// Most of what a spell does is not in here and must not be: a particle
+    /// hands its numbers to whatever it touches, and burning, freezing,
+    /// sticking, slipping and dying all follow from those numbers on their own.
+    /// Anything written here that merely pushes a number is billing the target
+    /// a second time at a different rate.
+    ///
+    /// What belongs here is the two kinds of thing numbers cannot express:
+    ///
+    ///   EVENTS - a meteor falls, a target teleports, a sun appears. These
+    ///   happen once, somewhere, and no amount on an axis describes them.
+    ///
+    ///   SELECTIVE effects - poison eats only the living. A payload reaches
+    ///   everything it touches by definition, so anything that must choose its
+    ///   victims needs a case.
+
     /// The effect primitives the threshold table points at. Each is one verb,
     /// built on systems that already exist - heat goes through GiveHeatTo,
     /// buffs through Sides.AddBuff, phase through BodyState.SetPhase, the
@@ -16,11 +33,23 @@ namespace SpellyZombie
             if (row == null || target == null) return;
             switch (row.Effect)
             {
-                case "flame":
-                    // pour heat; ignition past IgnitePoint is Thermal's own
-                    // threshold - flame spreading IS the reaction table working
-                    SpellParticle.GiveHeatTo(target, 160f * power * dt);
+                case "poison":
+                    // POISON EATS THE LIVING ONLY - a mind is what living
+                    // means, so a wall in a puddle is just a wet wall. This one
+                    // stays a case because it is SELECTIVE: the payload reaches
+                    // everything it touches, and poison must not.
+                    {
+                        var victim = target.GetComponentInParent<Element>();
+                        if (victim != null && victim.Data.Alive)
+                            victim.TakeDamage(row.Param * power * dt, "the corruption", casterId);
+                    }
                     break;
+
+                // "flame" HAS NO CASE. It used to pour 160 heat a second here,
+                // on top of the heat the particle already handed over as part
+                // of its payload - so every flame billed its target twice, at
+                // two unrelated rates. Being hot IS the flame; the row exists
+                // to NAME that region and to say it spreads, not to do it again.
 
                 case "zap":
                     Damage(target, 16f * power, "lightning");
@@ -29,38 +58,53 @@ namespace SpellyZombie
 
                 case "heal":
                 {
+                    // THE TARGET's ceiling, not the caster's - healing someone
+                    // else used to cap them at whatever the local player's
+                    // maximum happened to be.
+                    float amount = row.Param * power * dt;
+                    int who = NetSync.OwnerOfBody(target);
+                    if (NetSync.PushPlayerFx(who, 1, amount)) break;
+
                     var pl = target.GetComponentInParent<SimpleFPSController>();
                     if (pl != null && !pl.IsDowned)
-                        pl.Health = Mathf.Min(Sides.MaxHealthFor(Grimoire.LocalPlayerId),
-                            pl.Health + row.Param * power * dt);
-                    else Mend(target, row.Param * power * dt);
+                        pl.Health = Mathf.Min(Sides.MaxHealthFor(who),
+                            pl.Health + amount);
+                    else Mend(target, amount);
                     break;
                 }
 
                 case "buff":
                 {
                     // raising a ceiling is the buff - cast on an enemy it is a
-                    // weapon, their mending slows (never restricted to allies)
-                    var pl = target.GetComponentInParent<SimpleFPSController>();
-                    if (pl != null) Sides.AddBuff(Grimoire.LocalPlayerId, row.Param * power);
+                    // weapon, their mending slows (never restricted to allies).
+                    // It raises the TARGET's ceiling; it used to raise the
+                    // caster's, so buffing an enemy buffed yourself.
+                    int who = NetSync.OwnerOfBody(target);
+                    if (who < 0) break;
+                    if (NetSync.PushPlayerFx(who, 2, row.Param * power)) break;
+                    Sides.AddBuff(who, row.Param * power);
                     break;
                 }
 
                 case "invisible":
-                {
-                    var body = BodyState.Of(target);
-                    if (body != null)
-                        body.SetPhase(MatterPhase.Liquid, row.Param); // you become liquid state
+                    // half gone while it lasts. Visibility is its own channel:
+                    // it does NOT claim you changed state, because state is
+                    // what your weight against the medium already says.
+                    FadeBody(target, DrawingConfig.FadeTransparency, row.Param);
                     break;
-                }
 
                 case "teleport":
                     // to where the slick seal was drawn - the caster's anchor
                     if (SealAnchors.TryGet(casterId, out var home))
+                    {
+                        if (NetSync.PushPlayerFx(NetSync.OwnerOfBody(target), 4,
+                                0f, MatterPhase.Solid, home)) break;
                         Blink(target, home);
+                    }
                     break;
 
                 case "trail":
+                    if (NetSync.PushPlayerFx(NetSync.OwnerOfBody(target), 5, row.Param)) break;
                     TrailMark.Wear(target.transform, row.Param);
                     break;
 
@@ -70,10 +114,11 @@ namespace SpellyZombie
 
                 case "cloud":
                 {
-                    var body = BodyState.Of(target);
-                    if (body != null)
-                        body.SetPhase(MatterPhase.Gas, 4f);  // the cloud makes you gas
-                    Mend(target, 12f * power * dt);
+                    // three quarters gone - harder to cast, so it hides more
+                    FadeBody(target, DrawingConfig.FadeCloud, row.Param);
+                    int who = NetSync.OwnerOfBody(target);
+                    if (!NetSync.PushPlayerFx(who, 1, 12f * power * dt))
+                        Mend(target, 12f * power * dt);
                     break;
                 }
 
@@ -82,10 +127,16 @@ namespace SpellyZombie
                     // the victim teleports away, a blast stays, and the victim
                     // ARRIVES BUFFED - the double-edged sword, by ruling
                     Vector3 was = target.transform.position;
-                    Blink(target, was + Random.onUnitSphere.WithY(0.2f) * 9f);
+                    Vector3 to = was + Random.onUnitSphere.WithY(0.2f) * 9f;
+                    int who = NetSync.OwnerOfBody(target);
+
+                    // the VICTIM arrives buffed, by ruling - it used to buff
+                    // whoever was local, which on a host meant the caster
+                    if (!NetSync.PushPlayerFx(who, 4, 0f, MatterPhase.Solid, to))
+                        Blink(target, to);
                     Boom(was, power);
-                    var pl = target.GetComponentInParent<SimpleFPSController>();
-                    if (pl != null) Sides.AddBuff(Grimoire.LocalPlayerId, 20f * power);
+                    if (who >= 0 && !NetSync.PushPlayerFx(who, 2, 20f * power))
+                        Sides.AddBuff(who, 20f * power);
                     break;
                 }
 
@@ -105,10 +156,25 @@ namespace SpellyZombie
 
         static void Damage(Collider c, float amount, string cause)
         {
-            var d = c.GetComponentInParent<Damageable>();
+            // Element IS the network law now: it knows its own id, asks the
+            // host when it is not one, and the host answers to everybody.
+            var d = c.GetComponentInParent<Element>();
             if (d != null) { d.TakeDamage(amount, cause); return; }
             var p = c.GetComponentInParent<SimpleFPSController>();
             if (p != null) p.TakeHit(Vector3.zero, amount, cause);
+        }
+
+        /// Fade whatever this is - player, creature or crate. Works the same on
+        /// all of them, and reaches a remote player's own machine.
+        static void FadeBody(Collider c, float visible, float seconds)
+        {
+            if (seconds <= 0f) seconds = 1f;
+            if (NetSync.PushPlayerFx(NetSync.OwnerOfBody(c), 6, seconds,
+                    MatterPhase.Solid, new Vector3(visible, 0f, 0f))) return;
+
+            var view = c.GetComponentInParent<StateView>()
+                    ?? c.GetComponentInChildren<StateView>();
+            if (view != null) view.Fade(visible, seconds);
         }
 
         static void Shove(Collider c, Vector3 dir, float force)
@@ -119,12 +185,15 @@ namespace SpellyZombie
 
         static void Mend(Collider c, float amount)
         {
-            var d = c.GetComponentInParent<Damageable>();
+            var d = c.GetComponentInParent<Element>();
             if (d != null && d.MaxStrength > 0f)
                 d.Health = Mathf.Min(d.MaxStrength, d.Health + amount);
         }
 
-        static void Blink(Collider c, Vector3 to)
+        /// Move a body somewhere, CharacterController and all. Public because
+        /// the MovesToOrigin row uses this same one - there must not be two
+        /// teleports that disagree about how to put a player down.
+        public static void Blink(Collider c, Vector3 to)
         {
             var root = c.attachedRigidbody != null ? c.attachedRigidbody.transform
                 : c.GetComponentInParent<SimpleFPSController>()?.transform

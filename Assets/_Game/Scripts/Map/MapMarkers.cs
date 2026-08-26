@@ -34,11 +34,6 @@ namespace SpellyZombie
         public bool Rare;
     }
 
-    /// One of the possible mystery chest locations this run.
-    public class MysteryChestSpawnPoint : MonoBehaviour
-    {
-    }
-
     /// Environment zone bounds + baseline conditions for the zone simulation.
     [RequireComponent(typeof(BoxCollider))]
     public class ZoneVolume : MonoBehaviour

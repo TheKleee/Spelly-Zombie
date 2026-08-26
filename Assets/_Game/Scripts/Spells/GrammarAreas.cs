@@ -269,6 +269,17 @@ namespace SpellyZombie
 
         protected override void Grow(float dt)
         {
+            if (Grows)
+            {
+                if (_bornRadius <= 0f) _bornRadius = Radius;
+                Radius = Mathf.Min(_bornRadius + DrawingConfig.SpreadReach,
+                    Radius + DrawingConfig.SpreadShare * dt);
+            }
+            GrowInner(dt);
+        }
+
+        void GrowInner(float dt)
+        {
             if ((_puffIn -= dt) > 0f) return;
             if (FxLibrary.I == null) return;
 
@@ -284,12 +295,16 @@ namespace SpellyZombie
             float crowd = Mathf.Max(1f, _liveFields / DrawingConfig.PoisonFxCrowd);
             _puffIn = DrawingConfig.PoisonPuffEvery * crowd;
 
-            // skip puffs farther than PoisonFxDistance from the camera
-            var eye = Camera.main;
-            if (eye != null)
+            // skip puffs farther than PoisonFxDistance from the LOCAL VIEW -
+            // the ghost camera while ghosting. Camera.main is the corpse's
+            // parked camera then, and measuring from it culled every cloud
+            // around the zombie being driven.
+            Vector3? view = GhostState.LocalViewPoint;
+            if (view == null && Camera.main != null) view = Camera.main.transform.position;
+            if (view.HasValue)
             {
                 float far = DrawingConfig.PoisonFxDistance;
-                if ((eye.transform.position - transform.position).sqrMagnitude > far * far)
+                if ((view.Value - transform.position).sqrMagnitude > far * far)
                     return;
             }
 
@@ -297,6 +312,18 @@ namespace SpellyZombie
             Vector3 spot = transform.position;
             if (!_firstPuff) spot += Random.insideUnitSphere * Radius * 0.6f;
             _firstPuff = false;
+
+            // ★ FROM INSIDE THE CLOUD (the ghost camera rides the zombie's
+            // head) the billboards spawned behind the lens and the aura
+            // looked GONE. Push any puff born on top of the view out to a
+            // visible fringe instead.
+            if (view.HasValue)
+            {
+                Vector3 off = spot - view.Value;
+                if (off.sqrMagnitude < 0.81f)
+                    spot = view.Value + (off.sqrMagnitude < 0.0001f
+                        ? Vector3.forward : off.normalized) * 0.9f;
+            }
 
             var fx = FxLibrary.Spawn(FxLibrary.I.GasCloud, spot, null, PuffLife);
             // the prefab emits 2-3 UNIT particles, so metres need converting
@@ -311,6 +338,15 @@ namespace SpellyZombie
         {
             var f = Spawn<PoisonField>(at, 1f, radius, seconds, Sick, MoteShade.Transparent);
             f.ShowGroundRing(ring);
+            // ITS NUMBERS COME FROM THE SPELL, not from whoever opened it. Tune
+            // the Goo row and every puddle in the game follows - the zombie's
+            // puke and an acolyte's cast are one spell with one set of numbers.
+            var row = SpellTable.ByName("Goo");
+            if (row != null)
+            {
+                f.Bite = row.Param;
+                f.Grows = row.Spreads;
+            }
             // stagger so simultaneous clouds don't starve each other
             f._puffIn = Random.value * DrawingConfig.PoisonPuffEvery;
             if (rideOn != null)
@@ -322,18 +358,56 @@ namespace SpellyZombie
         }
 
         /// Acolytes are immune; asked before the pulse so they get no edges either.
+        /// WHICH SIDE CAST THIS, and whether it spares them. Was hardcoded
+        /// as "never hurts acolytes", which was true only because every source
+        /// of poison happened to be a zombie. Now it is two fields, so a
+        /// wizard-cast poison spares wizards without a second class.
+        public Side? Team = Side.Acolyte;   // zombie gas serves the acolytes
+        public bool SparesOwnTeam = true;
+
+        /// Who cast it - carried so a poison kill belongs to somebody, the
+        /// same rule spreading obeys.
+        public int Owner = -1;
+
+        /// How hard it bites, from the Goo row rather than a constant, so
+        /// tuning the spell tunes the puddle it leaves.
+        public float Bite = DrawingConfig.PoisonDamage;
+
+        /// A SPREADING spell does not sit where it landed. The row says so;
+        /// this just obeys it, and it stops at SpreadReach past its birth size
+        /// so a puddle cannot eat a map.
+        public bool Grows;
+        float _bornRadius;
+
         protected override bool AffectsPlayer(SimpleFPSController p) =>
-            !Sides.IsAcolytePlayer(p);
+            !(SparesOwnTeam && Team.HasValue && Sides.SideOfThing(p.gameObject) == Team);
 
         protected override void Affect(Collider c, float dt)
         {
             var p = c.GetComponentInParent<SimpleFPSController>();
-            if (p == null || p.IsDowned) return;
-            if (Wearer != null && p.transform == Wearer) return;  // your own cloud
-            if (!AffectsPlayer(p)) return;   // one predicate, asked here and by the HUD
+            if (p != null)
+            {
+                if (p.IsDowned) return;
+                if (Wearer != null && p.transform == Wearer) return;  // your own cloud
+                if (!AffectsPlayer(p)) return;   // one predicate, asked here and by the HUD
+                p.TakeHit(Vector3.zero, Bite * dt, "the corruption");
+                Cling(p, dt);
+                return;
+            }
 
-            p.TakeHit(Vector3.zero, DrawingConfig.PoisonDamage * dt, "the corruption");
-            Cling(p, dt);
+            // ★ POISON EATS WHATEVER IS ALIVE, and a MIND is what living means -
+            // a zombie has one, a wall does not. Asking the number means no
+            // list of creature types exists to fall out of date, and it is why
+            // poison used to do nothing at all to zombies and golems: this
+            // method returned the moment the thing was not a player.
+            var el = c.GetComponentInParent<Element>();
+            if (el == null || !el.Data.Alive) return;
+            if (Wearer != null && el.transform == Wearer) return;
+            // the same team rule, asked of a zombie or a golem rather than a
+            // player - an acolyte's gas must not eat the acolytes' own dead
+            if (SparesOwnTeam && Team.HasValue
+                && Sides.SideOfThing(el.gameObject) == Team) return;
+            el.TakeDamage(Bite * dt, "the corruption", Owner);
         }
 
         /// Attaches a small PoisonField to the victim's head; it grows with

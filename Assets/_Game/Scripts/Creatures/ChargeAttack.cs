@@ -15,12 +15,19 @@ namespace SpellyZombie
         public float Cooldown = 4f;
         public float Damage = 12f;
 
+        /// Authored animation for the tell, from the worn spell. Empty = the
+        /// built-in hop is the whole tell. The hop and eyes stay either way -
+        /// the dodge window is law, the clip is its face.
+        public AnimationClip TellClip;
+
         enum Beat { Idle, Tell, Run, Recover }
 
         Beat _beat = Beat.Idle;
         float _until, _readyAt;
         Vector3 _dir;
         Rigidbody _rb;
+        Element _me2;
+        float _lentStrength;   // what the charge is holding up, given back after
         Creature _me;
         GooglyEyes _eyes;
 
@@ -51,9 +58,11 @@ namespace SpellyZombie
 
             _dir = flat.normalized;   // LOCKED HERE - where you were, not where you go
             _beat = Beat.Tell;
+            LendStrength();
             _until = Time.time + DrawingConfig.ChargeTellSeconds;
 
             // the tell: a hop in place and wide angry eyes
+            if (TellClip != null) OneShotClip.Play(gameObject, TellClip);
             if (_rb != null && !_rb.isKinematic)
                 _rb.AddForce(Vector3.up * DrawingConfig.ChargeTellHop, ForceMode.VelocityChange);
             if (_eyes != null)
@@ -78,7 +87,7 @@ namespace SpellyZombie
                     _beat = Beat.Run;
                     _until = Time.time + DrawingConfig.ChargeRunSeconds;
                 }
-                else if (_beat == Beat.Recover) { _beat = Beat.Idle; return; }
+                else if (_beat == Beat.Recover) { _beat = Beat.Idle; TakeStrengthBack(); return; }
                 else { Stop(); return; }
             }
 
@@ -110,6 +119,31 @@ namespace SpellyZombie
                 return;
             }
             _beat = Beat.Idle;
+            TakeStrengthBack();
+        }
+
+        /// BRACED FOR ITS OWN HIT. A charge hurts the charger - that is the
+        /// same law a falling rock obeys - so it is lent strength for the
+        /// length of the charge and survives what it dishes out. Take the
+        /// loan away and ramming a wall is suicide again, which is the point:
+        /// the survival is a number, not an exception.
+        void LendStrength()
+        {
+            if (_me2 == null) _me2 = GetComponent<Element>();
+            if (_me2 == null || _lentStrength > 0f) return;
+            _lentStrength = _me2.MaxStrength * (DrawingConfig.ChargeStrengthMul - 1f);
+            if (_lentStrength <= 0f) { _lentStrength = 0f; return; }
+            _me2.MaxStrength += _lentStrength;
+            _me2.Health += _lentStrength;
+        }
+
+        void TakeStrengthBack()
+        {
+            if (_me2 == null || _lentStrength <= 0f) return;
+            _me2.MaxStrength = Mathf.Max(1f, _me2.MaxStrength - _lentStrength);
+            // it keeps whatever the charge cost it; only the loan goes back
+            _me2.Health = Mathf.Min(_me2.Health, _me2.MaxStrength);
+            _lentStrength = 0f;
         }
 
         void OnCollisionEnter(Collision c)
@@ -135,7 +169,7 @@ namespace SpellyZombie
             }
             else
             {
-                var dmg = c.collider.GetComponentInParent<Damageable>();
+                var dmg = c.collider.GetComponentInParent<Element>();
                 if (dmg != null && dmg.gameObject != gameObject)
                     dmg.TakeDamage(hit, $"{name} charge");
                 var orb = c.collider.attachedRigidbody;

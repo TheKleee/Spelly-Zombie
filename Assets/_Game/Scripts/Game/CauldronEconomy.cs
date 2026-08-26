@@ -45,19 +45,19 @@ namespace SpellyZombie
         /// The endgame puddle at the InkGrave, built by Ground() when every cauldron is broken.
         [System.NonSerialized] public bool Grounded;
 
-        Damageable _hp;
+        Element _hp;
 
         void Awake()
         {
             // Subscribed once for the object's lifetime; SetActive cycles must
-            // not stack handlers. All Damageables under the pot count.
-            _hp = GetComponentInChildren<Damageable>(true);
-            var mine = new System.Collections.Generic.HashSet<Damageable>(
-                GetComponentsInChildren<Damageable>(true));
+            // not stack handlers. All Elements under the pot count.
+            _hp = GetComponentInChildren<Element>(true);
+            var mine = new System.Collections.Generic.HashSet<Element>(
+                GetComponentsInChildren<Element>(true));
             foreach (var d in mine)
                 d.OnDeath += _ => OnPotBroken();
-            // the Damageable may also sit above this component
-            var above = GetComponentInParent<Damageable>();
+            // the Element may also sit above this component
+            var above = GetComponentInParent<Element>();
             if (above != null && !mine.Contains(above))
             {
                 if (_hp == null) _hp = above;
@@ -149,9 +149,9 @@ namespace SpellyZombie
             {
                 _warnedMortal = true;
                 if (_hp == null)
-                    Debug.LogWarning($"[SpellyZombie] Cauldron '{name}' has no Damageable — it can never " +
+                    Debug.LogWarning($"[SpellyZombie] Cauldron '{name}' has no Element — it can never " +
                         "shatter, the ink can never flee, and the InkGrave endgame can never happen. Add " +
-                        "Damageable (big HP — 'more durable') + Breakable to the prefab.", this);
+                        "Element (big HP — 'more durable') + Breakable to the prefab.", this);
             }
         }
 
@@ -366,7 +366,7 @@ namespace SpellyZombie
                     {
                         var z = Zombie.All[i];
                         if (z != null)
-                            z.GetComponent<Damageable>()?.TakeDamage(99999f, "the cauldron awakens");
+                            z.GetComponent<Element>()?.TakeDamage(99999f, "the cauldron awakens");
                     }
 
                     Juice.Chime(transform.position);

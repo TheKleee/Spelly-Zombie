@@ -35,9 +35,9 @@ namespace SpellyZombie
             ["chip.third"] = "third person",
             ["chip.pose"] = "pose your wizard",
             ["chip.watch"] = "watch your dead",
-            ["chip.become"] = "become the {0}",
+            ["chip.become"] = "become it again",
             ["chip.melt"] = "melt back to idle",
-            ["chip.precise"] = "precise drawing",
+            ["chip.precise"] = "faster drawing",
             ["chip.erase"] = "erase ink",
             ["chip.absorb"] = "absorb it",
 

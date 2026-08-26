@@ -19,7 +19,9 @@ namespace SpellyZombie
         // calamities, feared by every zombie
         bool _grand;
         float _calamityTick, _grandFearTick;
-        Damageable _grandDmg;
+        float _patrolTick, _castTick;
+        Zombie _body2;
+        Element _grandDmg;
 
         public static Demon SummonGrand(Vector3 pos, float srcSize)
         {
@@ -38,12 +40,12 @@ namespace SpellyZombie
             }
 
             // unkillable from frame zero: Update's refresh alone is one frame too late
-            d._grandDmg = d.GetComponent<Damageable>();
+            d._grandDmg = d.GetComponent<Element>();
             if (d._grandDmg != null) d._grandDmg.Health = 999999f;
 
             // fearless, or its own calamities write Danger memories that freeze it
             var brain = d.GetComponent<ZombieBrain>();
-            if (brain != null) brain.Fearless = true;
+            if (brain != null) brain.AlwaysFearless = true;
             DrawingWorld.Instance?.LogEvent("ALL TWELVE ANSWERED. RUN.");
             Juice.Boom(pos, 1.4f);
             Juice.Shake(1f, 0.8f);
@@ -60,9 +62,9 @@ namespace SpellyZombie
             switch (Random.Range(0, 6))
             {
                 case 0: GrammarFX.FlameBurst(at, 1f); break;
-                case 1: ArtificialBiome.Open(at, new SpellPayload { Heat = 30f }, 5f, 1f); break;
-                case 2: ArtificialBiome.Open(at, new SpellPayload { Heat = -30f, Lum = -0.8f }, 5f, 1f); break;
-                case 3: ArtificialBiome.Open(at, new SpellPayload { Affinity = 1f, Weight = 0.6f }, 6f, 1f); break;
+                case 1: ArtificialBiome.Open(at, new SpellPayload { Temp = 30f }, 5f, 1f); break;
+                case 2: ArtificialBiome.Open(at, new SpellPayload { Temp = -30f, Lum = -0.8f }, 5f, 1f); break;
+                case 3: ArtificialBiome.Open(at, new SpellPayload { Affinity = 1f, Pressure = 0.6f }, 6f, 1f); break;
                 case 4: SpellEffects.Meteor(at, 1f, Random.Range(1, 4)); break;
                 default: Golem.Spawn(at, Random.Range(0.7f, 1.4f)); break;
             }
@@ -73,7 +75,17 @@ namespace SpellyZombie
         /// that condensed into the rift - bigger drawing, bigger demon.
         public static Demon Summon(Vector3 pos, float srcSize)
         {
-            var z = Zombie.Spawn(pos, ZombieKind.Walker, 1.15f);
+            var z = Zombie.Spawn(pos, 1.15f);
+            // THE DEMON HAS EVERY SPELL AS AN ABILITY - which is the reason a
+            // creature stores a LIST rather than wearing one label.
+            if (z != null)
+            {
+                // SPELLS ONLY. It does not charge and it does not throw - it
+                // spams spells, wrecks what is around it, and patrols at
+                // random. Every row in the table is one of its abilities,
+                // which is the whole reason a creature stores a list.
+                foreach (var row in SpellTable.Rows) z.Abilities.Add(row.Name);
+            }
             if (z == null) return null;
             z.name = "Demon";
 
@@ -108,7 +120,7 @@ namespace SpellyZombie
             var db = z.GetComponent<ZombieBrain>();
             if (db != null)
             {
-                db.Fearless = true; // a flame demon must not flee its own aura
+                db.AlwaysFearless = true; // a flame demon must not flee its own aura
                 db.Mumble("RRAAAH!!", 2f);
             }
             demon.Retint();
@@ -197,7 +209,7 @@ namespace SpellyZombie
             if (_grand)
             {
                 // refresh health: only the clock ends a grand demon
-                if (_grandDmg == null) _grandDmg = GetComponent<Damageable>();
+                if (_grandDmg == null) _grandDmg = GetComponent<Element>();
                 if (_grandDmg != null) _grandDmg.Health = 999999f;
 
                 // every zombie nearby flees
@@ -215,6 +227,9 @@ namespace SpellyZombie
                     Calamity();
                 }
             }
+
+            Patrol(dt);
+            SpamSpells(dt);
 
             // the aura: leaks its element as real particles, no special cases
             _auraTick -= dt;
@@ -245,5 +260,58 @@ namespace SpellyZombie
             DrawingWorld.Instance?.LogEvent($"the {_form} demon returns to the dark");
             Destroy(gameObject);
         }
-    }
+    
+        /// IT WANDERS. No route, no guard post, no owner to protect - it picks
+        /// somewhere and goes, and whatever it walks into is its problem. The
+        /// zombie body it wears does the actual moving, so this only ever says
+        /// WHERE.
+        void Patrol(float dt)
+        {
+            _patrolTick -= dt;
+            if (_patrolTick > 0f) return;
+            _patrolTick = Random.Range(DrawingConfig.DemonPatrolMin, DrawingConfig.DemonPatrolMax);
+
+            if (_body2 == null) _body2 = GetComponent<Zombie>();
+            var brain = _body2 != null ? _body2.GetComponent<ZombieBrain>() : null;
+            if (brain == null) return;
+
+            float a = Random.value * Mathf.PI * 2f;
+            float r = Random.Range(DrawingConfig.DemonPatrolNear, DrawingConfig.DemonPatrolFar);
+            brain.Order(transform.position + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * r);
+        }
+
+        /// IT SPAMS SPELLS. Every ability it has is a row in the table, so
+        /// casting is picking one at random and putting a particle into the
+        /// world whose NUMBERS sit in that row's region. Nothing here knows
+        /// what any individual spell does - the numbers decide that, the same
+        /// way they decide it for a player.
+        void SpamSpells(float dt)
+        {
+            _castTick -= dt;
+            if (_castTick > 0f) return;
+            _castTick = Random.Range(DrawingConfig.DemonCastMin, DrawingConfig.DemonCastMax);
+
+            if (_body2 == null) _body2 = GetComponent<Zombie>();
+            if (_body2 == null || _body2.Abilities.Count == 0) return;
+
+            var row = SpellTable.ByName(_body2.Abilities[Random.Range(0, _body2.Abilities.Count)]);
+            if (row == null) return;   // charge and goo are not rows; it has neither
+
+            // land it comfortably PAST the threshold so the region it names is
+            // the region it actually falls in
+            var load = new SpellPayload();
+            for (int i = 0; i < SpellPayload.AxisCount; i++)
+                load[i] = row[i] * SpellPayload.UnitOf(i)
+                        * DrawingConfig.FusionAt * DrawingConfig.DemonCastPower;
+
+            Vector3 from = transform.position + Vector3.up * transform.localScale.y;
+            Vector3 dir = Random.onUnitSphere;
+            dir.y = Mathf.Abs(dir.y) * 0.35f;
+            var mote = SpellParticle.Emit(ParticleKind.Push, from, dir.normalized, 1.4f);
+            if (mote == null) return;
+            mote.Data = load.Clamped();
+            mote.OwnerId = -1;          // the demon serves nobody
+            mote.Wake();
+        }
+}
 }

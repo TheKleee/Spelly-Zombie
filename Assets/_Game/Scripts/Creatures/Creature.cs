@@ -31,14 +31,14 @@ namespace SpellyZombie
         float _stuckLeft, _slipLeft, _burnLeft, _flameTimer, _getUpLeft;
         Rigidbody _rb;
         Thermal _thermal;
-        Damageable _dmg;
+        Element _dmg;
         GameObject _iceShell;
         RigidbodyConstraints _normalConstraints;
 
         void Awake()
         {
             _rb = GetComponent<Rigidbody>();
-            _dmg = GetComponent<Damageable>();
+            _dmg = GetComponent<Element>();
             _thermal = GetComponent<Thermal>(); // late-added Thermals bind themselves (BindThermal)
             if (_rb != null) _normalConstraints = _rb.constraints;
         }
@@ -210,11 +210,12 @@ namespace SpellyZombie
             float speed = col.relativeVelocity.magnitude;
             if (speed < DrawingConfig.ImpactDamageSpeed) return;
 
-            // A CHARGE IS AN ATTACK, NOT AN ACCIDENT. Without this the charger
-            // pays its own impact damage for the hit it aimed at, so ramming
-            // anything was suicide. Being thrown into a wall still hurts.
-            var mine = GetComponent<ChargeAttack>();
-            if (mine != null && mine.Busy) return;
+            // A CHARGER PAYS FOR ITS OWN IMPACT, like everything else. There
+            // is no exemption: it survives because it is STRONGER while it
+            // charges, not because the physics stopped applying to it. His
+            // rule - "charge should also deal damage to the one who's charging
+            // but we can mitigate this by giving the charger more strength
+            // while charging thus not killing itself."
             float dmg = (speed - DrawingConfig.ImpactDamageSpeed) * DrawingConfig.ImpactDamagePerSpeed;
 
             // a flung zombie is a projectile: whoever it lands on feels it too

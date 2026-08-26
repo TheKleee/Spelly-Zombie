@@ -46,6 +46,7 @@ namespace SpellyZombie
         int _lastHash;          // aimed-drawing identity - classify ONLY on change
         Stroke _lastSeed;       // steady-aim skip: same seed + same ink = no re-flood
         int _lastStrokeCount;
+        int _lastBookKey = int.MinValue; // book open/page state the cached offer was made under
         RuneType _lastReadAs;
         float _lastReadScore;
         Stroke _poppedFor;   // the drawing whose hover already popped the book
@@ -90,6 +91,17 @@ namespace SpellyZombie
             // camera, the easel with the cursor
             if (kb == null)
             { TargetInReach = false; DeclareInReach = false; Highlight(null); return; }
+
+            // ABSORBING IS AIM + F, like the acolyte's scan. The source itself
+            // is only a label; the badge already decided it has something to
+            // teach and that we are close enough, so this just takes it.
+            if (kb.fKey.wasPressedThisFrame && !UIKit.Typing
+                && !GameMenu.IsOpen && !PoseStudio.IsOpen
+                && AimBadge.Aimed is AbsorbSource source)
+            {
+                source.Teach(Grimoire.LocalPlayerId);
+                return;
+            }
 
             // already-absorbed things are skipped by Best(), so F falls
             // through to the drawing behind them
@@ -263,9 +275,14 @@ namespace SpellyZombie
             }
 
             // steady-aim cache: same seed (or cached member) + same stroke
-            // count + all members still eligible = keep the cluster and verdict
+            // count + all members still eligible = keep the cluster and verdict.
+            // The offer depends on the BOOK too - opening it or turning a page
+            // must recompute even when the aimed ink hasn't changed.
+            int bookKey = !GrimoirePages.BookOpen ? 0
+                : GrimoirePages.SealPageOpen ? -1 : (int)GrimoirePages.PageRune + 1;
             if ((seed == _lastSeed || _inkMembers.Contains(seed))
                 && world.Strokes.Count == _lastStrokeCount
+                && bookKey == _lastBookKey
                 && _inkMembers.Count > 0)
             {
                 bool stillTrue = true;
@@ -277,6 +294,7 @@ namespace SpellyZombie
             _inkSeal = false;
             _lastSeed = seed;
             _lastStrokeCount = world.Strokes.Count;
+            _lastBookKey = bookKey;
 
             // flood among nearby strokes only
             _near.Clear();

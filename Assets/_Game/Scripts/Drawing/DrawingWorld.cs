@@ -396,6 +396,8 @@ namespace SpellyZombie
                     var s = Strokes[i];
                     if (s == null || !s.Alive) { Strokes.RemoveAt(i); continue; }
                     if (s.State != StrokeState.Open || s.Persistent) continue;
+                    // rune-wall ink IS the saved sample pool - it never dries
+                    if (s.Surface != null && s.Surface.GetComponentInParent<RuneWall>() != null) continue;
                     float over = (Time.time - s.BornAt) - DrawingConfig.InkEvaporateSeconds;
                     if (over <= 0f) continue;
                     float k = 1f - over / Mathf.Max(0.5f, DrawingConfig.InkEvaporateFadeSeconds);
@@ -1115,6 +1117,7 @@ namespace SpellyZombie
             {
                 if (!s.Alive || s.Hidden()) continue; // can't rub out invisible ink
                 if (!missBox.Intersects(RuneGlyph.StrokeBounds(s))) continue;
+                bool rubbed = false;
                 foreach (var n in s.Nodes)
                 {
                     if (n == null) continue;
@@ -1128,6 +1131,7 @@ namespace SpellyZombie
                             * DrawingConfig.ScoopRefund);
                         Destroy(n.gameObject);
                         ErasedTotal++;
+                        rubbed = true;
                     }
                     else if (d2 < radius * 4f * (radius * 4f))
                     {
@@ -1140,6 +1144,10 @@ namespace SpellyZombie
                         }
                     }
                 }
+                // only the player's own eraser may clear a rune wall's saved
+                // pool - stamp the wall this rub worked
+                if (rubbed && s.Surface != null)
+                    s.Surface.GetComponentInParent<RuneWall>()?.NoteHandErase();
             }
         }
 

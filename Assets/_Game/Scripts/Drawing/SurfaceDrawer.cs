@@ -143,7 +143,6 @@ namespace SpellyZombie
 
             if (erasing)
             {
-                Hints.Retire(Hints.Id.Erase);
                 EndStroke();
                 if (!_wasErasing) _holdEraseStart = DrawingWorld.ErasedTotal; // fresh rub
                 var eraseRay = GetAimRay(mouse);
@@ -174,7 +173,9 @@ namespace SpellyZombie
             }
             else if (penDown && !_suppressUntilRelease)
             {
-                Hints.Offer(Hints.Id.Erase); // the pen's other end, taught once
+                // the pen's OTHER END - an affordance, so it shows every time
+                // the pen is down and gets out of the way while erasing
+                UIPrompt.Offer("RMB", Loc.T("chip.erase"));
                 if (AimHit(GetAimRay(mouse), out var hit))
                     HandleDrawHit(hit);
                 else
@@ -254,6 +255,16 @@ namespace SpellyZombie
                 return;
             }
 
+            // ★ OTHER PLAYERS ARE NOT PAPER (his rule): you draw on yourself
+            // and on zombies. A moving player would be a lying canvas (the
+            // shell can't follow animation) and freezing them would be worse.
+            var victim = hit.collider.GetComponentInParent<SimpleFPSController>();
+            if (victim != null && !victim.IsLocalViewer)
+            {
+                EndStroke();
+                return;
+            }
+
             // the shell is just the canvas - body ink parents to the nearest limb
             Transform surface = hit.collider.transform;
             if (surface.name == "PaintShell" && SelfPaint.ActiveRoot != null)
@@ -261,15 +272,6 @@ namespace SpellyZombie
                 var rig = SelfPaint.ActiveRoot.GetComponent<CharacterRig>();
                 var limb = rig != null ? rig.NearestLimbSurface(hit.point) : null;
                 if (limb != null) surface = limb;
-            }
-
-            // a zombie's dress shell is a raycast-only catcher - ink parents to the
-            // zombie root. Another player's BodyCanvas routes to their nearest limb.
-            if (surface.name == "BodyCanvas")
-            {
-                var victimRig = hit.collider.GetComponentInParent<CharacterRig>();
-                var victimLimb = victimRig != null ? victimRig.NearestLimbSurface(hit.point) : null;
-                if (victimLimb != null) surface = victimLimb;
             }
 
             var zombieOwner = ZombieOwner.From(hit.collider);

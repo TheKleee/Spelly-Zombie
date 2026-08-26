@@ -105,7 +105,7 @@ namespace SpellyZombie
             if (!ReferenceEquals(_zombie, null))
             {
                 // dead counts as gone: the corpse object can linger a while
-                var dmg = _zombie == null ? null : _zombie.GetComponent<Damageable>();
+                var dmg = _zombie == null ? null : _zombie.GetComponent<Element>();
                 if (_zombie == null || !_zombie.isActiveAndEnabled
                     || (dmg != null && dmg.Health <= 0f))
                 {
@@ -213,6 +213,20 @@ namespace SpellyZombie
         /// Full WASD relative to the look, and the camera rides in its head.
         void DriveZombie()
         {
+            // ★ A FALLEN BODY THROWS ITS RIDER (his rule): knocked down or
+            // ragdolled - Slipping/GettingUp, the actual fall states - the
+            // ghost slips out, same as pressing F. NOT on Stuck/Frozen: a
+            // rooted body keeps its rider (keying this on CanMove ejected the
+            // ghost every time its own goo puddle gripped its feet).
+            var body = _zombie != null ? _zombie.GetComponent<Creature>() : null;
+            if (_zombie == null || (body != null && (body.Slipping || body.GettingUp)))
+            {
+                _noGrabUntil = Time.time + 0.8f;
+                DrawingWorld.Instance?.LogEvent("the body tumbles away from you");
+                LeaveZombie();
+                return;
+            }
+
             var brain = _zombie.GetComponent<ZombieBrain>();
             var kb = Keyboard.current;
             if (brain == null || kb == null) return;
@@ -247,7 +261,7 @@ namespace SpellyZombie
             var mouse = Mouse.current;
             if (!uiBusy && mouse != null && (mouse.leftButton.wasPressedThisFrame
                 || mouse.rightButton.wasPressedThisFrame))
-                _zombie.GhostAbility(fwd);
+                _zombie.GhostAbility(_ghost.forward);   // the FULL look: casts pitch too
         }
 
         /// Conjured matter rides like a spell: eased velocity, F lets go.
@@ -285,6 +299,20 @@ namespace SpellyZombie
             if (_zombie != null && !_zombie.Equals(null)) _zombie.PossessBy(false);
             _zombie = null;
             _third = false;
+        }
+
+        /// Where the local player actually LOOKS from - the ghost camera while
+        /// ghosting. Distance culls measure from here, or effects around a
+        /// driven zombie are culled against the corpse's parked camera.
+        public static Vector3? LocalViewPoint
+        {
+            get
+            {
+                foreach (var g in All)
+                    if (g != null && g.IsGhost && g._ghostCam != null)
+                        return g._ghostCam.transform.position;
+                return null;
+            }
         }
 
         /// Match start: the local lobby ghost stands back up on the spot.

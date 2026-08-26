@@ -159,8 +159,11 @@ namespace SpellyZombie
                 }
             }
 
+            // its OWN reach decides, like the pillars - the badge must not
+            // offer F from further away than the absorb will accept
             var absorb = hit.collider.GetComponentInParent<AbsorbSource>();
-            if (!acolyte && absorb != null && absorb.NextFor(me) != RuneType.None)
+            if (!acolyte && absorb != null && hit.distance <= absorb.Range
+                && absorb.NextFor(me) != RuneType.None)
             {
                 Point(absorb, absorb.transform, hit, "F");
                 return;

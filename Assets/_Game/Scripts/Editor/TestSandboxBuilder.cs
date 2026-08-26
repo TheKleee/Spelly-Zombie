@@ -62,7 +62,7 @@ namespace SpellyZombie
             var crateRb = crate.AddComponent<Rigidbody>();
             crateRb.mass = 5f;
             crateRb.linearDamping = 1.2f;
-            crate.AddComponent<Damageable>().Health = 40f;
+            crate.AddComponent<Element>().Health = 40f;
             crate.AddComponent<Breakable>();
 
             new GameObject("SZ_DrawingWorld").AddComponent<DrawingWorld>();

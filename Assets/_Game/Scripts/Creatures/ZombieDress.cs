@@ -55,6 +55,13 @@ namespace SpellyZombie
             shell.transform.localRotation = Quaternion.identity;
             shell.transform.localScale = Vector3.one;
             shell.AddComponent<MeshCollider>().sharedMesh = smr.sharedMesh;
+            // its OWN kinematic body: a concave MeshCollider under the zombie's
+            // dynamic Rigidbody is rejected by PhysX outright (the console
+            // error - and ink raycasts hitting nothing). A kinematic body of
+            // its own detaches it from that compound: legal, raycast-visible,
+            // still collision-free on the ink layer.
+            var srb = shell.AddComponent<Rigidbody>();
+            srb.isKinematic = true;
 
             // MUST stay on the ink-canvas layer: on Default this solid mesh
             // wraps the zombie's own capsule and PhysX ejects it, flinging the
@@ -78,9 +85,48 @@ namespace SpellyZombie
         const float RunClipSpeed = 4.5f;
 
         bool _customBody; // the prefab is dressing this zombie - hands off
+        bool _inPlace;    // the body IS the zombie: no rig to follow, no wardrobe
+        float _diagIn;    // temporary walk diagnostic beat
 
         /// True when a custom prefab body is worn; code must not recolour it.
         public bool IsCustomBody => _customBody;
+
+        /// ★ AN AUTHORED BODY, DRESSED WHERE IT STANDS. Nothing instantiated,
+        /// nothing rescaled - this only wires the animator (the shared zombie
+        /// controller when the prefab brought none) and drives it: stride,
+        /// stand-up, the tells. A baked body used to bypass DressUp entirely
+        /// and stood statue-still.
+        public static ZombieDress DressInPlace(Zombie z)
+        {
+            if (z == null) return null;
+            var anim = z.GetComponentInChildren<Animator>(true);
+            if (anim == null)
+            {
+                Debug.LogWarning($"[SpellyZombie] '{z.name}': no Animator anywhere on the body - " +
+                    "it cannot animate. Add one to the ZombieBody prefab.", z);
+                return null;
+            }
+            if (anim.runtimeAnimatorController == null)
+            {
+                var ctrl = CharacterLibrary.ZombieAnim;
+                if (ctrl != null) anim.runtimeAnimatorController = ctrl;
+                else if (_warnedNoAnim.Add(z.GetInstanceID()))
+                    Debug.LogWarning("[SpellyZombie] No zombie animator controller wired in " +
+                        "CharacterLibrary. The body is worn but cannot animate.", z);
+            }
+            anim.applyRootMotion = false;
+
+            var d = z.gameObject.AddComponent<ZombieDress>();
+            d._inPlace = true;
+            d._customBody = true;
+            d._target = z.transform;
+            d._rb = z.GetComponent<Rigidbody>();
+            d._creature = z.GetComponent<Creature>();
+            d._body = z.gameObject;
+            d._anim = anim;
+            d._socketed = true;   // an authored body never goes through the wardrobe
+            return d;
+        }
         float _fidgetIn = 6f;
 
         /// The instantiated body model (the CharacterBaker clones this).
@@ -210,7 +256,7 @@ namespace SpellyZombie
             // seeded posture/variation; with a custom body only motion variety
             // remains. Adopt an existing ZombieFlavor rather than adding a second.
             var flavor = Adopt.Component<ZombieFlavor>(body);
-            flavor.Init(z.Kind, z.gameObject.GetInstanceID(),
+            flavor.Init(z.gameObject.GetInstanceID(),
                 d._anim, skin, smr, body, customBody);
 
             // hide the graybox: capsule + head cube renderers off (colliders,
@@ -290,10 +336,10 @@ namespace SpellyZombie
         {
             if (_target == null)
             {
-                Destroy(gameObject); // the zombie popped; the outfit follows
+                if (!_inPlace) Destroy(gameObject); // the zombie popped; the outfit follows
                 return;
             }
-            Sync();
+            if (!_inPlace) Sync();
 
             // first LateUpdate: the animator has posed the body, sockets are safe to build
             if (!_socketed && _body != null)
@@ -342,8 +388,14 @@ namespace SpellyZombie
             bool running = st.shortNameHash == HashRun;
             if ((walking || running) && speed > 0.05f)
             {
-                float authored = running ? RunClipSpeed : WalkClipSpeed;
-                _anim.speed = Mathf.Clamp(speed / authored, 0.55f, 1.35f);
+                // clips are authored for a 1-scale body: a scaled body's legs
+                // cover proportionally different ground, and summons come in
+                // many sizes - so the reference speed scales with the body,
+                // and the ceiling is high enough to actually catch up
+                float scaleY = Mathf.Max(0.2f,
+                    _body != null ? _body.transform.lossyScale.y : transform.lossyScale.y);
+                float authored = (running ? RunClipSpeed : WalkClipSpeed) * scaleY;
+                _anim.speed = Mathf.Clamp(speed / authored, 0.4f, 2.5f);
             }
             else
             {
@@ -357,6 +409,21 @@ namespace SpellyZombie
                 bool gettingUp = _creature.GettingUp;
                 if (gettingUp && !_wasGettingUp) _anim.SetTrigger("StandUp");
                 _wasGettingUp = gettingUp;
+            }
+
+            // TEMPORARY walk diagnostic: one line a second names the failing
+            // leg - state, drive, velocity, height. Delete once walking is right.
+            if (_inPlace && (_diagIn -= Time.deltaTime) <= 0f)
+            {
+                _diagIn = 1f;
+                var info = _anim.GetCurrentAnimatorStateInfo(0);
+                string stName = info.shortNameHash == HashWalk ? "Walk"
+                    : info.shortNameHash == HashRun ? "Run" : "other";
+                var hips = _anim.isHuman ? _anim.GetBoneTransform(HumanBodyBones.Hips) : null;
+                Debug.Log($"[SpellyZombie] walk diag: state={stName} speedFloat={_anim.GetFloat("Speed"):0.00} " +
+                    $"vel={(_rb != null ? _rb.linearVelocity.magnitude : 0f):0.00} animSpeed={_anim.speed:0.00} " +
+                    $"rootY={transform.position.y:0.00} hipsY={(hips != null ? hips.position.y - transform.position.y : 0f):0.00} " +
+                    $"canMove={(_creature == null || _creature.CanMove)} human={_anim.isHuman}");
             }
 
             // idle fidget timer

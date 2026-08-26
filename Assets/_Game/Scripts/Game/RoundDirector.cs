@@ -154,7 +154,10 @@ namespace SpellyZombie
             _kills = 0;
             _winner = 0;
             _runStart = Time.time;
-            _clock = Mathf.Clamp(MatchLobby.DurationMin, 5, 15) * 60f;
+            // negative IS the endless flag, and it crosses the wire on its
+            // own - a client seeing a negative clock knows not to count down
+            _clock = MatchLobby.Endless ? -1f
+                : Mathf.Clamp(MatchLobby.DurationMin, 5, 15) * 60f;
             PlayerInk.RefillAll();
             Powerups.ResetRun(); // fresh build every match
             SealGallery.Clear();
@@ -181,7 +184,9 @@ namespace SpellyZombie
         /// (acolytes dead + green pot + clock running = still racing)
         void TickMatch()
         {
-            _clock -= Time.deltaTime;
+            // NO TIMER: the rules are identical, the clock simply is not
+            // one of the ways a match can end. Everything below still applies.
+            if (_clock >= 0f) _clock -= Time.deltaTime;
 
             bool potReady = CauldronEconomy.Active != null
                 && CauldronEconomy.PrepRemaining <= 0f
@@ -203,7 +208,9 @@ namespace SpellyZombie
                 Win(1, "the acolytes are gone and the pot is clean");
                 return;
             }
-            if (_clock <= 0f)
+            // the two timer endings, and the only two an endless match
+            // cannot reach - it ends on the pot or on a side being wiped out
+            if (_clock >= 0f && _clock <= 0.0001f)
             {
                 if (CauldronEconomy.IsCorrupt) Win(2, "time ran out on a green pot");
                 else Win(1, "time ran out on a clean pot");
@@ -284,6 +291,7 @@ namespace SpellyZombie
 
         static string Clock(float seconds)
         {
+            if (seconds < 0f) return "";   // no timer: nothing to count down
             int s = Mathf.Max(0, Mathf.RoundToInt(seconds));
             return $"{s / 60}:{s % 60:00}";
         }

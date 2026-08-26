@@ -7,7 +7,19 @@ namespace SpellyZombie
     /// cold), and bleeds burn or freeze damage past a threshold. Added on demand.
     public class Thermal : MonoBehaviour
     {
-        public float Temperature = 18f;
+        /// The element's, not its own. Thermal is the LOOK of being hot - the
+        /// glow and the flames - and nothing else: the burning itself moved to
+        /// Element, where everything in the world can feel it.
+        public float Temperature
+        {
+            get => _dmg != null ? _dmg.Data.Temp : _looseTemp;
+            set
+            {
+                if (_dmg == null) { _looseTemp = value; return; }
+                var d = _dmg.Data; d.Temp = value; _dmg.Data = d;
+            }
+        }
+        float _looseTemp = Element.RoomTemp;
         public float Ambient = 18f;
         public float HeatCapacity = 1f;
 
@@ -19,7 +31,7 @@ namespace SpellyZombie
         MaterialPropertyBlock _mpb;
         Color _baseColor;
         bool _canTint, _dmgSearched, _creatureLimb;
-        Damageable _dmg;
+        Element _dmg;
 
         void Awake()
         {
@@ -31,7 +43,7 @@ namespace SpellyZombie
                 _baseColor = _rend.sharedMaterial.GetColor(BaseColorID);
                 _canTint = true;
             }
-            _dmg = GetComponent<Damageable>();
+            _dmg = GetComponent<Element>();
             // cached once; creatures wear their own flames
             _creatureLimb = GetComponentInParent<Creature>() != null;
         }
@@ -43,10 +55,8 @@ namespace SpellyZombie
         void Update()
         {
             float dt = Time.deltaTime;
-            // cooling is proportional: the further from ambient, the faster the fall
-            float drift = DrawingConfig.AmbientDriftPerSec
-                + Mathf.Abs(Temperature - Ambient) * DrawingConfig.AmbientDriftFactor;
-            Temperature = Mathf.MoveTowards(Temperature, Ambient, drift * dt);
+            // COOLING IS THE ELEMENT'S JOB - it drifts toward what the ground
+            // says, on the world beat. A second cooling loop here fought it.
 
             if (_canTint)
             {
@@ -58,19 +68,16 @@ namespace SpellyZombie
                 _rend.SetPropertyBlock(_mpb);
             }
 
-            // one late look: GiveHeat adds the Damageable after this Thermal, so Awake missed it
+            // one late look: GiveHeat adds the Element after this Thermal, so Awake missed it
             if (_dmg == null && !_dmgSearched)
             {
                 _dmgSearched = true;
-                _dmg = GetComponent<Damageable>();
+                _dmg = GetComponent<Element>();
             }
-            if (_dmg != null)
-            {
-                if (Temperature > DrawingConfig.BurnThreshold)
-                    _dmg.TakeDamage(DrawingConfig.BurnDamagePerSec * dt, "burning");
-                else if (Temperature < DrawingConfig.FreezeThreshold)
-                    _dmg.TakeDamage(DrawingConfig.FreezeDamagePerSec * dt, "freezing");
-            }
+            // BURNING IS THE ELEMENT'S JOB TOO, measured from what the thing
+            // naturally is. Doing it here as well meant double damage, and it
+            // could only ever reach things somebody remembered to add a
+            // Thermal to.
 
             // burning wood visibly burns; creatures have their own flame system
             bool ablaze = Temperature > DrawingConfig.BurnThreshold;

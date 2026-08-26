@@ -30,7 +30,7 @@ namespace SpellyZombie
             _pos = transform.position;
             _rot = transform.rotation;
             _scale = transform.localScale;
-            var dmg = GetComponent<Damageable>();
+            var dmg = GetComponent<Element>();
             if (dmg != null) _health0 = dmg.Health;
         }
 
@@ -58,10 +58,10 @@ namespace SpellyZombie
                     if (s.Surface == transform || s.Surface.IsChildOf(transform)) s.Burn();
                 }
 
-            // Damageable would Destroy() the object when OnDeath returns; this
-            // hook stops it. Every Damageable under the object counts.
-            foreach (var d in GetComponentsInChildren<Damageable>(true))
-                if (d != null) d.Destructible = false;
+            // Element would Destroy() the object when OnDeath returns; this
+            // hook stops it. Every Element under the object counts.
+            foreach (var d in GetComponentsInChildren<Element>(true))
+                if (d != null) d.RemoveOnDeath = false;
 
             _hidden.Clear();
             foreach (var rend in GetComponentsInChildren<Renderer>(true))
@@ -112,12 +112,12 @@ namespace SpellyZombie
             _off.Clear();
 
             // Revive, not just heal: the dead-flag must drop too or the prop
-            // comes back immortal. Every Damageable under the object counts.
-            foreach (var d in GetComponentsInChildren<Damageable>(true))
+            // comes back immortal. Every Element under the object counts.
+            foreach (var d in GetComponentsInChildren<Element>(true))
                 if (d != null)
                 {
                     d.Revive(_health0 > 0f ? _health0 : 100f);
-                    d.Destructible = true;
+                    d.RemoveOnDeath = true;
                 }
 
             // scan ink goes too, so the prop can be scanned again

@@ -132,6 +132,19 @@ namespace SpellyZombie
 
         /// Side of a body. Only the local player resolves today; anyone
         /// unresolved counts as Wizard (a zombie still hunts them).
+        /// THE ONE FRIEND-OR-FOE TEST. Anything with no side of its own -
+        /// scenery, golems, a loose crate - is on NOBODY's team, so a spell
+        /// that spares its own team still affects it. Zombies serve the
+        /// acolytes, which is the only thing here that is not a player.
+        public static Side? SideOfThing(GameObject go)
+        {
+            if (go == null) return null;
+            var p = go.GetComponentInParent<SimpleFPSController>();
+            if (p != null) return IsAcolytePlayer(p) ? Side.Acolyte : Side.Wizard;
+            if (go.GetComponentInParent<Zombie>() != null) return Side.Acolyte;
+            return null;
+        }
+
         public static bool IsAcolytePlayer(SimpleFPSController p)
         {
             if (p == null) return false;

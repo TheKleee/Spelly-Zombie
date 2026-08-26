@@ -10,8 +10,6 @@ namespace SpellyZombie
     {
         public enum Id
         {
-            FreeHand, // hold Alt = free cursor, draw fast
-            Erase,    // right-drag rubs ink out - and scoops it back into the wand
             Pages,    // flip the book's pages
             Absorb,   // F learns a rune off the world
         }
@@ -68,8 +66,6 @@ namespace SpellyZombie
         {
             switch (id)
             {
-                case Id.FreeHand: return "ALT";
-                case Id.Erase: return "RMB";
                 case Id.Pages: return "← →"; // matches the book's own chip, dedups into it
                 case Id.Absorb: return "F";
                 default: return "?";
@@ -81,8 +77,6 @@ namespace SpellyZombie
         {
             switch (id)
             {
-                case Id.FreeHand: return Loc.T("chip.precise");
-                case Id.Erase: return Loc.T("chip.erase");
                 case Id.Pages: return Loc.T("chip.pages");
                 case Id.Absorb: return Loc.T("chip.absorb");
                 default: return "";

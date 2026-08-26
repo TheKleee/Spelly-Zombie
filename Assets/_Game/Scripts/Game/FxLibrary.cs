@@ -30,6 +30,13 @@ namespace SpellyZombie
         public GameObject Smoke;       // steam cloud
         public GameObject GasCloud;    // flammable gas — green reads "don't ignite"
         public GameObject Shield;      // barrier wrap loop
+
+        [Header("YOUR OWN, BY NAME")]
+        [Tooltip("Any effect a spell row can ask for by name. THE PREFAB'S NAME IS THE KEY - " +
+                 "a row with Fx \"Sparks\" finds the prefab called Sparks. Nothing here is " +
+                 "referenced by code, which is the point: it is how a Workshop spell brings " +
+                 "its own effects without one.")]
+        public GameObject[] Named;
         public GameObject DemonBoom;   // the Demon arrives
         public GameObject SkullHead;   // rides the fresh Demon
         public GameObject BrokenHeart; // floats over a downed body
@@ -102,6 +109,34 @@ namespace SpellyZombie
                     main.startColor = c;
                 }
             return go;
+        }
+
+        /// ★ AN EFFECT BY NAME. The typed fields above are the ones code
+        /// asks for directly; this is the open list, so a spell row can name an
+        /// effect that nothing in the engine has ever heard of.
+        ///
+        /// Falls back to the typed fields, so "Fire" and "Splash" work without
+        /// being duplicated into the list.
+        public static GameObject Named_(string name)
+        {
+            if (I == null || string.IsNullOrEmpty(name)) return null;
+            if (I.Named != null)
+                foreach (var go in I.Named)
+                    if (go != null && string.Equals(go.name, name,
+                            System.StringComparison.OrdinalIgnoreCase))
+                        return go;
+
+            // the built-in ones answer to their field names too
+            var f = typeof(FxLibrary).GetField(name,
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            return f != null && f.FieldType == typeof(GameObject) ? f.GetValue(I) as GameObject : null;
+        }
+
+        /// Spawn one by name; nothing happens if no such effect is authored.
+        public static GameObject SpawnNamed(string name, Vector3 pos, Transform parent = null, float life = 0f)
+        {
+            var prefab = Named_(name);
+            return prefab == null ? null : Spawn(prefab, pos, parent, life);
         }
 
         public static GameObject Spawn(GameObject prefab, Vector3 pos, Transform parent = null, float life = 0f)

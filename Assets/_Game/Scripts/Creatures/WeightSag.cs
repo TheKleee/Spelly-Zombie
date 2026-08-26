@@ -8,7 +8,7 @@ namespace SpellyZombie
     /// crush ladder starts biting.
     /// Runs after the Animator, so it bends the pose the clip produced instead
     /// of fighting it.
-    [RequireComponent(typeof(Damageable))]
+    [RequireComponent(typeof(Element))]
     public class WeightSag : MonoBehaviour
     {
         [Tooltip("The bone that drops when this body is weighed down. Empty = the humanoid rig's own Hips, taken from the Avatar you set.")]
@@ -20,7 +20,7 @@ namespace SpellyZombie
         [Tooltip("How far it hunches forward at full load, in degrees.")]
         public float MaxLean = 20f;
 
-        Damageable _dmg;
+        Element _dmg;
         Animator _anim;
         Transform _bone;
         float _height, _shown;
@@ -28,7 +28,7 @@ namespace SpellyZombie
 
         void Awake()
         {
-            _dmg = GetComponent<Damageable>();
+            _dmg = GetComponent<Element>();
             _anim = GetComponentInChildren<Animator>();
         }
 

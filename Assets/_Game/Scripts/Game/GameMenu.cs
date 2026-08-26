@@ -62,12 +62,15 @@ namespace SpellyZombie
 
         RectTransform _ui;
 
+        bool _wasLocked;
+
         void Open()
         {
             IsOpen = true;
             _options = false;
             // never pause a connected game: the world runs on while you read
             Time.timeScale = NetGame.Connected ? 1f : 0f;
+            _wasLocked = Cursor.lockState == CursorLockMode.Locked;
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             BuildUI();
@@ -82,7 +85,13 @@ namespace SpellyZombie
             PlayerPrefs.Save();
             if (_ui != null) Destroy(_ui.gameObject);
             _ui = null;
-            // cursor re-locks on the next left-click (controller's existing rule)
+            // the lock the menu interrupted comes back with the game - a ghost
+            // or a driven zombie has no click-to-relock rule to fall back on
+            if (_wasLocked)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }
         }
 
         void BuildUI()

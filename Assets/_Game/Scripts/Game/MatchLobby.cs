@@ -13,15 +13,24 @@ namespace SpellyZombie
         /// Host-set match settings, mirrored to clients through LobbyMsg.
         public static int Seed;
         public static int AcolytePercent = 50; // minimum share, 10..90
-        public static int DurationMin = 10;    // match length, minutes
+        /// Match length in minutes. ZERO = NO TIMER: the same rules, played
+        /// for as long as everyone wants, and the clock can never be the thing
+        /// that decides a winner. Same as the lobby, but it is a real match.
+        public static int DurationMin = 10;
+        public static bool Endless => DurationMin <= 0;
+
+        /// What the bookstand shows. A bare dash for no timer: nobody has to
+        /// read the word, and it means the same thing in every language a
+        /// player might be reading in - the timer is simply not there.
+        public static string DurationLabel => Endless ? "-" : DurationMin.ToString();
 
         /// True while a ready call is on screen (B = ready, C = not ready).
         public static bool CallActive => Instance != null && Time.unscaledTime < Instance._callUntil;
         float _callUntil = -1f;
 
-        /// The scene the ready-up loads — host's pick ("Game" until more maps
-        /// exist; any non-Menu/Lobby scene in Build Settings is offered).
-        public static string SelectedMap { get; private set; } = "Game";
+        /// The scene the ready-up loads — the host's pick. Any non-Menu/Lobby
+        /// scene in Build Settings is offered.
+        public static string SelectedMap { get; private set; } = "Spelly Island";
 
         /// The map a CLIENT should ride along to when the host starts - the
         /// host's own pick locally, the mirrored net value when joined.
@@ -57,7 +66,7 @@ namespace SpellyZombie
                 string sceneName = System.IO.Path.GetFileNameWithoutExtension(path);
                 if (sceneName != "Menu" && sceneName != "Lobby") _mapCache.Add(sceneName);
             }
-            if (_mapCache.Count == 0) _mapCache.Add("Game");
+            if (_mapCache.Count == 0) _mapCache.Add("Spelly Island");
             return _mapCache;
         }
 
@@ -75,7 +84,6 @@ namespace SpellyZombie
             new Color(0.94f, 0.89f, 0.26f), // warm yellow
         };
 
-        float _countdown = -1f; // ticks once everyone is ready
         float _pushTimer;
         bool _readyLocal, _built;
         readonly HashSet<int> _remoteReady = new HashSet<int>();
@@ -112,7 +120,10 @@ namespace SpellyZombie
             Instance._netMap = map;
             Seed = seed;
             if (acolytePct >= 10) AcolytePercent = acolytePct;
-            if (durationMin > 0) DurationMin = durationMin;
+            // 255 is "the host did not say"; 0 is a REAL choice now - no
+            // timer - so it must not be swallowed as an unset value or a host
+            // picking endless would leave every client on their own old length
+            if (durationMin != 255) DurationMin = durationMin;
         }
 
         /// The host asked everyone to ready up.
@@ -294,7 +305,6 @@ namespace SpellyZombie
             _built = false;
             _remoteReady.Clear();
             _readyLocal = false;
-            _countdown = -1f;
             _netCountdown = -1f;
         }
 
@@ -303,7 +313,7 @@ namespace SpellyZombie
         UnityEngine.UI.Text _uiReady;
 
         // label caches - rebuild the strings only when a shown value changes, not per frame
-        int _shownCountdown = int.MinValue, _shownReady = -1, _shownTotal = -1;
+        int _shownReady = -1, _shownTotal = -1;
         bool _shownReadyLocal;
 
         void LateUpdate()
@@ -351,7 +361,6 @@ namespace SpellyZombie
             _uiReady = UIKit.Label(board, "", 18, UIKit.Parchment, TextAnchor.MiddleRight, true);
             UIKit.Place((RectTransform)_uiReady.transform, new Vector2(0.5f, 1f), new Vector2(0f, -14f), new Vector2(430f, 22f));
 
-            _shownCountdown = int.MinValue;
             _shownReady = -1; _shownTotal = -1;
         }
 

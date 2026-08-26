@@ -87,13 +87,16 @@ namespace SpellyZombie
 
                 var labelGo = new GameObject("Label");
                 labelGo.transform.SetParent(root.transform, false);
-                labelGo.transform.localPosition = new Vector3(0f, 1.75f, 0f);
+                labelGo.transform.localPosition = new Vector3(0f, 1.5f, 0f);
+                // the root is turned 180° to face the walkway; the label must
+                // turn WITH the readable face or it shows mirrored
+                labelGo.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
                 var label = labelGo.AddComponent<TMPro.TextMeshPro>();
                 label.text = RuneLibrary.Icon(runes[i]); // emoji needs TMP sprites
-                label.fontSize = 8f;
+                label.fontSize = 2.6f;
                 label.alignment = TMPro.TextAlignmentOptions.Center;
                 label.color = new Color(0.15f, 0.13f, 0.1f);
-                label.enableWordWrapping = false;
+                label.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
                 label.rectTransform.sizeDelta = new Vector2(4.4f, 1.2f);
 
                 var wall = root.AddComponent<RuneWall>();
@@ -110,11 +113,53 @@ namespace SpellyZombie
                     player.AddComponent<CharacterRig>(); // the real body takes over in play
             }
 
+            InstallCollectionManager();
+
             EditorSceneManager.SaveScene(scene, target);
             Debug.Log($"[SpellyZombie] Rune Studio built → {target}");
             Debug.Log("[SpellyZombie] RUNE STUDIO ready. Play, walk to a wall, draw samples of " +
                 "that wall's rune, press E to save the wall. Erase + re-save to delete a bad one. " +
                 "Saved drawings repaint on every load.");
+        }
+
+        /// The grimoire pages, authored bodies and particle shapes all live in
+        /// the Lobby scene's CollectionManager - a scene played directly never
+        /// met it. This lifts HIS manager (slots untouched) into a prefab once
+        /// and drops it into the open scene.
+        [MenuItem("Spelly Zombie/Studio/Install Collection Manager Here")]
+        public static void InstallCollectionManager()
+        {
+            if (Object.FindFirstObjectByType<CollectionManager>(FindObjectsInactive.Include) != null)
+            {
+                Debug.Log("[SpellyZombie] CollectionManager already in this scene.");
+                return;
+            }
+            const string prefabPath = "Assets/_Game/Prefabs/CollectionManager.prefab";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null)
+            {
+                var lobby = EditorSceneManager.OpenScene(
+                    "Assets/_Game/Scenes/Lobby.unity", OpenSceneMode.Additive);
+                CollectionManager src = null;
+                foreach (var root in lobby.GetRootGameObjects())
+                {
+                    src = root.GetComponentInChildren<CollectionManager>(true);
+                    if (src != null) break;
+                }
+                if (src == null)
+                {
+                    EditorSceneManager.CloseScene(lobby, true);
+                    Debug.LogError("[SpellyZombie] No CollectionManager found in the Lobby scene.");
+                    return;
+                }
+                prefab = PrefabUtility.SaveAsPrefabAsset(src.gameObject, prefabPath);
+                EditorSceneManager.CloseScene(lobby, true); // untouched, just read
+                Debug.Log($"[SpellyZombie] CollectionManager saved as prefab → {prefabPath}");
+            }
+            var inst = (GameObject)PrefabUtility.InstantiatePrefab(
+                prefab, EditorSceneManager.GetActiveScene());
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+            Debug.Log($"[SpellyZombie] '{inst.name}' installed - grimoire pages and authored bodies now exist in this scene.");
         }
     }
 }

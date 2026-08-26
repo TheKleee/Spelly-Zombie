@@ -198,9 +198,6 @@ namespace SpellyZombie
         /// unlocked, no starting-rune picker) - flip on only for combo testing.
         public static bool AllRunesUnlockedForTesting = false;
 
-        /// Convenience: unlock a card for the LOCAL player (pickups use this).
-        public static void UnlockCard(RuneCardType card) => Grimoire.Unlock(Grimoire.LocalPlayerId, card);
-
         /// The card gate applies only during a run or in the selected map
         /// scene; lobby, menu and sandboxes are free practice grounds.
         /// Public: the rune chooser and grimoire display follow the same rule.
@@ -216,12 +213,17 @@ namespace SpellyZombie
             RuneType.DirectionAway, RuneType.DirectionToward
         };
 
+        /// Rune Studio is the practice hall: the whole alphabet shows there
+        /// and drawing costs nothing.
+        public static bool PracticeHall =>
+            UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "RuneStudio";
+
         /// Nothing is free, lobby included: both sides own only what they
         /// earned. Wizards earn by absorbing, acolytes by deeds.
         public static bool IsUnlocked(int ownerId, RuneType type)
         {
             if (type == RuneType.None) return false;
-            return AllRunesUnlockedForTesting || Grimoire.HasRune(ownerId, type);
+            return AllRunesUnlockedForTesting || PracticeHall || Grimoire.HasRune(ownerId, type);
         }
 
         public static RuneCardType CardOf(RuneType type)
@@ -392,8 +394,8 @@ namespace SpellyZombie
                 case RuneType.LuminanceDown: return "🌚";
                 case RuneType.StickyUp: return "🍯";
                 case RuneType.StickyDown: return "🍌";
-                case RuneType.DirectionAway: return "🚀";
-                case RuneType.DirectionToward: return "🧲";
+                case RuneType.DirectionAway: return "🧲";
+                case RuneType.DirectionToward: return "🚀";
                 case RuneType.DensityUp: return "🤏";
                 case RuneType.DensityDown: return "💨";
                 default: return "?";
@@ -457,8 +459,8 @@ namespace SpellyZombie
                 case RuneType.LuminanceDown: return "DARK";
                 case RuneType.StickyUp: return "GRIP";
                 case RuneType.StickyDown: return "SLICK";
-                case RuneType.DirectionAway: return "PUSH";
-                case RuneType.DirectionToward: return "PULL";
+                case RuneType.DirectionAway: return "ATTRACT";
+                case RuneType.DirectionToward: return "REPEL";
                 case RuneType.DensityUp: return "COMPRESS";
                 case RuneType.DensityDown: return "SPREAD";
                 default: return "?";
@@ -507,11 +509,41 @@ namespace SpellyZombie
                 }
                 item.points = new List<Vector2>(); // legacy field, kept empty
             }
-            try { File.WriteAllText(SavePath, JsonUtility.ToJson(_saved)); }
-            catch (Exception e) { Debug.LogWarning($"[RuneLibrary] Failed to save: {e.Message}"); }
+            WriteSaved();
             _entries = null;
             Init();
             Debug.Log($"[RuneLibrary] Trimmed {trimmed} rune(s) down to their first drawing.");
+        }
+
+        /// The one writer for the template file. A write that would DROP
+        /// recorded runes vs the file on disk keeps the old file beside it
+        /// first - the Aug 26 wipe does not get a second chance.
+        static void WriteSaved()
+        {
+            try
+            {
+                if (File.Exists(SavePath))
+                {
+                    int Total(SavedTemplateSet t)
+                    {
+                        int n = 0;
+                        if (t?.items != null)
+                            foreach (var it in t.items)
+                            {
+                                if (it.strokes != null && it.strokes.Count > 0) n++;
+                                if (it.older != null) n += it.older.Count;
+                            }
+                        return n;
+                    }
+                    int disk = 0;
+                    try { disk = Total(JsonUtility.FromJson<SavedTemplateSet>(File.ReadAllText(SavePath))); }
+                    catch { }
+                    if (Total(_saved) < disk)
+                        File.Copy(SavePath, SavePath + ".autobak", true);
+                }
+                File.WriteAllText(SavePath, JsonUtility.ToJson(_saved));
+            }
+            catch (Exception e) { Debug.LogWarning($"[RuneLibrary] Failed to save templates: {e.Message}"); }
         }
 
         static void Init()
@@ -559,8 +591,7 @@ namespace SpellyZombie
                 ? new List<int>(_confusable) : new List<int>();
             _saved.auditedCount = CountSamples();
             _saved.matcher = MatcherVersion;
-            try { File.WriteAllText(SavePath, JsonUtility.ToJson(_saved)); }
-            catch (Exception e) { Debug.LogWarning($"[RuneLibrary] audit cache not saved: {e.Message}"); }
+            WriteSaved();
         }
 
         /// Run the template audit by hand (editor menu).
@@ -813,7 +844,7 @@ namespace SpellyZombie
         /// clears the rune back to its seed shape. Returns how many were kept.
         /// EVERY drawing is kept however small; sparse ones just aren't used
         /// as templates (see MinTemplatePoints). The ink is never deleted.
-        public static int ReplaceSamples(RuneType type, List<List<List<Vector2>>> samples)
+        public static int ReplaceSamples(RuneType type, List<List<List<Vector2>>> samples, bool allowClear = false)
         {
             Init();
             var kept = new List<List<List<Vector2>>>();
@@ -831,7 +862,18 @@ namespace SpellyZombie
             var item = _saved.items.Find(i => i.rune == (int)type);
             if (kept.Count == 0)
             {
-                if (item != null) _saved.items.Remove(item);
+                // ONLY THE HAND DELETES (his rule): an empty wall clears its
+                // pool only right after the player's own eraser worked THIS
+                // wall. Any other emptiness - a global ink clear once zeroed
+                // all 12 walls in one census beat (Aug 26) - keeps the pool.
+                if (item == null) return 0;
+                if (!allowClear)
+                {
+                    Debug.LogWarning($"[RuneLibrary] {ShortName(type)}: wall is empty but {1 + (item.older?.Count ?? 0)} recording(s) are saved - keeping them (only your own eraser clears a wall).");
+                    return 0;
+                }
+                _saved.items.Remove(item);
+                Debug.Log($"[RuneLibrary] {ShortName(type)}: erased by hand - recordings cleared, seed shape takes over.");
             }
             else
             {
@@ -847,8 +889,7 @@ namespace SpellyZombie
                 item.strokes = ToSavedStrokes(kept[kept.Count - 1]);
             }
             _saved.version = GlyphSetVersion;
-            try { File.WriteAllText(SavePath, JsonUtility.ToJson(_saved)); }
-            catch (Exception e) { Debug.LogWarning($"[RuneLibrary] Failed to save samples: {e.Message}"); }
+            WriteSaved();
 
             // in-place matcher update: only THIS rune's variants rebuild; the
             // template audit stays a session-start affair

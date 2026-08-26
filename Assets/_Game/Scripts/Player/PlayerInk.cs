@@ -67,10 +67,15 @@ namespace SpellyZombie
 
         public float Fraction => Ink / DrawingConfig.InkMax;
 
+        /// Rune Studio is the practice hall: drawing there never costs ink
+        /// (his ask, Aug 26) and the wand stays full.
+        public static bool Bottomless => RuneLibrary.PracticeHall;
+
         /// Spend ink for drawn line length - the lobby pays too (its cauldron
         /// refills itself forever).
         public bool TrySpend(float amount)
         {
+            if (Bottomless) { Ink = DrawingConfig.InkMax; return true; }
             if (Ink < amount) return false;
             Ink -= amount;
             return true;

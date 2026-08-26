@@ -18,14 +18,25 @@ namespace SpellyZombie
         [Serializable] class TuneEntry { public string key; public float value; }
         [Serializable] class TuneFile { public TuneEntry[] entries; }
         public const string OverlayFileName = "sz_tuning.json"; // a filename, never tuned → stays const
-        static readonly Dictionary<string, float> _overlay = LoadOverlay();
 
-        static Dictionary<string, float> LoadOverlay()
+        // NEVER read persistentDataPath from a field initializer. Unity forbids
+        // it during MonoBehaviour construction, and a Element deserialising
+        // with the scene is what touches this type FIRST - so the old eager
+        // load threw, was swallowed, and every override in sz_tuning.json was
+        // silently ignored for the whole session. Loading lazily lets the first
+        // safe caller succeed, and an unsafe one simply tries again later.
+        static Dictionary<string, float> _overlay;
+        static bool _overlayLoaded;
+
+        static Dictionary<string, float> Overlay_()
         {
+            if (_overlayLoaded) return _overlay;
+
             var d = new Dictionary<string, float>();
             try
             {
                 string path = Path.Combine(Application.persistentDataPath, OverlayFileName);
+                _overlayLoaded = true;   // the path was readable; this answer stands
                 if (File.Exists(path))
                 {
                     var f = JsonUtility.FromJson<TuneFile>(File.ReadAllText(path));
@@ -35,10 +46,17 @@ namespace SpellyZombie
                     Debug.Log($"[SpellyZombie] tuning overlay: {d.Count} override(s) from {path}");
                 }
             }
-            catch (Exception ex) { Debug.LogWarning($"[SpellyZombie] tuning overlay skipped: {ex.Message}"); }
-            return d;
+            catch (Exception)
+            {
+                // called too early (a field initializer) - leave it unloaded and
+                // let the next caller, in a legal context, do the reading
+                return _overlay = d;
+            }
+            return _overlay = d;
         }
-        static float O(string key, float def) => _overlay.TryGetValue(key, out var v) ? v : def;
+
+        static float O(string key, float def) =>
+            Overlay_().TryGetValue(key, out var v) ? v : def;
 
         /// Overlay accessor for other tuning blocks so every knob reads the same sz_tuning.json.
         public static float Overlay(string key, float def) => O(key, def);
@@ -46,16 +64,33 @@ namespace SpellyZombie
         /// Forces the type initializer to run before any scene deserializes.
         /// A MonoBehaviour field initializer during scene load cannot touch
         /// persistentDataPath, which would silently skip the overlay.
-        public static void Prime() { }
+        public static void Prime()
+        {
+            bool wasBaked = _overlayLoaded;
+            Overlay_();
+            if (!wasBaked && _overlayLoaded && _overlay.Count > 0 && _tunablesBaked)
+                Debug.LogWarning("[SpellyZombie] sz_tuning.json was read AFTER the values were "
+                    + "already fixed, so its overrides are not in effect this session. "
+                    + "Reload the domain (or restart play) to pick them up.");
+        }
+
+        /// Set by the last tunable in the file - if this is true before the
+        /// overlay loads, every value took its default.
+        static bool _tunablesBaked;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void PrimeRuntime() => Prime();
 
 #if UNITY_EDITOR
+        // InitializeOnLoadMethod fires DURING a domain reload, while the open
+        // scene's objects are being reconstructed - which is exactly the
+        // context Unity forbids persistentDataPath in. delayCall waits for the
+        // reload to settle, so the read is legal and the overlay actually loads.
         [UnityEditor.InitializeOnLoadMethod]
-        static void PrimeEditor() => Prime();
+        static void PrimeEditor() => UnityEditor.EditorApplication.delayCall += () => Prime();
 #endif
-        static int Oi(string key, int def) => _overlay.TryGetValue(key, out var v) ? Mathf.RoundToInt(v) : def;
+        static int Oi(string key, int def) =>
+            Overlay_().TryGetValue(key, out var v) ? Mathf.RoundToInt(v) : def;
 
         // ---- Pen / stroke capture ----
         public static readonly float DrawRange = O(nameof(DrawRange), 8f);           // max raycast distance of the pen
@@ -180,17 +215,28 @@ namespace SpellyZombie
         public static readonly float LobbyScatterRadius = O(nameof(LobbyScatterRadius), 12f);
         // The host divides the ground: how far apart two spawns must be, and
         // how long a client waits for its point before picking one itself.
+        // biggest single hit a client may ask the host for - the old zombie
+        // channel carried this, so one packet can never nuke anything.
+        // How visible a faded body stays, 1 = normal. These are the numbers the
+        // spells start from; author a spell with any value you like.
+        public static readonly float FadeTransparency = O(nameof(FadeTransparency), 0.5f);
+        public static readonly float FadeCloud = O(nameof(FadeCloud), 0.25f);
+        // How fast a CAPACITY (Int, Courage, Clones) moves toward what the
+        // ground allows. Slow enough that a spell cast on hostile ground still
+        // has a life; fast enough that a place you walk into matters.
+        public static readonly float CapacityDriftPerSec = O(nameof(CapacityDriftPerSec), 0.25f);
+        public static readonly float NetHitCap = O(nameof(NetHitCap), 60f);
         public static readonly float SpawnApartMeters = O(nameof(SpawnApartMeters), 4f);
         public static readonly float SpawnAssignWaitSeconds = O(nameof(SpawnAssignWaitSeconds), 4f);
 
 
         // Dial 2: rune size relative to the seal (already 0..1) to gas radius.
         // The death puff uses the same radius; detonation is always 3x.
-        public static readonly float SummonGasRadiusMin = O(nameof(SummonGasRadiusMin), 0.4f);
-        public static readonly float SummonGasRadiusMax = O(nameof(SummonGasRadiusMax), 2.5f);
+        public static readonly float SummonGasRadiusMin = O(nameof(SummonGasRadiusMin), 0.32f);
+        public static readonly float SummonGasRadiusMax = O(nameof(SummonGasRadiusMax), 2f);
         // Living aura as a fraction of body height, deliberately tight; the
         // big cloud waits for the corpse.
-        public static readonly float PoisonAuraBodyMul = O(nameof(PoisonAuraBodyMul), 0.6f);
+        public static readonly float PoisonAuraBodyMul = O(nameof(PoisonAuraBodyMul), 0.48f);
 
         public static readonly float SummonGasDetonateMul = O(nameof(SummonGasDetonateMul), 3f);
         // Poison damage is per second, billed by real dt; kept under the
@@ -506,10 +552,70 @@ namespace SpellyZombie
         // ---- THE THRESHOLD ENGINE (Spells V2) ----
         // an axis counts toward a fusion once its magnitude passes this
         public static readonly float FusionAt = O(nameof(FusionAt), 0.8f);
+
+        // ★ THE LINES, in human units: how far along an axis before a thing
+        // counts as that thing. 20 degrees of heat is warm, not a fire;
+        // 15 percent of light is a glow, not a light spell.
+        public static readonly float LineTemp = O(nameof(LineTemp), 20f);
+        public static readonly float LinePercent = O(nameof(LinePercent), 15f);
+        public static readonly float LineStrength = O(nameof(LineStrength), 5f);
+        public static readonly float LineClones = O(nameof(LineClones), 1f);
+
+        // ---- AXIS CEILINGS -------------------------------------------------
+        // Every axis tops out. Without a ceiling, stacking heat on something
+        // burning keeps it burning forever; with one it maxes, drift starts
+        // pulling it back, and keeping a thing alight costs repeated casting.
+        // In UNITS, so one number is the same size of push on every axis.
+        public static readonly float AxisCap = O(nameof(AxisCap), 4f);
+        // Int and Courage: 0 is mindless / terrified, and neither goes below it.
+        public static readonly float CapacityCap = O(nameof(CapacityCap), 4f);
+        // Whole copies of yourself. THREE, his ruling - the keyboard could
+        // address ten but ten is not the number.
+        public static readonly float CloneCap = O(nameof(CloneCap), 3f);
+        // Temperature is the one axis carried in degrees, so it gets degree
+        // bounds - the range Thermal always used.
+        public static readonly float TempCeiling = O(nameof(TempCeiling), 900f);
+        public static readonly float TempFloor = O(nameof(TempFloor), -320f);
+
+        // How far from its own natural temperature a LIVING thing can go before
+        // it suffers. These are the old player band (37 natural, 15..45)
+        // expressed as distances, so flesh keeps the tolerance it always had
+        // while stone gets the wide one it always had.
+        public static readonly float LivingHeatTolerance = O(nameof(LivingHeatTolerance), 8f);
+        public static readonly float LivingChillTolerance = O(nameof(LivingChillTolerance), -22f);
+        // damage per degree outside the band, per second
+        public static readonly float TempDamagePerDegree = O(nameof(TempDamagePerDegree), 0.9f);
         // a lvl3 spell is a temporary biome: how long the rewritten nature lasts
         public static readonly float SpellBiomeSeconds = O(nameof(SpellBiomeSeconds), 10f);
-        // trap/closed biomes: the affinity force at full axis strength
+        // a spell bursting on terrain leaves its data hanging in the air this long
+        public static readonly float LingerSeconds = O(nameof(LingerSeconds), 4f);
+        // the drawn SrcSize at which a particle wears exactly its base body size
+        public static readonly float ParticleSizeNeutral = O(nameof(ParticleSizeNeutral), 0.4f);
+        // range of influence: how far an object's data reaches a neighbour, and the exchange rate
+        public static readonly float InfluenceReach = O(nameof(InfluenceReach), 1.2f);
+        public static readonly float InfluenceSharePerSec = O(nameof(InfluenceSharePerSec), 0.15f);
+        // the one gravity: affinity force at full axis strength
         public static readonly float AffinityForce = O(nameof(AffinityForce), 9f);
+
+        // How often the host tells everyone what things in the world currently
+        // are. Slower than the beat: being on fire is not a per-frame fact.
+        public static readonly float StateSyncSeconds = O(nameof(StateSyncSeconds), 0.5f);
+
+        // However far an area starts from its spell, it rushes back toward it
+        // at this speed. That is what makes a meteor fall.
+        public static readonly float AreaHomingSpeed = O(nameof(AreaHomingSpeed), 30f);
+
+        // A golem sheds its area around itself - rocks for solid, blobs for
+        // liquid. How often, how hard, and what share of itself each carries.
+        public static readonly float GolemShedSeconds = O(nameof(GolemShedSeconds), 1.4f);
+        public static readonly float GolemShedSpeed = O(nameof(GolemShedSpeed), 4.5f);
+        public static readonly float GolemShedShare = O(nameof(GolemShedShare), 0.3f);
+
+        // What a thing breaks into when it dies still holding something. The
+        // pieces share what was left, so each generation carries less and the
+        // chain ends on its own.
+        public static readonly int ScatterPieces = Oi(nameof(ScatterPieces), 4);
+        public static readonly float ScatterSpeed = O(nameof(ScatterSpeed), 7f);
 
         // ---- the charge (golems and zombies share ChargeAttack) ----
         // The tell is the fairness: you get this long to read the hop and move.
@@ -572,6 +678,83 @@ namespace SpellyZombie
 
         // ---- GRAMMAR v4 (SPELL_PARTICLES.md - leveling, paradox, lineage) ----
         public static readonly float Lvl2AuraRadius = O(nameof(Lvl2AuraRadius), 1.15f); // a lvl2 particle radiates this far
+        // How much wider the strongest coat can push that reach. A flame at
+        // twice its threshold covers twice the ground; this stops a maxed-out
+        // one covering the map.
+        public static readonly float AuraInfluenceMax = O(nameof(AuraInfluenceMax), 3f);
+
+        // How much of itself a particle gives away per beat when radiating,
+        // and all at once when it lands on something.
+        public static readonly float AuraShare = O(nameof(AuraShare), 0.35f);
+        public static readonly float TouchShare = O(nameof(TouchShare), 1f);
+        // Balance is the one axis that has to become physics: how long it
+        // holds a creature, and how hard it brakes a rigidbody.
+        public static readonly float GripSeconds = O(nameof(GripSeconds), 2f);
+        public static readonly float GripBrake = O(nameof(GripBrake), 7f);
+        // How big the mote itself gets once it is imposing. Its REACH is
+        // AuraRadius as always; this is just the visible core.
+        public static readonly float BiomeMoteScale = O(nameof(BiomeMoteScale), 0.45f);
+        // How long a spell biome holds the ground before handing it back. It
+        // cannot be forever: a wizard would rewrite the island permanently.
+        // Scaled by how big the drawing was, up to three times this.
+        public static readonly float BiomeSeconds = O(nameof(BiomeSeconds), 10f);
+        // How long a particle takes to move its bones into a new shape. It is
+        // one model being re-posed, so becoming a tornado can be a growth
+        // rather than a cut.
+        public static readonly float ShapeMorphSeconds = O(nameof(ShapeMorphSeconds), 0.35f);
+
+        // Strength is a capacity: how fast you give up what the ground cannot
+        // hold, and how fast you mend back toward what it can.
+        public static readonly float StrengthYieldPerSec = O(nameof(StrengthYieldPerSec), 12f);
+        public static readonly float RegenBase = O(nameof(RegenBase), 3f);
+        // the maximum a RegenBase-speed thing has; anything with a higher
+        // ceiling mends proportionally slower
+        public static readonly float RegenReference = O(nameof(RegenReference), 100f);
+
+        // Courage at which a thing stops being afraid of anything at all.
+        // Below it, fear scales - a coward panics at what a braver one ignores.
+        public static readonly float FearlessAt = O(nameof(FearlessAt), 2f);
+
+        // SPREADING: how far a spreading thing reaches for its next victim,
+        // and what share of its own numbers it hands over. Under 1 so a fire
+        // cools as it travels instead of copying itself forever.
+        public static readonly float SpreadReach = O(nameof(SpreadReach), 2.2f);
+        public static readonly float SpreadShare = O(nameof(SpreadShare), 0.45f);
+
+        // How much stronger a charger is for the length of its charge. It pays
+        // its own impact like everything else; this is what lets it survive
+        // the hit it aimed. Below 1 and ramming a wall kills it.
+        public static readonly float ChargeStrengthMul = O(nameof(ChargeStrengthMul), 2.5f);
+        // a golem lives this long, however it was raised
+        public static readonly float GolemLifeSeconds = O(nameof(GolemLifeSeconds), 30f);
+        // how far a standing attract/repel mote reaches with its pull
+        public static readonly float AffinityReach = O(nameof(AffinityReach), 3.5f);
+        // what fraction of the SPELL's own axes an element hands a neighbour
+        // per spread beat (SpreadShare is taken: it is PoisonField's radius
+        // growth rate, a different thing wearing the same name)
+        public static readonly float SpreadTransferShare = O(nameof(SpreadTransferShare), 0.25f);
+
+        // The puddle a goo lands in. Its BITE and whether it spreads come from
+        // the Goo row; these two are the shape of the splash itself.
+        public static readonly float GooRadius = O(nameof(GooRadius), 1.4f);
+        public static readonly float GooSeconds = O(nameof(GooSeconds), 4f);
+        // ---- the ranged zombie's own artillery ----
+        // honest reach: particle drag caps the real flight near 10m, and a
+        // 16m trigger made far shots land at the zombie's own feet
+        public static readonly float GooThrowRange = O(nameof(GooThrowRange), 10f);
+        public static readonly float GooThrowCooldown = O(nameof(GooThrowCooldown), 4f);
+        public static readonly float GooKiteRange = O(nameof(GooKiteRange), 8f);
+
+        // THE DEMON: it wanders and it throws spells, and it does neither on a
+        // schedule anyone can read.
+        public static readonly float DemonPatrolMin = O(nameof(DemonPatrolMin), 3f);
+        public static readonly float DemonPatrolMax = O(nameof(DemonPatrolMax), 7f);
+        public static readonly float DemonPatrolNear = O(nameof(DemonPatrolNear), 6f);
+        public static readonly float DemonPatrolFar = O(nameof(DemonPatrolFar), 22f);
+        public static readonly float DemonCastMin = O(nameof(DemonCastMin), 1.2f);
+        public static readonly float DemonCastMax = O(nameof(DemonCastMax), 2.8f);
+        // how far past a row's threshold its cast lands
+        public static readonly float DemonCastPower = O(nameof(DemonCastPower), 2.2f);
         public static readonly float Lvl2AuraPeriod = O(nameof(Lvl2AuraPeriod), 0.8f); // seconds between aura beats
         public static readonly float UltimateRadius = O(nameof(UltimateRadius), 3.5f); // lvl3 area effects (flame burst, snow field…)
         public static readonly float UltimateSeconds = O(nameof(UltimateSeconds), 5f); // lifetime of lvl3 fields (plasma, inertia…)

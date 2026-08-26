@@ -95,7 +95,45 @@ namespace SpellyZombie
         void OnDestroy() => AllBrains.Remove(this);
 
         /// Demons: nothing scares them.
-        public bool Fearless;
+        /// Set by things that are simply never afraid - the demon, and a
+        /// zombie under the aggression rune. Courage can also earn it.
+        public bool AlwaysFearless;
+
+        /// ★ COURAGE IS A NUMBER, and the ground moves it. 0 is afraid of
+        /// everything, high faces anything - so a dreadful biome unnerves a
+        /// brave zombie, and a safe one never emboldens a coward, because
+        /// courage is a CAPACITY: you get the lesser of yours and the place's.
+        ///
+        /// It was a bare bool that only ever got switched on by hand, which
+        /// meant biomes could freeze a zombie and burn it but never frighten it.
+        public float Courage
+        {
+            get
+            {
+                if (_el == null) _el = GetComponentInParent<Element>();
+                return _el != null ? _el.Data.Courage : 1f;
+            }
+        }
+        Element _el;
+
+        public bool Fearless => AlwaysFearless || Courage >= DrawingConfig.FearlessAt;
+
+        /// How readily it takes fright at all. A coward panics at things a
+        /// braver one walks past.
+        public float FearChance => Mathf.Clamp01(1f - Courage / Mathf.Max(0.01f, DrawingConfig.FearlessAt));
+
+        /// ★ INT IS HOW MUCH FITS IN ITS HEAD. His words: 0 mindless, high
+        /// follows its task perfectly. A mindless place empties the head, so a
+        /// zombie in one forgets what it was chasing.
+        public int Headroom
+        {
+            get
+            {
+                if (_el == null) _el = GetComponentInParent<Element>();
+                float mind = _el != null ? _el.Data.Int : 1f;
+                return Mathf.Clamp(Mathf.RoundToInt(Capacity * mind), 0, 8);
+            }
+        }
 
         public static void ScareVisible(Vector3 pos, float radius, float luminance)
         {
@@ -109,7 +147,7 @@ namespace SpellyZombie
                 if (Vector3.Dot(b.transform.forward, to.normalized) < -0.2f) continue; // behind it
                 b.Remember(MemKind.Danger, MemEvent.HeardDanger, pos);
                 b.Eyes?.SetMood(EyeMood.Scared, 1.5f);
-                if (Random.value < 0.25f) b.Mumble("BLEH! BLEH!", 1.2f);
+                if (Random.value < 0.25f * b.FearChance) b.Mumble("BLEH! BLEH!", 1.2f);
                 else if (Random.value < 0.12f && FxLibrary.I != null)
                     FxLibrary.Spawn(FxLibrary.I.TextWow, b.transform.position + Vector3.up * 1.7f, null, 2.5f);
             }
@@ -119,6 +157,9 @@ namespace SpellyZombie
         public void Remember(MemKind kind, MemEvent evt, Vector3 where,
             Transform who = null, StrategyKind strat = StrategyKind.Oops)
         {
+            // a MINDLESS head holds nothing - and the slot-eviction below
+            // threw on an empty list when Headroom was zero
+            if (Headroom <= 0) return;
             DurationOf(evt, out float minDur, out float maxDur);
 
             // refresh an existing slot of the same kind+who instead of stacking
@@ -131,7 +172,7 @@ namespace SpellyZombie
                     return;
                 }
 
-            while (Memories.Count >= Capacity) // oldest is simply gone (FIFO)
+            while (Memories.Count >= Headroom) // oldest is simply gone (FIFO)
             {
                 // a 1-slot head visibly loses its train of thought
                 if (Capacity == 1 && Memories[0].Kind != kind) Mumble("OOH!", 1.2f);

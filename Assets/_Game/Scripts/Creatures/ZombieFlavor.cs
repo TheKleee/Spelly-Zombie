@@ -21,7 +21,7 @@ namespace SpellyZombie
         float _spreadL, _spreadR, _liftL, _liftR;
         bool _staticPosed;
 
-        public void Init(ZombieKind kind, int seed, Animator anim,
+        public void Init(int seed, Animator anim,
             Color skin, SkinnedMeshRenderer smr, GameObject body, bool customBody = false)
         {
             _anim = anim;
@@ -62,38 +62,8 @@ namespace SpellyZombie
                     new Vector3(wj, hj, wj));
             }
 
-            // ---- per-kind posture, then the personal touch ----
-            switch (kind)
-            {
-                case ZombieKind.Runner: // sprinter: leaning, arms mostly animation
-                    _reach = R(0.3f, 0.45f); _hunch = R(14f, 24f);
-                    _swayAmp = R(1.5f, 3f); _swayRate = R(2.2f, 3.2f);
-                    _liftL = _liftR = 0.5f;
-                    break;
-                case ZombieKind.Charger: // wide grapple arms, slow menace
-                    _reach = R(0.5f, 0.7f); _hunch = R(6f, 12f);
-                    _swayAmp = R(2.5f, 4f); _swayRate = R(0.8f, 1.4f);
-                    _spreadL = R(0.4f, 0.7f); _spreadR = R(0.4f, 0.7f);
-                    _liftL = _liftR = R(0.25f, 0.4f);
-                    break;
-                case ZombieKind.Scribbler: // the intellectual: upright, quill arm raised
-                    _reach = R(0.4f, 0.55f); _hunch = R(2f, 7f);
-                    _swayAmp = R(1f, 2f); _swayRate = R(0.9f, 1.5f);
-                    _liftL = R(0.3f, 0.5f); _liftR = -0.35f; // right arm UP - the quill hand
-                    _tiltRoll = R(9f, 18f) * (rng.Next(2) == 0 ? -1f : 1f);
-                    break;
-                case ZombieKind.Swarm: // frantic gremlins, arms high
-                    _reach = R(0.75f, 0.9f); _hunch = R(5f, 12f);
-                    _swayAmp = R(4f, 7f); _swayRate = R(2.8f, 4f);
-                    _liftL = _liftR = R(-0.15f, 0.05f);
-                    break;
-                default: // Walker: the classic
-                    _reach = R(0.6f, 0.85f); _hunch = R(11f, 20f);
-                    _swayAmp = R(2f, 4f); _swayRate = R(1.1f, 2f);
-                    _spreadL = R(-0.1f, 0.2f); _spreadR = R(-0.1f, 0.2f);
-                    _liftL = R(0.15f, 0.45f); _liftR = R(0.15f, 0.45f);
-                    break;
-            }
+            // ONE BODY, and the personal touch is what tells two zombies
+            // apart. The per-kind postures went with the kinds.
             if (_tiltRoll == 0f) _tiltRoll = R(4f, 12f) * (rng.Next(2) == 0 ? -1f : 1f);
             _tiltPitch = R(-9f, 3f); // mostly looking up
             _phase = R(0f, 6.28f);

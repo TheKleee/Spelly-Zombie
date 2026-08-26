@@ -36,7 +36,7 @@ namespace SpellyZombie
             // Midline = centred both ways (TMP's "Center" is horizontal-only)
             _tm.alignment = TextAlignmentOptions.Midline;
             _tm.fontSize = 1.4f;
-            _tm.enableWordWrapping = false;
+            _tm.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
             _tm.rectTransform.sizeDelta = new Vector2(2f, 2f);
             var mr = GetComponent<MeshRenderer>();
             if (mr != null) mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

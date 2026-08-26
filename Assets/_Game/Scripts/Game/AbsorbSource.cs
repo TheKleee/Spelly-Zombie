@@ -1,11 +1,14 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
-    /// Teaches runes in the authored Teaches order: each absorb grants the
-    /// next rune the wizard is missing; a spent source refuses. Infinite
-    /// sources survive absorbs, others are consumed. Wizards only; F absorbs.
+    /// A THING THAT TEACHES. Pure data: it holds the runes it can teach and
+    /// nothing else - no input, no Update, no behaviour. The wizard aims at it,
+    /// the badge offers F, and GrimoireAbsorb does the absorbing, exactly the
+    /// way the acolyte's scan works.
+    ///
+    /// That is also what makes it safe to hand to map authors: attaching one
+    /// attaches a label, never code.
     public class AbsorbSource : MonoBehaviour
     {
         [Tooltip("The runes this object teaches, IN THIS ORDER. Each absorb grants the next one the player is missing.")]
@@ -18,6 +21,8 @@ namespace SpellyZombie
         public float Range = 3.5f;
 
         /// The next rune this would teach the owner - None when it is spent.
+        /// Already-known runes are skipped, so a source is invisible to anyone
+        /// who has learned everything on its list.
         public RuneType NextFor(int owner)
         {
             if (Teaches == null) return RuneType.None;
@@ -26,30 +31,21 @@ namespace SpellyZombie
             return RuneType.None;
         }
 
-        void Update()
+        /// Teach the next missing rune. False when it has nothing left to give.
+        /// The caller has already decided the aim and the key.
+        public bool Teach(int owner)
         {
-            if (AimBadge.Aimed != (Component)this) return;
-            var kb = Keyboard.current;
-            if (kb == null || !kb.fKey.wasPressedThisFrame) return;
-            if (UIKit.Typing || GameMenu.IsOpen || PoseStudio.IsOpen) return;
-
-            int me = Grimoire.LocalPlayerId;
-            if (Sides.Of(me) == Side.Acolyte) return; // acolytes scan, never absorb
-
-            var p = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
-            if (p == null) return;
-            if ((p.transform.position - transform.position).sqrMagnitude > Range * Range) return;
-
-            var rune = NextFor(me);
+            var rune = NextFor(owner);
             if (rune == RuneType.None)
             {
                 DrawingWorld.Instance?.LogEvent("this taught you everything it knows");
-                return;
+                return false;
             }
-            Grimoire.UnlockRune(me, rune);
+            Grimoire.UnlockRune(owner, rune);
             Juice.Chime(transform.position);
             DrawingWorld.Instance?.LogEvent($"absorbed: it teaches {RuneLibrary.Icon(rune)}");
             if (!Infinite) Destroy(gameObject);
+            return true;
         }
     }
 }

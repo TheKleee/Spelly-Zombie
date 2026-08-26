@@ -88,7 +88,26 @@ namespace SpellyZombie
             _spellVel = Vector3.ClampMagnitude(_spellVel, 34f);
         }
 
-        public float Health = 100f;
+        [Tooltip("Starting strength. HEALTH IS STRENGTH - the same one stat every creature, golem and crate carries, stored in the same place, so the host owns the number here too.")]
+        [SerializeField] float _startStrength = 100f;
+
+        Element _dmg;
+
+        /// Health IS strength, and it lives in the Element like everyone
+        /// else's. One store means one place to fix, and a hit on a player
+        /// follows the same host-authoritative law as a hit on a tree.
+        public float Health
+        {
+            get => _dmg != null ? _dmg.Health : _startStrength;
+            set
+            {
+                if (_dmg == null) return;
+                // above zero always clears the dead flag: a revive and a
+                // sandbox mercy reset are the same write
+                if (value > 0f) _dmg.Revive(value);
+                else _dmg.Health = value;
+            }
+        }
 
         /// Real motion this frame (the CC's own measurement) - liquids read it
         /// to apply viscous drag against the direction you're actually moving.
@@ -212,7 +231,16 @@ namespace SpellyZombie
                 return;
             }
             _shove += impulse;
-            Health -= damage;
+            // THE NUMBER GOES THROUGH THE ONE LAW: offline and host subtract
+            // here, a client asks the host and reacts when the answer lands.
+            if (damage > 0f && _dmg != null) _dmg.TakeDamage(damage, cause ?? "hit");
+        }
+
+        /// What a wound FEELS like. Hung off the Element, so it runs the
+        /// same whether the hit was dealt on this machine or handed down by
+        /// the host.
+        void Hurt(float damage, string cause)
+        {
             _lastHurt = Time.time;
             if (damage > 0f) NoteDamage(cause ?? "hit", damage);
             // DoT ticks show on the hurt vignette only; the camera shakes for
@@ -225,15 +253,14 @@ namespace SpellyZombie
                 Debug.Log($"[SpellyZombie] Player hit! {Mathf.Max(0, Health):0} hp");
             }
             if (damage >= 15f) KnockDown(1.1f); // big hits floor you
-            if (Health <= 0f)
+            if (Health > 0f) return;
+
+            // the lobby kills too, so death and ghosts are testable there
+            if (RoundDirector.RunActive || ActiveScene.Name == "Lobby") GoDown();
+            else
             {
-                // the lobby kills too, so death and ghosts are testable there
-                if (RoundDirector.RunActive || ActiveScene.Name == "Lobby") GoDown();
-                else
-                {
-                    Health = Sides.MaxHealthFor(Grimoire.LocalPlayerId); // sandbox mercy respawn-in-place
-                    Debug.Log("[SpellyZombie] Player DOWN - shaking it off (sandbox)");
-                }
+                Health = Sides.MaxHealthFor(Grimoire.LocalPlayerId); // sandbox mercy respawn-in-place
+                Debug.Log("[SpellyZombie] Player DOWN - shaking it off (sandbox)");
             }
         }
         float _lastHurt;
@@ -353,13 +380,26 @@ namespace SpellyZombie
             if (GetComponent<CharacterRig>() == null) gameObject.AddComponent<CharacterRig>();
             if (GetComponent<PoseGrab>() == null) gameObject.AddComponent<PoseGrab>();
 
-            // spell physics speaks Damageable - bridge it into the controller's
+            // spell physics speaks Element - bridge it into the controller's
             // health. The bridge never dies itself; the controller owns downs.
-            var dmg = GetComponent<Damageable>();
-            if (dmg == null) dmg = gameObject.AddComponent<Damageable>();
-            dmg.Health = float.MaxValue;
-            dmg.Destructible = false;
-            dmg.OnDamaged = (amount, cause) => TakeHit(Vector3.zero, amount);
+            _dmg = GetComponent<Element>();
+            if (_dmg == null) _dmg = gameObject.AddComponent<Element>();
+            _dmg.MaxStrength = Mathf.Max(1f, _startStrength);
+            _dmg.Health = _dmg.MaxStrength;
+            _dmg.RemoveOnDeath = false;   // the controller owns downs, never Destroy
+            // a player is alive; the body board carries the real Int and
+            // Courage, this is what the world's own test reads
+            if (_dmg.Natural.Int <= 0f)
+            {
+                var n = _dmg.Natural; n.Int = 1f; n.Courage = 1f; _dmg.Natural = n;
+                var d = _dmg.Data; d.Int = 1f; d.Courage = 1f; _dmg.Data = d;
+            }
+            // a body is named the same way on every machine, so a hit finds the
+            // right one without anybody searching for a network component
+            _dmg.Rename(Element.IdFor("player:" + Grimoire.LocalPlayerId));
+            // every wound reacts here, whether it was dealt locally or arrived
+            // as the host's answer - one reaction path, not two
+            _dmg.OnDamaged = Hurt;
 
             All.Add(this);
         }
@@ -471,12 +511,14 @@ namespace SpellyZombie
             // draw modes and R pose mode free the cursor themselves.
             bool altPrecision = !ThirdPersonActive && kb.leftAltKey.isPressed
                 && (_slots == null || _slots.PenSelected);
-            // teach the precision pen once; retire only when Alt is used while inking
-            if (!ThirdPersonActive && (_slots == null || _slots.PenSelected))
-            {
-                if (altPrecision && SurfaceDrawer.IsPenActive) Hints.Retire(Hints.Id.FreeHand);
-                else if (SurfaceDrawer.IsPenActive) Hints.Offer(Hints.Id.FreeHand);
-            }
+            // ALT IS AN AFFORDANCE, NOT A LESSON. It used to be a one-shot
+            // tutorial hint that retired the first time anyone used it and
+            // never came back - so the one control that makes drawing bearable
+            // was invisible for the whole rest of the game. It shows every time
+            // ink is flowing without it, and gets out of the way once held.
+            if (!ThirdPersonActive && SurfaceDrawer.IsPenActive && !altPrecision
+                && (_slots == null || _slots.PenSelected))
+                UIPrompt.Offer("ALT", Loc.T("chip.precise"));
             bool precision = altPrecision || HeldWeapon.DrawMode || SelfPaint.IsActive
             || PoseGrab.IsOpen || LobbyStand.PanelOpen // book stand menu = real mouse
                 || HatPillar.PanelOpen                      // hat color sliders = same law as the stand
@@ -771,6 +813,7 @@ namespace SpellyZombie
             {
                 int me = Grimoire.LocalPlayerId;
                 float cap = Sides.MaxHealthFor(me);
+                if (_dmg != null) _dmg.MaxStrength = cap;   // buffs raise the ceiling
                 if (Health < cap)
                     Health = Mathf.MoveTowards(Health, cap,
                         Sides.RegenPerSecFor(me) * Time.deltaTime);

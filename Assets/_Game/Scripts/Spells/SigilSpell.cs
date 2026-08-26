@@ -29,7 +29,7 @@ namespace SpellyZombie
             var rb = go.AddComponent<Rigidbody>();
             rb.mass = 2f;
             rb.constraints = RigidbodyConstraints.FreezeRotation;
-            go.AddComponent<Damageable>().Health = 15f;
+            go.AddComponent<Element>().Health = 15f;
             GooglyEyes.Attach(go.transform, 0.35f, 1.6f);
             var c = go.AddComponent<Chicken>();
             Destroy(go, 25f);
@@ -69,7 +69,7 @@ namespace SpellyZombie
                 if (_peck <= 0f)
                 {
                     _peck = 0.6f;
-                    _target.GetComponentInParent<Damageable>()?.TakeDamage(4f, "pecked by chicken");
+                    _target.GetComponentInParent<Element>()?.TakeDamage(4f, "pecked by chicken");
                     _rb.AddForce(Vector3.up * 2.5f, ForceMode.Impulse);
                 }
             }

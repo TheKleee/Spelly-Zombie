@@ -22,8 +22,17 @@ namespace SpellyZombie
         public Color Tint = Color.white;
         public bool DriveTint;
 
+        /// ★ HOW THE BODY MOVES. The same sliders a spell has - wobble, swirl,
+        /// bubbles, break-up, rim - on a zombie or a golem, pushed through the
+        /// same filter that already keeps the eyes out. A zombie summoned by a
+        /// swirling spell swirls; nothing else had to learn what a zombie is.
+        public SpellTable.Look Look;
+        SpellTable.Look _pushedLook;
+
         static readonly int StateID = Shader.PropertyToID("_StateT");
         static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
+
+        float _pushedFade = 1f;
 
         Renderer[] _rends;
         Animator _anim;
@@ -69,13 +78,61 @@ namespace SpellyZombie
             _pushed = -1f;
         }
 
-        void LateUpdate()
+        /// HOW VISIBLE THIS BODY IS, 1 = solid, 0 = gone. Its own channel, so a
+        /// spell can fade something without pretending it changed state - and
+        /// it works the same on a player, a zombie, a golem or a crate.
+        /// The shader multiplies it into the alpha its state already gives.
+        public float Visibility { get; private set; } = 1f;
+
+        float _fadeUntil, _fadeTo = 1f;
+
+        /// Drop any fade in flight - a woken ghost turns fully real at once.
+        public void ClearFade() { _fadeUntil = 0f; _fadeTo = 1f; }
+
+        /// Fade to `visible` (0..1) for this long, then come back. The strongest
+        /// fade in flight wins, so two spells cannot brighten each other.
+        public void Fade(float visible, float seconds)
         {
+            visible = Mathf.Clamp01(visible);
+            if (Time.time < _fadeUntil) visible = Mathf.Min(visible, _fadeTo);
+            _fadeTo = visible;
+            _fadeUntil = Time.time + Mathf.Max(0.01f, seconds);
+        }
+
+        /// ★ PUSH EVERYTHING NOW. The editor preview calls this directly, so
+        /// there is ONE writer to the body's material: this component. Before,
+        /// the preview wrote colour into the property block and StateView's
+        /// own pass overwrote it with white - two writers, and the one on the
+        /// prefab won. That is why the golem stayed grey and the demon never
+        /// turned hot.
+        public void PushNow()
+        {
+            // Awake does not run on an editor preview instance, so make what
+            // Awake would have made
+            if (_mpb == null) _mpb = new MaterialPropertyBlock();
+            if (_rends == null) Rescan();
+            _pushed = -1f;              // force the pass to write
+            _pushedLook = null;         // and re-read the sliders even on the same object
+            Apply();
+        }
+
+        void LateUpdate() => Apply();
+
+        void Apply()
+        {
+            float want = Time.time < _fadeUntil ? _fadeTo : 1f;
+            if (!Mathf.Approximately(want, Visibility))
+                Visibility = Mathf.MoveTowards(Visibility, want, Time.deltaTime * 2.5f);
+
             bool stateMoved = !Mathf.Approximately(_pushed, StateT);
             bool tintMoved = DriveTint && _pushedTint != Tint;
-            if (!stateMoved && !tintMoved) return;
+            bool fadeMoved = !Mathf.Approximately(_pushedFade, Visibility);
+            bool lookMoved = !ReferenceEquals(Look, _pushedLook);
+            if (!stateMoved && !tintMoved && !fadeMoved && !lookMoved) return;
             _pushed = StateT;
             _pushedTint = Tint;
+            _pushedFade = Visibility;
+            _pushedLook = Look;
 
             if (_rends != null)
                 foreach (var r in _rends)
@@ -83,7 +140,21 @@ namespace SpellyZombie
                     if (r == null) continue;
                     r.GetPropertyBlock(_mpb);
                     _mpb.SetFloat(StateID, StateT);
-                    if (DriveTint) _mpb.SetColor(BaseColorID, Tint);
+                    // alpha rides the tint, so a faded body needs the colour
+                    // pushed even when nothing is driving the tint itself
+                    var c = DriveTint ? Tint : Color.white;
+                    c.a = Visibility;
+                    _mpb.SetColor(BaseColorID, c);
+                    if (Look != null)
+                    {
+                        _mpb.SetFloat("_Wobble", Look.Wobble);       _mpb.SetFloat("_WobbleSpeed", Look.WobbleSpeed);
+                        _mpb.SetFloat("_Swirl", Look.Swirl);         _mpb.SetFloat("_SwirlSpeed", Look.SwirlSpeed);
+                        _mpb.SetFloat("_Turbulence", Look.Turbulence);
+                        _mpb.SetFloat("_Bubbles", Look.Bubbles);     _mpb.SetFloat("_BubbleScale", Look.BubbleSize);
+                        _mpb.SetFloat("_BubbleRise", Look.BubbleRise);
+                        _mpb.SetFloat("_Holes", Look.Holes);         _mpb.SetFloat("_HoleScale", Look.HoleSize);
+                        _mpb.SetFloat("_Rim", Look.Rim);
+                    }
                     r.SetPropertyBlock(_mpb);
                 }
 

@@ -192,7 +192,7 @@ namespace SpellyZombie
                 SteamLobby.PendingSize > 2, SteamLobby.PendingSize < SteamLobby.MaxPlayers);
             ry -= 30f;
 
-            ArrowRow(parent, rx, ry, width - 190f, Loc.F("stand.duration", MatchLobby.DurationMin),
+            ArrowRow(parent, rx, ry, width - 190f, Loc.F("stand.duration", MatchLobby.DurationLabel),
                 () => MatchLobby.DurationMin = Mathf.Max(5, MatchLobby.DurationMin - 5),
                 () => MatchLobby.DurationMin = Mathf.Min(15, MatchLobby.DurationMin + 5),
                 MatchLobby.DurationMin > 5, MatchLobby.DurationMin < 15);

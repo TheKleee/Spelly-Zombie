@@ -21,7 +21,10 @@ namespace SpellyZombie
 
         float _left, _paintRetry;
         bool _painted;
-        static MaterialPropertyBlock _block;
+
+        /// The spell that raised it, if any - its material sliders go onto the
+        /// body, and its colour shades the zombie's own green.
+        public SpellDef Spell;
 
         public void Begin(int owner, bool ranged, float seconds, float gasRadius)
         {
@@ -32,44 +35,45 @@ namespace SpellyZombie
             GasRadius = gasRadius;
             float bodyHeight = transform.localScale.y * 2f;
             _gas = PoisonField.Open(transform.position + Vector3.up * bodyHeight * 0.35f,
-                Mathf.Min(bodyHeight * DrawingConfig.PoisonAuraBodyMul, 1.1f),
+                Mathf.Min(bodyHeight * DrawingConfig.PoisonAuraBodyMul, 0.88f),
                 seconds + 1f, transform);
             Paint();
         }
 
-        /// Tints the body: melee and ranged get different greens, readable at range.
+        /// ★ ONE WRITER. Zombies are green; the spell only shades that, and its
+        /// material sliders ride the body - all through StateView, which keeps
+        /// the eyes out. This used to REPLACE the body's material with a flat
+        /// one on authored bodies (its custom-body check asked the ZombieDress,
+        /// and a prefab body has none) - tearing the state material off, which
+        /// is why a summon never looked like its spell.
         void Paint()
         {
-            var rends = GetComponentsInChildren<Renderer>(true);
-            if (rends.Length == 0) return;      // body not built yet; Update retries
+            if (GetComponentsInChildren<Renderer>(true).Length == 0)
+                return;                     // body not built yet; Update retries
 
             Color c = Ranged ? DrawingConfig.SummonRangedColor : DrawingConfig.SummonMeleeColor;
             // the ground it was raised on pulls the colour, bounded so the
             // melee/ranged read survives
             var stamp = GetComponent<BiomeStamp>();
             if (stamp != null) c = stamp.Shift(c);
+            if (Spell != null) c = Color.Lerp(c, Spell.Payload.Tint(), DrawingConfig.BiomeTintStrength);
 
-            // baked body: property block (shader and maps survive); graybox: MatterFX material
-            var dress = GetComponent<ZombieDress>();
-            bool custom = dress != null && dress.IsCustomBody;
-
-            foreach (var r in rends)
-            {
-                if (r == null) continue;
-                bool head = r.transform.name == "Head";
-                Color mine = head ? c * 1.15f : c;
-
-                if (custom)
-                {
-                    if (_block == null) _block = new MaterialPropertyBlock();
-                    r.GetPropertyBlock(_block);
-                    _block.SetColor("_BaseColor", mine);
-                    _block.SetColor("_Color", mine);
-                    r.SetPropertyBlock(_block);
-                }
-                else r.sharedMaterial = MatterFX.Get(mine, MoteShade.Opaque);
-            }
+            var view = GetComponent<StateView>() ?? gameObject.AddComponent<StateView>();
+            view.Tint = c;
+            view.DriveTint = true;
+            if (Spell != null) view.Look = Spell.Skin;
             _painted = true;
+        }
+
+        /// ★ THE AURA OUTLIVES ITS OWNER (his rule): freed BEFORE the body
+        /// goes, while the field is still a living object - the OnDestroy
+        /// version freed a half-destroyed child that never ticked again.
+        public void FreeGas()
+        {
+            if (_gas == null) return;
+            _gas.transform.SetParent(null, true);
+            _gas.Wearer = null;
+            _gas = null;
         }
 
         void Update()
@@ -86,6 +90,7 @@ namespace SpellyZombie
 
             // expires with no corpse and no drops - but it still shows, or a
             // summon just blinks out of existence with nothing to read
+            FreeGas();
             GetComponent<Zombie>()?.DeathPoof("its time ran out");
             Destroy(gameObject);
         }
