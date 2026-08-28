@@ -206,17 +206,19 @@ namespace SpellyZombie
         }
 
         /// Heat + chill meeting: the one gas substance. A scalding steam blob.
-        public static void Steam(Vector3 at, float power)
+        /// The team chain rides it - your water stays yours as steam.
+        public static void Steam(Vector3 at, float power, int owner = -1)
         {
             var m = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas,
                 0.35f * Mathf.Max(0.5f, power), at + Vector3.up * 0.3f);
-            if (m != null) m.Temperature = 130f;
+            if (m != null) { m.Temperature = 130f; m.StampOwner(owner); }
             DrawingWorld.Instance?.LogEvent("fire and frost make SCALDING STEAM");
         }
 
         /// The meteor: a stone conjured overhead that rises, swells and dives
-        /// at the spot. count > 1 = it is raining meteorites (lvl2).
-        public static void Meteor(Vector3 at, float power, int count)
+        /// at the spot. count > 1 = it is raining meteorites (lvl2). The rock
+        /// carries its caster's team through every shard.
+        public static void Meteor(Vector3 at, float power, int count, int owner = -1)
         {
             for (int i = 0; i < Mathf.Max(1, count); i++)
             {
@@ -226,6 +228,7 @@ namespace SpellyZombie
                 var rock = Matter.Spawn(SurfaceMaterialType.Stone, MatterPhase.Solid,
                     0.4f * Mathf.Max(0.5f, power), spot + Vector3.up * 0.5f);
                 if (rock == null) continue;
+                rock.StampOwner(owner);
                 var rise = rock.gameObject.AddComponent<MeteorRise>();
                 rise.Reach = power;
             }

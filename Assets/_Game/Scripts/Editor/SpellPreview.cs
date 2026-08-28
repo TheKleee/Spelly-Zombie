@@ -295,9 +295,35 @@ namespace SpellyZombie
             var pa = cam.WorldToViewportPoint(a);
             var pb = cam.WorldToViewportPoint(b);
             if (pa.z <= 0f || pb.z <= 0f) return;   // behind the camera
-            Handles.DrawLine(
-                new Vector3(rect.x + pa.x * rect.width, rect.y + (1f - pa.y) * rect.height),
-                new Vector3(rect.x + pb.x * rect.width, rect.y + (1f - pb.y) * rect.height));
+            Vector2 sa = new Vector2(rect.x + pa.x * rect.width, rect.y + (1f - pa.y) * rect.height);
+            Vector2 sb = new Vector2(rect.x + pb.x * rect.width, rect.y + (1f - pb.y) * rect.height);
+
+            // ★ THE FLOOR GRID PASSES BEHIND THE BODY, never over it. Drawn
+            // in window space AFTER the render, the lines used to cross the
+            // model's face and a fully solid blob read as see-through glass.
+            if (_shown != null)
+            {
+                var bb = Bounds();
+                var vc = cam.WorldToViewportPoint(bb.center);
+                if (vc.z > 0f)
+                {
+                    Vector2 c = new Vector2(rect.x + vc.x * rect.width, rect.y + (1f - vc.y) * rect.height);
+                    var ve = cam.WorldToViewportPoint(bb.center + cam.transform.right * bb.extents.magnitude * 0.8f);
+                    float r = Vector2.Distance(c,
+                        new Vector2(rect.x + ve.x * rect.width, rect.y + (1f - ve.y) * rect.height));
+                    const int steps = 24;
+                    Vector2 prev = sa; bool prevIn = Vector2.Distance(sa, c) < r;
+                    for (int i = 1; i <= steps; i++)
+                    {
+                        Vector2 p = Vector2.Lerp(sa, sb, i / (float)steps);
+                        bool pin = Vector2.Distance(p, c) < r;
+                        if (!prevIn && !pin) Handles.DrawLine(prev, p);
+                        prev = p; prevIn = pin;
+                    }
+                    return;
+                }
+            }
+            Handles.DrawLine(sa, sb);
         }
 
         // ------------------------------------------------------------- bones

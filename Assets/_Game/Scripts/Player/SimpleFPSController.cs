@@ -349,8 +349,12 @@ namespace SpellyZombie
             // every caster has an identity; seals are owned by whoever completes them.
             // Connected, the stable ClientId-derived owner id IS the identity -
             // machine-local instance ids meant nothing on other machines (netcode §0).
+            // OFFLINE THE ID MUST STILL BE NON-NEGATIVE: instance ids are
+            // negative, and owner < 0 means NEUTRAL everywhere - so offline,
+            // everything a player made was born teamless and their own
+            // golems hunted them (the -96404 bug, found by the birth log).
             Grimoire.LocalPlayerId = NetGame.Connected && NetSync.LocalOwnerId >= 0
-                ? NetSync.LocalOwnerId : gameObject.GetInstanceID();
+                ? NetSync.LocalOwnerId : Mathf.Abs(gameObject.GetInstanceID());
 
             // body ink never expires: the player class carries its own marker
             // so no scene setup can forget it
@@ -649,6 +653,11 @@ namespace SpellyZombie
             }
             // load past the walk limit folds you whether you chose it or not
             if (_body != null && _body.CrawlOnly) wantCrouch = true;
+            // ★ HIGH DENSITY BENDS YOUR KNEES (his rule): hit with Compress,
+            // the weight folds you into a crouch until it drains off
+            if (_dmg != null && SpellPayload.ToHuman(2,
+                    _dmg.Data.Pressure - _dmg.Natural.Pressure) > 20f)
+                wantCrouch = true;
             IsCrouched = wantCrouch;
             float targetHeight = IsCrouched ? _crouchHeight : _standHeight;
             if (!Mathf.Approximately(_cc.height, targetHeight))

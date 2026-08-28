@@ -144,12 +144,36 @@ namespace SpellyZombie
             {
                 int need = Axis[i];
                 if (need == 0) continue;
+                // ★ EFFECTS NEVER GATE (his rule): Strength, Mind, Courage
+                // and Clones are byproducts a spell CARRIES, never conditions
+                // for its creation - a Meteor with Strength 60 authored must
+                // not demand strength from the runes.
+                if (i >= 6) continue;
+                // ★ FLAVOR DOES NOT GATE: an authored value at or under the
+                // axis line is something the spell imposes, not a requirement
+                // (his flame is slightly gaseous - that must not forbid it).
+                if (Mathf.Abs(need) <= SpellPayload.LineFor(i)) continue;
                 said = true;
                 // compared in HUMAN units, past the axis's own line
                 float have = SpellPayload.ToHuman(i, p[i]);
                 if (Mathf.Sign(have) != Mathf.Sign(need)) return false;
                 float line = Mathf.Max(SpellPayload.LineFor(i), Mathf.Abs(need) * 0.8f);
                 if (Mathf.Abs(have) < line) return false;
+            }
+            if (said) return true;
+
+            // ★ A DEF WHOSE EVERY NAMED AXIS IS FLAVOR still exists - it gates
+            // on its own small numbers instead of the line. Without this his
+            // Liquid (State -15, inside the line) could never be worn at all,
+            // and the bare liquid rune came out a naked blob.
+            for (int i = 0; i < 6; i++)
+            {
+                int need = Axis[i];
+                if (need == 0) continue;
+                float have = SpellPayload.ToHuman(i, p[i]);
+                if (Mathf.Sign(have) != Mathf.Sign(need)) return false;
+                if (Mathf.Abs(have) < Mathf.Abs(need) * 0.8f) return false;
+                said = true;
             }
             return said;
         }
@@ -251,6 +275,12 @@ namespace SpellyZombie
         /// Reappears on nearby things that meet the same condition. Fire and
         /// poison; nothing else needs to know about "contagion".
         public bool Spreading;
+
+        /// ★ AN AREA MAY LOAD A FULL SPELL (his rule): the child BECOMES that
+        /// book spell - its axes ride in, its authored shape dresses it, its
+        /// behavior follows - on top of the origin slice it already carries.
+        /// A meteor area loading a hot solid spell falls as a burning rock.
+        public string Spell = "";
 
         /// ★ ITS LOOK IS ANY PREFAB YOU LIKE - a particle effect, a trail, a
         /// posed blob. Not blob/zombie/golem: those are what SPELLS wear.

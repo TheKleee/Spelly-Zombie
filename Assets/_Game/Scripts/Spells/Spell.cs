@@ -22,7 +22,6 @@ namespace SpellyZombie
             public float Phase;
             public RuneGlyph Glyph;   // live ink anchor - the zone RIDES its glyph
             public GameObject Visual; // zone root (light/arrow), follows the ink
-            public bool Conjured;     // State runes conjure ONCE per activation
             public float GlyphSize;   // UNCLAMPED drawn half-extent - matter sizing
                                       // uses this, not Radius (0.9-floored for effect areas)
             public Object Tracked;    // SUSTAIN LAW: what this rune's particle currently
@@ -71,6 +70,51 @@ namespace SpellyZombie
                     return null;
                 }
                 return AcolyteSummon(seal);
+            }
+
+            // ★ WIZARDS SUMMON TOO (his fix): a seal whose runes HOLD a body
+            // def in the held book raises it - Solid x2 = the solid golem,
+            // Liquid x2 = the liquid one. The seal spends itself on the
+            // summon, exactly like the acolyte flow.
+            _sealRunes.Clear();
+            foreach (var sr in seal.Runes)
+                if (sr.Rune != RuneType.None && sr.Strength > 0.02f
+                    && RuneLibrary.IsUnlocked(seal.OwnerId, sr.Rune))
+                    _sealRunes.Add(sr.Rune);
+            var bodyDef = SpellBook.Live.BodyForSeal(_sealRunes, Grimoires.HeldBy(seal.OwnerId));
+            if (bodyDef != null)
+            {
+                Vector3 spot = seal.PlaneOrigin + seal.PlaneNormal * 0.3f;
+                float k = SealSizeMul(seal);
+                if (bodyDef.Body == SpellBody.Golem)
+                {
+                    var summoned = Golem.Spawn(spot, k);
+                    if (summoned != null)
+                    {
+                        summoned.OwnerId = seal.OwnerId; // his team's golem
+                        summoned.Wear(bodyDef);
+                    }
+                }
+                else
+                {
+                    // zombie-bodied defs - the DEMON included (all twelve
+                    // runes hold it): same raise as the acolyte flow
+                    var z = Zombie.Spawn(spot);
+                    if (z != null)
+                    {
+                        // the summon component exists BEFORE Wear (the law)
+                        var summon = z.gameObject.AddComponent<SummonedZombie>();
+                        z.Wear(bodyDef);
+                        z.transform.localScale *= k;
+                        var zrb = z.GetComponent<Rigidbody>();
+                        if (zrb != null)
+                            zrb.mass = Mathf.Max(DrawingConfig.SummonMinMass,
+                                zrb.mass * k * k * k);
+                        summon.Begin(seal.OwnerId, false,
+                            DrawingConfig.SummonedZombieLife, 0f);
+                    }
+                }
+                return null;
             }
 
             var host = new GameObject($"Spell_{seal.Id}");
@@ -735,17 +779,7 @@ namespace SpellyZombie
             // as the seal lives; emissions happen only on the shared pulse
             if (_pulseFire)
             {
-                if (ProducesMatter(z.Rune))
-                {
-                    // State conjures ONCE per activation (re-firing the seal -
-                    // pose re-close - conjures the next batch)
-                    if (!z.Conjured)
-                    {
-                        z.Conjured = true;
-                        EmitParticles(z);
-                    }
-                }
-                else if (TrackerAlive(ref z.Tracked))
+                if (TrackerAlive(ref z.Tracked))
                 {
                     // sustain law: this rune's product is still out there;
                     // re-emit only once the chain's final product is gone
@@ -768,14 +802,33 @@ namespace SpellyZombie
         static readonly System.Collections.Generic.List<RuneType> _sealRunes =
             new System.Collections.Generic.List<RuneType>();
 
-        /// ★ A RUNE IS A RUNE (his rule: nobody said bad drawings become
-        /// weaker runes). Recognition is the only quality gate - once a glyph
-        /// is accepted it seeds the FULL 25 human units, identical to the
-        /// book's bare spell, every time.
+        /// The rune's bare spell in the book - names match his 12 defs.
+        static string BareName(RuneType r) => r switch
+        {
+            RuneType.HeatUp => "Heat", RuneType.HeatDown => "Chill",
+            RuneType.LuminanceUp => "Light", RuneType.LuminanceDown => "Dark",
+            RuneType.DensityUp => "Compress", RuneType.DensityDown => "Spread",
+            RuneType.StickyUp => "Sticky", RuneType.StickyDown => "Slick",
+            RuneType.StateSolid => "Solid", RuneType.StateLiquid => "Liquid",
+            RuneType.DirectionAway => "Attract", RuneType.DirectionToward => "Repel",
+            _ => null,
+        };
+
+        /// ★ THE BOOK IS THE SOURCE (his model): a recognized rune seeds
+        /// exactly its own bare spell's numbers, so it always meets its region
+        /// and rebalancing the book rebalances the runes. A rune with no bare
+        /// spell in this book falls back to 25 flat on its axis.
         static SpellPayload RuneSeed(RuneType rune, float intensity)
         {
-            var axes = SpellPayload.Of(rune, 1f);
             var seed = new SpellPayload();
+            var bare = SpellBook.Live.Spell(BareName(rune));
+            if (bare != null)
+            {
+                for (int i = 0; i < SpellPayload.AxisCount; i++)
+                    if (bare.Axis[i] != 0) seed[i] = SpellPayload.FromHuman(i, bare.Axis[i]);
+                return seed;
+            }
+            var axes = SpellPayload.Of(rune, 1f);
             for (int i = 0; i < SpellPayload.AxisCount; i++)
                 if (Mathf.Abs(axes[i]) > 0.001f)
                     seed[i] = SpellPayload.FromHuman(i, 25f * Mathf.Sign(axes[i]));
@@ -784,9 +837,9 @@ namespace SpellyZombie
 
         void EmitParticles(Zone z)
         {
-            if (ProducesMatter(z.Rune)) { SpawnMatter(z); return; }
-
-            // State runes never reach here - ProducesMatter caught them above.
+            // ★ EVERY RUNE EMITS A MOTE, state included (his rule: ALL
+            // dormant spells combine - a solid particle IS a particle). The
+            // direct matter conjure was the pre-V2 layer.
             ParticleKind kind = SpellParticle.KindOf(z.Rune);
 
             // the caster's powerups shape the burst (per rune family);
@@ -826,7 +879,7 @@ namespace SpellyZombie
                 p.ApplySizeRatio(SpellParticle.DrawnSizeK(p.SrcSize));
                 p.Lineage = RuneGrammar.Bit(z.Rune); // GRAMMAR v4: ancestry starts here -
                                                      // all 12 in one chain = THE DEMON
-                p.SealId = GetHashCode();            // siblings of one DRAWING pair up first
+                p.JoinSeal(GetHashCode());            // siblings of one DRAWING pair up first
                 // ★ THE RUNE'S NUMBERS RIDE THE MOTE (his rule: attract and
                 // repel - and everything - are particles NORMALLY). Without
                 // this seed a drawn mote flew EMPTY and only the legacy Kind
@@ -877,7 +930,7 @@ namespace SpellyZombie
             p.SrcSize = Mathf.Max(0.5f, srcSize);
             p.OwnerId = _ownerId;
             p.Lineage = RuneGrammar.Bit(z.Rune);
-            p.SealId = GetHashCode();
+            p.JoinSeal(GetHashCode());
             p.Data = RuneSeed(z.Rune, z.Intensity);   // the numbers ride the ghost too
             p.Reach = z.Radius;                       // and the seal's ratio-reach
             p.PendingConjure = conjure;
@@ -897,8 +950,6 @@ namespace SpellyZombie
         }
 
         // ONLY State runes spawn matter (once, at activation) - everything else modifies it.
-        static bool ProducesMatter(RuneType r) => r == RuneType.StateSolid || r == RuneType.StateLiquid;
-
         /// SUSTAIN LAW bookkeeping: walk the became-chain to whatever the
         /// rune's particle currently is. Alive = a living particle, a running
         /// field, an existing matter blob, or a demon still digesting it.
@@ -978,59 +1029,6 @@ namespace SpellyZombie
         /// form (StoneLava, FleshBlood, CoalOil, default Water). Every sibling
         /// rune in the seal changes what it conjures (SPELL_PARTICLES.md cross
         /// matrix); identity rides along as lineage.
-        void SpawnMatter(Zone z)
-        {
-            bool solid = z.Rune == RuneType.StateSolid;
-            var mat = _surface;
-            if (mat == SurfaceMaterialType.Unknown)
-                mat = solid ? SurfaceMaterialType.Stone : SurfaceMaterialType.Water;
-
-
-            // one recipe per drawing: the first zone of each State rune does
-            // the work (plain loop - Find's lambda allocates per activation)
-            foreach (var o in _zones)
-                if (o.Rune == z.Rune) { if (o != z) return; break; }
-
-            // ---- THE THRESHOLD DOCTRINE: no seal recipes. The State rune
-            // conjures its matter and NOTHING else - sibling runes emit their
-            // own particles, and whatever they become together is decided by
-            // payload addition against the table, in the world, in order.
-            ulong lineage = 0;
-            foreach (var other in _zones) lineage |= RuneGrammar.Bit(other.Rune);
-            RuneGrammar.TryDemon(lineage, z.Center, z.Radius); // a full drawing IS a chain
-
-            var buff = Powerups.For(_ownerId, z.Rune);
-            float size = Mathf.Clamp(z.GlyphSize * 0.5f, 0.08f, 0.45f)
-                * Mathf.Lerp(0.75f, 1.15f, z.Intensity) * (1f + 0.25f * buff.Big);
-
-            // one conjure per cast; density buffs change the size, never the
-            // count
-            {
-                // birth is at the seal with a small lift; the strike driver
-                // below does the jumping. Liquids slump into puddles in place.
-                float lift = size * 0.55f;
-                // the seal's side count picks the solid's shape (resolved in
-                // Matter.Spawn); liquid/gas ignore it
-                var conjured = Matter.Spawn(mat, solid ? MatterPhase.Solid : MatterPhase.Liquid,
-                size * 2f, // the drawn size, doubled
-                    z.Center + z.Normal * lift, solid ? _edges : 0);
-                // a particle in behavior, not in shape: conjured matter keeps
-                // its shape and material, plus flight (float, lock, jump)
-                var msStrike = conjured.GetComponent<MatterStrike>();
-                if (msStrike == null) msStrike = conjured.gameObject.AddComponent<MatterStrike>();
-                msStrike.Init(_ownerId, mat, solid ? MatterPhase.Solid : MatterPhase.Liquid, size * 2f);
-                // spell-born matter can never teach a rune - otherwise
-                // conjure/touch/absorb prints runes. Covers authored prefabs
-                // carrying Analyzable.
-                foreach (var an in conjured.GetComponentsInChildren<Analyzable>(true))
-                    an.SpellBorn = true;
-                conjured.Lineage = lineage;
-                if (buff.Bond > 0) conjured.AddStickiness(0.2f * buff.Bond); // gooier conjures
-                // NO seal-side dressing: sibling particles land on the blob in
-                // the world and change it there - that is the one law
-            }
-        }
-
         void BuildVisual(Zone z)
         {
             var root = new GameObject($"Zone_{z.Rune}");

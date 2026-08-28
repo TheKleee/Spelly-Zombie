@@ -111,6 +111,10 @@ namespace SpellyZombie
             if (spellMatter != null && spellMatter.SpellForm && spellMatter.OwnerId == ownerId)
                 return 1f;
 
+            // your own golem obeys completely - no ink needed (his rule)
+            var golem = rb.GetComponentInParent<Golem>();
+            if (golem != null && golem.OwnerId == ownerId) return 1f;
+
             if (marks == null) return 0f;
 
             // the WHOLE subtree, not one transform - ledgers live on whichever
@@ -243,10 +247,19 @@ namespace SpellyZombie
                 }
             }
 
-            // F puts it down, E throws it
+            // ★ F DETONATES A HELD RUNE, E throws it to detonate on impact
+            // (his law: no more passive runes). Everything else still just
+            // puts the thing down.
             if (kb.fKey.wasPressedThisFrame)
             {
-                DropHeld(Vector3.zero);
+                if (_heldParticle != null && !_remoteHolding)
+                {
+                    var p = _heldParticle;
+                    _heldParticle = null;
+                    p.ReleaseHeld(Vector3.zero);
+                    p.DetonateNow();
+                }
+                else DropHeld(Vector3.zero);
                 return;
             }
 
@@ -313,7 +326,13 @@ namespace SpellyZombie
                 var pv0 = _pilot.CameraPivot;
                 if (pv0 != null) _holdDist = Mathf.Clamp(
                     Vector3.Distance(pv0.position, bestP.transform.position), 0.7f, GrabRange);
-                DrawingWorld.Instance?.LogEvent($"grabbed the {bestP.Kind}. E throws it");
+                // name what the BOOK says it is - the raw kind reads "Push"
+                // for anything without a dominant axis, which looks like a
+                // particle nobody ever drew
+                string held = bestP.Fusions.Count > 0
+                    ? string.Join(" + ", bestP.Fusions.ConvertAll(f => f.Name))
+                    : bestP.Kind.ToString();
+                DrawingWorld.Instance?.LogEvent($"grabbed the {held}. E throws it");
                 return;
             }
 
@@ -381,6 +400,7 @@ namespace SpellyZombie
             if (bestB == null) return;
 
             _heldBody = bestB;
+            _heldBody.GetComponentInParent<Golem>()?.BeCarried(); // no resisting, no hopping
             NetSync.TrackProp(bestB); // clients follow the lifted prop (netcode §4)
             // cache the ledgers ONCE - the subtree doesn't change mid-hold
             _heldMarks = bestB.GetComponentsInChildren<InkMark>(true);
@@ -432,7 +452,9 @@ namespace SpellyZombie
             var hitRb = aimedCollider.attachedRigidbody;
 
             var zomb = aimedCollider.GetComponentInParent<Zombie>();
-            bool liftableCreature = zomb != null && !zomb.IsDemon;
+            var glm = aimedCollider.GetComponentInParent<Golem>();
+            bool liftableCreature = (zomb != null && !zomb.IsDemon)
+                || (glm != null && glm.OwnerId == ownerId); // YOUR OWN golem lifts easily
             if (aimedCollider.GetComponentInParent<SimpleFPSController>() != null
                 || (!liftableCreature && aimedCollider.GetComponentInParent<Creature>() != null)
                 || aimedCollider.GetComponentInParent<HeldWeapon>() != null)
@@ -474,7 +496,9 @@ namespace SpellyZombie
             // physics change. Zombies are liftable (draw on one, lift it like
             // a barrel); demons are exempt.
             var zomb = aimedCollider.GetComponentInParent<Zombie>();
-            bool liftableCreature = zomb != null && !zomb.IsDemon;
+            var glm = aimedCollider.GetComponentInParent<Golem>();
+            bool liftableCreature = (zomb != null && !zomb.IsDemon)
+                || (glm != null && glm.OwnerId == ownerId); // YOUR OWN golem lifts easily
 
             if (aimedCollider.GetComponentInParent<SimpleFPSController>() != null
                 || (!liftableCreature && aimedCollider.GetComponentInParent<Creature>() != null)
@@ -600,6 +624,7 @@ namespace SpellyZombie
                 var p = _heldParticle;
                 _heldParticle = null;
                 p.ReleaseHeld(dir * ThrowSpeed); // the push ability, down your own cursor
+                p.PrimeToBlow(); // a thrown rune detonates on impact (his law)
             }
             else if (_heldBody != null)
             {

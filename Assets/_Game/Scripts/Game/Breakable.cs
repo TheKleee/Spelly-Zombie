@@ -119,11 +119,15 @@ namespace SpellyZombie
         /// Fallback: real material chunks, so debris still joins the chemistry.
         void SpawnCodeChunks(int count, Bounds b, SurfaceMaterialType mat)
         {
+            // blame already names whoever broke this - the chunks keep it
+            var blame = GetComponent<Element>();
             for (int i = 0; i < count; i++)
             {
                 var chunk = Matter.Spawn(mat, MatterPhase.Solid, Random.Range(0.1f, 0.17f),
                     b.center + Vector3.Scale(Random.insideUnitSphere, b.extents * 0.7f));
-                if (chunk != null && chunk.TryGetComponent<Rigidbody>(out var rb))
+                if (chunk == null) continue;
+                if (blame != null) chunk.StampOwner(blame.Owner);
+                if (chunk.TryGetComponent<Rigidbody>(out var rb))
                     rb.linearVelocity = Random.onUnitSphere * DebrisSpread + Vector3.up * 1.5f;
             }
         }

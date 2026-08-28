@@ -52,6 +52,22 @@ namespace SpellyZombie
         public int FormLevel = 1;   // 2 = lvl2 form: solid grows on its own, liquid spreads
         public bool DarkAura;       // solid/liquid darkness: blinds whatever touches it
 
+        /// THE TEAM CHAIN (his rule: wizard team, acolyte team, neutral).
+        /// -1 = Neutral/Environment; a player id means this matter came from
+        /// that player and every fragment, split copy and golem born of it
+        /// stays on their team. Serialized on purpose: Instantiate-based
+        /// splits copy it for free.
+        public int TeamOwner = -1;
+
+        /// Stamp the team, and the blame channel with it.
+        public void StampOwner(int owner)
+        {
+            if (owner < 0) return;
+            TeamOwner = owner;
+            var stampEl = GetComponent<Element>();
+            if (stampEl != null) stampEl.Owner = owner;
+        }
+
         const float MinFragmentSize = 0.07f;   // fragments below this stop splitting
         const float TransmuteAt = 3.2f;        // density needed to jump a tier
         const float FragmentAt = 0.35f;        // density where a solid falls apart
@@ -323,10 +339,8 @@ namespace SpellyZombie
                 float life = Phase == MatterPhase.Gas ? DrawingConfig.GasLifeSeconds : _life;
                 if (Phase == MatterPhase.Gas)
                 {
-                    // end-of-life disperse
-                    if (_age > life - 1.5f)
-                        transform.localScale = transform.localScale * Mathf.Max(0.01f, 1f - dt / 1.5f);
-                    if (_age > life || transform.localScale.x < 0.02f) Destroy(gameObject);
+                    // end-of-life: gone in one beat - nothing shrinks out (his rule)
+                    if (_age > life) Destroy(gameObject);
                 }
                 else if (_age > life)
                 {
@@ -448,6 +462,7 @@ namespace SpellyZombie
                     var m = Spawn(Material, MatterPhase.Solid, childSize,
                         transform.position + Random.insideUnitSphere * _baseSize * 0.5f);
                     m.Temperature = Temperature;
+                    m.StampOwner(TeamOwner);
                     if (m.TryGetComponent<Rigidbody>(out var rb) && _rb != null)
                         rb.linearVelocity = _rb.linearVelocity + Random.insideUnitSphere * 1.2f;
                 }
@@ -698,12 +713,18 @@ namespace SpellyZombie
                 mergedSize * DrawingConfig.GolemSizePerMatter);
             if (g == null) return false;
 
-            // conjured stone remembers its caster (MatterStrike.Init) - the
-            // golem it stands up as WORKS FOR THEM (his rule). Ownerless
-            // debris keeps raising wild golems.
-            var ms = GetComponent<MatterStrike>();
-            if (ms == null && eaten != null) ms = eaten.GetComponent<MatterStrike>();
-            if (ms != null) g.OwnerId = ms.OwnerId;
+            // TEAMS SURVIVE THE CHAIN (his rule): rock, water, fragments,
+            // debris - whatever a spell made stays on its team, and so does
+            // the golem rising from it. True world matter stays Neutral.
+            int owner = TeamOwner >= 0 ? TeamOwner
+                : eaten != null ? eaten.TeamOwner : -1;
+            if (owner < 0)
+            {
+                var ms = GetComponent<MatterStrike>();
+                if (ms == null && eaten != null) ms = eaten.GetComponent<MatterStrike>();
+                if (ms != null) owner = ms.OwnerId;
+            }
+            g.OwnerId = owner;
 
             var view = g.GetComponent<StateView>();
             if (view == null) view = g.gameObject.AddComponent<StateView>();

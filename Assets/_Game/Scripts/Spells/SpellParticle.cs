@@ -12,7 +12,8 @@ namespace SpellyZombie
         Lightning, Laser, Shadow,     // condensed states (level 3 - they absorb further)
         Flame,                        // GRAMMAR v4: Spark manifested by Dense - persistent fire, merges bigger
         BlackHole,                    // GRAMMAR v4: Dark lvl2 - pulls things in (family: Dark)
-        BarrierMote                   // GRAMMAR v4: Dense+Spread paradox - isolates what it touches
+        BarrierMote,                  // GRAMMAR v4: Dense+Spread paradox - isolates what it touches
+        Solid, Liquid                 // the state runes' own body kinds - particles like every rune
     }
 
     /// A particle is its numbers. It drifts toward whatever the place around
@@ -50,6 +51,7 @@ namespace SpellyZombie
         /// to drawn size).
         public float Reach;
 
+
         /// The effect-radius factor every aura and area shares: ratio-driven
         /// when the seal said so, drawn-size otherwise.
         float ReachK => Reach > 0.01f
@@ -85,6 +87,124 @@ namespace SpellyZombie
         void GrowToSize(float oldSrcSize) =>
             ApplySizeRatio(DrawnSizeK(SrcSize) / DrawnSizeK(oldSrcSize));
 
+        /// ★ THE STATE DETONATION IS REAL MATTER (his rule: detonations per
+        /// state and axis). A solid spending itself on impact bursts as a
+        /// stone that fragments and throws debris; a liquid as water that
+        /// splashes. The matter keeps the caster's team and the spell's
+        /// momentum, so throws still FEEL like throws.
+        void ManifestState(Vector3 at, float sizeK = 1f, bool hot = false)
+        {
+            float st = SpellPayload.ToHuman(4, PayloadNow.State);
+            if (Mathf.Abs(st) < 12f) return;
+            bool solid = st > 0f;
+            var m = Matter.Spawn(
+                solid ? SurfaceMaterialType.Stone : SurfaceMaterialType.Water,
+                solid ? MatterPhase.Solid : MatterPhase.Liquid,
+                Mathf.Clamp(SrcSize * 0.5f * sizeK, 0.12f, 0.9f), at + Vector3.up * 0.15f);
+            if (m == null) return;
+            m.StampOwner(OwnerId);
+            m.Lineage = Lineage;
+            // a meteor-born stone lands BURNING - its own heat ignites what
+            // the debris touches, through the ordinary burn law
+            if (hot) m.Temperature = Mathf.Max(150f, PayloadNow.Temp * 6f);
+            // ★ SPELL SOLIDS ARE SPELLS (his rule): they expire in seconds
+            // and EXPLODE on a hard impact, throwing chunks - the same rubble
+            // law strike stones always used. Never a forever-prop.
+            var sd = m.gameObject.AddComponent<SpellDebris>();
+            sd.Init(solid ? SurfaceMaterialType.Stone : SurfaceMaterialType.Water,
+                solid ? MatterPhase.Solid : MatterPhase.Liquid,
+                Mathf.Clamp(SrcSize * 0.5f * sizeK, 0.12f, 0.9f));
+            sd.OwnerId = OwnerId;
+            if (m.TryGetComponent<Rigidbody>(out var mrb)) mrb.linearVelocity = Vel * 0.6f;
+
+            // ★ EVERYTHING NEEDS JUICE (his words): a state being born is an
+            // EVENT - a bang and a couple of chunks thrown, never a quiet prop
+            Juice.Boom(at, 0.5f);
+            for (int i = 0; i < 2; i++)
+            {
+                Vector3 d = (Random.onUnitSphere + Vector3.up).normalized;
+                var chip = Matter.Spawn(
+                    solid ? SurfaceMaterialType.Stone : SurfaceMaterialType.Water,
+                    solid ? MatterPhase.Solid : MatterPhase.Liquid,
+                    Mathf.Clamp(SrcSize * 0.22f * sizeK, 0.08f, 0.3f), at + d * 0.3f);
+                if (chip == null) continue;
+                chip.StampOwner(OwnerId);
+                var cd = chip.gameObject.AddComponent<SpellDebris>();
+                cd.Init(solid ? SurfaceMaterialType.Stone : SurfaceMaterialType.Water,
+                    solid ? MatterPhase.Solid : MatterPhase.Liquid, 0.15f);
+                cd.OwnerId = OwnerId;
+                if (chip.TryGetComponent<Rigidbody>(out var crb))
+                    crb.linearVelocity = d * 4.5f + Vel * 0.4f;
+            }
+        }
+
+        // ★ ALL SPELLS CREATE DEBRIS, and debris IS the spell (his rule):
+        // smaller versions of the same thing - real motes carrying a scaled
+        // copy of the payload, wearing the same identity, one generation
+        // down so debris never throws debris.
+        void ThrowDebris(Vector3 at, int count)
+        {
+            if (_generation > 0) return;
+            for (int i = 0; i < count; i++)
+            {
+                float ang = (i + Random.value * 0.5f) * (360f / count) * Mathf.Deg2Rad;
+                Vector3 d = new Vector3(Mathf.Cos(ang), 0.9f, Mathf.Sin(ang)).normalized;
+                var bit = Emit(Kind, at + d * 0.3f, d, Power * 0.5f, _generation + 1);
+                if (bit == null) continue;
+                var dd = new SpellPayload();
+                for (int ax = 0; ax < SpellPayload.AxisCount; ax++)
+                    dd[ax] = PayloadNow[ax] * 0.35f;
+                bit.Data = dd;
+                bit.OwnerId = OwnerId;
+                bit.Lineage = Lineage;
+                bit.SrcSize = Mathf.Clamp(SrcSize * 0.4f, 0.1f, 0.5f);
+                bit.ApplySizeRatio(DrawnSizeK(bit.SrcSize));
+                bit.Vel = d * 7f + Vel * 0.3f;
+                bit.RefreshIdentity_Public(); // dressed as the small spell it is
+            }
+        }
+
+        // ★ HIS LAW (Aug 27): runes BLOW UP on F, and a thrown rune blows up
+        // on impact - no more passive releases that do nothing interesting.
+        bool _primed;
+        public void PrimeToBlow() => _primed = true;
+
+        public void DetonateNow()
+        {
+            if (_dead) return;
+            if (Dormant) Wake();       // areas flush on wake - a meteor still falls
+            if (_dead) return;         // the wake verb may already have spent it
+            ImpactFx();
+
+            // ★ THE BLAST IS THE PAYLOAD LANDING: every body in reach takes
+            // the direct hit - the lvl2 delivery, reused. Friendly fire is on
+            // by his rule, and that includes the hand that lit it.
+            float r = AuraRadius;
+            int n = Physics.OverlapSphereNonAlloc(transform.position, r,
+                GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
+            _hitOnce.Clear();
+            for (int i = 0; i < n; i++)
+            {
+                var h = GrammarFX.ScanBuffer[i];
+                if (h == null || h.GetComponent<SpellParticle>() != null) continue;
+                Object body = h.GetComponentInParent<Element>();
+                if (body == null) body = h.attachedRigidbody;
+                if (body == null) body = h;
+                if (!_hitOnce.Add(body)) continue;
+                Detonate(h);
+            }
+
+            ManifestState(transform.position);
+            ThrowDebris(transform.position, 4); // every spell dies throwing chunks
+            // the payload hangs where it burst - sized and weighted by what
+            // the rune truly carried, so a weak mote leaves a whisper and a
+            // fused monster leaves a dome
+            ArtificialBiome.Open(transform.position, Data, r,
+                1f, DrawingConfig.LingerSeconds); // full strength - the payload IS the knob
+            Juice.Boom(transform.position, 0.7f);
+            Die();
+        }
+
         /// A transformation SETS its own body size - the trigger returns to
         /// the primitive base so the impact judge stays honest whatever the
         /// drawn-size compensation was before the change.
@@ -103,6 +223,37 @@ namespace SpellyZombie
         public int GrammarLevel = 1;
         public ulong Lineage;         // union of every rune that fed this chain
         public int SealId;            // which SEAL emitted this; same-seal siblings combine first
+
+        // ★ A SEAL IS ONE UTTERANCE: how many of one drawing's motes still
+        // live. While mates remain, no verdict is final - no stone verb, no
+        // biome, no areas - the ingredients must pool first. The meteor died
+        // here for days: its Solid mote turned to stone on wake before the
+        // heats and light could join it.
+        static readonly System.Collections.Generic.Dictionary<int, int> _sealAlive =
+            new System.Collections.Generic.Dictionary<int, int>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ClearSealRegistry() => _sealAlive.Clear();
+        public void JoinSeal(int id)
+        {
+            LeaveSeal();
+            if (id == 0) return;
+            SealId = id;
+            _sealAlive.TryGetValue(id, out int n);
+            _sealAlive[id] = n + 1;
+        }
+        void LeaveSeal()
+        {
+            if (SealId == 0) return;
+            if (_sealAlive.TryGetValue(SealId, out int n))
+            {
+                if (n <= 1) _sealAlive.Remove(SealId);
+                else _sealAlive[SealId] = n - 1;
+            }
+            SealId = 0;
+        }
+        static int MatesLeft(int sealId) =>
+            sealId != 0 && _sealAlive.TryGetValue(sealId, out int n) ? n : 0;
+        bool PoolingDone => MatesLeft(SealId) <= 1;
 
         /// What this particle died INTO (eater, field, matter blob, demon);
         /// the emitting rune waits for the final product to disappear before
@@ -179,6 +330,8 @@ namespace SpellyZombie
         ParticleKind _pendingKind;
         float _pendingPower, _pendingSrc;
         ulong _pendingLin;
+        SpellPayload _pendingData; // the partner's POOLED axes - losing them
+                                   // meant a figured-out recipe came up short
         bool _hasPending;
 
         Vector3 _anchorPos, _anchorNrm;
@@ -211,6 +364,7 @@ namespace SpellyZombie
             a._pendingPower = b.Power;
             a._pendingSrc = b.SrcSize;
             a._pendingLin = b.Lineage;
+            a._pendingData = b.Data;
             a._hasPending = true;
             float aWasSrc = a.SrcSize;
             a.SrcSize = FuseSize(a.SrcSize, b.SrcSize);
@@ -269,9 +423,34 @@ namespace SpellyZombie
                 _wakeAt = Time.time + seconds;
         }
 
+        readonly System.Collections.Generic.List<SpellDef> _areasOwed =
+            new System.Collections.Generic.List<SpellDef>();
+        // ★ THE COUNT CAN LIE (zones re-emit, a held spare never joins), so
+        // the pool also ends by SILENCE: no new merge for this long = the
+        // utterance is over and everything owed raises.
+        float _mergeQuietAt;
+        bool _biomeOwed;
+        bool PoolSettled => PoolingDone || Time.time >= _mergeQuietAt;
+
+        void FlushAreas()
+        {
+            _areasDeferred = false;
+            for (int i = 0; i < _areasOwed.Count; i++)
+            {
+                var a = SpellBook.Live.Aoe(_areasOwed[i].Aoe);
+                if (a != null) StartCoroutine(RaiseArea(a, _areasOwed[i]));
+            }
+            _areasOwed.Clear();
+        }
+
         public void Wake()
         {
             if (!Dormant || _dead) return;
+            // ★ HOLDING IS STASIS (his rule): a spell in someone's hand never
+            // wakes - not by contact, not by anything. The hand releasing it
+            // is the only door out, so it blows up as MADE, never as "what it
+            // drifted into while you carried it".
+            if (Holder != null) return;
             Dormant = false;
             _wakeAt = -1f;
             transform.localScale /= DrawingConfig.DormantPreviewScale;
@@ -280,14 +459,21 @@ namespace SpellyZombie
             if (_shapeBody != null) _shapeBody.GetComponent<StateView>()?.ClearFade();
             RefreshLook();
             ImpactFx(); // the pop of becoming real
-            if (_areasDeferred)
+            if (_areasDeferred) FlushAreas(); // a stockpiled spell owes NOW - waking IS the cast
+
+            // ★ THE STONE STANDS UP ON ACTIVATION (his rule): a PURE bare
+            // Solid wakes as the real rock, a pure Liquid as water - kept
+            // AFTER the dormant phase so runes still combine. Only when the
+            // state is the spell's WHOLE identity: a Meteor also matches the
+            // Solid region, and the stone must never steal the meteor.
+            // The METEOR itself needs no verb - its authored AREA falls from
+            // the sky (the offset), trails, slams, and burns.
+            if (Fusions.Count == 1 && PoolingDone
+                && (Fusions[0].Name == "Solid" || Fusions[0].Name == "Liquid"))
             {
-                _areasDeferred = false;
-                for (int i = 0; i < Fusions.Count; i++)
-                {
-                    var a = SpellBook.Live.Aoe(Fusions[i].Aoe);
-                    if (a != null) StartCoroutine(RaiseArea(a));
-                }
+                ManifestState(transform.position, 2f);
+                Die();
+                return;
             }
 
             // a carried conjure fires where it woke; a moving ghost casts
@@ -324,6 +510,8 @@ namespace SpellyZombie
                     mate.SrcSize = _pendingSrc;
                     mate.Lineage = _pendingLin;
                     mate.OwnerId = OwnerId;
+                    mate.Data = _pendingData;   // the carried half returns WHOLE
+                    mate.JoinSeal(SealId);      // still family for the pool count
                 }
             }
         }
@@ -389,7 +577,9 @@ namespace SpellyZombie
                         Vel += (_meetPoint - transform.position) * 6f * dt;
                     else if (_hasAnchor)
                         Vel += (HoverPoint() - transform.position) * 2.2f * dt;
-                    Vel *= Mathf.Max(0f, 1f - (_dormantSeek != null ? 1.2f : 3f) * dt);
+                    // converging on kin gets the light damping too - fusing
+                    // asleep should feel eager, never a slow drift
+                    Vel *= Mathf.Max(0f, 1f - (_dormantSeek != null || _meetAt ? 1.2f : 3f) * dt);
                     if (Vel.sqrMagnitude > DrawingConfig.DormantSeekSpeed * DrawingConfig.DormantSeekSpeed)
                         Vel = Vel.normalized * DrawingConfig.DormantSeekSpeed;
                 }
@@ -399,8 +589,11 @@ namespace SpellyZombie
                     transform.rotation = Quaternion.LookRotation(Vel);
 
                 // leash: an anchored preview never strays beyond a short
-                // radius of its seal; a ghost chasing a body is exempt
-                if (!inFlight && _hasAnchor && _dormantSeek == null)
+                // radius of its seal; a ghost chasing a body is exempt, and
+                // so is one converging on a seal-mate - the leash was holding
+                // the two halves of a drawing apart forever, and the meteor
+                // could never finish pooling
+                if (!inFlight && _hasAnchor && _dormantSeek == null && !_meetAt)
                 {
                     Vector3 off = transform.position - _anchorPos;
                     float leash = DrawingConfig.DormantHoverRange * 1.8f;
@@ -412,11 +605,9 @@ namespace SpellyZombie
                 }
             }
 
-            // an unused preparation politely leaves
+            // an unused preparation pops out - never a shrink (his rule)
             _dormantLeft -= dt;
-            if (_dormantLeft < 1.2f)
-                transform.localScale *= Mathf.Max(0.01f, 1f - dt / 1.2f);
-            if (_dormantLeft <= 0f || transform.localScale.x < 0.004f) { Die(); return; }
+            if (_dormantLeft <= 0f) { ImpactFx(); Die(); return; }
 
             _dormantScan -= dt;
             if (_dormantScan > 0f) return;
@@ -710,7 +901,13 @@ namespace SpellyZombie
             _strikeGen = 0;
             GrammarLevel = 1;
             Lineage = 0;
-            SealId = 0;
+            LeaveSeal();
+            _areasOwed.Clear();
+            _areasDeferred = false;
+            _biomeOwed = false;
+            _mergeQuietAt = 0f;
+            _primed = false;
+            _liveAreas.Clear();
             BecameObj = null;
             Claimed = false;
             Holder = null;
@@ -746,6 +943,7 @@ namespace SpellyZombie
             _auraBeat = _driftBeat = -1;
             _areasDeferred = false;
             Reach = 0f;
+            _rushSpeed = 0f;
             _clockKey = _nextKey++;
             Vel = Vector3.zero;
             SrcSize = DrawingConfig.RuneSizeMin;
@@ -987,6 +1185,20 @@ namespace SpellyZombie
             // was cast.
             if (Dormant) { DormantTick(dt); return; }
 
+            // held-back verdicts land once the last mate is in, or once the
+            // merging has gone quiet: areas first, then the biome question
+            if (_areasDeferred && PoolSettled) FlushAreas();
+            if (_biomeOwed && PoolSettled)
+            {
+                _biomeOwed = false;
+                if (GrammarLevel < 3 && OutPowers(SpellLaw.Here(this)))
+                {
+                    GrammarLevel = 3;
+                    BecomeBiome();
+                    return;
+                }
+            }
+
             // WHERE IT IS STANDING CHANGES WHAT IT IS. A chill mote in a fire
             // biome heats until it is no longer a chill mote; a liquid one
             // heated far enough crosses into gas. Nothing casts that - it is
@@ -1003,14 +1215,42 @@ namespace SpellyZombie
                 // ★ AN AREA CHASES ITS LIVING SPELL and parks where it died -
                 // the one-shot homing aimed at the BIRTH spot, which left
                 // every poison puddle at the zombie's mouth.
-                if (_isAreaChild && !Attached && _areaHome != null)
+                if (_isAreaChild && !Attached && (_areaHome != null || _rushSpeed > 5f))
                 {
-                    if (_areaHome.Dead) { _areaHome = null; Vel = Vector3.zero; }
+                    // ★ THE DIVE TARGET IS FIXED (his rule, explicit): whatever
+                    // spawns at an offset flies to WHERE THE SPELL DETONATED -
+                    // never chasing the mote, never parking if it dies. Only
+                    // after landing does the area ride the living spell.
+                    if (_areaHome != null && !_areaHome.Dead)
+                    {
+                        if (_rushSpeed <= 5f)
+                            _areaHomePos = _areaHome.transform.position;
+                    }
+                    else if (_areaHome != null) _areaHome = null;
+                    if (_areaHome == null && _rushSpeed <= 5f) Vel = Vector3.zero;
                     else
                     {
-                        Vector3 to = _areaHome.transform.position - transform.position;
-                        Vel = to.sqrMagnitude > 0.04f
-                            ? to.normalized * DrawingConfig.AreaHomingSpeed : Vector3.zero;
+                        Vector3 to = _areaHomePos - transform.position;
+                        if (to.sqrMagnitude <= 0.3f && _rushSpeed > 5f)
+                        {
+                            // ★ THE ARRIVAL IS THE IMPACT (his meteor): a
+                            // child that rushed in from its sky offset lands
+                            // as a detonation - burning stone, debris, boom -
+                            // and then stays on as the area.
+                            _rushSpeed = 0f;
+                            ImpactFx();
+                            ManifestState(transform.position, 1.5f, true);
+                            ThrowDebris(transform.position, 5); // the slam scatters burning chunks
+                            Juice.Boom(transform.position, 0.9f);
+                            // the dive is over: a lookless rock goes back to
+                            // being an invisible effect region
+                            if (_areaLook == null && _shapeBody == null && _rend != null)
+                                _rend.enabled = false;
+                        }
+                        // the launch speed holds until first arrival; the
+                        // gentle follow takes over from there
+                        float speed = Mathf.Max(DrawingConfig.AreaHomingSpeed, _rushSpeed);
+                        Vel = to.sqrMagnitude > 0.04f ? to.normalized * speed : Vector3.zero;
                     }
                 }
                 if (Holder == null && !_settled)
@@ -1029,14 +1269,19 @@ namespace SpellyZombie
                     * (Kind == ParticleKind.Flame ? 2.5f
                      : Kind == ParticleKind.BlackHole ? 1.5f
                      : GrammarLevel >= 2 ? 1.5f : 1f); // same clock as free particles
-                if (_age > claimedLife - 0.8f)
-                    transform.localScale *= Mathf.Max(0.01f, 1f - dt / 0.8f);
-                if (_age > claimedLife || transform.localScale.x < 0.015f) Die();
+                // a rune burning out in your hand POPS (nothing ever shrinks
+                // out - his rule; a spell dies as an event)
+                if (_age > claimedLife) DetonateNow();
                 return;
             }
 
-            if (Kind == ParticleKind.Lightning) TickLightning(dt);
-            else if (Kind == ParticleKind.BlackHole) TickBlackHole(dt);
+            // the exotic physics (crackle-strike, the pull) only drives motes
+            // the BOOK does not name - a named spell does what its author said
+            if (Fusions.Count == 0)
+            {
+                if (Kind == ParticleKind.Lightning) TickLightning(dt);
+                else if (Kind == ParticleKind.BlackHole) TickBlackHole(dt);
+            }
 
             // GRAMMAR v4: lvl2 particles radiate; flames burn where they sit;
             // chaos-grip products jitter uncontrollably
@@ -1217,7 +1462,10 @@ namespace SpellyZombie
                     // ★ A FLYING SPELL FACES ITS TRAVEL (his rule): the same
                     // glyph rotated IS a different rune, so the orientation is
                     // a tell of what is coming. Standing motes keep their pose.
-                    if (Vel.sqrMagnitude > 1.2f)
+                    // A DIVING AREA CHILD stays upright instead - a plummeting
+                    // flame nose-down read as "rotated wrongly", and the
+                    // authored body is built standing.
+                    if (Vel.sqrMagnitude > 1.2f && !(_isAreaChild && _rushSpeed > 5f))
                         transform.rotation = Quaternion.LookRotation(Vel);
                     // the vector-at-rest death is GONE (his rule: attract and
                     // repel are mute particles like every other spell - a
@@ -1245,9 +1493,8 @@ namespace SpellyZombie
                 * (Kind == ParticleKind.Flame ? 2.5f     // a flame is a fixture, not a spark
                  : Kind == ParticleKind.BlackHole ? 1.5f
                  : GrammarLevel >= 2 ? 1.5f : 1f);       // leveled particles earn their time
-            if (_age > life - 0.8f)
-                transform.localScale *= Mathf.Max(0.01f, 1f - dt / 0.8f);
-            if (_age > life || transform.localScale.x < 0.015f) Die();
+            // a spell's time running out IS a detonation - never a shrink
+            if (_age > life) DetonateNow();
         }
 
         /// Zombies attract spells - and only zombies; players are never lured
@@ -1374,16 +1621,22 @@ namespace SpellyZombie
             // absorbed by it.
             if (a.Attached || b.Attached) return;
 
-            // a live particle wakes a sleeper on contact (in a holder's hand
-            // too), then the full law runs on the woken pair
+            // a live particle wakes a sleeper on contact - EXCEPT its own
+            // seal-mates: the utterance stays asleep (his rule), so the live
+            // spare joining the sleeping drawing goes to sleep itself
             if (a.Dormant != b.Dormant)
             {
-                (a.Dormant ? a : b).Wake();
-                // a woken conjure-ghost DIED into its conjure just now - the
-                // law must not keep resolving a corpse against a live mote
-                if (a._dead || b._dead) return;
+                if (a.SealId != 0 && a.SealId == b.SealId)
+                    (a.Dormant ? b : a).Sleep();
+                else
+                {
+                    (a.Dormant ? a : b).Wake();
+                    // a woken conjure-ghost DIED into its conjure just now - the
+                    // law must not keep resolving a corpse against a live mote
+                    if (a._dead || b._dead) return;
+                }
             }
-            else if (a.Dormant)
+            if (a.Dormant && b.Dormant)
             {
                 // same law asleep: particle products merge for real (still
                 // dormant); object products (steam, tornado, lvl3 areas,
@@ -1425,7 +1678,8 @@ namespace SpellyZombie
                 a.ImpactFx(); b.ImpactFx();
                 Vector3 sat = (a.transform.position + b.transform.position) * 0.5f;
                 RuneGrammar.TryDemon(a.Lineage | b.Lineage, sat, FuseSize(a.SrcSize, b.SrcSize));
-                SpellEffects.Steam(sat, (a.Power + b.Power) * 0.5f);
+                SpellEffects.Steam(sat, (a.Power + b.Power) * 0.5f,
+                    a.OwnerId >= 0 ? a.OwnerId : b.OwnerId);
                 a.Die(); b.Die();
                 return;
             }
@@ -1480,6 +1734,7 @@ namespace SpellyZombie
 
             // pool payload + ancestry into the survivor
             hi.Lineage |= lo.Lineage;
+            hi._primed |= lo._primed; // a thrown ingredient keeps the fuse lit
             hi.Data = (hi.Data + lo.Data).Clamped();   // tops out, then drift pulls it back
             // mismatched levels: the weaker half rules the product (law 6);
             // equals pool their power instead
@@ -1522,12 +1777,21 @@ namespace SpellyZombie
 
             // ★ A BIOME MUST OUT-POWER THE GROUND IT STANDS IN (his rule) -
             // falling short parks it at area strength until it eats more.
-            if (lvl >= 3 && hi.OutPowers(SpellLaw.Here(hi)))
+            // And never mid-pool: two heats of a four-rune seal crossing the
+            // biome line must not end the utterance before the rest join.
+            if (lvl >= 3 && hi.PoolingDone && hi.OutPowers(SpellLaw.Here(hi)))
             {
                 hi.GrammarLevel = 3;
                 hi.BecomeBiome();
             }
-            else hi.GrammarLevel = Mathf.Min(lvl, 2);
+            else
+            {
+                hi.GrammarLevel = Mathf.Min(lvl, 2);
+                hi._biomeOwed = lvl >= 3; // judged again when the pool settles
+            }
+
+            hi._mergeQuietAt = Time.time + 0.6f; // the utterance is still speaking
+            if (hi._areasDeferred && !hi.Dormant && hi.PoolingDone) hi.FlushAreas();
         }
 
         /// ★ IS THIS AXIS AT BIOME STRENGTH? Read off the numbers every time,
@@ -1683,7 +1947,7 @@ namespace SpellyZombie
             twin.Density = Density * twinMul; twin.Stick = Stick * twinMul;
             twin.SrcSize = SrcSize;
             twin.Lineage = Lineage;
-            twin.SealId = SealId; // a split twin is STILL family (law 11)
+            twin.JoinSeal(SealId); // a split twin is STILL family (law 11)
             if (spreadLevel >= 3) twin.transform.localScale = transform.localScale * 1.2f;
             twin.RefreshLook();
             _generation++;
@@ -1704,62 +1968,21 @@ namespace SpellyZombie
         /// hot enough will change form on its own with nothing cast at it.
         void CheckTransform()
         {
-            // cold and heavy stops being a mote at all: it becomes real
-            // matter and leaves the particle world, so it is asked first
-            if (Data.Temp < 0f && Density >= PlasmaDensity) { BecomeSnowball(); return; }
-
+            // ★ NO HARDCODED TRANSFORMS (his order, Aug 27): the spell
+            // creator is the ONLY author of what a payload becomes.
+            // Light+Light is Blinding because he wrote Lum 50 as Blinding,
+            // never Lightning because an old rule said light condenses.
+            // The numbers still pick an unnamed mote's LOOK, and behaviors
+            // still read the numbers, but nothing rewrites a payload or
+            // renames a spell from code any more.
             var now = Kind;
             if (now == _lookKind) return;
             _lookKind = now;
-            switch (now)
-            {
-                case ParticleKind.Flame: BecomeFlame(); break;
-                case ParticleKind.Lightning: BecomeLightning(); break;
-                case ParticleKind.BlackHole: BecomeBlackHole(); break;
-                default: RefreshLook(); break;
-            }
-        }
-
-        /// HeatUp+Dense - FLAME: a persistent fire that stays where it lands,
-        /// burns what's near, and merges with other flames into bigger flames.
-        void BecomeFlame()
-        {
-            GrammarLevel = Mathf.Max(GrammarLevel, 1);
-            Temp = Mathf.Max(Temp, 60f);
-            SetBodyScale(0.3f);
-            Vel *= 0.2f;
-            DrawingWorld.Instance?.LogEvent("the fire becomes a FLAME");
             RefreshLook();
         }
 
-        /// HeatDown+Dense - SNOWBALL: real matter, cold, rolls, merges via
-        /// Matter's own chemistry; passively chills its surroundings (Matter side).
-        void BecomeSnowball()
-        {
-            var m = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Solid,
-                0.3f * Mathf.Max(1f, Power), transform.position);
-            m.Temperature = -30f;
-            if (m.TryGetComponent<Rigidbody>(out var rb))
-                rb.linearVelocity = Vel + Vector3.down * 1f;
-            DrawingWorld.Instance?.LogEvent("the cold becomes a SNOWBALL");
-            m.Lineage = Lineage; // the demon chain survives the snowball
-            BecameObj = m;       // the rune waits for the snowball to be gone
-            Die();
-        }
-
-        /// Dark+Dark - BLACK HOLE: a particle that pulls things in. Feed it
-        /// more darkness and it goes lvl3: the GROWING black hole area.
-        void BecomeBlackHole()
-        {
-            Lum = Mathf.Min(Lum, -1.5f);
-            _settled = false;
-            SetBodyScale(0.4f);
-            var l = GetComponent<Light>();
-            if (l != null) Destroy(l);
-            DrawingWorld.Instance?.LogEvent("the dark becomes a BLACK HOLE");
-            RefreshLook();
-        }
-
+        /// Dark-heavy motes still PULL - a numbers behavior, kept. But no
+        /// verb renames anything: the book decides what a payload is called.
         void TickBlackHole(float dt)
         {
             transform.position += Vel * dt;
@@ -1794,6 +2017,15 @@ namespace SpellyZombie
         void TickDrift(float dt)
         {
             if (!WorldClock.IsBeat(DriftPeriod, ClockKey, ref _driftBeat)) return;
+
+            // ★ A SPELL STILL ASSEMBLING DOES NOT DECAY (his reliability
+            // rule): while ANY seal-mate remains - hovering, held in a hand,
+            // anywhere - every piece of the drawing keeps its full values.
+            // The quiet-timer fallback must NOT reopen this door (it did:
+            // holding one piece stalled the pool past the quiet window and
+            // the Solid bled its State again). Strictly mates-based.
+            // A HELD spell is in stasis the same way: it stays what you made.
+            if (MatesLeft(SealId) > 1 || Holder != null || Claimed) return;
 
             // AN AXIS AT BIOME STRENGTH DOES NOT FALL. That is the whole
             // meaning of the marking: it stops being affected by the place and
@@ -1939,6 +2171,25 @@ namespace SpellyZombie
         void Detonate(Collider c)
         {
             var carried = PayloadNow;
+
+            // ★ THINGS REACT TO BEING HIT (his rule): every spell shoves a
+            // little on impact - the universal "you got hit" tell, so no cast
+            // ever feels like nothing. Affinity spells push their own way.
+            if (Mathf.Abs(SpellPayload.ToHuman(5, carried.Affinity)) < 10f)
+            {
+                Vector3 dir = c.bounds.center - transform.position;
+                dir = (dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.up)
+                    + Vector3.up * 0.35f;
+                float kick = 2.5f + Power * 1.5f;
+                var pl = c.GetComponentInParent<SimpleFPSController>();
+                if (pl != null) pl.TakeHit(dir * kick, 0f);
+                else
+                {
+                    var prb = c.attachedRigidbody;
+                    if (prb != null && !prb.isKinematic)
+                        prb.AddForce(dir * kick, ForceMode.VelocityChange);
+                }
+            }
 
             if (GrammarLevel < 3)
             {
@@ -2126,23 +2377,6 @@ namespace SpellyZombie
             else if (cr != null) cr.ApplySlip(-grip * DrawingConfig.GripSeconds);
         }
 
-        void BecomeLightning()
-        {
-            Lum = Mathf.Max(Lum, 2.5f);
-            _settled = false;
-            _strikeTick = 0.3f;
-            SetBodyScale(0.22f);
-            if (GetComponent<Light>() == null)
-            {
-                var l = gameObject.AddComponent<Light>();
-                l.type = LightType.Point; l.range = 7f; l.intensity = 5f;
-                l.color = new Color(0.75f, 0.9f, 1f);
-            }
-            Juice.Crackle(transform.position);
-            DrawingWorld.Instance?.LogEvent("the light becomes LIGHTNING");
-            RefreshLook();
-        }
-
         void TickLightning(float dt)
         {
             Vel = Vector3.Lerp(Vel, Random.insideUnitSphere * 2.2f, 0.2f); // erratic crackle-drift
@@ -2250,6 +2484,8 @@ namespace SpellyZombie
                 case RuneType.StickyDown: return ParticleKind.Repel;
                 case RuneType.DensityUp: return ParticleKind.Dense;
                 case RuneType.DensityDown: return ParticleKind.Spread;
+                case RuneType.StateSolid: return ParticleKind.Solid;
+                case RuneType.StateLiquid: return ParticleKind.Liquid;
                 default: return ParticleKind.Push;
             }
         }
@@ -2389,8 +2625,18 @@ namespace SpellyZombie
                 {
                     var a = SpellBook.Live.Aoe(_reread[i].Aoe);
                     if (a == null) continue;
-                    if (Dormant) { _areasDeferred = true; continue; }
-                    StartCoroutine(RaiseArea(a));
+                    // mid-pool crossings summon LATER, not never: the crossing
+                    // is banked, because drift can bleed the payload back under
+                    // the line before the pool completes - the meteor was worn
+                    // for one second and owed its sky-fall anyway
+                    if (Dormant || !PoolSettled)
+                    {
+                        _areasDeferred = true;
+                        _mergeQuietAt = Time.time + 0.6f;
+                        if (!_areasOwed.Contains(_reread[i])) _areasOwed.Add(_reread[i]);
+                        continue;
+                    }
+                    StartCoroutine(RaiseArea(a, _reread[i]));
                 }
 
             Fusions.Clear();
@@ -2414,13 +2660,22 @@ namespace SpellyZombie
             // AFTER the body exists - skinning before ReshapeBody painted a
             // body that was not there yet, and the first frame flew white
             RefreshSkin();
-            if (_rend != null) _rend.sharedMaterial =
-                MatterFX.Get(PayloadNow.Tint(), MoteShade.Additive);
+            // ★ SOLID READS SOLID (his rule): the additive glow is for energy;
+            // a mote in the solid band wears the opaque material, liquid wears
+            // glass - the same ladder MatterFX was built for.
+            var ph = SpellPayload.PhaseOf(Data.State);
+            if (_rend != null) _rend.sharedMaterial = MatterFX.Get(PayloadNow.Tint(),
+                ph == MatterPhase.Solid ? MoteShade.Opaque
+                : ph == MatterPhase.Liquid ? MoteShade.Transparent : MoteShade.Additive);
         }
 
         // ------------------------------------------------- touching the world --
         void Touch(Collider c)
         {
+            // a thrown rune's first contact IS its detonation (his law) -
+            // merging with other motes still happens upstream in ResolveLaw
+            if (_primed) { DetonateNow(); return; }
+
             // A DIRECT HIT IS THE WHOLE PAYLOAD, not a share of it - that is
             // the only difference between lvl1 touching a target and lvl2
             // radiating at it.
@@ -2465,6 +2720,8 @@ namespace SpellyZombie
                     if (bio == null && !runtimeBiome)
                     {
                         ImpactFx();
+                        ManifestState(transform.position); // solid bursts as rock, liquid as water
+                        ThrowDebris(transform.position, 3); // every impact throws chunks
                         // ANYTHING THAT CANNOT CATCH THE DATA (his rule) -
                         // terrain, props with no axes defined - takes the
                         // burst and the payload hangs in the air where it
@@ -2531,6 +2788,17 @@ namespace SpellyZombie
                     Vel = Vector3.Reflect(Vel, Vector3.up) + Random.insideUnitSphere * 1.5f;
                     return;
                 }
+                // ★ A RUSHING AREA LANDS LIKE A METEOR (his design): arriving
+                // fast from its sky offset it detonates - the carried state
+                // bursts as burning matter whose debris ignites what it hits -
+                // and then it STAYS as the area (spreading flames, if authored).
+                if (_isAreaChild && Vel.sqrMagnitude > 25f)
+                {
+                    ImpactFx();
+                    ManifestState(transform.position, 1.5f, true);
+                    Juice.Boom(transform.position, 0.9f);
+                }
+
                 if (Claimed && Vel.sqrMagnitude > 9f && FxLibrary.I != null) // a thrown thing LANDS
                     FxLibrary.Spawn(FxLibrary.I.GroundHit, transform.position);
                 // a landed mote widens its trigger to boot size so steps register
@@ -2566,7 +2834,7 @@ namespace SpellyZombie
                     (Random.onUnitSphere + Vector3.up).normalized, Power * 0.6f, _generation + 1);
                 e.SrcSize = SrcSize;
                 e.Lineage = Lineage; // the echo remembers its ancestry
-                e.SealId = SealId;   // and its family
+                e.JoinSeal(SealId);   // and its family
             }
             Die();
         }
@@ -2635,6 +2903,7 @@ namespace SpellyZombie
             if (Mathf.Abs(give.Balance) > 0.05f) board?.PushGrip(give.Balance * 0.9f);
             if (Mathf.Abs(give.Affinity) > 0.05f) board?.PushAffinity(give.Affinity);
             ImpactFx();
+            ManifestState(transform.position); // the rock still lands ON people
             Die();
         }
 
@@ -2903,6 +3172,8 @@ namespace SpellyZombie
                 case ParticleKind.Flame: c = new Color(1f, 0.45f, 0.08f); break;
                 case ParticleKind.BlackHole: c = new Color(0.03f, 0.01f, 0.06f); shade = MoteShade.Transparent; break;
                 case ParticleKind.BarrierMote: c = new Color(0.6f, 0.9f, 1f, 0.7f); shade = MoteShade.Transparent; break;
+                case ParticleKind.Solid: c = new Color(0.50f, 0.62f, 0.50f); break;   // his palette: grayish green
+                case ParticleKind.Liquid: c = new Color(0.55f, 0.75f, 0.95f); shade = MoteShade.Transparent; break; // light blue
                 default: c = Color.white; break;
             }
         }
@@ -2955,6 +3226,8 @@ namespace SpellyZombie
         /// position left every poison puddle at the zombie's mouth instead of
         /// the landing site.
         SpellParticle _areaHome;
+        Vector3 _areaHomePos; // last known home spot - the dive lands here even if the home dies
+        float _rushSpeed; // the offset launch speed; cleared on first arrival
 
         /// One body per lvl2 sweep - without this a zombie with N colliders
         /// took N full payload shares from a single impact.
@@ -2971,8 +3244,11 @@ namespace SpellyZombie
                 _areaLook.transform.localPosition = Vector3.zero;
                 _areaLook.transform.localRotation = Quaternion.identity;
                 foreach (var col in _areaLook.GetComponentsInChildren<Collider>(true)) Destroy(col);
-                if (_rend != null) _rend.enabled = false;
             }
+            // an effect region is not a second body: with no authored look it
+            // is INVISIBLE, never the kind-colored fallback blob riding
+            // inside the spell it serves
+            if (_rend != null) _rend.enabled = false;
             if (area.TrailWidth > 0f)
             {
                 if (_tail == null) _tail = gameObject.AddComponent<TrailRenderer>();
@@ -2983,12 +3259,30 @@ namespace SpellyZombie
             }
         }
 
-        System.Collections.IEnumerator RaiseArea(AoeDef area)
+        readonly System.Collections.Generic.List<(SpellDef def, SpellParticle child)>
+            _liveAreas = new System.Collections.Generic.List<(SpellDef, SpellParticle)>();
+
+        System.Collections.IEnumerator RaiseArea(AoeDef area, SpellDef source)
         {
             if (_generation > 0) yield break;   // an area does not raise areas
+            // ★ ONE LIVING CHILD PER DEF: drift dropping and re-crossing a
+            // region was stacking a fresh fire area every tick - a def only
+            // raises again after its previous child is gone
+            for (int i = _liveAreas.Count - 1; i >= 0; i--)
+            {
+                if (_liveAreas[i].child == null || _liveAreas[i].child._dead)
+                    _liveAreas.RemoveAt(i);
+                else if (_liveAreas[i].def == source) yield break;
+            }
             Vector3 home = transform.position;
             int owner = OwnerId;
-            var load = PayloadNow;
+            // ★ AN AREA CARRIES ONLY THE AXES IT WAS MADE FROM (his rule):
+            // the region that raised it masks the payload, so a spell wearing
+            // several areas gives each one its own slice, never everything.
+            var load = new SpellPayload();
+            var full = PayloadNow;
+            for (int ax = 0; ax < SpellPayload.AxisCount; ax++)
+                if (source == null || source.Axis[ax] != 0) load[ax] = full[ax];
             float size = SrcSize;
 
             {
@@ -3001,13 +3295,38 @@ namespace SpellyZombie
                 if (child != null)
                 {
                     child.Data = load.Clamped();
+                    // ★ AN AREA MAY LOAD A FULL SPELL (his rule): the child
+                    // becomes it - axes in, authored look on, behavior follows
+                    var loaded = SpellBook.Live.Spell(area.Spell);
+                    if (loaded != null)
+                    {
+                        var dd = child.Data;
+                        for (int ax = 0; ax < SpellPayload.AxisCount; ax++)
+                            if (loaded.Axis[ax] != 0)
+                                dd[ax] += SpellPayload.FromHuman(ax, loaded.Axis[ax]);
+                        child.Data = dd.Clamped();
+                    }
                     child.OwnerId = owner;
                     child.SrcSize = size;
                     child.Reach = Reach; // the area's span keeps the seal's ratio
-                    child.Vel = aim * DrawingConfig.AreaHomingSpeed;
+                    // ★ THE OFFSET IS A LAUNCH (his rule): the child spawns at
+                    // the offset and RUSHES to the spell - a big offset means
+                    // a fast arrival, which is how a meteor falls from Y+22.
+                    child._rushSpeed = Mathf.Max(DrawingConfig.AreaHomingSpeed,
+                        area.Offset.magnitude * 2.2f); // a meteor STREAKS - 22m up lands in half a second
+                    child.Vel = aim * child._rushSpeed;
                     child.Wake();
                     child.WearArea(area);
-                    child._areaHome = this;   // ride the LIVING spell, park where it dies
+                    child.RefreshIdentity_Public(); // a loaded spell dresses NOW, not next beat
+                    // a LOOKLESS child must still be SEEN falling - the root
+                    // shows for the dive and hides again on arrival
+                    if (child._areaLook == null && child._shapeBody == null
+                        && child._rend != null) child._rend.enabled = true;
+                    child._areaHome = this;   // ride the LIVING spell...
+                    child._areaHomePos = home; // ...but the dive lands HERE even if it dies
+                    _liveAreas.Add((source, child));
+                    Debug.Log($"[SpellyZombie] {area.Name} area child born at {at} " +
+                        $"(offset {area.Offset}) rush {child._rushSpeed:0.0} m/s");
                 }
             }
             yield break;

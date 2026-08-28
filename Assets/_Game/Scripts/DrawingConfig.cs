@@ -591,6 +591,15 @@ namespace SpellyZombie
         public static readonly float LingerSeconds = O(nameof(LingerSeconds), 4f);
         // the drawn SrcSize at which a particle wears exactly its base body size
         public static readonly float ParticleSizeNeutral = O(nameof(ParticleSizeNeutral), 0.4f);
+        // HIS COUPLING TABLE: the effect axes are byproducts of the data axes
+        public static readonly float CoupleLumCourage = O(nameof(CoupleLumCourage), 0.5f);
+        public static readonly float CouplePressureStrength = O(nameof(CouplePressureStrength), 0.25f);
+        public static readonly float CouplePressureClones = O(nameof(CouplePressureClones), 0.5f);
+        public static readonly float CoupleStateMind = O(nameof(CoupleStateMind), 0.5f);
+        public static readonly float CoupleAffinityCourage = O(nameof(CoupleAffinityCourage), 0.4f);
+        public static readonly float CoupleAffinityMind = O(nameof(CoupleAffinityMind), 0.4f);
+        public static readonly float CoupleBalanceMind = O(nameof(CoupleBalanceMind), 0.4f);
+        public static readonly float CoupleBalanceStrength = O(nameof(CoupleBalanceStrength), 0.2f);
         // range of influence: how far an object's data reaches a neighbour, and the exchange rate
         public static readonly float InfluenceReach = O(nameof(InfluenceReach), 1.2f);
         public static readonly float InfluenceSharePerSec = O(nameof(InfluenceSharePerSec), 0.15f);

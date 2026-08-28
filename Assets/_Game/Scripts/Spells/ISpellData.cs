@@ -74,6 +74,11 @@ namespace SpellyZombie
             var natural = thing.Natural;
             var here = Here(thing);
             var d = thing.Data;
+            // ★ COUPLING IS FOR THE ENVIRONMENT'S ELEMENTS, not for runes
+            // (his rule): a spell mote's carried data never breeds effect
+            // axes on itself - the byproducts appear on the THINGS the data
+            // lands on, through their own drift.
+            bool couple = !(thing is SpellParticle);
             for (int i = 0; i < SpellPayload.AxisCount; i++)
             {
                 // STRENGTH DOES NOT DRIFT. Drifting it back toward natural IS
@@ -83,8 +88,30 @@ namespace SpellyZombie
                 // everything - walls included - a quarter point a second, and
                 // undo damage as fast as fire could deal it.
                 if (i == 6) continue;
-                d[i] = Mathf.MoveTowards(d[i],
-                    SpellPayload.TargetFor(i, natural[i], here[i]), RateFor(i) * dt);
+                float target = SpellPayload.TargetFor(i, natural[i], here[i]);
+                // the effect axes are byproducts of the carried data (his
+                // coupling table) - the data deviation offsets the target
+                if (i >= 7 && couple) target += SpellPayload.EffectCoupling(i, d - natural);
+                // ★ A PLACE THAT IMPOSES, IMPOSES NOW (his "standing in the
+                // circles does nothing"): at the base crawl a 4-second linger
+                // expired before its values ever landed. Approach toward an
+                // imposing place is fast; the relax back home stays slow.
+                float rate = RateFor(i);
+                if (i < 6)
+                {
+                    if (Mathf.Abs(here[i] - natural[i]) > 0.02f)
+                        rate *= 6f; // a place that imposes, imposes NOW
+                    else
+                    {
+                        // ★ HIS CURVE, not linear: the further from home the
+                        // faster the world reclaims it, easing off as it
+                        // closes in - extremes are brief, the usable middle
+                        // lingers. A small floor closes the tail.
+                        float gap = Mathf.Abs(target - d[i]);
+                        rate = gap * 0.23f + rate * 0.15f;
+                    }
+                }
+                d[i] = Mathf.MoveTowards(d[i], target, rate * dt);
             }
             thing.Data = d.Clamped();
         }

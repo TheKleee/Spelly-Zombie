@@ -220,7 +220,10 @@ namespace SpellyZombie
                 if (_pilot != null)
                 {
                     float f = Sides.StrengthFraction(Grimoire.LocalPlayerId, _pilot.Health);
-                    return Mathf.Lerp(DrawingConfig.StrengthFloorMul, 1f, f);
+                    float coupled = _el != null ? _el.CoupledStrengthMul
+                        : Mathf.Clamp(1f + SpellPayload.EffectCoupling(6, BoardDeviation())
+                            / DrawingConfig.AxisCap, 0.55f, 1.6f);
+                    return Mathf.Lerp(DrawingConfig.StrengthFloorMul, 1f, f) * coupled;
                 }
                 if (_dmg == null) _dmg = GetComponent<Element>();
                 return _dmg != null ? _dmg.StrengthMul : 1f;
@@ -260,15 +263,31 @@ namespace SpellyZombie
         /// standing somewhere safe.
         public SpellPayload Natural = new SpellPayload { Int = 1f, Courage = 1f };
 
+        /// The board sliders as a data deviation from natural - what the
+        /// coupling table reads for bodies without an element of their own.
+        SpellPayload BoardDeviation() => new SpellPayload
+        {
+            Lum = Lum - NaturalLum,
+            Pressure = Weight - 1f,
+            Balance = Grip,
+            State = SpellPayload.FromHuman(4,
+                Phase == MatterPhase.Solid ? 0f : Phase == MatterPhase.Liquid ? -50f : -120f),
+            Affinity = Affinity,
+        };
+
         void DriftCapacities(float dt)
         {
             var here = _here;
             float rate = DrawingConfig.CapacityDriftPerSec * dt;
 
+            var dev = BoardDeviation();
+
             Int = Mathf.MoveTowards(Int,
-                SpellPayload.TargetFor(7, Natural.Int, here.Int), rate);
+                SpellPayload.TargetFor(7, Natural.Int, here.Int)
+                + SpellPayload.EffectCoupling(7, dev), rate);
             Courage = Mathf.MoveTowards(Courage,
-                SpellPayload.TargetFor(8, Natural.Courage, here.Courage), rate);
+                SpellPayload.TargetFor(8, Natural.Courage, here.Courage)
+                + SpellPayload.EffectCoupling(8, dev), rate);
         }
 
         /// A spell pushes a capacity directly; drift then pulls it back toward

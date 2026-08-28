@@ -89,6 +89,13 @@ namespace SpellyZombie
             return s;
         }
 
+        public static SpellPayload operator -(SpellPayload a, SpellPayload b)
+        {
+            var s = new SpellPayload();
+            for (int i = 0; i < AxisCount; i++) s[i] = a[i] - b[i];
+            return s;
+        }
+
         public SpellPayload Scaled(float k)
         {
             var s = new SpellPayload();
@@ -102,6 +109,31 @@ namespace SpellyZombie
         /// in a fire and staying stupid in a clever room.
         public static float TargetFor(int axis, float natural, float here) =>
             LawOf(axis) == AxisLaw.Impose ? here : Mathf.Min(natural, here);
+
+        /// ★ HIS COUPLING TABLE (Aug 26): the effect axes are BYPRODUCTS of
+        /// the carried data, offset onto the capacity drift targets.
+        ///   Lum      -> Courage (light emboldens, darkness frightens)
+        ///   Pressure -> Strength up + Clones down (and the mirror)
+        ///   State    -> Mind (solid sharp, gas empty-headed)
+        ///   Affinity -> Courage up + Mind down (attract); reverse (repel)
+        ///   Balance  -> Mind up + Strength down (planted); reverse (slick)
+        ///   Temp     -> nothing here: the burn/freeze damage law IS that
+        ///               coupling already ("fire should hurt but so should
+        ///               coldness").
+        /// dev = the thing's data measured from its own natural, so a
+        /// creature born in darkness is not frightened by its home.
+        public static float EffectCoupling(int axis, SpellPayload dev) => axis switch
+        {
+            6 => dev.Pressure * DrawingConfig.CouplePressureStrength
+               - dev.Balance * DrawingConfig.CoupleBalanceStrength,
+            7 => dev.State * DrawingConfig.CoupleStateMind
+               + dev.Balance * DrawingConfig.CoupleBalanceMind
+               - dev.Affinity * DrawingConfig.CoupleAffinityMind,
+            8 => dev.Lum * DrawingConfig.CoupleLumCourage
+               + dev.Affinity * DrawingConfig.CoupleAffinityCourage,
+            9 => -dev.Pressure * DrawingConfig.CouplePressureClones,
+            _ => 0f,
+        };
 
         /// The whole body's target, axis by axis.
         public static SpellPayload TargetFor(SpellPayload natural, SpellPayload here)

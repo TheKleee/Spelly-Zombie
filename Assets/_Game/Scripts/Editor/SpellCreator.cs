@@ -371,10 +371,18 @@ namespace SpellyZombie
             }
             else
             {
-                EditorGUILayout.LabelField("EFFECT", EditorStyles.boldLabel);
-                EditorGUILayout.LabelField("What the spell is, and what it gives to whatever it touches. " +
+                EditorGUILayout.LabelField("CONDITIONS", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField("The conditions that need to be met for the spell to exist - " +
+                                           "what it is, and what it gives to whatever it touches. " +
                                            "Tick the box to lock an axis as a biome.", EditorStyles.wordWrappedMiniLabel);
-                for (int i = 0; i < SpellPayload.AxisCount; i++) Axis(sp, i);
+                for (int i = 0; i < 6; i++) Axis(sp, i);
+
+                EditorGUILayout.Space(4);
+                EditorGUILayout.LabelField("EFFECTS", EditorStyles.boldLabel);
+                EditorGUILayout.LabelField("Byproducts a spell may carry - never necessary for its " +
+                                           "creation. They ride the same numbers and land on whatever " +
+                                           "the spell touches.", EditorStyles.wordWrappedMiniLabel);
+                for (int i = 6; i < SpellPayload.AxisCount; i++) Axis(sp, i);
                 Verdict(sp);
             }
 
@@ -434,6 +442,14 @@ namespace SpellyZombie
                 SpellPayload.SpellRange(i, out int lo, out int hi);
                 sp.Axis[i] = EditorGUILayout.IntSlider(
                     new GUIContent(Names[i] + SpellPayload.UnitName(i), Poles[i]), sp.Axis[i], lo, hi);
+                // only CONDITIONS can be biome-locked (his rule): the effect
+                // axes never create a spell, so a biome cannot be made of them
+                if (i >= 6)
+                {
+                    sp.BiomeAxis[i] = false;
+                    GUILayout.Space(22);
+                    return;
+                }
                 bool canLock = sp.Axis[i] != 0;
                 using (new EditorGUI.DisabledScope(!canLock))
                 {

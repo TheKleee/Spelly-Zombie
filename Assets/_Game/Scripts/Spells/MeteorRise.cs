@@ -107,6 +107,8 @@ namespace SpellyZombie
                 var ch = Matter.Spawn(mt, MatterPhase.Solid,
                     Mathf.Max(0.15f, rockR * 0.09f), shell);
                 if (ch == null) continue;
+                var own = GetComponent<Matter>();
+                if (own != null) ch.StampOwner(own.TeamOwner); // shards keep the team
                 ch.Temperature = 300f; // still glowing
                 ch.gameObject.AddComponent<MeteorShard>();
                 if (ch.TryGetComponent<Rigidbody>(out var crb))

@@ -73,6 +73,15 @@ namespace SpellyZombie
                         "Prefab", _aoe.Prefab, typeof(GameObject), false);
                     EditorGUILayout.LabelField("A fire effect, a lightning effect, a rock, a trail. Anything.",
                         EditorStyles.wordWrappedMiniLabel);
+                    var spellNames = new System.Collections.Generic.List<string> { "none" };
+                    foreach (var sp in _book.spells)
+                        if (!sp.IsBody) spellNames.Add(sp.Name);
+                    int spAt = Mathf.Max(0, spellNames.IndexOf(_aoe.Spell ?? ""));
+                    int spNow = EditorGUILayout.Popup("Load spell", spAt, spellNames.ToArray());
+                    _aoe.Spell = spNow <= 0 ? "" : spellNames[spNow];
+                    EditorGUILayout.LabelField("Or load a FULL SPELL - the area child becomes it: its " +
+                        "numbers, its shape, its behavior, on top of what it already carries.",
+                        EditorStyles.wordWrappedMiniLabel);
                     _aoe.TrailWidth = EditorGUILayout.Slider("Trail width", _aoe.TrailWidth, 0f, 1f);
                     _aoe.TrailSeconds = EditorGUILayout.Slider("Trail lasts", _aoe.TrailSeconds, 0f, 20f);
 

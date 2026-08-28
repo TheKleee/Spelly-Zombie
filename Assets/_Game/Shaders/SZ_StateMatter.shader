@@ -98,7 +98,7 @@ Shader "Spelly Zombie/State Matter"
                 // the same alpha the forward pass computes - uniform across the
                 // mesh once liquid and gas are out of it
                 float a = lerp(lerp(_GasAlpha, _LiquidAlpha, saturate((_StateT - 0.1) / 0.4)),
-                               _SolidAlpha, saturate((_StateT - 0.5) / 0.5)) * _BaseColor.a;
+                               _SolidAlpha, saturate((_StateT - 0.5) / 0.25)) * _BaseColor.a;
                 // a cut-out texture must not write depth where it is see-through
                 a *= SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv).a;
                 clip(a - 0.99);   // anything see-through keeps the old behaviour
@@ -298,7 +298,7 @@ Shader "Spelly Zombie/State Matter"
 
                 // ---- alpha by state ----------------------------------------
                 float a = lerp(lerp(_GasAlpha, _LiquidAlpha, saturate((_StateT - 0.1) / 0.4)),
-                               _SolidAlpha, saturate((_StateT - 0.5) / 0.5));
+                               _SolidAlpha, saturate((_StateT - 0.5) / 0.25));
                 // THE AUTHOR'S TEXTURE, OUR MATERIAL. White by default, so every
                 // existing blob renders exactly as it did.
                 half4 tex = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);

@@ -521,6 +521,10 @@ namespace SpellyZombie
                     // carry their own (Spelly Zombie/Elements/Set Up Prefabs);
                     // this is the net for the ones that do not.
                     EnsureElements(go);
+                    // a placed prefab carrying interior fields fills them on
+                    // the MAP's rng - same seed, same clutter, every machine
+                    foreach (var f in go.GetComponentsInChildren<InteriorField>(true))
+                        f.Fill(rng);
                     // gentle tilt onto slopes
                     if (!liquid && up.y < 0.995f)
                         go.transform.rotation = Quaternion.FromToRotation(Vector3.up,

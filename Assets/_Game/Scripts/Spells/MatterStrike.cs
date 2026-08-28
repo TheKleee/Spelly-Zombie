@@ -44,7 +44,10 @@ namespace SpellyZombie
                 var chunk = Matter.Spawn(_mat, _phase, chunkSize, _rb.position + d * 0.4f, 0);
                 if (chunk == null) continue;
                 // rubble crumbles away in time and pops instead of deforming
-                chunk.gameObject.AddComponent<SpellDebris>().Init(_mat, _phase, chunkSize);
+                var sd = chunk.gameObject.AddComponent<SpellDebris>();
+                sd.Init(_mat, _phase, chunkSize);
+                sd.OwnerId = OwnerId;
+                chunk.StampOwner(OwnerId);
                 if (chunk.TryGetComponent<Rigidbody>(out var crb))
                     crb.linearVelocity = d * 7f;
             }

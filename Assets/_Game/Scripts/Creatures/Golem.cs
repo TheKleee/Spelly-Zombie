@@ -22,6 +22,8 @@ namespace SpellyZombie
 
         Rigidbody _rb;
         Creature _me;
+        bool _saidTeam; // one birth log so a wrong team is a FACT, not a guess
+        Transform _loggedPrey;
         ChargeAttack _charge;
         Element _dmg;
         GooglyEyes _eyes;
@@ -107,6 +109,37 @@ namespace SpellyZombie
             new System.Collections.Generic.List<string>();
         public SpellDef Worn { get; private set; }
 
+        // ★ AN OWNER CARRIES THEIR GOLEM EASILY (his rule): while carried it
+        // does not resist or animate - no thinking, no hops, feather-light.
+        // Everything restores the moment it is let go or thrown.
+        float _carriedMass = -1f;
+        public void BeCarried()
+        {
+            enabled = false;
+            var ch = GetComponent<ChargeAttack>();
+            if (ch != null) ch.enabled = false;
+            var an = GetComponentInChildren<Animator>();
+            if (an != null) an.speed = 0f;
+            if (_carriedMass < 0f && TryGetComponent<Rigidbody>(out var rb))
+            {
+                _carriedMass = rb.mass;
+                rb.mass = 1f;
+            }
+        }
+        public void BeReleased()
+        {
+            enabled = true;
+            var ch = GetComponent<ChargeAttack>();
+            if (ch != null) ch.enabled = true;
+            var an = GetComponentInChildren<Animator>();
+            if (an != null) an.speed = 1f;
+            if (_carriedMass >= 0f && TryGetComponent<Rigidbody>(out var rb))
+            {
+                rb.mass = _carriedMass;
+                _carriedMass = -1f;
+            }
+        }
+
         public static Golem Spawn(Vector3 at, float sizeMul = 1f)
         {
             // golems exist only on the host; clients get NetGolemProxy stand-ins
@@ -144,6 +177,29 @@ namespace SpellyZombie
                 // nose-down faster than the slerp recovered - the golem
                 // spent its life staring at the ground.
                 rb.freezeRotation = true;
+            }
+
+            // ★ A REAL COLLIDER, HIS ORDER: the shape body renders far larger
+            // than any authored collider, so spells flew straight through the
+            // visible golem. Size a capsule to what is actually drawn.
+            var rend = go.GetComponentInChildren<Renderer>();
+            var col = go.GetComponent<CapsuleCollider>();
+            if (rend != null)
+            {
+                var b = rend.bounds;
+                float body = Mathf.Max(b.size.x, b.size.y, b.size.z);
+                bool tiny = true;
+                foreach (var c in go.GetComponentsInChildren<Collider>())
+                    if (!c.isTrigger && c.bounds.size.magnitude > body * 0.3f)
+                    { tiny = false; break; }
+                if (tiny)
+                {
+                    if (col == null) col = go.AddComponent<CapsuleCollider>();
+                    col.center = go.transform.InverseTransformPoint(b.center);
+                    col.height = b.size.y / go.transform.lossyScale.y;
+                    col.radius = Mathf.Max(b.size.x, b.size.z) * 0.5f
+                        / go.transform.lossyScale.x;
+                }
             }
 
             var dmg = go.GetComponent<Element>();
@@ -274,6 +330,8 @@ namespace SpellyZombie
             if (mote == null) return;
             mote.Data = load.Scaled(DrawingConfig.GolemShedShare).Clamped();
             mote.OwnerId = OwnerId;   // the rocks answer to whoever the golem does
+            // stray rocks hitting a teammate are ACCIDENTS and accidents land
+            // (his rule) - only the HUNT is team-aware
             mote.SrcSize = DrawingConfig.RuneSizeMin;
             mote.Vel = new Vector3(d.x, 0.5f, d.y).normalized * DrawingConfig.GolemShedSpeed;
             mote.Wake();
@@ -294,6 +352,19 @@ namespace SpellyZombie
 
             // anything alive in sight is an enemy - no teams, no owner
             var prey = NearestTarget();
+            // ★ CHARGE ONLY LOOKS FOR ENEMIES (his order): whatever slipped
+            // into sight, a non-enemy is NOT prey - the golem patrols on,
+            // exactly like the zombie. Second gate on purpose: the target
+            // filter and the verb must both agree before anything charges.
+            if (prey != null && !Teams.Enemies(Teams.OfOwner(OwnerId), Teams.Of(prey)))
+                prey = null;
+            if (prey != null && prey != _loggedPrey)
+            {
+                // the FOLLOWING moment itself, on the record
+                _loggedPrey = prey;
+                Debug.Log($"[SpellyZombie] golem (owner {OwnerId}/{Teams.OfOwner(OwnerId)}) " +
+                    $"HUNTS {prey.name} ({Teams.Of(prey)})");
+            }
             if (prey != null)
             {
                 // the face does the talking: it stares at whatever it found
@@ -306,7 +377,13 @@ namespace SpellyZombie
 
                 Vector3 to = prey.position - transform.position;
                 to.y = 0f;
-                if (_charge != null && _charge.TryStart(prey.position)) return;
+                if (_charge != null && _charge.TryStart(prey.position))
+                {
+                    // the second fact for his console: WHO it committed on
+                    Debug.Log($"[SpellyZombie] golem (owner {OwnerId}/{Teams.OfOwner(OwnerId)}) " +
+                        $"CHARGES {prey.name} ({Teams.Of(prey)})");
+                    return;
+                }
                 if (to.sqrMagnitude > 0.04f) _wander = to.normalized;
             }
             else
@@ -339,14 +416,19 @@ namespace SpellyZombie
         {
             Transform best = null;
             float bestSqr = SightRange * SightRange;
-            bool owned = OwnerId >= 0;
-            bool ownerAcolyte = owned && Sides.IsAcolyte(OwnerId);
+            Team mine = Teams.OfOwner(OwnerId);
+            if (!_saidTeam)
+            {
+                _saidTeam = true;
+                Debug.Log($"[SpellyZombie] golem serves owner {OwnerId} / team {mine}");
+            }
 
             foreach (var p in SimpleFPSController.All)
             {
                 if (p == null || p.IsDead) continue;
-                // a summoned golem never hunts its owner side; wild stays wild
-                if (owned && Sides.IsAcolytePlayer(p) == ownerAcolyte) continue;
+                // THE ONE TEAM LABEL: a summoned golem never hunts its own
+                // team; a Neutral golem is against everyone (his rule)
+                if (!Teams.Enemies(mine, Teams.Of(p))) continue;
                 // A DISGUISE FOOLS NATURE TOO. A golem that walks past every
                 // bench in the village but beelines for the one that is an
                 // acolyte would make hiding pointless wherever golems roam.
@@ -358,8 +440,8 @@ namespace SpellyZombie
             foreach (var z in Zombie.All)
             {
                 if (z == null) continue;
-                // zombies side with the acolytes - an acolyte-owned golem spares them
-                if (owned && ownerAcolyte) break;
+                // zombies are the acolyte team - same label, same law
+                if (!Teams.Enemies(mine, Team.Acolyte)) break;
                 float d = (z.transform.position - transform.position).sqrMagnitude;
                 if (d < bestSqr) { bestSqr = d; best = z.transform; }
             }

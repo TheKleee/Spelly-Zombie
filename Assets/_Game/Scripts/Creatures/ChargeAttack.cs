@@ -164,7 +164,31 @@ namespace SpellyZombie
             var player = c.collider.GetComponentInParent<SimpleFPSController>();
             if (player != null)
             {
-                player.TakeHit(shove, hit, $"{name} charge");
+                // ★ BALANCE IS A BARRIER (his design): a planted wizard takes
+                // the damage but not the tumble - the charger BOUNCES off
+                // unless it hits hard enough to break the barrier. A slick
+                // wizard is the opposite: flattened and sent gliding.
+                var pel = player.GetComponent<Element>();
+                float bal = pel != null
+                    ? SpellPayload.ToHuman(3, pel.Data.Balance - pel.Natural.Balance) : 0f;
+                if (bal > 15f && hit < bal * 1.2f)
+                {
+                    player.TakeHit(shove * 0.15f, hit, $"{name} charge"); // hurt, not toppled
+                    var mrb = GetComponent<Rigidbody>();
+                    if (mrb != null)
+                        mrb.linearVelocity = -_dir * Mathf.Max(4f, mrb.linearVelocity.magnitude * 0.6f)
+                            + Vector3.up * 2.5f;
+                    GrammarFX.PuffBurst(spot, new Color(0.95f, 0.8f, 0.3f), 6); // the BOING
+                }
+                else if (bal < -15f)
+                {
+                    // flattened: extra shove, mostly flat, and the slip law glides it
+                    Vector3 flat = _dir; flat.y = 0f;
+                    player.TakeHit(flat.normalized * shove.magnitude * 1.7f + Vector3.up * 1f,
+                        hit, $"{name} charge");
+                    GrammarFX.PuffBurst(spot, new Color(0.6f, 0.85f, 1f), 5); // the WHOOPS
+                }
+                else player.TakeHit(shove, hit, $"{name} charge");
                 if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.TextPow, spot + Vector3.up * 1.2f);
             }
             else

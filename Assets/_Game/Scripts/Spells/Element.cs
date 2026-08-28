@@ -91,7 +91,15 @@ namespace SpellyZombie
         /// The multiplier the world uses: never 0, so a nearly-dead thing is
         /// feeble rather than inert.
         public float StrengthMul =>
-            Mathf.Lerp(DrawingConfig.StrengthFloorMul, 1f, StrengthFraction);
+            Mathf.Lerp(DrawingConfig.StrengthFloorMul, 1f, StrengthFraction)
+            * CoupledStrengthMul;
+
+        /// Pressure and balance shift EFFECTIVE strength (his coupling
+        /// table): compressed = mightier, planted = gentler; measured from
+        /// this thing's own natural.
+        public float CoupledStrengthMul =>
+            Mathf.Clamp(1f + SpellPayload.EffectCoupling(6, Data - Natural)
+                / DrawingConfig.AxisCap, 0.55f, 1.6f);
 
         /// Fired once, just before the object is removed (cause string passed).
         public System.Action<string> OnDeath;
@@ -229,6 +237,82 @@ namespace SpellyZombie
         }
 
         /// WHERE IT STANDS CHANGES WHAT IT IS, and what it is decides what
+        // ★ THE AXES ARE PHYSICAL ON EVERYTHING (his rule: spells must be fun
+        // no matter where they are cast): Pressure IS weight, Balance IS grip.
+        // Compressed things get heavy and hit like trucks, spread things fly;
+        // sticky things stop dead and hold, slick things slide. Read from the
+        // deviation between what a thing IS and what it naturally is, so the
+        // biome's own nature never punishes what belongs there.
+        float _baseMass = -1f, _baseDamp = -1f;
+        Collider[] _physCols;
+        PhysicsMaterial[] _physOrig;
+        bool _physSwapped;
+        static PhysicsMaterial _grippyMat, _slickMat;
+
+        void ApplyPhysicalAxes()
+        {
+            float press = SpellPayload.ToHuman(2, Data.Pressure - Natural.Pressure) / 100f;
+            float bal = SpellPayload.ToHuman(3, Data.Balance - Natural.Balance) / 100f;
+            AxisTellFx(press, bal); // the tell shows on EVERYONE, pilots included
+
+            var rb = GetComponent<Rigidbody>();
+            if (rb == null || rb.isKinematic) return;
+            if (GetComponent<SimpleFPSController>() != null) return; // pilots: BodyState owns the feel
+
+            if (_baseMass < 0f) { _baseMass = rb.mass; _baseDamp = rb.linearDamping; }
+            rb.mass = _baseMass * Mathf.Clamp(1f + press * 1.5f, 0.25f, 4f);
+            if (Mathf.Abs(bal) > 0.12f)
+            {
+                if (_grippyMat == null)
+                {
+                    _grippyMat = new PhysicsMaterial("SZ_Sticky")
+                    { dynamicFriction = 1.4f, staticFriction = 1.6f,
+                      frictionCombine = PhysicsMaterialCombine.Maximum };
+                    _slickMat = new PhysicsMaterial("SZ_Slick")
+                    { dynamicFriction = 0.02f, staticFriction = 0.02f,
+                      frictionCombine = PhysicsMaterialCombine.Minimum };
+                }
+                if (_physCols == null)
+                {
+                    _physCols = GetComponentsInChildren<Collider>();
+                    _physOrig = new PhysicsMaterial[_physCols.Length];
+                    for (int i = 0; i < _physCols.Length; i++)
+                        _physOrig[i] = _physCols[i] != null ? _physCols[i].sharedMaterial : null;
+                }
+                var want = bal > 0f ? _grippyMat : _slickMat;
+                foreach (var c in _physCols)
+                    if (c != null && !c.isTrigger) c.sharedMaterial = want;
+                rb.linearDamping = bal > 0f ? _baseDamp + 2.5f : 0f;
+                _physSwapped = true;
+            }
+            else if (_physSwapped && Mathf.Abs(bal) < 0.08f)
+            {
+                for (int i = 0; i < _physCols.Length; i++)
+                    if (_physCols[i] != null) _physCols[i].sharedMaterial = _physOrig[i];
+                rb.linearDamping = _baseDamp;
+                _physSwapped = false;
+            }
+
+        }
+
+        // ★ THE TELL (his rule: the player must SEE something happening):
+        // an axis riding a thing puffs its color on a slow beat - glue
+        // amber, slick ice-blue, heavy dust, feather-light pale sparks
+        float _nextAxisFx;
+        void AxisTellFx(float press, float bal)
+        {
+            if (Time.time < _nextAxisFx) return;
+            if (Mathf.Abs(bal) <= 0.12f && Mathf.Abs(press) <= 0.2f) return;
+            _nextAxisFx = Time.time + 0.65f;
+            Vector3 at = transform.position + Vector3.up * 0.25f;
+            if (bal > 0.12f) GrammarFX.PuffBurst(at, new Color(0.85f, 0.65f, 0.2f), 3);
+            else if (bal < -0.12f) GrammarFX.PuffBurst(at, new Color(0.6f, 0.85f, 1f), 3);
+            if (press > 0.2f) GrammarFX.PuffBurst(
+                transform.position + Vector3.up * 0.05f, new Color(0.35f, 0.33f, 0.3f), 4);
+            else if (press < -0.2f) GrammarFX.PuffBurst(
+                at + Vector3.up * 0.4f, new Color(1f, 0.98f, 0.8f), 2);
+        }
+
         /// happens to it. The same two lines for a wall, a crate, a zombie and
         /// a player - there is no list of who this applies to.
         void Beat(float span)
@@ -236,6 +320,7 @@ namespace SpellyZombie
             if (_dead) return;
             SpellLaw.Drift(this, span);
             Bear(span);
+            ApplyPhysicalAxes();
 
             // a thing carrying Affinity is its own gravity until it drifts home
             if (Mathf.Abs(Data.Affinity) > 0.05f)
