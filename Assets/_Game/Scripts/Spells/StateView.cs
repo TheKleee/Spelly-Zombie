@@ -17,6 +17,9 @@ namespace SpellyZombie
 
         [Tooltip("1 solid · 0.5 liquid · 0.1 gas. Spells and biomes drive this.")]
         [Range(0f, 1f)] public float StateT = Solid;
+        /// Runtime wobble bias from the Balance axis: positive (sticky)
+        /// jiggles, negative (slick) smooths the authored wobble away.
+        [System.NonSerialized] public float ExtraWobble;
 
         [Tooltip("Body colour, e.g. the fusion of a creature's inherited stats. Alpha unused - the shader owns per-state alpha.")]
         public Color Tint = Color.white;
@@ -33,6 +36,7 @@ namespace SpellyZombie
         static readonly int BaseColorID = Shader.PropertyToID("_BaseColor");
 
         float _pushedFade = 1f;
+        float _pushedWobble;
 
         Renderer[] _rends;
         Animator _anim;
@@ -128,11 +132,13 @@ namespace SpellyZombie
             bool tintMoved = DriveTint && _pushedTint != Tint;
             bool fadeMoved = !Mathf.Approximately(_pushedFade, Visibility);
             bool lookMoved = !ReferenceEquals(Look, _pushedLook);
-            if (!stateMoved && !tintMoved && !fadeMoved && !lookMoved) return;
+            bool wobbleMoved = !Mathf.Approximately(_pushedWobble, ExtraWobble);
+            if (!stateMoved && !tintMoved && !fadeMoved && !lookMoved && !wobbleMoved) return;
             _pushed = StateT;
             _pushedTint = Tint;
             _pushedFade = Visibility;
             _pushedLook = Look;
+            _pushedWobble = ExtraWobble;
 
             if (_rends != null)
                 foreach (var r in _rends)
@@ -147,7 +153,14 @@ namespace SpellyZombie
                     _mpb.SetColor(BaseColorID, c);
                     if (Look != null)
                     {
-                        _mpb.SetFloat("_Wobble", Look.Wobble);       _mpb.SetFloat("_WobbleSpeed", Look.WobbleSpeed);
+                        // ★ BALANCE SHOWS ON THE SKIN (his rule): sticky adds
+                        // jiggle on top of the authored look, slick cancels it
+                        // down to a perfectly smooth surface. Element drives
+                        // ExtraWobble; this stays the one material writer.
+                        float wob = Mathf.Max(0f, Look.Wobble + ExtraWobble);
+                        _mpb.SetFloat("_Wobble", wob);
+                        _mpb.SetFloat("_WobbleSpeed",
+                            Look.WobbleSpeed + (ExtraWobble > 0.05f ? 3f : 0f));
                         _mpb.SetFloat("_Swirl", Look.Swirl);         _mpb.SetFloat("_SwirlSpeed", Look.SwirlSpeed);
                         _mpb.SetFloat("_Turbulence", Look.Turbulence);
                         _mpb.SetFloat("_Bubbles", Look.Bubbles);     _mpb.SetFloat("_BubbleScale", Look.BubbleSize);

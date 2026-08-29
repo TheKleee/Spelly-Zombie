@@ -158,22 +158,38 @@ namespace SpellyZombie
                 bit.OwnerId = OwnerId;
                 bit.Lineage = Lineage;
                 bit.SrcSize = Mathf.Clamp(SrcSize * 0.4f, 0.1f, 0.5f);
+                bit.Reach = Reach * 0.45f; // small debris, small effect areas (his rule)
                 bit.ApplySizeRatio(DrawnSizeK(bit.SrcSize));
-                bit.Vel = d * 7f + Vel * 0.3f;
+                bit.Vel = d * 9f + Vel * 0.5f;
+                bit._ballistic = true; // heavy: gravity owns it, so it ALWAYS
+                                       // lands on something - nothing hangs
+                                       // or evaporates in air (his rule)
                 bit.RefreshIdentity_Public(); // dressed as the small spell it is
+                bit.PrimeToBlow(); // debris HITS: first contact delivers and detonates
             }
         }
 
         // ★ HIS LAW (Aug 27): runes BLOW UP on F, and a thrown rune blows up
         // on impact - no more passive releases that do nothing interesting.
         bool _primed;
-        public void PrimeToBlow() => _primed = true;
+        bool _ballistic; // debris flies on gravity and lands - never hovers
+        Transform _thrownBy;   // brief self-immunity: in third person the rune
+        float _thrownAt;       // exits THROUGH the thrower's own body
+        readonly System.Collections.Generic.HashSet<Object> _kickedBodies =
+            new System.Collections.Generic.HashSet<Object>();
+        public void PrimeToBlow(Transform thrower = null)
+        {
+            _primed = true;
+            _thrownBy = thrower;
+            _thrownAt = Time.time;
+        }
 
         public void DetonateNow()
         {
             if (_dead) return;
             if (Dormant) Wake();       // areas flush on wake - a meteor still falls
             if (_dead) return;         // the wake verb may already have spent it
+            if (_areasDeferred) FlushAreas(); // a thrown spell's areas raise HERE, at the impact
             ImpactFx();
 
             // ★ THE BLAST IS THE PAYLOAD LANDING: every body in reach takes
@@ -196,12 +212,33 @@ namespace SpellyZombie
 
             ManifestState(transform.position);
             ThrowDebris(transform.position, 4); // every spell dies throwing chunks
-            // the payload hangs where it burst - sized and weighted by what
-            // the rune truly carried, so a weak mote leaves a whisper and a
-            // fused monster leaves a dome
-            ArtificialBiome.Open(transform.position, Data, r,
-                1f, DrawingConfig.LingerSeconds); // full strength - the payload IS the knob
+            // ★ NOTHING FLOATS (his rule): the lingering payload looks for
+            // the nearest surface and CLINGS there - the floor below, or the
+            // closest solid thing in reach. No sky domes, ever; if there is
+            // truly nothing near, there is no linger.
+            Vector3 lingerAt = transform.position;
+            bool cling = false;
+            if (Physics.Raycast(lingerAt + Vector3.up * 0.1f, Vector3.down, out var lh, 7f,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            { lingerAt = lh.point; cling = true; }
+            else
+            {
+                float best = 8f * 8f;
+                foreach (var h in Physics.OverlapSphere(lingerAt, 8f, ~0,
+                    QueryTriggerInteraction.Ignore))
+                {
+                    if (h.GetComponent<SpellParticle>() != null) continue;
+                    Vector3 p = h.ClosestPoint(lingerAt);
+                    float d = (p - lingerAt).sqrMagnitude;
+                    if (d < best) { best = d; lingerAt = p; cling = true; }
+                }
+            }
+            if (cling)
+                ArtificialBiome.Open(lingerAt, Data, r,
+                    1f, DrawingConfig.LingerSeconds); // full strength - the payload IS the knob
             Juice.Boom(transform.position, 0.7f);
+            // an acolyte's spell spending itself returns a bit of wand
+            PlayerInk.CreditWand(OwnerId, DrawingConfig.InkMax * 0.05f);
             Die();
         }
 
@@ -459,7 +496,10 @@ namespace SpellyZombie
             if (_shapeBody != null) _shapeBody.GetComponent<StateView>()?.ClearFade();
             RefreshLook();
             ImpactFx(); // the pop of becoming real
-            if (_areasDeferred) FlushAreas(); // a stockpiled spell owes NOW - waking IS the cast
+            // a stockpiled spell owes its areas NOW - waking IS the cast.
+            // EXCEPT a thrown (primed) one: its areas belong to the IMPACT,
+            // so the meteor falls on the victim, not on the thrower's hand.
+            if (_areasDeferred && !_primed) FlushAreas();
 
             // ★ THE STONE STANDS UP ON ACTIVATION (his rule): a PURE bare
             // Solid wakes as the real rock, a pure Liquid as water - kept
@@ -605,9 +645,16 @@ namespace SpellyZombie
                 }
             }
 
-            // an unused preparation pops out - never a shrink (his rule)
+            // an unused preparation pops out - never a shrink (his rule);
+            // even expiring unused, an acolyte's spell feeds the wand back
             _dormantLeft -= dt;
-            if (_dormantLeft <= 0f) { ImpactFx(); Die(); return; }
+            if (_dormantLeft <= 0f)
+            {
+                ImpactFx();
+                PlayerInk.CreditWand(OwnerId, DrawingConfig.InkMax * 0.05f);
+                Die();
+                return;
+            }
 
             _dormantScan -= dt;
             if (_dormantScan > 0f) return;
@@ -907,6 +954,9 @@ namespace SpellyZombie
             _biomeOwed = false;
             _mergeQuietAt = 0f;
             _primed = false;
+            _ballistic = false;
+            _thrownBy = null;
+            _kickedBodies.Clear();
             _liveAreas.Clear();
             BecameObj = null;
             Claimed = false;
@@ -1457,8 +1507,43 @@ namespace SpellyZombie
                 // them here too ran them at DOUBLE speed (verified)
                 if (Kind != ParticleKind.Lightning && Kind != ParticleKind.BlackHole)
                 {
-                    Vel *= Mathf.Max(0f, 1f - (Kind == ParticleKind.Push ? 0.25f : 1.4f) * dt);
-                    transform.position += Vel * dt;
+                    // ballistic debris arcs under gravity, undamped - it flies
+                    // heavy and it LANDS; everything else glides mote-style
+                    if (_ballistic) Vel += Physics.gravity * 0.85f * dt;
+                    else Vel *= Mathf.Max(0f, 1f - (Kind == ParticleKind.Push ? 0.25f : 1.4f) * dt);
+                    // ★ RUNES HIT THE FLOOR (his fix): a ray down the flight
+                    // direction - if something stands inside this frame's
+                    // step, the mote stops THERE and touches it, instead of
+                    // tunnelling through the world between frames
+                    float step = Vel.magnitude * dt;
+                    bool swept = false;
+                    if (step > 0.03f)
+                    {
+                        // solid world first; then trigger SURFACES (the studio
+                        // floor is a drawable trigger) - other motes excluded,
+                        // so merging still works
+                        if (!Physics.Raycast(transform.position, Vel.normalized,
+                                out var sweep, step + 0.06f,
+                                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                        {
+                            float bestD = float.MaxValue;
+                            foreach (var th in Physics.RaycastAll(transform.position,
+                                Vel.normalized, step + 0.06f,
+                                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
+                            {
+                                if (th.collider.GetComponent<SpellParticle>() != null) continue;
+                                if (th.distance < bestD) { bestD = th.distance; sweep = th; }
+                            }
+                        }
+                        if (sweep.collider != null)
+                        {
+                            transform.position = sweep.point + sweep.normal * 0.08f;
+                            Touch(sweep.collider);
+                            if (_dead) return;
+                            swept = true;
+                        }
+                    }
+                    if (!swept) transform.position += Vel * dt;
                     // ★ A FLYING SPELL FACES ITS TRAVEL (his rule): the same
                     // glyph rotated IS a different rune, so the orientation is
                     // a tell of what is coming. Standing motes keep their pose.
@@ -2172,22 +2257,35 @@ namespace SpellyZombie
         {
             var carried = PayloadNow;
 
-            // ★ THINGS REACT TO BEING HIT (his rule): every spell shoves a
-            // little on impact - the universal "you got hit" tell, so no cast
-            // ever feels like nothing. Affinity spells push their own way.
+            // ★ THINGS REACT TO BEING HIT (his rule) - but ONCE per body per
+            // spell, on impact only. A body has many colliders (every limb),
+            // and kicking on each trigger event launched him into orbit.
             if (Mathf.Abs(SpellPayload.ToHuman(5, carried.Affinity)) < 10f)
             {
-                Vector3 dir = c.bounds.center - transform.position;
-                dir = (dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.up)
-                    + Vector3.up * 0.35f;
-                float kick = 2.5f + Power * 1.5f;
                 var pl = c.GetComponentInParent<SimpleFPSController>();
-                if (pl != null) pl.TakeHit(dir * kick, 0f);
-                else
+                Object body = pl != null ? (Object)pl
+                    : c.GetComponentInParent<Element>() != null
+                        ? c.GetComponentInParent<Element>() : c.attachedRigidbody;
+                if (body != null && _kickedBodies.Add(body))
                 {
-                    var prb = c.attachedRigidbody;
-                    if (prb != null && !prb.isKinematic)
-                        prb.AddForce(dir * kick, ForceMode.VelocityChange);
+                    Vector3 dir = c.bounds.center - transform.position;
+                    dir = (dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.up)
+                        + Vector3.up * 0.35f;
+                    float kick = 2.5f + Power * 1.5f;
+                    if (pl != null) pl.TakeHit(dir * kick, 0f);
+                    else
+                    {
+                        // props FLY tumbling (mass decides how far), rooted
+                        // things SHAKE - the environment always answers a hit
+                        var jel = c.GetComponentInParent<Element>();
+                        if (jel != null) jel.ImpactJolt(transform.position, kick);
+                        else
+                        {
+                            var prb = c.attachedRigidbody;
+                            if (prb != null && !prb.isKinematic)
+                                prb.AddForce(dir * kick, ForceMode.VelocityChange);
+                        }
+                    }
                 }
             }
 
@@ -2608,6 +2706,31 @@ namespace SpellyZombie
                     if (_reread[i] != Fusions[i]) { changed = true; break; }
             if (!changed) return;
 
+            // ★ A SPELL CARRIES ITS EFFECTS WHILE IT IS THAT SPELL (his rule,
+            // and the creator's own words: byproducts RIDE the numbers).
+            // Becoming Heal grants its Strength to the payload; drifting back
+            // out of Heal takes it away again - collect the heal rune, get
+            // the heal benefit, exactly as long as it IS the heal.
+            var fx = Data;
+            bool fxMoved = false;
+            for (int i = 0; i < _reread.Count; i++)
+                if (!Fusions.Contains(_reread[i]))
+                    for (int ax = 6; ax < SpellPayload.AxisCount; ax++)
+                        if (_reread[i].Axis[ax] != 0)
+                        {
+                            fx[ax] += SpellPayload.FromHuman(ax, _reread[i].Axis[ax]);
+                            fxMoved = true;
+                        }
+            for (int i = 0; i < Fusions.Count; i++)
+                if (!_reread.Contains(Fusions[i]))
+                    for (int ax = 6; ax < SpellPayload.AxisCount; ax++)
+                        if (Fusions[i].Axis[ax] != 0)
+                        {
+                            fx[ax] -= SpellPayload.FromHuman(ax, Fusions[i].Axis[ax]);
+                            fxMoved = true;
+                        }
+            if (fxMoved) Data = fx.Clamped();
+
             // ★ THE NEWEST THING IT BECAME decides its shape. A particle can
             // wear several spells at once, so no coat can be "the" one - but
             // the LATEST crossing is always single, and it is also the most
@@ -2673,15 +2796,27 @@ namespace SpellyZombie
         void Touch(Collider c)
         {
             // a thrown rune's first contact IS its detonation (his law) -
-            // merging with other motes still happens upstream in ResolveLaw
-            if (_primed) { DetonateNow(); return; }
+            // merging with other motes still happens upstream in ResolveLaw.
+            // The thrower's own body is immune for the first half second: in
+            // third person the rune exits THROUGH you.
+            if (_primed)
+            {
+                if (_thrownBy != null && Time.time < _thrownAt + 0.5f
+                    && c.transform.IsChildOf(_thrownBy)) return;
+                DetonateNow();
+                return;
+            }
 
             // A DIRECT HIT IS THE WHOLE PAYLOAD, not a share of it - that is
             // the only difference between lvl1 touching a target and lvl2
             // radiating at it.
             if (!Dormant)
             {
-                if (!Attached && WantsToAttach) { AttachTo(c); return; }
+                // a clinging spell touching a PLAYER delivers instead of
+                // riding (his fix: it parked on his foot and glued him solid)
+                if (!Attached && WantsToAttach
+                    && c.GetComponentInParent<SimpleFPSController>() == null)
+                { AttachTo(c); return; }
 
                 // ★ A LVL2 HIT LANDS ON EVERYTHING IN ITS AREA - each BODY
                 // once, not once per collider it happens to own.
@@ -2732,6 +2867,8 @@ namespace SpellyZombie
                         if (!catchable)
                             ArtificialBiome.Open(transform.position, Data,
                                 AreaReach(), 1f, DrawingConfig.LingerSeconds);
+                        // spent on impact: the acolyte's wand gets its cut
+                        PlayerInk.CreditWand(OwnerId, DrawingConfig.InkMax * 0.05f);
                         Die();
                         return;
                     }
@@ -3309,6 +3446,8 @@ namespace SpellyZombie
                     child.OwnerId = owner;
                     child.SrcSize = size;
                     child.Reach = Reach; // the area's span keeps the seal's ratio
+                    // smaller drawings make smaller areas (his rule)
+                    child.ApplySizeRatio(DrawnSizeK(size));
                     // ★ THE OFFSET IS A LAUNCH (his rule): the child spawns at
                     // the offset and RUSHES to the spell - a big offset means
                     // a fast arrival, which is how a meteor falls from Y+22.

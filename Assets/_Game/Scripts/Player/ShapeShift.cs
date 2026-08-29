@@ -45,6 +45,9 @@ namespace SpellyZombie
         public static float ScanReach => (Local != null ? Local.LearnRange : 2.6f) * 1.6f;
 
         GameObject _worn;          // the disguise, kept alive across TABs
+        /// This pilot is currently AN OBJECT (instance truth, not the local
+        /// static) - the body-size laws read it to leave disguises true-size.
+        public bool IsShapedNow => _worn != null && _worn.activeSelf;
 
         /// True when this transform IS the local player's disguise (or part of
         /// it). The thing you are wearing must never read as a target.

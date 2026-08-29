@@ -30,6 +30,24 @@ namespace SpellyZombie
         /// wand you have - the shape you wore has no wand to feed.
         public void Store(float amount) => Reserve += Mathf.Max(0f, amount);
 
+        /// ★ THE SPELLS FEED THE WAND BACK (his rule): an acolyte's spell
+        /// expiring, dealing damage, or their zombies wrecking things returns
+        /// a bit of wand - counterplay against running dry. Feeds the RESERVE
+        /// so the existing trickle grows the wand back, capped at full.
+        /// MP gap (flagged): a remote acolyte's credit needs a NetSync push.
+        public static void CreditWand(int ownerId, float amount)
+        {
+            if (ownerId < 0 || amount <= 0f || !Sides.IsAcolyte(ownerId)) return;
+            if (ownerId != Grimoire.LocalPlayerId) return;
+            foreach (var ink in All)
+            {
+                var pilot = ink.GetComponent<SimpleFPSController>();
+                if (pilot == null || !pilot.IsLocalViewer) continue;
+                ink.Store(Mathf.Min(amount, DrawingConfig.InkMax * 0.15f));
+                return;
+            }
+        }
+
         /// No passive regen. Wizards: the pot is the only well
         /// (CauldronEconomy.LocalWandTick). Acolytes: ink evaporates, except
         /// while worn - a disguise has no wand to dry out.

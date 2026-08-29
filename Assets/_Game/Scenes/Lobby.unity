@@ -121393,6 +121393,19 @@ MonoBehaviour:
   _playerBody: {fileID: 5413070822181651772, guid: 0100782c60628e644b721f3f90ebac77, type: 3}
   _zombieBody: {fileID: 8723309985505290705, guid: dd5751df7ff985341b02d1f6a4339be8, type: 3}
   _golem: {fileID: 6266521347309620899, guid: 5a758cfbf90b20a488e2cd66d749af4c, type: 3}
+  _iceCube: {fileID: 7817906868445613806, guid: f1fbe75f8157f2e45bb953bd5630c02f, type: 3}
+  _fxHeat: {fileID: 4593184484909914552, guid: 2e1e9506f5904a64b81744324fb7cd50, type: 3}
+  _fxChill: {fileID: 5112403345868107898, guid: 6f34ef0d986e9db4199cf75805f79753, type: 3}
+  _fxLight: {fileID: 1590415177872986601, guid: acdb90624a404aa438447006f1026065, type: 3}
+  _fxDark: {fileID: 6385386739049445412, guid: c2a9cdeecffd5d14891f6ec7dfeb750c, type: 3}
+  _fxCompress: {fileID: 8487402871801164198, guid: 90375796f996bff4cabed66da5e558cb, type: 3}
+  _fxSpread: {fileID: 1141330259687333427, guid: 6718dc24203da53468af9ada8fef7d6d, type: 3}
+  _fxSticky: {fileID: 8620588918006998808, guid: 7f906c77905876d488e88e99d13c3d7d, type: 3}
+  _fxSlick: {fileID: 2708598583397607911, guid: 6398d43fe79ea0140913dc5530c646af, type: 3}
+  _fxSolid: {fileID: 3432958286849152088, guid: 87ee7299dd44ed747af24dbb91bcd33b, type: 3}
+  _fxLiquid: {fileID: 8205706795460263314, guid: 326e86d5729c54e479798cacab220bb2, type: 3}
+  _fxAttract: {fileID: 4772634663576830964, guid: e1385af346f4e624eb313ec1ea4fcd7e, type: 3}
+  _fxRepel: {fileID: 5824670795371433373, guid: f6fd568b816c64943a44efc3add3a881, type: 3}
   _particleBlob: {fileID: 2575264486969568327, guid: fd1e77cdf8bf57f4f8adce5617d40d25, type: 3}
   _particleShapes:
   - {fileID: 8726103719728137381, guid: 9e52d6ffd25ee654a94e3d433ebdff41, type: 3}

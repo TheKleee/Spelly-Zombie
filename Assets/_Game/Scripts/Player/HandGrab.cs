@@ -247,9 +247,10 @@ namespace SpellyZombie
                 }
             }
 
-            // ★ F DETONATES A HELD RUNE, E throws it to detonate on impact
-            // (his law: no more passive runes). Everything else still just
-            // puts the thing down.
+            // ★ F WAKES THE RUNE IN PLACE (his rework: waking looked better
+            // than exploding) - the dormant ghost becomes the real spell
+            // right there: auras on, areas raised, a meteor's sky answered.
+            // E still throws it to detonate on impact.
             if (kb.fKey.wasPressedThisFrame)
             {
                 if (_heldParticle != null && !_remoteHolding)
@@ -257,7 +258,7 @@ namespace SpellyZombie
                     var p = _heldParticle;
                     _heldParticle = null;
                     p.ReleaseHeld(Vector3.zero);
-                    p.DetonateNow();
+                    p.Wake();
                 }
                 else DropHeld(Vector3.zero);
                 return;
@@ -624,7 +625,9 @@ namespace SpellyZombie
                 var p = _heldParticle;
                 _heldParticle = null;
                 p.ReleaseHeld(dir * ThrowSpeed); // the push ability, down your own cursor
-                p.PrimeToBlow(); // a thrown rune detonates on impact (his law)
+                p.PrimeToBlow(transform); // detonates on impact; the thrower is briefly immune
+                p.Wake(); // ★ INSTANTLY ALIVE when thrown (his fix): a living
+                          // mote sweeps the world properly and lands its hit
             }
             else if (_heldBody != null)
             {

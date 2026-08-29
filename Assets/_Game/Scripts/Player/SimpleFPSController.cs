@@ -222,6 +222,170 @@ namespace SpellyZombie
             DrawingWorld.Instance?.LogEvent(parts.ToString());
         }
 
+        // ★ COURAGE OWNS YOUR LEGS + FIRE WON'T LET YOU STAND (his designs):
+        // blinded by LIGHT you are too brave - you charge at whatever is
+        // near, anything at all. Under DARK you are terrified - you flee,
+        // stumbling and falling. BURNING, you cannot stay in place. And
+        // frozen deep enough, you are an ICE CUBE sliding on momentum.
+        float _legsRepickAt;
+        Vector3 _legsDir;
+        float _lastBurnAt = -99f;
+        float _frozenUntil; // the minimum statue moment; the ICE itself is the state
+        public bool IsFrozenCube => _iceChunks.Count > 0;
+
+        // ★ THE BLIND SHOWS AROUND THE HEAD (his call): light-bravado burns
+        // white-hot sparks off the skull, terror bleeds dark wisps - anyone
+        // across the map can read WHY that wizard is charging or fleeing
+        float _headFxAt;
+        void BlindHeadFx(float cour)
+        {
+            if (Time.time < _headFxAt || Mathf.Abs(cour) < 35f) return;
+            _headFxAt = Time.time + 0.4f;
+            Vector3 head = transform.position + Vector3.up * 1.7f;
+            if (cour > 0f) GrammarFX.PuffBurst(head, new Color(1f, 0.98f, 0.85f), 4);
+            else GrammarFX.PuffBurst(head, new Color(0.12f, 0.08f, 0.18f), 4);
+        }
+
+        /// ★ THE ICE GROWS ON THE BONES (his fix): one small chunk of the
+        /// Frozen prefab per body limb, parented so it moves with the pose -
+        /// a frozen wizard reads as a body sheathed in ice, not a lump on
+        /// the hat. All chunks melt away together when the cold lets go.
+        readonly System.Collections.Generic.List<GameObject> _iceChunks =
+            new System.Collections.Generic.List<GameObject>();
+        void FreezeOntoBones()
+        {
+            var cube = CollectionManager.IceCube;
+            if (cube == null) return;
+            int made = 0;
+            foreach (var limb in GetComponentsInChildren<Rigidbody>())
+            {
+                if (limb.transform == transform || made >= 7) continue;
+                var chunk = Instantiate(cube, limb.worldCenterOfMass,
+                    Random.rotation, limb.transform);
+                chunk.transform.localScale = Vector3.one * 0.45f;
+                foreach (var col in chunk.GetComponentsInChildren<Collider>())
+                    Destroy(col); // dress, not physics
+                foreach (var rb in chunk.GetComponentsInChildren<Rigidbody>())
+                    Destroy(rb);
+                _iceChunks.Add(chunk);
+                made++;
+            }
+            if (made == 0) // no limb rig: one body-sized chunk at the chest
+            {
+                var chunk = Instantiate(cube, transform.position + Vector3.up * 0.9f,
+                    Quaternion.identity, transform);
+                chunk.transform.localScale = Vector3.one * 1.4f;
+                _iceChunks.Add(chunk);
+            }
+        }
+        void ThawIce()
+        {
+            _frozenUntil = 0f;
+            foreach (var c in _iceChunks) if (c != null) Destroy(c);
+            _iceChunks.Clear();
+            GrammarFX.PuffBurst(transform.position + Vector3.up * 0.8f,
+                new Color(0.85f, 0.95f, 1f), 5); // the melt
+        }
+
+        // the axis deviations the movement laws read, refreshed each frame
+        float _balDev, _pressDev, _mindDev;
+        Vector2 _glideMv;
+        float _auraShoveAt, _slipFallCd, _stickPulseAt;
+
+        Vector2 PossessedLegs(Vector2 mv)
+        {
+            if (IsDowned || IsDead || _dmg == null) return mv;
+
+            _balDev = SpellPayload.ToHuman(3, _dmg.Data.Balance - _dmg.Natural.Balance) / 100f;
+            _pressDev = SpellPayload.ToHuman(2, _dmg.Data.Pressure - _dmg.Natural.Pressure) / 100f;
+            _mindDev = SpellPayload.ToHuman(7, _dmg.Data.Int - _dmg.Natural.Int) / 100f;
+
+            // ★ LOW MIND = DRUNK LEGS (his rule: the brain power must matter):
+            // inputs sway on a wandering angle, and you occasionally trip
+            if (_mindDev < -0.25f)
+            {
+                float sway = Mathf.Sin(Time.time * 2.3f) * 55f * Mathf.Min(1f, -_mindDev * 2f);
+                mv = Quaternion.Euler(0f, 0f, sway) * mv;
+                if (Random.value < Time.deltaTime * 0.3f)
+                    TakeHit(Random.insideUnitSphere * 2.5f + Vector3.up, 0f);
+            }
+
+            // ★ HEAVY PRESENCE (his ask): a compressed wizard shoves loose
+            // things away just by standing near them
+            if (_pressDev > 0.25f && Time.time >= _auraShoveAt)
+            {
+                _auraShoveAt = Time.time + 0.6f;
+                foreach (var h in Physics.OverlapSphere(transform.position + Vector3.up * 0.5f, 1.5f))
+                {
+                    var hrb = h.attachedRigidbody;
+                    if (hrb == null || hrb.isKinematic || hrb.transform == transform) continue;
+                    if (h.GetComponentInParent<SimpleFPSController>() != null) continue;
+                    hrb.AddForce((hrb.worldCenterOfMass - transform.position).normalized * 2f
+                        + Vector3.up * 0.5f, ForceMode.VelocityChange);
+                }
+            }
+
+            // ★ ICE MELTS BY TEMPERATURE, never by timer (his rule): frozen
+            // while deep cold, free again only when you naturally warm past
+            // the melt line - a fire nearby thaws you fast, a cold biome
+            // keeps you a statue.
+            float tempDev = SpellPayload.ToHuman(0, _dmg.Data.Temp - _dmg.Natural.Temp);
+            if (IsFrozenCube)
+            {
+                if (tempDev > -35f && Time.time > _frozenUntil) ThawIce();
+                else return Vector2.zero; // a cube has no legs
+            }
+            else if (tempDev < -50f)
+            {
+                _frozenUntil = Time.time + 1f; // a minimum moment of statue
+                FreezeOntoBones();
+                Juice.Thud(transform.position);
+                return Vector2.zero;
+            }
+
+            float cour = SpellPayload.ToHuman(8, _dmg.Data.Courage - _dmg.Natural.Courage);
+            BlindHeadFx(cour);
+            bool burning = Time.time < _lastBurnAt + 1.2f;
+            if (Mathf.Abs(cour) < 35f && !burning) return mv;
+
+            if (Time.time >= _legsRepickAt)
+            {
+                _legsRepickAt = Time.time + (burning ? 0.35f : 1.1f);
+                if (cour > 35f)
+                {
+                    // brave beyond sense: charge at SOMETHING, anything near
+                    Transform prey = null; float best = 15f * 15f;
+                    foreach (var h in Physics.OverlapSphere(transform.position, 15f))
+                    {
+                        if (h.GetComponentInParent<SimpleFPSController>() == this) continue;
+                        if (h.GetComponentInParent<Element>() == null
+                            && h.GetComponentInParent<Creature>() == null) continue;
+                        float d = (h.transform.position - transform.position).sqrMagnitude;
+                        if (d > 1f && d < best && Random.value < 0.5f)
+                        { best = d; prey = h.transform; }
+                    }
+                    Vector3 to = prey != null ? prey.position - transform.position
+                        : Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
+                    _legsDir = new Vector3(to.x, 0f, to.z).normalized;
+                }
+                else if (cour < -35f)
+                {
+                    // terror: run, stumble, fall
+                    _legsDir = Quaternion.Euler(0f, Random.Range(-140f, 140f), 0f)
+                        * -transform.forward;
+                    if (Random.value < 0.35f)
+                        TakeHit(_legsDir * 3.5f + Vector3.up * 1.2f, 0f);
+                }
+                else
+                {
+                    // burning: the ground is lava, literally - frantic shuffle
+                    _legsDir = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
+                }
+            }
+            Vector3 local = transform.InverseTransformDirection(_legsDir);
+            return new Vector2(local.x, local.z).normalized;
+        }
+
         public void TakeHit(Vector3 impulse, float damage, string cause = null)
         {
             if (IsDowned)
@@ -242,6 +406,8 @@ namespace SpellyZombie
         void Hurt(float damage, string cause)
         {
             _lastHurt = Time.time;
+            if (cause != null && cause.StartsWith("burning"))
+                _lastBurnAt = Time.time; // fire won't let you stand still
             if (damage > 0f) NoteDamage(cause ?? "hit", damage);
             // DoT ticks show on the hurt vignette only; the camera shakes for
             // real blows, on a cooldown, gentler while the pen is down
@@ -678,11 +844,52 @@ namespace SpellyZombie
             if (mv.sqrMagnitude > 1f) mv.Normalize();
             // in draw modes WASD belongs to the view (orbit), not to walking
             if (drawingMode) mv = Vector2.zero;
+            mv = PossessedLegs(mv);
+            // ★ SLICK LEGS SKATE (his rule): on a slick body the input only
+            // slowly wins over momentum - ice under your boots, always.
+            // And a hard direction FLIP throws you on your face - we have
+            // ragdolling for a reason (his words).
+            // the clumsiness GRADIENT (his spec): mild slick falls on hard
+            // flips, heavy slick falls on any real turn, and at maximum you
+            // cannot walk at all - moving IS falling, a ragdoll on ice
+            if (_balDev < -0.15f && Time.time >= _slipFallCd
+                && _glideMv.sqrMagnitude > 0.4f)
+            {
+                float slick = -_balDev;
+                float dot = mv.sqrMagnitude > 0.3f
+                    ? Vector2.Dot(mv.normalized, _glideMv.normalized) : 1f;
+                bool falls = slick > 0.6f
+                    || (slick > 0.35f && dot < 0.55f)
+                    || dot < -0.2f;
+                if (falls)
+                {
+                    _slipFallCd = Time.time + (slick > 0.6f ? 1.1f : 1.8f);
+                    KnockDown(0.9f + slick); // the REAL sprawl - momentum owns you
+                    Vector3 skid = transform.TransformDirection(
+                        new Vector3(_glideMv.x, 0f, _glideMv.y)).normalized;
+                    TakeHit(skid * (4f + 6f * slick) + Vector3.up * 1.2f, 0f);
+                    GrammarFX.PuffBurst(transform.position + Vector3.up * 0.1f,
+                        new Color(0.7f, 0.9f, 1f), 4);
+                }
+            }
+            // ★ STICKY GRIPS THE GROUND (his rule, cranked): past real glue
+            // your boots periodically refuse to leave the floor
+            if (_balDev > 0.3f && Time.time >= _stickPulseAt)
+            {
+                _stickPulseAt = Time.time + 2f;
+                _feetStuckUntil = Time.time + 0.4f;
+                GrammarFX.PuffBurst(transform.position + Vector3.up * 0.05f,
+                    new Color(0.85f, 0.65f, 0.2f), 4);
+            }
+            _glideMv = Vector2.Lerp(_glideMv, mv,
+                Time.deltaTime * (_balDev < -0.15f ? 1.6f : 22f));
+            mv = _glideMv;
             // a Y owns you: inputs walk you the OTHER way
             if (_body != null) mv *= _body.InputSign;
 
             bool sprint = kb.leftShiftKey.isPressed || (gp != null && gp.leftStickButton.isPressed);
             if (_body != null && !_body.CanSprint) sprint = false; // too heavy to run
+            if (_balDev > 0.15f) sprint = false; // glue does not do running (his rule)
             IsSprinting = sprint && !IsDowned && !IsCrouched && mv.sqrMagnitude > 0.01f;
 
             // inside a liquid volume: no drowning (no mouths), just slow
@@ -691,12 +898,16 @@ namespace SpellyZombie
                 : IsDowned ? MoveSpeed * 0.25f // crawl
                 : IsSprawled ? 0f              // flat on your face - momentum owns you
                 : IsAirTumbling ? 0f           // ragdolls don't steer - the launch owns you
+                : IsFrozenCube ? 0f            // an ice cube slides on momentum alone
                 : FeetStuck ? 0f               // glued boots - the grip won't let go
                 : sprint ? SprintSpeed : MoveSpeed;
             if (IsCrouched) speed *= 0.5f;
             if (_body != null)
             {
                 speed *= _body.SpeedMul; // grip, frost, arrows and Ys all live here
+                // sticky wades through glue; heavy trudges
+                if (_balDev > 0.15f) speed *= 1f - 0.7f * Mathf.Min(1f, _balDev);
+                if (_pressDev > 0.2f) speed *= 0.85f;
                 if (_body.CrawlOnly && !IsCrouched)
                     speed = Mathf.Min(speed, MoveSpeed * 0.5f); // too heavy: crouch pace is all you have
             }
@@ -743,7 +954,10 @@ namespace SpellyZombie
                         DrawingWorld.Instance?.LogEvent("too heavy to jump");
                     else
                         _verticalVelocity = (IsCrouched ? JumpSpeed * 1.15f : JumpSpeed)
-                            * (_body != null ? _body.JumpMul : 1f); // light wizards spring higher
+                            * (_body != null ? _body.JumpMul : 1f)  // light wizards spring higher
+                            // ★ SPREAD = a gas balloon (his rule): a lightened
+                            // wizard springs way higher; a compressed one barely
+                            * Mathf.Clamp(1f - _pressDev * 0.9f, 0.5f, 2f);
                 }
             }
             else if (swimIn != null)

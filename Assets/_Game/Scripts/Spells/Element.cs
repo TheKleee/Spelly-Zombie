@@ -243,7 +243,8 @@ namespace SpellyZombie
         // sticky things stop dead and hold, slick things slide. Read from the
         // deviation between what a thing IS and what it naturally is, so the
         // biome's own nature never punishes what belongs there.
-        float _baseMass = -1f, _baseDamp = -1f;
+        float _baseMass = -1f, _baseDamp = -1f, _balNow;
+        System.Collections.Generic.List<FixedJoint> _glue;
         Collider[] _physCols;
         PhysicsMaterial[] _physOrig;
         bool _physSwapped;
@@ -255,12 +256,71 @@ namespace SpellyZombie
             float bal = SpellPayload.ToHuman(3, Data.Balance - Natural.Balance) / 100f;
             AxisTellFx(press, bal); // the tell shows on EVERYONE, pilots included
 
+            // ★ ONE BODY LAW FOR EVERYTHING ALIVE OR NOT (his rule):
+            // compressed = visibly smaller, spread = an inflated balloon -
+            // players, creatures and crates alike. Computed from the LIVE
+            // deviation each beat, so as the data drifts home on the curve
+            // (toward your nature, or toward what the biome forces you to
+            // be), the body visibly changes back with it.
+            if (_baseScale == Vector3.zero) _baseScale = transform.localScale;
+            // ★ ACOLYTES ARE SMALL (his call, the Meccha way: hiders are
+            // smaller than seekers) - their natural body is 70%, full speed,
+            // full jump. Composes with the balloon law below.
+            float sideMul = 1f;
+            {
+                var pilot = GetComponent<SimpleFPSController>();
+                if (pilot != null && Sides.IsAcolytePlayer(pilot))
+                {
+                    // ★ THE DISGUISE IS TRUE SIZE (his rule): the small body
+                    // is the acolyte's TRUE form only - worn as an object,
+                    // the object is exactly the object, centering intact
+                    if (!_ssScanned) { _ss = GetComponent<ShapeShift>(); _ssScanned = true; }
+                    if (_ss == null || !_ss.IsShapedNow)
+                        sideMul = DrawingConfig.AcolyteBodyScale;
+                }
+            }
+            // OVER THE TOP on purpose (his rule): the old factor moved a hit
+            // player ~5% - invisible. Now a real hit visibly crushes or
+            // balloons anything.
+            transform.localScale = _baseScale * sideMul
+                * Mathf.Clamp(1f - press * 0.5f, 0.55f, 1.6f);
+            AxisTint(press, bal);
+
+            // ★ BALANCE SHOWS ON THE SKIN (his rule): sticky bodies jiggle,
+            // slick bodies go perfectly smooth - through StateView, the one
+            // material writer for bodies that have one
+            if (!_svScanned) { _sv = GetComponentInChildren<StateView>(); _svScanned = true; }
+            if (_sv != null) _sv.ExtraWobble = bal * 0.9f;
+
             var rb = GetComponent<Rigidbody>();
             if (rb == null || rb.isKinematic) return;
             if (GetComponent<SimpleFPSController>() != null) return; // pilots: BodyState owns the feel
 
             if (_baseMass < 0f) { _baseMass = rb.mass; _baseDamp = rb.linearDamping; }
             rb.mass = _baseMass * Mathf.Clamp(1f + press * 1.5f, 0.25f, 4f);
+            _balNow = bal;
+
+            // ★ SLICK THINGS GLIDE ON THEIR OWN (his rule): frictionless AND
+            // restless - each slicked object drifts off in its own direction
+            if (bal < -0.12f && rb.linearVelocity.sqrMagnitude < 4f)
+            {
+                rb.WakeUp();
+                rb.AddForce(Quaternion.Euler(0f, (GetInstanceID() * 37) % 360, 0f)
+                    * Vector3.forward * 1.4f, ForceMode.Acceleration);
+            }
+
+            // ★ BURNING THINGS POP (his rule): heat makes them jump - a
+            // sudden launch, a bang, embers everywhere
+            float tempDev = SpellPayload.ToHuman(0, Data.Temp - Natural.Temp);
+            if (tempDev > 60f && Random.value < 0.12f)
+            {
+                rb.AddForce(Vector3.up * Random.Range(4f, 8f)
+                    + Random.insideUnitSphere * 2f, ForceMode.VelocityChange);
+                rb.AddTorque(Random.onUnitSphere * 6f, ForceMode.VelocityChange);
+                Juice.Thud(transform.position);
+                GrammarFX.PuffBurst(transform.position, new Color(1f, 0.55f, 0.15f), 6);
+            }
+
             if (Mathf.Abs(bal) > 0.12f)
             {
                 if (_grippyMat == null)
@@ -291,9 +351,68 @@ namespace SpellyZombie
                     if (_physCols[i] != null) _physCols[i].sharedMaterial = _physOrig[i];
                 rb.linearDamping = _baseDamp;
                 _physSwapped = false;
+                // the glue dries out with the stickiness
+                if (_glue != null)
+                {
+                    foreach (var j in _glue) if (j != null) Destroy(j);
+                    _glue.Clear();
+                }
             }
 
         }
+
+        // ★ THE GOO LAYER, the cheap way (his Splatoon instinct, no boned
+        // blob needed): the whole object tints while an axis rides it -
+        // glue amber, slick sheen, stone gray, fluid pale. Bodies with a
+        // StateView keep their one writer and get the puffs only.
+        Vector3 _baseScale;
+        Renderer[] _tintRends;
+        MaterialPropertyBlock _tintMpb;
+        bool _tinted;
+        static readonly int TintColorID = Shader.PropertyToID("_BaseColor");
+
+        void AxisTint(float press, float bal)
+        {
+            // ★ LIVING THINGS NEVER BODY-TINT (his ruling): tints cannot
+            // stack when several effects ride one body - PARTICLES are the
+            // tell on the living. The goo layer is for objects only.
+            if (GetComponentInParent<SimpleFPSController>() != null
+                || GetComponentInParent<Creature>() != null) return;
+            bool wants = Mathf.Abs(press) > 0.2f || Mathf.Abs(bal) > 0.12f;
+            if (!wants && !_tinted) return;
+            if (GetComponentInChildren<StateView>() != null) return;
+            if (_tintRends == null)
+            {
+                _tintRends = GetComponentsInChildren<Renderer>();
+                _tintMpb = new MaterialPropertyBlock();
+            }
+            if (!wants)
+            {
+                foreach (var r in _tintRends)
+                    if (r != null) r.SetPropertyBlock(null);
+                _tinted = false;
+                return;
+            }
+            Color mul = Color.white;
+            if (press > 0.2f)
+                mul = Color.Lerp(Color.white, new Color(0.5f, 0.5f, 0.52f), Mathf.Min(1f, press));
+            else if (press < -0.2f)
+                mul = Color.Lerp(Color.white, new Color(0.85f, 0.95f, 1f), Mathf.Min(1f, -press));
+            if (bal > 0.12f) mul *= new Color(1f, 0.8f, 0.45f);
+            else if (bal < -0.12f) mul *= new Color(0.7f, 0.9f, 1f);
+            _tintMpb.SetColor(TintColorID, mul);
+            // slick props gleam wet-smooth, sticky ones go matte-gluey
+            if (bal < -0.12f) _tintMpb.SetFloat(SmoothID, 0.95f);
+            else if (bal > 0.12f) _tintMpb.SetFloat(SmoothID, 0.15f);
+            foreach (var r in _tintRends)
+                if (r != null) r.SetPropertyBlock(_tintMpb);
+            _tinted = true;
+        }
+        static readonly int SmoothID = Shader.PropertyToID("_Smoothness");
+        StateView _sv;
+        bool _svScanned;
+        ShapeShift _ss;
+        bool _ssScanned;
 
         // ★ THE TELL (his rule: the player must SEE something happening):
         // an axis riding a thing puffs its color on a slow beat - glue
@@ -302,9 +421,38 @@ namespace SpellyZombie
         void AxisTellFx(float press, float bal)
         {
             if (Time.time < _nextAxisFx) return;
-            if (Mathf.Abs(bal) <= 0.12f && Mathf.Abs(press) <= 0.2f) return;
+            float aff = SpellPayload.ToHuman(5, Data.Affinity - Natural.Affinity) / 100f;
+            float tmp = SpellPayload.ToHuman(0, Data.Temp - Natural.Temp);
+            if (Mathf.Abs(bal) <= 0.12f && Mathf.Abs(press) <= 0.2f
+                && Mathf.Abs(aff) <= 0.1f && Mathf.Abs(tmp) <= 40f) return;
             _nextAxisFx = Time.time + 0.65f;
-            Vector3 at = transform.position + Vector3.up * 0.25f;
+            // balance FX live at the FEET (his rule: nothing floats) - glue
+            // drips and slick sheen belong on the ground you stand on
+            Vector3 at = transform.position + Vector3.up * 0.06f;
+
+            // hot things smolder embers, cold things breathe frost
+            if (tmp > 40f) GrammarFX.PuffBurst(at + Vector3.up * 0.3f,
+                new Color(1f, 0.5f, 0.12f), 3);
+            else if (tmp < -40f) GrammarFX.PuffBurst(at,
+                new Color(0.85f, 0.95f, 1f), 3);
+
+            // ★ ATTRACT/REPEL GET A TELL TOO (his rule: no one may believe
+            // nothing happened). No colors - he removed those - so the SHAPE
+            // says it: dotted streaks pointing IN toward a puller, OUT from
+            // a pusher, at two random angles a beat.
+            if (Mathf.Abs(aff) > 0.1f)
+            {
+                var neutral = new Color(0.9f, 0.9f, 0.95f);
+                for (int a = 0; a < 2; a++)
+                {
+                    Vector3 dir = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
+                    for (int i = 0; i < 3; i++)
+                    {
+                        float t = aff > 0f ? 1.4f - i * 0.45f : 0.5f + i * 0.45f;
+                        GrammarFX.PuffBurst(at + dir * t, neutral, 1);
+                    }
+                }
+            }
             if (bal > 0.12f) GrammarFX.PuffBurst(at, new Color(0.85f, 0.65f, 0.2f), 3);
             else if (bal < -0.12f) GrammarFX.PuffBurst(at, new Color(0.6f, 0.85f, 1f), 3);
             if (press > 0.2f) GrammarFX.PuffBurst(
@@ -581,6 +729,43 @@ namespace SpellyZombie
         // distinct key on purpose: "ImpactDamagePerSpeed" is the creature knob (Creature.cs)
         static readonly float ImpactScale = DrawingConfig.Overlay("PropImpactDamagePerSpeed", 2.2f);
 
+        // ★ THE ENVIRONMENT REACTS (his rule): a spell-hit prop that survives
+        // FLIES - launched tumbling into the distance, mass deciding how far.
+        // A rooted thing SHAKES instead. Nothing eats a hit standing still.
+        public void ImpactJolt(Vector3 from, float power)
+        {
+            if (_dead) return;
+            if (GetComponent<SimpleFPSController>() != null) return; // pilots have TakeHit
+            if (GetComponentInParent<Creature>() != null) return;    // creatures have their own hit acting
+            var rb = GetComponent<Rigidbody>();
+            if (rb != null && !rb.isKinematic)
+            {
+                Vector3 dir = (transform.position - from);
+                dir = (dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.up)
+                    + Vector3.up * 0.6f;
+                float fly = power * (2f + 10f / Mathf.Max(1f, rb.mass));
+                rb.AddForce(dir.normalized * fly, ForceMode.VelocityChange);
+                rb.AddTorque(Random.onUnitSphere * fly * 2f, ForceMode.VelocityChange);
+            }
+            else if (!Liftable.WorldScale(transform, out _))
+                StartCoroutine(ImpactShake());
+        }
+
+        System.Collections.IEnumerator ImpactShake()
+        {
+            if (_shaking) yield break;
+            _shaking = true;
+            Vector3 home = transform.localPosition;
+            for (float t = 0f; t < 0.25f; t += Time.deltaTime)
+            {
+                transform.localPosition = home + Random.insideUnitSphere * 0.045f * (1f - t / 0.25f);
+                yield return null;
+            }
+            transform.localPosition = home;
+            _shaking = false;
+        }
+        bool _shaking;
+
         void OnCollisionEnter(Collision col)
         {
             if (_dead) return;
@@ -593,6 +778,72 @@ namespace SpellyZombie
             }
             float speed = col.relativeVelocity.magnitude;
             if (speed < ImpactFloor) return;
+
+            // ★ DATA SPREADS ON IMPACT (his rule): two things colliding trade
+            // a share of what rides them - a slicked crate slicks what it
+            // lands on. Conservative: what one gives, it loses.
+            var oel = col.collider.GetComponentInParent<Element>();
+            if (oel != null && oel != this && !oel._dead)
+            {
+                var mine = Data; var theirs = oel.Data;
+                bool moved = false;
+                for (int i = 0; i < 6; i++)
+                {
+                    float dev = mine[i] - Natural[i];
+                    if (Mathf.Abs(dev) < 0.1f) continue;
+                    float give = dev * 0.25f;
+                    mine[i] -= give; theirs[i] += give;
+                    moved = true;
+                }
+                if (moved) { Data = mine; oel.Data = theirs.Clamped(); }
+            }
+
+            // ★ STICKY IS GLUE (his rule): a sticky thing GRIPS what it
+            // touches - while it can carry the weight. The break force IS
+            // the grip, so heavy loads tear free. Accidental glue keeps
+            // clusters close, which is exactly what spreads an aoe.
+            if (_balNow > 0.12f && col.rigidbody != null && !col.rigidbody.isKinematic
+                && col.collider.GetComponentInParent<SimpleFPSController>() == null
+                && GetComponentInParent<SimpleFPSController>() == null)
+            {
+                if (_glue == null) _glue = new System.Collections.Generic.List<FixedJoint>();
+                _glue.RemoveAll(j => j == null);
+                bool held = false;
+                foreach (var j in _glue)
+                    if (j.connectedBody == col.rigidbody) { held = true; break; }
+                if (!held && _glue.Count < 3)
+                {
+                    var joint = gameObject.AddComponent<FixedJoint>();
+                    joint.connectedBody = col.rigidbody;
+                    joint.breakForce = 150f + _balNow * 500f;
+                    joint.breakTorque = joint.breakForce;
+                    _glue.Add(joint);
+                }
+            }
+
+            // ★ FROZEN THINGS SHATTER (his rule): deep cold makes a thing
+            // brittle - a hard knock cracks it and throws BONUS ice debris
+            // from the ice itself, cold enough to chill what it lands on
+            float frostDev = SpellPayload.ToHuman(0, Data.Temp - Natural.Temp);
+            if (frostDev < -60f && speed > ImpactFloor + 2f)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    Vector3 d = (Random.onUnitSphere + Vector3.up * 0.7f).normalized;
+                    var ice = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Solid,
+                        0.16f, transform.position + d * 0.3f);
+                    if (ice == null) continue;
+                    ice.Temperature = -30f;
+                    ice.StampOwner(Owner);
+                    var sd = ice.gameObject.AddComponent<SpellDebris>();
+                    sd.Init(SurfaceMaterialType.Water, MatterPhase.Solid, 0.16f);
+                    sd.OwnerId = Owner;
+                    if (ice.TryGetComponent<Rigidbody>(out var irb))
+                        irb.linearVelocity = d * 6f;
+                }
+                GrammarFX.PuffBurst(transform.position, new Color(0.85f, 0.95f, 1f), 6);
+                Juice.Thud(transform.position);
+            }
 
             // heavier things carry more into the hit, and both sides feel it
             float mass = Mathf.Max(0.2f, _body.mass);
@@ -647,6 +898,11 @@ namespace SpellyZombie
         /// curse reads later. -1 when nothing owns it (a fall, its own weight).
         public void TakeDamage(float amount, string cause, int by = -1)
         {
+            // acolyte destruction pays the wand back (his rule) - spells and
+            // zombies alike, but never by hitting your own side
+            if (by >= 0 && amount > 0f && Sides.IsAcolyte(by)
+                && Teams.OfOwner(by) != Teams.Of(this))
+                PlayerInk.CreditWand(by, amount * 0.12f);
             if (amount <= 0f || _dead) return;
 
             // damage on a limb bone forwards to the owning being; never Destroy() a skeleton bone

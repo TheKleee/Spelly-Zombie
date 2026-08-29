@@ -373,7 +373,8 @@ namespace SpellyZombie
         public static readonly float DormantLifeSeconds = O(nameof(DormantLifeSeconds), 45f);
         // Preview seek priority: enemy > ally-in-need > sleeping kin > hold.
         public static readonly float DormantSeekRange = O(nameof(DormantSeekRange), 7f);
-        public static readonly float DormantSeekSpeed = O(nameof(DormantSeekSpeed), 3.4f);
+        public static readonly float DormantSeekSpeed = O(nameof(DormantSeekSpeed), 6.5f); // was 3.4 - the pooling crawl read as "too slow"
+        public static readonly float AcolyteBodyScale = O(nameof(AcolyteBodyScale), 0.7f); // hiders are smaller than seekers (the Meccha way)
         // How far off its seal's surface a preview hovers, along the seal's
         // normal; hard-clamped.
         public static readonly float DormantHoverRange = O(nameof(DormantHoverRange), 0.7f);

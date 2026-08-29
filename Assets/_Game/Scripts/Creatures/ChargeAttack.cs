@@ -156,6 +156,14 @@ namespace SpellyZombie
 
             // the moment of contact, wherever it happened
             Vector3 spot = c.contactCount > 0 ? c.GetContact(0).point : transform.position;
+
+            // an acolyte's zombie wrecking things feeds the wand back
+            int chOwner = -1;
+            var zo = GetComponentInParent<Zombie>();
+            if (zo != null) chOwner = zo.OwnerId;
+            var go = GetComponentInParent<Golem>();
+            if (go != null) chOwner = go.OwnerId;
+            PlayerInk.CreditWand(chOwner, hit * 0.12f);
             if (FxLibrary.I != null)
                 FxLibrary.Spawn(FxLibrary.I.GroundHit, spot);
             GrammarFX.PuffBurst(spot, new Color(0.9f, 0.85f, 0.7f), 4);

@@ -43,6 +43,23 @@ namespace SpellyZombie
         [Header("CREATURES")]
         [Tooltip("The golem: blob body with eyes on a bone. Every golem is this prefab.")]
         [SerializeField] GameObject _golem;
+        [Tooltip("The ICE CUBE a fully frozen body wears - author it from the blob, roughly player-sized; the code only scales it.")]
+        [SerializeField] GameObject _iceCube;
+
+        [Header("AREA FX - the linger look per rune, YOUR pick (CFXR or blobs)")]
+        [Tooltip("Spawned inside a linger, scaled by that axis's INTENSITY - every axis past its threshold shows ITS fx, so mixed spells show mixed effects. EMPTY = the built-in colored dots.")]
+        [SerializeField] GameObject _fxHeat;
+        [SerializeField] GameObject _fxChill;
+        [SerializeField] GameObject _fxLight;
+        [SerializeField] GameObject _fxDark;
+        [SerializeField] GameObject _fxCompress;
+        [SerializeField] GameObject _fxSpread;
+        [SerializeField] GameObject _fxSticky;
+        [SerializeField] GameObject _fxSlick;
+        [SerializeField] GameObject _fxSolid;
+        [SerializeField] GameObject _fxLiquid;
+        [SerializeField] GameObject _fxAttract;
+        [SerializeField] GameObject _fxRepel;
 
         [Header("PARTICLES")]
         [Tooltip("THE FALLBACK EVERY PARTICLE USES - the blob. Its bones can be posed into any " +
@@ -88,6 +105,24 @@ namespace SpellyZombie
         public static GameObject PlayerBody => Slot(I?._playerBody, "Player Body");
         public static GameObject ZombieBody => Slot(I?._zombieBody, "Zombie Body");
         public static GameObject Golem => Slot(I?._golem, "Golem");
+        public static GameObject IceCube => Slot(I?._iceCube, "Ice Cube");
+
+        /// The authored linger look for one axis direction, or null (the
+        /// built-in dots carry it). Optional by design - no empty-slot warning.
+        public static GameObject AreaFxFor(int axis, bool positive)
+        {
+            if (I == null) return null;
+            switch (axis)
+            {
+                case 0: return positive ? I._fxHeat : I._fxChill;
+                case 1: return positive ? I._fxLight : I._fxDark;
+                case 2: return positive ? I._fxCompress : I._fxSpread;
+                case 3: return positive ? I._fxSticky : I._fxSlick;
+                case 4: return positive ? I._fxSolid : I._fxLiquid;
+                case 5: return positive ? I._fxAttract : I._fxRepel;
+                default: return null;
+            }
+        }
 
         /// The blob every particle falls back to. Warns once if unset.
         public static GameObject ParticleBlob => Slot(I?._particleBlob, "Particle Blob");
