@@ -266,6 +266,7 @@ MonoBehaviour:
   _authoredHealth: 60.112392
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &178657
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1082,6 +1083,7 @@ MonoBehaviour:
   _authoredHealth: 54.600002
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &13649276
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1559,6 +1561,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &18056995
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1753,6 +1756,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &19441083
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -2402,6 +2406,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &23860639
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -3761,6 +3766,7 @@ MonoBehaviour:
   _authoredHealth: 36.600002
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &41175689
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -4390,6 +4396,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &45352841
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -4577,6 +4584,7 @@ MonoBehaviour:
   _authoredHealth: 50.23989
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &49221960
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -9622,6 +9630,7 @@ MonoBehaviour:
   _authoredHealth: 50.23988
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &51360808
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -10043,6 +10052,7 @@ MonoBehaviour:
   _authoredHealth: 20
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &59840911
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -10256,6 +10266,7 @@ MonoBehaviour:
   _authoredHealth: 46.218773
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &61455831
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -10679,6 +10690,7 @@ MonoBehaviour:
   _authoredHealth: 44.521217
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &67297820
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -11781,6 +11793,7 @@ MonoBehaviour:
   _authoredHealth: 55.93626
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &85614900
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -12130,6 +12143,7 @@ MonoBehaviour:
   _authoredHealth: 44.521217
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &87036759
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -13290,6 +13304,7 @@ MonoBehaviour:
   _authoredHealth: 46.24303
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &107724405
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -14735,6 +14750,7 @@ MonoBehaviour:
   _authoredHealth: 20
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &118991666
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -15323,6 +15339,7 @@ MonoBehaviour:
   _authoredHealth: 46.24303
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &128534277
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -17579,6 +17596,7 @@ MonoBehaviour:
   _authoredHealth: 39.323936
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &172513804
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -18326,6 +18344,7 @@ MonoBehaviour:
   _authoredHealth: 45.630836
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &188702485
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -18532,6 +18551,7 @@ MonoBehaviour:
   _authoredHealth: 41.166206
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &189243718
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -18905,6 +18925,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &191184487
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -19401,6 +19422,7 @@ MonoBehaviour:
   _authoredHealth: 55.93626
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &199897476
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -19610,6 +19632,7 @@ MonoBehaviour:
   _authoredHealth: 60.112392
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &201284797
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -20633,6 +20656,7 @@ MonoBehaviour:
   _authoredHealth: 20
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &220792672
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -20846,6 +20870,7 @@ MonoBehaviour:
   _authoredHealth: 46.16546
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &221297882
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -24286,6 +24311,7 @@ MonoBehaviour:
   _authoredHealth: 24
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &279883398
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -25816,6 +25842,7 @@ MonoBehaviour:
   _authoredHealth: 20
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &296316818
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -26157,6 +26184,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &299250462
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -26476,6 +26504,7 @@ MonoBehaviour:
   _authoredHealth: 20
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &301777773
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -27047,6 +27076,7 @@ MonoBehaviour:
   _authoredHealth: 51
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &313671981
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -27542,6 +27572,7 @@ MonoBehaviour:
   _authoredHealth: 53.19318
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &324689244
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -27887,6 +27918,7 @@ MonoBehaviour:
   _authoredHealth: 50.23989
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &325557431
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -28358,6 +28390,7 @@ MonoBehaviour:
   _authoredHealth: 44.791584
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &327289861
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -32243,6 +32276,7 @@ MonoBehaviour:
   _authoredHealth: 61.805603
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &393471287
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -32456,6 +32490,7 @@ MonoBehaviour:
   _authoredHealth: 46.218773
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &393896808
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -32673,6 +32708,7 @@ MonoBehaviour:
   _authoredHealth: 61.8
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &394437017
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -32882,6 +32918,7 @@ MonoBehaviour:
   _authoredHealth: 44.4502
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &396506753
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -33099,6 +33136,7 @@ MonoBehaviour:
   _authoredHealth: 31.199999
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &398428205
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -34237,6 +34275,7 @@ MonoBehaviour:
   _authoredHealth: 43.8
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &419085636
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -35798,6 +35837,7 @@ MonoBehaviour:
   _authoredHealth: 46.243034
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &452713230
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -36251,6 +36291,7 @@ MonoBehaviour:
   _authoredHealth: 60.11238
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &455558252
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -36468,6 +36509,7 @@ MonoBehaviour:
   _authoredHealth: 54.600006
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &456135039
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -37079,6 +37121,7 @@ MonoBehaviour:
   _authoredHealth: 60.11239
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &469742834
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -38252,6 +38295,7 @@ MonoBehaviour:
   _authoredHealth: 21.3
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &493740351
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -38461,6 +38505,7 @@ MonoBehaviour:
   _authoredHealth: 55.93626
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &496198260
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -39184,6 +39229,7 @@ MonoBehaviour:
   _authoredHealth: 60.11239
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &512846363
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -39612,6 +39658,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &513801973
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -39925,6 +39972,7 @@ MonoBehaviour:
   _authoredHealth: 46.243034
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &517032230
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -40138,6 +40186,7 @@ MonoBehaviour:
   _authoredHealth: 46.165462
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &517256938
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -40354,6 +40403,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &518215897
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -40759,6 +40809,7 @@ MonoBehaviour:
   _authoredHealth: 43.8
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &529115940
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -41232,6 +41283,7 @@ MonoBehaviour:
   _authoredHealth: 60.11238
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &531761840
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -42434,6 +42486,7 @@ MonoBehaviour:
   _authoredHealth: 54.600002
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &557142907
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -42962,6 +43015,7 @@ MonoBehaviour:
   _authoredHealth: 44.521217
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &565634344
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -44223,6 +44277,7 @@ MonoBehaviour:
   _authoredHealth: 25.800001
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &582735233
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -44614,6 +44669,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &584774299
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -44805,6 +44861,7 @@ MonoBehaviour:
   _authoredHealth: 20
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &585936485
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -45466,6 +45523,7 @@ MonoBehaviour:
   _authoredHealth: 53.193172
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &591210033
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -47112,6 +47170,7 @@ MonoBehaviour:
   _authoredHealth: 25.800001
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &620503684
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -48700,6 +48759,7 @@ MonoBehaviour:
   _authoredHealth: 46.243034
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &638629545
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -49012,6 +49072,7 @@ MonoBehaviour:
   _authoredHealth: 20
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &642781259
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -49229,6 +49290,7 @@ MonoBehaviour:
   _authoredHealth: 25.800001
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &645365159
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -49438,6 +49500,7 @@ MonoBehaviour:
   _authoredHealth: 60.11518
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &646496240
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -50241,6 +50304,7 @@ MonoBehaviour:
   _authoredHealth: 60.115185
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &666092401
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -50590,6 +50654,7 @@ MonoBehaviour:
   _authoredHealth: 20
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &669070311
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -51244,6 +51309,7 @@ MonoBehaviour:
   _authoredHealth: 60.115185
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &673615573
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -51716,6 +51782,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &681345222
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -52023,6 +52090,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &681603994
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -52573,6 +52641,7 @@ MonoBehaviour:
   _authoredHealth: 46.16546
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &691616519
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -52982,6 +53051,7 @@ MonoBehaviour:
   _authoredHealth: 46.218773
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &698506995
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -54058,6 +54128,7 @@ MonoBehaviour:
   _authoredHealth: 44.4502
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &729591008
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -54872,6 +54943,7 @@ MonoBehaviour:
   _authoredHealth: 60.11239
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &747900214
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -55353,6 +55425,7 @@ MonoBehaviour:
   _authoredHealth: 46.218773
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &754324335
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -55789,6 +55862,7 @@ MonoBehaviour:
   _authoredHealth: 60.078423
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &756837579
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -55998,6 +56072,7 @@ MonoBehaviour:
   _authoredHealth: 44.45019
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &758218399
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -56347,6 +56422,7 @@ MonoBehaviour:
   _authoredHealth: 31.199999
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &759715137
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -57137,6 +57213,7 @@ MonoBehaviour:
   _authoredHealth: 46.243034
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &768177732
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -58339,6 +58416,7 @@ MonoBehaviour:
   _authoredHealth: 60.17408
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &787439198
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -60046,6 +60124,7 @@ MonoBehaviour:
   _authoredHealth: 31.199999
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &817668332
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -60259,6 +60338,7 @@ MonoBehaviour:
   _authoredHealth: 44.79158
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &818106640
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -60833,6 +60913,7 @@ MonoBehaviour:
   _authoredHealth: 46.165455
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &823402532
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -61249,6 +61330,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &828279503
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -61440,6 +61522,7 @@ MonoBehaviour:
   _authoredHealth: 46.21878
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &831419401
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -61702,6 +61785,7 @@ MonoBehaviour:
   _authoredHealth: 46.243034
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &834470023
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -62056,6 +62140,7 @@ MonoBehaviour:
   _authoredHealth: 31.2
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &836868391
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -62657,6 +62742,7 @@ MonoBehaviour:
   _authoredHealth: 46.165462
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &844834093
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -63195,6 +63281,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &850579694
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -63465,6 +63552,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &851444693
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -63932,6 +64020,7 @@ MonoBehaviour:
   _authoredHealth: 46.21878
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &855804273
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -65095,6 +65184,7 @@ MonoBehaviour:
   _authoredHealth: 44.791584
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &877914587
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -65957,6 +66047,7 @@ MonoBehaviour:
   _authoredHealth: 25.800001
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &889915753
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -66249,6 +66340,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &890796180
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -67188,6 +67280,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &898158570
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -67631,6 +67724,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &909430920
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -68362,6 +68456,7 @@ MonoBehaviour:
   _authoredHealth: 70
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &918754317
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -68591,6 +68686,7 @@ MonoBehaviour:
   _authoredHealth: 44.79158
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &919209396
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -69117,6 +69213,7 @@ MonoBehaviour:
   _authoredHealth: 45.630836
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &924105945
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -69547,6 +69644,7 @@ MonoBehaviour:
   _authoredHealth: 60.17409
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &928231169
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -69760,6 +69858,7 @@ MonoBehaviour:
   _authoredHealth: 45.630836
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &928320679
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -70043,6 +70142,7 @@ MonoBehaviour:
   _authoredHealth: 60.078423
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &932215442
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -70631,6 +70731,7 @@ MonoBehaviour:
   _authoredHealth: 31.2
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &937270037
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -71267,6 +71368,7 @@ MonoBehaviour:
   _authoredHealth: 24
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &943949197
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -72148,6 +72250,7 @@ MonoBehaviour:
   _authoredHealth: 60.11238
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &959414735
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -72361,6 +72464,7 @@ MonoBehaviour:
   _authoredHealth: 46.16546
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &961151582
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -72677,6 +72781,7 @@ MonoBehaviour:
   _authoredHealth: 45.630836
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &961770416
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -73697,6 +73802,7 @@ MonoBehaviour:
   _authoredHealth: 44.45019
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &976117647
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -73910,6 +74016,7 @@ MonoBehaviour:
   _authoredHealth: 46.218773
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &976663561
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -74326,6 +74433,7 @@ MonoBehaviour:
   _authoredHealth: 46.243034
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &982905194
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -74803,6 +74911,7 @@ MonoBehaviour:
   _authoredHealth: 55.936264
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &996746266
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -78069,6 +78178,7 @@ MonoBehaviour:
   _authoredHealth: 44.4502
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1042970140
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -79928,6 +80038,7 @@ MonoBehaviour:
   _authoredHealth: 60.078423
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1083066377
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -80406,6 +80517,7 @@ MonoBehaviour:
   _authoredHealth: 45.922104
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1088108880
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -81680,6 +81792,7 @@ MonoBehaviour:
   _authoredHealth: 53.193176
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1110516927
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -82231,6 +82344,7 @@ MonoBehaviour:
   _authoredHealth: 60.078426
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1118484107
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -84081,6 +84195,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1146270113
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -84549,6 +84664,7 @@ MonoBehaviour:
   _authoredHealth: 31.199999
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1153916620
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -84765,6 +84881,7 @@ MonoBehaviour:
   _authoredHealth: 43.8
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1154656211
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -85575,6 +85692,7 @@ MonoBehaviour:
   _authoredHealth: 31.199999
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1161560776
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -86514,6 +86632,7 @@ MonoBehaviour:
   _authoredHealth: 43.8
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1171759345
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -86900,6 +87019,7 @@ MonoBehaviour:
   _authoredHealth: 44.4502
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1175183560
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -87594,6 +87714,7 @@ MonoBehaviour:
   _authoredHealth: 60.078423
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1188073107
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -88013,6 +88134,7 @@ MonoBehaviour:
   _authoredHealth: 60.11239
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1192017712
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -88642,6 +88764,7 @@ MonoBehaviour:
   _authoredHealth: 25.800001
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1201852079
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -90102,6 +90225,7 @@ MonoBehaviour:
   _authoredHealth: 50.999996
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1225320751
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -90315,6 +90439,7 @@ MonoBehaviour:
   _authoredHealth: 45.630836
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1225581384
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -93241,6 +93366,7 @@ MonoBehaviour:
   _authoredHealth: 50.23989
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1278961264
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -93581,6 +93707,7 @@ MonoBehaviour:
   _authoredHealth: 24
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1280219033
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -94944,6 +95071,7 @@ MonoBehaviour:
   _authoredHealth: 54.600002
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1293537934
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -95157,6 +95285,7 @@ MonoBehaviour:
   _authoredHealth: 44.521217
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1293843923
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -95982,6 +96111,7 @@ MonoBehaviour:
   _authoredHealth: 44.791584
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1314343347
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -96396,6 +96526,7 @@ MonoBehaviour:
   _authoredHealth: 46.165462
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1322550346
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -96741,6 +96872,7 @@ MonoBehaviour:
   _authoredHealth: 36.600002
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1324869832
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -96950,6 +97082,7 @@ MonoBehaviour:
   _authoredHealth: 60.115185
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1326405215
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -97980,6 +98113,7 @@ MonoBehaviour:
   _authoredHealth: 44.79158
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1344339093
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -98186,6 +98320,7 @@ MonoBehaviour:
   _authoredHealth: 46.712982
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1345167460
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -98612,6 +98747,7 @@ MonoBehaviour:
   _authoredHealth: 68.696686
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1346745173
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -98825,6 +98961,7 @@ MonoBehaviour:
   _authoredHealth: 50.999996
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1348500848
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -101683,6 +101820,7 @@ MonoBehaviour:
   _authoredHealth: 51
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1392749639
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -102661,6 +102799,7 @@ MonoBehaviour:
   _authoredHealth: 45.630836
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1408917737
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -102870,6 +103009,7 @@ MonoBehaviour:
   _authoredHealth: 36.6
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1409529348
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -103650,6 +103790,7 @@ MonoBehaviour:
   _authoredHealth: 54.600002
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1416017801
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -103942,6 +104083,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1416628861
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -104680,6 +104822,7 @@ MonoBehaviour:
   _authoredHealth: 55.936264
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1434247235
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -105124,6 +105267,7 @@ MonoBehaviour:
   _authoredHealth: 50.23989
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1437571562
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -105729,6 +105873,7 @@ MonoBehaviour:
   _authoredHealth: 50.23988
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1441321423
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -106045,6 +106190,7 @@ MonoBehaviour:
   _authoredHealth: 46.218773
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1442241906
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -106683,6 +106829,7 @@ MonoBehaviour:
   _authoredHealth: 25.800001
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1451394860
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -107586,6 +107733,7 @@ MonoBehaviour:
   _authoredHealth: 44.45019
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1462634363
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -108647,6 +108795,7 @@ MonoBehaviour:
   _authoredHealth: 60.17409
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1481077966
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -109065,6 +109214,7 @@ MonoBehaviour:
   _authoredHealth: 25.800001
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1494790945
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -109607,6 +109757,7 @@ MonoBehaviour:
   _authoredHealth: 44.791584
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1501923458
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -109964,6 +110115,7 @@ MonoBehaviour:
   _authoredHealth: 60.11519
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1510005294
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -110026,6 +110178,78 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: -3229520323129646467, guid: 2b4a7c7d115ac734da4a0ee778896712, type: 3}
+--- !u!1001 &1510076062
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1996103016}
+    m_Modifications:
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.0049467166
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.004946717
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.004946717
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.00302
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071067
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7775778333853403535, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      propertyPath: m_Name
+      value: Puddle
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 7385959552933263404, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1573899700}
+  m_SourcePrefab: {fileID: 100100000, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
 --- !u!21 &1510715889
 Material:
   serializedVersion: 8
@@ -110559,6 +110783,7 @@ MonoBehaviour:
   _authoredHealth: 54.6
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1516415264
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -111623,6 +111848,7 @@ MonoBehaviour:
   _authoredHealth: 46.218773
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1526042670
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -112101,6 +112327,7 @@ MonoBehaviour:
   _authoredHealth: 45.6
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1537829649
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -112891,6 +113118,7 @@ MonoBehaviour:
   _authoredHealth: 20
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1551823903
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -113314,6 +113542,7 @@ MonoBehaviour:
   _authoredHealth: 45.630836
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1554668011
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -113709,6 +113938,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1559299624
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -113979,6 +114209,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1566996619
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -114170,6 +114401,7 @@ MonoBehaviour:
   _authoredHealth: 46.218777
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1568570839
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -114462,6 +114694,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1569850475
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -114732,6 +114965,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1570456809
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -114772,6 +115006,40 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
   Type: 0
+--- !u!1 &1573899698 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7385959552933263404, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+  m_PrefabInstance: {fileID: 1510076062}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1573899700
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1573899698}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &1575377805
 GameObject:
   m_ObjectHideFlags: 0
@@ -115196,6 +115464,7 @@ MonoBehaviour:
   _authoredHealth: 60.174088
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1587036041
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -116395,6 +116664,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1601204818
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -116704,6 +116974,7 @@ MonoBehaviour:
   _authoredHealth: 50.23988
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1605437405
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -116921,6 +117192,7 @@ MonoBehaviour:
   _authoredHealth: 43.8
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1605667555
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -118089,6 +118361,7 @@ MonoBehaviour:
   _authoredHealth: 31.199999
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1622743199
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -118295,6 +118568,7 @@ MonoBehaviour:
   _authoredHealth: 44.105865
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1623599141
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -118847,6 +119121,7 @@ MonoBehaviour:
   _authoredHealth: 44.521217
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1630003478
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -119060,6 +119335,7 @@ MonoBehaviour:
   _authoredHealth: 45.630836
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1630069538
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -119949,6 +120225,7 @@ MonoBehaviour:
   _authoredHealth: 44.521214
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1649178622
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -120714,6 +120991,7 @@ MonoBehaviour:
   _authoredHealth: 46.21878
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1667898168
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -122112,6 +122390,7 @@ MonoBehaviour:
   _authoredHealth: 53.193172
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1691087561
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -122424,6 +122703,7 @@ MonoBehaviour:
   _authoredHealth: 36.6
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1692418879
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -123118,6 +123398,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1700386446
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -123623,6 +123904,7 @@ MonoBehaviour:
   _authoredHealth: 44.521214
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1706664480
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -124677,6 +124959,7 @@ MonoBehaviour:
   _authoredHealth: 50.23988
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1724454640
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -125125,6 +125408,7 @@ MonoBehaviour:
   _authoredHealth: 53.193176
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1732469511
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -125898,6 +126182,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1743550729
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -126232,6 +126517,7 @@ MonoBehaviour:
   _authoredHealth: 43.8
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1748628639
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -126803,6 +127089,7 @@ MonoBehaviour:
   _authoredHealth: 60.17408
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1751656648
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -127628,6 +127915,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1760324699
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -129418,6 +129706,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1775113786
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -129855,6 +130144,7 @@ MonoBehaviour:
   _authoredHealth: 44.4502
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1777478098
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -130706,6 +130996,7 @@ MonoBehaviour:
   _authoredHealth: 50.999996
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1791896914
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -131142,6 +131433,7 @@ MonoBehaviour:
   _authoredHealth: 60.11519
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1794796413
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -131789,6 +132081,7 @@ MonoBehaviour:
   _authoredHealth: 51
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1807506537
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -132006,6 +132299,7 @@ MonoBehaviour:
   _authoredHealth: 45.600002
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1808179863
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -135346,6 +135640,7 @@ MonoBehaviour:
   _authoredHealth: 46.243034
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1852888562
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -135746,6 +136041,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
   Type: 0
+--- !u!4 &1866825530 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3635338480534385195, guid: d945377dcf0dddb4599f810f9f6b9080, type: 3}
+  m_PrefabInstance: {fileID: 1510076062}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1868134746
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -136249,6 +136549,7 @@ MonoBehaviour:
   _authoredHealth: 43.8
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1870653903
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -136741,6 +137042,7 @@ MonoBehaviour:
   _authoredHealth: 44.791584
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1881173883
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -137518,6 +137820,7 @@ MonoBehaviour:
   _authoredHealth: 45.630836
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1886608233
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -137830,6 +138133,7 @@ MonoBehaviour:
   _authoredHealth: 21.3
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1890049604
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -138839,6 +139143,7 @@ MonoBehaviour:
   _authoredHealth: 60.078423
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1906101111
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -139699,6 +140004,7 @@ MonoBehaviour:
   _authoredHealth: 45.630836
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1912805450
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -139975,6 +140281,7 @@ MonoBehaviour:
   _authoredHealth: 60.115185
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1915998905
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -140527,6 +140834,7 @@ MonoBehaviour:
   _authoredHealth: 54.600002
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1921165094
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -143764,6 +144072,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1976023691
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -144158,6 +144467,7 @@ MonoBehaviour:
   _authoredHealth: 45.966835
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1979498701
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -145090,11 +145400,14 @@ PrefabInstance:
       objectReference: {fileID: 281046083}
     - target: {fileID: 919132149155446097, guid: c7854d22ab2ea70499f4d3497040eb51, type: 3}
       propertyPath: m_Name
-      value: Bucket_Wooden_1
+      value: Bucket
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: c7854d22ab2ea70499f4d3497040eb51, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1866825530}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c7854d22ab2ea70499f4d3497040eb51, type: 3}
       insertIndex: -1
@@ -145171,6 +145484,7 @@ MonoBehaviour:
   _authoredHealth: 24
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &1996103020
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -145954,6 +146268,7 @@ MonoBehaviour:
   _authoredHealth: 25.800001
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2010483391
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -146266,6 +146581,7 @@ MonoBehaviour:
   _authoredHealth: 46.16546
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2020407566
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -146775,6 +147091,7 @@ MonoBehaviour:
   _authoredHealth: 54.600002
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2027236192
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -147067,6 +147384,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2028003507
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -148133,6 +148451,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2043238766
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -149285,6 +149604,7 @@ MonoBehaviour:
   _authoredHealth: 43.29807
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2068367529
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -150480,6 +150800,7 @@ MonoBehaviour:
   _authoredHealth: 46.243034
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2086929004
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -150927,6 +151248,7 @@ MonoBehaviour:
   _authoredHealth: 58.199997
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2090309867
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -151429,6 +151751,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2094518142
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -151830,6 +152153,7 @@ MonoBehaviour:
   _authoredHealth: 54.6
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2097253086
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -153808,6 +154132,7 @@ MonoBehaviour:
   _authoredHealth: 68.696686
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2119081321
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -154206,6 +154531,7 @@ MonoBehaviour:
   _authoredHealth: 44.79158
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2124385709
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -155119,6 +155445,7 @@ MonoBehaviour:
   _authoredHealth: 38.399998
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2132239249
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -155562,6 +155889,7 @@ MonoBehaviour:
   _authoredHealth: 60
   _authoredMax: 0
   RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!54 &2134258620
 Rigidbody:
   m_ObjectHideFlags: 0

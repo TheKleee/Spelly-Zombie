@@ -278,6 +278,10 @@ namespace SpellyZombie
             _previewKey = 0; // force a fresh preview
 
             Debug.Log($"[SpellyZombie] SpellyMap grew {biomes.Length} biomes, {placed} props, seed {seed}.");
+
+            // the ground is READY (his event): everything that derived before
+            // the biomes existed re-derives now, once, from where it stands
+            Element.GroundReady();
         }
 
         /// Highest layer containing the point wins. Each face waves by

@@ -604,6 +604,9 @@ namespace SpellyZombie
         // range of influence: how far an object's data reaches a neighbour, and the exchange rate
         public static readonly float InfluenceReach = O(nameof(InfluenceReach), 1.2f);
         public static readonly float InfluenceSharePerSec = O(nameof(InfluenceSharePerSec), 0.15f);
+        // living things insulate: a minded body trades influence at this
+        // fraction - furniture stops chilling players, magma still burns through
+        public static readonly float LivingInsulation = O(nameof(LivingInsulation), 0.15f);
         // the one gravity: affinity force at full axis strength
         public static readonly float AffinityForce = O(nameof(AffinityForce), 9f);
 

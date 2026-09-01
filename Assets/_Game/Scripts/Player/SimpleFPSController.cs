@@ -649,6 +649,15 @@ namespace SpellyZombie
             var mouse = Mouse.current;
             if (kb == null || mouse == null) return;
 
+            // F9: the body's temperature picture at this exact spot - the
+            // standing answer to "why am I cold/hot HERE"
+            if (kb.f9Key.wasPressedThisFrame && IsLocalViewer && _dmg != null)
+                Debug.Log($"[SpellyZombie] TEMP @ {transform.position:F1}: "
+                    + $"Data {_dmg.Data.Temp:0.0} / Natural {_dmg.Natural.Temp:0.0} / "
+                    + $"here {SpellLaw.Here(_dmg).Temp:0.0} / "
+                    + $"art {ArtificialBiome.SampleAt(transform.position).Temp:0.0} / "
+                    + $"mote {SpellParticle.SampleAt(transform.position).Temp:0.0}");
+
             // frozen while posing in the studio, paused, or typing into a UI
             // field (the IP box must not steer the wizard); they own the input
             if (PoseStudio.IsOpen || GameMenu.IsOpen || UIKit.Typing) return;

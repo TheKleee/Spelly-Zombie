@@ -158,6 +158,29 @@ namespace SpellyZombie
 
         SpellPayload _authoredNat;
         bool _snapped;
+        bool _groundless;   // Awake found no biome - Start tries once more
+
+        /// Authored scene props derive in Awake, BEFORE any biome's OnEnable
+        /// registers - so everything hand-placed inside a biome box came out
+        /// neutral. Start runs after every enable: born-in-biome things get
+        /// their ground (a rock in a hot biome IS hot, and content).
+        void Start()
+        {
+            if (_groundless && SpellyMap.BiomeAt(transform.position) != null)
+                DeriveFrom(transform.position);
+        }
+
+        /// ★ THE GROUND IS READY (his event). The map fires this once its
+        /// biomes exist; every live element that derived groundless re-derives
+        /// from where it stands. Start order stops mattering.
+        public static void GroundReady()
+        {
+            for (int i = 0; i < _live.Count; i++)
+            {
+                var el = _live[i];
+                if (el != null && el._groundless) el.DeriveFrom(el.transform.position);
+            }
+        }
 
         /// Natural = who I am plus the ground at a spawn point - the HOME
         /// biome (his rule). Awake derives from wherever the object woke;
@@ -174,6 +197,7 @@ namespace SpellyZombie
             n.Strength = str;
 
             var born = SpellyMap.BiomeAt(at);
+            _groundless = born == null;
             if (born != null)
             {
                 var ground = born.Natural;
@@ -676,11 +700,16 @@ namespace SpellyZombie
                 var o = c.GetComponentInParent<Element>();
                 if (o == null || o == this || o._dead || !_touched.Add(o)) continue;
                 var mine = Data; var theirs = o.Data;
+                // living things insulate (his rule): flesh regulates, so a
+                // pair with a minded body trades a fraction - room-temp props
+                // stop draining players while magma still burns through
+                float share = Natural.Int > 0f || o.Natural.Int > 0f
+                    ? k * DrawingConfig.LivingInsulation : k;
                 bool moved = false;
                 for (int ax = 0; ax < SpellPayload.AxisCount; ax++)
                 {
                     if (SpellPayload.LawOf(ax) != AxisLaw.Impose) continue;
-                    float flow = (mine[ax] - theirs[ax]) * k;
+                    float flow = (mine[ax] - theirs[ax]) * share;
                     if (Mathf.Abs(flow) < 1e-5f) continue;
                     mine[ax] -= flow; theirs[ax] += flow; moved = true;
                 }
