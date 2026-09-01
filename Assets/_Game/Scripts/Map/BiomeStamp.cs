@@ -66,10 +66,12 @@ namespace SpellyZombie
             var b = SpellyMap.BiomeAt(at);
             if (b == null) return null;
 
-            // ELEMENT.AWAKE ALREADY DID THE STAMPING - itself plus its ground,
-            // capacities taking the lesser, its ceiling capped by the place.
-            // Repeating it here applied the biome a second time and doubled
-            // every offset the ground carried.
+            // re-derive naturals from THIS ground - the spawn point is the
+            // home biome, not wherever the object happened to wake. Safe to
+            // repeat: Element re-derives from its authored snapshot.
+            var el = go.GetComponent<Element>();
+            if (el != null) el.DeriveFrom(at);
+
             var s = go.GetComponent<BiomeStamp>();
             if (s == null) s = go.AddComponent<BiomeStamp>();
             s.Stamped = true;

@@ -18,7 +18,7 @@ namespace SpellyZombie
             "Gable", "Door", "Beam", "HouseFloor", "WallCanvas", "Prop_Chimney"
         };
 
-        [MenuItem("Spelly Zombie/Group House Parts (open scene)")]
+        [MenuItem("Spelly Zombie/Scenes/Group House Parts (open scene)")]
         static void Group()
         {
             var floors = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None)

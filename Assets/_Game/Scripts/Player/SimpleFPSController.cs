@@ -460,6 +460,7 @@ namespace SpellyZombie
         {
             IsDowned = true;
             Health = 1f;
+            _dmg.DeadStill = true;   // death arrives once - nothing else lands
             // no bleed-out anywhere: death goes straight to ghost, and the
             // ghost flying home is the revive flow allies join in on
             _bleedOut = 0f;
@@ -488,6 +489,7 @@ namespace SpellyZombie
         {
             IsDowned = false;
             Health = 50f;
+            _dmg.DeadStill = false;  // alive again, the world may touch you
             ReviveProgress = 0f;
             _soulFled = false;
             if (_heartFx != null) { Destroy(_heartFx); _heartFx = null; } // mended
@@ -532,7 +534,14 @@ namespace SpellyZombie
             if (CameraPivot != null)
             {
                 _cam = CameraPivot.GetComponentInChildren<Camera>();
-                if (_cam != null) _camDefaultLocal = _cam.transform.localPosition;
+                if (_cam != null)
+                {
+                    _camDefaultLocal = _cam.transform.localPosition;
+                    // the underwater hue rides the camera you LOOK through -
+                    // SpellyMap only reaches Camera.main, the scene one
+                    if (_cam.GetComponent<LiquidSense>() == null)
+                        _cam.gameObject.AddComponent<LiquidSense>();
+                }
             }
             // eyes stay visible in every mode: the camera rides in front of
             // the face, so they are always behind the lens
@@ -561,8 +570,12 @@ namespace SpellyZombie
             // Courage, this is what the world's own test reads
             if (_dmg.Natural.Int <= 0f)
             {
+                // assert aliveness ONLY - no temperature math here. Warmth is
+                // DeriveFrom's job; hand-adding it here double-counted when
+                // this ran before Element.Awake and poisoned its snapshot.
                 var n = _dmg.Natural; n.Int = 1f; n.Courage = 1f; _dmg.Natural = n;
                 var d = _dmg.Data; d.Int = 1f; d.Courage = 1f; _dmg.Data = d;
+                _dmg.DeriveFrom(transform.position); // no-op before Awake; Awake derives then
             }
             // a body is named the same way on every machine, so a hit finds the
             // right one without anybody searching for a network component

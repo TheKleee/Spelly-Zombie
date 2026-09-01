@@ -9,7 +9,7 @@ namespace SpellyZombie
     /// parented under a marker replaces its beam.
     public static class LobbyPillarsBuilder
     {
-        [MenuItem("Spelly Zombie/Build LOBBY PILLARS (open scene)")]
+        [MenuItem("Spelly Zombie/Scenes/Build LOBBY PILLARS (open scene)")]
         static void Build()
         {
             if (GameObject.Find("SZ_LobbyPillars") != null)

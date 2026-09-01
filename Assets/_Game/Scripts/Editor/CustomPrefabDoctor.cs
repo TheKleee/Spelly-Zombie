@@ -95,7 +95,7 @@ namespace SpellyZombie
 
         /// The destructive strip, opt-in only. Select a prefab and run it to
         /// remove broken scripts / stray ink.
-        [MenuItem("Spelly Zombie/Clean Selected Custom Prefab")]
+        [MenuItem("Spelly Zombie/Legacy/Clean Selected Custom Prefab")]
         static void CleanSelected()
         {
             var sel = Selection.activeGameObject;

@@ -13,7 +13,7 @@ namespace SpellyZombie
 
         /// Trims every rune's recorded pool to its first drawing. Works in or
         /// out of play mode; the walls redraw on the next Rune Studio load.
-        [MenuItem("Spelly Zombie/Runes - Keep ONLY the first drawing per rune")]
+        [MenuItem("Spelly Zombie/Legacy/Runes - Keep ONLY the first drawing per rune")]
         public static void KeepFirstDrawingOnly()
         {
             if (!EditorUtility.DisplayDialog("Trim rune drawings",
@@ -25,10 +25,10 @@ namespace SpellyZombie
 
         /// The audit is O(samples²), tens of seconds on a full library, so it
         /// does not run on scene load. Run after re-recording; result is cached.
-        [MenuItem("Spelly Zombie/Runes - Re-audit templates (health check)")]
+        [MenuItem("Spelly Zombie/Studio/Runes - Re-audit templates (health check)")]
         public static void ReAuditTemplates() => RuneLibrary.ReAudit();
 
-        [MenuItem("Spelly Zombie/Build Rune Studio Scene (replaces the open scene)")]
+        [MenuItem("Spelly Zombie/Scenes/Build Rune Studio Scene (replaces the open scene)")]
         public static void Build()
         {
             // NewScene does not prompt; ask about unsaved scenes first

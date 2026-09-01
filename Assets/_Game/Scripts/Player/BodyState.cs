@@ -62,10 +62,12 @@ namespace SpellyZombie
             if (_ambNext > 0f) return;
             _ambNext = 0.25f;
             var b = SpellyMap.BiomeAt(transform.position);
+            // payload units like _ambAffinity - raw human offsets pegged the
+            // small sliders the moment a biome authored anything nonzero
             _ambHeat = b != null ? b.HeatOffset : 0f;
-            _ambLight = b != null ? b.LightOffset : 0f;
-            _ambStick = b != null ? b.StickOffset : 0f;
-            _ambDensity = b != null ? b.DensityOffset : 0f;
+            _ambLight = b != null ? SpellPayload.FromHuman(1, b.LightOffset) : 0f;
+            _ambStick = b != null ? SpellPayload.FromHuman(3, b.StickOffset) : 0f;
+            _ambDensity = b != null ? SpellPayload.FromHuman(2, b.DensityOffset) : 0f;
             // map biome plus any spell-made air standing here (lingers, lvl3)
             _ambAffinity = (b != null ? SpellPayload.FromHuman(5, b.AffinityOffset) : 0f)
                 + ArtificialBiome.SampleAt(transform.position).Affinity;
@@ -161,13 +163,18 @@ namespace SpellyZombie
             _creature = GetComponent<Creature>();
             _el = GetComponentInParent<Element>();
 
-            // A BODY RUNS WARM. Its natural temperature is body heat, not the
-            // room - so "how far from natural" means the right thing for flesh
-            // and for stone with one subtraction.
-            if (_el != null)
+            // A BODY WITH A BOARD IS ALIVE. Same law as the controller: mind
+            // up, warmth up, once. Element's own warmth law does the rest -
+            // re-basing temp here on top of it double-added body heat.
+            if (_el != null && _el.Natural.Int <= 0f)
             {
-                var n = _el.Natural; n.Temp = NaturalTemp + (n.Temp - Element.RoomTemp); _el.Natural = n;
-                var d = _el.Data;    d.Temp = n.Temp;                                  _el.Data = d;
+                // assert aliveness ONLY - warmth is DeriveFrom's job (see the
+                // controller's twin patch for why)
+                var n = _el.Natural; n.Int = 1f; n.Courage = Mathf.Max(n.Courage, 1f);
+                _el.Natural = n;
+                var d = _el.Data; d.Int = 1f; d.Courage = Mathf.Max(d.Courage, 1f);
+                _el.Data = d;
+                _el.DeriveFrom(transform.position);
             }
         }
 
@@ -189,15 +196,22 @@ namespace SpellyZombie
         public void PushAffinity(float d) =>
             Affinity = Mathf.Clamp(Affinity + d, -DrawingConfig.AxisCap, DrawingConfig.AxisCap);
 
-        /// Resets every slider to natural. Used by the sky catch.
+        /// Resets every slider to natural HERE - the same biome homes the
+        /// drift pulls toward, not bare ordinaries. Used by the sky catch.
         public void ClearSpellEffects()
         {
-            Temp = NaturalTemp;
-            Lum = NaturalLum;
-            Grip = 0f;
-            Weight = 1f;
+            if (_el != null)
+            {
+                var d = _el.Natural;
+                d.Strength = _el.Data.Strength; // a rescue is not a heal
+                _el.Data = d;
+            }
+            else { _looseTemp = NaturalTemp; _looseAffinity = _ambAffinity; }
+            Lum = NaturalLum + _ambLight;
+            Grip = _ambStick;
+            Weight = 1f + _ambDensity;
             Move = 0f;
-            Affinity = 0f;
+            SetPhase(MatterPhase.Solid, 0f);
         }
 
         // ---- readings ----
@@ -606,7 +620,7 @@ namespace SpellyZombie
                 }
             }
 
-            // darkness: 1-2 wisps at the eyes; glare mirrors it in white
+            // darkness: 1 or 2 wisps at the eyes; glare mirrors it in white
             int wisps = DarknessSeverity > 0.55f ? 2 : DarknessSeverity > 0.18f ? 1 : 0;
             int glares = BloomSeverity > 0.55f ? 2 : BloomSeverity > 0.18f ? 1 : 0;
             EyeFx(_eyeWisps, wisps, lib.Smoke, 0.08f, "EyeDark");
@@ -633,7 +647,7 @@ namespace SpellyZombie
                 }
             }
 
-            // freezing: ice crystals FORM on you on a beat - faster and
+            // freezing: ice crystals FORM on you on a beat faster and
             // bigger the deeper you are
             if (FreezeSeverity > 0.08f)
             {
@@ -652,7 +666,7 @@ namespace SpellyZombie
             }
         }
 
-        /// One eye-status loop for wisps and glares.
+        /// One eye status loop for wisps and glares.
         void EyeFx(GameObject[] cache, int want, GameObject prefab, float scale, string fxName)
         {
             for (int i = 0; i < cache.Length; i++)

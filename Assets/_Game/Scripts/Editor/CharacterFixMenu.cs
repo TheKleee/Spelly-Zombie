@@ -7,7 +7,7 @@ namespace SpellyZombie
     /// play, nudge the wand/book/eyes/sockets/IK anchors, save, stop.
     public static class CharacterFixMenu
     {
-        [MenuItem("Spelly Zombie/Save CHARACTER Fix (play mode)")]
+        [MenuItem("Spelly Zombie/Legacy/Save CHARACTER Fix (play mode)")]
         public static void Save()
         {
             if (!Application.isPlaying)

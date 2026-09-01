@@ -2,13 +2,12 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A THING THAT TEACHES. Pure data: it holds the runes it can teach and
-    /// nothing else - no input, no Update, no behaviour. The wizard aims at it,
-    /// the badge offers F, and GrimoireAbsorb does the absorbing, exactly the
-    /// way the acolyte's scan works.
+    /// A THING THAT TEACHES. It holds the runes it can teach plus its visible
+    /// mote (blob, light, trail). The wizard aims at it, the badge offers F,
+    /// and the mote flies to the winner's grimoire - a trail everyone sees.
     ///
-    /// That is also what makes it safe to hand to map authors: attaching one
-    /// attaches a label, never code.
+    /// Safe to hand to map authors: attaching one attaches a label. The
+    /// Absorbable Creator window crafts the full glowing prefab form.
     public class AbsorbSource : MonoBehaviour
     {
         [Tooltip("The runes this object teaches, IN THIS ORDER. Each absorb grants the next one the player is missing. Leave empty to teach from the AXES below instead.")]
@@ -34,7 +33,9 @@ namespace SpellyZombie
         };
 
         /// The teach order: authored list as-is, or the axes ranked by how
-        /// much of each was added - the strongest gives itself away first.
+        /// much of each was added - the strongest ABSOLUTE value gives itself
+        /// away first (-35 heat outranks +20 light and teaches Chill). Axes
+        /// that share a number come out in random order (his rule).
         System.Collections.Generic.IEnumerable<RuneType> TeachOrder()
         {
             if (Teaches != null && Teaches.Length > 0)
@@ -43,8 +44,14 @@ namespace SpellyZombie
                 yield break;
             }
             int[] vals = { Temperature, Light, Density, Balance, State, Affinity };
+            // a sub-integer jitter randomizes ties without ever crossing a
+            // real 1-point gap
+            var rng = new System.Random();
+            float[] tie = new float[6];
+            for (int i = 0; i < 6; i++) tie[i] = (float)rng.NextDouble() * 0.5f;
             var order = new System.Collections.Generic.List<int> { 0, 1, 2, 3, 4, 5 };
-            order.Sort((a, b) => Mathf.Abs(vals[b]).CompareTo(Mathf.Abs(vals[a])));
+            order.Sort((a, b) =>
+                (Mathf.Abs(vals[b]) + tie[b]).CompareTo(Mathf.Abs(vals[a]) + tie[a]));
             foreach (int ax in order)
                 if (vals[ax] != 0) yield return RuneFor(ax, vals[ax]);
         }
@@ -54,6 +61,37 @@ namespace SpellyZombie
 
         [Tooltip("How close the wizard must stand for the absorb to work, meters.")]
         public float Range = 3.5f;
+
+        [Header("MOTE")]
+        [Tooltip("The visible glowing part (blob + light + trail) that flies to the winner's book. Empty = an invisible legacy source, data only.")]
+        public Transform Mote;
+
+        [Tooltip("Seconds after a mote is taken before this source grows a new one for the next wizard.")]
+        public float RegrowSeconds = 8f;
+
+        /// Whether there is a mote to take right now. Legacy sources with no
+        /// mote are always ready.
+        public bool Ready => Mote == null || Mote.gameObject.activeSelf;
+
+        static readonly System.Collections.Generic.List<AbsorbSource> _all =
+            new System.Collections.Generic.List<AbsorbSource>();
+        void OnEnable() { _all.Add(this); }
+        void OnDisable() { _all.Remove(this); }
+
+        /// The source nearest a broadcast point - authored positions match on
+        /// every machine, so a small radius is identity enough.
+        public static AbsorbSource Near(Vector3 at)
+        {
+            AbsorbSource best = null;
+            float bd = 2.25f;
+            foreach (var s in _all)
+            {
+                if (s == null) continue;
+                float d = (s.transform.position - at).sqrMagnitude;
+                if (d < bd) { bd = d; best = s; }
+            }
+            return best;
+        }
 
         /// The next rune this would teach the owner - None when it is spent.
         /// Already-known runes are skipped, so a source is invisible to anyone
@@ -65,21 +103,59 @@ namespace SpellyZombie
             return RuneType.None;
         }
 
-        /// Teach the next missing rune. False when it has nothing left to give.
-        /// The caller has already decided the aim and the key.
-        public bool Teach(int owner)
+        /// The give, ON EVERY MACHINE: the mote flies to the winner's book
+        /// trailing for all to see, and the source regrows. Only the winner's
+        /// own machine writes the rune - knowledge is per wizard.
+        public void Grant(int owner)
         {
-            var rune = NextFor(owner);
-            if (rune == RuneType.None)
-            {
-                DrawingWorld.Instance?.LogEvent("this taught you everything it knows");
-                return false;
-            }
-            Grimoire.UnlockRune(owner, rune);
             Juice.Chime(transform.position);
-            DrawingWorld.Instance?.LogEvent($"absorbed: it teaches {RuneLibrary.Icon(rune)}");
-            if (!Infinite) Destroy(gameObject);
-            return true;
+
+            if (Mote != null && Mote.gameObject.activeSelf)
+            {
+                // the rune rides the mote and lands WITH it - the unlock
+                // happens when it hits the grimoire, not before (his finesse)
+                var fly = Instantiate(Mote.gameObject, Mote.position, Mote.rotation);
+                var f = fly.AddComponent<AbsorbFlight>();
+                f.Owner = owner;
+                f.Rune = owner == Grimoire.LocalPlayerId ? NextFor(owner) : RuneType.None;
+                Mote.gameObject.SetActive(false);
+                if (Infinite) StartCoroutine(Regrow());
+            }
+            else
+            {
+                // legacy moteless form: nothing flies, so the rune lands now
+                if (owner == Grimoire.LocalPlayerId)
+                {
+                    var rune = NextFor(owner);
+                    if (rune != RuneType.None)
+                    {
+                        Grimoire.UnlockRune(owner, rune);
+                        DrawingWorld.Instance?.LogEvent(
+                            $"absorbed: it teaches {RuneLibrary.Icon(rune)}");
+                    }
+                }
+                if (FxLibrary.I != null && FxLibrary.I.AbsorbBurst != null)
+                    FxLibrary.Spawn(FxLibrary.I.AbsorbBurst,
+                        transform.position + Vector3.up * 0.4f);
+            }
+            if (!Infinite) Destroy(gameObject, 0.1f);
+        }
+
+        /// A new mote grows IN (never shrinks out - his law) after the wait.
+        System.Collections.IEnumerator Regrow()
+        {
+            yield return new WaitForSeconds(RegrowSeconds);
+            if (Mote == null) yield break;
+            Mote.gameObject.SetActive(true);
+            Vector3 full = Mote.localScale;
+            float t = 0f;
+            while (t < 0.3f && Mote != null)
+            {
+                t += Time.deltaTime;
+                Mote.localScale = full * Mathf.SmoothStep(0f, 1f, t / 0.3f);
+                yield return null;
+            }
+            if (Mote != null) Mote.localScale = full;
         }
     }
 }

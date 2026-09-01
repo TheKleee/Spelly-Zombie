@@ -13,7 +13,7 @@ namespace SpellyZombie
         const string Folder = "Assets/_Game/Prefabs/Particles";
         const string MatFolder = Folder + "/Materials";
 
-        [MenuItem("Spelly Zombie/Bake SPELL PARTICLES to prefabs (play mode)")]
+        [MenuItem("Spelly Zombie/Legacy/Bake SPELL PARTICLES to prefabs (play mode)")]
         static void Bake()
         {
             if (!Application.isPlaying)

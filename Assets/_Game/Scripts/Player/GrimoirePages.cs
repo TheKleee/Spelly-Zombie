@@ -29,6 +29,7 @@ namespace SpellyZombie
         public static bool SealPageOpen { get; private set; }
 
         static bool _taughtOpen; // the G hint retires after the first open
+        bool _liftHidden;        // the book is poofed away while both hands carry
         static bool _popRequested;
 
         /// An outside event asks the book to open - fired on hover-enter,
@@ -119,11 +120,15 @@ namespace SpellyZombie
             // put the drifted page bone back (see Awake)
             if (_open && _pageBone != null) _pageBone.localPosition = _pageBoneRest;
 
+            // the book STAYS while lifting - his final call: it reads fine,
+            // keeps its open/close available, and hiding it was never wanted
             if (!_open)
             {
                 SetArrows(false);
                 // taught once, then the prompt stays out of E-pickup's way -
-                // and NEVER while carrying
+                // and NEVER while carrying. (He tried removing this and it
+                // made the first minute WORSE - no information beats a small
+                // prompt. It stays.)
                 if (!_taughtOpen && !HandGrab.LocalHolding) UIPrompt.Show("G", Loc.T("grimoire.open"));
                 return;
             }

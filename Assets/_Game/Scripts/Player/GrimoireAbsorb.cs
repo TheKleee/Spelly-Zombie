@@ -99,7 +99,7 @@ namespace SpellyZombie
                 && !GameMenu.IsOpen && !PoseStudio.IsOpen
                 && AimBadge.Aimed is AbsorbSource source)
             {
-                source.Teach(Grimoire.LocalPlayerId);
+                NetSync.AbsorbCast(source, Grimoire.LocalPlayerId);
                 return;
             }
 
@@ -420,7 +420,11 @@ namespace SpellyZombie
                 m.SetColor(Stroke.RuneColor); // it reads as a rune NOW
                 m.MarkDirty();
             }
-            bool learned = RuneLibrary.AddSample(_inkRune, raw);
+            // ★ ROUND-ONLY (his rule): a match declare teaches the matcher for
+            // THIS run and is forgotten at round end - it must never write the
+            // template file, where it was even ROLLING OUT his oldest authored
+            // studio drawing to make room. Only Rune Studio persists.
+            bool learned = RuneLibrary.AddSample(_inkRune, raw, quiet: true);
             NetSync.PushDeclare(_inkMembers, _inkRune); // every machine stamps the same ink (netcode §1)
             // a correction is real practice - the writing bar takes a full step
             Grimoire.BumpWriting(Grimoire.LocalPlayerId, _inkRune, DrawingConfig.WritingPerDeclare);

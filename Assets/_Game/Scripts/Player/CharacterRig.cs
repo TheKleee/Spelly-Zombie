@@ -376,7 +376,8 @@ namespace SpellyZombie
                 _anim.runtimeAnimatorController = ctrl;
                 _anim.applyRootMotion = false; // the CharacterController moves us
                 _anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-                var ik = model.AddComponent<HandIK>();
+                var ik = model.GetComponent<HandIK>();
+                if (ik == null) ik = model.AddComponent<HandIK>(); // rebuilds reuse, never stack
                 ik.Slots = _slots;
                 ik.Pivot = _pilot.CameraPivot; // pen/grimoire hands hang off the view
             }
@@ -411,6 +412,9 @@ namespace SpellyZombie
 
         // ---------------------------------------------------- pen & grimoire --
         GameObject _wand, _book;
+
+        /// The grimoire in the left hand - absorb flights aim here.
+        public Transform BookTransform => _book != null ? _book.transform : null;
         readonly List<Renderer> _bookRenderers = new List<Renderer>(); // reused buffer (no-alloc law)
         bool _propsBuilt;
 

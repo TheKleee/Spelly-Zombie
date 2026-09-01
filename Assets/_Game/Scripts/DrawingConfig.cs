@@ -368,7 +368,7 @@ namespace SpellyZombie
         // Dormant spells: ground seals cast frozen hologram previews at this
         // fraction of true size; anything thrown or released turns live after
         // the universal delay. An untouched preview fades out.
-        public static readonly float DormantPreviewScale = O(nameof(DormantPreviewScale), 0.4f);
+        public static readonly float DormantPreviewScale = O(nameof(DormantPreviewScale), 0.7f); // was 0.4 - small runes vanished from sight
         public static readonly float WakeDelaySeconds = O(nameof(WakeDelaySeconds), 0.2f);
         public static readonly float DormantLifeSeconds = O(nameof(DormantLifeSeconds), 45f);
         // Preview seek priority: enemy > ally-in-need > sleeping kin > hold.

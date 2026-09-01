@@ -13,7 +13,7 @@ namespace SpellyZombie
     {
         const string MatDir = "Assets/_Game/Resources/Custom/Materials";
 
-        [MenuItem("Spelly Zombie/Extract Materials From Selection")]
+        [MenuItem("Spelly Zombie/Legacy/Extract Materials From Selection")]
         public static void Extract()
         {
             if (Selection.gameObjects == null || Selection.gameObjects.Length == 0)

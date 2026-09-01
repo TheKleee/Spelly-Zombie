@@ -163,16 +163,18 @@ namespace SpellyZombie
             // offer F from further away than the absorb will accept
             var absorb = hit.collider.GetComponentInParent<AbsorbSource>();
             if (!acolyte && absorb != null && hit.distance <= absorb.Range
-                && absorb.NextFor(me) != RuneType.None)
+                && absorb.Ready && absorb.NextFor(me) != RuneType.None)
             {
                 Point(absorb, absorb.transform, hit, "F");
+                if (_caption != null) _caption.text = Loc.T("absorb.aim");
                 return;
             }
 
-            // Scan offer: the action's own rule (ShapeShift.CanScan). Offered
-            // only while the scan page is open; else falls through to lift.
-            if (acolyte && GrimoirePages.BookOpen && GrimoirePages.ScanPageOpen
-                && hit.distance <= ShapeShift.ScanReach)
+            // Scan offer: the action's own rule (ShapeShift.CanScan). ★ NO
+            // BOOK NEEDED (his rework) - the offer stands raw for acolytes;
+            // this gate was the second half of the old page requirement and
+            // the one that made "scan with the book closed" look unchanged.
+            if (acolyte && hit.distance <= ShapeShift.ScanReach)
             {
                 if (ShapeShift.CanScan(hit.collider, out var scanRoot))
                 {

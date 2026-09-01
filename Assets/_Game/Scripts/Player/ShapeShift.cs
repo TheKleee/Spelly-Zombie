@@ -49,6 +49,27 @@ namespace SpellyZombie
         /// static) - the body-size laws read it to leave disguises true-size.
         public bool IsShapedNow => _worn != null && _worn.activeSelf;
 
+        /// The biome that raised this acolyte - captured once, preferring the
+        /// one they stand in when first needed (the spawn ground, in play).
+        Biome _home;
+        Biome MyHomeBiome()
+        {
+            if (_home != null) return _home;
+            Biome any = null;
+            foreach (var b in Object.FindObjectsByType<Biome>(FindObjectsSortMode.None))
+            {
+                if (b.Props == null || b.Props.Length == 0) continue;
+                if (any == null) any = b;
+                Vector3 l = transform.position - b.transform.position;
+                var half = b.Size * 0.5f;
+                if (Mathf.Abs(l.x) <= half.x && Mathf.Abs(l.y) <= half.y
+                    && Mathf.Abs(l.z) <= half.z)
+                { _home = b; return _home; }
+            }
+            _home = any; // not standing in one: the island still lends something
+            return _home;
+        }
+
         /// True when this transform IS the local player's disguise (or part of
         /// it). The thing you are wearing must never read as a target.
         public static bool IsLocalShape(Transform t)
@@ -90,9 +111,46 @@ namespace SpellyZombie
 
             if (kb.fKey.wasPressedThisFrame) TryScan();
 
+            // ★ THE HOME BIOME DRESSES YOU (his design): TAB with an empty
+            // wardrobe grants ONE random shape from your natural biome -
+            // "your spawn biome is your home and your body is showing". A
+            // brand-new acolyte has a working hide from second one; scanning
+            // deliberately stays strictly better because you don't pick.
             if (kb.tabKey.wasPressedThisFrame && _storedShape == null
                 && !SimpleFPSController.ThirdPersonActive)
-                DrawingWorld.Instance?.LogEvent("nothing to become yet. F on an object first");
+            {
+                var home = MyHomeBiome();
+                var pick = home != null && home.Props != null && home.Props.Length > 0
+                    ? home.Props[Random.Range(0, home.Props.Length)] : null;
+                if (pick != null)
+                {
+                    _storedShape = pick.transform; // a prefab clones fine as a source
+                    var r = pick.GetComponentInChildren<Renderer>();
+                    _storedGroundOffset = r != null ? r.bounds.extents.y : 0.25f;
+                    DrawingWorld.Instance?.LogEvent("your home lends you a shape");
+                    // the wear machinery below picks it up from here
+                }
+                else
+                {
+                    // no biomes here (the lobby): the ROOM lends a shape -
+                    // the nearest scannable prop, so the panic button never
+                    // dead-ends anywhere
+                    Transform found = null; float best = 18f * 18f;
+                    foreach (var h in Physics.OverlapSphere(transform.position, 18f))
+                    {
+                        if (!CanScan(h, out var root2)) continue;
+                        float d = (h.transform.position - transform.position).sqrMagnitude;
+                        if (d < best) { best = d; found = root2; }
+                    }
+                    if (found != null)
+                    {
+                        _storedShape = found;
+                        _storedGroundOffset = CenterHeightAboveGround(found);
+                        DrawingWorld.Instance?.LogEvent("the room lends you a shape");
+                    }
+                    else DrawingWorld.Instance?.LogEvent("nothing to become yet. F on an object first");
+                }
+            }
 
             if (LocalIsShaped && !SimpleFPSController.ThirdPersonActive)
             {
@@ -298,11 +356,9 @@ namespace SpellyZombie
         {
             if (SimpleFPSController.ThirdPersonActive) return; // already over there
             if (HandGrab.LocalHolding) return;                // full hands
-            if (!GrimoirePages.BookOpen || !GrimoirePages.ScanPageOpen)
-            {
-                DrawingWorld.Instance?.LogEvent("open the grimoire to the SCAN page first");
-                return;
-            }
+            // ★ NO BOOK NEEDED (his rework): scanning is aim + F, raw - the
+            // grimoire is the library you MAY consult, never the trigger.
+            // The tension is standing there doing it, not the page.
             if (_cam == null) _cam = GetComponentInChildren<Camera>();
             if (_cam == null) return;
             // the same ray the badge drew its promise with - same reach, same
@@ -344,9 +400,15 @@ namespace SpellyZombie
         public static Bounds FindObjectBounds(Transform t)
         {
             var rends = t.GetComponentsInChildren<Renderer>();
-            if (rends.Length == 0) return new Bounds(t.position, Vector3.zero);
-            Bounds b = rends[0].bounds;
-            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            var b = new Bounds(t.position, Vector3.zero);
+            bool any = false;
+            foreach (var r in rends)
+            {
+                // a disabled or empty renderer reports an invalid AABB and
+                // Unity logs a conversion warning on the read - skip those
+                if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
+                if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
+            }
             return b;
         }
 
@@ -419,6 +481,11 @@ namespace SpellyZombie
                 if (c is Transform || c is Renderer || c is MeshFilter) continue;
                 if (c is Light) continue; // handled above, in dependency order
                 if (c is UnityEngine.Rendering.Universal.UniversalAdditionalLightData) continue;
+                // the look driver stays - without it a StateView-painted thing
+                // (absorbable motes included) wears back to bare white and the
+                // disguise gives itself away. Instantiate froze its values at
+                // scan time, which is exactly what a disguise should show.
+                if (c is StateView) continue;
                 Destroy(c);
             }
             _worn.transform.localScale = source.lossyScale;

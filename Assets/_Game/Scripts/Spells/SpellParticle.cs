@@ -1160,7 +1160,10 @@ namespace SpellyZombie
             // inherits its spawn biome the same way, and capacities are
             // measured from here ever after.
             var born = SpellyMap.BiomeAt(pos);
-            p.Natural = born != null ? born.Natural : new SpellPayload();
+            // same degree language as Element: natural temp is room-based
+            var nat = born != null ? born.Natural : new SpellPayload();
+            nat.Temp += Element.RoomTemp;
+            p.Natural = nat;
 
             // the payload is the rune: fixed per kind, symmetric both ways
             float k = Mathf.Lerp(0.75f, 1.5f, Mathf.Clamp01(intensity));

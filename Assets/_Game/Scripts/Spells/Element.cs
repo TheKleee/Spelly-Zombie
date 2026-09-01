@@ -59,6 +59,10 @@ namespace SpellyZombie
         /// Health IS the Strength axis. Not a copy of it, not synced to it.
         public float Health { get => Data.Strength; set => Data.Strength = value; }
 
+        /// True while the body is downed: damage passes through it entirely
+        /// until a revive clears it. The controller owns both edges.
+        public bool DeadStill;
+
         /// Its own ceiling, which is what it was naturally born with.
         public float MaxStrength { get => Natural.Strength; set => Natural.Strength = value; }
 
@@ -129,23 +133,9 @@ namespace SpellyZombie
             // BORN AS ITSELF PLUS THE GROUND. A rock raised in a forest is a
             // forest rock for life - that is what it teaches, radiates and
             // resists, and its own ceiling is capped by what the place allows.
-            var born = SpellyMap.BiomeAt(transform.position);
-            if (born != null)
-            {
-                var ground = born.Natural;
-                for (int i = 0; i < SpellPayload.AxisCount; i++)
-                    Natural[i] = SpellPayload.TargetFor(i, Natural[i], Natural[i] + ground[i]);
-                if (born.StrengthCap > 0f)
-                    Natural.Strength = Mathf.Min(Natural.Strength, born.StrengthCap);
-            }
-
-            // TEMPERATURE IS REAL DEGREES. A thing with no biome sits at room
-            // temperature, not at zero - the same scale Matter has always used,
-            // so one store can serve both. A biome's HeatOffset shifts it from
-            // there, which is why a magma rock is naturally 200 and content.
-            Natural.Temp += RoomTemp;
-
-            Data = Natural;            // born full and born itself
+            _authoredNat = Natural;   // pre-ground snapshot, so a later spawn
+            _snapped = true;          // point can re-derive without doubling
+            DeriveFrom(transform.position);
 
             // A COLLIDER IS WHAT MAKES A THING INTERACTABLE. Without one this
             // element cannot be hit, burnt, lifted or touched by anything, so
@@ -164,6 +154,43 @@ namespace SpellyZombie
             // stand-in is stamped with it when it is built.
             if (NetId == 0) NetId = _authored ? PathId(transform) : GetInstanceID();
             _byId[NetId] = this;
+        }
+
+        SpellPayload _authoredNat;
+        bool _snapped;
+
+        /// Natural = who I am plus the ground at a spawn point - the HOME
+        /// biome (his rule). Awake derives from wherever the object woke;
+        /// call again with the real spawn and this wins. Re-derives from the
+        /// authored snapshot, so repeating it never doubles the ground.
+        /// TEMPERATURE IS REAL DEGREES: room temperature is the floor, and
+        /// anything with a mind runs warmer - flesh is 37, a crate is 18.
+        public void DeriveFrom(Vector3 at)
+        {
+            if (!_snapped) return;
+            bool alive = Natural.Alive;      // an "is alive" patch survives
+            float str = Natural.Strength;    // authored or controller-set
+            var n = _authoredNat;
+            n.Strength = str;
+
+            var born = SpellyMap.BiomeAt(at);
+            if (born != null)
+            {
+                var ground = born.Natural;
+                for (int i = 0; i < SpellPayload.AxisCount; i++)
+                    n[i] = SpellPayload.TargetFor(i, n[i], n[i] + ground[i]);
+                if (born.StrengthCap > 0f)
+                    n.Strength = Mathf.Min(n.Strength, born.StrengthCap);
+            }
+
+            if (alive)
+            {
+                n.Int = Mathf.Max(n.Int, 1f);
+                n.Courage = Mathf.Max(n.Courage, 1f);
+            }
+            n.Temp += RoomTemp + (n.Int > 0f ? BodyWarmth : 0f);
+            Natural = n;
+            Data = n;                        // born here, born full
         }
 
         void OnDestroy()
@@ -195,6 +222,10 @@ namespace SpellyZombie
         /// the same MEANING once they are read as a distance from natural
         /// rather than as absolutes.
         public const float RoomTemp = 18f;
+
+        /// Flesh runs warm: RoomTemp + this = 37, the temperature the living
+        /// comfort band brackets. Only minded things carry it.
+        public const float BodyWarmth = 19f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Hook()
@@ -898,6 +929,11 @@ namespace SpellyZombie
         /// curse reads later. -1 when nothing owns it (a fall, its own weight).
         public void TakeDamage(float amount, string cause, int by = -1)
         {
+            // ★ DEATH ARRIVES ONCE (his rule): a downed body is dead-still -
+            // no damage lands until it is revived, no matter what field it
+            // lies in - and a corpse pays no wand credit either.
+            if (DeadStill) return;
+
             // acolyte destruction pays the wand back (his rule) - spells and
             // zombies alike, but never by hitting your own side
             if (by >= 0 && amount > 0f && Sides.IsAcolyte(by)

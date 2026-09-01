@@ -11,7 +11,7 @@ namespace SpellyZombie
         const string Dir = "Assets/_Game/Resources/Custom";
         const string MatDir = Dir + "/Materials";
 
-        [MenuItem("Spelly Zombie/Bake ZOMBIE Body To Prefab (play mode)")]
+        [MenuItem("Spelly Zombie/Legacy/Bake ZOMBIE Body To Prefab (play mode)")]
         public static void BakeZombie()
         {
             if (!Playing()) return;
@@ -30,7 +30,7 @@ namespace SpellyZombie
             Bake(src, "ZombieBody");
         }
 
-        [MenuItem("Spelly Zombie/Bake PLAYER Body To Prefab (play mode)")]
+        [MenuItem("Spelly Zombie/Legacy/Bake PLAYER Body To Prefab (play mode)")]
         public static void BakePlayer()
         {
             if (!Playing()) return;
@@ -47,7 +47,7 @@ namespace SpellyZombie
         /// Bakes the whole player. Unlike the body bake this strips nothing; it
         /// only turns runtime-generated materials into real assets. CharacterRig
         /// adopts an existing "Body" child, so the saved prefab does not rebuild.
-        [MenuItem("Spelly Zombie/Bake WHOLE PLAYER To Prefab (play mode)")]
+        [MenuItem("Spelly Zombie/Legacy/Bake WHOLE PLAYER To Prefab (play mode)")]
         public static void BakeWholePlayer()
         {
             if (!Playing()) return;

@@ -52,7 +52,7 @@ namespace SpellyZombie
                 .OrderBy(s => s, System.StringComparer.Ordinal)
                 .ToList();
 
-        [MenuItem("Spelly Zombie/Rebuild Emoji Grid")]
+        [MenuItem("Spelly Zombie/Legacy/Rebuild Emoji Grid")]
         public static void Rebuild()
         {
             var stems = Stems();

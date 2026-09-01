@@ -10,7 +10,7 @@ namespace SpellyZombie
     /// content (SZ_Menu / SZ_Village / SZ_GameMap / an existing player).
     public static class TestSandboxBuilder
     {
-        [MenuItem("Spelly Zombie/Build TEST Sandbox (empty scene only)")]
+        [MenuItem("Spelly Zombie/Scenes/Build TEST Sandbox (empty scene only)")]
         public static void Build()
         {
             foreach (var guardName in new[] { "SZ_Menu", "SZ_Village", "SZ_GameMap", "SZ_Player", "SZ_Test" })

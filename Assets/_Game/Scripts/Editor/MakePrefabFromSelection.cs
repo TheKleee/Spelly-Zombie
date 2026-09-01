@@ -3,17 +3,19 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// the prefab tool: SELECT anything in a scene it becomes a prefab
-    /// in _Game/Prefabs, exactly as it looks. Scene-only materials (like the
-    /// builder's *_SZ twins) are saved into _Game/Prefabs/Materials first, so
-    /// the prefab carries its true look into ANY scene. The scene object
-    /// itself is not modified in any way.
+    /// THE prefab tool (Alt+Shift+P): select anything in a scene, it becomes
+    /// a prefab in the Project folder you have selected - or _Game/Prefabs
+    /// when none is. Scene-only materials AND meshes are saved as assets
+    /// first, so the prefab carries its true look into ANY scene - the native
+    /// drag-to-project loses them, this never does. The scene object itself
+    /// is not modified in any way.
     public static class MakePrefabFromSelection
     {
         const string Dir = "Assets/_Game/Prefabs";
         const string MatDir = Dir + "/Materials";
+        const string MeshDir = Dir + "/Meshes";
 
-        [MenuItem("Spelly Zombie/Make Prefab From Selection")]
+        [MenuItem("Spelly Zombie/Make Prefab From Selection &#p")]
         public static void Make()
         {
             if (Selection.gameObjects == null || Selection.gameObjects.Length == 0)
@@ -22,7 +24,9 @@ namespace SpellyZombie
                 return;
             }
             System.IO.Directory.CreateDirectory(MatDir);
+            System.IO.Directory.CreateDirectory(MeshDir);
             AssetDatabase.Refresh();
+            string outDir = ActiveProjectFolder();
 
             foreach (var go in Selection.gameObjects)
             {
@@ -35,24 +39,51 @@ namespace SpellyZombie
 
                 // persist any scene-only materials so the prefab keeps its look
                 foreach (var rend in go.GetComponentsInChildren<Renderer>(true))
-                {
-                    var mats = rend.sharedMaterials;
-                    foreach (var m in mats)
+                    foreach (var m in rend.sharedMaterials)
                     {
                         if (m == null || AssetDatabase.Contains(m)) continue;
-                        string matPath = AssetDatabase.GenerateUniqueAssetPath(
-                            $"{MatDir}/{Sanitize(m.name)}.mat");
-                        AssetDatabase.CreateAsset(m, matPath); // scene reference stays live
+                        AssetDatabase.CreateAsset(m, AssetDatabase.GenerateUniqueAssetPath(
+                            $"{MatDir}/{Sanitize(m.name)}.mat")); // scene reference stays live
                     }
-                }
 
-                string path = AssetDatabase.GenerateUniqueAssetPath($"{Dir}/{Sanitize(go.name)}.prefab");
+                // and any scene-built meshes - same trap, same cure
+                foreach (var mf in go.GetComponentsInChildren<MeshFilter>(true))
+                    PersistMesh(mf.sharedMesh);
+                foreach (var smr in go.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                    PersistMesh(smr.sharedMesh);
+                foreach (var mc in go.GetComponentsInChildren<MeshCollider>(true))
+                    PersistMesh(mc.sharedMesh);
+
+                string path = AssetDatabase.GenerateUniqueAssetPath(
+                    $"{outDir}/{Sanitize(go.name)}.prefab");
                 PrefabUtility.SaveAsPrefabAsset(go, path, out bool ok);
                 Debug.Log(ok
                     ? $"[SpellyZombie] Prefab saved with materials: {path}. Drop it in any scene."
                     : $"[SpellyZombie] FAILED to save prefab for '{go.name}'.");
             }
             AssetDatabase.SaveAssets();
+        }
+
+        static void PersistMesh(Mesh m)
+        {
+            if (m == null || AssetDatabase.Contains(m)) return;
+            AssetDatabase.CreateAsset(m, AssetDatabase.GenerateUniqueAssetPath(
+                $"{MeshDir}/{Sanitize(m.name)}.asset"));
+        }
+
+        /// The folder selected in the Project window; _Game/Prefabs when the
+        /// selection is not a folder.
+        static string ActiveProjectFolder()
+        {
+            foreach (var guid in Selection.assetGUIDs)
+            {
+                string p = AssetDatabase.GUIDToAssetPath(guid);
+                if (AssetDatabase.IsValidFolder(p)) return p;
+            }
+            var m = typeof(ProjectWindowUtil).GetMethod("GetActiveFolderPath",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            var r = m?.Invoke(null, null) as string;
+            return !string.IsNullOrEmpty(r) && AssetDatabase.IsValidFolder(r) ? r : Dir;
         }
 
         static string Sanitize(string raw)

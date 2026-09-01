@@ -12,7 +12,7 @@ namespace SpellyZombie
         const string LibPath = "Assets/_Game/Resources/CharacterLibrary.asset";
         const string CtrlPath = "Assets/_Game/Art/SZ_Wizard.controller";
 
-        [MenuItem("Spelly Zombie/Build Character Rig")]
+        [MenuItem("Spelly Zombie/Legacy/Build Character Rig")]
         public static void Build()
         {
             string fbxPath = null;

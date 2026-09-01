@@ -29,6 +29,7 @@ namespace SpellyZombie
 
             // ---- one-fact chips, three on screen at most ----
             ["scan.aim"] = "scan it, become it",
+            ["absorb.aim"] = "absorb it, learn its rune",
             ["chip.grimoire"] = "grimoire",
             ["chip.paint"] = "paint your body",
             ["chip.first"] = "first person",

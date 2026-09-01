@@ -20,6 +20,7 @@ namespace SpellyZombie
         public GameObject FireBurst;   // Spark lvl3 flame burst
         public GameObject HealShine;   // healing area sparkle loop
         public GameObject SoulsOut;    // black hole pull · player death (the soul leaves)
+        public GameObject AbsorbBurst; // an object gives its knowledge away (assign YOUR pick; empty = chime only)
         public GameObject Flash;       // white hole ignition
         public GameObject Stars;       // white hole falling stars
         public GameObject TimeDome;    // time zone - calm sparkle dome

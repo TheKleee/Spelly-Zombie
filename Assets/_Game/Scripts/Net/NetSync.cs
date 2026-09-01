@@ -58,6 +58,18 @@ namespace SpellyZombie
             public int Owner;
         }
 
+        public struct AbsorbAskMsg : IBroadcast // client → host: I pull at this source
+        {
+            public int Owner;
+            public Vector3 At;
+        }
+
+        public struct AbsorbGiveMsg : IBroadcast // host → all: the mote flies to the winner
+        {
+            public int Owner;
+            public Vector3 At;
+        }
+
         public struct SpawnGiveMsg : IBroadcast // host → all: stand HERE
         {
             public int Owner;
@@ -211,6 +223,13 @@ namespace SpellyZombie
             public short[] Temp;    // degrees, rounded - a degree is not visible
             public sbyte[] State;   // -100..100, so transparency and phase read
             public sbyte[] Lum;
+            // ★ THE WHOLE BOARD RIDES (parity): without these a client could
+            // not feel slick, sticky, weight, bravery or drunkenness at all
+            public sbyte[] Press;   // -100..100 of AxisCap
+            public sbyte[] Bal;
+            public sbyte[] Aff;
+            public sbyte[] Mind;
+            public sbyte[] Cour;
         }
 
         public struct HealthMsg : IBroadcast
@@ -862,6 +881,7 @@ namespace SpellyZombie
         static void ReleaseHeldBody(RemoteHold h, Vector3 impulse)
         {
             if (h.Body == null) return;
+            h.Body.GetComponentInParent<Golem>()?.BeReleased(); // wakes back up on release (parity)
             if (!h.Body.isKinematic)
             {
                 h.Body.linearVelocity = Vector3.ClampMagnitude(h.Body.linearVelocity, 4f);
@@ -886,7 +906,21 @@ namespace SpellyZombie
             _holds.Remove(clientId);
             if (h.Mote != null)
             {
-                if (!h.Mote.Dead && h.Mote.Claimed) h.Mote.ReleaseHeld(impulse);
+                if (!h.Mote.Dead && h.Mote.Claimed)
+                {
+                    // ★ SAME LAW AS THE LOCAL HAND (parity): a throw primes
+                    // (detonate on impact, thrower briefly immune) and every
+                    // release wakes INSTANTLY - a remote friend's rune must
+                    // behave exactly like the host's own
+                    h.Mote.ReleaseHeld(impulse);
+                    if (impulse.sqrMagnitude > 1f)
+                    {
+                        Transform thrower = _avatars.TryGetValue(clientId, out var av)
+                            && av != null ? av.transform : null;
+                        h.Mote.PrimeToBlow(thrower);
+                    }
+                    h.Mote.Wake();
+                }
                 return;
             }
             ReleaseHeldBody(h, impulse);
@@ -918,6 +952,8 @@ namespace SpellyZombie
             InstanceFinder.ClientManager.RegisterBroadcast<StandMsg>(OnStandClient);
             InstanceFinder.ServerManager.RegisterBroadcast<SpawnAskMsg>(OnSpawnAskServer);
             InstanceFinder.ClientManager.RegisterBroadcast<SpawnGiveMsg>(OnSpawnGiveClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<AbsorbAskMsg>(OnAbsorbAskServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<AbsorbGiveMsg>(OnAbsorbGiveClient);
             InstanceFinder.ClientManager.RegisterBroadcast<GolemSnap>(OnGolemSnapClient);
             InstanceFinder.ClientManager.RegisterBroadcast<BiomeMsg>(OnBiomeClient);
             InstanceFinder.ClientManager.RegisterBroadcast<PlayerFxMsg>(OnPlayerFxClient);
@@ -1647,6 +1683,8 @@ namespace SpellyZombie
                 Ack(conn, false, "the host refused: no ink, or the world itself");
                 return;
             }
+            // parity: a remote friend's golem goes limp in their hands too
+            rb.GetComponentInParent<Golem>()?.BeCarried();
             _holds[conn.ClientId] = new RemoteHold
             {
                 Owner = OwnerIdOf(conn.ClientId),
@@ -1852,6 +1890,11 @@ namespace SpellyZombie
         static readonly List<short> _stTemp = new List<short>();
         static readonly List<sbyte> _stState = new List<sbyte>();
         static readonly List<sbyte> _stLum = new List<sbyte>();
+        static readonly List<sbyte> _stPress = new List<sbyte>();
+        static readonly List<sbyte> _stBal = new List<sbyte>();
+        static readonly List<sbyte> _stAff = new List<sbyte>();
+        static readonly List<sbyte> _stMind = new List<sbyte>();
+        static readonly List<sbyte> _stCour = new List<sbyte>();
 
         /// Called on the host beat. Sends only what has MOVED from its natural,
         /// so a quiet map sends nothing at all and a burning one sends the
@@ -1860,18 +1903,31 @@ namespace SpellyZombie
         {
             if (!NetGame.IsHost || !NetGame.Connected) return;
             _stIds.Clear(); _stTemp.Clear(); _stState.Clear(); _stLum.Clear();
+            _stPress.Clear(); _stBal.Clear(); _stAff.Clear(); _stMind.Clear(); _stCour.Clear();
+
+            sbyte Pack(float v) => (sbyte)Mathf.Clamp(
+                Mathf.RoundToInt(v / DrawingConfig.AxisCap * 100f), -100, 100);
 
             foreach (var e in Element.Live)
             {
                 if (e == null) continue;
                 var d = e.Data; var n = e.Natural;
                 float dT = d.Temp - n.Temp, dS = d.State - n.State, dL = d.Lum - n.Lum;
-                if (Mathf.Abs(dT) < 4f && Mathf.Abs(dS) < 0.08f && Mathf.Abs(dL) < 0.15f) continue;
+                float dP = d.Pressure - n.Pressure, dB = d.Balance - n.Balance;
+                float dA = d.Affinity - n.Affinity, dM = d.Int - n.Int, dC = d.Courage - n.Courage;
+                if (Mathf.Abs(dT) < 4f && Mathf.Abs(dS) < 0.08f && Mathf.Abs(dL) < 0.15f
+                    && Mathf.Abs(dP) < 0.08f && Mathf.Abs(dB) < 0.08f && Mathf.Abs(dA) < 0.08f
+                    && Mathf.Abs(dM) < 0.08f && Mathf.Abs(dC) < 0.08f) continue;
 
                 _stIds.Add(e.NetId);
                 _stTemp.Add((short)Mathf.Clamp(Mathf.RoundToInt(d.Temp), -30000, 30000));
                 _stState.Add((sbyte)Mathf.Clamp(Mathf.RoundToInt(d.State * 100f), -100, 100));
                 _stLum.Add((sbyte)Mathf.Clamp(Mathf.RoundToInt(d.Lum * 100f), -100, 100));
+                _stPress.Add(Pack(d.Pressure));
+                _stBal.Add(Pack(d.Balance));
+                _stAff.Add(Pack(d.Affinity));
+                _stMind.Add(Pack(d.Int));
+                _stCour.Add(Pack(d.Courage));
                 if (_stIds.Count >= 200) break;   // a snapshot, not a census
             }
             if (_stIds.Count == 0) return;
@@ -1879,7 +1935,10 @@ namespace SpellyZombie
             InstanceFinder.ServerManager.Broadcast(new StateMsg
             {
                 Ids = _stIds.ToArray(), Temp = _stTemp.ToArray(),
-                State = _stState.ToArray(), Lum = _stLum.ToArray()
+                State = _stState.ToArray(), Lum = _stLum.ToArray(),
+                Press = _stPress.ToArray(), Bal = _stBal.ToArray(),
+                Aff = _stAff.ToArray(), Mind = _stMind.ToArray(),
+                Cour = _stCour.ToArray()
             }, true, Channel.Unreliable);
         }
 
@@ -1896,6 +1955,16 @@ namespace SpellyZombie
                 d.Temp = msg.Temp[i];
                 d.State = msg.State[i] / 100f;
                 d.Lum = msg.Lum[i] / 100f;
+                // the whole board (older hosts ship without these arrays)
+                if (msg.Press != null && i < msg.Press.Length)
+                {
+                    float k = DrawingConfig.AxisCap / 100f;
+                    d.Pressure = msg.Press[i] * k;
+                    d.Balance = msg.Bal[i] * k;
+                    d.Affinity = msg.Aff[i] * k;
+                    d.Int = msg.Mind[i] * k;
+                    d.Courage = msg.Cour[i] * k;
+                }
                 e.Data = d;
                 e.ShowState();
             }
@@ -2061,6 +2130,48 @@ namespace SpellyZombie
         {
             if (InstanceFinder.ServerManager.Started) return;
             SpawnPlan.TakeAssigned(msg.Owner, msg.Point);
+        }
+
+        /// Route one absorb: offline grants now; the host grants and tells
+        /// everyone; a client asks and waits for the give. Only one wizard
+        /// wins a mote - a later ask finds the source not Ready and whiffs.
+        public static void AbsorbCast(AbsorbSource src, int owner)
+        {
+            if (src == null) return;
+            if (!NetGame.Connected) { src.Grant(owner); return; }
+            if (InstanceFinder.ServerManager.Started)
+            {
+                src.Grant(owner);
+                InstanceFinder.ServerManager.Broadcast(
+                    new AbsorbGiveMsg { Owner = owner, At = src.transform.position });
+            }
+            else InstanceFinder.ClientManager.Broadcast(
+                new AbsorbAskMsg { Owner = owner, At = src.transform.position });
+        }
+
+        void OnAbsorbAskServer(NetworkConnection conn, AbsorbAskMsg msg, Channel channel)
+        {
+            var src = AbsorbSource.Near(msg.At);
+            if (src == null || !src.Ready) return;   // beaten to it
+            src.Grant(msg.Owner);
+            InstanceFinder.ServerManager.Broadcast(
+                new AbsorbGiveMsg { Owner = msg.Owner, At = msg.At });
+        }
+
+        void OnAbsorbGiveClient(AbsorbGiveMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            AbsorbSource.Near(msg.At)?.Grant(msg.Owner);
+        }
+
+        /// The remote body standing in for this owner, or null.
+        public static Transform AvatarTransformOf(int owner)
+        {
+            if (_instance == null) return null;
+            foreach (var kv in _instance._avatars)
+                if (OwnerIdOf(kv.Key) == owner && kv.Value != null)
+                    return kv.Value.transform;
+            return null;
         }
 
         // ------------------- client applying: seals/matter/particles (netcode §2/§3) --
@@ -2680,6 +2791,13 @@ namespace SpellyZombie
             _targetPos = pos;
             _targetYaw = yaw;
             _targetPitch = pitch;
+            // the stand-in body mirrors the downed gate: a corpse's puppet
+            // takes no damage and pays no wand credit on this machine either
+            if (((flags ^ _flags) & 1) != 0)
+            {
+                var standIn = Element.ById(Element.IdFor("player:" + NetSync.OwnerIdOf(Id)));
+                if (standIn != null) standIn.DeadStill = (flags & 1) != 0;
+            }
             _flags = flags;
             if (team != _team) // friends wear their team color
             {

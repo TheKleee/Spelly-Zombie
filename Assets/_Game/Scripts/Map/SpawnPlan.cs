@@ -127,6 +127,8 @@ namespace SpellyZombie
                 }
 
                 FallCatcher.Teleport(p, at);
+                // the spawn point IS the home biome - naturals derive here
+                BiomeStamp.Apply(p.gameObject, at);
                 _placed.Add(p);
             }
         }

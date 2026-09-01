@@ -47,8 +47,10 @@ namespace SpellyZombie
 
         float _dangerHold;
 
-        /// Acolytes hear action music when a wizard is near; wizards only for
-        /// zombies - acolyte proximity must never leak a hiding spot.
+        /// Action music when anything my team should fear is near - enemy
+        /// players, creatures, or their live spells, all judged by the Teams
+        /// law. One exception: wizards never hear acolyte players or dormant
+        /// runes, so the music can't work as a hider detector.
         bool DangerNear()
         {
             if (ActiveScene.Name == "Menu") return false;
@@ -60,8 +62,9 @@ namespace SpellyZombie
             Vector3 at = me.transform.position;
             float r = DrawingConfig.MusicDangerRange;
             float sq = r * r;
+            Team mine = Teams.OfOwner(Grimoire.LocalPlayerId);
 
-            if (Sides.LocalIsAcolyte)
+            if (mine == Team.Acolyte)
             {
                 foreach (var a in NetAvatar.All)
                 {
@@ -69,12 +72,29 @@ namespace SpellyZombie
                     if (Sides.Of(NetSync.OwnerIdOf(a.Id)) != Side.Wizard) continue;
                     if ((a.transform.position - at).sqrMagnitude < sq) return true;
                 }
-                return false;
             }
 
-            foreach (var z in Zombie.All)
-                if (z != null && (z.transform.position - at).sqrMagnitude < sq) return true;
-            return NetSync.AnyZombieNear(at, r);
+            if (Teams.Enemies(mine, Team.Acolyte))
+            {
+                foreach (var z in Zombie.All)
+                    if (z != null && (z.transform.position - at).sqrMagnitude < sq) return true;
+                if (NetSync.AnyZombieNear(at, r)) return true;
+            }
+
+            foreach (var g in Golem.All)
+            {
+                if (g == null || !Teams.Enemies(mine, Teams.OfOwner(g.OwnerId))) continue;
+                if ((g.transform.position - at).sqrMagnitude < sq) return true;
+            }
+
+            // live, unheld enemy motes; a held mote's threat is its holder
+            foreach (var m in SpellParticle.Living)
+            {
+                if (m == null || m.Dead || m.Dormant || m.Holder != null) continue;
+                if (!Teams.Enemies(mine, Teams.OfOwner(m.OwnerId))) continue;
+                if ((m.transform.position - at).sqrMagnitude < sq) return true;
+            }
+            return false;
         }
 
         void Update()

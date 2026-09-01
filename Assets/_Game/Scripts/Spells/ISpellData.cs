@@ -48,6 +48,16 @@ namespace SpellyZombie
             // BiomeAt picks one winner by layer, which is right for terrain and
             // wrong for what the air is like.
             var composite = Biome.CompositeAt(at, out bool inAny);
+            // a biome's HeatOffset shifts from room temperature, so the
+            // ambient carries RoomTemp - once, not per overlapping box.
+            // Raw offsets read as 0 degrees and froze every map biome.
+            // Warm-blooded law: for a minded thing the neutral point is its
+            // own body heat - a heat-0 biome never cools flesh to 18. Motes
+            // are excluded like the coupling gate: they carry a biome's Int
+            // in their naturals without being flesh.
+            bool warm = thing.Natural.Int > 0f && !(thing is SpellParticle);
+            if (inAny) composite.Temp += Element.RoomTemp
+                + (warm ? Element.BodyWarmth : 0f);
             var ground = inAny ? composite : thing.Natural;
             // map biomes, spell-made biomes, and lvl3 PARTICLES - all three
             // are just places that impose, and they add
