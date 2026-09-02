@@ -28,6 +28,10 @@ namespace SpellyZombie
         [MenuItem("Spelly Zombie/Studio/Runes - Re-audit templates (health check)")]
         public static void ReAuditTemplates() => RuneLibrary.ReAudit();
 
+        /// Every studio save already mirrors to StreamingAssets; this forces it.
+        [MenuItem("Spelly Zombie/Studio/Runes - Export templates for shipping")]
+        public static void ExportTemplates() => RuneLibrary.ExportShipped();
+
         [MenuItem("Spelly Zombie/Scenes/Build Rune Studio Scene (replaces the open scene)")]
         public static void Build()
         {

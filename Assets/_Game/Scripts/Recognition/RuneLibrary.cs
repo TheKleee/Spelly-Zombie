@@ -178,6 +178,9 @@ namespace SpellyZombie
             /// Matcher version that produced the cache; a mismatch forces one
             /// re-audit (absent in old files, so it reads 0).
             public int matcher;
+            /// Hash of the StreamingAssets copy this file came from, or was
+            /// mirrored to. A build adopts the shipped set whenever it differs.
+            public string shippedHash = "";
         }
 
         /// Bump when the default glyph alphabet changes - stale recordings from
@@ -191,6 +194,76 @@ namespace SpellyZombie
 
         static List<Entry> _entries;
         static string SavePath => Path.Combine(Application.persistentDataPath, "sz_rune_templates.json");
+
+        /// The copy that ships with the game. Every editor save mirrors the
+        /// local file here, so a build recognizes what the studio recorded.
+        static string ShippedPath => Path.Combine(Application.streamingAssetsPath, "sz_rune_templates.json");
+        const string ShippedAssetPath = "Assets/StreamingAssets/sz_rune_templates.json";
+
+        static string HashOf(string text)
+        {
+            ulong h = 14695981039346656037UL;
+            foreach (char c in text) { h ^= c; h *= 1099511628211UL; }
+            return h.ToString("x16");
+        }
+
+        /// A fresh machine, and a build on every update, takes the shipped set
+        /// over the local file. The local copy then owns the audit cache.
+        static void AdoptShipped()
+        {
+            try
+            {
+                if (!File.Exists(ShippedPath)) return;
+                if (Application.isEditor && File.Exists(SavePath)) return; // the editor file is the master
+                string text = File.ReadAllText(ShippedPath);
+                string hash = HashOf(text);
+                if (File.Exists(SavePath))
+                {
+                    var local = JsonUtility.FromJson<SavedTemplateSet>(File.ReadAllText(SavePath));
+                    if (local != null && local.shippedHash == hash) return;
+                }
+                var shipped = JsonUtility.FromJson<SavedTemplateSet>(text);
+                if (shipped == null) return;
+                shipped.shippedHash = hash;
+                Directory.CreateDirectory(Path.GetDirectoryName(SavePath));
+                File.WriteAllText(SavePath, JsonUtility.ToJson(shipped));
+                Debug.Log("[RuneLibrary] Adopted the shipped rune templates.");
+            }
+            catch (Exception e) { Debug.LogWarning($"[RuneLibrary] Failed to read shipped templates: {e.Message}"); }
+        }
+
+#if UNITY_EDITOR
+        /// Writes the shipped copy (hash field blank) and stamps its hash on
+        /// the local set. Called on every editor save.
+        static void MirrorShipped()
+        {
+            try
+            {
+                if (_saved == null) return;
+                _saved.shippedHash = "";
+                string text = JsonUtility.ToJson(_saved);
+                _saved.shippedHash = HashOf(text);
+                Directory.CreateDirectory(Path.GetDirectoryName(ShippedPath));
+                if (File.Exists(ShippedPath) && File.ReadAllText(ShippedPath) == text) return;
+                File.WriteAllText(ShippedPath, text);
+                UnityEditor.AssetDatabase.ImportAsset(ShippedAssetPath);
+                Debug.Log($"[RuneLibrary] Shipped rune templates updated: {ShippedAssetPath}");
+            }
+            catch (Exception e) { Debug.LogWarning($"[RuneLibrary] Failed to mirror shipped templates: {e.Message}"); }
+        }
+
+        /// Menu entry: force the mirror, for a library saved before mirroring existed.
+        public static void ExportShipped()
+        {
+            Init();
+            if (_saved == null || _saved.items == null || _saved.items.Count == 0)
+            {
+                Debug.LogWarning("[RuneLibrary] Nothing recorded yet. Draw in the Rune Studio first.");
+                return;
+            }
+            WriteSaved();
+        }
+#endif
 
         // ---- unlocks: per-owner, in memory only (see Grimoire) ----
 
@@ -541,6 +614,9 @@ namespace SpellyZombie
                     if (Total(_saved) < disk)
                         File.Copy(SavePath, SavePath + ".autobak", true);
                 }
+#if UNITY_EDITOR
+                MirrorShipped();
+#endif
                 File.WriteAllText(SavePath, JsonUtility.ToJson(_saved));
             }
             catch (Exception e) { Debug.LogWarning($"[RuneLibrary] Failed to save templates: {e.Message}"); }
@@ -553,6 +629,12 @@ namespace SpellyZombie
             foreach (var pair in DefaultGlyphs())
                 SetTemplateInternal(pair.Key, new List<List<Vector2>> { pair.Value });
             LoadRecorded();
+#if UNITY_EDITOR
+            // a library saved before mirroring existed ships on the next load
+            if (_saved != null && _saved.items != null && _saved.items.Count > 0
+                && (!File.Exists(ShippedPath) || _saved.shippedHash != HashOf(File.ReadAllText(ShippedPath))))
+                WriteSaved();
+#endif
 
             // the audit is O(samples²) (26-41s on a full library), so its
             // confusable set is cached in the save file and recomputed only
@@ -1045,6 +1127,7 @@ namespace SpellyZombie
             _saved = new SavedTemplateSet();
             try
             {
+                AdoptShipped();
                 if (!File.Exists(SavePath)) return;
                 _saved = JsonUtility.FromJson<SavedTemplateSet>(File.ReadAllText(SavePath)) ?? new SavedTemplateSet();
                 if (_saved.version != GlyphSetVersion)

@@ -79,8 +79,9 @@ namespace SpellyZombie
                     int spAt = Mathf.Max(0, spellNames.IndexOf(_aoe.Spell ?? ""));
                     int spNow = EditorGUILayout.Popup("Load spell", spAt, spellNames.ToArray());
                     _aoe.Spell = spNow <= 0 ? "" : spellNames[spNow];
-                    EditorGUILayout.LabelField("Or load a FULL SPELL - the area child becomes it: its " +
-                        "numbers, its shape, its behavior, on top of what it already carries.",
+                    EditorGUILayout.LabelField("Or load a FULL SPELL - the area child BECOMES it: the " +
+                        "loaded numbers REPLACE what the spell handed down. A heal's circle can be " +
+                        "pure kindness while the heal itself stays chill and light.",
                         EditorStyles.wordWrappedMiniLabel);
                     _aoe.TrailWidth = EditorGUILayout.Slider("Trail width", _aoe.TrailWidth, 0f, 1f);
                     _aoe.TrailSeconds = EditorGUILayout.Slider("Trail lasts", _aoe.TrailSeconds, 0f, 20f);

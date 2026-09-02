@@ -93,7 +93,28 @@ namespace SpellyZombie
         {
             var b = BiomeUnder(owner);
             float scale = b != null ? Mathf.Max(0f, b.RegenScale) : 1f;
+            // ★ RESTFUL GROUND (his heal fix): a spell area carrying positive
+            // Strength is a place that MENDS - standing inside multiplies your
+            // natural recovery, toward your own ceiling, never past it. The
+            // carriers stay the medicine's taste; the Strength axis is the cure.
+            scale *= 1f + Mathf.Max(0f, RestfulHere(owner))
+                * DrawingConfig.HealFieldRegenPerHp;
             return RegenForMax(OwnCapFor(owner)) * scale;
+        }
+
+        /// Spell-made ambient Strength at this player - areas and lvl3 biomes
+        /// only, never the map biome's cap (a cap is a ceiling, not a gift).
+        public static float RestfulHere(int owner)
+        {
+            if (owner != LocalPlayerId) return 0f;
+            foreach (var p in SimpleFPSController.All)
+                if (p != null && p.IsLocalViewer)
+                {
+                    Vector3 at = p.transform.position;
+                    return ArtificialBiome.SampleAt(at).Strength
+                         + SpellParticle.SampleAt(at).Strength;
+                }
+            return 0f;
         }
 
         public static float RegenForMax(float max)

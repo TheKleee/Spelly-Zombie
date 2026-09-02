@@ -3033,6 +3033,18 @@ PrefabInstance:
       propertyPath: m_ProvidesContacts
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3238262640435899184, guid: 94493160583eac04db4af45e076ae652, type: 3}
+      propertyPath: m_LocalScale.x
+      value: -0.0055288533
+      objectReference: {fileID: 0}
+    - target: {fileID: 3238262640435899184, guid: 94493160583eac04db4af45e076ae652, type: 3}
+      propertyPath: m_LocalScale.y
+      value: -0.0055288533
+      objectReference: {fileID: 0}
+    - target: {fileID: 3238262640435899184, guid: 94493160583eac04db4af45e076ae652, type: 3}
+      propertyPath: m_LocalScale.z
+      value: -0.0055288533
+      objectReference: {fileID: 0}
     - target: {fileID: 4884948637868380248, guid: 94493160583eac04db4af45e076ae652, type: 3}
       propertyPath: m_Name
       value: Cauldron

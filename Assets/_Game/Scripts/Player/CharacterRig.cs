@@ -180,16 +180,21 @@ namespace SpellyZombie
             // can be a skinned mesh too. Empty slot on an authored body = the
             // loud error below, never a guess.
             _smr = BodyRenderer;
+            if (_smr == null)
+            {
+                var mark = model.GetComponentInChildren<BodySkin>(true);
+                if (mark != null && mark.Renderer != null) _smr = mark.Renderer;
+            }
             if (_smr == null && !adopted)
                 foreach (var skin in model.GetComponentsInChildren<SkinnedMeshRenderer>(true))
                 {
                     if (skin != null && !IsHisProp(skin.transform)) { _smr = skin; break; }
                 }
             if (_smr == null)
-                Debug.LogError("[SpellyZombie] CharacterRig: Body Renderer is empty. Drag your body's "
-                    + "Skinned Mesh Renderer (SZ_Body) into Character Rig > Body Renderer on the Player "
-                    + "prefab. Nothing is guessed here on purpose — a prop can be a skinned mesh too, and "
-                    + "guessing picked the grimoire.", gameObject);
+                Debug.LogError("[SpellyZombie] CharacterRig: no body renderer. Add a BodySkin "
+                    + "component to the body prefab root and assign its Skinned Mesh Renderer "
+                    + "there. Nothing is guessed here on purpose. A prop can be a skinned mesh "
+                    + "too, and guessing once picked the grimoire.", gameObject);
             if (_smr != null)
             {
                 if (!_customBody) // the PlayerBody prefab keeps the materials

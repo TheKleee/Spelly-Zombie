@@ -234,7 +234,7 @@ namespace SpellyZombie
                 }
             }
             if (cling)
-                ArtificialBiome.Open(lingerAt, Data, r,
+                ArtificialBiome.Open(lingerAt, GiveNow(Data), r,
                     1f, DrawingConfig.LingerSeconds); // full strength - the payload IS the knob
             Juice.Boom(transform.position, 0.7f);
             // an acolyte's spell spending itself returns a bit of wand
@@ -476,7 +476,14 @@ namespace SpellyZombie
             {
                 var a = SpellBook.Live.Aoe(_areasOwed[i].Aoe);
                 if (a != null) StartCoroutine(RaiseArea(a, _areasOwed[i]));
+                else Debug.LogWarning($"[SpellyZombie] {_areasOwed[i].Name} owes area "
+                    + $"'{_areasOwed[i].Aoe}' but the book has no such area.");
             }
+            if (_areasOwed.Count == 0)
+                for (int i = 0; i < Fusions.Count; i++)
+                    if (Fusions[i].HasAoe)
+                        Debug.LogWarning($"[SpellyZombie] {Fusions[i].Name} wears area "
+                            + $"'{Fusions[i].Aoe}' but none was banked before the flush.");
             _areasOwed.Clear();
         }
 
@@ -2417,9 +2424,31 @@ namespace SpellyZombie
 
         void HandOver(Collider c, float share) => HandOver(c, PayloadNow, share);
 
+        /// Worn defs author the give. Authored axes hand over the def's
+        /// numbers instead of the raw ink. Identity and drift keep raw data.
+        SpellPayload GiveNow(SpellPayload raw)
+        {
+            if (Fusions.Count == 0) return raw;
+            var g = raw;
+            for (int ax = 0; ax < 6; ax++)
+            {
+                bool authored = false;
+                float sum = 0f;
+                for (int i = 0; i < Fusions.Count; i++)
+                    if (Fusions[i].Axis[ax] != 0)
+                    {
+                        authored = true;
+                        sum += SpellPayload.FromHuman(ax, Fusions[i].Axis[ax]);
+                    }
+                if (authored) g[ax] = sum;
+            }
+            return g;
+        }
+
         void HandOver(Collider c, SpellPayload what, float share)
         {
             if (share <= 0.001f) return;
+            what = GiveNow(what);
             var el = c.GetComponentInParent<Element>();
             if (el == null) return;
 
@@ -2450,6 +2479,11 @@ namespace SpellyZombie
 
             var give = what.Scaled(share);
             el.Data = (el.Data + give).Clamped();
+
+            // mending is SEEN: a green breath on whoever the strength lands on
+            if (give.Strength > 1f)
+                GrammarFX.PuffBurst(c.bounds.center + Vector3.up * 0.3f,
+                    new Color(0.45f, 1f, 0.55f), 4);
 
             if (OwnerId >= 0) el.Owner = OwnerId;   // blame rides along
 
@@ -3427,6 +3461,11 @@ namespace SpellyZombie
 
             {
                 Vector3 at = home + area.Offset;
+                // a circle with no launch offset belongs ON the ground
+                if (area.Offset.sqrMagnitude < 0.01f
+                    && Physics.Raycast(at + Vector3.up * 0.5f, Vector3.down, out var ground,
+                        6f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                    at = home = ground.point + Vector3.up * 0.05f;
                 Vector3 back = (home - at);
                 Vector3 aim = back.sqrMagnitude < 0.01f ? Vector3.zero : back.normalized;
 
@@ -3435,15 +3474,16 @@ namespace SpellyZombie
                 if (child != null)
                 {
                     child.Data = load.Clamped();
-                    // ★ AN AREA MAY LOAD A FULL SPELL (his rule): the child
-                    // becomes it - axes in, authored look on, behavior follows
+                    // a loaded spell replaces the parent slice and scales
+                    // with the drawing's ink
                     var loaded = SpellBook.Live.Spell(area.Spell);
                     if (loaded != null)
                     {
-                        var dd = child.Data;
+                        float ink = DrawnSizeK(size);
+                        var dd = new SpellPayload();
                         for (int ax = 0; ax < SpellPayload.AxisCount; ax++)
                             if (loaded.Axis[ax] != 0)
-                                dd[ax] += SpellPayload.FromHuman(ax, loaded.Axis[ax]);
+                                dd[ax] = SpellPayload.FromHuman(ax, loaded.Axis[ax]) * ink;
                         child.Data = dd.Clamped();
                     }
                     child.OwnerId = owner;

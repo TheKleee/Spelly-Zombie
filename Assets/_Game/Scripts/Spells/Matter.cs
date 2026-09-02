@@ -713,18 +713,11 @@ namespace SpellyZombie
                 mergedSize * DrawingConfig.GolemSizePerMatter);
             if (g == null) return false;
 
-            // TEAMS SURVIVE THE CHAIN (his rule): rock, water, fragments,
-            // debris - whatever a spell made stays on its team, and so does
-            // the golem rising from it. True world matter stays Neutral.
-            int owner = TeamOwner >= 0 ? TeamOwner
-                : eaten != null ? eaten.TeamOwner : -1;
-            if (owner < 0)
-            {
-                var ms = GetComponent<MatterStrike>();
-                if (ms == null && eaten != null) ms = eaten.GetComponent<MatterStrike>();
-                if (ms != null) owner = ms.OwnerId;
-            }
-            g.OwnerId = owner;
+            // ★ A RISEN GOLEM IS NATURE'S (his rule: "we're not the same
+            // team"). Only a DRAWN golem serves its summoner; whatever stands
+            // up out of debris and matter is wild - the anti-grief ecology,
+            // hostile to everyone including whoever made the mess.
+            g.OwnerId = -1;
 
             var view = g.GetComponent<StateView>();
             if (view == null) view = g.gameObject.AddComponent<StateView>();

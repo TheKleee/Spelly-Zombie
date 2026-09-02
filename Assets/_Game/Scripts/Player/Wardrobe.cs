@@ -230,12 +230,12 @@ namespace SpellyZombie
 
         // ------------------------------------------------ the cape's rune --
 
-        /// The cloak's back shows your starting rune, rasterized from the
-        /// glyph template at runtime.
+        /// The cloak's back shows your starting rune, the recorded shape
+        /// when there is one.
         public static void StampRune(Transform cape, RuneCardType card)
         {
-            var poly = RuneLibrary.GlyphPolyline(IconRune(card));
-            if (poly == null || poly.Count < 2 || cape == null) return;
+            var art = RuneIcon(IconRune(card), Color.white);
+            if (art == null || cape == null) return;
 
             var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
             quad.name = "RuneIcon";
@@ -250,7 +250,7 @@ namespace SpellyZombie
             var shader = Shader.Find("Sprites/Default");
             if (shader != null)
                 quad.GetComponent<Renderer>().material =
-                    new Material(shader) { mainTexture = Rasterize(poly, Color.white) };
+                    new Material(shader) { mainTexture = art };
         }
 
         /// A rune glyph as a texture (grimoire pages, cape icons, cards…).

@@ -607,6 +607,9 @@ namespace SpellyZombie
         // living things insulate: a minded body trades influence at this
         // fraction - furniture stops chilling players, magma still burns through
         public static readonly float LivingInsulation = O(nameof(LivingInsulation), 0.15f);
+        // restful ground: each point of spell-made ambient Strength multiplies
+        // regen by this much on top of 1 (a +40 hp heal area = x3.4 mending)
+        public static readonly float HealFieldRegenPerHp = O(nameof(HealFieldRegenPerHp), 0.06f);
         // the one gravity: affinity force at full axis strength
         public static readonly float AffinityForce = O(nameof(AffinityForce), 9f);
 

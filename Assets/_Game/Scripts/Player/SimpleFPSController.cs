@@ -65,6 +65,7 @@ namespace SpellyZombie
         // R paints the body, B opens the pose editor. No world drawing there.
         public static bool ThirdPersonActive { get; private set; }
         Camera _cam;
+        float _mendFxAt;
         Vector3 _camDefaultLocal;
         int _revivePctShown = int.MinValue; // revive prompt cache - no per-frame string build
         string _revivePrompt;
@@ -648,6 +649,15 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             var mouse = Mouse.current;
             if (kb == null || mouse == null) return;
+
+            // restful ground breathes green on whoever stands in it
+            if (Time.time >= _mendFxAt && IsLocalViewer
+                && Sides.RestfulHere(Grimoire.LocalPlayerId) > 1f)
+            {
+                _mendFxAt = Time.time + 0.8f;
+                GrammarFX.PuffBurst(transform.position + Vector3.up * 1.1f,
+                    new Color(0.45f, 1f, 0.55f), 2);
+            }
 
             // F9: the body's temperature picture at this exact spot - the
             // standing answer to "why am I cold/hot HERE"

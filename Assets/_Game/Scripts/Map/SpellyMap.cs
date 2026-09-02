@@ -493,16 +493,20 @@ namespace SpellyZombie
                                           Mathf.Min(mz, claim.max.z)) > 0.45f) return false;
                     }
 
-                    // entrances face the nearest path, else the biome center.
-                    // Author doors on the prefab's +Z.
+                    // entrances face the nearest path however far, and a trail
+                    // grows to every doorway. Doors are the prefab PathPoint
+                    // children, the first one is its +Z. A house prefers ground
+                    // within reach of an existing path.
                     float yaw;
                     Vector2 spurTarget = default;
                     bool hasSpur = false;
                     if (!liquid && prefab.GetComponentInChildren<PathPoint>(true) != null)
                     {
                         Vector2 flat = new Vector2(at.x, at.z);
-                        if (NearestPath(flat, 27f, out spurTarget))
+                        if (NearestPath(flat, LoopDistance, out spurTarget))
                         {
+                            // far cells mostly wait for a nearer one; some still take
+                            if (!NearestPath(flat, 18f, out _) && rng.NextDouble() > 0.35) return false;
                             Vector2 d = (spurTarget - flat).normalized;
                             yaw = Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg;
                             hasSpur = true;
@@ -542,14 +546,14 @@ namespace SpellyZombie
                     foreach (var a in go.GetComponentsInChildren<Analyzable>(true))
                         if (!a.gameObject.activeSelf) riders.Add(a.gameObject);
 
-                    // the placed door's position feeds the spur pass
+                    // every placed doorway grows its own trail to the network
                     if (hasSpur)
-                    {
-                        var doorNow = go.GetComponentInChildren<PathPoint>(true);
-                        if (doorNow != null)
-                            _spurs.Add((new Vector2(doorNow.transform.position.x,
-                                doorNow.transform.position.z), spurTarget));
-                    }
+                        foreach (var doorNow in go.GetComponentsInChildren<PathPoint>(true))
+                        {
+                            var dp = new Vector2(doorNow.transform.position.x,
+                                doorNow.transform.position.z);
+                            _spurs.Add((dp, NearestPath(dp, LoopDistance, out var own) ? own : spurTarget));
+                        }
 
                     claims.Add(claim);
                     count++;
