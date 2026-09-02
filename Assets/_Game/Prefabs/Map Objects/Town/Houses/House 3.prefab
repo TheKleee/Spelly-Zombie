@@ -46,7 +46,6 @@ Transform:
   - {fileID: 1354398154349209600}
   - {fileID: 2136507469103942129}
   - {fileID: 6090224912468569985}
-  - {fileID: 1198967818942465268}
   - {fileID: 6373047325170012875}
   - {fileID: 1750587849587409155}
   - {fileID: 3864689208774760666}
@@ -115,7 +114,7 @@ Transform:
   m_GameObject: {fileID: 4668865636983133712}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.52606654, y: 0, z: 2.1065705}
+  m_LocalPosition: {x: -0.035, y: 0, z: 2.107}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -128,50 +127,6 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4668865636983133712}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 086c2f5de271c7443b88b20ee17ce216, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.PathPoint
---- !u!1 &7518304410636155967
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1198967818942465268}
-  - component: {fileID: 6534116743154671201}
-  m_Layer: 0
-  m_Name: Door
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1198967818942465268
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7518304410636155967}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.038912337, z: -0, w: 0.9992426}
-  m_LocalPosition: {x: 0.52606654, y: 0, z: 2.1065705}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 5500297834540529524}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &6534116743154671201
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7518304410636155967}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 086c2f5de271c7443b88b20ee17ce216, type: 3}

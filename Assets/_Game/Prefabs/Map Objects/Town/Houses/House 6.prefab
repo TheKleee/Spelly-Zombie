@@ -1,49 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &2636151676229636765
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8767203619389068082}
-  - component: {fileID: 3477231406551634981}
-  m_Layer: 0
-  m_Name: Door
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &8767203619389068082
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2636151676229636765}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.14288515, z: -0, w: 0.98973936}
-  m_LocalPosition: {x: 1.4881363, y: 0, z: 2.106121}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4506398013404681442}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &3477231406551634981
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2636151676229636765}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 086c2f5de271c7443b88b20ee17ce216, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.PathPoint
 --- !u!1 &2697739456681417505
 GameObject:
   m_ObjectHideFlags: 0
@@ -70,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 2697739456681417505}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1.4881363, y: 0, z: 2.106121}
+  m_LocalPosition: {x: 0.904, y: 0, z: 2.106}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -167,7 +123,6 @@ Transform:
   - {fileID: 7380522842706171557}
   - {fileID: 3571159279973091439}
   - {fileID: 1547227504551348720}
-  - {fileID: 8767203619389068082}
   - {fileID: 2552602303861627972}
   - {fileID: 2184830406392253165}
   - {fileID: 2749427953303012135}
