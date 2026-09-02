@@ -7,13 +7,14 @@ namespace SpellyZombie
     /// a prefab in the Project folder you have selected - or _Game/Prefabs
     /// when none is. Scene-only materials AND meshes are saved as assets
     /// first, so the prefab carries its true look into ANY scene - the native
-    /// drag-to-project loses them, this never does. The scene object itself
-    /// is not modified in any way.
+    /// drag-to-project loses them, this never does. A scene-only material
+    /// identical to an existing asset is swapped for that asset, never copied.
     public static class MakePrefabFromSelection
     {
         const string Dir = "Assets/_Game/Prefabs";
         const string MatDir = Dir + "/Materials";
         const string MeshDir = Dir + "/Meshes";
+        const string CustomMatDir = "Assets/_Game/Resources/Custom/Materials";
 
         [MenuItem("Spelly Zombie/Make Prefab From Selection &#p")]
         public static void Make()
@@ -37,14 +38,24 @@ namespace SpellyZombie
                     continue;
                 }
 
-                // persist any scene-only materials so the prefab keeps its look
+                // persist any scene-only materials so the prefab keeps its look;
+                // an identical asset already on disk is used instead of a copy
                 foreach (var rend in go.GetComponentsInChildren<Renderer>(true))
-                    foreach (var m in rend.sharedMaterials)
+                {
+                    var mats = rend.sharedMaterials;
+                    bool changed = false;
+                    for (int i = 0; i < mats.Length; i++)
                     {
+                        var m = mats[i];
                         if (m == null || AssetDatabase.Contains(m)) continue;
+                        var twin = MaterialTwins.FindIdentical(m, MatDir, CustomMatDir);
+                        if (twin != null) { mats[i] = twin; changed = true; continue; }
                         AssetDatabase.CreateAsset(m, AssetDatabase.GenerateUniqueAssetPath(
                             $"{MatDir}/{Sanitize(m.name)}.mat")); // scene reference stays live
+                        MaterialTwins.Forget();
                     }
+                    if (changed) rend.sharedMaterials = mats;
+                }
 
                 // and any scene-built meshes - same trap, same cure
                 foreach (var mf in go.GetComponentsInChildren<MeshFilter>(true))
