@@ -102,6 +102,7 @@ namespace SpellyZombie
                 solid ? MatterPhase.Solid : MatterPhase.Liquid,
                 Mathf.Clamp(SrcSize * 0.5f * sizeK, 0.12f, 0.9f), at + Vector3.up * 0.15f);
             if (m == null) return;
+            m.SpellBorn = true;
             m.StampOwner(OwnerId);
             m.Lineage = Lineage;
             // a meteor-born stone lands BURNING - its own heat ignites what
@@ -118,24 +119,9 @@ namespace SpellyZombie
             if (m.TryGetComponent<Rigidbody>(out var mrb)) mrb.linearVelocity = Vel * 0.6f;
 
             // ★ EVERYTHING NEEDS JUICE (his words): a state being born is an
-            // EVENT - a bang and a couple of chunks thrown, never a quiet prop
+            // EVENT - a bang and a puff, one solid piece, no weak chips
             Juice.Boom(at, 0.5f);
-            for (int i = 0; i < 2; i++)
-            {
-                Vector3 d = (Random.onUnitSphere + Vector3.up).normalized;
-                var chip = Matter.Spawn(
-                    solid ? SurfaceMaterialType.Stone : SurfaceMaterialType.Water,
-                    solid ? MatterPhase.Solid : MatterPhase.Liquid,
-                    Mathf.Clamp(SrcSize * 0.22f * sizeK, 0.08f, 0.3f), at + d * 0.3f);
-                if (chip == null) continue;
-                chip.StampOwner(OwnerId);
-                var cd = chip.gameObject.AddComponent<SpellDebris>();
-                cd.Init(solid ? SurfaceMaterialType.Stone : SurfaceMaterialType.Water,
-                    solid ? MatterPhase.Solid : MatterPhase.Liquid, 0.15f);
-                cd.OwnerId = OwnerId;
-                if (chip.TryGetComponent<Rigidbody>(out var crb))
-                    crb.linearVelocity = d * 4.5f + Vel * 0.4f;
-            }
+            GrammarFX.PuffBurst(at, solid ? new Color(0.6f, 0.55f, 0.5f) : new Color(0.55f, 0.75f, 1f), 6);
         }
 
         // ★ ALL SPELLS CREATE DEBRIS, and debris IS the spell (his rule):
@@ -503,6 +489,7 @@ namespace SpellyZombie
             if (_shapeBody != null) _shapeBody.GetComponent<StateView>()?.ClearFade();
             RefreshLook();
             ImpactFx(); // the pop of becoming real
+            WorldEvents.Report(WorldEventKind.Spell, transform.position, 2f); // everyone fears it
             // a stockpiled spell owes its areas NOW - waking IS the cast.
             // EXCEPT a thrown (primed) one: its areas belong to the IMPACT,
             // so the meteor falls on the victim, not on the thrower's hand.
@@ -3076,6 +3063,17 @@ namespace SpellyZombie
             if (Mathf.Abs(give.Pressure) > 0.05f) board?.PushWeight(give.Pressure * 0.45f);
             if (Mathf.Abs(give.Balance) > 0.05f) board?.PushGrip(give.Balance * 0.9f);
             if (Mathf.Abs(give.Affinity) > 0.05f) board?.PushAffinity(give.Affinity);
+            // Strength is hp: positive mends toward the ceiling, negative is
+            // damage through the one damage door. HP IS HP, no conversion.
+            if (give.Strength > 0.5f)
+            {
+                var pel = pilot.GetComponent<Element>();
+                if (pel != null && pel.Heal(give.Strength))
+                    GrammarFX.PuffBurst(pilot.transform.position + Vector3.up * 1.2f,
+                        new Color(0.45f, 1f, 0.55f), 4);
+            }
+            else if (give.Strength < -0.5f)
+                pilot.GetComponent<Element>()?.TakeDamage(-give.Strength, "draining spell", OwnerId);
             ImpactFx();
             ManifestState(transform.position); // the rock still lands ON people
             Die();

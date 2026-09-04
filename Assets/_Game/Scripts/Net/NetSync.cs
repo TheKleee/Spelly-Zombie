@@ -58,6 +58,13 @@ namespace SpellyZombie
             public int Owner;
         }
 
+        public struct VoiceMsg : IBroadcast // any → host → all: a slice of compressed voice
+        {
+            public int Owner;
+            public bool Ghost;
+            public byte[] Data;
+        }
+
         public struct AbsorbAskMsg : IBroadcast // client → host: I pull at this source
         {
             public int Owner;
@@ -167,6 +174,7 @@ namespace SpellyZombie
             public float[] Yaw;
             public Vector3[] Scale;
             public Color[] Skin;      // the biome that raised it, not re-derived
+            public int[] Owner;       // the player whose spell raised it, -1 for nature's own
         }
 
         public struct BiomeMsg : IBroadcast // host  clients: a lvl3 spell opened
@@ -251,6 +259,7 @@ namespace SpellyZombie
             public int Left;
             public float Timer;
             public int Kills;
+            public byte Ending; // Achievements.Ending, set when Phase is Over
         }
 
         // ---- host-authoritative seals/matter/particles/lifting (netcode §1-§4) ----
@@ -306,6 +315,7 @@ namespace SpellyZombie
         {
             public int SealId;
             public bool Resolved;
+            public int Owner;
             public int[] BurnOwners;
             public int[] BurnIds;
         }
@@ -625,6 +635,7 @@ namespace SpellyZombie
         float[] _gYaw = System.Array.Empty<float>();
         Vector3[] _gScale = System.Array.Empty<Vector3>();
         Color[] _gSkin = System.Array.Empty<Color>();
+        int[] _gOwner = System.Array.Empty<int>();
 
         void SendZombieSnap()
         {
@@ -671,6 +682,7 @@ namespace SpellyZombie
                 _gYaw = new float[n];
                 _gScale = new Vector3[n];
                 _gSkin = new Color[n];
+                _gOwner = new int[n];
             }
             for (int i = 0; i < n; i++)
             {
@@ -678,7 +690,7 @@ namespace SpellyZombie
                 if (g == null) // zero the slot - a reused buffer would leak a stale golem
                 {
                     _gIds[i] = 0; _gPos[i] = default; _gYaw[i] = 0f;
-                    _gScale[i] = Vector3.one; _gSkin[i] = Color.gray;
+                    _gScale[i] = Vector3.one; _gSkin[i] = Color.gray; _gOwner[i] = -1;
                     continue;
                 }
                 _gIds[i] = g.gameObject.GetInstanceID();
@@ -686,9 +698,10 @@ namespace SpellyZombie
                 _gYaw[i] = g.transform.eulerAngles.y;
                 _gScale[i] = g.transform.localScale;
                 _gSkin[i] = g.Skin;
+                _gOwner[i] = g.OwnerId;
             }
             InstanceFinder.ServerManager.Broadcast(new GolemSnap
-            { Ids = _gIds, Pos = _gPos, Yaw = _gYaw, Scale = _gScale, Skin = _gSkin },
+            { Ids = _gIds, Pos = _gPos, Yaw = _gYaw, Scale = _gScale, Skin = _gSkin, Owner = _gOwner },
                 true, Channel.Unreliable);
         }
 
@@ -886,6 +899,8 @@ namespace SpellyZombie
             {
                 h.Body.linearVelocity = Vector3.ClampMagnitude(h.Body.linearVelocity, 4f);
                 h.Body.angularVelocity = Vector3.ClampMagnitude(h.Body.angularVelocity, 4f);
+                var sm = h.Body.GetComponent<Matter>();
+                if (sm != null && sm.SpellBorn) impulse *= DrawingConfig.SpellThrowMul; // same law as the local hand
                 if (impulse != Vector3.zero) h.Body.AddForce(impulse, ForceMode.VelocityChange);
             }
             h.Body.useGravity = h.HadGravity;
@@ -943,6 +958,9 @@ namespace SpellyZombie
             InstanceFinder.ClientManager.RegisterBroadcast<LobbyMsg>(OnLobbyClient);
             InstanceFinder.ServerManager.RegisterBroadcast<OutfitMsg>(OnOutfitServer);
             InstanceFinder.ClientManager.RegisterBroadcast<OutfitMsg>(OnOutfitClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<VoiceMsg>(OnVoiceServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<VoiceMsg>(OnVoiceClient);
+            VoiceChat.Touch();
             InstanceFinder.ServerManager.RegisterBroadcast<AbsorbMsg>(OnAbsorbServer);
             InstanceFinder.ClientManager.RegisterBroadcast<AbsorbMsg>(OnAbsorbClient);
             InstanceFinder.ServerManager.RegisterBroadcast<IdentityMsg>(OnIdentityServer);
@@ -1156,11 +1174,11 @@ namespace SpellyZombie
         // ---------------------------------------------- outgoing helpers --
         /// A proxy took damage on a client: tell the host (called by NetZombieProxy).
         /// Host RoundDirector streams round state to clients (2 Hz).
-        public static void PushRoundState(byte phase, int round, int left, float timer, int kills)
+        public static void PushRoundState(byte phase, int round, int left, float timer, int kills, byte ending)
         {
             if (!NetGame.IsHost) return;
             InstanceFinder.ServerManager.Broadcast(new RoundState
-                { Phase = phase, Round = round, Left = left, Timer = timer, Kills = kills });
+                { Phase = phase, Round = round, Left = left, Timer = timer, Kills = kills, Ending = ending });
         }
 
         /// Host announces a kill so clients share the ink economy.
@@ -1360,6 +1378,7 @@ namespace SpellyZombie
             {
                 SealId = seal.Id,
                 Resolved = resolved,
+                Owner = seal.OwnerId,
                 BurnOwners = _burnOwnersBuf.ToArray(),
                 BurnIds = _burnIdsBuf.ToArray()
             });
@@ -1433,6 +1452,14 @@ namespace SpellyZombie
 
         void OnReadyServer(NetworkConnection conn, ReadyMsg msg, Channel channel) =>
             MatchLobby.SetRemoteReady(conn.ClientId, msg.Ready);
+
+        void OnVoiceServer(NetworkConnection conn, VoiceMsg msg, Channel channel)
+        {
+            msg.Owner = OwnerIdOf(conn.ClientId); // the host names the speaker, never the packet
+            InstanceFinder.ServerManager.Broadcast(msg, true, Channel.Unreliable);
+        }
+
+        void OnVoiceClient(VoiceMsg msg, Channel channel) => VoiceChat.Receive(msg.Owner, msg.Ghost, msg.Data);
 
         void OnOutfitServer(NetworkConnection conn, OutfitMsg msg, Channel channel)
         {
@@ -1791,6 +1818,15 @@ namespace SpellyZombie
 
         readonly Dictionary<int, NetGolemProxy> _golems = new Dictionary<int, NetGolemProxy>();
 
+        /// Client side: does a golem raised by this owner stand anywhere right now.
+        public static bool AnyGolemOwnedBy(int owner)
+        {
+            if (_instance == null || owner < 0) return false;
+            foreach (var kv in _instance._golems)
+                if (kv.Value != null && kv.Value.OwnerId == owner) return true;
+            return false;
+        }
+
         void OnGolemSnapClient(GolemSnap msg, Channel channel)
         {
             if (InstanceFinder.ServerManager.Started) return; // host has the real ones
@@ -1813,6 +1849,7 @@ namespace SpellyZombie
                     _golems[id] = proxy;
                 }
                 proxy.Target(msg.Pos[i], msg.Yaw[i]);
+                proxy.OwnerId = msg.Owner != null && i < msg.Owner.Length ? msg.Owner[i] : -1;
             }
 
             // gone from the host's list = it came apart; poof the proxy
@@ -2058,6 +2095,8 @@ namespace SpellyZombie
             Powerups.OnKill(); // clients level off shared kills too
         }
 
+        byte _lastPhase = 255;
+
         void OnRoundStateClient(RoundState msg, Channel channel)
         {
             if (InstanceFinder.ServerManager.Started) return;
@@ -2067,6 +2106,12 @@ namespace SpellyZombie
             NetLeft = msg.Left;
             NetTimer = msg.Timer;
             NetKills = msg.Kills;
+            if (msg.Phase == 2 && _lastPhase != 2)
+            {
+                string at = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                if (at != "Lobby" && at != "Menu") Achievements.MatchEnded(msg.Round, (Achievements.Ending)msg.Ending);
+            }
+            _lastPhase = msg.Phase;
 
             // phase 1 = the host's match went live: clients still in the lobby
             // follow to the host's map. Only the lobby auto-leaves.
@@ -2192,6 +2237,7 @@ namespace SpellyZombie
                 _rings.Remove(msg.SealId);
             }
             // resolved on the host = that environment ink is CONSUMED here too
+            if (msg.Resolved && msg.Owner == Grimoire.LocalPlayerId) Achievements.Unlock(Achievements.FirstSpell);
             if (!msg.Resolved || msg.BurnIds == null || msg.BurnOwners == null
                 || msg.BurnIds.Length != msg.BurnOwners.Length) return;
             for (int i = 0; i < msg.BurnIds.Length; i++)

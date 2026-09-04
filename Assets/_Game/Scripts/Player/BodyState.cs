@@ -363,12 +363,16 @@ namespace SpellyZombie
 
         /// One speed multiplier from the whole board, players and zombies
         /// both. Never returns zero - slows are proportional.
+        /// Set each frame by the pilot. Balance is friction with the ground:
+        /// airborne, the planted slow does not exist (his rule).
+        public bool Grounded = true;
+
         public float SpeedMul
         {
             get
             {
                 float m = 1f;
-                if (Grip > GripSlowAt)
+                if (Grounded && Grip > GripSlowAt)
                     m *= Mathf.Lerp(1f, 0.09f, Mathf.InverseLerp(GripSlowAt, 1.5f, Grip));
                 m *= Mathf.Lerp(1f, 0.3f, FreezeSeverity);  // being frozen IS the slow
                 if (FrozenSolid) m *= 0.15f;                // frozen stiff: a shuffle, never a statue
@@ -404,7 +408,15 @@ namespace SpellyZombie
                 Lum = Mathf.MoveTowards(Lum, homeLum, LumDriftPerSec * Rush(Lum - homeLum, 1.5f) * dt);
             }
             Grip = Mathf.MoveTowards(Grip, _ambStick, GripDriftPerSec * Rush(Grip - _ambStick, 1.5f) * dt);
-            Weight = Mathf.MoveTowards(Weight, 1f + _ambDensity, WeightDriftPerSec * Rush(Weight - 1f - _ambDensity, 0.9f) * dt);
+            // the balloon and the feel share one source: while a spell holds
+            // the element pressure down you STAY light (floaty falls, higher
+            // jumps, a real float when really light), for exactly as long as
+            // the body visibly shows it
+            float spellW = _el != null
+                ? SpellPayload.ToHuman(2, _el.Data.Pressure - _el.Natural.Pressure) * 0.01f
+                : 0f;
+            float homeW = 1f + _ambDensity + spellW;
+            Weight = Mathf.MoveTowards(Weight, homeW, WeightDriftPerSec * Rush(Weight - homeW, 0.9f) * dt);
             Move = Mathf.MoveTowards(Move, 0f, MoveDriftPerSec * Rush(Move, 2.2f) * dt);
             // element bodies shed and radiate affinity on the element beat;
             // loose bodies do both here - a high-affinity biome makes the

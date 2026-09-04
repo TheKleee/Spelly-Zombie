@@ -275,6 +275,7 @@ namespace SpellyZombie
             // map - and its idea of "hot" would not even match the host's.
             // Solo is the host with nobody connected, so this is not a
             // single-player branch.
+            StepBounces(Time.deltaTime); // pure look: every machine bounces its own bodies
             if (!NetGame.IsAuthority) return;
 
             // the picture goes out on its own slower beat - what things ARE
@@ -305,10 +306,10 @@ namespace SpellyZombie
         bool _physSwapped;
         static PhysicsMaterial _grippyMat, _slickMat;
 
-        void ApplyPhysicalAxes()
+        /// The look of the axes: the tells, the fat or thin spring, the tint
+        /// and the skin. Every machine draws it; only the host moves mass.
+        void LookAxes(float press, float bal)
         {
-            float press = SpellPayload.ToHuman(2, Data.Pressure - Natural.Pressure) / 100f;
-            float bal = SpellPayload.ToHuman(3, Data.Balance - Natural.Balance) / 100f;
             AxisTellFx(press, bal); // the tell shows on EVERYONE, pilots included
 
             // ★ ONE BODY LAW FOR EVERYTHING ALIVE OR NOT (his rule):
@@ -336,9 +337,28 @@ namespace SpellyZombie
             }
             // OVER THE TOP on purpose (his rule): the old factor moved a hit
             // player ~5% - invisible. Now a real hit visibly crushes or
-            // balloons anything.
-            transform.localScale = _baseScale * sideMul
-                * Mathf.Clamp(1f - press * 0.5f, 0.55f, 1.6f);
+            // balloons anything. Bodies get FAT or THIN (his fix: spread is
+            // a fatter you, compress a thinner and slightly smaller you);
+            // props keep the uniform balloon.
+            bool shaped = GetComponent<SimpleFPSController>() != null
+                       || GetComponent<Creature>() != null;
+            Vector3 target;
+            if (shaped)
+            {
+                // spread = FAT and a little taller; compressed = thin AND short,
+                // small enough to fit where a whole body cannot (the capsule
+                // follows the scale)
+                float wide = press < 0f ? Mathf.Clamp(1f - press * 1.4f, 1f, 2.6f)
+                                        : Mathf.Clamp(1f - press * 0.9f, 0.45f, 1f);
+                float tall = press < 0f ? Mathf.Clamp(1f - press * 0.4f, 1f, 1.35f)
+                                        : Mathf.Clamp(1f - press * 0.6f, 0.45f, 1f);
+                target = new Vector3(
+                    _baseScale.x * wide, _baseScale.y * tall, _baseScale.z * wide) * sideMul;
+            }
+            else
+                target = _baseScale * sideMul
+                    * Mathf.Clamp(1f - press * 0.5f, 0.55f, 1.6f);
+            SpringTo(target);
             AxisTint(press, bal);
 
             // ★ BALANCE SHOWS ON THE SKIN (his rule): sticky bodies jiggle,
@@ -346,6 +366,13 @@ namespace SpellyZombie
             // material writer for bodies that have one
             if (!_svScanned) { _sv = GetComponentInChildren<StateView>(); _svScanned = true; }
             if (_sv != null) _sv.ExtraWobble = bal * 0.9f;
+        }
+
+        void ApplyPhysicalAxes()
+        {
+            float press = SpellPayload.ToHuman(2, Data.Pressure - Natural.Pressure) / 100f;
+            float bal = SpellPayload.ToHuman(3, Data.Balance - Natural.Balance) / 100f;
+            LookAxes(press, bal);
 
             var rb = GetComponent<Rigidbody>();
             if (rb == null || rb.isKinematic) return;
@@ -397,7 +424,9 @@ namespace SpellyZombie
                 var want = bal > 0f ? _grippyMat : _slickMat;
                 foreach (var c in _physCols)
                     if (c != null && !c.isTrigger) c.sharedMaterial = want;
-                rb.linearDamping = bal > 0f ? _baseDamp + 2.5f : 0f;
+                // planted is friction, felt on contact through the material;
+                // nothing in the air (his rule). Slick sheds even base drag.
+                rb.linearDamping = bal > 0f ? _baseDamp : 0f;
                 _physSwapped = true;
             }
             else if (_physSwapped && Mathf.Abs(bal) < 0.08f)
@@ -421,6 +450,69 @@ namespace SpellyZombie
         // glue amber, slick sheen, stone gray, fluid pale. Bodies with a
         // StateView keep their one writer and get the puffs only.
         Vector3 _baseScale;
+        // cartoon squash and stretch (his ask): the body springs to its
+        // target scale with overshoot instead of snapping, and a big jump
+        // squashes the other axis first. Only bodies mid-bounce are stepped.
+        Vector3 _scaleNow, _scaleVel, _scaleTarget;
+        bool _bouncing;
+        static readonly List<Element> _bouncers = new List<Element>();
+        const float BounceStiffness = 110f, BounceDamping = 5f, BounceKick = 10f;
+
+        void SpringTo(Vector3 target)
+        {
+            if (_scaleNow == Vector3.zero)
+            {
+                // first reading: land there, no bounce at birth
+                _scaleNow = _scaleTarget = target;
+                transform.localScale = target;
+                return;
+            }
+            Vector3 delta = target - _scaleTarget;
+            _scaleTarget = target;
+            if (delta.sqrMagnitude < 0.0025f) { Bounce(); return; } // drift creep: just follow
+            // a real hit: overshoot toward the new shape, and squash the
+            // height the other way so fat lands as a splat and thin as a stretch
+            _scaleVel += delta * BounceKick;
+            float widen = (delta.x + delta.z) * 0.5f / Mathf.Max(0.01f, _baseScale.x);
+            _scaleVel.y -= widen * _baseScale.y * BounceKick * 0.9f;
+            Bounce();
+        }
+
+        void Bounce()
+        {
+            if (_bouncing) return;
+            _bouncing = true;
+            _bouncers.Add(this);
+        }
+
+        bool StepBounce(float dt)
+        {
+            Vector3 diff = _scaleTarget - _scaleNow;
+            _scaleVel += diff * BounceStiffness * dt;
+            _scaleVel *= Mathf.Max(0f, 1f - BounceDamping * dt);
+            _scaleNow += _scaleVel * dt;
+            transform.localScale = _scaleNow;
+            if (diff.sqrMagnitude < 1e-6f && _scaleVel.sqrMagnitude < 1e-5f)
+            {
+                _scaleNow = _scaleTarget;
+                transform.localScale = _scaleTarget;
+                return false;
+            }
+            return true;
+        }
+
+        static void StepBounces(float dt)
+        {
+            for (int i = _bouncers.Count - 1; i >= 0; i--)
+            {
+                var e = _bouncers[i];
+                if (e == null || !e.StepBounce(dt))
+                {
+                    if (e != null) e._bouncing = false;
+                    _bouncers.RemoveAt(i);
+                }
+            }
+        }
         Renderer[] _tintRends;
         MaterialPropertyBlock _tintMpb;
         bool _tinted;
@@ -585,6 +677,24 @@ namespace SpellyZombie
             if (_view == null) _view = GetComponentInChildren<StateView>();
             if (_view != null)
                 _view.StateT = SpellPayload.StateT01(Data.State);
+            // a client draws the axes it was sent, the same look as the host
+            // (the host already drew them on its beat)
+            if (!NetGame.IsAuthority)
+                LookAxes(SpellPayload.ToHuman(2, Data.Pressure - Natural.Pressure) / 100f,
+                         SpellPayload.ToHuman(3, Data.Balance - Natural.Balance) / 100f);
+        }
+
+        /// A spell's positive Strength lands here: mends toward the same
+        /// ceiling the regen law uses, never past it. A corpse stays down.
+        public bool Heal(float amount)
+        {
+            if (DeadStill || _dead || amount <= 0f) return false;
+            float ground = SpellLaw.Here(this).Strength;
+            float ceiling = ground > 0f ? Mathf.Min(Natural.Strength, ground)
+                                        : Natural.Strength;
+            if (Health >= ceiling) return false;
+            Health = Mathf.Min(ceiling, Health + amount);
+            return true;
         }
 
         void Bear(float span)

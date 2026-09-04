@@ -498,6 +498,7 @@ namespace SpellyZombie
             // gravity kept integrating into _verticalVelocity while down -
             // wipe it or the first Move slams the fresh revive back to 1 hp
             CancelMomentum();
+            if (IsLocalViewer && RoundDirector.RunActive) Achievements.Unlock(Achievements.CameBack);
             Debug.Log("[SpellyZombie] Player revived!");
         }
 
@@ -904,9 +905,12 @@ namespace SpellyZombie
                         new Color(0.7f, 0.9f, 1f), 4);
                 }
             }
-            // ★ STICKY GRIPS THE GROUND (his rule, cranked): past real glue
-            // your boots periodically refuse to leave the floor
-            if (_balDev > 0.3f && Time.time >= _stickPulseAt)
+            // ★ PLANTED GRIPS THE GROUND (his rule, cranked): past real glue
+            // your boots periodically refuse to leave the floor. Only the
+            // floor: balance is friction, nothing in the air.
+            bool onGround = _cc != null && _cc.isGrounded;
+            if (_body != null) _body.Grounded = onGround;
+            if (_balDev > 0.3f && onGround && Time.time >= _stickPulseAt)
             {
                 _stickPulseAt = Time.time + 2f;
                 _feetStuckUntil = Time.time + 0.4f;
@@ -914,7 +918,7 @@ namespace SpellyZombie
                     new Color(0.85f, 0.65f, 0.2f), 4);
             }
             _glideMv = Vector2.Lerp(_glideMv, mv,
-                Time.deltaTime * (_balDev < -0.15f ? 1.6f : 22f));
+                Time.deltaTime * (_balDev < -0.15f && onGround ? 1.6f : 22f)); // skating needs a floor
             mv = _glideMv;
             // a Y owns you: inputs walk you the OTHER way
             if (_body != null) mv *= _body.InputSign;
@@ -937,8 +941,8 @@ namespace SpellyZombie
             if (_body != null)
             {
                 speed *= _body.SpeedMul; // grip, frost, arrows and Ys all live here
-                // sticky wades through glue; heavy trudges
-                if (_balDev > 0.15f) speed *= 1f - 0.7f * Mathf.Min(1f, _balDev);
+                // planted wades through glue on the ground; heavy trudges
+                if (_balDev > 0.15f && onGround) speed *= 1f - 0.7f * Mathf.Min(1f, _balDev);
                 if (_pressDev > 0.2f) speed *= 0.85f;
                 if (_body.CrawlOnly && !IsCrouched)
                     speed = Mathf.Min(speed, MoveSpeed * 0.5f); // too heavy: crouch pace is all you have
@@ -1164,8 +1168,26 @@ namespace SpellyZombie
         }
 
         // shove crates around so half-drawn arcs on two objects can meet and seal
+        float _bounceAt;
+
         void OnControllerColliderHit(ControllerColliderHit hit)
         {
+            // ★ A FAT BODY BOUNCES OFF THINGS (his rule): spread past a bit,
+            // running into a wall or a body throws you back, harder the fatter
+            if (_dmg != null && hit.normal.y < 0.6f && Time.time >= _bounceAt)
+            {
+                float fat = -SpellPayload.ToHuman(2, _dmg.Data.Pressure - _dmg.Natural.Pressure) / 100f;
+                float into = -Vector3.Dot(Velocity, hit.normal);
+                if (fat > 0.15f && into > 1.2f)
+                {
+                    _bounceAt = Time.time + 0.2f;
+                    if (IsLocalViewer) Achievements.Unlock(Achievements.FatBounce);
+                    float k = Mathf.Clamp(fat, 0.15f, 1.2f);
+                    TakeHit(hit.normal * into * (0.8f + k * 1.2f) + Vector3.up * (1.5f * k), 0f);
+                    Juice.Pop(hit.point);
+                    GrammarFX.PuffBurst(hit.point, new Color(1f, 0.9f, 0.6f), 4);
+                }
+            }
             var body = hit.collider.attachedRigidbody;
             if (body == null || body.isKinematic) return;
             if (hit.moveDirection.y < -0.3f) return; // don't push things we stand on

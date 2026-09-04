@@ -33,7 +33,11 @@ namespace SpellyZombie
             {
                 SeedWriting(owner, rune);
                 NetSync.PushUnlock(owner, -1, (int)rune);
-                if (fresh) RuneToast.Show(rune);
+                if (fresh)
+                {
+                    RuneToast.Show(rune);
+                    Achievements.RuneLearned(RuneCount(owner));
+                }
             }
             // a HOST-side grant for a remote owner (summon deeds run in host
             // code): relay it, or the earner never learns what they earned
@@ -47,7 +51,7 @@ namespace SpellyZombie
             {
                 if (!_runesByOwner.TryGetValue(owner, out var set))
                     _runesByOwner[owner] = set = new HashSet<RuneType>();
-                set.Add((RuneType)rune);
+                if (set.Add((RuneType)rune) && owner == LocalPlayerId) Achievements.RuneLearned(RuneCount(owner));
                 // the family record rides along, same as a local unlock
                 if (!_byOwner.TryGetValue(owner, out var fams))
                     _byOwner[owner] = fams = new HashSet<RuneCardType>();
@@ -135,6 +139,14 @@ namespace SpellyZombie
         public static IReadOnlyCollection<RuneType> RunesOf(int owner) =>
             _runesByOwner.TryGetValue(owner, out var set)
                 ? (IReadOnlyCollection<RuneType>)set : System.Array.Empty<RuneType>();
+
+        public static int RuneCount(int owner)
+        {
+            if (!_runesByOwner.TryGetValue(owner, out var set)) return 0;
+            int n = 0;
+            foreach (var r in set) if (r != RuneType.None) n++;
+            return n;
+        }
 
         public static bool HasAny(int owner) =>
             _byOwner.TryGetValue(owner, out var set) && set.Count > 0;

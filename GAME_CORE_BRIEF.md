@@ -66,7 +66,7 @@ A hide-and-seek party game where you cast spells by drawing them, played as Wiza
 ## How it feels and sounds
 
 - Friend slop: simple enough for kids, funny because of what happens, never because of wordplay. Deadpan. A wand melting is the joke.
-- Almost no text on screen. The game teaches with pictures, glyphs, and emoji chips. Every player facing string is translated into 13 languages: English, Japanese, Simplified and Traditional Chinese, Korean, Spanish, French, Italian, German, Arabic, Brazilian Portuguese, Russian, Turkish. Japanese first. Japanese title: スペリーゾンビ.
+- Almost no text on screen. The game teaches with pictures, glyphs, and emoji chips. Every player facing string is translated into 12 languages: English, Japanese, Simplified and Traditional Chinese, Korean, Spanish, French, Italian, German, Brazilian Portuguese, Russian, Turkish. Japanese first. Japanese title: スペリーゾンビ.
 - No text chat, ever. Proximity voice only: if you want to say something, you reveal where you are. Hearing the enemy whisper is the comedy.
 - Keep the game's nouns exactly: rune, seal, ink, wand, grimoire, zombie, wizard, acolyte, cauldron.
 

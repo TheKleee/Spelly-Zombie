@@ -633,7 +633,10 @@ namespace SpellyZombie
             {
                 var b = _heldBody;
                 ClearBodyHold();
-                b.AddForce(dir * ThrowImpulse, ForceMode.VelocityChange);
+                // a conjured rock flies faster than a prop (his law)
+                var sm = b.GetComponent<Matter>();
+                float mul = sm != null && sm.SpellBorn ? DrawingConfig.SpellThrowMul : 1f;
+                b.AddForce(dir * ThrowImpulse * mul, ForceMode.VelocityChange);
             }
         }
 

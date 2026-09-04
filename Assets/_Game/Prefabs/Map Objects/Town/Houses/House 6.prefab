@@ -53,6 +53,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4506398013404681442}
+  - component: {fileID: 2756201840752034497}
   m_Layer: 0
   m_Name: House 6
   m_TagString: Untagged
@@ -142,6 +143,33 @@ Transform:
   - {fileID: 7455703784714407479}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2756201840752034497
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3003591763154466366}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2077c0e2edc5a2548841c92026a05126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.InteriorField
+  Size: {x: 7, y: 3, z: 3}
+  Center: {x: 0, y: 1.5, z: 0}
+  FieldSize: 1.2
+  Details: []
+  Ceiling: {fileID: 4629820404938871936, guid: 7a560062a4a096445921f2947644968f, type: 3}
+  CeilingHeight: 2.95
+  HoleSide: {fileID: 3874601683044456971, guid: a35781fcb7528a942809db0855e9f3aa, type: 3}
+  Stairs: {fileID: 6907199220635489658, guid: 856aeaa605ce89d41afdf4800225ca96, type: 3}
+  PreviewSeed: 1
+  _stairTop: {x: 0.000003157854, y: 0.043275595, z: 0.03024557}
+  _stairFoot: {x: -0.0000036352872, y: -0.0003586316, z: -0.00010380562}
+  _stairRise: 3.1301131
+  _stairLen: 4.295659
+  _stairWidth: 1.6756666
+  _stairMeasured: 1
 --- !u!1001 &211560776935060117
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -365,13 +393,59 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5951938668685144438}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8532419972045562576}
   m_SourcePrefab: {fileID: 100100000, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
 --- !u!4 &394028575704739553 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
   m_PrefabInstance: {fileID: 215442275160197386}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1025710528213529691 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+  m_PrefabInstance: {fileID: 215442275160197386}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &5951938668685144438
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025710528213529691}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -6153465292817694313, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+--- !u!114 &8532419972045562576
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025710528213529691}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
+  Type: 0
 --- !u!1001 &323520992290177852
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2408,8 +2482,54 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1332762672528002540}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4689640970838003995}
   m_SourcePrefab: {fileID: 100100000, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+--- !u!1 &1520460759648948311 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+  m_PrefabInstance: {fileID: 1862426259297332486}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &1332762672528002540
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1520460759648948311}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -6153465292817694313, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+--- !u!114 &4689640970838003995
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1520460759648948311}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
+  Type: 0
 --- !u!4 &2184830406392253165 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
@@ -3648,13 +3768,59 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8123315983772807389}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 41294929104219682}
   m_SourcePrefab: {fileID: 100100000, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
 --- !u!4 &2487171205454043575 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
   m_PrefabInstance: {fileID: 2670226066875252316}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &3012879169313522445 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+  m_PrefabInstance: {fileID: 2670226066875252316}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &8123315983772807389
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3012879169313522445}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -6153465292817694313, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+--- !u!114 &41294929104219682
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3012879169313522445}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
+  Type: 0
 --- !u!1001 &3322997998387024712
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6640,13 +6806,59 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 304233908165078584}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3102011072256721965}
   m_SourcePrefab: {fileID: 100100000, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
 --- !u!4 &5923599304342299693 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
   m_PrefabInstance: {fileID: 6178484950047622086}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &6448884746450812567 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+  m_PrefabInstance: {fileID: 6178484950047622086}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &304233908165078584
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6448884746450812567}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -6153465292817694313, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+--- !u!114 &3102011072256721965
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6448884746450812567}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
+  Type: 0
 --- !u!1001 &6222538633751322704
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7245,13 +7457,59 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3741351218461680923}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 751992620923269251}
   m_SourcePrefab: {fileID: 100100000, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
 --- !u!4 &7380522842706171557 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
   m_PrefabInstance: {fileID: 7054426018627793230}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &7865311106159873055 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+  m_PrefabInstance: {fileID: 7054426018627793230}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &3741351218461680923
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7865311106159873055}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -6153465292817694313, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+--- !u!114 &751992620923269251
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7865311106159873055}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
+  Type: 0
 --- !u!1001 &7160075172905429099
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8110,13 +8368,59 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1412706156375847847}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5899425298305982571}
   m_SourcePrefab: {fileID: 100100000, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
 --- !u!4 &6967697734222382677 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
   m_PrefabInstance: {fileID: 7437841368617312702}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &7780509868513746159 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+  m_PrefabInstance: {fileID: 7437841368617312702}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &1412706156375847847
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7780509868513746159}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -6153465292817694313, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+--- !u!114 &5899425298305982571
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7780509868513746159}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
+  Type: 0
 --- !u!1001 &7491791241214571823
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8777,13 +9081,43 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 537546084704328317}
   m_SourcePrefab: {fileID: 100100000, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
 --- !u!4 &8449290402000840484 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
   m_PrefabInstance: {fileID: 8271794921684189391}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &9082133678771994014 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+  m_PrefabInstance: {fileID: 8271794921684189391}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &537546084704328317
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9082133678771994014}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -6153465292817694313, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
 --- !u!1001 &8298280878150408192
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -9461,8 +9795,54 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6398898936825904992}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8677009330204959525}
   m_SourcePrefab: {fileID: 100100000, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+--- !u!1 &8369320159687247122 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+  m_PrefabInstance: {fileID: 8711269575756462147}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &6398898936825904992
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8369320159687247122}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -6153465292817694313, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}
+--- !u!114 &8677009330204959525
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8369320159687247122}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
+  Type: 0
 --- !u!4 &9182308555206483880 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: c5eaf65093ff91b4d974e2c57072073f, type: 3}

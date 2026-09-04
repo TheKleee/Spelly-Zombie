@@ -12,6 +12,7 @@ namespace SpellyZombie
         Vector3 _targetPos;
         float _targetYaw;
         Color _skin = Color.gray;
+        public int OwnerId = -1; // from the snapshot, for the ghost and the achievements
 
         public static NetGolemProxy Build(int id, Vector3 pos, Vector3 scale, Color skin)
         {

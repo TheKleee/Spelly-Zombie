@@ -345,6 +345,14 @@ namespace SpellyZombie
         public static readonly float BodyCastThrowSpeed = O(nameof(BodyCastThrowSpeed), 7f); // body/weapon seals THROW their particles outward at this speed
         // The hand throw (E).
         public static readonly float ThrowSpeed = O(nameof(ThrowSpeed), 33f);
+        public static readonly float SpellThrowMul = O(nameof(SpellThrowMul), 1.6f); // a conjured rock flies faster than a prop (his law)
+
+        // ---- proximity voice ----
+        public static readonly float VoiceRangeMeters = O(nameof(VoiceRangeMeters), 22f); // silent past this
+        public static readonly float VoiceGain = O(nameof(VoiceGain), 1f);                 // the eye tell's sensitivity
+        public static readonly float VoiceEyeSwell = O(nameof(VoiceEyeSwell), 0.35f);      // how wide the eyes go at full voice
+        public static readonly bool VoiceOpenMic = O(nameof(VoiceOpenMic), 1f) > 0.5f;    // always on (his rule); 0 = hold V
+        public static readonly float VoiceGate = O(nameof(VoiceGate), 0.02f);              // quieter than this is not sent
         // ---- soft body jiggle bones ----
         public static readonly float BlobBoneSpring = O(nameof(BlobBoneSpring), 220f);  // accel per meter off rest - shape stiffness
         public static readonly float BlobBoneStray = O(nameof(BlobBoneStray), 0.9f);    // leash: a bone may stray at most this × its own reach from rest

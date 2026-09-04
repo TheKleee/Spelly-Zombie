@@ -34,6 +34,15 @@ MonoBehaviour:
   HexRed: {fileID: 21300000, guid: c61795dbf7d072a499bf065e4065c131, type: 3}
   HexGreen: {fileID: 21300000, guid: 89f1b0ebb6089a74f9a13c9a86321392, type: 3}
   TextFont: {fileID: 0}
+  JapaneseFont: {fileID: 12800000, guid: 0bdecfdda7302b14ab51c23eb08d91cc, type: 3}
+  ChineseSimplifiedFont: {fileID: 12800000, guid: 1ed721d7e96a12c4eaa642aeaab51185, type: 3}
+  ChineseTraditionalFont: {fileID: 12800000, guid: fd7d079aa9520d54d81428f39dda38c2, type: 3}
+  KoreanFont: {fileID: 12800000, guid: ec42316a5a5ff7847a6e756f437ec047, type: 3}
+  OtherFont: {fileID: 0}
+  JapaneseTMP: {fileID: 11400000, guid: 8b7b2514a3f37c24ca98c7be1dc3a59e, type: 2}
+  ChineseSimplifiedTMP: {fileID: 11400000, guid: 1dc0451516a6456428006ef797b88028, type: 2}
+  ChineseTraditionalTMP: {fileID: 11400000, guid: 8d37b7115cdab084aaaa9daab7c27918, type: 2}
+  KoreanTMP: {fileID: 11400000, guid: c3b00af29c694a244927c74075bf728f, type: 2}
   UIPrefab: {fileID: 5756616081941103159, guid: 5d5e76689c4a1e647989f515c5ab9c89, type: 3}
   SurfacePrefabs:
   - {fileID: 8201599692752023173, guid: b8415f59eeaacb541ae4ff8aa7f5032c, type: 3}

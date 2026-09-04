@@ -805,6 +805,13 @@ namespace SpellyZombie
             ActiveSeals.Add(seal);
             if (key != null) _castKeys.Add(key);
             LogEvent($"SEAL #{seal.Id} ACTIVATED ({how}): {seal.Describe()}");
+            if (seal.OwnerId == Grimoire.LocalPlayerId)
+            {
+                bool body = true;
+                foreach (var e in loop)
+                    if (e.Stroke == null || !e.Stroke.Persistent) { body = false; break; }
+                if (body) Achievements.Unlock(Achievements.BodyCast);
+            }
 
             if (!NetGame.IsAuthority)
             {
@@ -844,6 +851,7 @@ namespace SpellyZombie
         public void OnSealEnded(Seal seal, string message, bool resolved)
         {
             seal.Spell?.End(); // spell cancels the instant the seal breaks or expires
+            if (resolved && seal.OwnerId == Grimoire.LocalPlayerId) Achievements.Unlock(Achievements.FirstSpell);
             NetSync.PushSealEnd(seal, resolved); // clients drop the ring, burn matching ink (netcode §2)
             LogEvent(message);
         }

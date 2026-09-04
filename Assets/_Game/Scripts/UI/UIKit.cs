@@ -30,13 +30,12 @@ namespace SpellyZombie
         {
             get
             {
-                if (_font == null)
-                    _font = UISkin.I != null && UISkin.I.TextFont != null
-                        ? UISkin.I.TextFont
-                        : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (_font == null) _font = LocFonts.LegacyFor(Loc.LanguageCode);
                 return _font;
             }
         }
+        public static Font CachedFont => _font;
+        public static void ForgetFont() => _font = null;
 
         /// True while a UI text field has keyboard focus - gameplay input
         /// (weapon slots, emotes, movement) must stand down.
@@ -370,10 +369,86 @@ namespace SpellyZombie
             Stretch((RectTransform)img.transform);
             var t = Label(cap, key, Mathf.RoundToInt(size * 0.52f), Ink, TextAnchor.MiddleCenter, true);
             Stretch((RectTransform)t.transform);
+            // a long key (Ctrl+1-9) widens the cap instead of spilling past its edge
+            t.resizeTextForBestFit = false;
+            t.horizontalOverflow = HorizontalWrapMode.Overflow;
+            cap.sizeDelta = new Vector2(Mathf.Max(size * 1.25f, t.preferredWidth + size * 0.6f), size);
             return cap;
         }
 
+        // ------------------------------------------------------------ stacks --
+
+        /// A vertical stack that sizes itself to its rows. Rows say their
+        /// size with Row(); Gap() is empty space. Adopted rects keep the
+        /// prefab's own layout.
+        public static void Stack(RectTransform rt, int padX, int padY, float spacing)
+        {
+            if (WasAdopted(rt)) return;
+            var lay = rt.GetComponent<VerticalLayoutGroup>();
+            if (lay == null) lay = rt.gameObject.AddComponent<VerticalLayoutGroup>();
+            lay.padding = new RectOffset(padX, padX, padY, padY);
+            lay.spacing = spacing;
+            lay.childAlignment = TextAnchor.UpperCenter;
+            lay.childControlWidth = true;
+            lay.childControlHeight = true;
+            lay.childForceExpandWidth = false;
+            lay.childForceExpandHeight = false;
+            var fit = rt.GetComponent<ContentSizeFitter>();
+            if (fit == null) fit = rt.gameObject.AddComponent<ContentSizeFitter>();
+            fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+
+        /// The size a row asks its stack for. Height below zero = as tall as
+        /// the element says itself (wrapped text).
+        public static T Row<T>(T c, float width, float height) where T : Component
+        {
+            if (c == null || WasAdopted(c)) return c;
+            var le = c.GetComponent<LayoutElement>();
+            if (le == null) le = c.gameObject.AddComponent<LayoutElement>();
+            le.preferredWidth = width;
+            le.minWidth = width;
+            le.preferredHeight = height;
+            le.minHeight = height;
+            return c;
+        }
+
+        /// Empty space inside a stack.
+        public static RectTransform Gap(RectTransform parent, float height)
+            => Row(Group(parent, "Gap"), 1f, height);
+
+        /// A grid of fixed cells inside a stack; it reports its own size.
+        public static RectTransform Grid(RectTransform parent, string name, Vector2 cell, float spacing, int columns)
+        {
+            var g = Group(parent, name);
+            if (WasAdopted(g)) return g;
+            var lay = g.gameObject.AddComponent<GridLayoutGroup>();
+            lay.cellSize = cell;
+            lay.spacing = new Vector2(spacing, spacing);
+            lay.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            lay.constraintCount = columns;
+            lay.childAlignment = TextAnchor.UpperCenter;
+            return g;
+        }
+
+        /// A row of equal buttons inside a stack (a three-way switch).
+        public static RectTransform Segments(RectTransform parent, float width, float height, float spacing)
+        {
+            var g = Group(parent, "Segments");
+            Row(g, width, height);
+            if (WasAdopted(g)) return g;
+            var lay = g.gameObject.AddComponent<HorizontalLayoutGroup>();
+            lay.spacing = spacing;
+            lay.childAlignment = TextAnchor.MiddleCenter;
+            lay.childControlWidth = true;
+            lay.childControlHeight = true;
+            lay.childForceExpandWidth = true;
+            lay.childForceExpandHeight = false;
+            return g;
+        }
+
         // ------------------------------------------------------------- bars --
+
 
         public class UIBar
         {
@@ -456,16 +531,20 @@ namespace SpellyZombie
                 skin != null ? Color.white : new Color(0.4f, 0.7f, 0.3f));
             Stretch((RectTransform)fill.transform);
 
+            // the knob is round: the area is knob-high, so the slider's own
+            // vertical stretch of the handle cannot make it taller than wide
             var handleArea = Group(rt, "HandleArea");
-            Stretch(handleArea);
-            handleArea.offsetMin = new Vector2(10f, 0f);
-            handleArea.offsetMax = new Vector2(-10f, 0f);
+            handleArea.anchorMin = new Vector2(0f, 0.5f);
+            handleArea.anchorMax = new Vector2(1f, 0.5f);
+            handleArea.pivot = new Vector2(0.5f, 0.5f);
+            handleArea.anchoredPosition = Vector2.zero;
+            handleArea.sizeDelta = new Vector2(-20f, 26f);
             var handleGo = new GameObject("Handle", typeof(RectTransform), typeof(Image));
             handleGo.transform.SetParent(handleArea, false);
             var handleImg = handleGo.GetComponent<Image>();
             handleImg.sprite = skin != null ? skin.RoundBrown : null;
             handleImg.color = skin != null ? Color.white : new Color(0.8f, 0.7f, 0.5f);
-            ((RectTransform)handleGo.transform).sizeDelta = new Vector2(26f, 26f);
+            ((RectTransform)handleGo.transform).sizeDelta = new Vector2(26f, 0f);
 
             var slider = go.GetComponent<Slider>();
             slider.fillRect = (RectTransform)fill.transform;

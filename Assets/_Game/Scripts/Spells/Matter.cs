@@ -58,6 +58,10 @@ namespace SpellyZombie
         /// stays on their team. Serialized on purpose: Instantiate-based
         /// splits copy it for free.
         public int TeamOwner = -1;
+        /// Conjured by a spell. Only spell matter hands its team to a golem
+        /// that stands up from it; the rubble of the world stays wild even
+        /// when a spell broke it. The blame stamp is a separate matter.
+        public bool SpellBorn;
 
         /// Stamp the team, and the blame channel with it.
         public void StampOwner(int owner)
@@ -363,6 +367,10 @@ namespace SpellyZombie
         // prevents a shed/merge size oscillation. Separated family is social again.
         int _shedFamily;              // 0 = no family - fuses freely
         static int _nextShedFamily = 1;
+        /// Things born in one burst join a family so they never self-fuse
+        /// into a birth golem. Broken apart later, the debris is social again.
+        public static int NewFamily() => _nextShedFamily++;
+        public int Family { get => _shedFamily; set => _shedFamily = value; }
 
         bool GracedAgainst(Matter o)
         {
@@ -444,7 +452,13 @@ namespace SpellyZombie
         {
             if (_rb == null) return;
             _rb.mass = Mathf.Max(0.02f, 0.6f * _baseSize * Density);
-            _rb.linearDamping = Mathf.Lerp(0.02f, 9f, Stickiness) + (Phase == MatterPhase.Gas ? 0.6f : 0f);
+            // BALANCE IS FRICTION (his rule): planted matter drags only while it
+            // touches something, and only by what was added past its nature.
+            // In the air nothing holds it, so it falls like a rock.
+            float glue = Mathf.Clamp01(Stickiness - _info.BaseStickiness);
+            bool touching = Time.time < _touchUntil;
+            _rb.linearDamping = (touching ? Mathf.Lerp(0.02f, 9f, glue) : 0.02f)
+                + (Phase == MatterPhase.Gas ? 0.6f : 0f);
             if (Phase == MatterPhase.Liquid) _rb.constraints = RigidbodyConstraints.FreezeRotation; // puddles don't tumble
         }
 
@@ -463,6 +477,7 @@ namespace SpellyZombie
                         transform.position + Random.insideUnitSphere * _baseSize * 0.5f);
                     m.Temperature = Temperature;
                     m.StampOwner(TeamOwner);
+                    m.SpellBorn = SpellBorn;
                     if (m.TryGetComponent<Rigidbody>(out var rb) && _rb != null)
                         rb.linearVelocity = _rb.linearVelocity + Random.insideUnitSphere * 1.2f;
                 }
@@ -498,10 +513,13 @@ namespace SpellyZombie
             if (_tag != null) _tag.Material = mat;
         }
 
+        float _touchUntil; // last moment this matter rested on or against something
+
         /// Contact chemistry.
-        void OnCollisionEnter(Collision col) => React(col, true);
+        void OnCollisionEnter(Collision col) { _touchUntil = Time.time + 0.15f; React(col, true); }
         void OnCollisionStay(Collision col)
         {
+            _touchUntil = Time.time + 0.15f;
             _reactCooldown -= Time.fixedDeltaTime;
             if (_reactCooldown <= 0f) { _reactCooldown = 0.5f; React(col, false); }
         }
@@ -665,6 +683,7 @@ namespace SpellyZombie
             float merged = Mathf.Pow(
                 Mathf.Pow(transform.localScale.x, 3f) + Mathf.Pow(o.transform.localScale.x, 3f), 1f / 3f);
             Lineage |= o.Lineage;
+            SpellBorn = SpellBorn && o.SpellBorn; // mixed with world rubble it is nobody's
             // absorbing a family member joins the family, else a stranger bridges the shed grace
             if (_shedFamily == 0) _shedFamily = o._shedFamily;
             if (melted)
@@ -713,11 +732,11 @@ namespace SpellyZombie
                 mergedSize * DrawingConfig.GolemSizePerMatter);
             if (g == null) return false;
 
-            // ★ A RISEN GOLEM IS NATURE'S (his rule: "we're not the same
-            // team"). Only a DRAWN golem serves its summoner; whatever stands
-            // up out of debris and matter is wild - the anti-grief ecology,
-            // hostile to everyone including whoever made the mess.
-            g.OwnerId = -1;
+            // ★ THE GOLEM ANSWERS TO WHAT IT IS MADE OF (his rule, Sep 3):
+            // stone born of your own spell stands up on YOUR team and never
+            // turns on you. Rubble of things you destroyed stands up wild
+            // and hostile, whoever broke them: the anti-grief ecology.
+            g.OwnerId = SpellBorn ? TeamOwner : -1;
 
             var view = g.GetComponent<StateView>();
             if (view == null) view = g.gameObject.AddComponent<StateView>();

@@ -93,9 +93,10 @@ namespace SpellyZombie
                 if (player != null
                     && Vector3.Distance(player.transform.position, transform.position) < 20f)
                 {
-                    Matter.Spawn(SurfaceMaterialType.Stone,
+                    var m = Matter.Spawn(SurfaceMaterialType.Stone,
                         Random.value < 0.5f ? MatterPhase.Solid : MatterPhase.Liquid,
                         0.5f, player.transform.position + Vector3.up * 4f);
+                    if (m != null) { m.StampOwner(OwnerId); m.SpellBorn = true; } // its spell, its golems
                     WorldEvents.Report(WorldEventKind.Spell, player.transform.position, 2f);
                 }
             }

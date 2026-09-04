@@ -13,6 +13,42 @@ namespace SpellyZombie
     public class Golem : MonoBehaviour
     {
         public float SightRange = 13f;
+        [Tooltip("A spell made or a blast this close sends the golem the other way.")]
+        public float FearRange = 9f;
+        public bool Alive => _dmg == null || _dmg.Health > 0f;
+
+        // ---- possession (his rule): a ghost drives its own team's golem,
+        // the way an acolyte ghost drives a zombie. The rider steers, the
+        // click is the golem's own charge; fear and prey pause while ridden.
+        public bool Possessed { get; private set; }
+        public Vector3 PossessedMove { get; set; }
+        public Vector3 PossessedFace { get; set; }
+
+        public void PossessBy(bool on)
+        {
+            Possessed = on;
+            PossessedMove = Vector3.zero;
+            PossessedFace = Vector3.zero;
+            if (_eyes != null) _eyes.SetMood(on ? EyeMood.Mad : EyeMood.Neutral, 0.6f);
+        }
+
+        /// Where a rider looks from: the eyes, else the top of the body.
+        public Vector3 HeadAt => _eyes != null ? _eyes.transform.position
+            : transform.position + Vector3.up * (transform.localScale.y * 0.95f);
+
+        /// Where a rider sits: inside the body, high enough that only the
+        /// hat shows above the top, the way a ghost sits in a zombie skull.
+        public Vector3 SeatAt => transform.position
+            + Vector3.up * (transform.localScale.y * 0.95f - 0.22f);
+
+        /// The rider's click: the golem's own charge, where the rider looks.
+        public bool GhostAbility(Vector3 look)
+        {
+            if (_charge == null || _charge.Busy) return false;
+            look.y = 0f;
+            if (look.sqrMagnitude < 0.01f) return false;
+            return _charge.TryStart(transform.position + look.normalized * 6f);
+        }
         public float WalkSpeed = 1.9f;
 
         /// -1 = wild (debris-born): serves nobody, hunts anyone. Set by a
@@ -350,6 +386,39 @@ namespace SpellyZombie
             float mul = _me != null ? _me.SpeedMultiplier : 1f;
             if (mul <= 0.01f) return;
 
+            if (Possessed)
+            {
+                // the rider steers; standing still it turns to the rider's look
+                if (PossessedMove.sqrMagnitude > 0.01f)
+                {
+                    _wander = PossessedMove.normalized;
+                    Step(_wander, mul);
+                }
+                else if (PossessedFace.sqrMagnitude > 0.01f)
+                    transform.rotation = Quaternion.Slerp(transform.rotation,
+                        Quaternion.LookRotation(PossessedFace, Vector3.up), 6f * Time.fixedDeltaTime);
+                return;
+            }
+
+            // ★ EVERYONE FEARS A SPELL BEING MADE (his rule): a fresh spell
+            // or a blast nearby sends the golem off the other way, no charge
+            if (WorldEvents.TryGetLoudest(2.5f, out var scare)
+                && (scare.Kind == WorldEventKind.Spell || scare.Kind == WorldEventKind.Explosion)
+                && scare.Intensity >= 2f)
+            {
+                Vector3 away = transform.position - scare.Pos;
+                away.y = 0f;
+                if (away.sqrMagnitude > 0.01f && away.sqrMagnitude < FearRange * FearRange)
+                {
+                    _wander = away.normalized;
+                    _pickAt = Time.time + 1.5f;
+                    if (_eyes != null) _eyes.SetMood(EyeMood.Scared, 1f);
+                    _sawPrey = false;
+                    Step(_wander, mul * 1.5f);
+                    return;
+                }
+            }
+
             // anything alive in sight is an enemy - no teams, no owner
             var prey = NearestTarget();
             // ★ CHARGE ONLY LOOKS FOR ENEMIES (his order): whatever slipped
@@ -444,6 +513,15 @@ namespace SpellyZombie
                 if (!Teams.Enemies(mine, Team.Acolyte)) break;
                 float d = (z.transform.position - transform.position).sqrMagnitude;
                 if (d < bestSqr) { bestSqr = d; best = z.transform; }
+            }
+            // golems of another team are prey too (his rule): yours fight
+            // the wild ones, the wild ones fight yours, nearest first
+            foreach (var g in All)
+            {
+                if (g == null || g == this || !g.Alive) continue;
+                if (!Teams.Enemies(mine, Teams.OfOwner(g.OwnerId))) continue;
+                float d = (g.transform.position - transform.position).sqrMagnitude;
+                if (d < bestSqr) { bestSqr = d; best = g.transform; }
             }
             return best;
         }

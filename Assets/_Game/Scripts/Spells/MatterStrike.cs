@@ -48,6 +48,7 @@ namespace SpellyZombie
                 sd.Init(_mat, _phase, chunkSize);
                 sd.OwnerId = OwnerId;
                 chunk.StampOwner(OwnerId);
+                chunk.SpellBorn = true;
                 if (chunk.TryGetComponent<Rigidbody>(out var crb))
                     crb.linearVelocity = d * 7f;
             }

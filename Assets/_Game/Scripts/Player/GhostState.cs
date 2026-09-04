@@ -47,6 +47,7 @@ namespace SpellyZombie
         SpellParticle _ridden;
         Rigidbody _rbRidden;   // conjured spell matter: liquids, solids, combos
         Zombie _zombie;
+        Golem _golem;
         float _noGrabUntil;
         float _yaw, _pitch;
         float _homeTime;           // lobby self-revive clock
@@ -116,6 +117,17 @@ namespace SpellyZombie
                 return;
             }
 
+            if (!ReferenceEquals(_golem, null))
+            {
+                if (_golem == null || !_golem.isActiveAndEnabled || !_golem.Alive)
+                {
+                    LeaveGolem();
+                    return;
+                }
+                DriveGolem();
+                return;
+            }
+
             if (_ridden != null && _ridden.Dead)
             {
                 _ridden = null;
@@ -168,6 +180,22 @@ namespace SpellyZombie
             foreach (var h in Physics.OverlapSphere(_ghost.position, 0.6f,
                          Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
             {
+                // a golem of your own team, either side (his rule): wild ones
+                // (no owner) belong to nobody and cannot be driven
+                var g = h.GetComponentInParent<Golem>();
+                if (g != null)
+                {
+                    if (g.Possessed || !g.Alive || g.OwnerId < 0
+                        || Sides.Of(g.OwnerId) != Sides.Of(OwnerId)) continue;
+                    _golem = g;
+                    g.PossessBy(true);
+                    if (_pilot.IsLocalViewer) Achievements.Unlock(Achievements.RideGolem);
+                    _third = true;
+                    Juice.Chime(_ghost.position);
+                    DrawingWorld.Instance?.LogEvent("you take the golem. click to charge");
+                    return;
+                }
+
                 if (acolyte)
                 {
                     var z = h.GetComponentInParent<Zombie>();
@@ -176,6 +204,7 @@ namespace SpellyZombie
                     if (mine == null || Sides.Of(mine.SummonedBy) != Side.Acolyte) continue;
                     _zombie = z;
                     z.PossessBy(true);
+                    if (_pilot.IsLocalViewer) Achievements.Unlock(Achievements.RideZombie);
                     _third = true;
                     Juice.Chime(_ghost.position);
                     DrawingWorld.Instance?.LogEvent("you take the zombie. LMB uses what it is");
@@ -298,6 +327,49 @@ namespace SpellyZombie
         {
             if (_zombie != null && !_zombie.Equals(null)) _zombie.PossessBy(false);
             _zombie = null;
+            _third = false;
+        }
+
+        /// Same reins as the zombie: WASD walks it, F lets go, a click charges.
+        void DriveGolem()
+        {
+            var kb = Keyboard.current;
+            if (kb == null) return;
+            bool uiBusy = GameMenu.IsOpen || UIKit.Typing;
+            if (!uiBusy && kb.fKey.wasPressedThisFrame)
+            {
+                _noGrabUntil = Time.time + 0.8f;
+                Juice.Chime(_ghost.position);
+                DrawingWorld.Instance?.LogEvent("you release the golem");
+                LeaveGolem();
+                return;
+            }
+
+            Vector3 fwd = _ghost.forward; fwd.y = 0f;
+            Vector3 right = _ghost.right; right.y = 0f;
+            Vector3 move = Vector3.zero;
+            if (!uiBusy)
+            {
+                if (kb.wKey.isPressed) move += fwd;
+                if (kb.sKey.isPressed) move -= fwd;
+                if (kb.dKey.isPressed) move += right;
+                if (kb.aKey.isPressed) move -= right;
+            }
+            _golem.PossessedMove = move.sqrMagnitude > 0.01f ? move.normalized : Vector3.zero;
+            if (fwd.sqrMagnitude > 0.01f) _golem.PossessedFace = fwd.normalized;
+
+            _ghost.position = _golem.SeatAt; // inside the body, hat out the top; the view is from its eyes
+
+            var mouse = Mouse.current;
+            if (!uiBusy && mouse != null && (mouse.leftButton.wasPressedThisFrame
+                || mouse.rightButton.wasPressedThisFrame))
+                _golem.GhostAbility(_ghost.forward);
+        }
+
+        void LeaveGolem()
+        {
+            if (_golem != null && !_golem.Equals(null)) _golem.PossessBy(false);
+            _golem = null;
             _third = false;
         }
 
@@ -499,7 +571,9 @@ namespace SpellyZombie
         {
             if (by == null || by.IsDowned || by.IsDead) return;
             if (!IsGhost || !AtHome) return;
+            bool below = _revive < 1f;
             _revive += dt / Mathf.Max(0.5f, DrawingConfig.ReviveSeconds);
+            if (below && _revive >= 1f && by.IsLocalViewer) Achievements.Unlock(Achievements.ReviveFriend);
             Shine();
         }
 
@@ -523,6 +597,7 @@ namespace SpellyZombie
             _ridden = null;
             _rbRidden = null;
             LeaveZombie();
+            LeaveGolem();
             _visual = null;
             _third = false;
             if (!SimpleFPSController.ThirdPersonActive) XRayGlow.Hide(gameObject);
@@ -545,7 +620,8 @@ namespace SpellyZombie
 
             // the offset glides so the view never snaps between the views;
             // driving a zombie puts the camera inside its head
-            bool inZombie = !ReferenceEquals(_zombie, null) && _zombie != null;
+            bool inZombie = (!ReferenceEquals(_zombie, null) && _zombie != null)
+                         || (!ReferenceEquals(_golem, null) && _golem != null);
             Vector3 want = inZombie
                 ? new Vector3(0f, 0.02f, 0.18f)
                 : _third
@@ -553,7 +629,10 @@ namespace SpellyZombie
                     : new Vector3(0f, 0.05f, 0.45f);
             _camOffset = Vector3.MoveTowards(_camOffset, want, 11f * Time.deltaTime);
 
-            _ghostCam.transform.SetPositionAndRotation(_ghost.position + look * _camOffset, look);
+            // riding a golem the ghost sits in the body but SEES from the eyes
+            bool inGolem = !ReferenceEquals(_golem, null) && _golem != null;
+            Vector3 viewFrom = inGolem ? _golem.HeadAt : _ghost.position;
+            _ghostCam.transform.SetPositionAndRotation(viewFrom + look * _camOffset, look);
         }
 
         // ------------------------------------------- the teammate's side --

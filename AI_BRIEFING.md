@@ -17,7 +17,7 @@ Steam release sprint. Read all of it before answering anything.
 3. Marko writes all final store/marketing copy himself. You may draft
    structure and check facts, character limits, and translations. Style laws
    for any text you touch: simple enough for kids, funny from situations
-   not wordplay (it must survive 13 languages), and never use dashes.
+   not wordplay (it must survive 12 languages), and never use dashes.
 4. When you cannot verify something, say so plainly. Never fill gaps with
    plausible guesses. Wrong numbers have already burned this project twice
    (a stale "13M" milestone, a possibly-invented staff name).
@@ -47,7 +47,7 @@ Steam release sprint. Read all of it before answering anything.
 - Price: **$5.99**, matching Meccha Chameleon exactly, regional prices to
   mirror theirs (Japan matters most).
 - Languages at launch (interface + subtitles, no audio): English, Italian,
-  Spanish-Spain, French, German, Arabic, Korean, Portuguese-Brazil,
+  Spanish-Spain, French, German, Korean, Portuguese-Brazil,
   Simplified Chinese, Traditional Chinese, Japanese, Russian, Turkish.
 - Japanese localized name: スペリーゾンビ.
 - Platforms: Windows only. No controller support at launch (mouse/keyboard

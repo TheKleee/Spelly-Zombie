@@ -176,7 +176,7 @@ namespace SpellyZombie
                 else if (z.Rune == RuneType.HeatUp) spell._gasIntensity += z.Intensity * DrawingConfig.HeatPressureFactor;
             }
 
-            WorldEvents.Report(WorldEventKind.Spell, seal.PlaneOrigin, 1.5f); // eyes turn, zombies notice
+            WorldEvents.Report(WorldEventKind.Spell, seal.PlaneOrigin, 2f); // a spell made: everyone fears it
 
             return spell;
         }
@@ -466,7 +466,7 @@ namespace SpellyZombie
             DrawingWorld.Instance?.LogEvent(total == 1
                 ? "one of them gets up"
                 : $"{total} of them get up");
-            WorldEvents.Report(WorldEventKind.Spell, seal.PlaneOrigin, 1.5f);
+            WorldEvents.Report(WorldEventKind.Spell, seal.PlaneOrigin, 2f);
             return null;
         }
 
@@ -525,7 +525,7 @@ namespace SpellyZombie
                 if (z.Rune == RuneType.DensityUp) spell._gasIntensity += z.Intensity;
                 else if (z.Rune == RuneType.HeatUp) spell._gasIntensity += z.Intensity * DrawingConfig.HeatPressureFactor;
             }
-            WorldEvents.Report(WorldEventKind.Spell, origin, 1.5f);
+            WorldEvents.Report(WorldEventKind.Spell, origin, 2f);
             return spell;
         }
 

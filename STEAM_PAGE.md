@@ -146,9 +146,11 @@ overlap is what drives "More Like This" placement next to them.
 Custom Volume Controls, Stereo Sound, Playable without Timed Input, Playable
 At Your Own Pace.
 
-**Languages (13, subtitles + interface, no full audio):** English, Italian,
-Spanish-Spain, French, German, Arabic, Korean, Portuguese-Brazil, Simplified
-Chinese, Traditional Chinese, Japanese, Russian, Turkish.
+**Languages (12, subtitles + interface, no full audio):** English, Italian,
+Spanish-Spain, French, German, Korean, Portuguese-Brazil, Simplified
+Chinese, Traditional Chinese, Japanese, Russian, Turkish. Arabic was dropped
+on Sep 4 2026 (not tracked by the Steam survey, needs RTL shaping): untick it
+on the store page.
 
 **Localized name (Japanese):** スペリーゾンビ
 

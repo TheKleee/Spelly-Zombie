@@ -35,6 +35,7 @@ namespace SpellyZombie
         float _clock;        // seconds left on the match timer
         int _kills;
         int _winner;         // 0 none, 1 wizards, 2 acolytes
+        Achievements.Ending _ending;
         float _overTimer;
         bool _hadWizards, _hadAcolytes;
         float _runStart;
@@ -68,8 +69,10 @@ namespace SpellyZombie
 
         void Update()
         {
+            Achievements.Tick();
             var kb = Keyboard.current;
-            if (kb == null || PoseStudio.IsOpen || GameMenu.IsOpen) return;
+            // solo: the pause menu freezes time anyway. connected: the referee never stops
+            if (kb == null || PoseStudio.IsOpen || (GameMenu.IsOpen && !NetGame.Connected)) return;
 
             RefreshPlayers();
 
@@ -82,7 +85,7 @@ namespace SpellyZombie
                 if (_netPush <= 0f)
                 {
                     _netPush = 0.5f;
-                    NetSync.PushRoundState((byte)_phase, _winner, 0, _clock, _kills);
+                    NetSync.PushRoundState((byte)_phase, _winner, 0, _clock, _kills, (byte)_ending);
                 }
             }
 
@@ -120,6 +123,7 @@ namespace SpellyZombie
             {
                 _phase = Phase.Idle;
                 _winner = 0;
+                _ending = Achievements.Ending.None;
             }
 
             if (!_startOnLoad || scene.name != GameSceneName) return;
@@ -153,6 +157,7 @@ namespace SpellyZombie
         {
             _kills = 0;
             _winner = 0;
+            _ending = Achievements.Ending.None;
             _runStart = Time.time;
             // negative IS the endless flag, and it crosses the wire on its
             // own - a client seeing a negative clock knows not to count down
@@ -194,26 +199,26 @@ namespace SpellyZombie
 
             if (potReady && CauldronEconomy.Fill01 <= 0.002f)
             {
-                Win(2, "the pot ran dry");
+                Win(2, "the pot ran dry", Achievements.Ending.PotDry);
                 return;
             }
             if (_hadWizards && !AnySide(Side.Wizard, aliveOnly: true))
             {
-                Win(2, "no wizard stands");
+                Win(2, "no wizard stands", Achievements.Ending.NoWizards);
                 return;
             }
             if (_hadAcolytes && !AnySide(Side.Acolyte, aliveOnly: true)
                 && !CauldronEconomy.IsCorrupt)
             {
-                Win(1, "the acolytes are gone and the pot is clean");
+                Win(1, "the acolytes are gone and the pot is clean", Achievements.Ending.Sweep);
                 return;
             }
             // the two timer endings, and the only two an endless match
             // cannot reach - it ends on the pot or on a side being wiped out
             if (_clock >= 0f && _clock <= 0.0001f)
             {
-                if (CauldronEconomy.IsCorrupt) Win(2, "time ran out on a green pot");
-                else Win(1, "time ran out on a clean pot");
+                if (CauldronEconomy.IsCorrupt) Win(2, "time ran out on a green pot", Achievements.Ending.GreenBell);
+                else Win(1, "time ran out on a clean pot", Achievements.Ending.CleanBell);
             }
         }
 
@@ -231,10 +236,11 @@ namespace SpellyZombie
             return false;
         }
 
-        void Win(int winner, string how)
+        void Win(int winner, string how, Achievements.Ending ending)
         {
             _phase = Phase.Over;
             _winner = winner;
+            _ending = ending;
             _overTimer = 7f;
             bool wizards = winner == 1;
             ComboBanner.Show(wizards ? "WIZARDS WIN" : "ACOLYTES WIN",
@@ -244,6 +250,7 @@ namespace SpellyZombie
             bool mine = wizards == (Sides.Of(Grimoire.LocalPlayerId) == Side.Wizard);
             if (mine) Juice.Chime(at); else Juice.Sting(at);
             RunStats.Log(wizards ? "wizards" : "acolytes", 0, _kills, Time.time - _runStart);
+            Achievements.MatchEnded(winner, ending);
         }
 
         void ReturnToLobby()
@@ -252,6 +259,7 @@ namespace SpellyZombie
             {
                 _phase = Phase.Idle;
                 _winner = 0;
+                _ending = Achievements.Ending.None;
                 return;
             }
             LoadEgg.Cover();

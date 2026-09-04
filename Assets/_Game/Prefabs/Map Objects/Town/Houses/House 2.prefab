@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8346068097742487098}
+  - component: {fileID: 3183453745411572743}
   m_Layer: 0
   m_Name: House 2
   m_TagString: Untagged
@@ -84,6 +85,33 @@ Transform:
   - {fileID: 1770856144334140950}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3183453745411572743
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2518130765546242576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2077c0e2edc5a2548841c92026a05126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.InteriorField
+  Size: {x: 5.5, y: 3, z: 3.5}
+  Center: {x: 0, y: 1.5, z: 0}
+  FieldSize: 1.2
+  Details: []
+  Ceiling: {fileID: 4629820404938871936, guid: 7a560062a4a096445921f2947644968f, type: 3}
+  CeilingHeight: 2.95
+  HoleSide: {fileID: 3874601683044456971, guid: a35781fcb7528a942809db0855e9f3aa, type: 3}
+  Stairs: {fileID: 6907199220635489658, guid: 856aeaa605ce89d41afdf4800225ca96, type: 3}
+  PreviewSeed: 1
+  _stairTop: {x: 0.000003157854, y: 0.043275595, z: 0.03024557}
+  _stairFoot: {x: -0.0000036352872, y: -0.0003586316, z: -0.00010380562}
+  _stairRise: 3.1301131
+  _stairLen: 4.295659
+  _stairWidth: 1.6756666
+  _stairMeasured: 1
 --- !u!1 &4484377776737380066
 GameObject:
   m_ObjectHideFlags: 0

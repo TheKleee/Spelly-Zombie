@@ -86,6 +86,50 @@ namespace SpellyZombie
             return SurfaceMaterialType.Wood;
         }
 
+        /// Every mesh under the selection gets a MeshCollider of its own mesh
+        /// where it has no collider at all. Works on scene objects (undoable)
+        /// and on prefab assets picked in the Project window (saved in place).
+        /// Nothing that already has a collider is touched.
+        [MenuItem("Spelly Zombie/Scenery/Add Mesh Colliders To Selection (fills gaps only)")]
+        static void AddMeshColliders()
+        {
+            int added = 0, assets = 0, scene = 0;
+            foreach (var obj in Selection.objects)
+            {
+                var go = obj as GameObject;
+                if (go == null) continue;
+                string path = AssetDatabase.GetAssetPath(go);
+                if (!string.IsNullOrEmpty(path) && path.EndsWith(".prefab"))
+                {
+                    var root = PrefabUtility.LoadPrefabContents(path);
+                    int n = FillColliders(root, false);
+                    if (n > 0) { PrefabUtility.SaveAsPrefabAsset(root, path); added += n; assets++; }
+                    PrefabUtility.UnloadPrefabContents(root);
+                }
+                else if (go.scene.IsValid())
+                {
+                    int n = FillColliders(go, true);
+                    if (n > 0) { added += n; scene++; }
+                }
+            }
+            Debug.Log($"[SpellyZombie] Mesh colliders added: {added} ({assets} prefab asset(s), {scene} scene object(s)). "
+                + "Objects that already had a collider were left alone.");
+        }
+
+        static int FillColliders(GameObject root, bool undo)
+        {
+            int n = 0;
+            foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (mf.sharedMesh == null || mf.GetComponent<Collider>() != null) continue;
+                var mc = undo ? Undo.AddComponent<MeshCollider>(mf.gameObject)
+                              : mf.gameObject.AddComponent<MeshCollider>();
+                mc.sharedMesh = mf.sharedMesh;
+                n++;
+            }
+            return n;
+        }
+
         [MenuItem("Spelly Zombie/Scenery/Report Performance Risks In Scene")]
         static void Report()
         {

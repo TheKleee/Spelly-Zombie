@@ -1,0 +1,33 @@
+{
+  "size": 256,
+  "emoji_px": 196,
+  "sources": ["../../Assets/_Game/Fonts/sz-emoji", "downloads"],
+  "backgrounds": {
+    "wizard": [200, 222, 245],
+    "acolyte": [196, 236, 190],
+    "both": [246, 232, 200]
+  },
+  "icons": [
+    {"api": "SZ_WIN_WIZARDS",   "emoji": "1f9d9",            "side": "wizard",  "note": "mage"},
+    {"api": "SZ_WIN_ACOLYTES",  "emoji": "1fa84",            "side": "acolyte", "note": "magic wand, the green one"},
+    {"api": "SZ_END_POT_DRY",   "emoji": "1fad7",            "side": "acolyte", "note": "pouring liquid"},
+    {"api": "SZ_END_NO_WIZARDS","emoji": "1f480",            "side": "acolyte", "note": "skull"},
+    {"api": "SZ_END_GREEN_BELL","emoji": "23f0",             "side": "acolyte", "note": "alarm clock on green"},
+    {"api": "SZ_END_CLEAN_BELL","emoji": "23f0",             "side": "wizard",  "note": "alarm clock on blue"},
+    {"api": "SZ_END_SWEEP",     "emoji": "1f9f9",            "side": "wizard",  "note": "broom"},
+    {"api": "SZ_TEN_WINS",      "emoji": "1f3c6",            "side": "both",    "note": "trophy"},
+    {"api": "SZ_FIRST_RUNE",    "emoji": "1f4d6",            "side": "both",    "note": "open book"},
+    {"api": "SZ_ALL_RUNES",     "emoji": "1f4da",            "side": "both",    "note": "books"},
+    {"api": "SZ_FIRST_SPELL",   "emoji": "2728",             "side": "both",    "note": "sparkles"},
+    {"api": "SZ_BODY_CAST",     "emoji": "1f9cd",            "side": "both",    "note": "person standing, the pose chip"},
+    {"api": "SZ_DISGUISE",      "emoji": "1f3ad",            "side": "acolyte", "note": "masks, the become chip"},
+    {"api": "SZ_RIDE_ZOMBIE",   "emoji": "1f9df",            "side": "both",    "note": "zombie"},
+    {"api": "SZ_RIDE_GOLEM",    "emoji": "1f5ff",            "side": "both",    "note": "moai, the Solid rune"},
+    {"api": "SZ_GOLEM_BORN",    "emoji": "1faa8",            "side": "both",    "note": "rock"},
+    {"api": "SZ_REVIVE_FRIEND", "emoji": "2764_200d_1fa79",  "side": "both",    "note": "mending heart"},
+    {"api": "SZ_CAME_BACK",     "emoji": "1f47b",            "side": "both",    "note": "ghost"},
+    {"api": "SZ_FAT_BOUNCE",    "emoji": "1f388",            "side": "both",    "note": "balloon"},
+    {"api": "SZ_POISON_POT",    "emoji": "1f922",            "side": "acolyte", "note": "nauseated face"},
+    {"api": "SZ_CLEAN_POT",     "emoji": "1f9fc",            "side": "wizard",  "note": "soap"}
+  ]
+}

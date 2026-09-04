@@ -211,7 +211,7 @@ namespace SpellyZombie
         {
             var m = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas,
                 0.35f * Mathf.Max(0.5f, power), at + Vector3.up * 0.3f);
-            if (m != null) { m.Temperature = 130f; m.StampOwner(owner); }
+            if (m != null) { m.Temperature = 130f; m.StampOwner(owner); m.SpellBorn = true; }
             DrawingWorld.Instance?.LogEvent("fire and frost make SCALDING STEAM");
         }
 
@@ -229,6 +229,7 @@ namespace SpellyZombie
                     0.4f * Mathf.Max(0.5f, power), spot + Vector3.up * 0.5f);
                 if (rock == null) continue;
                 rock.StampOwner(owner);
+                rock.SpellBorn = true;
                 var rise = rock.gameObject.AddComponent<MeteorRise>();
                 rise.Reach = power;
             }

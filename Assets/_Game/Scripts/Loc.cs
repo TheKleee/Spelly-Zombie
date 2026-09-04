@@ -8,6 +8,7 @@ namespace SpellyZombie
     ///
     /// Translations are JSON in StreamingAssets/Loc, one file per language,
     /// switchable at runtime. A missing file or key falls back to English.
+    /// Twelve languages, the Meccha Chameleon set minus Arabic (his call).
     public static class Loc
     {
         static readonly Dictionary<string, string> _en = new Dictionary<string, string>
@@ -80,6 +81,15 @@ namespace SpellyZombie
             ["opt.immersive.on"] = "Immersive mode: ON",
             ["opt.immersive.off"] = "Immersive mode: OFF",
             ["opt.immersive.hint"] = "no HUD at all. for players who know the game",
+            ["opt.mic"] = "Microphone: {0}",
+            ["opt.mic.default"] = "default",
+            ["opt.mute"] = "{0}: mute",
+            ["opt.unmute"] = "{0}: unmute",
+            ["opt.nobody"] = "nobody else here to mute",
+            ["opt.mic.title"] = "Microphone",
+            ["opt.mic.open"] = "Open mic",
+            ["opt.mic.ptt"] = "Hold V",
+            ["opt.mic.off"] = "Muted",
             ["inspect.add"] = "add friend on Steam",
             ["inspect.close"] = "I closes",
             ["menu.leave"] = "Leave lobby",
@@ -183,7 +193,6 @@ namespace SpellyZombie
             new Lang("it", "Italiano"),
             new Lang("ru", "Русский"),
             new Lang("tr", "Türkçe"),
-            new Lang("ar", "العربية"),
         };
 
         /// Fired after a language change so open UI can rebuild its labels.
@@ -207,7 +216,6 @@ namespace SpellyZombie
                     case SystemLanguage.French: return "fr";
                     case SystemLanguage.Italian: return "it";
                     case SystemLanguage.German: return "de";
-                    case SystemLanguage.Arabic: return "ar";
                     case SystemLanguage.Portuguese: return "pt-BR";
                     case SystemLanguage.Russian: return "ru";
                     case SystemLanguage.Turkish: return "tr";

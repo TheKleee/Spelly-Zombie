@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5500297834540529524}
+  - component: {fileID: 9064974676068768190}
   m_Layer: 0
   m_Name: House 3
   m_TagString: Untagged
@@ -88,6 +89,33 @@ Transform:
   - {fileID: 7666081497757073231}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9064974676068768190
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1815821065220962283}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2077c0e2edc5a2548841c92026a05126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.InteriorField
+  Size: {x: 5.5, y: 3, z: 3.5}
+  Center: {x: 0, y: 1.5, z: 0}
+  FieldSize: 1.2
+  Details: []
+  Ceiling: {fileID: 4629820404938871936, guid: 7a560062a4a096445921f2947644968f, type: 3}
+  CeilingHeight: 2.95
+  HoleSide: {fileID: 3874601683044456971, guid: a35781fcb7528a942809db0855e9f3aa, type: 3}
+  Stairs: {fileID: 6907199220635489658, guid: 856aeaa605ce89d41afdf4800225ca96, type: 3}
+  PreviewSeed: 1
+  _stairTop: {x: 0.000003157854, y: 0.043275595, z: 0.03024557}
+  _stairFoot: {x: -0.0000036352872, y: -0.0003586316, z: -0.00010380562}
+  _stairRise: 3.1301131
+  _stairLen: 4.295659
+  _stairWidth: 1.6756666
+  _stairMeasured: 1
 --- !u!1 &4668865636983133712
 GameObject:
   m_ObjectHideFlags: 0
@@ -2243,13 +2271,43 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3de7a6f04da54dc41ad4889ef1656d55, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7233357216753698239}
   m_SourcePrefab: {fileID: 100100000, guid: 3de7a6f04da54dc41ad4889ef1656d55, type: 3}
 --- !u!4 &2844404900668206868 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3de7a6f04da54dc41ad4889ef1656d55, type: 3}
   m_PrefabInstance: {fileID: 2374490273239009535}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &3184761282587080110 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 3de7a6f04da54dc41ad4889ef1656d55, type: 3}
+  m_PrefabInstance: {fileID: 2374490273239009535}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &7233357216753698239
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3184761282587080110}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 9198421165756361727, guid: 3de7a6f04da54dc41ad4889ef1656d55, type: 3}
 --- !u!1001 &2539925496915826855
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7615,8 +7673,38 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3de7a6f04da54dc41ad4889ef1656d55, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 913290195005691835}
   m_SourcePrefab: {fileID: 100100000, guid: 3de7a6f04da54dc41ad4889ef1656d55, type: 3}
+--- !u!1 &7105095695398907558 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 3de7a6f04da54dc41ad4889ef1656d55, type: 3}
+  m_PrefabInstance: {fileID: 7952010255467385847}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &913290195005691835
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7105095695398907558}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 9198421165756361727, guid: 3de7a6f04da54dc41ad4889ef1656d55, type: 3}
 --- !u!4 &7625032115710129180 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3de7a6f04da54dc41ad4889ef1656d55, type: 3}

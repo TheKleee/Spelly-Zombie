@@ -463,6 +463,7 @@ namespace SpellyZombie
         /// Turn into the object exactly as it stands, with a poof on the swap.
         void BecomeObject(Transform source)
         {
+            if (_pilot != null && _pilot.IsLocalViewer) Achievements.Unlock(Achievements.Disguise);
             if (_worn != null) Destroy(_worn);
             _worn = Instantiate(source.gameObject, transform);
             _worn.name = "WornShape";
