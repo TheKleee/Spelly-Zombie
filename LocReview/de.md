@@ -10,8 +10,6 @@ grammar needs, even in lowercase lines. Lobby is the word German players use.
 | door.close | close the door | Tür schließen | door close | |
 | pickup.weapon | pick up the weapon | Waffe aufheben | weapon pick up | |
 | pickup.full | hands full, drop one first | Hände voll, leg erst was ab | hands full, put something down first | "was" = spoken etwas |
-| revive.friend | hold to revive your friend | halten, um deinen Freund wiederzubeleben | hold, in order to revive your friend | |
-| revive.pct | reviving…  {0}% | Wiederbelebung…  {0}% | revival… {0}% | |
 | chest.try | try the mystery chest | die Rätselkiste probieren | the riddle crate try | Kiste is the casual word for a chest |
 | perk.drink | drink {0} | {0} trinken | {0} drink | |
 | perk.brewed | {0} is already brewed | {0} ist schon gebraut | {0} is already brewed | brauen works for potions in German |

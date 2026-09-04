@@ -394,9 +394,6 @@ namespace SpellyZombie
         // once you are back in your own body, and is thrown away when full
         public static readonly float ReserveFlowPerSec = O(nameof(ReserveFlowPerSec), 18f);
 
-        // a standing flame (HeatEmitter): raw heat/s at its centre. Wood ignites
-        // at 200°C, so ~2s of direct contact sets a tossed log alight.
-        public static readonly float TorchHeatPerSec = O(nameof(TorchHeatPerSec), 110f);
         public static readonly float BurnThreshold = O(nameof(BurnThreshold), 70f);    // above this °C an object takes burn damage
         // freeze mirrors burn around ambient 18°C; particles stay symmetric ±25
         public static readonly float FreezeThreshold = O(nameof(FreezeThreshold), -34f);

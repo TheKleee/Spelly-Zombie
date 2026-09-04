@@ -40,7 +40,7 @@ namespace SpellyZombie
         [Tooltip("Grid field size in metres - the same searching law a biome box uses.")]
         public float FieldSize = 1.2f;
 
-        [Tooltip("What may appear here. Prefabs can be anything - flowers, pebbles, furniture, an AbsorbSource.")]
+        [Tooltip("What may appear here. Prefabs can be anything - flowers, pebbles, furniture, an AbsorbSource. An absorbable inside a detail is a biome rider: the biome's Sources Min and Max decide whether it appears.")]
         public Detail[] Details;
 
         [Header("UPPER FLOOR (leave Ceiling empty for a single floor)")]
@@ -120,7 +120,7 @@ namespace SpellyZombie
         /// Map generation calls this with ITS rng, so the fill rides the map
         /// seed and stays identical on every machine. The editor preview
         /// passes its own throwaway root and leaves the real fill untouched.
-        public void Fill(System.Random rng, Transform under = null)
+        public void Fill(System.Random rng, Transform under = null, bool riders = true)
         {
             if (under == null)
             {
@@ -318,6 +318,14 @@ namespace SpellyZombie
                         if (go.GetComponentInChildren<Element>(true) == null
                             && go.GetComponentInChildren<Collider>(true) != null)
                             go.AddComponent<Element>();
+                        // an absorbable inside a detail is a biome RIDER: it spawns
+                        // disabled and the biome's scarcity reveals it or not, the
+                        // same MinSources..MaxSources law as one authored in a prop
+                        if (riders)
+                        {
+                            foreach (var a in go.GetComponentsInChildren<AbsorbSource>(true)) a.gameObject.SetActive(false);
+                            foreach (var a in go.GetComponentsInChildren<Analyzable>(true)) a.gameObject.SetActive(false);
+                        }
                         placed[di]++;
                     }
             if (groundRays > 0 && groundHits == 0)

@@ -11,8 +11,6 @@ font lacks them, fill the OtherFont slot on UISkin.
 | door.close | close the door | закрыть дверь | to close door | |
 | pickup.weapon | pick up the weapon | подобрать оружие | to pick up weapon | |
 | pickup.full | hands full, drop one first | руки заняты, сначала положи что-нибудь | hands busy, first put something down | |
-| revive.friend | hold to revive your friend | удерживай, чтобы оживить друга | hold, in order to revive friend | |
-| revive.pct | reviving…  {0}% | оживление…  {0}% | revival… {0}% | |
 | chest.try | try the mystery chest | открыть загадочный сундук | to open the mysterious chest | "try" became "open", natural Russian |
 | perk.drink | drink {0} | выпить {0} | to drink {0} | |
 | perk.brewed | {0} is already brewed | {0} уже сварено | {0} already brewed | neuter generic, works for any perk name |

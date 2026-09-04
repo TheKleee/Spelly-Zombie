@@ -90,8 +90,8 @@ namespace SpellyZombie
                 case RuneType.StickyDown: return StickyDown;
                 case RuneType.StateSolid: return Solidify;
                 case RuneType.StateLiquid: return Liquefy;
-                case RuneType.DirectionAway: return Push;
-                case RuneType.DirectionToward: return Pull;
+                case RuneType.Attract: return Push;
+                case RuneType.Repel: return Pull;
             }
             return null;
         }

@@ -12,8 +12,6 @@ Steam box says.
 | door.close | close the door | fechar a porta | close the door | |
 | pickup.weapon | pick up the weapon | pegar a arma | grab the weapon | |
 | pickup.full | hands full, drop one first | mãos cheias, solte algo primeiro | hands full, let go of something first | |
-| revive.friend | hold to revive your friend | segure para reviver seu amigo | hold to revive your friend | |
-| revive.pct | reviving…  {0}% | revivendo…  {0}% | reviving… {0}% | |
 | chest.try | try the mystery chest | tentar o baú misterioso | try the mysterious chest | |
 | perk.drink | drink {0} | beber {0} | drink {0} | |
 | perk.brewed | {0} is already brewed | {0} já está pronto | {0} is already ready | "brewed" dropped for the plain word |

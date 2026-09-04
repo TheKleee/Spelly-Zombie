@@ -291,7 +291,7 @@ namespace SpellyZombie
                         SizeMul = RuneSizeMul(glyphSpan * 2f)
                     });
                 }
-                else if (g.Rune == RuneType.DirectionAway || g.Rune == RuneType.DirectionToward)
+                else if (g.Rune == RuneType.Attract || g.Rune == RuneType.Repel)
                 {
                     // the arrow glyph points the dead; flattened - zombies
                     // walk, they do not fly
@@ -302,7 +302,7 @@ namespace SpellyZombie
                         marchDir = d.normalized;
                         hasArrow = true;
                         // arrow marches to one spot, Y scatters across an arc
-                        scatter = g.Rune == RuneType.DirectionToward;
+                        scatter = g.Rune == RuneType.Repel;
                     }
                 }
             }
@@ -568,7 +568,7 @@ namespace SpellyZombie
             _arrowDir = Vector3.zero;
             if (!_bodyThrow)
                 foreach (var z in _zones)
-                    if ((z.Rune == RuneType.DirectionAway || z.Rune == RuneType.DirectionToward)
+                    if ((z.Rune == RuneType.Attract || z.Rune == RuneType.Repel)
                         && z.PushDir.sqrMagnitude > 0.01f)
                     {
                         _arrowDir = z.PushDir;
@@ -761,7 +761,7 @@ namespace SpellyZombie
                 if (live != Vector3.zero)
                 {
                     z.Center = live + z.Normal * 0.06f + _drift;
-                    if (z.Rune == RuneType.DirectionAway || z.Rune == RuneType.DirectionToward)
+                    if (z.Rune == RuneType.Attract || z.Rune == RuneType.Repel)
                         z.PushDir = ArrowDirection(z.Glyph, z.Normal, z.Rune);
                 }
             }
@@ -810,7 +810,7 @@ namespace SpellyZombie
             RuneType.DensityUp => "Compress", RuneType.DensityDown => "Spread",
             RuneType.StickyUp => "Sticky", RuneType.StickyDown => "Slick",
             RuneType.StateSolid => "Solid", RuneType.StateLiquid => "Liquid",
-            RuneType.DirectionAway => "Attract", RuneType.DirectionToward => "Repel",
+            RuneType.Attract => "Attract", RuneType.Repel => "Repel",
             _ => null,
         };
 
@@ -982,8 +982,8 @@ namespace SpellyZombie
             {
                 switch (z.Rune)
                 {
-                    case RuneType.DirectionAway:
-                    case RuneType.DirectionToward:
+                    case RuneType.Attract:
+                    case RuneType.Repel:
                         // feet-seal flight only (body ink); ground arrow
                         // seals don't push players - particles are the movers
                         if (_surface == SurfaceMaterialType.Flesh)
@@ -1040,7 +1040,7 @@ namespace SpellyZombie
 
             // no static ground arrow; the flying arrow/Y particle is the
             // whole visual
-            if (z.Rune == RuneType.DirectionAway || z.Rune == RuneType.DirectionToward)
+            if (z.Rune == RuneType.Attract || z.Rune == RuneType.Repel)
                 root.transform.rotation = Quaternion.LookRotation(z.PushDir);
 
             // Luminance-down: mild on its own; deepens & spreads with low

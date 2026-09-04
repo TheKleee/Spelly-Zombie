@@ -3251,7 +3251,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1562958029}
   m_Layer: 0
-  m_Name: Rune_DirectionToward
+  m_Name: Rune_Repel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3333,7 +3333,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1641358891}
   m_Layer: 0
-  m_Name: Rune_DirectionAway
+  m_Name: Rune_Attract
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -18,8 +18,6 @@ namespace SpellyZombie
             ["door.close"] = "close the door",
             ["pickup.weapon"] = "pick up the weapon",
             ["pickup.full"] = "hands full, drop one first",
-            ["revive.friend"] = "hold to revive your friend",
-            ["revive.pct"] = "reviving…  {0}%",
             ["chest.try"] = "try the mystery chest",
             ["perk.drink"] = "drink {0}",
             ["perk.brewed"] = "{0} is already brewed",

@@ -10,8 +10,6 @@ Salon is the French word for a game lobby.
 | door.close | close the door | fermer la porte | close the door | |
 | pickup.weapon | pick up the weapon | ramasser l'arme | pick up the weapon | |
 | pickup.full | hands full, drop one first | mains pleines, pose quelque chose d'abord | hands full, put something down first | |
-| revive.friend | hold to revive your friend | maintiens pour ranimer ton ami | hold to bring your friend back | ranimer = the everyday word; réanimer is medical |
-| revive.pct | reviving…  {0}% | réanimation…  {0}% | resuscitation… {0}% | noun form for a progress line |
 | chest.try | try the mystery chest | tenter le coffre mystère | attempt the mystery chest | |
 | perk.drink | drink {0} | boire {0} | drink {0} | |
 | perk.brewed | {0} is already brewed | {0} est déjà préparé | {0} is already prepared | |

@@ -4,8 +4,6 @@
     {"key": "door.close", "value": "Tür schließen"},
     {"key": "pickup.weapon", "value": "Waffe aufheben"},
     {"key": "pickup.full", "value": "Hände voll, leg erst was ab"},
-    {"key": "revive.friend", "value": "halten, um deinen Freund wiederzubeleben"},
-    {"key": "revive.pct", "value": "Wiederbelebung…  {0}%"},
     {"key": "chest.try", "value": "die Rätselkiste probieren"},
     {"key": "perk.drink", "value": "{0} trinken"},
     {"key": "perk.brewed", "value": "{0} ist schon gebraut"},

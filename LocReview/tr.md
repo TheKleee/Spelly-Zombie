@@ -11,8 +11,6 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | door.close | close the door | kapıyı kapat | the door, close | |
 | pickup.weapon | pick up the weapon | silahı al | the weapon, take | |
 | pickup.full | hands full, drop one first | ellerin dolu, önce bir şey bırak | your hands are full, first drop something | |
-| revive.friend | hold to revive your friend | arkadaşını diriltmek için basılı tut | to revive your friend, hold pressed | |
-| revive.pct | reviving…  {0}% | diriltiliyor…  %{0} | being revived… %{0} | percent sign before the number |
 | chest.try | try the mystery chest | gizemli sandığı dene | the mysterious chest, try | |
 | perk.drink | drink {0} | {0} iç | {0} drink | |
 | perk.brewed | {0} is already brewed | {0} zaten hazır | {0} already ready | "brewed" dropped |

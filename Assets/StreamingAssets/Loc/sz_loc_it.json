@@ -4,8 +4,6 @@
     {"key": "door.close", "value": "chiudi la porta"},
     {"key": "pickup.weapon", "value": "raccogli l'arma"},
     {"key": "pickup.full", "value": "mani piene, posa qualcosa prima"},
-    {"key": "revive.friend", "value": "tieni premuto per rianimare il tuo amico"},
-    {"key": "revive.pct", "value": "rianimazione…  {0}%"},
     {"key": "chest.try", "value": "prova il baule misterioso"},
     {"key": "perk.drink", "value": "bevi {0}"},
     {"key": "perk.brewed", "value": "{0} è già pronto"},

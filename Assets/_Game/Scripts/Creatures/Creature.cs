@@ -15,7 +15,7 @@ namespace SpellyZombie
         /// Can be negative: the body slides backward while the walk plays forward.
         public float SpeedMultiplier =>
             (Frozen || Stuck || GettingUp ? 0f : Slipping ? 0.15f : Burning ? 1.8f : 1f)
-            * (Board != null ? Board.SpeedMul * Board.InputSign : 1f)
+            * (Board != null ? Board.SpeedMul : 1f)
             * StrengthMul;   // strength IS health: a hurt creature is a slow one
 
         /// Its own strength, by the same law players and props obey.

@@ -67,8 +67,6 @@ namespace SpellyZombie
         Camera _cam;
         float _mendFxAt;
         Vector3 _camDefaultLocal;
-        int _revivePctShown = int.MinValue; // revive prompt cache - no per-frame string build
-        string _revivePrompt;
         GooglyEyes _eyes;
         WeaponSlots _slots;
         EmotePlayer _emotes;
@@ -171,7 +169,6 @@ namespace SpellyZombie
         public bool IsDowned { get; private set; }
         public bool IsDead => IsDowned && _bleedOut <= 0f;
         public float BleedOut => _bleedOut;
-        public float ReviveProgress { get; private set; }
         float _bleedOut;
         GameObject _heartFx; // broken heart over the downed body
         bool _soulFled;      // Souls Escape fired once for this death
@@ -466,7 +463,6 @@ namespace SpellyZombie
             // ghost flying home is the revive flow allies join in on
             _bleedOut = 0f;
             OnDeathCrossed();
-            ReviveProgress = 0f;
             WorldEvents.Report(WorldEventKind.Death, transform.position, 2f); // the horde celebrates
             Juice.Sting(transform.position);
             Juice.Shake(0.8f, 0.5f);
@@ -475,15 +471,7 @@ namespace SpellyZombie
             _soulFled = false;
             if (_heartFx == null && FxLibrary.I != null)
                 _heartFx = FxLibrary.Spawn(FxLibrary.I.BrokenHeart, transform.position + Vector3.up * 2.1f, transform);
-            Debug.Log("[SpellyZombie] Player DOWNED - teammate hold E to revive");
-        }
-
-        /// A teammate is holding E over this body.
-        public void AddRevive(float dt)
-        {
-            if (!IsDowned || IsDead) return;
-            ReviveProgress += dt / DrawingConfig.ReviveSeconds;
-            if (ReviveProgress >= 1f) Revive();
+            Debug.Log("[SpellyZombie] Player DOWNED");
         }
 
         public void Revive()
@@ -491,7 +479,6 @@ namespace SpellyZombie
             IsDowned = false;
             Health = 50f;
             _dmg.DeadStill = false;  // alive again, the world may touch you
-            ReviveProgress = 0f;
             _soulFled = false;
             if (_heartFx != null) { Destroy(_heartFx); _heartFx = null; } // mended
             _lastHurt = Time.time;
@@ -783,7 +770,6 @@ namespace SpellyZombie
                 if (!IsDead)
                 {
                     _bleedOut -= Time.deltaTime;
-                    ReviveProgress = Mathf.Max(0f, ReviveProgress - Time.deltaTime * 0.15f); // rescuer let go
                     OnDeathCrossed(); // fires exactly once, the frame the bleed-out runs dry
                 }
                 // camera keels over - the world from the floor
@@ -808,32 +794,6 @@ namespace SpellyZombie
                             Mathf.LerpAngle(e.z, targetRoll, Time.deltaTime * (targetRoll > 0f ? 8f : 4f)));
                 }
 
-                // rescue: a downed friend in range announces itself - HOLD E
-                // (gamepad X) to pick them up, the prompt counts the progress
-                SimpleFPSController fallen = null;
-                foreach (var other in All)
-                {
-                    if (other == this || !other.IsDowned || other.IsDead) continue;
-                    if ((other.transform.position - transform.position).sqrMagnitude
-                        > DrawingConfig.ReviveRange * DrawingConfig.ReviveRange) continue;
-                    fallen = other;
-                    break;
-                }
-                if (fallen != null)
-                {
-                    // rebuild the prompt string only when the percent changes
-                    int pct = fallen.ReviveProgress > 0f
-                        ? Mathf.RoundToInt(fallen.ReviveProgress * 100f) : -1;
-                    if (pct != _revivePctShown || _revivePrompt == null)
-                    {
-                        _revivePctShown = pct;
-                        _revivePrompt = pct >= 0
-                            ? Loc.F("revive.pct", pct) : Loc.T("revive.friend");
-                    }
-                    UIPrompt.Show("E", _revivePrompt, new Color(0.55f, 1f, 0.6f));
-                    if (kb.eKey.isPressed || (gp != null && gp.buttonWest.isPressed))
-                        fallen.AddRevive(Time.deltaTime);
-                }
             }
 
             // ---- crouch ----
@@ -921,7 +881,6 @@ namespace SpellyZombie
                 Time.deltaTime * (_balDev < -0.15f && onGround ? 1.6f : 22f)); // skating needs a floor
             mv = _glideMv;
             // a Y owns you: inputs walk you the OTHER way
-            if (_body != null) mv *= _body.InputSign;
 
             bool sprint = kb.leftShiftKey.isPressed || (gp != null && gp.leftStickButton.isPressed);
             if (_body != null && !_body.CanSprint) sprint = false; // too heavy to run

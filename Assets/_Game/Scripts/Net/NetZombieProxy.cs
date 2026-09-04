@@ -8,6 +8,27 @@ namespace SpellyZombie
         Vector3 _targetPos;
         float _targetYaw;
         bool _ranged;
+        public int Id;             // the host's instance id, the snapshot key
+        public int OwnerId = -1;   // the acolyte who drew it, from the snapshot
+
+        /// Where a rider's camera sits: the eyes, else the top of the body.
+        public Vector3 HeadAt
+        {
+            get
+            {
+                var eyes = GetComponentInChildren<GooglyEyes>(true);
+                return eyes != null ? eyes.transform.position
+                    : transform.position + Vector3.up * (transform.localScale.y * 0.95f);
+            }
+        }
+
+        /// The rider sits inside the head: the eyes get out of the lens.
+        public void ShowEyes(bool on)
+        {
+            var eyes = GetComponentInChildren<GooglyEyes>(true);
+            if (eyes == null) return;
+            foreach (var r in eyes.GetComponentsInChildren<Renderer>(true)) r.enabled = on;
+        }
 
         public static NetZombieProxy Build(int id, Vector3 pos, Vector3 scale, bool ranged = false)
         {
@@ -73,6 +94,7 @@ namespace SpellyZombie
             dmg.RemoveOnDeath = false;  // never dies locally - snapshots decide
 
             var proxy = go.AddComponent<NetZombieProxy>();
+            proxy.Id = id;
             proxy._targetPos = pos;
             proxy._ranged = ranged;
             return proxy;

@@ -4,8 +4,6 @@
     {"key": "door.close", "value": "ドアを閉める"},
     {"key": "pickup.weapon", "value": "武器を拾う"},
     {"key": "pickup.full", "value": "両手がふさがっている。先に何か置いて"},
-    {"key": "revive.friend", "value": "長押しで仲間を生き返らせる"},
-    {"key": "revive.pct", "value": "生き返らせ中…  {0}%"},
     {"key": "chest.try", "value": "なぞの宝箱をためす"},
     {"key": "perk.drink", "value": "{0}を飲む"},
     {"key": "perk.brewed", "value": "{0}はもう作ってある"},

@@ -596,7 +596,7 @@ namespace SpellyZombie
                 case RuneCardType.State: up = RuneType.StateSolid; down = RuneType.StateLiquid; break;
                 case RuneCardType.Luminance: up = RuneType.LuminanceUp; down = RuneType.LuminanceDown; break;
                 case RuneCardType.Sticky: up = RuneType.StickyUp; down = RuneType.StickyDown; break;
-                case RuneCardType.Direction: up = RuneType.DirectionAway; down = RuneType.DirectionToward; break;
+                case RuneCardType.Affinity: up = RuneType.Attract; down = RuneType.Repel; break;
                 default: up = RuneType.DensityUp; down = RuneType.DensityDown; break;
             }
         }

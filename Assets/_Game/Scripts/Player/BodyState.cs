@@ -9,8 +9,7 @@ namespace SpellyZombie
     ///   Lum    - vision only: darkness low, bloom high.
     ///   Grip   - + sticky (slow, then stuck) · − slick (slides, ragdolls).
     ///   Weight - light = higher jumps then float; heavy = movement gates.
-    ///   Move   - + speed buff · − inverted inputs.
-    /// On creatures only Grip/Weight/Move run; Thermal owns their temperature.
+    /// On creatures only Grip/Weight run; Thermal owns their temperature.
     public class BodyState : MonoBehaviour
     {
         // ---- naturals, bands, thresholds ----
@@ -42,7 +41,6 @@ namespace SpellyZombie
         public static readonly float CollapseLimit = Tune("BodyCollapseLimit", 4f);// above: too weak to stand, you ragdoll
         public static readonly float CrushDrainPerSec = Tune("BodyCrushDrainPerSec", 4f);
 
-        public static readonly float MoveDriftPerSec = Tune("BodyMoveDriftPerSec", 0.45f);
 
         public static readonly float DriftExpo = Tune("BodyDriftExpo", 3f);
 
@@ -101,7 +99,6 @@ namespace SpellyZombie
         public float Lum = NaturalLum;
         public float Grip;          // 0 natural · + sticky · − slick
         public float Weight = 1f;   // mass multiplier
-        public float Move;          // 0 center · + arrow buff · − Y inversion
 
         /// ★ THE ELEMENT'S, like Temp. Hit by attract or repel you CARRY the
         /// axis - your own gravity on everything near - until it drifts home.
@@ -192,7 +189,6 @@ namespace SpellyZombie
         public void PushLum(float d) => Lum = Mathf.Clamp(Lum + d, -1.5f, 3f);
         public void PushGrip(float d) => Grip = Mathf.Clamp(Grip + d, -1.4f, 1.6f);
         public void PushWeight(float d) => Weight = Mathf.Clamp(Weight + d, 0.12f, 4f);
-        public void PushMove(float d) => Move = Mathf.Clamp(Move + d, -2.2f, 2.2f);
         public void PushAffinity(float d) =>
             Affinity = Mathf.Clamp(Affinity + d, -DrawingConfig.AxisCap, DrawingConfig.AxisCap);
 
@@ -210,7 +206,6 @@ namespace SpellyZombie
             Lum = NaturalLum + _ambLight;
             Grip = _ambStick;
             Weight = 1f + _ambDensity;
-            Move = 0f;
             SetPhase(MatterPhase.Solid, 0f);
         }
 
@@ -358,8 +353,6 @@ namespace SpellyZombie
         /// Lighter bodies spring higher and fall softer; heavy is gated, not nerfed.
         public float JumpMul => !CanJump ? 0f
             : TotalWeight < 1f ? Mathf.Lerp(1.5f, 1f, TotalWeight) : 1f;
-        /// −1 while a Y owns you: your inputs walk you the other way.
-        public float InputSign => Move < -0.05f ? -1f : 1f;
 
         /// One speed multiplier from the whole board, players and zombies
         /// both. Never returns zero - slows are proportional.
@@ -376,9 +369,6 @@ namespace SpellyZombie
                     m *= Mathf.Lerp(1f, 0.09f, Mathf.InverseLerp(GripSlowAt, 1.5f, Grip));
                 m *= Mathf.Lerp(1f, 0.3f, FreezeSeverity);  // being frozen IS the slow
                 if (FrozenSolid) m *= 0.15f;                // frozen stiff: a shuffle, never a statue
-                if (Move > 0.05f) m *= 1f + Move * 0.5f;    // arrow buff
-                else if (Move < -0.05f)
-                    m *= Mathf.Clamp(-Move, 0.15f, 1.3f);   // small Y = slow backwards walk
                 return m;
             }
         }
@@ -417,7 +407,6 @@ namespace SpellyZombie
                 : 0f;
             float homeW = 1f + _ambDensity + spellW;
             Weight = Mathf.MoveTowards(Weight, homeW, WeightDriftPerSec * Rush(Weight - homeW, 0.9f) * dt);
-            Move = Mathf.MoveTowards(Move, 0f, MoveDriftPerSec * Rush(Move, 2.2f) * dt);
             // element bodies shed and radiate affinity on the element beat;
             // loose bodies do both here - a high-affinity biome makes the
             // things standing in it the magnets, never its own center

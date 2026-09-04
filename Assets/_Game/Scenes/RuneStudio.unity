@@ -2906,7 +2906,7 @@ GameObject:
   - component: {fileID: 887622150}
   - component: {fileID: 887622149}
   m_Layer: 0
-  m_Name: RuneWall_DirectionAway
+  m_Name: RuneWall_Attract
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3173,7 +3173,7 @@ GameObject:
   - component: {fileID: 1028329140}
   - component: {fileID: 1028329139}
   m_Layer: 0
-  m_Name: RuneWall_DirectionToward
+  m_Name: RuneWall_Repel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

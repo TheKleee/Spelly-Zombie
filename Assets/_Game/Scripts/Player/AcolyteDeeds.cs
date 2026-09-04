@@ -24,7 +24,7 @@ namespace SpellyZombie
         /// One call per summoning seal.
         public static void Summoned(int owner, int count)
         {
-            if (count > 0) Grant(owner, RuneType.DirectionAway);
+            if (count > 0) Grant(owner, RuneType.Attract);
         }
 
         /// ★ THE Y DEED: at least 2 of your zombies alive at the same time -
@@ -34,7 +34,7 @@ namespace SpellyZombie
             int alive = 0;
             foreach (var z in Zombie.All)
                 if (z != null && z.OwnerId == owner) alive++;
-            if (alive > 1) Grant(owner, RuneType.DirectionToward);
+            if (alive > 1) Grant(owner, RuneType.Repel);
         }
     }
 }

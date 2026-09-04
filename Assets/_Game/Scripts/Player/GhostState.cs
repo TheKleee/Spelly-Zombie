@@ -52,6 +52,14 @@ namespace SpellyZombie
         float _yaw, _pitch;
         float _homeTime;           // lobby self-revive clock
         float _revive;             // match revive progress, 0..1
+        int _lastRescuer = -1;     // who stood at us over the wire, for their achievement
+        float _remoteHold;         // our time at a remote friend's body, shipped in slices
+        float _remoteShine;
+        // on a client the creatures are the host's stand-ins; the host drives
+        Transform _proxy;
+        byte _proxyKind;           // 1 zombie, 2 golem
+        int _proxyId;
+        float _askUntil;
 
         public bool IsGhost { get; private set; }
         /// Live corpse position, not where the death happened.
@@ -128,6 +136,13 @@ namespace SpellyZombie
                 return;
             }
 
+            if (!ReferenceEquals(_proxy, null))
+            {
+                if (_proxy == null) { LeaveProxy(false); return; } // the host's snapshot dropped it
+                DriveProxy();
+                return;
+            }
+
             if (_ridden != null && _ridden.Dead)
             {
                 _ridden = null;
@@ -180,6 +195,26 @@ namespace SpellyZombie
             foreach (var h in Physics.OverlapSphere(_ghost.position, 0.6f,
                          Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
             {
+                // on a client the creatures are the host's stand-ins: ask the host
+                if (NetGame.Connected && !NetGame.IsAuthority)
+                {
+                    if (Time.time < _askUntil) break;
+                    var gp = h.GetComponentInParent<NetGolemProxy>();
+                    if (gp != null && gp.OwnerId >= 0 && Sides.Of(gp.OwnerId) == Sides.Of(OwnerId))
+                    {
+                        NetSync.SendRideAsk(2, gp.Id, true);
+                        _askUntil = Time.time + 0.6f;
+                        break;
+                    }
+                    var zp = h.GetComponentInParent<NetZombieProxy>();
+                    if (acolyte && zp != null && zp.OwnerId >= 0 && Sides.Of(zp.OwnerId) == Side.Acolyte)
+                    {
+                        NetSync.SendRideAsk(1, zp.Id, true);
+                        _askUntil = Time.time + 0.6f;
+                        break;
+                    }
+                }
+
                 // a golem of your own team, either side (his rule): wild ones
                 // (no owner) belong to nobody and cannot be driven
                 var g = h.GetComponentInParent<Golem>();
@@ -373,6 +408,85 @@ namespace SpellyZombie
             _third = false;
         }
 
+        /// The host's verdict on a ride this ghost asked for, or the release
+        /// it forced when the body died or tumbled.
+        public static void OnRideGive(int owner, byte kind, int id, bool on)
+        {
+            if (owner != Grimoire.LocalPlayerId) return;
+            foreach (var g in All)
+            {
+                if (g == null || !g.IsGhost || g._ghostCam == null) continue;
+                if (!on) { if (g._proxyId == id) g.LeaveProxy(false); return; }
+                var t = NetSync.RideProxy(kind, id);
+                if (t == null) return;
+                g._proxy = t;
+                g._proxyKind = kind;
+                g._proxyId = id;
+                g._third = true;
+                g.SetProxyEyes(false);
+                Juice.Chime(g._ghost.position);
+                Achievements.Unlock(kind == 1 ? Achievements.RideZombie : Achievements.RideGolem);
+                DrawingWorld.Instance?.LogEvent(kind == 1
+                    ? "you take the zombie. LMB uses what it is" : "you take the golem. click to charge");
+                return;
+            }
+        }
+
+        /// A client's reins: read here, applied on the host. The ghost rides
+        /// the stand-in the snapshots move.
+        void DriveProxy()
+        {
+            var kb = Keyboard.current;
+            if (kb == null) return;
+            bool uiBusy = GameMenu.IsOpen || UIKit.Typing;
+            if (!uiBusy && kb.fKey.wasPressedThisFrame)
+            {
+                _noGrabUntil = Time.time + 0.8f;
+                Juice.Chime(_ghost.position);
+                DrawingWorld.Instance?.LogEvent(_proxyKind == 1 ? "you release the zombie" : "you release the golem");
+                LeaveProxy(true);
+                return;
+            }
+
+            Vector3 fwd = _ghost.forward; fwd.y = 0f;
+            Vector3 right = _ghost.right; right.y = 0f;
+            Vector3 move = Vector3.zero;
+            if (!uiBusy)
+            {
+                if (kb.wKey.isPressed) move += fwd;
+                if (kb.sKey.isPressed) move -= fwd;
+                if (kb.dKey.isPressed) move += right;
+                if (kb.aKey.isPressed) move -= right;
+            }
+            var mouse = Mouse.current;
+            bool ability = !uiBusy && mouse != null
+                && (mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame);
+            NetSync.SendRideDrive(_proxyId, move.sqrMagnitude > 0.01f ? move.normalized : Vector3.zero,
+                _ghost.forward, ability);
+
+            var zp = _proxyKind == 1 ? _proxy.GetComponent<NetZombieProxy>() : null;
+            var gp = _proxyKind == 2 ? _proxy.GetComponent<NetGolemProxy>() : null;
+            _ghost.position = zp != null ? zp.HeadAt : gp != null ? gp.SeatAt : _proxy.position;
+        }
+
+        void LeaveProxy(bool tellHost)
+        {
+            if (tellHost && _proxyId != 0) NetSync.SendRideAsk(_proxyKind, _proxyId, false);
+            SetProxyEyes(true);
+            _proxy = null;
+            _proxyId = 0;
+            _third = false;
+        }
+
+        void SetProxyEyes(bool on)
+        {
+            if (ReferenceEquals(_proxy, null) || _proxy == null) return;
+            var zp = _proxy.GetComponent<NetZombieProxy>();
+            if (zp != null) zp.ShowEyes(on);
+            var gp = _proxy.GetComponent<NetGolemProxy>();
+            if (gp != null) gp.ShowEyes(on);
+        }
+
         /// Where the local player actually LOOKS from - the ghost camera while
         /// ghosting. Distance culls measure from here, or effects around a
         /// driven zombie are culled against the corpse's parked camera.
@@ -399,17 +513,55 @@ namespace SpellyZombie
                 }
         }
 
-        /// A living player holding E over a teammate's body whose ghost is home.
+        /// A living teammate standing at a body whose ghost is home revives
+        /// it. No key: being there is the act.
         void OfferRescue()
         {
             if (ActiveScene.Name == "Lobby") return;  // lobby ghosts revive themselves
             // only the LIVING lend a hand: no ghost, no corpse
             if (IsGhost || _pilot.IsDowned || _pilot.IsDead) return;
-            var target = BodyNear(transform.position, Sides.Of(Grimoire.LocalPlayerId), 2.5f);
-            if (target == null || target == this) return;
+            var side = Sides.Of(Grimoire.LocalPlayerId);
 
-            var kb = Keyboard.current;
-            if (kb != null && kb.eKey.isPressed) target.AddGhostRevive(_pilot, Time.deltaTime);
+            var target = BodyNear(transform.position, side, 2.5f);
+            if (target != null && target != this)
+            {
+                target.AddGhostRevive(_pilot, Time.deltaTime);
+                return;
+            }
+
+            // a friend on another machine: their puppet is downed and their
+            // ghost is home. Only their machine can stand them up, so our
+            // presence travels to them in slices
+            var av = NetAvatar.RevivableNear(transform.position, side == Side.Acolyte, 2.5f);
+            if (av == null) { _remoteHold = 0f; return; }
+            _remoteHold += Time.deltaTime;
+            if (Time.time >= _remoteShine && FxLibrary.I != null)
+            {
+                _remoteShine = Time.time + 0.9f;
+                FxLibrary.Spawn(FxLibrary.I.HealShine, av.transform.position + Vector3.up * 0.35f,
+                    av.transform, 1.1f);
+            }
+            if (_remoteHold >= 0.15f)
+            {
+                NetSync.SendReviveTick(NetSync.OwnerIdOf(av.Id), _remoteHold);
+                _remoteHold = 0f;
+            }
+        }
+
+        /// A friend's presence arriving over the wire. Only this machine can
+        /// stand its own body up, and only with the ghost home.
+        public static void ApplyRemoteRevive(float dt, int rescuer)
+        {
+            if (ActiveScene.Name == "Lobby") return;
+            foreach (var g in All)
+            {
+                if (g == null || !g.IsGhost || g._ghostCam == null) continue;
+                if (!g.AtHome) return;
+                g._revive += dt / Mathf.Max(0.5f, DrawingConfig.ReviveSeconds);
+                g._lastRescuer = rescuer;
+                g.Shine();
+                return;
+            }
         }
 
         void Rise()
@@ -418,6 +570,7 @@ namespace SpellyZombie
             OwnerId = _pilot.IsLocalViewer ? Grimoire.LocalPlayerId : OwnerId;
             _homeTime = 0f;
             _revive = 0f;
+            _lastRescuer = -1;
 
             bool local = _pilot.IsLocalViewer;
             _ghost = BuildSpirit(local);
@@ -525,7 +678,7 @@ namespace SpellyZombie
             _ghost.rotation = Quaternion.Euler(_pitch, _yaw, 0f);
 
             if (_ridden != null || !ReferenceEquals(_rbRidden, null)
-                || _zombie != null) return; // driving something else
+                || _zombie != null || !ReferenceEquals(_proxy, null)) return; // driving something else
 
             Vector3 move = Vector3.zero;
             bool w = kb.wKey.isPressed;
@@ -560,9 +713,16 @@ namespace SpellyZombie
                 return;
             }
 
-            // match: needs the ghost home AND a teammate holding E on the body
+            // match: needs the ghost home AND a living teammate at the body
             if (!home) { _revive = 0f; return; }
-            if (_revive >= 1f) { _pilot.Revive(); Land(); }
+            if (_revive >= 1f)
+            {
+                // a rescuer on another machine earns it too
+                if (_lastRescuer >= 0 && _lastRescuer != Grimoire.LocalPlayerId) NetSync.SendReviveDone(_lastRescuer);
+                _lastRescuer = -1;
+                _pilot.Revive();
+                Land();
+            }
         }
 
         /// The rescuer must be ALIVE - a corpse or another ghost cannot
@@ -598,6 +758,7 @@ namespace SpellyZombie
             _rbRidden = null;
             LeaveZombie();
             LeaveGolem();
+            LeaveProxy(true);
             _visual = null;
             _third = false;
             if (!SimpleFPSController.ThirdPersonActive) XRayGlow.Hide(gameObject);
@@ -621,7 +782,8 @@ namespace SpellyZombie
             // the offset glides so the view never snaps between the views;
             // driving a zombie puts the camera inside its head
             bool inZombie = (!ReferenceEquals(_zombie, null) && _zombie != null)
-                         || (!ReferenceEquals(_golem, null) && _golem != null);
+                         || (!ReferenceEquals(_golem, null) && _golem != null)
+                         || (!ReferenceEquals(_proxy, null) && _proxy != null);
             Vector3 want = inZombie
                 ? new Vector3(0f, 0.02f, 0.18f)
                 : _third
@@ -632,6 +794,11 @@ namespace SpellyZombie
             // riding a golem the ghost sits in the body but SEES from the eyes
             bool inGolem = !ReferenceEquals(_golem, null) && _golem != null;
             Vector3 viewFrom = inGolem ? _golem.HeadAt : _ghost.position;
+            if (_proxyKind == 2 && !ReferenceEquals(_proxy, null) && _proxy != null)
+            {
+                var gp = _proxy.GetComponent<NetGolemProxy>();
+                if (gp != null) viewFrom = gp.HeadAt;
+            }
             _ghostCam.transform.SetPositionAndRotation(viewFrom + look * _camOffset, look);
         }
 

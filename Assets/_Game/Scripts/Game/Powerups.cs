@@ -80,8 +80,8 @@ namespace SpellyZombie
                 case RuneType.LuminanceDown: return RuneCardType.Luminance;
                 case RuneType.StickyUp:
                 case RuneType.StickyDown: return RuneCardType.Sticky;
-                case RuneType.DirectionAway:
-                case RuneType.DirectionToward: return RuneCardType.Direction;
+                case RuneType.Attract:
+                case RuneType.Repel: return RuneCardType.Affinity;
                 default: return RuneCardType.Density;
             }
         }

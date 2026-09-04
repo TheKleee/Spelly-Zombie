@@ -543,8 +543,11 @@ namespace SpellyZombie
                             if (mf.sharedMesh != null)
                                 mf.gameObject.AddComponent<MeshCollider>().sharedMesh = mf.sharedMesh;
 
+                    // riders: absorbables authored, or spawned by an interior, disabled inside the prop
+                    foreach (var a in go.GetComponentsInChildren<AbsorbSource>(true))
+                        if (!a.gameObject.activeSelf && !riders.Contains(a.gameObject)) riders.Add(a.gameObject);
                     foreach (var a in go.GetComponentsInChildren<Analyzable>(true))
-                        if (!a.gameObject.activeSelf) riders.Add(a.gameObject);
+                        if (!a.gameObject.activeSelf && !riders.Contains(a.gameObject)) riders.Add(a.gameObject);
 
                     // every placed doorway grows its own trail to the network
                     if (hasSpur)

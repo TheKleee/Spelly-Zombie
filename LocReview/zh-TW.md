@@ -13,8 +13,6 @@ from the zh-CN sheet.
 | door.close | close the door | 關門 | close door | |
 | pickup.weapon | pick up the weapon | 撿起武器 | pick up weapon | |
 | pickup.full | hands full, drop one first | 手上滿了，先放下一個 | hands are full, first put down one | 手上 (on the hands) is the Taiwan phrasing |
-| revive.friend | hold to revive your friend | 按住救活朋友 | hold down, save friend back to life | |
-| revive.pct | reviving…  {0}% | 救活中…  {0}% | saving to life, in progress… {0}% | |
 | chest.try | try the mystery chest | 試試神祕寶箱 | have a try at the mysterious treasure chest | 神祕 spelling is Taiwan standard |
 | perk.drink | drink {0} | 喝下{0} | drink down {0} | |
 | perk.brewed | {0} is already brewed | {0}已經煮好了 | {0} is already boiled and done | |

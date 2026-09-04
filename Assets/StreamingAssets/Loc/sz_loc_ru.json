@@ -4,8 +4,6 @@
     {"key": "door.close", "value": "закрыть дверь"},
     {"key": "pickup.weapon", "value": "подобрать оружие"},
     {"key": "pickup.full", "value": "руки заняты, сначала положи что-нибудь"},
-    {"key": "revive.friend", "value": "удерживай, чтобы оживить друга"},
-    {"key": "revive.pct", "value": "оживление…  {0}%"},
     {"key": "chest.try", "value": "открыть загадочный сундук"},
     {"key": "perk.drink", "value": "выпить {0}"},
     {"key": "perk.brewed", "value": "{0} уже сварено"},

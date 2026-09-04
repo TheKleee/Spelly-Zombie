@@ -13,6 +13,29 @@ namespace SpellyZombie
         float _targetYaw;
         Color _skin = Color.gray;
         public int OwnerId = -1; // from the snapshot, for the ghost and the achievements
+        public int Id;           // the host's instance id, the snapshot key
+
+        /// Where a rider looks from: the eyes, else the top of the body.
+        public Vector3 HeadAt
+        {
+            get
+            {
+                var eyes = GetComponentInChildren<GooglyEyes>(true);
+                return eyes != null ? eyes.transform.position
+                    : transform.position + Vector3.up * (transform.localScale.y * 0.95f);
+            }
+        }
+
+        /// Where a rider sits: inside the body, hat out the top, same as the host's golem.
+        public Vector3 SeatAt => transform.position
+            + Vector3.up * (transform.localScale.y * 0.95f - 0.22f);
+
+        public void ShowEyes(bool on)
+        {
+            var eyes = GetComponentInChildren<GooglyEyes>(true);
+            if (eyes == null) return;
+            foreach (var r in eyes.GetComponentsInChildren<Renderer>(true)) r.enabled = on;
+        }
 
         public static NetGolemProxy Build(int id, Vector3 pos, Vector3 scale, Color skin)
         {
@@ -56,6 +79,7 @@ namespace SpellyZombie
             dmg.RemoveOnDeath = false;  // never dies locally - snapshots decide
 
             var proxy = go.AddComponent<NetGolemProxy>();
+            proxy.Id = id;
             proxy._targetPos = pos;
             proxy._skin = skin;
             return proxy;

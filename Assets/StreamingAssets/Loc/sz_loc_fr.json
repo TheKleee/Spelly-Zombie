@@ -4,8 +4,6 @@
     {"key": "door.close", "value": "fermer la porte"},
     {"key": "pickup.weapon", "value": "ramasser l'arme"},
     {"key": "pickup.full", "value": "mains pleines, pose quelque chose d'abord"},
-    {"key": "revive.friend", "value": "maintiens pour ranimer ton ami"},
-    {"key": "revive.pct", "value": "réanimation…  {0}%"},
     {"key": "chest.try", "value": "tenter le coffre mystère"},
     {"key": "perk.drink", "value": "boire {0}"},
     {"key": "perk.brewed", "value": "{0} est déjà préparé"},

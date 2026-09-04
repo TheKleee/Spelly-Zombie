@@ -167,8 +167,8 @@ namespace SpellyZombie
                 case RuneType.DensityDown: p.Pressure = -power; break;
                 case RuneType.StickyUp: p.Balance = power; break;
                 case RuneType.StickyDown: p.Balance = -power; break;
-                case RuneType.DirectionAway: p.Affinity = power; break;   // attract: moves the target where it pointed
-                case RuneType.DirectionToward: p.Affinity = -power; break;// repel: swaps the force to negative
+                case RuneType.Attract: p.Affinity = power; break;   // attract: moves the target where it pointed
+                case RuneType.Repel: p.Affinity = -power; break;// repel: swaps the force to negative
                 // STATE IS WHAT A THING IS MADE OF - not how heavy it is.
                 // Pressure decides whether you rise or sink; State decides
                 // whether you are rock, water or air. A meteor is flame plus

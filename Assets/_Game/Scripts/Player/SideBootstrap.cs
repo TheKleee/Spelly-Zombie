@@ -27,8 +27,8 @@ namespace SpellyZombie
         /// (AcolyteDeeds), including the arrow and Y.
         static readonly RuneType[] WizardKit =
         {
-            RuneType.DirectionAway,     // push
-            RuneType.DirectionToward,   // pull
+            RuneType.Attract,     // push
+            RuneType.Repel,   // pull
         };
 
         static readonly RuneType[] AcolyteKit = { };

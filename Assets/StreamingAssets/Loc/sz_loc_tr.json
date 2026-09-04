@@ -4,8 +4,6 @@
     {"key": "door.close", "value": "kapıyı kapat"},
     {"key": "pickup.weapon", "value": "silahı al"},
     {"key": "pickup.full", "value": "ellerin dolu, önce bir şey bırak"},
-    {"key": "revive.friend", "value": "arkadaşını diriltmek için basılı tut"},
-    {"key": "revive.pct", "value": "diriltiliyor…  %{0}"},
     {"key": "chest.try", "value": "gizemli sandığı dene"},
     {"key": "perk.drink", "value": "{0} iç"},
     {"key": "perk.brewed", "value": "{0} zaten hazır"},

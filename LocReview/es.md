@@ -10,8 +10,6 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | door.close | close the door | cerrar la puerta | close the door | |
 | pickup.weapon | pick up the weapon | coger el arma | take the weapon | coger is normal in Spain; in Latin America it is vulgar, this file is Spain Spanish |
 | pickup.full | hands full, drop one first | manos llenas, suelta algo primero | hands full, let go of something first | |
-| revive.friend | hold to revive your friend | mantén pulsado para revivir a tu amigo | keep pressed to revive your friend | |
-| revive.pct | reviving…  {0}% | reviviendo…  {0}% | reviving… {0}% | |
 | chest.try | try the mystery chest | probar el cofre misterioso | try the mysterious chest | |
 | perk.drink | drink {0} | beber {0} | drink {0} | |
 | perk.brewed | {0} is already brewed | {0} ya está preparado | {0} is already prepared | the potion word; "brewed" sounds like beer |

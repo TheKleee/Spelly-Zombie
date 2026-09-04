@@ -497,7 +497,7 @@ namespace SpellyZombie
             (RuneType.DensityUp, "Compress"), (RuneType.DensityDown, "Spread"),
             (RuneType.StickyUp, "Sticky"),    (RuneType.StickyDown, "Slick"),
             (RuneType.StateSolid, "Solid"),   (RuneType.StateLiquid, "Liquid"),
-            (RuneType.DirectionAway, "Attract"), (RuneType.DirectionToward, "Repel"),
+            (RuneType.Attract, "Attract"), (RuneType.Repel, "Repel"),
         };
 
         /// ★ A LIST, NOT A CHECKLIST. The same rune can appear more than once -

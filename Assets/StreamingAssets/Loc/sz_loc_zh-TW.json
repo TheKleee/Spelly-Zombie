@@ -4,8 +4,6 @@
     {"key": "door.close", "value": "關門"},
     {"key": "pickup.weapon", "value": "撿起武器"},
     {"key": "pickup.full", "value": "手上滿了，先放下一個"},
-    {"key": "revive.friend", "value": "按住救活朋友"},
-    {"key": "revive.pct", "value": "救活中…  {0}%"},
     {"key": "chest.try", "value": "試試神祕寶箱"},
     {"key": "perk.drink", "value": "喝下{0}"},
     {"key": "perk.brewed", "value": "{0}已經煮好了"},

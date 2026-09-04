@@ -11,8 +11,6 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | door.close | close the door | 关门 | close door | |
 | pickup.weapon | pick up the weapon | 捡起武器 | pick up weapon | |
 | pickup.full | hands full, drop one first | 手里满了，先放下一个 | hands are full, first put down one | |
-| revive.friend | hold to revive your friend | 按住救活朋友 | hold down, save friend back to life | 救活 = rescue back to life |
-| revive.pct | reviving…  {0}% | 救活中…  {0}% | saving to life, in progress… {0}% | |
 | chest.try | try the mystery chest | 试试神秘宝箱 | have a try at the mysterious treasure chest | doubled verb = casual "give it a try" |
 | perk.drink | drink {0} | 喝下{0} | drink down {0} | |
 | perk.brewed | {0} is already brewed | {0}已经煮好了 | {0} is already boiled and done | 煮 = boil, how a potion is brewed |

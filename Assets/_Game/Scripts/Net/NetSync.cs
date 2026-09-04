@@ -25,6 +25,43 @@ namespace SpellyZombie
             public bool Acolyte; // ghost tint: green acolyte / wizard ink
         }
 
+        public struct ReviveTickMsg : IBroadcast // rescuer, host, then the downed owner: a living friend stands at their body
+        {
+            public int Rescuer;
+            public int Target;
+            public float Dt;
+        }
+
+        public struct ReviveDoneMsg : IBroadcast // the revived owner, host, then the rescuer
+        {
+            public int Rescuer;
+        }
+
+        public struct RideAskMsg : IBroadcast // client to host: my ghost takes this creature (On) or lets go
+        {
+            public int Owner;
+            public byte Kind; // 1 zombie, 2 golem
+            public int Id;    // the host's instance id, the one the snapshots carry
+            public bool On;
+        }
+
+        public struct RideGiveMsg : IBroadcast // host to all: the verdict, or a forced release
+        {
+            public int Owner;
+            public byte Kind;
+            public int Id;
+            public bool On;
+        }
+
+        public struct RideDriveMsg : IBroadcast // rider to host, unreliable: this frame's reins
+        {
+            public int Owner;
+            public int Id;
+            public Vector3 Move;
+            public Vector3 Look;
+            public bool Ability;
+        }
+
         public struct ReadyMsg : IBroadcast // client  host: lobby ready toggle
         {
             public bool Ready;
@@ -165,6 +202,7 @@ namespace SpellyZombie
             public float[] Yaw;
             public byte[] Kinds;
             public Vector3[] Scale;   // a summon's size is not in its kind
+            public int[] Owner;       // the acolyte who drew it, -1 for a wild one
         }
 
         public struct GolemSnap : IBroadcast // host  clients, 10 Hz unreliable
@@ -609,6 +647,7 @@ namespace SpellyZombie
                     _zombieTimer = 0.1f;
                     SendZombieSnap();
                     SendGolemSnap();   // nature's own, same beat
+                    TickRiders();      // ridden bodies that died or tumbled let go
                     SendMatterSnap();   // host-simulated matter (netcode §3)
                     SendParticleSnap(); // host-simulated particles (netcode §3)
                     SendPropSnap();     // lifted/torn scene props (netcode §4)
@@ -630,6 +669,7 @@ namespace SpellyZombie
         float[] _snapYaw = System.Array.Empty<float>();
         byte[] _snapKinds = System.Array.Empty<byte>();
         Vector3[] _snapScale = System.Array.Empty<Vector3>();
+        int[] _snapOwner = System.Array.Empty<int>();
         int[] _gIds = System.Array.Empty<int>();
         Vector3[] _gPos = System.Array.Empty<Vector3>();
         float[] _gYaw = System.Array.Empty<float>();
@@ -647,6 +687,7 @@ namespace SpellyZombie
                 _snapYaw = new float[n];
                 _snapKinds = new byte[n];
                 _snapScale = new Vector3[n];
+                _snapOwner = new int[n];
             }
             for (int i = 0; i < n; i++)
             {
@@ -654,7 +695,7 @@ namespace SpellyZombie
                 if (z == null) // zero the slot - reused buffers would otherwise leak a stale zombie
                 {
                     _snapIds[i] = 0; _snapPos[i] = default; _snapYaw[i] = 0f;
-                    _snapKinds[i] = 0; _snapScale[i] = Vector3.one;
+                    _snapKinds[i] = 0; _snapScale[i] = Vector3.one; _snapOwner[i] = -1;
                     continue;
                 }
                 _snapIds[i] = z.gameObject.GetInstanceID();
@@ -666,9 +707,10 @@ namespace SpellyZombie
                 var sz = z.GetComponent<SummonedZombie>();
                 _snapKinds[i] = (byte)(sz != null && sz.Ranged ? 1 : 0);
                 _snapScale[i] = z.transform.localScale;
+                _snapOwner[i] = sz != null ? sz.SummonedBy : -1;
             }
             var snap = new ZombieSnap { Ids = _snapIds, Pos = _snapPos, Yaw = _snapYaw,
-                Kinds = _snapKinds, Scale = _snapScale };
+                Kinds = _snapKinds, Scale = _snapScale, Owner = _snapOwner };
             InstanceFinder.ServerManager.Broadcast(snap, true, Channel.Unreliable);
         }
 
@@ -941,6 +983,214 @@ namespace SpellyZombie
             ReleaseHeldBody(h, impulse);
         }
 
+        // ---------------------------------------------- revive over the wire --
+        /// A living player standing at a remote friend's body. Only the owner
+        /// of that body can stand it up, so the presence travels to them.
+        public static void SendReviveTick(int target, float dt)
+        {
+            if (_instance == null || !NetGame.Connected || target < 0 || dt <= 0f) return;
+            var msg = new ReviveTickMsg { Rescuer = Grimoire.LocalPlayerId, Target = target, Dt = dt };
+            if (NetGame.IsHost) _instance.RouteReviveTick(msg);
+            else InstanceFinder.ClientManager.Broadcast(msg);
+        }
+
+        void OnReviveTickServer(NetworkConnection conn, ReviveTickMsg msg, Channel channel)
+        {
+            if (msg.Rescuer != OwnerIdOf(conn.ClientId)) return; // you rescue as yourself only
+            RouteReviveTick(msg);
+        }
+
+        void RouteReviveTick(ReviveTickMsg msg)
+        {
+            if (msg.Target == Grimoire.LocalPlayerId) GhostState.ApplyRemoteRevive(msg.Dt, msg.Rescuer);
+            else InstanceFinder.ServerManager.Broadcast(msg);
+        }
+
+        void OnReviveTickClient(ReviveTickMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            if (msg.Target == Grimoire.LocalPlayerId) GhostState.ApplyRemoteRevive(msg.Dt, msg.Rescuer);
+        }
+
+        /// The revived owner tells the rescuer it worked.
+        public static void SendReviveDone(int rescuer)
+        {
+            if (_instance == null || !NetGame.Connected || rescuer < 0) return;
+            var msg = new ReviveDoneMsg { Rescuer = rescuer };
+            if (NetGame.IsHost) _instance.RouteReviveDone(msg);
+            else InstanceFinder.ClientManager.Broadcast(msg);
+        }
+
+        void OnReviveDoneServer(NetworkConnection conn, ReviveDoneMsg msg, Channel channel) => RouteReviveDone(msg);
+
+        void RouteReviveDone(ReviveDoneMsg msg)
+        {
+            if (msg.Rescuer == Grimoire.LocalPlayerId) Achievements.Unlock(Achievements.ReviveFriend);
+            else InstanceFinder.ServerManager.Broadcast(msg);
+        }
+
+        void OnReviveDoneClient(ReviveDoneMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            if (msg.Rescuer == Grimoire.LocalPlayerId) Achievements.Unlock(Achievements.ReviveFriend);
+        }
+
+        // ------------------------------------------- ghosts riding creatures --
+        // The host owns every zombie and golem: a client ghost asks to ride,
+        // the host says yes or no, and the reins arrive as intents.
+        readonly Dictionary<int, int> _riders = new Dictionary<int, int>(); // creature id, owner
+        readonly List<int> _rideGone = new List<int>();
+
+        static Zombie FindZombie(int id)
+        {
+            foreach (var z in Zombie.All)
+                if (z != null && z.gameObject.GetInstanceID() == id) return z;
+            return null;
+        }
+
+        static Golem FindGolem(int id)
+        {
+            foreach (var g in Golem.All)
+                if (g != null && g.gameObject.GetInstanceID() == id) return g;
+            return null;
+        }
+
+        public static void SendRideAsk(byte kind, int id, bool on)
+        {
+            if (_instance == null || !NetGame.Connected || NetGame.IsHost) return;
+            InstanceFinder.ClientManager.Broadcast(new RideAskMsg
+                { Owner = Grimoire.LocalPlayerId, Kind = kind, Id = id, On = on });
+        }
+
+        public static void SendRideDrive(int id, Vector3 move, Vector3 look, bool ability)
+        {
+            if (_instance == null || !NetGame.Connected || NetGame.IsHost) return;
+            InstanceFinder.ClientManager.Broadcast(new RideDriveMsg
+                { Owner = Grimoire.LocalPlayerId, Id = id, Move = move, Look = look, Ability = ability },
+                Channel.Unreliable);
+        }
+
+        /// The client-side stand-in of a creature the host named.
+        public static Transform RideProxy(byte kind, int id)
+        {
+            if (_instance == null) return null;
+            if (kind == 1 && _instance._proxies.TryGetValue(id, out var z) && z != null) return z.transform;
+            if (kind == 2 && _instance._golems.TryGetValue(id, out var g) && g != null) return g.transform;
+            return null;
+        }
+
+        void OnRideAskServer(NetworkConnection conn, RideAskMsg msg, Channel channel)
+        {
+            if (msg.Owner != OwnerIdOf(conn.ClientId)) return;
+            if (!msg.On) { ReleaseRide(msg.Id, msg.Owner); return; }
+            bool ok = false;
+            if (msg.Kind == 1)
+            {
+                var z = FindZombie(msg.Id);
+                var mine = z != null ? z.GetComponent<SummonedZombie>() : null;
+                var dmg = z != null ? z.GetComponent<Element>() : null;
+                if (z != null && !z.Possessed && mine != null && (dmg == null || dmg.Health > 0f)
+                    && Sides.Of(mine.SummonedBy) == Side.Acolyte && Sides.Of(msg.Owner) == Side.Acolyte)
+                {
+                    z.PossessBy(true);
+                    ok = true;
+                }
+            }
+            else if (msg.Kind == 2)
+            {
+                var g = FindGolem(msg.Id);
+                if (g != null && !g.Possessed && g.Alive && g.OwnerId >= 0
+                    && Sides.Of(g.OwnerId) == Sides.Of(msg.Owner))
+                {
+                    g.PossessBy(true);
+                    ok = true;
+                }
+            }
+            if (!ok) return; // a silent no: the ghost keeps flying
+            _riders[msg.Id] = msg.Owner;
+            InstanceFinder.ServerManager.Broadcast(new RideGiveMsg
+                { Owner = msg.Owner, Kind = msg.Kind, Id = msg.Id, On = true });
+        }
+
+        void ReleaseRide(int id, int owner)
+        {
+            if (!_riders.TryGetValue(id, out var who) || who != owner) return;
+            _riders.Remove(id);
+            var z = FindZombie(id);
+            if (z != null) z.PossessBy(false);
+            var g = FindGolem(id);
+            if (g != null) g.PossessBy(false);
+            InstanceFinder.ServerManager.Broadcast(new RideGiveMsg
+                { Owner = owner, Kind = (byte)(z != null ? 1 : 2), Id = id, On = false });
+        }
+
+        void OnRideDriveServer(NetworkConnection conn, RideDriveMsg msg, Channel channel)
+        {
+            if (msg.Owner != OwnerIdOf(conn.ClientId)) return;
+            if (!_riders.TryGetValue(msg.Id, out var who) || who != msg.Owner) return;
+            Vector3 look = msg.Look.sqrMagnitude > 0.01f ? msg.Look.normalized : Vector3.forward;
+            Vector3 flat = look; flat.y = 0f;
+            Vector3 move = msg.Move; move.y = 0f;
+            bool moving = move.sqrMagnitude > 0.01f;
+            var z = FindZombie(msg.Id);
+            if (z != null)
+            {
+                var brain = z.GetComponent<ZombieBrain>();
+                if (brain != null)
+                {
+                    brain.MoveDir = moving ? move.normalized : Vector3.zero;
+                    brain.SpeedScale = moving ? 1f : 0f;
+                }
+                if (flat.sqrMagnitude > 0.01f) z.PossessedFace = flat.normalized;
+                if (msg.Ability) z.GhostAbility(look);
+                return;
+            }
+            var g = FindGolem(msg.Id);
+            if (g != null)
+            {
+                g.PossessedMove = moving ? move.normalized : Vector3.zero;
+                if (flat.sqrMagnitude > 0.01f) g.PossessedFace = flat.normalized;
+                if (msg.Ability) g.GhostAbility(look);
+            }
+        }
+
+        /// Host, on the snapshot beat: a ridden body that died or tumbled
+        /// throws its rider, the rule the host's own ghost already lives by.
+        void TickRiders()
+        {
+            if (_riders.Count == 0) return;
+            _rideGone.Clear();
+            foreach (var kv in _riders)
+            {
+                var z = FindZombie(kv.Key);
+                if (z != null)
+                {
+                    var body = z.GetComponent<Creature>();
+                    var dmg = z.GetComponent<Element>();
+                    bool dead = dmg != null && dmg.Health <= 0f;
+                    if (dead || (body != null && (body.Slipping || body.GettingUp))) _rideGone.Add(kv.Key);
+                    continue;
+                }
+                var g = FindGolem(kv.Key);
+                if (g == null || !g.Alive) _rideGone.Add(kv.Key);
+            }
+            foreach (int id in _rideGone)
+                if (_riders.TryGetValue(id, out var owner)) ReleaseRide(id, owner);
+        }
+
+        void ReleaseRidesOf(int owner)
+        {
+            _rideGone.Clear();
+            foreach (var kv in _riders) if (kv.Value == owner) _rideGone.Add(kv.Key);
+            foreach (int id in _rideGone) ReleaseRide(id, owner);
+        }
+
+        void OnRideGiveClient(RideGiveMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            GhostState.OnRideGive(msg.Owner, msg.Kind, msg.Id, msg.On);
+        }
+
         void RegisterOnce()
         {
             if (_registered) return;
@@ -979,6 +1229,13 @@ namespace SpellyZombie
             InstanceFinder.ClientManager.RegisterBroadcast<HealthMsg>(OnHealthClient);
             InstanceFinder.ClientManager.RegisterBroadcast<StateMsg>(OnElementStateClient);
             InstanceFinder.ClientManager.RegisterBroadcast<MarkMsg>(OnMarkClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<ReviveTickMsg>(OnReviveTickServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<ReviveTickMsg>(OnReviveTickClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<ReviveDoneMsg>(OnReviveDoneServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<ReviveDoneMsg>(OnReviveDoneClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<RideAskMsg>(OnRideAskServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<RideGiveMsg>(OnRideGiveClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<RideDriveMsg>(OnRideDriveServer);
 
             // host-authoritative channels (netcode §1-§4)
             InstanceFinder.ServerManager.RegisterBroadcast<UnlockMsg>(OnUnlockServer);
@@ -1332,7 +1589,7 @@ namespace SpellyZombie
                 strengths[i] = g.Strength;
                 centers[i] = g.Centroid();
                 sizes[i] = g.WorldBounds().size.magnitude * 0.5f;
-                dirs[i] = (g.Rune == RuneType.DirectionAway || g.Rune == RuneType.DirectionToward)
+                dirs[i] = (g.Rune == RuneType.Attract || g.Rune == RuneType.Repel)
                     ? Spell.ArrowDirFor(g, seal.PlaneNormal, g.Rune)
                     : seal.PlaneNormal;
                 i++;
@@ -1556,6 +1813,7 @@ namespace SpellyZombie
             }
             if (args.ConnectionState != RemoteConnectionState.Stopped) return;
             RemoveAvatar(conn.ClientId);
+            ReleaseRidesOf(OwnerIdOf(conn.ClientId)); // leavers climb off
             ReleaseHold(conn.ClientId, Vector3.zero); // leavers let go (netcode §4)
             MatchLobby.SetRemoteReady(conn.ClientId, false); // leavers aren't ready
             InstanceFinder.ServerManager.Broadcast(new PlayerLeft { Id = conn.ClientId });
@@ -1803,6 +2061,7 @@ namespace SpellyZombie
                     _proxies[id] = proxy;
                 }
                 proxy.Target(msg.Pos[i], msg.Yaw[i]);
+                proxy.OwnerId = msg.Owner != null && i < msg.Owner.Length ? msg.Owner[i] : -1;
             }
 
             // gone from the host's list = dead; remove the proxy
@@ -2647,6 +2906,26 @@ namespace SpellyZombie
 
         public bool Downed => (_flags & 1) != 0;
 
+        bool _acolyte;
+        public bool Acolyte => _acolyte;
+
+        /// Their ghost is flying and hovering at its own body: the revive law's home.
+        public bool GhostHome => _ghost != null && (_ghostTarget - _targetPos).sqrMagnitude <= 2.5f * 2.5f;
+
+        /// The nearest downed friend whose ghost is home, for a living rescuer.
+        public static NetAvatar RevivableNear(Vector3 at, bool acolyte, float range)
+        {
+            NetAvatar best = null;
+            float bestSqr = range * range;
+            foreach (var a in All)
+            {
+                if (a == null || !a.Downed || !a.GhostHome || a._acolyte != acolyte) continue;
+                float d = (a.transform.position - at).sqrMagnitude;
+                if (d < bestSqr) { bestSqr = d; best = a; }
+            }
+            return best;
+        }
+
         public static NetAvatar Build(int id)
         {
             GameObject go;
@@ -2776,6 +3055,7 @@ namespace SpellyZombie
         /// local player flies (GhostState.SharedPrefab) - nothing built here.
         public void TargetGhost(bool flying, Vector3 at, float yaw, bool acolyte)
         {
+            _acolyte = acolyte;
             _ghostTarget = at;
             _ghostYaw = yaw;
 

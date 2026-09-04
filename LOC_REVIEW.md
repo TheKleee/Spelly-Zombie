@@ -3,7 +3,7 @@
 Twelve languages, Meccha Chameleon's set minus Arabic (dropped Sep 4 2026).
 English is compiled into `Assets/_Game/Scripts/Loc.cs`. Every other language
 is one JSON file in `Assets/StreamingAssets/Loc/` and one review sheet in
-`LocReview/`. Same 127 keys everywhere, checked by script and by the menu
+`LocReview/`. Same 129 keys everywhere, checked by script and by the menu
 `Spelly Zombie/Localization/Check translations for missing keys`.
 
 ## How to verify a line
@@ -61,14 +61,14 @@ Every language speaks to the player like a friend, not a manual.
 
 | language | strings | font | reviewed by Marko |
 |---|---|---|---|
-| ja | 127 | Noto Sans JP (assign on UISkin) | |
-| zh-CN | 127 | Noto Sans SC (assign on UISkin) | |
-| zh-TW | 127 | Noto Sans TC (assign on UISkin) | |
-| ko | 127 | Noto Sans KR (assign on UISkin) | |
-| es | 127 | skin font | |
-| pt-BR | 127 | skin font | |
-| fr | 127 | skin font | |
-| de | 127 | skin font | |
-| it | 127 | skin font | |
-| ru | 127 | skin font, needs Cyrillic glyphs (OtherFont slot if the hand-drawn font lacks them) | |
-| tr | 127 | skin font, needs ı ğ ş İ glyphs | |
+| ja | 129 | Noto Sans JP (assign on UISkin) | |
+| zh-CN | 129 | Noto Sans SC (assign on UISkin) | |
+| zh-TW | 129 | Noto Sans TC (assign on UISkin) | |
+| ko | 129 | Noto Sans KR (assign on UISkin) | |
+| es | 129 | skin font | |
+| pt-BR | 129 | skin font | |
+| fr | 129 | skin font | |
+| de | 129 | skin font | |
+| it | 129 | skin font | |
+| ru | 129 | skin font, needs Cyrillic glyphs (OtherFont slot if the hand-drawn font lacks them) | |
+| tr | 129 | skin font, needs ı ğ ş İ glyphs | |

@@ -29,7 +29,7 @@ namespace SpellyZombie
             2 => value > 0 ? RuneType.DensityUp : RuneType.DensityDown,
             3 => value > 0 ? RuneType.StickyUp : RuneType.StickyDown,
             4 => value > 0 ? RuneType.StateSolid : RuneType.StateLiquid,
-            _ => value > 0 ? RuneType.DirectionAway : RuneType.DirectionToward,
+            _ => value > 0 ? RuneType.Attract : RuneType.Repel,
         };
 
         /// The teach order: authored list as-is, or the axes ranked by how

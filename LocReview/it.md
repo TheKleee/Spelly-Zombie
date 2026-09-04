@@ -10,8 +10,6 @@ lobby.
 | door.close | close the door | chiudi la porta | close the door | |
 | pickup.weapon | pick up the weapon | raccogli l'arma | pick up the weapon | |
 | pickup.full | hands full, drop one first | mani piene, posa qualcosa prima | hands full, put something down first | |
-| revive.friend | hold to revive your friend | tieni premuto per rianimare il tuo amico | keep pressed to revive your friend | |
-| revive.pct | reviving…  {0}% | rianimazione…  {0}% | revival… {0}% | |
 | chest.try | try the mystery chest | prova il baule misterioso | try the mysterious trunk | baule = a big chest |
 | perk.drink | drink {0} | bevi {0} | drink {0} | |
 | perk.brewed | {0} is already brewed | {0} è già pronto | {0} is already ready | "brewed" dropped |

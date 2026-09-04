@@ -10,8 +10,6 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | door.close | close the door | 문 닫기 | door closing | |
 | pickup.weapon | pick up the weapon | 무기 줍기 | weapon picking up | |
 | pickup.full | hands full, drop one first | 두 손이 꽉 찼어. 먼저 하나 내려놔 | both hands are packed full. first put one down | 해체 level, friendly |
-| revive.friend | hold to revive your friend | 길게 눌러 친구 살리기 | long press, friend saving | 살리다 = bring back to life, everyday word |
-| revive.pct | reviving…  {0}% | 살리는 중…  {0}% | saving, in progress… {0}% | |
 | chest.try | try the mystery chest | 수수께끼 상자 열어보기 | riddle box, try opening | 수수께끼 = riddle, mystery |
 | perk.drink | drink {0} | {0} 마시기 | {0} drinking | |
 | perk.brewed | {0} is already brewed | {0}은(는) 이미 끓여 놨어 | {0} is already boiled and set aside | 은(는) covers both particle forms because {0} is unknown; 끓이다 = brew a potion |

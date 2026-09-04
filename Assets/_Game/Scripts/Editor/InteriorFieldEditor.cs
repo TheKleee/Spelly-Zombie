@@ -72,7 +72,7 @@ namespace SpellyZombie
             var root = new GameObject(InteriorField.PreviewName);
             root.hideFlags = HideFlags.DontSave;
             root.transform.SetParent(field.transform, false);
-            try { field.Fill(new System.Random(field.PreviewSeed), root.transform); }
+            try { field.Fill(new System.Random(field.PreviewSeed), root.transform, false); }
             finally
             {
                 foreach (var t in root.GetComponentsInChildren<Transform>(true))

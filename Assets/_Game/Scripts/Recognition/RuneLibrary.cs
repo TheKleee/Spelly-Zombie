@@ -16,8 +16,8 @@ namespace SpellyZombie
         LuminanceDown = 6,
         StickyUp = 7,
         StickyDown = 8,
-        DirectionAway = 9,   // arrow pointing away from the surface
-        DirectionToward = 10,// Y pulling toward the surface
+        Attract = 9,   // the hook: stem up, step right, V notch at the top. pulls
+        Repel = 10,// the arrow: stem up, then the head. pushes
         DensityUp = 11,
         DensityDown = 12
     }
@@ -26,7 +26,7 @@ namespace SpellyZombie
     /// teaches heat-up AND heat-down at once).
     public enum RuneCardType
     {
-        Heat, State, Luminance, Sticky, Direction, Density
+        Heat, State, Luminance, Sticky, Affinity, Density
     }
 
     /// One turn-sequence descriptor per rune (see RuneGraph): a rune reads
@@ -283,7 +283,7 @@ namespace SpellyZombie
         public static readonly RuneType[] AcolyteKit =
         {
             RuneType.StateSolid, RuneType.StateLiquid,
-            RuneType.DirectionAway, RuneType.DirectionToward
+            RuneType.Attract, RuneType.Repel
         };
 
         /// Rune Studio is the practice hall: the whole alphabet shows there
@@ -311,8 +311,8 @@ namespace SpellyZombie
                 case RuneType.LuminanceDown: return RuneCardType.Luminance;
                 case RuneType.StickyUp:
                 case RuneType.StickyDown: return RuneCardType.Sticky;
-                case RuneType.DirectionAway:
-                case RuneType.DirectionToward: return RuneCardType.Direction;
+                case RuneType.Attract:
+                case RuneType.Repel: return RuneCardType.Affinity;
                 default: return RuneCardType.Density;
             }
         }
@@ -326,7 +326,7 @@ namespace SpellyZombie
                 case RuneCardType.State: return "State: bracket open at the bottom = SOLID; open at the top = LIQUID.";
                 case RuneCardType.Luminance: return "Luminance: the star brightens; the collapsed star darkens.";
                 case RuneCardType.Sticky: return "Sticky: the slope-hook grips; its mirror slides.";
-                case RuneCardType.Direction: return "Direction: the arrow pushes the way you drew it; the Y pulls.";
+                case RuneCardType.Affinity: return "Affinity: the arrow pushes the way you drew it; the hook pulls.";
                 default: return "Density: small bracket open-down compresses; open-up spreads.";
             }
         }
@@ -467,8 +467,8 @@ namespace SpellyZombie
                 case RuneType.LuminanceDown: return "🌚";
                 case RuneType.StickyUp: return "🍯";
                 case RuneType.StickyDown: return "🍌";
-                case RuneType.DirectionAway: return "🧲";
-                case RuneType.DirectionToward: return "🚀";
+                case RuneType.Attract: return "🧲";
+                case RuneType.Repel: return "🚀";
                 case RuneType.DensityUp: return "🤏";
                 case RuneType.DensityDown: return "💨";
                 default: return "?";
@@ -532,8 +532,8 @@ namespace SpellyZombie
                 case RuneType.LuminanceDown: return "DARK";
                 case RuneType.StickyUp: return "GRIP";
                 case RuneType.StickyDown: return "SLICK";
-                case RuneType.DirectionAway: return "ATTRACT";
-                case RuneType.DirectionToward: return "REPEL";
+                case RuneType.Attract: return "ATTRACT";
+                case RuneType.Repel: return "REPEL";
                 case RuneType.DensityUp: return "COMPRESS";
                 case RuneType.DensityDown: return "SPREAD";
                 default: return "?";
@@ -544,7 +544,7 @@ namespace SpellyZombie
         {
             RuneType.HeatUp, RuneType.HeatDown, RuneType.StateSolid, RuneType.StateLiquid,
             RuneType.LuminanceUp, RuneType.LuminanceDown, RuneType.StickyUp, RuneType.StickyDown,
-            RuneType.DirectionAway, RuneType.DirectionToward, RuneType.DensityUp, RuneType.DensityDown
+            RuneType.Attract, RuneType.Repel, RuneType.DensityUp, RuneType.DensityDown
         };
 
         /// True while the live matcher holds samples learned this round that
@@ -1225,10 +1225,10 @@ namespace SpellyZombie
                 { RuneType.StickyUp, P(5,20, 70,75, 72,30, 30,25) },
                 // mirrored
                 { RuneType.StickyDown, P(95,20, 30,78, 28,30, 70,25) },
+                // hook: stem up, step right, up, V notch back across the top
+                { RuneType.Attract, P(10,5, 10,45, 90,45, 90,95, 55,75, 15,95) },
                 // arrow: shaft up, barb left, back to tip, barb right
-                { RuneType.DirectionAway, P(50,10, 50,80, 35,60, 50,80, 65,60) },
-                // Y: stem up, branch left, back to fork, branch right
-                { RuneType.DirectionToward, P(50,10, 50,50, 30,80, 50,50, 70,80) },
+                { RuneType.Repel, P(50,10, 50,80, 35,60, 50,80, 65,60) },
                 // small square bracket open at the bottom
                 { RuneType.DensityUp, P(25,25, 25,70, 75,70, 75,25, 58,25) },
                 // small square bracket open at the top

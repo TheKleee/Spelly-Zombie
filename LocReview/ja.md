@@ -12,8 +12,6 @@ lines lose their emphasis on purpose.
 | door.close | close the door | ドアを閉める | door, close | |
 | pickup.weapon | pick up the weapon | 武器を拾う | weapon, pick up | |
 | pickup.full | hands full, drop one first | 両手がふさがっている。先に何か置いて | both hands are occupied. first, put something (down) | 置いて = casual request form |
-| revive.friend | hold to revive your friend | 長押しで仲間を生き返らせる | by long press, companion, bring back to life | 仲間 (companion, teammate) instead of 友達 (friend); 生き返らせる is the everyday word, no medical term |
-| revive.pct | reviving…  {0}% | 生き返らせ中…  {0}% | bringing back to life, in progress… {0}% | 中 = in progress |
 | chest.try | try the mystery chest | なぞの宝箱をためす | the mystery treasure chest, try | なぞ in kana for kids |
 | perk.drink | drink {0} | {0}を飲む | {0}, drink | |
 | perk.brewed | {0} is already brewed | {0}はもう作ってある | {0} is already made and ready | 作ってある = made and sitting ready; "brewed" (醸造) sounds like beer |
