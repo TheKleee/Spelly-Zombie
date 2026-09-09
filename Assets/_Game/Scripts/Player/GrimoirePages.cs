@@ -37,6 +37,11 @@ namespace SpellyZombie
         /// consumed once.
         public static void RequestOpen() => _popRequested = true;
 
+        /// At the easel the wheel has two jobs: on the floating book it turns
+        /// pages, anywhere else it zooms the orbit. True while it is on the book.
+        public static bool WheelOnBook { get; private set; }
+        static readonly List<Renderer> _rendBuf = new List<Renderer>();
+
         /// Has the grimoire ever been opened this session? ModeGuide waits on this.
         public static bool TaughtOpen => _taughtOpen;
         bool _open;
@@ -49,9 +54,22 @@ namespace SpellyZombie
         int _writingShown = int.MinValue;
         readonly List<GameObject> _content = new List<GameObject>();
         Transform _anchor;
-        Animator _flip;
-        Transform _pageBone;      // the Page_Left - the clip displaces it
+        [Header("COVER SWING")]
+        [Tooltip("Page_Left local rotation with the book open, degrees.")]
+        public Vector3 PageOpenEuler = Vector3.zero;
+        [Tooltip("Page_Left local rotation with the book closed, degrees.")]
+        public Vector3 PageClosedEuler = new Vector3(30.6f, -170.5f, -176.2f);
+        [Tooltip("Seconds the cover takes to swing.")]
+        public float PageSwingSeconds = 0.25f;
+
+        Transform _pageBone;      // the Page_Left: its rotation is the whole open/close
         Vector3 _pageBoneRest;
+        float _pageK;             // 0 closed, 1 open
+        bool _pageOpen;
+        bool _tucked;             // full hands: the book waits at the belt
+        Transform _handParent;
+        Vector3 _handLocalPos;
+        Quaternion _handLocalRot;
 
         // the placeholder book's page surface floats 0.028 above its root;
         // the PageAnchor sits ON the paper, so content barely lifts
@@ -66,13 +84,63 @@ namespace SpellyZombie
             foreach (var t in GetComponentsInChildren<Transform>(true))
                 if (t.name == "PageAnchor") { _anchor = t; break; }
             if (_anchor == null) _anchor = transform;
-            _flip = GetComponentInChildren<Animator>();
+            // the cover is swung by code; the model's animator never writes again
+            var flip = GetComponentInChildren<Animator>();
+            if (flip != null) flip.enabled = false;
 
-            // BookClosed keys Page_Left's position and BookOpen keys none;
-            // Unity never resets an unkeyed property, so remember the bone's
-            // rest position before any clip plays and restore it while open
+            // the bone's position is structural, only its rotation moves
             foreach (var t in GetComponentsInChildren<Transform>(true))
                 if (t.name == "Page_Left") { _pageBone = t; _pageBoneRest = t.localPosition; break; }
+            ApplyCover();
+        }
+
+        void ApplyCover()
+        {
+            if (_pageBone == null) return;
+            _pageBone.localRotation = Quaternion.Slerp(Quaternion.Euler(PageClosedEuler),
+                Quaternion.Euler(PageOpenEuler), Mathf.SmoothStep(0f, 1f, _pageK));
+            _pageBone.localPosition = _pageBoneRest;
+        }
+
+        void LateUpdate()
+        {
+            if (!_remote) TuckOrDraw();
+            _pageK = Mathf.MoveTowards(_pageK, _pageOpen ? 1f : 0f,
+                Time.deltaTime / Mathf.Max(0.01f, PageSwingSeconds));
+            ApplyCover();
+        }
+
+        /// Full hands: the book waits at the belt socket, closed. Empty hands
+        /// bring it back to the palm exactly as it sat there.
+        void TuckOrDraw()
+        {
+            if (SelfPaint.FloatingBook == transform) return; // the easel owns it
+            bool full = HandGrab.LocalHolding || InkRuneStone.Carried != null;
+            if (full == _tucked) return;
+            if (full)
+            {
+                var rig = GetComponentInParent<CharacterRig>();
+                var belt = rig != null ? rig.BookSocket : null;
+                if (belt == null) return;
+                _handParent = transform.parent;
+                _handLocalPos = transform.localPosition;
+                _handLocalRot = transform.localRotation;
+                transform.SetParent(belt, false);
+                transform.localPosition = Vector3.zero;
+                transform.localRotation = Quaternion.identity;
+                SetArrows(false);
+                _tucked = true;
+            }
+            else
+            {
+                if (_handParent != null)
+                {
+                    transform.SetParent(_handParent, false);
+                    transform.localPosition = _handLocalPos;
+                    transform.localRotation = _handLocalRot;
+                }
+                _tucked = false;
+            }
         }
 
         void Start()
@@ -87,7 +155,13 @@ namespace SpellyZombie
 
         void Update()
         {
-            if (PoseStudio.IsOpen || GameMenu.IsOpen || UIKit.Typing) return;
+            if (_remote || PoseStudio.IsOpen || GameMenu.IsOpen || UIKit.Typing) return;
+            // at the belt the book is closed and G belongs to the load
+            if (_tucked)
+            {
+                if (_open) { _open = false; BookOpen = false; SetCoverOpen(false); ResetPages(); }
+                return;
+            }
             var kb = Keyboard.current;
             if (kb == null) return;
 
@@ -107,30 +181,17 @@ namespace SpellyZombie
                 BookOpen = _open;
                 if (_open) _owner = this;
                 _taughtOpen = true;
-                SetAnimatorOpen(_open);
+                SetCoverOpen(_open);
                 Juice.Chime(transform.position);
                 if (_open)
                 {
                     _cardsShown = int.MinValue; // force a fresh build below
                 }
-                else
-                {
-                    ClearContent();
-                    _pendingFlip = false;
-                    _autoTarget = -1;
-                    PageRune = RuneType.None;
-                    SealPageOpen = false;
-                    ScanPageOpen = false;
-                    AbsorbPageOpen = false;
-                }
+                else ResetPages();
             }
-            // put the drifted page bone back (see Awake)
-            if (_open && _pageBone != null) _pageBone.localPosition = _pageBoneRest;
-
-            // the book STAYS while lifting - his final call: it reads fine,
-            // keeps its open/close available, and hiding it was never wanted
             if (!_open)
             {
+                WheelOnBook = false;
                 SetArrows(false);
                 // taught once, then the prompt stays out of E-pickup's way -
                 // and NEVER while carrying. (He tried removing this and it
@@ -156,9 +217,10 @@ namespace SpellyZombie
             // goes; the paper flips each time and the content lands once the
             // wheel rests
             Hints.Offer(Hints.Id.Pages);
+            WheelOnBook = SelfPaint.IsActive && CursorOnBook();
             int step = 0;
             var mouse = Mouse.current;
-            if (mouse != null && Time.time >= _wheelNext)
+            if (mouse != null && Time.time >= _wheelNext && (!SelfPaint.IsActive || WheelOnBook))
             {
                 float wheel = mouse.scroll.ReadValue().y;
                 if (wheel > 0.01f) step = 1;
@@ -217,12 +279,16 @@ namespace SpellyZombie
         public GameObject ArrowBack;
         bool _arrowsWarned;
 
+        bool _remote;
+
         /// A remote copy: the book stays visible but the page arrows are local UI.
+        /// The component stays on, so the page bone pin (LateUpdate) holds their
+        /// book together too; only the keyboard and the riffle are local.
         public void HideForRemote()
         {
             if (ArrowNext != null) ArrowNext.SetActive(false);
             if (ArrowBack != null) ArrowBack.SetActive(false);
-            enabled = false; // and no copy of the book reads this keyboard
+            _remote = true;
         }
 
         /// The page arrows are authored objects on the book: parented there,
@@ -253,7 +319,7 @@ namespace SpellyZombie
         /// disguised acolyte, full hands or a stowed book hold no book at all.
         void OnUnlocked(int owner, RuneType rune)
         {
-            if (!isActiveAndEnabled || owner != Grimoire.LocalPlayerId) return;
+            if (_remote || !isActiveAndEnabled || owner != Grimoire.LocalPlayerId) return;
             if (ShapeShift.LocalIsShaped || HandGrab.LocalHolding || SimpleFPSController.ThirdPersonActive) return;
             int target = PageOf(rune);
             if (target < 0) return;
@@ -275,8 +341,11 @@ namespace SpellyZombie
             Grimoire.Unlocked -= OnUnlocked;
             _autoTarget = -1;
             _open = false;
-            SetAnimatorOpen(false); // the mesh closes with the state, or the page bone stays out
+            SetCoverOpen(false);
+            _pageK = 0f;
+            ApplyCover(); // no LateUpdate while disabled: close it now
             SetArrows(false);
+            WheelOnBook = false;
             _pendingFlip = false;
             ClearContent();   // _page is KEPT - the book remembers where you were
             // another body's book leaving (a friend's copy, a bot) must not
@@ -290,15 +359,49 @@ namespace SpellyZombie
             AbsorbPageOpen = false;
         }
 
-        void SetAnimatorOpen(bool open)
+        void SetCoverOpen(bool open) => _pageOpen = open;
+
+        /// The pen's aim point (cursor, or the crosshair while locked) over
+        /// the book's screen rectangle.
+        bool CursorOnBook()
         {
-            if (_flip == null) return;
-            foreach (var p in _flip.parameters)
-                if (p.type == AnimatorControllerParameterType.Bool && p.name == "Open")
-                {
-                    _flip.SetBool("Open", open);
-                    return;
-                }
+            var cam = Camera.main;
+            var mouse = Mouse.current;
+            if (cam == null || mouse == null) return false;
+            Vector2 at = Cursor.lockState == CursorLockMode.Locked
+                ? new Vector2(Screen.width * 0.5f, Screen.height * 0.5f)
+                : mouse.position.ReadValue();
+            GetComponentsInChildren(false, _rendBuf);
+            bool any = false;
+            Bounds b = default;
+            foreach (var r in _rendBuf)
+            {
+                if (!r.enabled || r is TrailRenderer || r is ParticleSystemRenderer) continue;
+                if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
+            }
+            if (!any) return false;
+            float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+            Vector3 e = b.extents;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 sp = cam.WorldToScreenPoint(b.center + new Vector3(
+                    (i & 1) == 0 ? -e.x : e.x, (i & 2) == 0 ? -e.y : e.y, (i & 4) == 0 ? -e.z : e.z));
+                if (sp.z <= 0f) return false;
+                minX = Mathf.Min(minX, sp.x); maxX = Mathf.Max(maxX, sp.x);
+                minY = Mathf.Min(minY, sp.y); maxY = Mathf.Max(maxY, sp.y);
+            }
+            return at.x >= minX && at.x <= maxX && at.y >= minY && at.y <= maxY;
+        }
+
+        void ResetPages()
+        {
+            ClearContent();
+            _pendingFlip = false;
+            _autoTarget = -1;
+            PageRune = RuneType.None;
+            SealPageOpen = false;
+            ScanPageOpen = false;
+            AbsorbPageOpen = false;
         }
 
         bool _pendingFlip;

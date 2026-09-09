@@ -376,15 +376,22 @@ namespace SpellyZombie
             CreateSeal(new List<SealDetector.LoopEntry> { new SealDetector.LoopEntry(s, true) }, "closed while drawing");
         }
 
+        void OnEnable() => Application.onBeforeRender += RefreshInk;
+        void OnDisable() => Application.onBeforeRender -= RefreshInk;
+
+        // ink follows moving surfaces: read right before the frame renders, after
+        // every script has moved its bones (static ink skips its rebuild inside)
+        void RefreshInk()
+        {
+            foreach (var s in Strokes)
+                if (s.Alive) s.UpdateLine();
+        }
+
         void Update()
         {
             // F12: toggle ink debug (endpoint dots)
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb != null && kb.f12Key.wasPressedThisFrame) _inkDebug = !_inkDebug;
-
-            // ink follows moving surfaces (static ink skips its rebuild internally)
-            foreach (var s in Strokes)
-                if (s.Alive) s.UpdateLine();
 
             // loose Open world ink evaporates; Persistent, drawing and seal ink are exempt
             _evapTimer -= Time.deltaTime;

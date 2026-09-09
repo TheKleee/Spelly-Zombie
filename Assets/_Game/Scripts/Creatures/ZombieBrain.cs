@@ -507,12 +507,7 @@ namespace SpellyZombie
         }
 
         /// Armed = holding a wand.
-        static bool IsArmed(SimpleFPSController p)
-        {
-            if (p == null) return false;
-            var w = p.GetComponent<WandState>();
-            return w == null || w.HasWand;   // no WandState (lobby, studio) = armed
-        }
+        static bool IsArmed(SimpleFPSController p) => WandState.Armed(p);
 
         /// Closest live player within ZombieChaseRange and whether they are facing
         /// this zombie. Downed players don't count.

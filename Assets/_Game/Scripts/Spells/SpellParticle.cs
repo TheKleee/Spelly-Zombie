@@ -32,6 +32,8 @@ namespace SpellyZombie
 
         public float Power = 1f;
         public Vector3 Vel;
+        Transform _home;   // a thrown mote's lock: the enemy it steers into
+        float _homeUntil;
         /// Fused size is the SUM of both parents, capped. Every fusion path
         /// must use this - never Max.
         public static float FuseSize(float a, float b) =>
@@ -339,6 +341,24 @@ namespace SpellyZombie
             WakeIn(DrawingConfig.WakeDelaySeconds);
         }
 
+        /// The throw locked onto this enemy: the flight bends into it for a while.
+        public void HomeOn(Transform target)
+        {
+            _home = target;
+            _homeUntil = Time.time + DrawingConfig.ThrowLockSeconds;
+        }
+
+        void Home(float dt)
+        {
+            if (_home == null || Time.time >= _homeUntil) return;
+            float speed = Vel.magnitude;
+            if (speed < 1f) return;
+            Vector3 want = _home.position + Vector3.up * 0.9f - transform.position;
+            if (want.sqrMagnitude < 0.01f) return;
+            Vel = Vector3.RotateTowards(Vel / speed, want.normalized,
+                DrawingConfig.ThrowLockTurn * Mathf.Deg2Rad * dt, 0f) * speed;
+        }
+
         // ---- DORMANT / ACTIVE ----------------------------------------------
         /// Inactive: smaller, faint, clock frozen, no effects. Wakes by
         /// throw/release, live-particle contact, an enemy entering its area,
@@ -624,6 +644,7 @@ namespace SpellyZombie
                     if (Vel.sqrMagnitude > DrawingConfig.DormantSeekSpeed * DrawingConfig.DormantSeekSpeed)
                         Vel = Vel.normalized * DrawingConfig.DormantSeekSpeed;
                 }
+                if (inFlight) Home(dt);
                 transform.position += Vel * dt;
                 // a thrown ghost faces where it is going, same as a live one
                 if (inFlight && Vel.sqrMagnitude > 1.2f)
@@ -1308,6 +1329,7 @@ namespace SpellyZombie
                 {
                     Vel += Vector3.down * (EffDensity() - AirDensity) * 2.5f * dt;
                     Vel *= Mathf.Max(0f, 1f - 0.6f * dt);
+                    Home(dt);
                     transform.position += Vel * dt;
                 }
                 _fearTick -= dt;

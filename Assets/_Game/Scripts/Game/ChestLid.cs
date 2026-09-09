@@ -3,11 +3,10 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A chest opens once, by E, and stays open. What it holds is rolled on
-    /// the map's stream when its inside field fills: nothing, a rune, or the
-    /// field's random items. The rune is one of his absorbables, born the
-    /// moment the lid swings. The lid state is shared: whoever opens it,
-    /// everyone's lid swings.
+    /// A chest opens once, by E, and stays open. What it holds is rolled the
+    /// moment it opens, from a seed the host draws and hands to everyone:
+    /// nothing, a rune, or the inside field's random items. The rune is one
+    /// of his absorbables. Nothing sits in a closed chest.
     public class ChestLid : MonoBehaviour
     {
         [Tooltip("The lid bone or object that swings. Required.")]
@@ -45,6 +44,7 @@ namespace SpellyZombie
         float _k; // 0 closed, 1 open
         GameObject _runePrefab;
         GameObject _rune;
+        bool _revealing; // the inside field fills only inside Reveal
 
         void Awake()
         {
@@ -64,10 +64,16 @@ namespace SpellyZombie
         void OnEnable() { _all[Id] = this; }
         void OnDisable() { if (Find(Id) == this) _all.Remove(Id); }
 
-        /// The inside field asks before it fills. Rolled on the map's own
-        /// stream, so every machine holds the same thing. True = fill the items.
-        /// The preview parent, when given, shows the rune right away.
-        public bool Roll(System.Random rng, Transform preview)
+        /// The inside field asks before it fills. In the editor preview the
+        /// chest rolls right there and shows the result; in the game the field
+        /// waits for Reveal, which fills it with the host's seed.
+        public bool Gate(System.Random rng, Transform preview)
+        {
+            if (preview != null) return Roll(rng, preview);
+            return _revealing;
+        }
+
+        bool Roll(System.Random rng, Transform preview)
         {
             double r = rng.NextDouble();
             if (r < EmptyChance) Holds = Holding.Nothing;
@@ -104,26 +110,29 @@ namespace SpellyZombie
             return go;
         }
 
-        /// The local player opened it.
+        /// The local player opened it: offline it rolls here, online the host rolls.
         public void OpenByPlayer()
         {
             if (Open) return;
-            Swing();
-            NetSync.SendChestOpen(Id);
+            NetSync.ChestOpen(this);
         }
 
-        /// The wire says it opened.
-        public void OpenRemote() => Swing();
-
-        void Swing()
+        /// The roll and the swing, on every machine with the same seed.
+        public void Reveal(int seed)
         {
             if (Open) return;
             Open = true;
+            var rng = new System.Random(seed);
+            if (Inside != null && Roll(rng, null) && Holds == Holding.Items)
+            {
+                _revealing = true;
+                Inside.Fill(rng, null, false); // a reward, not a biome rider
+                _revealing = false;
+            }
+            else if (Holds == Holding.Rune && Inside != null && _rune == null)
+                _rune = Place(Inside.transform);
             Juice.Chime(transform.position);
             if (FxLibrary.I != null && Lid != null) FxLibrary.Spawn(FxLibrary.I.Poof, Lid.position);
-            // born with the swing: nothing sits in a closed chest to glow through the lid
-            if (Holds == Holding.Rune && _rune == null && _runePrefab != null && Inside != null)
-                _rune = Place(Inside.transform);
         }
 
         // after the animation pass, so a clip keying the lid cannot hold it shut

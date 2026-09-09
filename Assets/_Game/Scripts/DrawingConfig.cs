@@ -691,6 +691,17 @@ namespace SpellyZombie
         public static readonly float WildGolemChargeDamage = O(nameof(WildGolemChargeDamage), 20f);
         public static readonly float WildGolemChargeSizePower = O(nameof(WildGolemChargeSizePower), 1.5f);
         public static readonly float WildGolemChargeRecoilShare = O(nameof(WildGolemChargeRecoilShare), 0.2f);
+        // eyes, not ears: prey must be in front and in view, or this close, or have hurt it lately
+        public static readonly float GolemSightAngle = O(nameof(GolemSightAngle), 120f);   // full cone, degrees
+        public static readonly float GolemFeelRange = O(nameof(GolemFeelRange), 2.5f);     // metres, any direction
+        public static readonly float GolemAlertSeconds = O(nameof(GolemAlertSeconds), 4f); // after a hit: all directions
+        // the wand is a keep-away: a wild golem never closes on a working wand, it backs off to this and circles
+        public static readonly float GolemRespectRange = O(nameof(GolemRespectRange), 6f);
+        // a throw locks onto the enemy nearest the aim: spells and debris fly into it, hidden acolytes excepted
+        public static readonly float ThrowLockRange = O(nameof(ThrowLockRange), 18f);
+        public static readonly float ThrowLockCone = O(nameof(ThrowLockCone), 25f);    // degrees off the aim
+        public static readonly float ThrowLockTurn = O(nameof(ThrowLockTurn), 240f);   // degrees per second
+        public static readonly float ThrowLockSeconds = O(nameof(ThrowLockSeconds), 3f);
         // below this height it is under the world: kill it there so it dies
         // visibly instead of falling out of sight forever
         public static readonly float GolemFloorY = O(nameof(GolemFloorY), -25f);

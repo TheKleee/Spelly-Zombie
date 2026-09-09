@@ -36,6 +36,10 @@ namespace SpellyZombie
         /// Weapons glue themselves into this (the standard HandR socket -
         /// plain character space, so the grip-pivot weapons drop in).
         public Transform GripSocketR => _sockets != null ? _sockets.Get("HandR") : null;
+        /// Where the grimoire waits while the hands are full: his Socket.Book
+        /// on the hips when baked, else the costume belt socket.
+        public Transform BookSocket => _sockets != null
+            ? (_sockets.Get("Book") ?? _sockets.Get("Belt")) : null;
 
         /// True once the real model is worn (SelfPaint then skips the fat
         /// invisible controller capsule and paints the limbs directly).

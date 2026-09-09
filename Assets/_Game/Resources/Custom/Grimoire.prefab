@@ -517,7 +517,8 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: 23be1013ad504514d8d18c17bc156546, type: 2}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5866666021909216657, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 4c73a011d22ac1540bf97e375ee58828, type: 3}
@@ -551,6 +552,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d422d0d103bad324e9982b2673cd1cd2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.GrimoirePages
+  PageOpenEuler: {x: 0, y: 0, z: 0}
+  PageClosedEuler: {x: 44.1, y: 190.4, z: -174.1}
+  PageSwingSeconds: 0.25
   ArrowNext: {fileID: 8018984677187594522}
   ArrowBack: {fileID: 7812994098471765572}
 --- !u!4 &7519385729523626257 stripped

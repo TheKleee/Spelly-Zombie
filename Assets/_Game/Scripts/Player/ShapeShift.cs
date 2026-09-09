@@ -15,6 +15,11 @@ namespace SpellyZombie
         /// Shaped acolytes cannot draw (SurfaceDrawer reads this).
         public static bool LocalIsShaped { get; private set; }
 
+        /// Is that body hiding as a prop right now. Golems and throws ask this.
+        /// Only the local body is known: remote disguises are not mirrored yet,
+        /// so a remote body reads as not hidden.
+        public static bool Disguised(SimpleFPSController p) => p != null && p.IsLocalViewer && LocalIsShaped;
+
         /// An acolyte with nothing stored gets no third person - that view IS
         /// the disguise camera. The controller's Tab toggle consults this.
         public static bool ThirdPersonAllowed =>
@@ -232,7 +237,7 @@ namespace SpellyZombie
             if (mouse.leftButton.wasPressedThisFrame)
             {
                 // a grab ball around the centre sized to the shape - no colliders needed
-                _grabRadius = Mathf.Max(0.15f, FindObjectBounds(_worn.transform).extents.magnitude);
+                _grabRadius = Mathf.Max(0.15f, FindObjectBounds(_worn.transform, true).extents.magnitude);
                 _grabLocalDir = _worn.transform.InverseTransformDirection(
                     ArcballDrag.Grab(_cam, screen, center, _grabRadius));
                 _dragging = true;
@@ -407,8 +412,12 @@ namespace SpellyZombie
         static readonly RaycastHit[] _groundBuf = new RaycastHit[16];
 
         /// World-space bounds of everything the object draws - the reliable
-        /// centre, since pivots can sit anywhere.
-        public static Bounds FindObjectBounds(Transform t)
+        /// centre, since pivots can sit anywhere. Meshes and skins only: an
+        /// empty trail reports a box out to the world origin. A skin's own
+        /// bounds are its import box around the root bone, not the pose it
+        /// wears; bakeSkins measures the posed skin instead (a bake per skin,
+        /// so not for every frame).
+        public static Bounds FindObjectBounds(Transform t, bool bakeSkins = false)
         {
             var rends = t.GetComponentsInChildren<Renderer>();
             var b = new Bounds(t.position, Vector3.zero);
@@ -418,21 +427,42 @@ namespace SpellyZombie
                 // a disabled or empty renderer reports an invalid AABB and
                 // Unity logs a conversion warning on the read - skip those
                 if (r == null || !r.enabled || !r.gameObject.activeInHierarchy) continue;
-                if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
+                if (r is TrailRenderer || r is LineRenderer || r is ParticleSystemRenderer) continue;
+                Bounds rb = bakeSkins && r is SkinnedMeshRenderer smr ? SkinBounds(smr) : r.bounds;
+                if (!any) { b = rb; any = true; } else b.Encapsulate(rb);
             }
+            return b;
+        }
+
+        static Mesh _bake;
+
+        /// The skin as it is posed right now, in world space.
+        static Bounds SkinBounds(SkinnedMeshRenderer smr)
+        {
+            if (smr.sharedMesh == null) return smr.bounds;
+            if (_bake == null) _bake = new Mesh();
+            smr.BakeMesh(_bake, true); // scale baked in: world = position + rotation * vertex
+            _bake.RecalculateBounds();
+            Bounds local = _bake.bounds;
+            var m = Matrix4x4.TRS(smr.transform.position, smr.transform.rotation, Vector3.one);
+            var b = new Bounds(m.MultiplyPoint3x4(local.center), Vector3.zero);
+            Vector3 e = local.extents;
+            for (int i = 0; i < 8; i++)
+                b.Encapsulate(m.MultiplyPoint3x4(local.center + new Vector3(
+                    (i & 1) == 0 ? -e.x : e.x, (i & 2) == 0 ? -e.y : e.y, (i & 4) == 0 ? -e.z : e.z)));
             return b;
         }
 
         /// The object's visual centre in its own local space - stays valid as
         /// the object moves.
-        public static Vector3 FindObjectCenterLocal(Transform t) =>
-            t.InverseTransformPoint(FindObjectBounds(t).center);
+        public static Vector3 FindObjectCenterLocal(Transform t, bool bakeSkins = false) =>
+            t.InverseTransformPoint(FindObjectBounds(t, bakeSkins).center);
 
         /// How high the object's centre rides above the ground under it. The
         /// ray starts above its top, so a buried object returns a negative.
         float CenterHeightAboveGround(Transform source)
         {
-            Bounds b = FindObjectBounds(source);
+            Bounds b = FindObjectBounds(source, true);
             Vector3 from = new Vector3(b.center.x, b.max.y + 0.05f, b.center.z);
 
             // vessel shells and ink canvases are not ground
@@ -509,7 +539,7 @@ namespace SpellyZombie
             _worn.transform.localPosition = Vector3.zero;
             // the centre, measured ONCE and kept - bounds are world-aligned, so
             // re-measuring a rotated shape would let the centre creep
-            _wornCenterLocal = FindObjectCenterLocal(_worn.transform);
+            _wornCenterLocal = FindObjectCenterLocal(_worn.transform, true);
             _worn.transform.position +=
                 TargetCenterWorld() - _worn.transform.TransformPoint(_wornCenterLocal);
             Wear();

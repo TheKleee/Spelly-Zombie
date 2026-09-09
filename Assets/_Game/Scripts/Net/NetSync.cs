@@ -450,9 +450,15 @@ namespace SpellyZombie
             public string Path;
         }
 
-        public struct ChestMsg : IBroadcast // a chest opened (id carved from its birthplace)
+        public struct ChestAskMsg : IBroadcast // client -> host: I open this chest
         {
             public int Id;
+        }
+
+        public struct ChestMsg : IBroadcast // host -> all: it opens, roll with this seed
+        {
+            public int Id;
+            public int Seed;
         }
 
         public struct IdentityMsg : IBroadcast // who a player id IS (persona + steam id)
@@ -950,7 +956,7 @@ namespace SpellyZombie
             foreach (var k in _holdGone) _holds.Remove(k);
         }
 
-        static void ReleaseHeldBody(RemoteHold h, Vector3 impulse)
+        static void ReleaseHeldBody(RemoteHold h, Vector3 impulse, Transform target = null)
         {
             if (h.Body == null) return;
             h.Body.GetComponentInParent<Golem>()?.BeReleased(); // wakes back up on release (parity)
@@ -961,6 +967,7 @@ namespace SpellyZombie
                 var sm = h.Body.GetComponent<Matter>();
                 if (sm != null && sm.SpellBorn) impulse *= DrawingConfig.SpellThrowMul; // same law as the local hand
                 if (impulse != Vector3.zero) h.Body.AddForce(impulse, ForceMode.VelocityChange);
+                if (target != null) Homing.Steer(h.Body, target);
             }
             h.Body.useGravity = h.HadGravity;
             var m = h.Body.GetComponent<Matter>();
@@ -978,6 +985,12 @@ namespace SpellyZombie
         {
             if (!_holds.TryGetValue(clientId, out var h)) return;
             _holds.Remove(clientId);
+            // same lock as the local hand: a real throw steers into the enemy nearest its aim
+            Transform thrower = _avatars.TryGetValue(clientId, out var av) && av != null ? av.transform : null;
+            Transform thrown = h.Mote != null ? h.Mote.transform : h.Body != null ? h.Body.transform : null;
+            Transform target = impulse.sqrMagnitude > 1f && thrower != null
+                ? LockOn.Pick(thrower.position + Vector3.up * 1.5f, impulse.normalized, OwnerIdOf(clientId), thrower, thrown)
+                : null;
             if (h.Mote != null)
             {
                 if (!h.Mote.Dead && h.Mote.Claimed)
@@ -987,17 +1000,13 @@ namespace SpellyZombie
                     // release wakes INSTANTLY - a remote friend's rune must
                     // behave exactly like the host's own
                     h.Mote.ReleaseHeld(impulse);
-                    if (impulse.sqrMagnitude > 1f)
-                    {
-                        Transform thrower = _avatars.TryGetValue(clientId, out var av)
-                            && av != null ? av.transform : null;
-                        h.Mote.PrimeToBlow(thrower);
-                    }
+                    if (impulse.sqrMagnitude > 1f) h.Mote.PrimeToBlow(thrower);
                     h.Mote.Wake();
+                    if (target != null) h.Mote.HomeOn(target);
                 }
                 return;
             }
-            ReleaseHeldBody(h, impulse);
+            ReleaseHeldBody(h, impulse, target);
         }
 
         // ---------------------------------------------- revive over the wire --
@@ -1230,7 +1239,7 @@ namespace SpellyZombie
             VoiceChat.Touch();
             InstanceFinder.ServerManager.RegisterBroadcast<AbsorbMsg>(OnAbsorbServer);
             InstanceFinder.ClientManager.RegisterBroadcast<AbsorbMsg>(OnAbsorbClient);
-            InstanceFinder.ServerManager.RegisterBroadcast<ChestMsg>(OnChestServer);
+            InstanceFinder.ServerManager.RegisterBroadcast<ChestAskMsg>(OnChestAskServer);
             InstanceFinder.ClientManager.RegisterBroadcast<ChestMsg>(OnChestClient);
             InstanceFinder.ServerManager.RegisterBroadcast<IdentityMsg>(OnIdentityServer);
             InstanceFinder.ClientManager.RegisterBroadcast<IdentityMsg>(OnIdentityClient);
@@ -1824,23 +1833,34 @@ namespace SpellyZombie
             if (go != null) go.GetComponent<Analyzable>()?.VanishRemote();
         }
 
-        /// A chest opened here: everyone's lid swings. Same road as an absorb.
-        public static void SendChestOpen(int id)
+        /// One chest opening: offline it rolls here; the host rolls a fresh
+        /// seed and tells everyone; a client asks and waits. Same road as an absorb.
+        public static void ChestOpen(ChestLid lid)
         {
-            if (_instance == null || !NetGame.Connected) return;
-            InstanceFinder.ClientManager.Broadcast(new ChestMsg { Id = id });
+            if (lid == null) return;
+            int seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+            if (!NetGame.Connected) { lid.Reveal(seed); return; }
+            if (InstanceFinder.ServerManager.Started)
+            {
+                lid.Reveal(seed);
+                InstanceFinder.ServerManager.Broadcast(new ChestMsg { Id = lid.Id, Seed = seed });
+            }
+            else InstanceFinder.ClientManager.Broadcast(new ChestAskMsg { Id = lid.Id });
         }
 
-        void OnChestServer(NetworkConnection conn, ChestMsg msg, Channel channel)
+        void OnChestAskServer(NetworkConnection conn, ChestAskMsg msg, Channel channel)
         {
-            ChestLid.Find(msg.Id)?.OpenRemote();
-            InstanceFinder.ServerManager.BroadcastExcept(conn, msg, true);
+            var lid = ChestLid.Find(msg.Id);
+            if (lid == null || lid.Open) return; // beaten to it
+            int seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+            lid.Reveal(seed);
+            InstanceFinder.ServerManager.Broadcast(new ChestMsg { Id = msg.Id, Seed = seed });
         }
 
         void OnChestClient(ChestMsg msg, Channel channel)
         {
             if (InstanceFinder.ServerManager.Started) return;
-            ChestLid.Find(msg.Id)?.OpenRemote();
+            ChestLid.Find(msg.Id)?.Reveal(msg.Seed);
         }
 
         void OnOutfitClient(OutfitMsg msg, Channel channel)

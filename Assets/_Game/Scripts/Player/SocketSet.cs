@@ -75,6 +75,12 @@ namespace SpellyZombie
             Sock("HandR", Find("RightHand"));
             Sock("LegL", Find("LeftUpLeg"));
             Sock("LegR", Find("RightUpLeg"));
+            // the stowed grimoire's spot: only when the body carries one, so
+            // the pose is always his (an empty twin would sit inside the pelvis)
+            var hips = Find("Hips");
+            if (hips != null)
+                foreach (Transform child in hips)
+                    if (child.name == "Socket.Book") { set._sockets["Book"] = child; break; }
             return set;
         }
     }

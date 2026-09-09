@@ -305,10 +305,13 @@ namespace SpellyZombie
                 : _lastHitPoint;
             if (_current != null && Vector3.Distance(hit.point, lastPoint) > allowedJump)
             {
-                // diagnostic: silent splits turn self-crossings into cross-stroke gaps
-                DrawingWorld.Instance.LogEvent(
-                    $"stroke split mid-draw: aim jumped {Vector3.Distance(hit.point, lastPoint) * 100f:0}cm (limit {allowedJump * 100f:0}cm)");
-                EndStroke(penLifted: false); // new stroke, but the pen never came up
+                // a shove or a flick jumped the aim: the stroke ends where it was
+                // and nothing more is drawn until the pen comes up - no dashed
+                // line, no stroke dragged across the drawing
+                Debug.Log($"[SpellyZombie] stroke stopped: aim jumped {Vector3.Distance(hit.point, lastPoint) * 100f:0}cm (limit {allowedJump * 100f:0}cm)");
+                EndStroke();
+                _suppressUntilRelease = true;
+                return;
             }
 
             if (_current == null)

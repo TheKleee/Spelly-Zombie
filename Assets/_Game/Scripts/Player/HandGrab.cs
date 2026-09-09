@@ -664,23 +664,29 @@ namespace SpellyZombie
                 NetSync.SendThrowIntent(dir); // the host does the physics (netcode §4)
                 return;
             }
+            // the throw locks onto the enemy nearest the aim and flies into it
+            Vector3 eye = piv != null ? piv.position : transform.position;
             if (_heldParticle != null)
             {
                 var p = _heldParticle;
                 _heldParticle = null;
+                var target = LockOn.Pick(eye, dir, Grimoire.LocalPlayerId, _pilot.transform, p.transform);
                 p.ReleaseHeld(dir * ThrowSpeed); // the push ability, down your own cursor
                 p.PrimeToBlow(transform); // detonates on impact; the thrower is briefly immune
                 p.Wake(); // ★ INSTANTLY ALIVE when thrown (his fix): a living
                           // mote sweeps the world properly and lands its hit
+                if (target != null) p.HomeOn(target);
             }
             else if (_heldBody != null)
             {
                 var b = _heldBody;
+                var target = LockOn.Pick(eye, dir, Grimoire.LocalPlayerId, _pilot.transform, b.transform);
                 ClearBodyHold();
                 // a conjured rock flies faster than a prop (his law)
                 var sm = b.GetComponent<Matter>();
                 float mul = sm != null && sm.SpellBorn ? DrawingConfig.SpellThrowMul : 1f;
                 b.AddForce(dir * ThrowImpulse * mul, ForceMode.VelocityChange);
+                if (target != null) Homing.Steer(b, target);
             }
         }
 

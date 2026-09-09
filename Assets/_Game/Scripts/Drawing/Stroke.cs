@@ -282,9 +282,9 @@ namespace SpellyZombie
             if (hidden) return;
 
             // one rigid carrier: parent the ribbon under the surface and rebuild
-            // only when the ink changes. Body/weapon ink stays on the live path -
-            // its nodes ride several bones that move relative to each other.
-            bool anchorable = !MultiSurface && !Persistent && State != StrokeState.Drawing
+            // only when the ink changes. Ink on ONE limb rides that bone the same
+            // way; only ink spanning several bones stays on the live path.
+            bool anchorable = !MultiSurface && State != StrokeState.Drawing
                 && First != null && First.transform.parent != null;
             if (anchorable)
             {

@@ -24,6 +24,14 @@ namespace SpellyZombie
         /// keep free practice-drawing.
         public static bool LocalCanDraw = true;
 
+        /// Armed = holding a working wand. Zombies and wild golems read this one.
+        public static bool Armed(SimpleFPSController p)
+        {
+            if (p == null) return false;
+            var w = p.GetComponent<WandState>();
+            return w == null || w.HasWand;   // no WandState (lobby, studio) = armed
+        }
+
         void Awake()
         {
             _ink = GetComponent<PlayerInk>();

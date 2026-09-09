@@ -430,7 +430,8 @@ namespace SpellyZombie
                 pitch = Mathf.Clamp(pitch - d.y * 0.3f, -85f, 85f);
             }
             float zoom = mouse.scroll.ReadValue().y;
-            if (allowZoom && Mathf.Abs(zoom) > 0.01f)
+            // the wheel over the floating book turns its pages, not the zoom
+            if (allowZoom && !GrimoirePages.WheelOnBook && Mathf.Abs(zoom) > 0.01f)
                 dist = Mathf.Clamp(dist * (1f - Mathf.Sign(zoom) * 0.12f), zoomMin, zoomMax);
 
             var rot = Quaternion.Euler(pitch, yaw, 0f);

@@ -91,6 +91,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e8d8c05440beff24f8fcdac8ca3ed607, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7827561841598378297}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: e8d8c05440beff24f8fcdac8ca3ed607, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5857528965369887600}
   m_SourcePrefab: {fileID: 100100000, guid: e8d8c05440beff24f8fcdac8ca3ed607, type: 3}
 --- !u!1 &5231969623864807983 stripped
 GameObject:
@@ -209,3 +212,47 @@ MonoBehaviour:
   CodeSplinters: 1
   DefaultSound: 1
   LobbyRespawnOverride: 0
+--- !u!114 &5857528965369887600
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5231969623864807983}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2077c0e2edc5a2548841c92026a05126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.InteriorField
+  Size: {x: 2.06, y: 0.47, z: 0.8}
+  Center: {x: 0, y: 0.78, z: 0}
+  FieldSize: 0.2
+  Details:
+  - Prefab: {fileID: 6453324995597991144, guid: c79b157a2c95b8e4ba5ddc7497a58ba8, type: 3}
+    Where: 0
+  - Prefab: {fileID: 4794382372936685710, guid: b38a996e8f7d4944caaeaaa478ee4200, type: 3}
+    Where: 0
+  - Prefab: {fileID: 8087575436632484863, guid: 11998ccbbad81ba40ade0619ce9b84e9, type: 3}
+    Where: 0
+  - Prefab: {fileID: 2101507525508470021, guid: 9ea319e7a80b5be4f94ca9ac797c8d2d, type: 3}
+    Where: 0
+  - Prefab: {fileID: 3930746148368200628, guid: 1d6cdfc5b79454b4885df3f2cd7fc941, type: 3}
+    Where: 0
+  - Prefab: {fileID: 347457043446394501, guid: 5f22b968ce6b6bd41a23838a61bb656a, type: 3}
+    Where: 0
+  - Prefab: {fileID: 1600057677143971910, guid: f3e47041621ae9542a08bf182972b15f, type: 3}
+    Where: 0
+  - Prefab: {fileID: 6852030076674103079, guid: f7a327d4d25537c49a46b49eb468a9c2, type: 3}
+    Where: 0
+  Walkway: 0
+  Ceiling: {fileID: 0}
+  CeilingHeight: 2
+  HoleSide: {fileID: 0}
+  Stairs: {fileID: 0}
+  PreviewSeed: 9
+  _stairTop: {x: 0, y: 0, z: 0}
+  _stairFoot: {x: 0, y: 0, z: 0}
+  _stairRise: 0
+  _stairLen: 0
+  _stairWidth: 0
+  _stairMeasured: 0

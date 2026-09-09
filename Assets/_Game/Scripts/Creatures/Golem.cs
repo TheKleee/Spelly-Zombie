@@ -66,6 +66,9 @@ namespace SpellyZombie
         Element _dmg;
         GooglyEyes _eyes;
         bool _sawPrey;
+        float _alertUntil; // hurt lately: it feels around in every direction
+        int _circleSign = 1; // which way it circles a wand it will not approach
+        static readonly RaycastHit[] _sight = new RaycastHit[8];
         float _safeUntil;   // birth shield: it cannot be killed while rising
 
         /// Live registry - the host walks this to snapshot them for clients,
@@ -283,6 +286,7 @@ namespace SpellyZombie
             // body so it reads as a creature looking around, not an ornament.
             _eyes = GetComponentInChildren<GooglyEyes>();
             if (_eyes != null) _eyes.Facing = transform;
+            _circleSign = (GetInstanceID() & 1) == 0 ? 1 : -1;
 
             // it never just disappears: whatever kills it, it comes apart in
             // its own colour so you can see it happen
@@ -293,6 +297,7 @@ namespace SpellyZombie
                 // every wound reads: a chip of it flies off where it was hit
                 _dmg.OnDamaged += (amount, _) =>
                 {
+                    Felt();
                     if (amount < 2f) return;
                     var view = GetComponent<StateView>();
                     Color c = view != null && view.DriveTint ? view.Tint : Color.gray;
@@ -422,6 +427,36 @@ namespace SpellyZombie
                 }
             }
 
+            // a spell already OUT there scares a wild one even more than a wand:
+            // it runs from the nearest live spell inside its fear range
+            if (OwnerId < 0)
+            {
+                SpellParticle near = null;
+                float nearSqr = FearRange * FearRange;
+                var living = SpellParticle.Living;
+                for (int i = 0; i < living.Count; i++)
+                {
+                    var sp = living[i];
+                    if (sp == null) continue;
+                    float dsq = (sp.transform.position - transform.position).sqrMagnitude;
+                    if (dsq < nearSqr) { nearSqr = dsq; near = sp; }
+                }
+                if (near != null)
+                {
+                    Vector3 away = transform.position - near.transform.position;
+                    away.y = 0f;
+                    if (away.sqrMagnitude > 0.01f)
+                    {
+                        _wander = away.normalized;
+                        _pickAt = Time.time + 1f;
+                        if (_eyes != null) _eyes.SetMood(EyeMood.Scared, 1f);
+                        _sawPrey = false;
+                        Step(_wander, mul * 1.5f);
+                        return;
+                    }
+                }
+            }
+
             // anything alive in sight is an enemy - no teams, no owner
             var prey = NearestTarget();
             // ★ CHARGE ONLY LOOKS FOR ENEMIES (his order): whatever slipped
@@ -449,6 +484,21 @@ namespace SpellyZombie
 
                 Vector3 to = prey.position - transform.position;
                 to.y = 0f;
+                // the wand is a keep-away: a wild golem never closes on a wizard
+                // holding a working wand. It backs off to its respect distance and
+                // circles there; wandless is the danger state
+                var pilot = prey.GetComponent<SimpleFPSController>();
+                if (OwnerId < 0 && pilot != null && WandState.Armed(pilot))
+                {
+                    float respect = DrawingConfig.GolemRespectRange;
+                    float dist = to.magnitude;
+                    if (_eyes != null) _eyes.SetMood(EyeMood.Scared, 0.6f);
+                    if (dist < respect * 0.9f) _wander = -to.normalized;
+                    else if (dist <= respect * 1.2f) _wander = Vector3.Cross(Vector3.up, to.normalized) * _circleSign;
+                    else if (Time.time >= _pickAt) PickWander();
+                    Step(_wander, mul);
+                    return;
+                }
                 if (_charge != null && _charge.TryStart(prey.position))
                 {
                     // the second fact for his console: WHO it committed on
@@ -484,11 +534,67 @@ namespace SpellyZombie
                 _rb.AddForce(Vector3.up * DrawingConfig.GolemSkipHop, ForceMode.VelocityChange);
         }
 
+        /// Hurt: it turns on whoever it can place and feels around for a while.
+        void Felt()
+        {
+            _alertUntil = Time.time + DrawingConfig.GolemAlertSeconds;
+            var who = BodyOfOwner(_dmg != null ? _dmg.LastHitBy : -1);
+            if (who == null) return;
+            Vector3 to = who.position - transform.position;
+            to.y = 0f;
+            if (to.sqrMagnitude > 0.04f) _wander = to.normalized;
+        }
+
+        static Transform BodyOfOwner(int owner)
+        {
+            if (owner < 0) return null;
+            if (owner == Grimoire.LocalPlayerId)
+                foreach (var p in SimpleFPSController.All)
+                    if (p != null && p.IsLocalViewer) return p.transform;
+            return NetSync.AvatarTransformOf(owner);
+        }
+
         Transform NearestTarget()
         {
             Transform best = null;
             float bestSqr = SightRange * SightRange;
             Team mine = Teams.OfOwner(OwnerId);
+
+            // eyes, not ears: in front and in view, or felt this close, or hurt lately
+            bool alert = Time.time < _alertUntil;
+            float feelSqr = DrawingConfig.GolemFeelRange * DrawingConfig.GolemFeelRange;
+            float halfCos = Mathf.Cos(DrawingConfig.GolemSightAngle * 0.5f * Mathf.Deg2Rad);
+            Vector3 eye = _eyes != null ? _eyes.transform.position
+                : transform.position + Vector3.up * (0.5f * transform.lossyScale.y);
+            Vector3 fwd = transform.forward;
+            fwd.y = 0f;
+            fwd.Normalize();
+            bool Notices(Transform t, float sqr)
+            {
+                if (sqr <= feelSqr) return true;
+                Vector3 to = t.position + Vector3.up * 0.8f - eye;
+                if (!alert)
+                {
+                    Vector3 flat = to;
+                    flat.y = 0f;
+                    if (flat.sqrMagnitude > 1e-4f && Vector3.Dot(flat.normalized, fwd) < halfCos) return false;
+                }
+                float len = to.magnitude;
+                if (len < 0.05f) return true;
+                int n = Physics.RaycastNonAlloc(eye, to / len, _sight, len,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                float nearest = float.MaxValue;
+                Collider blocker = null;
+                for (int i = 0; i < n; i++)
+                {
+                    var h = _sight[i];
+                    if (h.collider == null || h.collider.transform.IsChildOf(transform)) continue;
+                    if (h.distance < nearest) { nearest = h.distance; blocker = h.collider; }
+                }
+                if (blocker == null || blocker.transform.IsChildOf(t)) return true;
+                var shell = ZombieOwner.From(blocker); // a zombie's paint shell sits outside its hierarchy
+                return shell != null && shell.transform == t;
+            }
             if (!_saidTeam)
             {
                 _saidTeam = true;
@@ -504,10 +610,9 @@ namespace SpellyZombie
                 // A DISGUISE FOOLS NATURE TOO. A golem that walks past every
                 // bench in the village but beelines for the one that is an
                 // acolyte would make hiding pointless wherever golems roam.
-                if (SimpleFPSController.ThirdPersonActive && p.IsLocalViewer
-                    && ShapeShift.LocalIsShaped) continue;
+                if (ShapeShift.Disguised(p)) continue;
                 float d = (p.transform.position - transform.position).sqrMagnitude;
-                if (d < bestSqr) { bestSqr = d; best = p.transform; }
+                if (d < bestSqr && Notices(p.transform, d)) { bestSqr = d; best = p.transform; }
             }
             foreach (var z in Zombie.All)
             {
@@ -515,7 +620,7 @@ namespace SpellyZombie
                 // zombies are the acolyte team - same label, same law
                 if (!Teams.Enemies(mine, Team.Acolyte)) break;
                 float d = (z.transform.position - transform.position).sqrMagnitude;
-                if (d < bestSqr) { bestSqr = d; best = z.transform; }
+                if (d < bestSqr && Notices(z.transform, d)) { bestSqr = d; best = z.transform; }
             }
             // golems of another team are prey too (his rule): yours fight
             // the wild ones, the wild ones fight yours, nearest first
@@ -524,7 +629,7 @@ namespace SpellyZombie
                 if (g == null || g == this || !g.Alive) continue;
                 if (!Teams.Enemies(mine, Teams.OfOwner(g.OwnerId))) continue;
                 float d = (g.transform.position - transform.position).sqrMagnitude;
-                if (d < bestSqr) { bestSqr = d; best = g.transform; }
+                if (d < bestSqr && Notices(g.transform, d)) { bestSqr = d; best = g.transform; }
             }
             return best;
         }

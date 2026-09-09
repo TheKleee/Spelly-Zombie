@@ -150,6 +150,10 @@ namespace SpellyZombie
         /// passes its own throwaway root and leaves the real fill untouched.
         public void Fill(System.Random rng, Transform under = null, bool riders = true)
         {
+            // a chest decides what its inside holds, and in the game it decides
+            // when opened: until then this field stays unfilled
+            var chest = GetComponentInParent<ChestLid>(true);
+            if (chest != null && chest.Inside == this && !chest.Gate(rng, under)) return;
             if (under == null)
             {
                 if (_filled) return;
@@ -158,9 +162,6 @@ namespace SpellyZombie
                 if (stale != null) { stale.gameObject.SetActive(false); Destroy(stale.gameObject); }
             }
             var root = under != null ? under : transform;
-            // a chest decides what its inside holds before anything lands
-            var chest = GetComponentInParent<ChestLid>(true);
-            if (chest != null && chest.Inside == this && !chest.Roll(rng, under)) return;
             Matrix4x4 f2w = FieldToWorld, w2f = f2w.inverse;
             Physics.SyncTransforms(); // the house may be seconds old - its floors must catch rays
             var scene = gameObject.scene;
@@ -408,6 +409,8 @@ namespace SpellyZombie
                     // board comes down onto it; a finger of air above is enough
                     float height = Footprint(d.Prefab, hit.point, SpellyMap.Facing(d.Prefab, 0f)).size.y;
                     if (Up(hit.point + Vector3.up * HeadroomAir, height + HeadroomAir)) continue;
+                    // the MESH lands on the surface, wherever the pack put the pivot
+                    Vector3 seatAt = hit.point + Vector3.up * SeatLift(d.Prefab);
 
                     // of the four square turns, the one whose front looks at the
                     // room comes first and the back-to-the-room one last: a cabinet
@@ -429,7 +432,7 @@ namespace SpellyZombie
                         float yawDeg = t < 3 ? (float)rng.NextDouble() * 360f
                                              : fieldYaw + 90f * ((facing + SquareOrder[t - 3]) & 3);
                         Quaternion rot = SpellyMap.Facing(d.Prefab, yawDeg);
-                        Bounds claim = Footprint(d.Prefab, hit.point, rot);
+                        Bounds claim = Footprint(d.Prefab, seatAt, rot);
                         // inside the walls
                         if (claim.min.x < area.min.x - 0.05f || claim.max.x > area.max.x + 0.05f
                             || claim.min.z < area.min.z - 0.05f || claim.max.z > area.max.z + 0.05f) continue;
@@ -443,7 +446,7 @@ namespace SpellyZombie
                         if (blocked) continue;
                         claims.Add(padded);
 
-                        var go = Instantiate(d.Prefab, hit.point, rot, root);
+                        var go = Instantiate(d.Prefab, seatAt, rot, root);
                         // the piece keeps its own size under a scaled root
                         Vector3 ps = root.lossyScale;
                         go.transform.localScale = Vector3.Scale(d.Prefab.transform.localScale,
@@ -514,6 +517,16 @@ namespace SpellyZombie
             if (b.size.x < 0.01f && b.size.z < 0.01f) b = new Bounds(Vector3.up * 0.4f, Vector3.one * 0.8f);
             Quaternion yaw = rot * Quaternion.Inverse(stand);
             return BoxIn(b.center, b.size, Matrix4x4.TRS(at, yaw, Vector3.one));
+        }
+
+        /// How far the pivot must sit above a surface for the standing mesh's
+        /// bottom to touch it: zero for a base pivot, half the height for a
+        /// centred one, negative for a pivot below the mesh.
+        public static float SeatLift(GameObject prefab)
+        {
+            Quaternion stand = SpellyMap.Facing(prefab, 0f);
+            Bounds b = UprightBounds(prefab, stand * Quaternion.Inverse(prefab.transform.rotation));
+            return b.size.sqrMagnitude > 0f ? -b.min.y : 0f;
         }
 
         /// A prefab's mesh bounds around its pivot after 'untilt' stands it up
