@@ -24,7 +24,7 @@ namespace SpellyZombie
         }
 
         /// Bright ground circle marking a field's boundary.
-        public static Transform GroundRing(Transform parent, Color c)
+        public static Transform GroundRing(Transform parent, Color c, float alpha = 0.9f)
         {
             var go = new GameObject("AreaRing");
             go.transform.SetParent(parent, false);
@@ -43,7 +43,7 @@ namespace SpellyZombie
                 float a = i / 36f * Mathf.PI * 2f;
                 lr.SetPosition(i, new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)));
             }
-            lr.sharedMaterial = MatterFX.Get(new Color(c.r, c.g, c.b, 0.9f), MoteShade.Additive);
+            lr.sharedMaterial = MatterFX.Get(new Color(c.r, c.g, c.b, alpha), MoteShade.Additive);
             return go.transform;
         }
 

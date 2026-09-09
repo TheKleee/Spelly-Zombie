@@ -60,6 +60,7 @@ namespace SpellyZombie
             // menu needs exactly one verb
             MenuButton(Loc.T("menu.play"), () =>
             {
+                LoadEgg.Cover();
                 LoadingHints.Show();
                 SceneManager.LoadScene("Lobby");
             });

@@ -117,6 +117,7 @@ namespace SpellyZombie
                 var fly = Instantiate(Mote.gameObject, Mote.position, Mote.rotation);
                 var f = fly.AddComponent<AbsorbFlight>();
                 f.Owner = owner;
+                f.Source = transform;
                 f.Rune = owner == Grimoire.LocalPlayerId ? NextFor(owner) : RuneType.None;
                 Mote.gameObject.SetActive(false);
                 if (Infinite) StartCoroutine(Regrow());
@@ -132,6 +133,8 @@ namespace SpellyZombie
                         Grimoire.UnlockRune(owner, rune);
                         DrawingWorld.Instance?.LogEvent(
                             $"absorbed: it teaches {RuneLibrary.Icon(rune)}");
+                        UnlockMark.FlipAt(UnlockMark.KeyFor(transform),
+                            transform.position + Vector3.up * 0.6f, rune);
                     }
                 }
                 if (FxLibrary.I != null && FxLibrary.I.AbsorbBurst != null)

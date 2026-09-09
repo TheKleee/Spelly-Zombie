@@ -67,7 +67,7 @@ namespace SpellyZombie
             go.transform.position = at;
             var src = go.AddComponent<AudioSource>();
             src.clip = clip;
-            src.volume = volume;
+            src.volume = volume * AudioOptions.Sfx;
             src.pitch = pitch;
             src.spatialBlend = 0.85f;      // mostly 3D, slightly present everywhere
             src.rolloffMode = AudioRolloffMode.Linear;

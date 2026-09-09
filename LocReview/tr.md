@@ -20,6 +20,7 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | carry.down | put it down | yere bırak | leave on the ground | |
 | scan.aim | scan it, become it | tara, ona dönüş | scan, turn into it | |
 | absorb.aim | absorb it, learn its rune | em, rünü öğren | absorb, learn the rune | em = absorb, suck in |
+| chest.open | open the chest | sandığı aç | the chest open |  |
 | chip.grimoire | grimoire | büyü kitabı | spell book | |
 | chip.paint | paint your body | bedenini boya | your body, paint | |
 | chip.first | first person | birinci şahıs | first person | |
@@ -136,3 +137,27 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | opt.mic.open | Open mic | Hep açık | always open |  |
 | opt.mic.ptt | Hold V | V basılı | V pressed | V is a physical key, kept |
 | opt.mic.off | Muted | Kapalı | closed |  |
+| opt.tab.game | Game | Oyun | game |  |
+| opt.tab.video | Video | Görüntü | image |  |
+| opt.tab.audio | Audio | Ses | sound |  |
+| opt.resolution | Resolution: {0} | Çözünürlük: {0} | resolution: {0} |  |
+| opt.resolution.title | Resolution | Çözünürlük | resolution |  |
+| opt.display | Display | Ekran | screen |  |
+| opt.display.full | Fullscreen | Tam ekran | full screen |  |
+| opt.display.borderless | Borderless | Kenarlıksız | without edge |  |
+| opt.display.windowed | Windowed | Pencere | window |  |
+| opt.quality | Quality | Kalite | quality |  |
+| opt.low | Low | Düşük | low |  |
+| opt.medium | Medium | Orta | middle |  |
+| opt.high | High | Yüksek | high |  |
+| opt.textures | Textures | Dokular | textures |  |
+| opt.shadows | Shadows | Gölgeler | shadows |  |
+| opt.effects | Effects | Efektler | effects |  |
+| opt.motionblur | Motion blur | Hareket bulanıklığı | movement blur |  |
+| opt.aa | Antialiasing | Kenar yumuşatma | edge softening | the Turkish term |
+| opt.fps | Frame limit | Kare sınırı | frame limit |  |
+| opt.vsync | VSync | Dikey eşitleme | vertical sync |  |
+| opt.off | Off | Kapalı | closed |  |
+| opt.on | On | Açık | open |  |
+| opt.music | Music: {0}% | Müzik: %{0} | music: %{0} | percent sign before the number |
+| opt.sfx | Sounds: {0}% | Sesler: %{0} | sounds: %{0} | percent sign before the number |

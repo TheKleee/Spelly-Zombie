@@ -10,6 +10,7 @@ namespace SpellyZombie
     {
         const float BaseVolume = 0.5f;   // music sits under the SFX
         const float FadeSeconds = 1.8f;
+        static float Vol => BaseVolume * AudioOptions.Music;
 
         static MusicDirector _instance;
 
@@ -30,7 +31,7 @@ namespace SpellyZombie
             _instance._action = Source(go, actionClip);
             // scheduled start keeps both clips sample-locked
             double at = AudioSettings.dspTime + 0.1;
-            if (_instance._chill != null) { _instance._chill.volume = BaseVolume; _instance._chill.PlayScheduled(at); }
+            if (_instance._chill != null) { _instance._chill.volume = Vol; _instance._chill.PlayScheduled(at); }
             if (_instance._action != null) { _instance._action.volume = 0f; _instance._action.PlayScheduled(at); }
         }
 
@@ -106,9 +107,9 @@ namespace SpellyZombie
 
             float step = (BaseVolume / FadeSeconds) * Time.unscaledDeltaTime;
             if (_chill != null)
-                _chill.volume = Mathf.MoveTowards(_chill.volume, action ? 0f : BaseVolume, step);
+                _chill.volume = Mathf.MoveTowards(_chill.volume, action ? 0f : Vol, step);
             if (_action != null)
-                _action.volume = Mathf.MoveTowards(_action.volume, action ? BaseVolume : 0f, step);
+                _action.volume = Mathf.MoveTowards(_action.volume, action ? Vol : 0f, step);
 
             // pin the silent clip to the other's sample clock so the loops never drift
             if (_chill != null && _action != null

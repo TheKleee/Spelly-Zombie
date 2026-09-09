@@ -410,6 +410,38 @@ namespace SpellyZombie
         /// Grid fill per biome (FieldSize): one ray per field from box top to
         /// box bottom; a hit must pass slope, path and claim checks or the
         /// field is skipped. Liquids float their fill inside the volume.
+        /// The rider for an absorbable: the outermost disabled object between
+        /// it and the prop root. Nothing disabled on that path = not a rider.
+        static void AddRider(Transform absorbable, Transform propRoot, List<GameObject> riders)
+        {
+            GameObject rider = null;
+            for (var t = absorbable; t != null && t != propRoot; t = t.parent)
+                if (!t.gameObject.activeSelf) rider = t.gameObject;
+            if (rider != null && !riders.Contains(rider)) riders.Add(rider);
+        }
+
+        /// Turns a rider on, and every disabled object between it and the
+        /// absorbables inside it, so a revealed torch also shows its flame.
+        static void Reveal(GameObject rider)
+        {
+            rider.SetActive(true);
+            foreach (var a in rider.GetComponentsInChildren<AbsorbSource>(true))
+                for (var t = a.transform; t != null && t != rider.transform; t = t.parent)
+                    if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
+            foreach (var a in rider.GetComponentsInChildren<Analyzable>(true))
+                for (var t = a.transform; t != null && t != rider.transform; t = t.parent)
+                    if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
+        }
+
+        /// World rotation for a prefab the map stands up: the yaw the spawner
+        /// chose, the root's authored tilt kept, its saved yaw dropped. Kit
+        /// pieces are saved with the -90 X that stands them up.
+        public static Quaternion Facing(GameObject prefab, float yaw)
+        {
+            Vector3 upLocal = Quaternion.Inverse(prefab.transform.rotation) * Vector3.up;
+            return Quaternion.AngleAxis(yaw, Vector3.up) * Quaternion.FromToRotation(upLocal, Vector3.up);
+        }
+
         int FillBiomes(Biome[] biomes, System.Random rng, float[,] pathMask,
             int res, float world, Transform root)
         {
@@ -521,8 +553,7 @@ namespace SpellyZombie
                     }
                     else yaw = (float)rng.NextDouble() * 360f;
 
-                    var go = Instantiate(prefab, at,
-                        Quaternion.AngleAxis(yaw, Vector3.up), fill);
+                    var go = Instantiate(prefab, at, Facing(prefab, yaw), fill);
                     // EVERYTHING PLACED IS AN ELEMENT. A prop with no Element
                     // is outside the world entirely - it cannot be burnt,
                     // broken or read, and nothing tells you. Prefabs should
@@ -543,11 +574,12 @@ namespace SpellyZombie
                             if (mf.sharedMesh != null)
                                 mf.gameObject.AddComponent<MeshCollider>().sharedMesh = mf.sharedMesh;
 
-                    // riders: absorbables authored, or spawned by an interior, disabled inside the prop
-                    foreach (var a in go.GetComponentsInChildren<AbsorbSource>(true))
-                        if (!a.gameObject.activeSelf && !riders.Contains(a.gameObject)) riders.Add(a.gameObject);
-                    foreach (var a in go.GetComponentsInChildren<Analyzable>(true))
-                        if (!a.gameObject.activeSelf && !riders.Contains(a.gameObject)) riders.Add(a.gameObject);
+                    // riders: absorbables authored, or spawned by an interior, disabled
+                    // inside the prop. The rider is the OUTERMOST unticked object above
+                    // the absorbable: an unticked torch vanishes whole, flame and all,
+                    // when the biome does not pick it
+                    foreach (var a in go.GetComponentsInChildren<AbsorbSource>(true)) AddRider(a.transform, go.transform, riders);
+                    foreach (var a in go.GetComponentsInChildren<Analyzable>(true)) AddRider(a.transform, go.transform, riders);
 
                     // every placed doorway grows its own trail to the network
                     if (hasSpur)
@@ -597,7 +629,7 @@ namespace SpellyZombie
                         if (useRider)
                         {
                             int i = rng.Next(riders.Count);
-                            riders[i].SetActive(true);
+                            Reveal(riders[i]);
                             riders.RemoveAt(i);
                             placedSrc++;
                         }

@@ -18,6 +18,9 @@ namespace SpellyZombie
         /// close-line stand down while this is up.
         public static bool ScanOfferLive { get; private set; }
 
+        /// The closed chest under the aim - HandGrab hands it E instead of a grab.
+        public static ChestLid ChestTarget { get; private set; }
+
         static Vector3 _externalAt;
         static string _externalKey;
         static int _externalFrame = -1;
@@ -79,6 +82,7 @@ namespace SpellyZombie
             Aimed = null;
             ScanTarget = null;
             ScanOfferLive = false;
+            ChestTarget = null;
             if (_caption != null) _caption.text = "";
             _show = false;
             bool danger = false;
@@ -167,6 +171,9 @@ namespace SpellyZombie
             {
                 Point(absorb, absorb.transform, hit, "F");
                 if (_caption != null) _caption.text = Loc.T("absorb.aim");
+                // the page you would earn hangs over it; the flight keeps the same key
+                UnlockMark.Show(UnlockMark.KeyFor(absorb.transform), absorb.transform,
+                    hit.point.y - absorb.transform.position.y + 0.55f, -1f);
                 return;
             }
 
@@ -199,6 +206,16 @@ namespace SpellyZombie
             if (spellMatter != null && spellMatter.SpellForm && spellMatter.OwnerId == me)
             {
                 Point(spellMatter, spellMatter.transform, hit, "E");
+                return;
+            }
+
+            // a closed chest takes E first: it opens, and only then can it be lifted
+            var chest = hit.collider.GetComponentInParent<ChestLid>();
+            if (chest != null && chest.enabled && !chest.Open && hit.distance <= chest.Range)
+            {
+                ChestTarget = chest;
+                Point(chest, chest.transform, hit, "E");
+                if (_caption != null) _caption.text = Loc.T("chest.open");
                 return;
             }
 

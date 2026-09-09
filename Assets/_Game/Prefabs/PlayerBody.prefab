@@ -3360,6 +3360,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Grimoire
       objectReference: {fileID: 0}
+    - target: {fileID: 7487576301963443309, guid: 199f650d13a5f034ea9fc82fa6c46a94, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7519385729523626257, guid: 199f650d13a5f034ea9fc82fa6c46a94, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0.037

@@ -20,18 +20,23 @@ namespace SpellyZombie
     ///
     /// Details are ordinary prefabs, so they can be anything he sets up -
     /// including an AbsorbSource that teaches.
+    ///
+    /// A detail can carry a field of its own (a table top, a shelf): it fills
+    /// right after the piece lands, on the same rng, so small things stack.
+    /// Size, Center, FieldSize and Walkway are metres whatever the root's scale,
+    /// and the box always stands upright whatever the root's tilt.
+    /// The upper floor kit assumes an unscaled root, as a house is.
     public class InteriorField : MonoBehaviour
     {
         [System.Serializable]
         public class Detail
         {
             public GameObject Prefab;
-            [Range(0f, 1f)]
-            [Tooltip("Per grid field: the chance this detail tries to spawn there.")]
-            public float Chance = 0.25f;
-            [Tooltip("Never more than this many of it in one field.")]
-            public int Max = 3;
+            [Tooltip("Which floor it may take. Upper falls back to the ground floor in a house with no ceiling.")]
+            public Floor Where = Floor.Anywhere;
         }
+
+        public enum Floor { Anywhere, Ground, Upper }
 
         [Tooltip("The region, local to this prefab. Inside a house, or the ground around a tree - the field doesn't care which.")]
         public Vector3 Size = new Vector3(6f, 3f, 6f);
@@ -40,8 +45,11 @@ namespace SpellyZombie
         [Tooltip("Grid field size in metres - the same searching law a biome box uses.")]
         public float FieldSize = 1.2f;
 
-        [Tooltip("What may appear here. Prefabs can be anything - flowers, pebbles, furniture, an AbsorbSource. An absorbable inside a detail is a biome rider: the biome's Sources Min and Max decide whether it appears.")]
+        [Tooltip("What may appear here, fully random: every cell draws one of these and it spawns if it fits the room. Size = its ObjectBox, else its meshes. A detail with its own InteriorField fills it in turn. An absorbable inside a detail is a biome rider: the biome's Sources Min and Max decide whether it shows.")]
         public Detail[] Details;
+
+        [Tooltip("Least walking space kept between things, in metres. Every thing keeps this much plus a random bit more, so the gaps never look measured.")]
+        public float Walkway = 0.6f;
 
         [Header("UPPER FLOOR (leave Ceiling empty for a single floor)")]
         [Tooltip("ONE ceiling tile. The field tiles the room with it, top surface at Ceiling Height. Needs a collider or the upper floor cannot be walked or filled.")]
@@ -58,6 +66,26 @@ namespace SpellyZombie
 
         public const string PreviewName = "InteriorPreview";
         bool _filled;
+
+        /// The field's yaw about world up, read from whichever of its axes lies
+        /// flattest: a kit root saved at -90 X points its forward at the sky.
+        float FrameYaw
+        {
+            get
+            {
+                Vector3 f = transform.forward; f.y = 0f;
+                if (f.sqrMagnitude < 0.01f) { f = transform.up; f.y = 0f; }
+                if (f.sqrMagnitude < 0.01f) { f = transform.right; f.y = 0f; }
+                return f.sqrMagnitude < 1e-6f ? 0f : Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg;
+            }
+        }
+
+        /// The field's frame: its place and yaw at unit scale, standing upright
+        /// whatever the root's tilt, so the metres he types stay metres and Y
+        /// stays up on a scaled, tilted kit root.
+        public Matrix4x4 FieldToWorld =>
+            Matrix4x4.TRS(transform.position, Quaternion.Euler(0f, FrameYaw, 0f), Vector3.one);
+        Matrix4x4 WorldToField => FieldToWorld.inverse;
 
         // the flight's top and foot edges, in the Stairs prefab root space,
         // measured in the editor so a build never reads mesh data
@@ -130,12 +158,23 @@ namespace SpellyZombie
                 if (stale != null) { stale.gameObject.SetActive(false); Destroy(stale.gameObject); }
             }
             var root = under != null ? under : transform;
+            // a chest decides what its inside holds before anything lands
+            var chest = GetComponentInParent<ChestLid>(true);
+            if (chest != null && chest.Inside == this && !chest.Roll(rng, under)) return;
+            Matrix4x4 f2w = FieldToWorld, w2f = f2w.inverse;
             Physics.SyncTransforms(); // the house may be seconds old - its floors must catch rays
             var scene = gameObject.scene;
             var physics = scene.IsValid() ? scene.GetPhysicsScene() : Physics.defaultPhysicsScene;
 
             // claims live in this field's space, so a turned house keeps its whole room
             var claims = new List<Bounds>();
+            // furniture he placed by hand keeps its space when it carries an
+            // ObjectBox; the house's own box (the prop claim) is not a room item
+            foreach (var ob in GetComponentsInChildren<ObjectBox>(true))
+            {
+                if (ob.transform == transform || ob.transform.IsChildOf(root) && root != transform) continue;
+                claims.Add(BoxIn(ob.Center, ob.Size, ob.transform.localToWorldMatrix));
+            }
             var area = new Bounds(Center, Size + Vector3.up * 0.1f); // a floor hit at exactly floor height counts
             float floorY = Center.y - Size.y * 0.5f;
 
@@ -255,93 +294,276 @@ namespace SpellyZombie
             if (twoFloors) Physics.SyncTransforms(); // the new tiles must catch the upper floor rays
 
             // ---- 2. THEN THE RANDOM DETAILS, both floors ----
+            // fully random: cells come in random order, each draws one of the
+            // details and it spawns if it fits the room. The first thing that
+            // fits always appears; every thing after it makes the next slot
+            // likelier to stay empty, so a house is never bare and rarely full
             if (Details == null || Details.Length == 0) return;
-            var placed = new int[Details.Length];
 
             int nx = Mathf.Max(1, Mathf.FloorToInt(Size.x / FieldSize));
             int nz = Mathf.Max(1, Mathf.FloorToInt(Size.z / FieldSize));
             float gx0 = Center.x - (nx - 1) * FieldSize * 0.5f; // centered, like the tiles
             float gz0 = Center.z - (nz - 1) * FieldSize * 0.5f;
             int floors = twoFloors ? 2 : 1;
-            int groundHits = 0, groundRays = 0;
+            int landed = 0;
+            var rays = new int[floors]; var hits = new int[floors];
+            var tried = new int[floors]; var placed = new int[floors];
 
+            // what may take a cell on each floor
+            var pools = new List<Detail>[floors];
             for (int floor = 0; floor < floors; floor++)
-                for (int ix = 0; ix < nx; ix++)
-                    for (int iz = 0; iz < nz; iz++)
+            {
+                pools[floor] = new List<Detail>();
+                foreach (var d in Details)
+                {
+                    if (d == null || d.Prefab == null) continue;
+                    if (d.Where == Floor.Ground && floor != 0) continue;
+                    if (d.Where == Floor.Upper && twoFloors && floor != 1) continue;
+                    pools[floor].Add(d);
+                }
+            }
+
+            // one cell: rays for the floor, then offers the details in random
+            // order and the first one that fits lands - a bed that cannot fit
+            // never costs the cell its stool
+            var order = new List<Detail>();
+            var keys = new List<float>();
+            // a piece's floor area: every cell offers the largest first, so a
+            // bed asks for its room before a stool takes the corner
+            var weight = new Dictionary<Detail, float>();
+            foreach (var d in Details)
+            {
+                if (d == null || d.Prefab == null || weight.ContainsKey(d)) continue;
+                Vector3 fp = Footprint(d.Prefab, Vector3.zero, SpellyMap.Facing(d.Prefab, 0f)).size;
+                weight[d] = Mathf.Max(0.01f, fp.x * fp.z);
+            }
+            float fieldYaw = FrameYaw;
+
+            // the editor preview cannot trust the stage's physics (a prefab
+            // opened from its scene instance can leave collider poses stale),
+            // so a ray that finds nothing asks the collider meshes themselves
+#if UNITY_EDITOR
+            var meshRay = under != null && !Application.isPlaying ? new EditorMeshRay(transform) : null;
+#endif
+            bool Down(Vector3 from, float maxDist, out RaycastHit hit)
+            {
+                if (physics.Raycast(from, Vector3.down, out hit, maxDist,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return true;
+#if UNITY_EDITOR
+                if (meshRay != null) return meshRay.Cast(from, Vector3.down, maxDist, out hit);
+#endif
+                return false;
+            }
+            bool Up(Vector3 from, float maxDist)
+            {
+                if (physics.Raycast(from, Vector3.up, out _, maxDist,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return true;
+#if UNITY_EDITOR
+                if (meshRay != null) return meshRay.Cast(from, Vector3.up, maxDist, out _);
+#endif
+                return false;
+            }
+
+            bool Cell(int floor, int ix, int iz)
+            {
+                var pool = pools[floor];
+                if (pool.Count == 0) return false;
+
+                float lx = gx0 + ix * FieldSize + ((float)rng.NextDouble() - 0.5f) * FieldSize * 0.6f;
+                float lz = gz0 + iz * FieldSize + ((float)rng.NextDouble() - 0.5f) * FieldSize * 0.6f;
+
+                // ray from just under this floor's own roof, exactly
+                // the biome law but inside the prefab's world
+                float topLY = floor == 0
+                    ? (twoFloors ? CeilingHeight - slabThick - 0.05f : Center.y + Size.y * 0.5f)
+                    : Center.y + Size.y * 0.5f;
+                Vector3 from = f2w.MultiplyPoint3x4(new Vector3(lx, topLY, lz));
+                float maxDist = twoFloors && floor == 0 ? CeilingHeight - floorY + 0.5f : Size.y + 0.5f;
+                rays[floor]++;
+                if (!Down(from, maxDist, out var hit)) return false;
+                Vector3 lp = w2f.MultiplyPoint3x4(hit.point);
+                if (!area.Contains(lp)) return false;
+                if (hit.normal.y < 0.7f) return false;        // walls are not floors
+                // a floor, not the top of a bed: the house dresses its floors,
+                // a piece dresses itself through its own field
+                if (floor == 0 && lp.y > floorY + FloorTolerance) return false;
+                if (twoFloors && floor == 1 && lp.y < CeilingHeight - 0.3f)
+                    return false; // the upper pass only dresses the slab
+                hits[floor]++;
+
+                order.Clear();
+                keys.Clear();
+                foreach (var d in pool)
+                {
+                    // largest first, equals in random order
+                    float key = weight[d] + (float)rng.NextDouble() * 0.001f;
+                    int k = 0;
+                    while (k < keys.Count && keys[k] >= key) k++;
+                    order.Insert(k, d);
+                    keys.Insert(k, key);
+                }
+                foreach (var d in order)
+                {
+                    // headroom: nothing spawns where the roof, a slab or the next
+                    // board comes down onto it; a finger of air above is enough
+                    float height = Footprint(d.Prefab, hit.point, SpellyMap.Facing(d.Prefab, 0f)).size.y;
+                    if (Up(hit.point + Vector3.up * HeadroomAir, height + HeadroomAir)) continue;
+
+                    // of the four square turns, the one whose front looks at the
+                    // room comes first and the back-to-the-room one last: a cabinet
+                    // against a wall shows its doors. Front = the standing piece's
+                    // +Z, the kit's Blender front
+                    Vector2 toMid = new Vector2(Center.x - lx, Center.z - lz);
+                    int facing = 0;
+                    float bestDot = float.NegativeInfinity;
+                    for (int k = 0; k < 4; k++)
                     {
-                        int di = rng.Next(Details.Length);
-                        var d = Details[di];
-                        if (d == null || d.Prefab == null) continue;
-                        if (placed[di] >= Mathf.Max(1, d.Max)) continue;
-                        if (rng.NextDouble() > d.Chance) continue;
-
-                        float lx = gx0 + ix * FieldSize + ((float)rng.NextDouble() - 0.5f) * FieldSize * 0.6f;
-                        float lz = gz0 + iz * FieldSize + ((float)rng.NextDouble() - 0.5f) * FieldSize * 0.6f;
-
-                        // ray from just under this floor's own roof, exactly
-                        // the biome law but inside the prefab's world
-                        float topLY = floor == 0
-                            ? (twoFloors ? CeilingHeight - slabThick - 0.05f : Center.y + Size.y * 0.5f)
-                            : Center.y + Size.y * 0.5f;
-                        Vector3 from = transform.TransformPoint(new Vector3(lx, topLY, lz));
-                        float maxDist = twoFloors && floor == 0
-                            ? CeilingHeight - floorY + 0.5f : Size.y + 0.5f;
-                        if (floor == 0) groundRays++;
-                        if (!physics.Raycast(from, Vector3.down, out var hit, maxDist,
-                                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-                            continue;
-                        Vector3 lp = transform.InverseTransformPoint(hit.point);
-                        if (!area.Contains(lp)) continue;
-                        if (floor == 0) groundHits++;
-                        if (hit.normal.y < 0.7f) continue;        // walls are not floors
-                        if (twoFloors && floor == 1 && lp.y < CeilingHeight - 0.3f)
-                            continue; // the upper pass only dresses the slab
-
-                        var box = d.Prefab.GetComponent<ObjectBox>();
-                        Vector3 claimSize = box != null ? box.Size
-                            : Vector3.one * (FieldSize * 0.8f);
-                        // headroom: nothing spawns where the roof or a slab comes down onto it
-                        if (physics.Raycast(hit.point + Vector3.up * 0.05f, Vector3.up, out _,
-                                claimSize.y + 0.05f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-                            continue;
-                        var claim = new Bounds(lp + (box != null ? box.Center
-                            : Vector3.up * claimSize.y * 0.5f), claimSize);
+                        float a = 90f * k * Mathf.Deg2Rad;
+                        float dot = Mathf.Sin(a) * toMid.x + Mathf.Cos(a) * toMid.y;
+                        if (dot > bestDot) { bestDot = dot; facing = k; }
+                    }
+                    for (int t = 0; t < 7; t++)
+                    {
+                        // three random turns, then the four square to the room
+                        // for what only fits along a wall
+                        float yawDeg = t < 3 ? (float)rng.NextDouble() * 360f
+                                             : fieldYaw + 90f * ((facing + SquareOrder[t - 3]) & 3);
+                        Quaternion rot = SpellyMap.Facing(d.Prefab, yawDeg);
+                        Bounds claim = Footprint(d.Prefab, hit.point, rot);
+                        // inside the walls
+                        if (claim.min.x < area.min.x - 0.05f || claim.max.x > area.max.x + 0.05f
+                            || claim.min.z < area.min.z - 0.05f || claim.max.z > area.max.z + 0.05f) continue;
+                        // walking space to doors, stairs and everything placed before:
+                        // at least Walkway, randomly more
+                        Bounds padded = claim;
+                        padded.Expand(new Vector3(1f, 0f, 1f) * (Mathf.Max(0f, Walkway) * (1f + (float)rng.NextDouble())));
                         bool blocked = false;
                         for (int i = 0; i < claims.Count && !blocked; i++)
-                            if (claims[i].Intersects(claim)) blocked = true;
+                            if (claims[i].Intersects(padded)) blocked = true;
                         if (blocked) continue;
-                        claims.Add(claim);
+                        claims.Add(padded);
 
-                        var go = Instantiate(d.Prefab, hit.point,
-                            Quaternion.AngleAxis((float)rng.NextDouble() * 360f, Vector3.up),
-                            root);
+                        var go = Instantiate(d.Prefab, hit.point, rot, root);
+                        // the piece keeps its own size under a scaled root
+                        Vector3 ps = root.lossyScale;
+                        go.transform.localScale = Vector3.Scale(d.Prefab.transform.localScale,
+                            new Vector3(1f / Mathf.Max(1e-4f, ps.x), 1f / Mathf.Max(1e-4f, ps.y), 1f / Mathf.Max(1e-4f, ps.z)));
                         if (go.GetComponentInChildren<Element>(true) == null
                             && go.GetComponentInChildren<Collider>(true) != null)
                             go.AddComponent<Element>();
-                        // an absorbable inside a detail is a biome RIDER: it spawns
-                        // disabled and the biome's scarcity reveals it or not, the
-                        // same MinSources..MaxSources law as one authored in a prop
-                        if (riders)
-                        {
-                            foreach (var a in go.GetComponentsInChildren<AbsorbSource>(true)) a.gameObject.SetActive(false);
-                            foreach (var a in go.GetComponentsInChildren<Analyzable>(true)) a.gameObject.SetActive(false);
-                        }
-                        placed[di]++;
+                        // a detail carrying an absorbable is a biome RIDER: the WHOLE
+                        // detail spawns disabled and the biome's scarcity reveals it or
+                        // not, the same MinSources..MaxSources law as an unticked object
+                        // inside a house
+                        if (riders && (go.GetComponentInChildren<AbsorbSource>(true) != null
+                                       || go.GetComponentInChildren<Analyzable>(true) != null))
+                            go.SetActive(false);
+                        // a piece with a field of its own fills it now, on the same rng:
+                        // small things on a table, on a shelf
+                        foreach (var nf in go.GetComponentsInChildren<InteriorField>(true))
+                            nf.Fill(rng, under != null ? nf.transform : null, riders);
+                        landed++;
+                        placed[floor]++;
+                        return true;
                     }
-            if (groundRays > 0 && groundHits == 0)
+                }
+                return false;
+            }
+
+            // every cell of every floor, in random order
+            var cells = new List<Vector3Int>();
+            for (int floor = 0; floor < floors; floor++)
+                for (int ix = 0; ix < nx; ix++)
+                    for (int iz = 0; iz < nz; iz++)
+                        cells.Add(new Vector3Int(ix, floor, iz));
+            for (int i = cells.Count - 1; i > 0; i--)
+            {
+                int j = rng.Next(i + 1);
+                var tmp = cells[i]; cells[i] = cells[j]; cells[j] = tmp;
+            }
+            foreach (var c in cells)
+            {
+                if (rng.NextDouble() * (1 + landed) >= 1.0) continue; // this slot stays empty
+                tried[c.y]++;
+                Cell(c.y, c.x, c.z);
+            }
+            if (rays[0] > 0 && hits[0] == 0)
                 Debug.LogWarning($"[InteriorField] {name}: no ground floor ray landed inside the room. The floor pieces need colliders.");
+            if (under != null)
+            {
+                // the editor preview reports the roll, floor by floor
+                string upper = floors > 1
+                    ? $"; upper {placed[1]} placed of {tried[1]} tried, {hits[1]}/{rays[1]} rays found a floor" : "";
+                Debug.Log($"[InteriorField] {name} preview: {nx * nz} cells per floor, ground {placed[0]} placed of {tried[0]} tried, {hits[0]}/{rays[0]} rays found a floor{upper}");
+            }
+        }
+
+        /// The space a detail takes standing at 'at' turned by 'rot', as the
+        /// axis-aligned box it covers in this field's space: its ObjectBox when
+        /// it has one, else its meshes.
+        Bounds Footprint(GameObject prefab, Vector3 at, Quaternion rot)
+        {
+            var box = prefab.GetComponent<ObjectBox>();
+            if (box != null)
+                return BoxIn(box.Center, box.Size, Matrix4x4.TRS(at, rot, prefab.transform.localScale));
+            // the meshes measured UPRIGHT and un-yawed around the root's pivot,
+            // so a piece saved turned in its file still claims its tight box;
+            // the instance is that box turned about up by the rest of rot
+            Quaternion stand = SpellyMap.Facing(prefab, 0f);
+            Bounds b = UprightBounds(prefab, stand * Quaternion.Inverse(prefab.transform.rotation));
+            if (b.size.x < 0.01f && b.size.z < 0.01f) b = new Bounds(Vector3.up * 0.4f, Vector3.one * 0.8f);
+            Quaternion yaw = rot * Quaternion.Inverse(stand);
+            return BoxIn(b.center, b.size, Matrix4x4.TRS(at, yaw, Vector3.one));
+        }
+
+        /// A prefab's mesh bounds around its pivot after 'untilt' stands it up
+        /// square: the tight box the piece really needs.
+        static Bounds UprightBounds(GameObject prefab, Quaternion untilt)
+        {
+            bool any = false;
+            var b = new Bounds();
+            Vector3 pivot = prefab.transform.position;
+            foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (mf.sharedMesh == null) continue;
+                Bounds m = mf.sharedMesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 c = new Vector3((i & 1) == 0 ? m.min.x : m.max.x,
+                                            (i & 2) == 0 ? m.min.y : m.max.y,
+                                            (i & 4) == 0 ? m.min.z : m.max.z);
+                    Vector3 p = untilt * (mf.transform.TransformPoint(c) - pivot);
+                    if (!any) { b = new Bounds(p, Vector3.zero); any = true; }
+                    else b.Encapsulate(p);
+                }
+            }
+            return any ? b : new Bounds(Vector3.zero, Vector3.zero);
+        }
+
+        /// A box (center, size) carried by toWorld, as the axis-aligned box it
+        /// covers in this field's space.
+        Bounds BoxIn(Vector3 center, Vector3 size, Matrix4x4 toWorld)
+        {
+            Matrix4x4 m = WorldToField * toWorld;
+            Vector3 lo = center - size * 0.5f, hi = center + size * 0.5f;
+            var b = new Bounds(m.MultiplyPoint3x4(lo), Vector3.zero);
+            for (int i = 1; i < 8; i++)
+                b.Encapsulate(m.MultiplyPoint3x4(new Vector3(
+                    (i & 1) == 0 ? lo.x : hi.x, (i & 2) == 0 ? lo.y : hi.y, (i & 4) == 0 ? lo.z : hi.z)));
+            return b;
         }
 
         /// Moves a child so its bounds center sits on (lx, lz) with its top at topY, all local.
         void Seat(GameObject piece, float lx, float topY, float lz)
         {
             Bounds b = LocalBounds(piece);
-            piece.transform.localPosition += new Vector3(lx - b.center.x, topY - b.max.y, lz - b.center.z);
+            piece.transform.position += FieldToWorld.MultiplyVector(new Vector3(lx - b.center.x, topY - b.max.y, lz - b.center.z));
         }
 
         /// Mesh bounds of every renderer under go, in this field's local space.
         Bounds LocalBounds(GameObject go)
         {
+            Matrix4x4 w2f = WorldToField;
             bool any = false;
             var b = new Bounds();
             foreach (var mf in go.GetComponentsInChildren<MeshFilter>(true))
@@ -353,12 +575,12 @@ namespace SpellyZombie
                     Vector3 c = new Vector3((i & 1) == 0 ? m.min.x : m.max.x,
                                             (i & 2) == 0 ? m.min.y : m.max.y,
                                             (i & 4) == 0 ? m.min.z : m.max.z);
-                    Vector3 p = transform.InverseTransformPoint(mf.transform.TransformPoint(c));
+                    Vector3 p = w2f.MultiplyPoint3x4(mf.transform.TransformPoint(c));
                     if (!any) { b = new Bounds(p, Vector3.zero); any = true; }
                     else b.Encapsulate(p);
                 }
             }
-            if (!any) b = new Bounds(transform.InverseTransformPoint(go.transform.position), Vector3.one * 0.5f);
+            if (!any) b = new Bounds(w2f.MultiplyPoint3x4(go.transform.position), Vector3.one * 0.5f);
             return b;
         }
 
@@ -385,6 +607,9 @@ namespace SpellyZombie
             return any ? b : new Bounds(Vector3.zero, Vector3.zero);
         }
 
+        static readonly int[] SquareOrder = { 0, 1, 3, 2 }; // room-facing, its two sides, its back
+        const float FloorTolerance = 0.35f; // a floor sits within this of the box bottom; higher is furniture
+        const float HeadroomAir = 0.02f;    // air kept over a piece; a book on a 13 cm shelf gap must still fit
         const float FootClearance = 1f;   // floor kept in front of the first step
         const float MinRun = 1.8f;        // shorter than this the flight gets too steep
         const float Headroom = 2f;        // kept above the tread where it passes under the next tile
@@ -419,10 +644,11 @@ namespace SpellyZombie
             z0 = Center.z - (cz - 1) * tile.z * 0.5f;
 
             doorCells.Clear();
+            Matrix4x4 w2f = WorldToField;
             foreach (var door in GetComponentsInChildren<PathPoint>(true))
             {
-                Vector3 at = transform.InverseTransformPoint(door.transform.position);
-                Vector3 inward = -transform.InverseTransformDirection(door.transform.forward);
+                Vector3 at = w2f.MultiplyPoint3x4(door.transform.position);
+                Vector3 inward = -w2f.MultiplyVector(door.transform.forward);
                 inward.y = 0f;
                 Vector3 inside = at + inward.normalized * Mathf.Min(tile.x, tile.z) * 0.5f;
                 var c = new Vector2Int(Mathf.RoundToInt((inside.x - x0) / tile.x),
@@ -539,8 +765,8 @@ namespace SpellyZombie
                 Debug.LogError($"[InteriorField] {name}: stairs {Stairs.name} were never measured. Select the field in the editor with the stairs assigned, then save the prefab. No flight placed.");
                 return false;
             }
-            Vector3 P(Vector3 rootLocal) =>
-                transform.InverseTransformPoint(go.transform.TransformPoint(rootLocal));
+            Matrix4x4 w2f = WorldToField;
+            Vector3 P(Vector3 rootLocal) => w2f.MultiplyPoint3x4(go.transform.TransformPoint(rootLocal));
 
             Vector3 top = P(_stairTop), foot = P(_stairFoot);
             float rise = top.y - foot.y;
@@ -573,12 +799,52 @@ namespace SpellyZombie
             return true;
         }
 
+#if UNITY_EDITOR
+        /// Preview only: ray hits against the mesh colliders under a root
+        /// through the editor's own mesh intersection, no physics scene needed,
+        /// so the preview lands exactly where the game's rays would.
+        class EditorMeshRay
+        {
+            static System.Reflection.MethodInfo _intersect;
+            readonly Transform _root;
+            readonly object[] _args = new object[4];
+
+            public EditorMeshRay(Transform root)
+            {
+                _root = root;
+                if (_intersect == null)
+                    _intersect = typeof(UnityEditor.HandleUtility).GetMethod("IntersectRayMesh",
+                        System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+            }
+
+            public bool Cast(Vector3 from, Vector3 dir, float maxDist, out RaycastHit best)
+            {
+                best = default;
+                if (_intersect == null) return false;
+                var ray = new Ray(from, dir);
+                float bestDist = maxDist;
+                bool any = false;
+                // the mesh colliders themselves, so a skinned piece with its
+                // collider on the root counts exactly as physics would count it
+                foreach (var mc in _root.GetComponentsInChildren<MeshCollider>(true))
+                {
+                    if (mc.sharedMesh == null || !mc.enabled || mc.isTrigger || !mc.gameObject.activeInHierarchy) continue;
+                    _args[0] = ray; _args[1] = mc.sharedMesh; _args[2] = mc.transform.localToWorldMatrix; _args[3] = null;
+                    if (!(bool)_intersect.Invoke(null, _args)) continue;
+                    var h = (RaycastHit)_args[3];
+                    if (h.distance < bestDist) { bestDist = h.distance; best = h; any = true; }
+                }
+                return any;
+            }
+        }
+#endif
+
         /// Green = the field, white = the cell inside a door, orange = ceiling
         /// tiles, red = the open cell with its three rims, cyan = the flight
         /// from its exit edge down to the foot and landing, all for PreviewSeed.
         void OnDrawGizmosSelected()
         {
-            Gizmos.matrix = transform.localToWorldMatrix;
+            Gizmos.matrix = FieldToWorld;
             Gizmos.color = new Color(0.4f, 0.9f, 0.6f, 0.5f);
             Gizmos.DrawWireCube(Center, Size);
 
@@ -633,9 +899,9 @@ namespace SpellyZombie
             Gizmos.DrawLine(top, top - dir * 0.5f);            // the exit onto the next tile
 #if UNITY_EDITOR
             Gizmos.matrix = Matrix4x4.identity;
-            UnityEditor.Handles.Label(transform.TransformPoint(foot) + Vector3.up * 0.25f,
+            UnityEditor.Handles.Label(FieldToWorld.MultiplyPoint3x4(foot) + Vector3.up * 0.25f,
                 $"Stairs foot, run {run:0.0} m, rise auto");
-            UnityEditor.Handles.Label(transform.TransformPoint(top) + Vector3.up * 0.25f,
+            UnityEditor.Handles.Label(FieldToWorld.MultiplyPoint3x4(top) + Vector3.up * 0.25f,
                 "Top step, exit onto the next tile");
 #endif
         }

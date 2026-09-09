@@ -20,6 +20,7 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | carry.down | put it down | 放下 | put down | |
 | scan.aim | scan it, become it | 扫描它，变成它 | scan it, become it | |
 | absorb.aim | absorb it, learn its rune | 吸收它，学会它的符文 | absorb it, learn its rune | |
+| chest.open | open the chest | 打开箱子 | open chest |  |
 | chip.grimoire | grimoire | 魔导书 | magic guide book | |
 | chip.paint | paint your body | 在身上画 | on the body, draw | |
 | chip.first | first person | 第一人称 | first person | |
@@ -136,3 +137,27 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | opt.mic.open | Open mic | 常开 | always open |  |
 | opt.mic.ptt | Hold V | 按住V说话 | hold V to talk | V is a physical key, kept |
 | opt.mic.off | Muted | 静音 | silence |  |
+| opt.tab.game | Game | 游戏 | game |  |
+| opt.tab.video | Video | 画面 | picture |  |
+| opt.tab.audio | Audio | 音频 | audio |  |
+| opt.resolution | Resolution: {0} | 分辨率: {0} | resolution: {0} |  |
+| opt.resolution.title | Resolution | 分辨率 | resolution |  |
+| opt.display | Display | 显示模式 | display mode |  |
+| opt.display.full | Fullscreen | 全屏 | full screen |  |
+| opt.display.borderless | Borderless | 无边框 | no border |  |
+| opt.display.windowed | Windowed | 窗口 | window |  |
+| opt.quality | Quality | 画质 | picture quality |  |
+| opt.low | Low | 低 | low |  |
+| opt.medium | Medium | 中 | medium |  |
+| opt.high | High | 高 | high |  |
+| opt.textures | Textures | 纹理 | texture |  |
+| opt.shadows | Shadows | 阴影 | shadow |  |
+| opt.effects | Effects | 特效 | special effects |  |
+| opt.motionblur | Motion blur | 动态模糊 | motion blur |  |
+| opt.aa | Antialiasing | 抗锯齿 | anti sawtooth | the standard term |
+| opt.fps | Frame limit | 帧数上限 | frame count limit |  |
+| opt.vsync | VSync | 垂直同步 | vertical sync |  |
+| opt.off | Off | 关 | off |  |
+| opt.on | On | 开 | on |  |
+| opt.music | Music: {0}% | 音乐: {0}% | music: {0}% |  |
+| opt.sfx | Sounds: {0}% | 音效: {0}% | sound effects: {0}% |  |

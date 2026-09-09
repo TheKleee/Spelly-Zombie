@@ -20,6 +20,7 @@ font lacks them, fill the OtherFont slot on UISkin.
 | carry.down | put it down | положить | to put down | |
 | scan.aim | scan it, become it | просканируй и стань этим | scan and become this | |
 | absorb.aim | absorb it, learn its rune | поглоти и выучи руну | absorb and learn the rune | |
+| chest.open | open the chest | открыть сундук | open chest |  |
 | chip.grimoire | grimoire | гримуар | grimoire | |
 | chip.paint | paint your body | рисовать на себе | to draw on yourself | |
 | chip.first | first person | от первого лица | from the first person | |
@@ -136,3 +137,27 @@ font lacks them, fill the OtherFont slot on UISkin.
 | opt.mic.open | Open mic | Всегда включён | always switched on |  |
 | opt.mic.ptt | Hold V | Держи V | hold V | V is a physical key, kept |
 | opt.mic.off | Muted | Выключен | switched off |  |
+| opt.tab.game | Game | Игра | game |  |
+| opt.tab.video | Video | Видео | video |  |
+| opt.tab.audio | Audio | Звук | sound |  |
+| opt.resolution | Resolution: {0} | Разрешение: {0} | resolution: {0} |  |
+| opt.resolution.title | Resolution | Разрешение | resolution |  |
+| opt.display | Display | Экран | screen |  |
+| opt.display.full | Fullscreen | Полный экран | full screen |  |
+| opt.display.borderless | Borderless | Без рамки | without frame |  |
+| opt.display.windowed | Windowed | В окне | in a window |  |
+| opt.quality | Quality | Качество | quality |  |
+| opt.low | Low | Низкое | low |  |
+| opt.medium | Medium | Среднее | medium |  |
+| opt.high | High | Высокое | high |  |
+| opt.textures | Textures | Текстуры | textures |  |
+| opt.shadows | Shadows | Тени | shadows |  |
+| opt.effects | Effects | Эффекты | effects |  |
+| opt.motionblur | Motion blur | Размытие в движении | blur in motion |  |
+| opt.aa | Antialiasing | Сглаживание | smoothing | the Russian term |
+| opt.fps | Frame limit | Лимит кадров | frame limit |  |
+| opt.vsync | VSync | Вертикальная синхронизация | vertical synchronisation | long, it is a row label not a button |
+| opt.off | Off | Выкл | off |  |
+| opt.on | On | Вкл | on |  |
+| opt.music | Music: {0}% | Музыка: {0}% | music: {0}% |  |
+| opt.sfx | Sounds: {0}% | Звуки: {0}% | sounds: {0}% |  |

@@ -4,9 +4,12 @@ using UnityEngine.UI;
 
 namespace SpellyZombie
 {
-    /// One random hint per loading screen. Scene loads are blocking, so the
-    /// veil masks the new scene's first seconds, holds long enough to read,
-    /// then fades. Call Show() right before any SceneManager.LoadScene.
+    /// One random hint per load. The travel egg is the loading screen: the
+    /// black panel only covers frames where no egg is closed around the
+    /// camera, the hint and ink drift ride the egg's dark, and everything
+    /// fades as the egg begins to open. With no egg at all the panel holds
+    /// long enough to read, then fades. Call Show() right before any
+    /// SceneManager.LoadScene.
     public class LoadingHints : MonoBehaviour
     {
         // split with the chips: chips teach moment-to-moment keys, these teach systems
@@ -29,6 +32,9 @@ namespace SpellyZombie
         float _bornAt;
         bool _sceneArrived;
         float _arrivedAt;
+        bool _eggSeen;         // an egg closed around the camera at some point
+        float _release = -1f;  // when the fade began
+        float _backA = 1f;     // the black panel: up only while nothing else covers
 
         // runes and ink specks drift up through the dark while the map loads
         readonly System.Collections.Generic.List<Graphic> _drift
@@ -69,7 +75,10 @@ namespace SpellyZombie
         {
             _bornAt = Time.unscaledTime;
             _sceneArrived = false;
-            SetAlpha(1f);
+            _eggSeen = false;
+            _release = -1f;
+            _backA = 1f;
+            SetAlpha(1f, 1f);
         }
 
         void Build()
@@ -77,7 +86,9 @@ namespace SpellyZombie
             _bornAt = Time.unscaledTime;
             _ui = UIKit.Group(UIKit.Root, "LoadingScreen");
             UIKit.Stretch(_ui);
-            // fully opaque: the unloaded scene must never show through
+            // opaque until the egg closes around the camera: the unloaded
+            // scene must never show through, and neither must a frame of the
+            // new one before the egg has it
             _back = UIKit.Panel(_ui, null, new Color(0.04f, 0.03f, 0.03f, 1f));
             UIKit.Stretch((RectTransform)_back.transform);
             BuildInkDrift();
@@ -139,24 +150,38 @@ namespace SpellyZombie
                 rt.anchoredPosition = p;
             }
 
+            // the egg is the loading screen: the panel covers only frames
+            // with no egg closed around the camera, and drops the moment
+            // there is one
+            bool eggClosed = LoadEgg.Closed;
+            if (eggClosed) _eggSeen = true;
+            _backA = eggClosed ? Mathf.MoveTowards(_backA, 0f, dt / 0.25f) : 1f;
+
             // a load that never lands must not trap the player behind a veil
             if (!_sceneArrived)
             {
                 if (Time.unscaledTime - _bornAt > 12f) Destroy(gameObject);
+                SetAlpha(1f, _backA);
                 return;
             }
 
-            float over = Time.unscaledTime - _arrivedAt - HoldSeconds;
-            if (over <= 0f) return;
-            float a = 1f - over / FadeSeconds;
+            // the hint rides the dark until the egg begins to open; with no
+            // egg it holds long enough to read
+            if (_release < 0f)
+            {
+                bool done = _eggSeen ? !eggClosed : Time.unscaledTime - _arrivedAt > HoldSeconds;
+                if (!done) { SetAlpha(1f, _backA); return; }
+                _release = Time.unscaledTime;
+            }
+            float a = 1f - (Time.unscaledTime - _release) / FadeSeconds;
             if (a <= 0f) { Destroy(gameObject); return; }
-            SetAlpha(a);
+            SetAlpha(a, Mathf.Min(_backA, a));
         }
 
-        void SetAlpha(float a)
+        void SetAlpha(float a, float back)
         {
             a = Mathf.Clamp01(a);
-            if (_back != null) { var c = _back.color; c.a = a; _back.color = c; }
+            if (_back != null) { var c = _back.color; c.a = Mathf.Clamp01(back); _back.color = c; }
             if (_tip != null) { var c = _tip.color; c.a = a; _tip.color = c; }
             for (int i = 0; i < _drift.Count; i++)
                 if (_drift[i] != null)

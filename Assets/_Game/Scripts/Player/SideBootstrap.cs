@@ -27,8 +27,8 @@ namespace SpellyZombie
         /// (AcolyteDeeds), including the arrow and Y.
         static readonly RuneType[] WizardKit =
         {
-            RuneType.Attract,     // push
-            RuneType.Repel,   // pull
+            RuneType.Attract,     // pull
+            RuneType.Repel,       // push
         };
 
         static readonly RuneType[] AcolyteKit = { };
@@ -84,6 +84,8 @@ namespace SpellyZombie
                     if (p.GetComponent<GhostState>() == null) p.gameObject.AddComponent<GhostState>();
                     // the crossroads line: what TAB and R do from here, both sides
                     if (p.GetComponent<ModeGuide>() == null) p.gameObject.AddComponent<ModeGuide>();
+                    // the situations that earn an acolyte a mischief glyph
+                    if (p.GetComponent<AcolyteDeedWatch>() == null) p.gameObject.AddComponent<AcolyteDeedWatch>();
                     // the chosen hat color survives scene loads and sessions
                     HatColor.Dress(p);
 

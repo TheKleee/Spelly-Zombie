@@ -21,6 +21,7 @@ Steam box says.
 | carry.down | put it down | largar | let go | |
 | scan.aim | scan it, become it | escaneie, vire isso | scan, turn into that | vire = the casual "become" |
 | absorb.aim | absorb it, learn its rune | absorva, aprenda a runa | absorb, learn the rune | |
+| chest.open | open the chest | abrir o baú | open the chest |  |
 | chip.grimoire | grimoire | grimório | grimoire | |
 | chip.paint | paint your body | pintar seu corpo | paint your body | |
 | chip.first | first person | primeira pessoa | first person | |
@@ -137,3 +138,27 @@ Steam box says.
 | opt.mic.open | Open mic | Sempre aberto | always open |  |
 | opt.mic.ptt | Hold V | Segure V | hold V | V is a physical key, kept |
 | opt.mic.off | Muted | Mudo | mute |  |
+| opt.tab.game | Game | Jogo | game |  |
+| opt.tab.video | Video | Vídeo | video |  |
+| opt.tab.audio | Audio | Áudio | audio |  |
+| opt.resolution | Resolution: {0} | Resolução: {0} | resolution: {0} |  |
+| opt.resolution.title | Resolution | Resolução | resolution |  |
+| opt.display | Display | Tela | screen | Brazilian word |
+| opt.display.full | Fullscreen | Tela cheia | full screen |  |
+| opt.display.borderless | Borderless | Sem bordas | without borders |  |
+| opt.display.windowed | Windowed | Janela | window |  |
+| opt.quality | Quality | Qualidade | quality |  |
+| opt.low | Low | Baixa | low |  |
+| opt.medium | Medium | Média | medium |  |
+| opt.high | High | Alta | high |  |
+| opt.textures | Textures | Texturas | textures |  |
+| opt.shadows | Shadows | Sombras | shadows |  |
+| opt.effects | Effects | Efeitos | effects |  |
+| opt.motionblur | Motion blur | Desfoque de movimento | movement blur |  |
+| opt.aa | Antialiasing | Antialiasing | antialiasing | kept, the usual term |
+| opt.fps | Frame limit | Limite de FPS | FPS limit |  |
+| opt.vsync | VSync | Sincronização vertical | vertical synchronisation |  |
+| opt.off | Off | Desligado | switched off |  |
+| opt.on | On | Ligado | switched on |  |
+| opt.music | Music: {0}% | Música: {0}% | music: {0}% |  |
+| opt.sfx | Sounds: {0}% | Sons: {0}% | sounds: {0}% |  |

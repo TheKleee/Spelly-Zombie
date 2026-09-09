@@ -55,6 +55,8 @@ namespace SpellyZombie
         /// seal summon: the golem WORKS FOR its summoner (his rule) and
         /// never hunts the owner side.
         public int OwnerId = -1;
+        /// The size it was raised at: Spawn's clamped size multiplier.
+        public float SizeMul = 1f;
 
         Rigidbody _rb;
         Creature _me;
@@ -248,6 +250,7 @@ namespace SpellyZombie
 
             // it rises WHOLE: nothing can kill it mid-birth, so a golem always
             // gets to take at least one step
+            if (g != null) g.SizeMul = scale;
             if (g != null) g._safeUntil = Time.time + DrawingConfig.GolemBirthShield;
 
             // spread it thin enough and it cannot hold together: two golems

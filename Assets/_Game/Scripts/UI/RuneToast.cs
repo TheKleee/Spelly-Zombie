@@ -66,45 +66,11 @@ namespace SpellyZombie
             // art's own aspect - landscape, never squashed into a portrait
             float w = DrawingConfig.RuneToastWidth;
             float aspect = art.height > 0 ? (float)art.width / art.height : 2f;
-            float h = w / Mathf.Max(0.2f, aspect);
-
-            var go = new GameObject("Page", typeof(RectTransform), typeof(CanvasGroup));
-            var rt = (RectTransform)go.transform;
-            rt.SetParent(_root, false);
+            var rt = UIKit.PageCard(_root, "Page", w, aspect, out var raw, out var cg);
             rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 0.5f);
-            rt.sizeDelta = new Vector2(w, h);
             rt.anchoredPosition = new Vector2(DrawingConfig.RuneToastMargin, 0f);
-
-            // paper card behind the transparent page art
-            var paper = new GameObject("Paper", typeof(RectTransform), typeof(Image));
-            paper.transform.SetParent(rt, false);
-            var prt = (RectTransform)paper.transform;
-            prt.anchorMin = Vector2.zero;
-            prt.anchorMax = Vector2.one;
-            prt.offsetMin = prt.offsetMax = Vector2.zero;
-            var img = paper.GetComponent<Image>();
-            var skin = UISkin.I;
-            img.sprite = skin != null ? skin.PanelBrown : null;
-            img.type = img.sprite != null && img.sprite.border != Vector4.zero
-                ? Image.Type.Sliced : Image.Type.Simple;
-            img.color = Paper;
-            img.raycastTarget = false;
-
-            var page = new GameObject("Art", typeof(RectTransform), typeof(RawImage));
-            page.transform.SetParent(rt, false);
-            var art_rt = (RectTransform)page.transform;
-            art_rt.anchorMin = Vector2.zero;
-            art_rt.anchorMax = Vector2.one;
-            art_rt.offsetMin = new Vector2(9f, 9f);
-            art_rt.offsetMax = new Vector2(-9f, -9f);
-            var raw = page.GetComponent<RawImage>();
             raw.texture = art;
-            raw.raycastTarget = false;
-
-            var cg = go.GetComponent<CanvasGroup>();
-            cg.alpha = 0f;
-            cg.blocksRaycasts = false;
-            cg.interactable = false;
+            float h = rt.sizeDelta.y;
 
             _cards.Add(new Card { Rt = rt, Cg = cg, Height = h });
             Juice.Chime(Camera.main != null ? Camera.main.transform.position : Vector3.zero);

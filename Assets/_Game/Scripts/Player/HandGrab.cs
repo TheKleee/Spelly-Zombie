@@ -202,7 +202,12 @@ namespace SpellyZombie
             {
                 // third person: E belongs to poses; no grabbing while downed
                 if (SimpleFPSController.ThirdPersonActive || _pilot.IsDowned) return;
-                if (kb.eKey.wasPressedThisFrame) TryGrab();
+                if (kb.eKey.wasPressedThisFrame)
+                {
+                    // a closed chest under the aim takes E: it opens and stays open
+                    if (AimBadge.ChestTarget != null) AimBadge.ChestTarget.OpenByPlayer();
+                    else TryGrab();
+                }
                 return;
             }
 
@@ -541,6 +546,7 @@ namespace SpellyZombie
                         $"{hitRb.name}: your ink {have:0}, needs {hitRb.mass * DrawingConfig.LiftInkPerKg:0}. draw more on it");
                     return null;
                 }
+                WakeRiders(hitRb);
                 return hitRb;
             }
 
@@ -582,7 +588,45 @@ namespace SpellyZombie
                 freed.interpolation = RigidbodyInterpolation.Interpolate;
             }
             DrawingWorld.Instance?.LogEvent("it tears free of the ground");
+            WakeRiders(freed);
             return freed;
+        }
+
+        /// Whatever rests on a body that goes free goes free with it: a kinematic
+        /// book would hang where the table was and block the lift. Runs where the
+        /// body is acquired, so the host does it for everyone; what wakes rides
+        /// PropSnap like the lifted thing itself.
+        public static void WakeRiders(Rigidbody body, int depth = 0)
+        {
+            if (body == null || depth > 3) return;
+            Bounds b = ShapeShift.FindObjectBounds(body.transform);
+            if (b.size.sqrMagnitude < 1e-6f) return;
+            b.Expand(new Vector3(0.1f, 0f, 0.1f));
+            b.Encapsulate(b.max + Vector3.up * 0.35f);
+            var hits = Physics.OverlapBox(b.center, b.extents, Quaternion.identity,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            foreach (var c in hits)
+            {
+                var rb = c.attachedRigidbody;
+                if (rb == null || rb == body || !rb.isKinematic) continue;
+                if (rb.GetComponent<Element>() == null && rb.GetComponent<Liftable>() == null) continue;
+                if (rb.GetComponentInParent<SimpleFPSController>() != null
+                    || rb.GetComponentInParent<CharacterRig>() != null
+                    || rb.GetComponentInParent<Creature>() != null
+                    || rb.GetComponentInParent<HeldWeapon>() != null
+                    || rb.GetComponentInParent<CauldronEconomy>() != null
+                    || rb.GetComponentInParent<VesselShell>() != null) continue;
+                if (Liftable.WorldScale(rb.transform, out _)) continue;
+                Liftable.MakePhysicsLegal(rb.transform);
+                rb.isKinematic = false;
+                rb.useGravity = true;
+                rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+                rb.WakeUp();
+                var lf = rb.GetComponent<Liftable>();
+                if (lf != null) lf.Rooted = false;
+                NetSync.TrackProp(rb);
+                WakeRiders(rb, depth + 1);
+            }
         }
 
         // ---------------------------------------------- remote hold (client) --

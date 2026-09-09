@@ -550,6 +550,7 @@ namespace SpellyZombie
             // the goo's -9 bite and stopped it ever fusing into Goo at all
             p.Data = def.Payload;
             p.OwnerId = OwnerId;
+            p.FromMinion = true;
             p.SrcSize = DrawingConfig.RuneSizeMin * 2f;
             p.GrammarLevel = def.Level;   // a lvl2 hit lands on its whole area
             p.Vel = aim * 16f;
@@ -823,7 +824,7 @@ namespace SpellyZombie
             if (player != null)
             {
                 Vector3 dir = (target.position - transform.position).normalized;
-                player.TakeHit(dir * 6f + Vector3.up * 2f, AttackDamage);
+                player.TakeHit(dir * 6f + Vector3.up * 2f, AttackDamage, null, OwnerId, true);
                 return;
             }
             // zombie brawl: swiping the zombie it's mad at
@@ -891,7 +892,7 @@ namespace SpellyZombie
             }
             var player = col.collider.GetComponentInParent<SimpleFPSController>();
             if (player != null)
-                player.TakeHit(_chargeDir * 12f + Vector3.up * 4f, AttackDamage * 2f);
+                player.TakeHit(_chargeDir * 12f + Vector3.up * 4f, AttackDamage * 2f, null, OwnerId, true);
             var rb = col.collider.attachedRigidbody;
             if (rb != null) rb.AddForce(_chargeDir * 5f + Vector3.up * 2f, ForceMode.VelocityChange);
         }
@@ -950,7 +951,7 @@ namespace SpellyZombie
             // shared blast: players shoved with falloff, acolytes never damaged,
             // own body excluded from the prop throw
             Shove.Blast(at, radius, DrawingConfig.DetonateShove * potency,
-                DrawingConfig.DetonateDamage * potency, "a zombie went off", _rb);
+                DrawingConfig.DetonateDamage * potency, "a zombie went off", _rb, OwnerId, true);
 
             // the detonation kills it; OnDeath adds its small corpse cloud on top
             _dmg2?.TakeDamage(999999f, "detonated");

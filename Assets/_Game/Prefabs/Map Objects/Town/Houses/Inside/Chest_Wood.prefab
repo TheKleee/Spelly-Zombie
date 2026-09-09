@@ -48,6 +48,26 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7274203593482535614, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -7274203593482535614, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7274203593482535614, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7274203593482535614, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7274203593482535614, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
       propertyPath: m_Name
       value: Chest_Wood
@@ -84,7 +104,18 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7628391962057748117}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7514262588991173799}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2682946929238814754}
   m_SourcePrefab: {fileID: 100100000, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
+--- !u!4 &2356559301913355155 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -7274203593482535614, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
+  m_PrefabInstance: {fileID: 4303462588037619409}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &3997386388225352576 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: c216adccfdc15a04ca098f7fbdf4da34, type: 3}
@@ -180,3 +211,42 @@ MonoBehaviour:
   CodeSplinters: 1
   DefaultSound: 1
   LobbyRespawnOverride: 0
+--- !u!64 &7514262588991173799
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3997386388225352576}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
+--- !u!114 &2682946929238814754
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3997386388225352576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 783a8169bf610434faf8f3673ef39aa7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.ChestLid
+  Lid: {fileID: 2356559301913355155}
+  ClosedEuler: {x: 0, y: 0, z: 0}
+  OpenEuler: {x: -122, y: 0, z: 0}
+  SwingSeconds: 0.35
+  Range: 2.6

@@ -73,12 +73,50 @@ namespace SpellyZombie
             if (_canvas.enabled != show) _canvas.enabled = show;
         }
 
+        public static readonly Color PagePaper = new Color(0.96f, 0.92f, 0.80f);
+
+        /// A paper page card with a RawImage for page art - the unlock toast
+        /// and the floating mark share it. Height follows the art aspect. The
+        /// group starts invisible; callers own placement and animation.
+        public static RectTransform PageCard(RectTransform parent, string name, float width, float aspect,
+            out RawImage art, out CanvasGroup group)
+        {
+            float h = width / Mathf.Max(0.2f, aspect);
+            var go = new GameObject(name, typeof(RectTransform), typeof(CanvasGroup));
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(parent, false);
+            rt.sizeDelta = new Vector2(width, h);
+
+            var skin = UISkin.I;
+            var paper = Panel(rt, skin != null ? skin.PanelBrown : null, PagePaper);
+            paper.name = "Paper";
+            Stretch((RectTransform)paper.transform);
+
+            var page = new GameObject("Art", typeof(RectTransform), typeof(RawImage));
+            page.transform.SetParent(rt, false);
+            var artRt = (RectTransform)page.transform;
+            artRt.anchorMin = Vector2.zero;
+            artRt.anchorMax = Vector2.one;
+            artRt.offsetMin = new Vector2(9f, 9f);
+            artRt.offsetMax = new Vector2(-9f, -9f);
+            art = page.GetComponent<RawImage>();
+            art.raycastTarget = false;
+
+            group = go.GetComponent<CanvasGroup>();
+            group.alpha = 0f;
+            group.blocksRaycasts = false;
+            group.interactable = false;
+            return rt;
+        }
+
+        public const float KeyBadgeSize = 44f;
+
         /// Floating key badge - one style for all world-anchored key hints.
         public static RectTransform KeyBadge(RectTransform parent, string name,
             string letter, out Text letterText, out Image back)
         {
             var ui = Group(parent, name);
-            ui.sizeDelta = new Vector2(44f, 44f);
+            ui.sizeDelta = new Vector2(KeyBadgeSize, KeyBadgeSize);
             var skin = UISkin.I;
             back = Panel(ui, skin != null ? skin.RoundBrown : null,
                 skin != null ? Color.white : new Color(0.95f, 0.93f, 0.85f, 0.9f));
@@ -445,6 +483,79 @@ namespace SpellyZombie
             lay.childForceExpandWidth = true;
             lay.childForceExpandHeight = false;
             return g;
+        }
+
+        /// A scrolling column inside a stack: fixed width, as tall as its rows
+        /// up to maxHeight, then the wheel and a thin bar take over. Returns
+        /// the content stack rows are added to.
+        public static RectTransform Scroll(RectTransform parent, string name, float width, float maxHeight, float spacing)
+        {
+            var view = Group(parent, name);
+            Row(view, width, maxHeight);
+            if (WasAdopted(view)) return view;
+            var catcher = view.gameObject.AddComponent<Image>();
+            catcher.color = new Color(0f, 0f, 0f, 0f); // catches the wheel, shows nothing
+            view.gameObject.AddComponent<RectMask2D>();
+
+            var content = Group(view, name + "Content");
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(1f, 1f);
+            content.pivot = new Vector2(0.5f, 1f);
+            content.anchoredPosition = Vector2.zero;
+            content.sizeDelta = Vector2.zero;
+            Stack(content, 0, 0, spacing);
+
+            var scroll = view.gameObject.AddComponent<ScrollRect>();
+            scroll.content = content;
+            scroll.viewport = view;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 28f;
+
+            // a thin bar on the right edge, shown only while there is more than fits
+            var bar = Group(view, "Scrollbar");
+            bar.anchorMin = new Vector2(1f, 0f);
+            bar.anchorMax = new Vector2(1f, 1f);
+            bar.pivot = new Vector2(1f, 0.5f);
+            bar.anchoredPosition = new Vector2(-1f, 0f);
+            bar.sizeDelta = new Vector2(5f, -6f);
+            var track = bar.gameObject.AddComponent<Image>();
+            track.color = new Color(0f, 0f, 0f, 0.12f);
+            track.raycastTarget = false;
+            var handle = Group(bar, "Handle");
+            handle.anchorMin = Vector2.zero;
+            handle.anchorMax = Vector2.one;
+            handle.sizeDelta = Vector2.zero;
+            var grip = handle.gameObject.AddComponent<Image>();
+            grip.color = new Color(0.35f, 0.25f, 0.15f, 0.7f);
+            grip.raycastTarget = false;
+            var sb = bar.gameObject.AddComponent<Scrollbar>();
+            sb.direction = Scrollbar.Direction.BottomToTop;
+            sb.handleRect = handle;
+            sb.targetGraphic = grip;
+            scroll.verticalScrollbar = sb;
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+
+            view.gameObject.AddComponent<ScrollFit>().Max = maxHeight;
+            return content;
+        }
+
+        /// Keeps a scroll view as tall as its content, never taller than Max.
+        public class ScrollFit : MonoBehaviour
+        {
+            public float Max = 400f;
+
+            void LateUpdate()
+            {
+                var scroll = GetComponent<ScrollRect>();
+                var le = GetComponent<LayoutElement>();
+                if (scroll == null || le == null || scroll.content == null) return;
+                float h = Mathf.Min(Max, LayoutUtility.GetPreferredHeight(scroll.content));
+                if (Mathf.Abs(le.preferredHeight - h) < 0.5f) return;
+                le.preferredHeight = h;
+                le.minHeight = h;
+            }
         }
 
         // ------------------------------------------------------------- bars --

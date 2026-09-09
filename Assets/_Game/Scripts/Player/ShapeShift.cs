@@ -154,7 +154,7 @@ namespace SpellyZombie
 
             if (LocalIsShaped && !SimpleFPSController.ThirdPersonActive)
             {
-                AcolyteDeeds.RevertedToSelf(Grimoire.LocalPlayerId);
+                AcolyteDeeds.RevertedToSelf(Grimoire.LocalPlayerId, transform.position);
                 Unwear();
             }
             // re-wear the existing clone - re-cloning the source would copy
@@ -250,11 +250,14 @@ namespace SpellyZombie
         Vector3 TargetCenterWorld()
         {
             // a CharacterController rests its capsule skinWidth above the
-            // ground - the true contact point is below the capsule's bottom
+            // ground - the true contact point is below the capsule's bottom.
+            // The capsule follows the body's scale (an acolyte is 70% until
+            // the disguise grows it back), so the feet do too
             var cc = GetComponent<CharacterController>();
+            float bodyScale = transform.lossyScale.y;
             float feetLocalY = cc != null
-                ? cc.center.y - cc.height * 0.5f - cc.skinWidth
-                : -0.79f;
+                ? (cc.center.y - cc.height * 0.5f) * bodyScale - cc.skinWidth
+                : -0.79f * bodyScale;
             return new Vector3(transform.position.x,
                 transform.position.y + feetLocalY + _storedGroundOffset,
                 transform.position.z);
@@ -274,6 +277,13 @@ namespace SpellyZombie
                     if (!_hidden.Contains(r)) _hidden.Add(r);
                 }
             }
+            // exactly the object's size whatever the body's own scale is
+            // doing, so the disguise never rides the body's spring
+            var ps = transform.lossyScale;
+            _worn.transform.localScale = new Vector3(
+                _sourceLossy.x / Mathf.Max(1e-4f, ps.x),
+                _sourceLossy.y / Mathf.Max(1e-4f, ps.y),
+                _sourceLossy.z / Mathf.Max(1e-4f, ps.z));
             // set the rotation, then slide the centre back onto target - the
             // shape spins in place instead of swinging around its pivot
             _worn.transform.rotation = _wornRot;
@@ -383,7 +393,7 @@ namespace SpellyZombie
                 DrawingWorld.Instance?.LogEvent("the shape fills your wand");
             }
 
-            AcolyteDeeds.Scanned(Grimoire.LocalPlayerId);
+            AcolyteDeeds.Scanned(Grimoire.LocalPlayerId, root.position);
             _pilot.EnterThirdPerson();   // scanning always ENTERS, never toggles
             // clone BEFORE tinting, or the disguise is born green
             BecomeObject(root);
@@ -392,6 +402,7 @@ namespace SpellyZombie
 
         /// Null until the first scan; TAB reads this to decide if it may switch.
         Transform _storedShape;
+        Vector3 _sourceLossy = Vector3.one; // the object's world size, held while worn
         float _storedGroundOffset;
         static readonly RaycastHit[] _groundBuf = new RaycastHit[16];
 
@@ -489,7 +500,8 @@ namespace SpellyZombie
                 if (c is StateView) continue;
                 Destroy(c);
             }
-            _worn.transform.localScale = source.lossyScale;
+            _sourceLossy = source.lossyScale;
+            _worn.transform.localScale = _sourceLossy;
             _wornRot = source.rotation; // exactly as it stood
             _worn.transform.rotation = _wornRot;
 

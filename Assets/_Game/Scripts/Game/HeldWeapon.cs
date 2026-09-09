@@ -162,7 +162,7 @@ namespace SpellyZombie
                     _drawPan -= new Vector2(panX, panY) * 0.28f * Time.deltaTime;
                     _drawPan = Vector2.ClampMagnitude(_drawPan, 0.3f); // stays on screen
                 }
-                if (mouse != null)
+                if (mouse != null && !GrimoirePages.BookOpen) // the open book owns the wheel
                 {
                     float zoom = mouse.scroll.ReadValue().y;
                     if (Mathf.Abs(zoom) > 0.01f)

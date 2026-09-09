@@ -10,6 +10,7 @@ namespace SpellyZombie
         KilledBy,     // the owner that took its strength to 0
         DamagedBy,    // the owner that last hurt it, fatally or not
         Biome,        // the biome it was last standing in
+        KilledVia,    // 0 = direct, 1 = through a summoned creature
     }
 
     /// THE WORLD'S SHORT MEMORY. One value per (owner, mark) - the LAST one,
@@ -53,7 +54,7 @@ namespace SpellyZombie
         /// than no curse. Storing and telling are the same call on purpose.
         public static void Set(int owner, Mark what, int value)
         {
-            if (owner < 0) return;
+            if (owner == 0) return; // 0 = no id; hashes and instance ids go negative
             SetLocal(owner, what, value);
             NetSync.PushMark(owner, what, value);
         }
@@ -62,7 +63,7 @@ namespace SpellyZombie
         /// received mark would echo straight back out.
         public static void SetLocal(int owner, Mark what, int value)
         {
-            if (owner < 0) return;
+            if (owner == 0) return; // 0 = no id; hashes and instance ids go negative
             _marks[new Key { Owner = owner, What = what }] = value;
         }
 

@@ -92,6 +92,10 @@ namespace SpellyZombie
         static int Oi(string key, int def) =>
             Overlay_().TryGetValue(key, out var v) ? Mathf.RoundToInt(v) : def;
 
+        // ---- The grimoire in hand ----
+        public static readonly float BookLookSpeed = O(nameof(BookLookSpeed), 50f);   // degrees per second of look toward the book (down and left) that raises it; the same speed any other way lowers it
+        public static readonly float BookRaiseSpeed = O(nameof(BookRaiseSpeed), 4f);  // blend per second between the two spots
+
         // ---- Pen / stroke capture ----
         public static readonly float DrawRange = O(nameof(DrawRange), 8f);           // max raycast distance of the pen
         public static readonly float NodeSpacing = O(nameof(NodeSpacing), 0.007f); // min world distance between nodes; sparse nodes leave gaps that make touch tests miss
@@ -115,14 +119,16 @@ namespace SpellyZombie
 
         // ---- The pot: one ink pool. Every wand refill bills it, nothing refills it.
         public static readonly float PotPrepSeconds = O(nameof(PotPrepSeconds), 30f);        // inert gather phase, then it opens full
-        public static readonly float PotCapacityInk = O(nameof(PotCapacityInk), 1600f);      // total reserve, in wand ink units
+        public static readonly float PotCapacityInk = O(nameof(PotCapacityInk), 1600f);      // the floor and the lobby pot; a match sizes its pot from the wizard count and the clock
+        public static readonly float PotWizardSpendPerSec = O(nameof(PotWizardSpendPerSec), 3.75f); // ink one wizard spends per second in ordinary play
+        public static readonly float PotLifeMatches = O(nameof(PotLifeMatches), 2f);        // a full pot outlasts this many match lengths of the whole team's ordinary play
         public static readonly float PotCloseRadius = O(nameof(PotCloseRadius), 2.6f);       // fast refill, spill, defuse, corrupt touch inside this
         public static readonly float PotRefillRange = O(nameof(PotRefillRange), 45f);        // beyond this the refill sits at the floor rate
         public static readonly float PotRefillNearPerSec = O(nameof(PotRefillNearPerSec), 45f);  // ink/s at the pot: a full tank in ~2s standing over it
         public static readonly float PotRefillFloorPerSec = O(nameof(PotRefillFloorPerSec), 2.5f); // ink/s across the map - never truly dry, never enough to camp on
         public static readonly float PotSpillPerSec = O(nameof(PotSpillPerSec), 8f);         // full wand inside the close radius: the tap keeps running, the pot pays
-        public static readonly float PotCorruptDrainPerSec = O(nameof(PotCorruptDrainPerSec), 11f); // green evaporation drain rate
-        public static readonly float PotAcolyteFillPerSec = O(nameof(PotAcolyteFillPerSec), 9f);   // the babysitting tax: their corruption FILLS it
+        public static readonly float PotCorruptDrainPerSec = O(nameof(PotCorruptDrainPerSec), 11f); // green evaporation drain rate at the floor capacity; scales with the pot
+        public static readonly float PotAcolyteFillPerSec = O(nameof(PotAcolyteFillPerSec), 9f);   // the babysitting tax: their corruption FILLS it; at the floor capacity, scales with the pot
         public static readonly float PotAcolyteFillRadius = O(nameof(PotAcolyteFillRadius), 6f);   // must stay smaller than a sensible overwatch distance
         public static readonly float PotCorruptSeconds = O(nameof(PotCorruptSeconds), 3.2f); // seconds of acolyte touch to turn it green
         public static readonly float PotDefuseSeconds = O(nameof(PotDefuseSeconds), 10f);    // seconds of wizard presence to turn it back (colour only, ink lost is lost)
@@ -452,6 +458,19 @@ namespace SpellyZombie
         // Fraction of InkMax granted at spawn; 0 restores a wandless start.
         public static readonly float StartInkFraction = O(nameof(StartInkFraction), 1f);
 
+        // ---- acolyte unlock marks ----
+        public static readonly float UnlockMarkPageSeconds = O(nameof(UnlockMarkPageSeconds), 3f); // the earned page floats this long, then poofs
+        public static readonly float UnlockMarkPageWidth = O(nameof(UnlockMarkPageWidth), 150f); // screen pixels
+        public static readonly float UnlockMarkHintBadgeMul = O(nameof(UnlockMarkHintBadgeMul), 1.2f); // the waiting page is this many key badges (F, E) wide; the flip grows it to the page
+        public static readonly float UnlockNearRange = O(nameof(UnlockNearRange), 4f); // a wizard this close to a disguised acolyte fills the bar
+        public static readonly float UnlockNearSeconds = O(nameof(UnlockNearSeconds), 3f); // the fill time
+        public static readonly float UnlockCastRange = O(nameof(UnlockCastRange), 6f); // a spell appearing this close while the bar is full is the attack outcome
+        public static readonly float UnlockCorruptAttemptSeconds = O(nameof(UnlockCorruptAttemptSeconds), 1f);
+        public static readonly float UnlockNearLeaveSlack = O(nameof(UnlockNearLeaveSlack), 0.6f); // a full bar keeps its wizard this much farther before he counts as gone
+        public static readonly float UnlockBlameWaitSeconds = O(nameof(UnlockBlameWaitSeconds), 1.5f); // how long a downed wizard waits for the host's word on who did it
+        public static readonly float UnlockPotLeaveGraceSeconds = O(nameof(UnlockPotLeaveGraceSeconds), 1.2f); // the pot turning this soon after you stepped off still counts as yours
+        public static readonly float UnlockPotLeaveDebounceSeconds = O(nameof(UnlockPotLeaveDebounceSeconds), 1f); // off the pot this long = the try is over // touching the pot at least this long then leaving without turning it green counts as a failed corruption
+
         // ---- The wand tip flow ----
         // Mote direction = gaining or losing ink; mote size = how fast.
         // Rates are in ink fraction per second: pot up close ~0.45, drawing
@@ -665,6 +684,13 @@ namespace SpellyZombie
         // matter raised it - bigger still means stronger, it just starts here.
         public static readonly float GolemMinStrength = O(nameof(GolemMinStrength), 90f);
         public static readonly float GolemMinMass = O(nameof(GolemMinMass), 12f);
+        // a WILD golem (no owner) is a nuisance, not an executioner: its charge
+        // hits a player for this much at size 1 and grows with size to this
+        // power (1.5 = the impact law's own mass root), and it cracks by this
+        // share of its own strength for landing it
+        public static readonly float WildGolemChargeDamage = O(nameof(WildGolemChargeDamage), 20f);
+        public static readonly float WildGolemChargeSizePower = O(nameof(WildGolemChargeSizePower), 1.5f);
+        public static readonly float WildGolemChargeRecoilShare = O(nameof(WildGolemChargeRecoilShare), 0.2f);
         // below this height it is under the world: kill it there so it dies
         // visibly instead of falling out of sight forever
         public static readonly float GolemFloorY = O(nameof(GolemFloorY), -25f);

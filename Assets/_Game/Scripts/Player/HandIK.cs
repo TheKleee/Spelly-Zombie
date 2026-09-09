@@ -17,8 +17,10 @@ namespace SpellyZombie
         Vector3 _grip, _support; // last targets, for the ease-out
 
         // pen stance blends READING (book up) and CASTING (wand thrust, book
-        // tucked). Stances live in IKAnchor_* children under the camera pivot,
-        // adjustable in play mode via Character Fix.
+        // tucked). Reading has two spots: the corner, where the open book hints
+        // without covering the view, and ReadUp, where the hand brings it when
+        // you look down at it. Stances live in IKAnchor_* children under the
+        // camera pivot, adjustable in play mode via Character Fix.
         Vector3 _penGrip, _penSupport;
         static readonly Vector3 ReadGripDefault = new Vector3(0.17f, -0.25f, 0.38f);
         // the baked Player.prefab IKAnchor_* transforms override these
@@ -27,6 +29,13 @@ namespace SpellyZombie
         static readonly Vector3 CastGripDefault = new Vector3(0.14f, -0.16f, 0.56f);
         static readonly Vector3 CastSupportDefault = new Vector3(-0.25f, -0.36f, 0.28f);
         Transform _aReadGrip, _aReadSupport, _aCastGrip, _aCastSupport;
+        static readonly Vector3 ReadUpDefault = new Vector3(-0.10f, -0.17f, 0.48f);
+        Transform _aReadUp;
+        float _readUp;   // 0 = the corner, 1 = raised to read
+        bool _reading;   // set by the look gesture, cleared by any look away
+        Vector3 _lastFlat; float _lastBelow; bool _lookSeen;
+        Vector2 _lookVel; // degrees per second: x right, y down
+        bool _carried;    // last pass had both hands on a load
 
         void Awake() => _anim = GetComponent<Animator>();
 
@@ -67,19 +76,56 @@ namespace SpellyZombie
                 // casting stance while ink flows or hands are full; open
                 // grimoire = read stance; closed, the book hand hangs free
                 bool casting = SurfaceDrawer.IsPenActive || HandGrab.LocalHolding;
+                if (_carried)
+                {
+                    // the hands come back from the load itself, not from
+                    // wherever the tucked stance drifted to meanwhile
+                    _penGrip = Pivot.InverseTransformPoint(_grip);
+                    _penSupport = Pivot.InverseTransformPoint(_support);
+                    _carried = false;
+                }
                 var readGrip = Anchor(ref _aReadGrip, "IKAnchor_ReadGrip", ReadGripDefault);
                 var readSupport = Anchor(ref _aReadSupport, "IKAnchor_ReadSupport", ReadSupportDefault);
                 var castGrip = Anchor(ref _aCastGrip, "IKAnchor_CastGrip", CastGripDefault);
                 var castSupport = Anchor(ref _aCastSupport, "IKAnchor_CastSupport", CastSupportDefault);
+                var readUp = Anchor(ref _aReadUp, "IKAnchor_ReadUp", ReadUpDefault);
+                // the book rises when the look moves toward it, down and left,
+                // and sinks the moment the look moves any other way. Deltas, not
+                // angles: the book is glued to the camera, so only motion tells
+                Vector3 flat = Pivot.forward; flat.y = 0f;
+                float below = -Mathf.Asin(Mathf.Clamp(Pivot.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
+                float dt = Mathf.Max(Time.deltaTime, 1e-4f);
+                if (_lookSeen && flat.sqrMagnitude > 1e-4f && _lastFlat.sqrMagnitude > 1e-4f)
+                {
+                    var v = new Vector2(Vector3.SignedAngle(_lastFlat, flat, Vector3.up) / dt,
+                                        (below - _lastBelow) / dt);
+                    _lookVel = Vector2.Lerp(_lookVel, v, 1f - Mathf.Exp(-dt * 10f));
+                }
+                _lastFlat = flat; _lastBelow = below; _lookSeen = true;
+                float toward = Vector2.Dot(_lookVel, new Vector2(-0.7071f, 0.7071f));
+                if (casting || !GrimoirePages.BookOpen) _reading = false;
+                else if (toward > DrawingConfig.BookLookSpeed) _reading = true;
+                else if (toward < -DrawingConfig.BookLookSpeed) _reading = false;
+                if (GrimoirePages.BookOpen)
+                    _readUp = Mathf.MoveTowards(_readUp, _reading ? 1f : 0f,
+                        Time.deltaTime * DrawingConfig.BookRaiseSpeed);
+                else if (_supportWeight <= 0.001f)
+                    _readUp = 0f; // closed: the hand lets go where it is, the next open starts in the corner
                 Vector3 gripTarget = casting
                     ? (castGrip != null ? castGrip.localPosition : CastGripDefault)
                     : (readGrip != null ? readGrip.localPosition : ReadGripDefault);
                 Vector3 supportTarget = casting
                     ? (castSupport != null ? castSupport.localPosition : CastSupportDefault)
-                    : (readSupport != null ? readSupport.localPosition : ReadSupportDefault);
+                    : Vector3.Lerp(readSupport != null ? readSupport.localPosition : ReadSupportDefault,
+                                   readUp != null ? readUp.localPosition : ReadUpDefault, _readUp);
                 if (_penGrip == Vector3.zero) { _penGrip = gripTarget; _penSupport = supportTarget; }
                 _penGrip = Vector3.Lerp(_penGrip, gripTarget, Time.deltaTime * 7f);
-                _penSupport = Vector3.Lerp(_penSupport, supportTarget, Time.deltaTime * 7f);
+                // closing: the book hand fades out from where it is and chases
+                // nothing; once gone, the next open starts at the corner
+                if (GrimoirePages.BookOpen)
+                    _penSupport = Vector3.Lerp(_penSupport, supportTarget, Time.deltaTime * 7f);
+                else if (_supportWeight <= 0.001f)
+                    _penSupport = supportTarget;
                 _grip = Pivot.TransformPoint(_penGrip);
                 _support = Pivot.TransformPoint(_penSupport);
             }
@@ -104,6 +150,7 @@ namespace SpellyZombie
                 Vector3 side = _anim.transform.right * half;
                 _grip = c + side;
                 _support = c - side;
+                _carried = true;
             }
 
             bool bookUp = weaponHold || carryHold || (penHold && GrimoirePages.BookOpen);

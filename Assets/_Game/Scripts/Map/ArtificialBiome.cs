@@ -28,6 +28,7 @@ namespace SpellyZombie
             float seconds = 0f)
         {
             var b = OpenLocal(at, offsets.Scaled(power), radius, seconds);
+            if (b == null) return null;
             NetSync.PushBiome(at, b.Offsets, b.Radius, b.Seconds);
             return b;
         }
@@ -39,6 +40,13 @@ namespace SpellyZombie
         public static ArtificialBiome OpenLocal(Vector3 at, SpellPayload offsets, float radius,
             float seconds = 0f)
         {
+            // what it has, and how much: a linger below the meaningful floor on
+            // every axis is a trace, and a trace leaves nothing at all
+            float strongest = 0f;
+            for (int ax = 0; ax < 6; ax++) strongest = Mathf.Max(strongest, Mathf.Abs(offsets.Unit(ax)));
+            if (seconds > 0f && strongest < 0.15f) return null;
+            float strength = Mathf.Clamp01(strongest);
+
             var go = new GameObject("ArtificialBiome");
             go.transform.position = at;
             var b = go.AddComponent<ArtificialBiome>();
@@ -56,7 +64,11 @@ namespace SpellyZombie
                 b._dome.SetParent(go.transform, true);
                 DrawingWorld.Instance?.LogEvent("the nature here changes");
             }
-            GrammarFX.GroundRing(go.transform, c).localScale = Vector3.one * b.Radius;
+            // the ring says the range; a weak spell draws a faint, thin one
+            var ring = GrammarFX.GroundRing(go.transform, c, Mathf.Lerp(0.3f, 0.9f, strength));
+            ring.localScale = Vector3.one * b.Radius;
+            var line = ring.GetComponent<LineRenderer>();
+            if (line != null) line.widthMultiplier *= Mathf.Lerp(0.5f, 1f, strength);
 
             // ★ EVERY AXIS SHOWS ITSELF, BY INTENSITY (his design): each of
             // the six sliders that sits meaningfully off neutral spawns ITS

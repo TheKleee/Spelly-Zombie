@@ -31,6 +31,7 @@ namespace SpellyZombie
         static bool _taughtOpen; // the G hint retires after the first open
         bool _liftHidden;        // the book is poofed away while both hands carry
         static bool _popRequested;
+        static GrimoirePages _owner;  // the book the statics describe
 
         /// An outside event asks the book to open - fired on hover-enter,
         /// consumed once.
@@ -40,6 +41,10 @@ namespace SpellyZombie
         public static bool TaughtOpen => _taughtOpen;
         bool _open;
         int _page;
+        int _autoTarget = -1;    // an unlock riffles the book toward this page
+        float _autoNext, _wheelNext;
+        const float AutoOpenDelay = 0.45f, AutoFlipEvery = 0.08f;
+        const float WheelCooldown = 0.04f; // one notch spread over two frames is still one page
         int _cardsShown = int.MinValue;
         int _writingShown = int.MinValue;
         readonly List<GameObject> _content = new List<GameObject>();
@@ -100,6 +105,7 @@ namespace SpellyZombie
             {
                 _open = !_open;
                 BookOpen = _open;
+                if (_open) _owner = this;
                 _taughtOpen = true;
                 SetAnimatorOpen(_open);
                 Juice.Chime(transform.position);
@@ -111,6 +117,7 @@ namespace SpellyZombie
                 {
                     ClearContent();
                     _pendingFlip = false;
+                    _autoTarget = -1;
                     PageRune = RuneType.None;
                     SealPageOpen = false;
                     ScanPageOpen = false;
@@ -144,12 +151,27 @@ namespace SpellyZombie
             int pages = PageCount; // wizard: seal + 12 runes · acolyte: seal + kit (+ scan)
             SetArrows(true);
 
-            // arrow keys turn pages; the turn is the paper-quad effect and
-            // content lands mid-turn
+            // the mouse wheel turns pages: away from you is the next page,
+            // toward you is back. One page per notch, as fast as the wheel
+            // goes; the paper flips each time and the content lands once the
+            // wheel rests
             Hints.Offer(Hints.Id.Pages);
             int step = 0;
-            if (kb.rightArrowKey.wasPressedThisFrame) step = 1;
-            if (kb.leftArrowKey.wasPressedThisFrame) step = -1;
+            var mouse = Mouse.current;
+            if (mouse != null && Time.time >= _wheelNext)
+            {
+                float wheel = mouse.scroll.ReadValue().y;
+                if (wheel > 0.01f) step = 1;
+                else if (wheel < -0.01f) step = -1;
+                if (step != 0) _wheelNext = Time.time + WheelCooldown;
+            }
+            if (step != 0) _autoTarget = -1; // a hand on the wheel wins
+            else if (_autoTarget >= 0 && Time.time >= _autoNext)
+            {
+                // the unlock riffle: one page at a time toward the new rune
+                if (_autoTarget == _page || _autoTarget >= pages) _autoTarget = -1;
+                else { step = _autoTarget > _page ? 1 : -1; _autoNext = Time.time + AutoFlipEvery; }
+            }
             int target = Mathf.Clamp(_page + step, 0, pages - 1); // ends STOP, no wrap
             if (step != 0 && target != _page)
             {
@@ -189,9 +211,9 @@ namespace SpellyZombie
             }
         }
 
-        [Tooltip("Arrow object on the book meaning NEXT page (right arrow key). Shown only while a next page exists.")]
+        [Tooltip("Object on the book meaning NEXT page (mouse wheel away from you, wheel up). Shown only while a next page exists.")]
         public GameObject ArrowNext;
-        [Tooltip("Arrow object on the book meaning PREVIOUS page (left arrow key). Shown only while a previous page exists.")]
+        [Tooltip("Object on the book meaning PREVIOUS page (mouse wheel toward you, wheel down). Shown only while a previous page exists.")]
         public GameObject ArrowBack;
         bool _arrowsWarned;
 
@@ -225,17 +247,47 @@ namespace SpellyZombie
 
         /// The book closes when it leaves the hand (third person, stow) -
         /// it comes back CLOSED, the default.
+        void OnEnable() => Grimoire.Unlocked += OnUnlocked;
+
+        /// A fresh rune: the book in hand opens and riffles to its page. A
+        /// disguised acolyte, full hands or a stowed book hold no book at all.
+        void OnUnlocked(int owner, RuneType rune)
+        {
+            if (!isActiveAndEnabled || owner != Grimoire.LocalPlayerId) return;
+            if (ShapeShift.LocalIsShaped || HandGrab.LocalHolding || SimpleFPSController.ThirdPersonActive) return;
+            int target = PageOf(rune);
+            if (target < 0) return;
+            _autoTarget = target;
+            if (!_open) { _popRequested = true; _autoNext = Time.time + AutoOpenDelay; }
+            else _autoNext = Time.time + AutoFlipEvery;
+        }
+
+        /// The page a rune sits on right now, -1 while it has no page.
+        int PageOf(RuneType rune)
+        {
+            var list = Acolyte ? AcolytePageList() : WizardPageList();
+            int i = list.IndexOf(rune);
+            return i < 0 ? -1 : 2 + i;
+        }
+
         void OnDisable()
         {
+            Grimoire.Unlocked -= OnUnlocked;
+            _autoTarget = -1;
             _open = false;
+            SetAnimatorOpen(false); // the mesh closes with the state, or the page bone stays out
             SetArrows(false);
-            BookOpen = false;
             _pendingFlip = false;
+            ClearContent();   // _page is KEPT - the book remembers where you were
+            // another body's book leaving (a friend's copy, a bot) must not
+            // close the one in your hands
+            if (_owner != this) return;
+            _owner = null;
+            BookOpen = false;
             PageRune = RuneType.None;
             SealPageOpen = false;
             ScanPageOpen = false;
             AbsorbPageOpen = false;
-            ClearContent();   // _page is KEPT - the book remembers where you were
         }
 
         void SetAnimatorOpen(bool open)
@@ -263,6 +315,8 @@ namespace SpellyZombie
             _acoPages.Clear();
             int me = Grimoire.LocalPlayerId;
             foreach (var r in RuneLibrary.AcolyteKit)      // canonical order
+                if (RuneLibrary.IsUnlocked(me, r)) _acoPages.Add(r);
+            foreach (var r in RuneLibrary.AcolyteMischief) // then the earned mischief glyphs
                 if (RuneLibrary.IsUnlocked(me, r)) _acoPages.Add(r);
             return _acoPages;
         }
@@ -353,8 +407,8 @@ namespace SpellyZombie
                     var arune = acoPages[ai];
                     PageRune = arune; // declare flow works on the kit pages too
                     // art: acolyte variant ("_Acolyte") first, wizard art as the stand-in
-                    if (CustomPage($"GrimoirePage_{arune}_Acolyte", true)) return;
-                    if (CustomPage($"GrimoirePage_{arune}", true)) return;
+                    if (CustomPage($"GrimoirePage_{PageKey(arune)}_Acolyte", true)) return;
+                    if (CustomPage($"GrimoirePage_{PageKey(arune)}", true)) return;
                     Label(RuneLibrary.Icon(arune), new Vector3(0f, 0.001f, 0.094f), 0.003f, Ink);
                     var atex = Wardrobe.RuneIcon(arune, Ink);
                     if (atex != null) Quad(atex, new Vector3(0f, 0f, 0.012f), 0.092f);
@@ -375,8 +429,8 @@ namespace SpellyZombie
             bool owned = true; // a page that exists is a page you own now
 
             // the ART, most specific first: per-rune page, then family page
-            if (CustomPage($"GrimoirePage_{rune}", owned)) return;
-            if (CustomPage($"GrimoirePage_{family}", owned)) return;
+            if (CustomPage($"GrimoirePage_{PageKey(rune)}", owned)) return;
+            if (CustomPage($"GrimoirePage_{PageKey(family)}", owned)) return;
 
             Label(RuneLibrary.Icon(rune), new Vector3(0f, 0.001f, 0.094f),
                 0.003f, owned ? Ink : Locked);
@@ -419,6 +473,18 @@ namespace SpellyZombie
             }
         }
 
+        /// Page art keeps the names it was drawn under. The Affinity pair was
+        /// renamed in code (Attract, Repel); the page files were not.
+        public static string PageKey(RuneType rune) => rune switch
+        {
+            RuneType.Attract => "DirectionAway",
+            RuneType.Repel => "DirectionToward",
+            _ => rune.ToString()
+        };
+
+        public static string PageKey(RuneCardType family)
+            => family == RuneCardType.Affinity ? "Direction" : family.ToString();
+
         /// Page art naming, most specific first: Custom/GrimoirePage_&lt;RuneType&gt;;
         /// _Full (complete spread, nothing stamped on top) and &lt;Family&gt; variants
         /// still resolve. Outside callers (unlock toast, UI) ask PageArt so the
@@ -428,11 +494,11 @@ namespace SpellyZombie
             Texture2D Load(string n) => PageImage(n);
             if (acolyte)
             {
-                var acolytePage = Load($"GrimoirePage_{rune}_Acolyte");
+                var acolytePage = Load($"GrimoirePage_{PageKey(rune)}_Acolyte");
                 if (acolytePage != null) return acolytePage;
             }
-            var mine = Load($"GrimoirePage_{rune}");
-            return mine != null ? mine : Load($"GrimoirePage_{RuneLibrary.CardOf(rune)}");
+            var mine = Load($"GrimoirePage_{PageKey(rune)}");
+            return mine != null ? mine : Load($"GrimoirePage_{PageKey(RuneLibrary.CardOf(rune))}");
         }
 
         bool CustomPage(string pageName, bool owned)

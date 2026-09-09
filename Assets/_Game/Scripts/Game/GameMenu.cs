@@ -25,8 +25,9 @@ namespace SpellyZombie
 
         const string WishlistUrl = "https://store.steampowered.com/"; // real page URL once it exists
 
-        bool _options, _langPick, _micPick;
-        float _sens, _volume;
+        bool _options, _langPick, _micPick, _resPick;
+        int _tab; // 0 game, 1 video, 2 audio
+        float _sens;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -39,8 +40,7 @@ namespace SpellyZombie
         void Awake()
         {
             _sens = PlayerPrefs.GetFloat("sz_look_sens", 0.12f);
-            _volume = PlayerPrefs.GetFloat("sz_volume", 1f);
-            AudioListener.volume = _volume;
+            AudioListener.volume = AudioOptions.Master;
         }
 
         Image _meter;
@@ -50,7 +50,7 @@ namespace SpellyZombie
         {
             // the mic meter breathes with your own voice while the menu is open
             if (_meterRect != null)
-                _meterRect.sizeDelta = new Vector2(300f * VoiceChat.LocalLevel, 0f);
+                _meterRect.sizeDelta = new Vector2(288f * VoiceChat.LocalLevel, 0f);
         }
 
         void Update()
@@ -80,6 +80,7 @@ namespace SpellyZombie
             _options = false;
             _langPick = false;
             _micPick = false;
+            _resPick = false;
             // never pause a connected game: the world runs on while you read
             Time.timeScale = NetGame.Connected ? 1f : 0f;
             _wasLocked = Cursor.lockState == CursorLockMode.Locked;
@@ -93,7 +94,6 @@ namespace SpellyZombie
             IsOpen = false;
             Time.timeScale = 1f;
             PlayerPrefs.SetFloat("sz_look_sens", _sens);
-            PlayerPrefs.SetFloat("sz_volume", _volume);
             PlayerPrefs.Save();
             if (_ui != null) Destroy(_ui.gameObject);
             _ui = null;
@@ -177,89 +177,169 @@ namespace SpellyZombie
                 return;
             }
 
+            if (_options && _resPick)
+            {
+                // every size at once; picking one relabels and stays, Back returns
+                UIKit.Row(UIKit.Label(pr, Loc.T("opt.resolution.title"), 20, UIKit.Ink, TextAnchor.MiddleCenter, true), 300f, 28f);
+                var grid = UIKit.Grid(pr, "ResGrid", new Vector2(150f, 44f), 10f, 2);
+                foreach (var r in VideoOptions.Resolutions())
+                {
+                    int w = r.x, h = r.y;
+                    bool on = w == VideoOptions.CurrentWidth && h == VideoOptions.CurrentHeight;
+                    UIKit.Button(grid, w + " x " + h, () => { VideoOptions.SetResolution(w, h); BuildUI(); },
+                        skin != null ? (on ? skin.ButtonBrown : skin.ButtonGrey) : null, 16);
+                }
+                UIKit.Gap(pr, 6f);
+                UIKit.Row(UIKit.Button(pr, Loc.T("menu.back"), () => { _resPick = false; BuildUI(); }, grey), 300f, 48f);
+                return;
+            }
+
             if (_options)
             {
-                var sensLabel = UIKit.Row(UIKit.Label(pr, Loc.F("opt.sens", _sens.ToString("0.00")), 17, UIKit.Ink, TextAnchor.MiddleLeft, true), 300f, 24f);
-                UIKit.Row(UIKit.Slider(pr, 0.02f, 0.4f, _sens, v =>
+                // three tabs, all visible, the open one lit; the rows below them
+                // scroll inside a fixed window so no tab can run off the screen
+                var tabs = UIKit.Segments(pr, 300f, 36f, 6f);
+                TabButton(tabs, 0, "opt.tab.game");
+                TabButton(tabs, 1, "opt.tab.video");
+                TabButton(tabs, 2, "opt.tab.audio");
+                UIKit.Gap(pr, 6f);
+                var at = UIKit.Scroll(pr, "OptionsScroll", 300f, 420f, 5f);
+                const float W = 288f;
+
+                if (_tab == 0)
                 {
-                    _sens = v;
-                    sensLabel.text = Loc.F("opt.sens", _sens.ToString("0.00"));
-                    foreach (var p in SimpleFPSController.All)
-                        if (p != null) p.LookSensitivity = _sens;
-                }), 300f, 26f);
-                UIKit.Gap(pr, 6f);
+                    var sensLabel = UIKit.Row(UIKit.Label(at, Loc.F("opt.sens", _sens.ToString("0.00")), 15, UIKit.Ink, TextAnchor.MiddleLeft, true), W, 22f);
+                    UIKit.Row(UIKit.Slider(at, 0.02f, 0.4f, _sens, v =>
+                    {
+                        _sens = v;
+                        sensLabel.text = Loc.F("opt.sens", _sens.ToString("0.00"));
+                        foreach (var p in SimpleFPSController.All)
+                            if (p != null) p.LookSensitivity = _sens;
+                    }), W, 26f);
+                    UIKit.Gap(at, 4f);
 
-                var volLabel = UIKit.Row(UIKit.Label(pr, Loc.F("opt.volume", (_volume * 100f).ToString("0")), 17, UIKit.Ink, TextAnchor.MiddleLeft, true), 300f, 24f);
-                UIKit.Row(UIKit.Slider(pr, 0f, 1f, _volume, v =>
+                    // the language button opens the picker: every language at once
+                    OptionButton(Loc.F("opt.language", Loc.NativeName(Loc.LanguageCode)),
+                        () => { _langPick = true; BuildUI(); });
+
+                    // immersive mode: the whole HUD off
+                    OptionButton(Loc.T(UIKit.Immersive ? "opt.immersive.on" : "opt.immersive.off"),
+                        () => { UIKit.Immersive = !UIKit.Immersive; BuildUI(); });
+                    var hint = UIKit.Label(at, Loc.T("opt.immersive.hint"),
+                        12, new Color(0.35f, 0.28f, 0.2f), TextAnchor.MiddleCenter, true);
+                    hint.resizeTextForBestFit = false;
+                    UIKit.Row(hint, W, -1f); // as tall as its lines
+                }
+                else if (_tab == 1)
                 {
-                    _volume = v;
-                    volLabel.text = Loc.F("opt.volume", (_volume * 100f).ToString("0"));
-                    AudioListener.volume = _volume;
-                }), 300f, 26f);
-                UIKit.Gap(pr, 6f);
-
-                // the language button opens the picker: every language at once
-                OptionButton(Loc.F("opt.language", Loc.NativeName(Loc.LanguageCode)),
-                    () => { _langPick = true; BuildUI(); });
-
-                // immersive mode: the whole HUD off
-                OptionButton(Loc.T(UIKit.Immersive ? "opt.immersive.on" : "opt.immersive.off"),
-                    () => { UIKit.Immersive = !UIKit.Immersive; BuildUI(); });
-                var hint = UIKit.Label(pr, Loc.T("opt.immersive.hint"),
-                    13, new Color(0.35f, 0.28f, 0.2f), TextAnchor.MiddleCenter, true);
-                hint.resizeTextForBestFit = false;
-                UIKit.Row(hint, 300f, -1f); // as tall as its lines
-                UIKit.Gap(pr, 6f);
-
-                // ---- voice: how the mic opens, which mic, and a live level so
-                // the pick is seen to work; then one mute button per other player ----
-                UIKit.Row(UIKit.Label(pr, Loc.T("opt.mic.title"), 17, UIKit.Ink, TextAnchor.MiddleLeft, true), 300f, 24f);
-                var modes = UIKit.Segments(pr, 300f, 40f, 6f);
-                ModeButton(modes, VoiceChat.MicMode.Open, "opt.mic.open");
-                ModeButton(modes, VoiceChat.MicMode.PushToTalk, "opt.mic.ptt");
-                ModeButton(modes, VoiceChat.MicMode.Off, "opt.mic.off");
-                var devs = Microphone.devices;
-                string micName = string.IsNullOrEmpty(VoiceChat.Device) ? Loc.T("opt.mic.default") : VoiceChat.Device;
-                if (devs != null && devs.Length > 1)
-                    OptionButton(Loc.F("opt.mic", micName), () => { _micPick = true; BuildUI(); });
+                    OptionButton(Loc.F("opt.resolution", VideoOptions.CurrentWidth + " x " + VideoOptions.CurrentHeight),
+                        () => { _resPick = true; BuildUI(); });
+                    Choice("opt.display",
+                        new[] { Loc.T("opt.display.full"), Loc.T("opt.display.borderless"), Loc.T("opt.display.windowed") },
+                        (int)VideoOptions.Mode, i => VideoOptions.SetDisplay((VideoOptions.Display)i));
+                    Choice("opt.quality", Levels(), VideoOptions.Preset, VideoOptions.SetPreset);
+                    Choice("opt.textures", Levels(), (int)VideoOptions.Textures, i => VideoOptions.SetTextures((VideoOptions.Level)i));
+                    Choice("opt.shadows", new[] { Loc.T("opt.off"), Loc.T("opt.low"), Loc.T("opt.high") },
+                        (int)VideoOptions.Shadows, i => VideoOptions.SetShadows((VideoOptions.ShadowLevel)i));
+                    Choice("opt.effects", OffOn(), VideoOptions.Effects ? 1 : 0, i => VideoOptions.SetEffects(i == 1));
+                    Choice("opt.motionblur", OffOn(), VideoOptions.MotionBlur ? 1 : 0, i => VideoOptions.SetMotionBlur(i == 1));
+                    Choice("opt.aa", new[] { Loc.T("opt.off"), "FXAA", "SMAA", "TAA", "MSAA" },
+                        (int)VideoOptions.Antialias, i => VideoOptions.SetAntialias((VideoOptions.Aa)i));
+                    Choice("opt.fps", new[] { Loc.T("opt.off"), "60", "120", "144", "240" }, VideoOptions.FpsIndex, VideoOptions.SetFps);
+                    Choice("opt.vsync", OffOn(), VideoOptions.VSync ? 1 : 0, i => VideoOptions.SetVSync(i == 1));
+                }
                 else
-                    UIKit.Row(UIKit.Label(pr, Loc.F("opt.mic", micName), 15, UIKit.Ink, TextAnchor.MiddleCenter, true), 300f, 24f);
-                var meterBack = UIKit.Row(UIKit.Panel(pr, null, new Color(0f, 0f, 0f, 0.35f)), 300f, 8f);
-                _meter = UIKit.Panel((RectTransform)meterBack.transform, null, new Color(0.45f, 1f, 0.55f, 0.9f));
-                _meterRect = (RectTransform)_meter.transform;
-                _meterRect.anchorMin = Vector2.zero;
-                _meterRect.anchorMax = new Vector2(0f, 1f);
-                _meterRect.pivot = new Vector2(0f, 0.5f);
-                _meterRect.anchoredPosition = Vector2.zero;
-                _meterRect.sizeDelta = Vector2.zero;
-                UIKit.Gap(pr, 6f);
-
-                if (NetAvatar.All.Count == 0)
-                    UIKit.Row(UIKit.Label(pr, Loc.T("opt.nobody"), 15, UIKit.Ink, TextAnchor.MiddleCenter, true), 300f, 24f);
-                foreach (var av in NetAvatar.All)
                 {
-                    if (av == null) continue;
-                    int owner = NetSync.OwnerIdOf(av.Id);
-                    string who = NetSync.IdentityOf(av.Id, out var name, out _) && !string.IsNullOrEmpty(name)
-                        ? name : "#" + owner;
-                    bool muted = VoiceChat.IsMuted(owner);
-                    OptionButton(Loc.F(muted ? "opt.unmute" : "opt.mute", who),
-                        () => { VoiceChat.SetMuted(owner, !muted); BuildUI(); });
+                    VolumeRow("opt.volume", AudioOptions.Master, AudioOptions.SetMaster);
+                    VolumeRow("opt.music", AudioOptions.Music, AudioOptions.SetMusic);
+                    VolumeRow("opt.sfx", AudioOptions.Sfx, AudioOptions.SetSfx);
+
+                    // ---- voice: how the mic opens, which mic, and a live level so
+                    // the pick is seen to work; then one mute button per other player ----
+                    UIKit.Row(UIKit.Label(at, Loc.T("opt.mic.title"), 15, UIKit.Ink, TextAnchor.MiddleLeft, true), W, 22f);
+                    var modes = UIKit.Segments(at, W, 36f, 6f);
+                    ModeButton(modes, VoiceChat.MicMode.Open, "opt.mic.open");
+                    ModeButton(modes, VoiceChat.MicMode.PushToTalk, "opt.mic.ptt");
+                    ModeButton(modes, VoiceChat.MicMode.Off, "opt.mic.off");
+                    var devs = Microphone.devices;
+                    string micName = string.IsNullOrEmpty(VoiceChat.Device) ? Loc.T("opt.mic.default") : VoiceChat.Device;
+                    if (devs != null && devs.Length > 1)
+                        OptionButton(Loc.F("opt.mic", micName), () => { _micPick = true; BuildUI(); });
+                    else
+                        UIKit.Row(UIKit.Label(at, Loc.F("opt.mic", micName), 14, UIKit.Ink, TextAnchor.MiddleCenter, true), W, 22f);
+                    var meterBack = UIKit.Row(UIKit.Panel(at, null, new Color(0f, 0f, 0f, 0.35f)), W, 8f);
+                    _meter = UIKit.Panel((RectTransform)meterBack.transform, null, new Color(0.45f, 1f, 0.55f, 0.9f));
+                    _meterRect = (RectTransform)_meter.transform;
+                    _meterRect.anchorMin = Vector2.zero;
+                    _meterRect.anchorMax = new Vector2(0f, 1f);
+                    _meterRect.pivot = new Vector2(0f, 0.5f);
+                    _meterRect.anchoredPosition = Vector2.zero;
+                    _meterRect.sizeDelta = Vector2.zero;
+                    UIKit.Gap(at, 4f);
+
+                    if (NetAvatar.All.Count == 0)
+                        UIKit.Row(UIKit.Label(at, Loc.T("opt.nobody"), 14, UIKit.Ink, TextAnchor.MiddleCenter, true), W, 22f);
+                    foreach (var av in NetAvatar.All)
+                    {
+                        if (av == null) continue;
+                        int owner = NetSync.OwnerIdOf(av.Id);
+                        string who = NetSync.IdentityOf(av.Id, out var name, out _) && !string.IsNullOrEmpty(name)
+                            ? name : "#" + owner;
+                        bool muted = VoiceChat.IsMuted(owner);
+                        OptionButton(Loc.F(muted ? "opt.unmute" : "opt.mute", who),
+                            () => { VoiceChat.SetMuted(owner, !muted); BuildUI(); });
+                    }
                 }
 
                 UIKit.Gap(pr, 6f);
-                UIKit.Row(UIKit.Button(pr, Loc.T("menu.back"), () => { _options = false; BuildUI(); }, grey), 300f, 48f);
+                UIKit.Row(UIKit.Button(pr, Loc.T("menu.back"), () => { _options = false; BuildUI(); }, grey), 300f, 44f);
                 return;
 
                 void OptionButton(string label, System.Action act)
-                    => UIKit.Row(UIKit.Button(pr, label, act, grey), 300f, 44f);
+                    => UIKit.Row(UIKit.Button(at, label, act, grey, 16), W, 36f);
 
                 void ModeButton(RectTransform row, VoiceChat.MicMode mode, string key)
                 {
                     bool on = VoiceChat.Mode == mode;
                     UIKit.Row(UIKit.Button(row, Loc.T(key), () => { VoiceChat.Mode = mode; BuildUI(); },
-                        skin != null ? (on ? skin.ButtonBrown : skin.ButtonGrey) : null, 16), 90f, 40f);
+                        skin != null ? (on ? skin.ButtonBrown : skin.ButtonGrey) : null, 15), 90f, 36f);
                 }
+
+                void TabButton(RectTransform row, int tab, string key)
+                {
+                    bool on = _tab == tab;
+                    UIKit.Row(UIKit.Button(row, Loc.T(key), () => { _tab = tab; BuildUI(); },
+                        skin != null ? (on ? skin.ButtonBrown : skin.ButtonGrey) : null, 16), 90f, 36f);
+                }
+
+                // one setting: its name, then every value at once with the current one lit
+                void Choice(string titleKey, string[] labels, int current, System.Action<int> pick)
+                {
+                    UIKit.Row(UIKit.Label(at, Loc.T(titleKey), 14, UIKit.Ink, TextAnchor.MiddleLeft, true), W, 18f);
+                    var row = UIKit.Segments(at, W, 28f, 4f);
+                    float w = (W - 4f * (labels.Length - 1)) / labels.Length;
+                    for (int i = 0; i < labels.Length; i++)
+                    {
+                        int v = i;
+                        UIKit.Row(UIKit.Button(row, labels[i], () => { pick(v); BuildUI(); },
+                            skin != null ? (current == v ? skin.ButtonBrown : skin.ButtonGrey) : null, 13), w, 28f);
+                    }
+                    UIKit.Gap(at, 2f);
+                }
+
+                void VolumeRow(string key, float value, System.Action<float> set)
+                {
+                    var label = UIKit.Row(UIKit.Label(at, Loc.F(key, (value * 100f).ToString("0")), 15, UIKit.Ink, TextAnchor.MiddleLeft, true), W, 22f);
+                    UIKit.Row(UIKit.Slider(at, 0f, 1f, value, v =>
+                    {
+                        set(v);
+                        label.text = Loc.F(key, (v * 100f).ToString("0"));
+                    }), W, 26f);
+                    UIKit.Gap(at, 4f);
+                }
+
+                string[] Levels() => new[] { Loc.T("opt.low"), Loc.T("opt.medium"), Loc.T("opt.high") };
+                string[] OffOn() => new[] { Loc.T("opt.off"), Loc.T("opt.on") };
             }
 
             void MenuButton(string label, System.Action act, Sprite sprite = null)
@@ -273,6 +353,7 @@ namespace SpellyZombie
                 MenuButton(Loc.T("menu.restart"), () =>
                 {
                     Close();
+                    LoadEgg.Cover();
                     LoadingHints.Show();
                     UnityEngine.SceneManagement.SceneManager.LoadScene(
                         UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);

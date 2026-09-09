@@ -7,9 +7,17 @@ namespace SpellyZombie
     /// Steam achievements. Each constant is the API name to create on the
     /// Steamworks page; the game only calls SetAchievement by that name.
     /// Unlocks are mirrored in PlayerPrefs per Steam account so Steam is
-    /// asked once per deed. Without Steam nothing happens.
+    /// asked once per deed. Without Steam nothing happens. Nothing unlocks
+    /// outside a multiplayer match on the map: the lobby, the menu and a
+    /// match against bots alone earn nothing.
     public static class Achievements
     {
+        // a real match on the map with at least one other human in it; bots
+        // never travel as players, so the remote avatar count is the humans
+        static bool Armed => RoundDirector.InMatch
+            && ActiveScene.Name != "Lobby" && ActiveScene.Name != "Menu"
+            && NetGame.Connected && NetSync.RemoteCount > 0;
+
         public enum Ending : byte { None = 0, PotDry = 1, NoWizards = 2, Sweep = 3, GreenBell = 4, CleanBell = 5 }
 
         // ways to win
@@ -57,7 +65,7 @@ namespace SpellyZombie
 
         public static void Unlock(string id)
         {
-            if (string.IsNullOrEmpty(id) || _done.Contains(id)) return;
+            if (string.IsNullOrEmpty(id) || _done.Contains(id) || !Armed) return;
             string key = Prefix() + id;
             if (PlayerPrefs.GetInt(key, 0) == 1) { _done.Add(id); return; }
             if (!SteamManager.Initialized) return;
@@ -87,6 +95,7 @@ namespace SpellyZombie
         public static int Bump(string counter)
         {
             string key = Prefix() + "n_" + counter;
+            if (!Armed) return PlayerPrefs.GetInt(key, 0);
             int n = PlayerPrefs.GetInt(key, 0) + 1;
             PlayerPrefs.SetInt(key, n);
             return n;

@@ -19,6 +19,9 @@ namespace SpellyZombie
         static readonly Dictionary<int, HashSet<RuneType>> _runesByOwner =
             new Dictionary<int, HashSet<RuneType>>();
 
+        /// A fresh rune of the LOCAL player - fired after the toast.
+        public static event System.Action<int, RuneType> Unlocked;
+
         /// ★ THE ONE GATE. Unlock ONE rune: records it, stamps its family,
         /// seeds the writing meter, replicates, toasts once.
         public static void UnlockRune(int owner, RuneType rune)
@@ -37,6 +40,7 @@ namespace SpellyZombie
                 {
                     RuneToast.Show(rune);
                     Achievements.RuneLearned(RuneCount(owner));
+                    Unlocked?.Invoke(owner, rune);
                 }
             }
             // a HOST-side grant for a remote owner (summon deeds run in host

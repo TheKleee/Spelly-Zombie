@@ -21,6 +21,7 @@ lines lose their emphasis on purpose.
 | carry.down | put it down | 置く | put (down) | |
 | scan.aim | scan it, become it | スキャンして、それになる | scan, and become that | |
 | absorb.aim | absorb it, learn its rune | 吸収して、ルーンをおぼえる | absorb, and the rune, learn | おぼえる in kana |
+| chest.open | open the chest | 宝箱を開ける | treasure-chest open | 宝箱 is the storybook chest word |
 | chip.grimoire | grimoire | グリモワール | grimoire | |
 | chip.paint | paint your body | 体に描く | on the body, draw | 描く (draw with ink) not 塗る (paint with a brush) |
 | chip.first | first person | 一人称 | first person | |
@@ -137,3 +138,27 @@ lines lose their emphasis on purpose.
 | opt.mic.open | Open mic | 常時オン | always on |  |
 | opt.mic.ptt | Hold V | Vで話す | talk with V | V is a physical key, kept |
 | opt.mic.off | Muted | ミュート | mute |  |
+| opt.tab.game | Game | ゲーム | game |  |
+| opt.tab.video | Video | 映像 | video |  |
+| opt.tab.audio | Audio | 音声 | audio |  |
+| opt.resolution | Resolution: {0} | 解像度: {0} | resolution: {0} |  |
+| opt.resolution.title | Resolution | 解像度 | resolution |  |
+| opt.display | Display | 表示 | display |  |
+| opt.display.full | Fullscreen | フルスクリーン | fullscreen |  |
+| opt.display.borderless | Borderless | ボーダーレス | borderless |  |
+| opt.display.windowed | Windowed | ウィンドウ | window |  |
+| opt.quality | Quality | 画質 | picture quality |  |
+| opt.low | Low | 低 | low |  |
+| opt.medium | Medium | 中 | medium |  |
+| opt.high | High | 高 | high |  |
+| opt.textures | Textures | テクスチャ | texture |  |
+| opt.shadows | Shadows | 影 | shadow |  |
+| opt.effects | Effects | エフェクト | effects |  |
+| opt.motionblur | Motion blur | モーションブラー | motion blur |  |
+| opt.aa | Antialiasing | アンチエイリアス | antialias | the common katakana form |
+| opt.fps | Frame limit | フレーム上限 | frame upper limit |  |
+| opt.vsync | VSync | 垂直同期 | vertical sync |  |
+| opt.off | Off | オフ | off |  |
+| opt.on | On | オン | on |  |
+| opt.music | Music: {0}% | 音楽: {0}% | music: {0}% |  |
+| opt.sfx | Sounds: {0}% | 効果音: {0}% | sound effects: {0}% |  |

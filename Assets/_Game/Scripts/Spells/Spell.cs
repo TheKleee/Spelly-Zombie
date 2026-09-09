@@ -352,7 +352,7 @@ namespace SpellyZombie
             }
 
             // the summon deed: raising one earns the arrow, raising two the Y
-            AcolyteDeeds.Summoned(seal.OwnerId, _summonBuf.Count);
+            AcolyteDeeds.Summoned(seal.OwnerId, _summonBuf.Count, seal.PlaneOrigin);
 
             int total = _summonBuf.Count;
             float life = DrawingConfig.SummonedZombieLife;
@@ -461,7 +461,7 @@ namespace SpellyZombie
 
             // the Liquid deed counts AFTER they stand: more than one of your
             // zombies alive at once, across seals
-            AcolyteDeeds.ZombiesAlive(seal.OwnerId);
+            AcolyteDeeds.ZombiesAlive(seal.OwnerId, seal.PlaneOrigin);
 
             DrawingWorld.Instance?.LogEvent(total == 1
                 ? "one of them gets up"

@@ -332,6 +332,7 @@ namespace SpellyZombie
         {
             if (SceneManager.GetActiveScene().name != "Lobby")
             {
+                LoadEgg.Cover();
                 LoadingHints.Show(); // one random tip rides every load
                 SceneManager.LoadScene("Lobby"); // the NetworkManager lives there
             }

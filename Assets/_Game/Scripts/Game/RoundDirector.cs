@@ -19,6 +19,8 @@ namespace SpellyZombie
 
         /// True before a match starts - the MatchLobby lives here.
         public static bool InLobby => Instance != null && Instance._phase == Phase.Idle;
+        /// A real match on the map, running or just decided. Achievements gate on it.
+        public static bool InMatch => Instance != null && Instance._phase != Phase.Idle;
 
         /// True while the match runs - the music director crossfades on this.
         public static bool WaveActive => RunActive;
@@ -61,7 +63,14 @@ namespace SpellyZombie
             PlayerInk.AwardAll(DrawingConfig.InkPerKill);
             SealAutopsy.OnKill(); // kill bursts near a seal trigger the replay
             Powerups.OnKill();    // kills feed the level-up track
-            if (z != null) NetSync.PushKill(z.transform.position); // clients share the ink
+            if (z != null)
+            {
+                var el = z.GetComponent<Element>();
+                int killer = el != null ? Marks.Get(el.NetId, Mark.KilledBy) : -1;
+                bool via = el != null && Marks.Get(el.NetId, Mark.KilledVia) == 1;
+                NetSync.PushKill(z.transform.position, z.OwnerId, killer, via); // clients share the ink
+                NetSync.RaiseZombieKilled(z.transform.position, z.OwnerId, killer, via);
+            }
         }
 
         // ------------------------------------------------------------- flow --

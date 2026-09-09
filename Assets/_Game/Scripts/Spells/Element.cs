@@ -40,6 +40,9 @@ namespace SpellyZombie
         /// passed on again when this thing spreads. -1 until somebody does.
         [System.NonSerialized] public int Owner = -1;
         int ISpellData.Owner { get => Owner; set => Owner = value; }
+        /// The last owner that hurt this, and whether through a summoned creature.
+        [System.NonSerialized] public int LastHitBy = -1;
+        [System.NonSerialized] public bool LastHitViaMinion;
 
         // What older prefabs and scenes authored. Read once at Awake and then
         // never again; Strength on the payload is the only storage.
@@ -936,6 +939,11 @@ namespace SpellyZombie
         }
         bool _shaking;
 
+        /// A wild golem's body slam on a player is the charge's business, not this law's.
+        bool WildGolemBody => TryGetComponent<Golem>(out var g) && g.OwnerId < 0;
+        static bool IsPlayer(Element e) =>
+            e.GetComponentInParent<SimpleFPSController>() != null || e.GetComponentInParent<NetAvatar>() != null;
+
         void OnCollisionEnter(Collision col)
         {
             if (_dead) return;
@@ -1026,7 +1034,8 @@ namespace SpellyZombie
             // what it hit takes damage too
             var other = col.collider != null
                 ? col.collider.GetComponentInParent<Element>() : null;
-            if (other != null && other != this) other.TakeDamage(dmg * 0.7f, $"hit by {name}");
+            if (other != null && other != this && !(WildGolemBody && IsPlayer(other)))
+                other.TakeDamage(dmg * 0.7f, $"hit by {name}");
         }
 
         /// Clears the dead flag on lobby respawn; restoring Health alone is not enough.
@@ -1066,7 +1075,7 @@ namespace SpellyZombie
         /// `by` is the OWNER that did it - a player, a zombie, a golem, a
         /// thrown crate. The cause string is for the log; the id is what a
         /// curse reads later. -1 when nothing owns it (a fall, its own weight).
-        public void TakeDamage(float amount, string cause, int by = -1)
+        public void TakeDamage(float amount, string cause, int by = -1, bool viaMinion = false)
         {
             // ★ DEATH ARRIVES ONCE (his rule): a downed body is dead-still -
             // no damage lands until it is revived, no matter what field it
@@ -1086,30 +1095,38 @@ namespace SpellyZombie
             if (owner != null && owner.gameObject != gameObject)
             {
                 var rootDmg = owner.GetComponent<Element>();
-                if (rootDmg != null && rootDmg != this) rootDmg.TakeDamage(amount, cause, by);
+                if (rootDmg != null && rootDmg != this) rootDmg.TakeDamage(amount, cause, by, viaMinion);
                 return;
             }
+
+            LastHitBy = by; LastHitViaMinion = by >= 0 && viaMinion;
 
             // THE HOST OWNS THE NUMBERS. A client asks and waits: it must not
             // subtract locally, or the same tree ends up on different health on
             // every machine. Offline, !Connected makes us the authority.
             if (NetGame.Connected && !NetGame.IsHost)
             {
-                NetSync.AskHurt(NetId, amount);
+                NetSync.AskHurt(NetId, amount, by, viaMinion);
                 return;
             }
 
-            // the world's short memory: who hurt me, and who finished me
+            // the world's short memory: who hurt me, and who finished me.
+            // The kill marks land before Apply so OnDeath listeners can read them.
             Marks.Set(NetId, Mark.DamagedBy, by);
+            if (Health - amount <= 0f)
+            {
+                Marks.Set(NetId, Mark.KilledBy, by);
+                Marks.Set(NetId, Mark.KilledVia, viaMinion ? 1 : 0);
+            }
             Apply(amount, cause);
-            if (Health <= 0f) Marks.Set(NetId, Mark.KilledBy, by);
-            NetSync.PushHealth(NetId, Health, MaxStrength);
+            NetSync.PushHealth(NetId, Health, MaxStrength, by, viaMinion);
         }
 
         /// The host's answer, applied verbatim - no local arithmetic, so the
         /// number is the same everywhere by construction rather than by luck.
-        public void TakeNetHealth(float health, float max)
+        public void TakeNetHealth(float health, float max, int by = -1, bool viaMinion = false)
         {
+            LastHitBy = by; LastHitViaMinion = by >= 0 && viaMinion;
             if (max > 0f) MaxStrength = max;
             float lost = Health - health;
             Health = health;

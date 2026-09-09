@@ -101,6 +101,7 @@ namespace SpellyZombie
     {
         public int HostId;
         public ParticleKind Kind;
+        public int OwnerId = -1;  // whose spell, from the snapshot
 
         static readonly List<NetMoteProxy> _all = new List<NetMoteProxy>();
         public static IReadOnlyList<NetMoteProxy> Living => _all;

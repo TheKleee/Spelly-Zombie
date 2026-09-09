@@ -243,6 +243,8 @@ namespace SpellyZombie
         {
             public int NetId;
             public float Amount;
+            public int By;    // owner id the asker blames, -1 = nobody it knows
+            public byte Via;  // 1 = through a summoned creature
         }
 
         /// host -> all: a mark was left on something. Curses read these, so
@@ -283,11 +285,16 @@ namespace SpellyZombie
             public int NetId;
             public float Health;
             public float Max;
+            public int By;      // owner that dealt it, -1 when nobody
+            public byte Via;    // 1 = through a summoned creature
         }
 
         public struct KillFeed : IBroadcast // host  clients: shared ink for the kill
         {
             public Vector3 Pos;
+            public int Owner;     // the dead zombie's summoner, -1 when wild
+            public int KilledBy;  // Mark.KilledBy of the dead zombie
+            public byte Via;      // 1 = killed through a summoned creature
         }
 
         public struct RoundState : IBroadcast // host  clients, 2 Hz
@@ -394,6 +401,8 @@ namespace SpellyZombie
             /// not know the host would show a hook hanging in mid air while the
             /// person it caught walks off.
             public int[] Rides;
+            /// Whose spell it is - a client judges a nearby cast by its caster.
+            public int[] Owners;
             public Vector3[] Pos;
             public float[] Scale;
         }
@@ -439,6 +448,11 @@ namespace SpellyZombie
         public struct AbsorbMsg : IBroadcast // a world source was absorbed (scene path)
         {
             public string Path;
+        }
+
+        public struct ChestMsg : IBroadcast // a chest opened (id carved from its birthplace)
+        {
+            public int Id;
         }
 
         public struct IdentityMsg : IBroadcast // who a player id IS (persona + steam id)
@@ -798,6 +812,7 @@ namespace SpellyZombie
         Color32[] _pTints = System.Array.Empty<Color32>();
         byte[] _pLevels = System.Array.Empty<byte>();
         int[] _pRides = System.Array.Empty<int>();
+        int[] _pOwners = System.Array.Empty<int>();
         Vector3[] _pPos = System.Array.Empty<Vector3>();
         float[] _pScale = System.Array.Empty<float>();
 
@@ -812,6 +827,7 @@ namespace SpellyZombie
                 _pTints = new Color32[n];
                 _pLevels = new byte[n];
                 _pRides = new int[n];
+                _pOwners = new int[n];
                 _pPos = new Vector3[n];
                 _pScale = new float[n];
             }
@@ -831,12 +847,13 @@ namespace SpellyZombie
                 _pTints[i] = p.WireTint;
                 _pLevels[i] = p.WireLevel;
                 _pRides[i] = p.RidingId;
+                _pOwners[i] = p.OwnerId;
                 _pPos[i] = p.transform.position;
                 _pScale[i] = p.transform.localScale.x;
             }
             InstanceFinder.ServerManager.Broadcast(new ParticleSnap
                 { Ids = _pIds, Kinds = _pKinds, Tints = _pTints, Levels = _pLevels,
-                  Rides = _pRides, Pos = _pPos, Scale = _pScale }, true, Channel.Unreliable);
+                  Rides = _pRides, Owners = _pOwners, Pos = _pPos, Scale = _pScale }, true, Channel.Unreliable);
         }
 
         int[] _prIds = System.Array.Empty<int>();
@@ -1213,6 +1230,8 @@ namespace SpellyZombie
             VoiceChat.Touch();
             InstanceFinder.ServerManager.RegisterBroadcast<AbsorbMsg>(OnAbsorbServer);
             InstanceFinder.ClientManager.RegisterBroadcast<AbsorbMsg>(OnAbsorbClient);
+            InstanceFinder.ServerManager.RegisterBroadcast<ChestMsg>(OnChestServer);
+            InstanceFinder.ClientManager.RegisterBroadcast<ChestMsg>(OnChestClient);
             InstanceFinder.ServerManager.RegisterBroadcast<IdentityMsg>(OnIdentityServer);
             InstanceFinder.ClientManager.RegisterBroadcast<IdentityMsg>(OnIdentityClient);
             InstanceFinder.ClientManager.RegisterBroadcast<ReadyCallMsg>(OnReadyCallClient);
@@ -1438,11 +1457,23 @@ namespace SpellyZombie
                 { Phase = phase, Round = round, Left = left, Timer = timer, Kills = kills, Ending = ending });
         }
 
+        /// A zombie died: (pos, its owner, who killed it, via a summoned creature).
+        /// Fires on the host from RoundDirector and on clients from the kill feed.
+        public static event System.Action<Vector3, int, int, bool> ZombieKilled;
+
+        /// HOST/SOLO: raise ZombieKilled on this machine.
+        public static void RaiseZombieKilled(Vector3 pos, int owner, int killedBy, bool viaMinion)
+            => ZombieKilled?.Invoke(pos, owner, killedBy, viaMinion);
+
+        /// A remote player's avatar was removed; the owner id.
+        public static event System.Action<int> AvatarGone;
+
         /// Host announces a kill so clients share the ink economy.
-        public static void PushKill(Vector3 pos)
+        public static void PushKill(Vector3 pos, int owner = -1, int killedBy = -1, bool viaMinion = false)
         {
             if (!NetGame.IsHost) return;
-            InstanceFinder.ServerManager.Broadcast(new KillFeed { Pos = pos });
+            InstanceFinder.ServerManager.Broadcast(new KillFeed
+                { Pos = pos, Owner = owner, KilledBy = killedBy, Via = (byte)(viaMinion ? 1 : 0) });
         }
 
         /// Client's lobby ready toggle, host-ward.
@@ -1791,6 +1822,25 @@ namespace SpellyZombie
             if (string.IsNullOrEmpty(msg.Path)) return;
             var go = GameObject.Find(msg.Path);
             if (go != null) go.GetComponent<Analyzable>()?.VanishRemote();
+        }
+
+        /// A chest opened here: everyone's lid swings. Same road as an absorb.
+        public static void SendChestOpen(int id)
+        {
+            if (_instance == null || !NetGame.Connected) return;
+            InstanceFinder.ClientManager.Broadcast(new ChestMsg { Id = id });
+        }
+
+        void OnChestServer(NetworkConnection conn, ChestMsg msg, Channel channel)
+        {
+            ChestLid.Find(msg.Id)?.OpenRemote();
+            InstanceFinder.ServerManager.BroadcastExcept(conn, msg, true);
+        }
+
+        void OnChestClient(ChestMsg msg, Channel channel)
+        {
+            if (InstanceFinder.ServerManager.Started) return;
+            ChestLid.Find(msg.Id)?.OpenRemote();
         }
 
         void OnOutfitClient(OutfitMsg msg, Channel channel)
@@ -2145,11 +2195,11 @@ namespace SpellyZombie
         {
             var d = Element.ById(msg.NetId);
             if (d == null) return;              // not a thing we know; drop it
-            // WHO asked comes from the CONNECTION, never the packet - the same
-            // rule the identity handshake uses, so nobody can frame anybody.
-            int by = Element.IdFor("player:" + OwnerIdOf(conn.ClientId));
+            // the asker's own blame when it names one, else the asker itself -
+            // as an OWNER id, the same currency every other damage source uses
+            int by = msg.By >= 0 ? msg.By : OwnerIdOf(conn.ClientId);
             // per-hit cap the old zombie channel carried: no one-packet nukes
-            d.TakeDamage(Mathf.Min(msg.Amount, DrawingConfig.NetHitCap), "a friend's magic", by);
+            d.TakeDamage(Mathf.Min(msg.Amount, DrawingConfig.NetHitCap), "a friend's magic", by, msg.Via == 1);
         }
 
         void OnMarkClient(MarkMsg msg, Channel channel)
@@ -2169,16 +2219,16 @@ namespace SpellyZombie
         void OnHealthClient(HealthMsg msg, Channel channel)
         {
             if (InstanceFinder.ServerManager.Started) return;
-            Element.ById(msg.NetId)?.TakeNetHealth(msg.Health, msg.Max);
+            Element.ById(msg.NetId)?.TakeNetHealth(msg.Health, msg.Max, msg.By, msg.Via == 1);
         }
 
         /// CLIENT: ask the host to hurt something. Safe offline - it does
         /// nothing and the caller stays authoritative.
-        public static void AskHurt(int netId, float amount)
+        public static void AskHurt(int netId, float amount, int by = -1, bool viaMinion = false)
         {
             if (_instance == null || !NetGame.Connected || NetGame.IsHost) return;
             InstanceFinder.ClientManager.Broadcast(new HurtIntent
-                { NetId = netId, Amount = amount });
+                { NetId = netId, Amount = amount, By = by, Via = (byte)(viaMinion ? 1 : 0) });
         }
 
         /// HOST: publish the truth after it changed something's health.
@@ -2266,11 +2316,11 @@ namespace SpellyZombie
             }
         }
 
-        public static void PushHealth(int netId, float health, float max)
+        public static void PushHealth(int netId, float health, float max, int by = -1, bool viaMinion = false)
         {
             if (_instance == null || !NetGame.IsHost) return;
             InstanceFinder.ServerManager.Broadcast(new HealthMsg
-                { NetId = netId, Health = health, Max = max });
+                { NetId = netId, Health = health, Max = max, By = by, Via = (byte)(viaMinion ? 1 : 0) });
         }
 
         /// Which player a collider IS - the local one, or the owner behind a
@@ -2352,6 +2402,7 @@ namespace SpellyZombie
             PlayerInk.AwardAll(DrawingConfig.InkPerKill); // shared economy, client side
             SealAutopsy.OnKill();
             Powerups.OnKill(); // clients level off shared kills too
+            ZombieKilled?.Invoke(msg.Pos, msg.Owner, msg.KilledBy, msg.Via == 1);
         }
 
         byte _lastPhase = 255;
@@ -2569,6 +2620,7 @@ namespace SpellyZombie
                     _moteProxies[id] = proxy;
                 }
                 proxy.Wear(tint, level);
+                proxy.OwnerId = msg.Owners != null && i < msg.Owners.Length ? msg.Owners[i] : -1;
                 proxy.Ride(msg.Rides != null && i < msg.Rides.Length ? msg.Rides[i] : 0);
                 proxy.Target(msg.Pos[i], msg.Scale[i]);
             }
@@ -2878,6 +2930,7 @@ namespace SpellyZombie
             if (_avatars.TryGetValue(id, out var avatar) && avatar != null)
                 Destroy(avatar.gameObject);
             _avatars.Remove(id);
+            AvatarGone?.Invoke(OwnerIdOf(id));
         }
     }
 
@@ -2905,6 +2958,9 @@ namespace SpellyZombie
         }
 
         public bool Downed => (_flags & 1) != 0;
+
+        /// A remote player's downed flag flipped: (owner id, downed now).
+        public static event System.Action<int, bool> DownedChanged;
 
         bool _acolyte;
         public bool Acolyte => _acolyte;
@@ -3119,12 +3175,14 @@ namespace SpellyZombie
             _targetPitch = pitch;
             // the stand-in body mirrors the downed gate: a corpse's puppet
             // takes no damage and pays no wand credit on this machine either
-            if (((flags ^ _flags) & 1) != 0)
+            bool downedEdge = ((flags ^ _flags) & 1) != 0;
+            if (downedEdge)
             {
                 var standIn = Element.ById(Element.IdFor("player:" + NetSync.OwnerIdOf(Id)));
                 if (standIn != null) standIn.DeadStill = (flags & 1) != 0;
             }
             _flags = flags;
+            if (downedEdge) DownedChanged?.Invoke(NetSync.OwnerIdOf(Id), (flags & 1) != 0);
             if (team != _team) // friends wear their team color
             {
                 _team = team;

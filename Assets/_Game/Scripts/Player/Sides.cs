@@ -130,6 +130,9 @@ namespace SpellyZombie
         public static Side Of(int owner) =>
             _byOwner.TryGetValue(owner, out var s) ? s : Side.Wizard;
 
+        /// The owner has a registered side; unknown ids only default to Wizard.
+        public static bool Known(int owner) => _byOwner.ContainsKey(owner);
+
         public static bool IsAcolyte(int owner) => Of(owner) == Side.Acolyte;
         public static bool IsWizard(int owner) => Of(owner) == Side.Wizard;
 

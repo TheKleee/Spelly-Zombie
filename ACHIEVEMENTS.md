@@ -70,3 +70,7 @@ pot) unlock for everyone on that side. Everything else is personal.
 Not in this set: kills. The world only remembers who finished a thing by its
 element id, and mapping that back to an enemy player on every machine needs
 its own pass.
+
+## Where they unlock
+
+Only during a multiplayer match on the map with at least one other human in the session, from the first second of the round to the end screen. Nothing unlocks in the lobby or the menu, whatever you do there, and a match against bots alone earns nothing.

@@ -68,7 +68,25 @@ namespace SpellyZombie
         public static CauldronEconomy Active { get; private set; }
 
         // authority truth (solo/host); clients mirror the synced copies below
-        float _ink;              // ink units, 0..PotCapacityInk
+        float _ink;              // ink units, 0..Capacity
+
+        /// What the live pot holds when full. The lobby keeps the flat floor;
+        /// a match sizes it so the whole wizard team, spending at an ordinary
+        /// pace, needs PotLifeMatches match lengths to drink it dry.
+        public static float Capacity { get; private set; } = DrawingConfig.PotCapacityInk;
+
+        /// Corruption rates are tuned at the floor capacity and grow with the pot.
+        static float Scale => Capacity / Mathf.Max(1f, DrawingConfig.PotCapacityInk);
+
+        static float SizeForMatch()
+        {
+            float floor = DrawingConfig.PotCapacityInk;
+            if (RoundDirector.InLobby) return floor;
+            int wizards = Mathf.Max(1, Sides.CountOn(Side.Wizard));
+            float minutes = MatchLobby.Endless ? 10f : Mathf.Clamp(MatchLobby.DurationMin, 5, 15);
+            return Mathf.Max(floor, DrawingConfig.PotWizardSpendPerSec * wizards * minutes * 60f
+                * DrawingConfig.PotLifeMatches);
+        }
         bool _corrupt;
         bool _open;
         float _prep;
@@ -87,7 +105,7 @@ namespace SpellyZombie
 
         /// Current truth for anyone asking (HUD, bots): 0..1 and the owner.
         public static float Fill01 => Active == null ? 1f
-            : NetGame.IsAuthority ? (Active._open ? Active._ink / Mathf.Max(1f, DrawingConfig.PotCapacityInk) : 0f)
+            : NetGame.IsAuthority ? (Active._open ? Active._ink / Mathf.Max(1f, Capacity) : 0f)
             : Mathf.Max(0f, _syncFill);
         public static bool IsCorrupt => Active == null ? false
             : NetGame.IsAuthority ? Active._corrupt : _syncCorrupt;
@@ -215,14 +233,16 @@ namespace SpellyZombie
             if ((grave != null && grave.Hidden) || !isActiveAndEnabled)
             {
                 // pot died mid-fall: the ink grounds at the map center instead
-                _fleeInk = DrawingConfig.PotCapacityInk;
+                Capacity = SizeForMatch();
+                _fleeInk = Capacity;
                 _fleeCorrupt = false;
                 Ground();
                 return;
             }
             if (_open) return;
             _open = true;
-            _ink = DrawingConfig.PotCapacityInk;
+            Capacity = SizeForMatch();
+            _ink = Capacity;
             _corrupt = false;
             _defuse = 0f;
             if (FxLibrary.I != null)
@@ -359,7 +379,8 @@ namespace SpellyZombie
                 {
                     _prep = 0f;
                     _open = true;
-                    _ink = DrawingConfig.PotCapacityInk; // opens full
+                    Capacity = SizeForMatch();
+                    _ink = Capacity; // opens full, sized to this match
 
                     // opening wipes all active zombies
                     for (int i = Zombie.All.Count - 1; i >= 0; i--)
@@ -390,14 +411,16 @@ namespace SpellyZombie
                 });
 
                 // tended green pot grows, abandoned one evaporates; rates are
-                // per one player, split by the acolyte headcount
+                // per one player, split by the acolyte headcount, and grow
+                // with the pot so a match-sized pot keeps the same fight
+                float scale = Scale;
                 if (babysitters > 0f)
                     _ink = Mathf.Min(
-                        _ink + DrawingConfig.PotAcolyteFillPerSec * babysitters * dt
+                        _ink + DrawingConfig.PotAcolyteFillPerSec * scale * babysitters * dt
                             / Mathf.Max(1, Sides.CountOn(Side.Acolyte)),
-                        DrawingConfig.PotCapacityInk);
+                        Capacity);
                 else
-                    _ink -= DrawingConfig.PotCorruptDrainPerSec * dt
+                    _ink -= DrawingConfig.PotCorruptDrainPerSec * scale * dt
                         / Mathf.Max(1, Sides.CountOn(Side.Acolyte));
 
                 if (defusers > 0f)
@@ -463,7 +486,7 @@ namespace SpellyZombie
                 }
             }
 
-            _ink = Mathf.Clamp(_ink, 0f, DrawingConfig.PotCapacityInk);
+            _ink = Mathf.Clamp(_ink, 0f, Capacity);
             PushNet();
         }
 

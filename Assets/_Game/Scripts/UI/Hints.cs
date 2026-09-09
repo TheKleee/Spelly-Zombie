@@ -66,7 +66,7 @@ namespace SpellyZombie
         {
             switch (id)
             {
-                case Id.Pages: return "← →"; // matches the book's own chip, dedups into it
+                case Id.Pages: return "↑ ↓"; // the mouse wheel; the same arrows the fonts already carry
                 case Id.Absorb: return "F";
                 default: return "?";
             }

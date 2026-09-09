@@ -167,6 +167,11 @@ namespace SpellyZombie
 
         // ---- downed / revive ----
         public bool IsDowned { get; private set; }
+        /// Who put this body down (owner id, -1 when nobody) and whether through a summoned creature.
+        public int DownedBy { get; private set; } = -1;
+        public bool DownedViaMinion { get; private set; }
+        public static event System.Action<SimpleFPSController> Downed;
+        public static event System.Action<SimpleFPSController> Revived;
         public bool IsDead => IsDowned && _bleedOut <= 0f;
         public float BleedOut => _bleedOut;
         float _bleedOut;
@@ -237,11 +242,13 @@ namespace SpellyZombie
         float _headFxAt;
         void BlindHeadFx(float cour)
         {
-            if (Time.time < _headFxAt || Mathf.Abs(cour) < 35f) return;
-            _headFxAt = Time.time + 0.4f;
+            float t = Mathf.InverseLerp(8f, 45f, Mathf.Abs(cour));
+            if (Time.time < _headFxAt || t <= 0f) return;
+            _headFxAt = Time.time + Mathf.Lerp(1.3f, 0.4f, t); // a few wisps, then a storm
+            int n = Mathf.RoundToInt(Mathf.Lerp(1f, 4f, t));
             Vector3 head = transform.position + Vector3.up * 1.7f;
-            if (cour > 0f) GrammarFX.PuffBurst(head, new Color(1f, 0.98f, 0.85f), 4);
-            else GrammarFX.PuffBurst(head, new Color(0.12f, 0.08f, 0.18f), 4);
+            if (cour > 0f) GrammarFX.PuffBurst(head, new Color(1f, 0.98f, 0.85f), n);
+            else GrammarFX.PuffBurst(head, new Color(0.12f, 0.08f, 0.18f), n);
         }
 
         /// ★ THE ICE GROWS ON THE BONES (his fix): one small chunk of the
@@ -300,11 +307,12 @@ namespace SpellyZombie
 
             // ★ LOW MIND = DRUNK LEGS (his rule: the brain power must matter):
             // inputs sway on a wandering angle, and you occasionally trip
-            if (_mindDev < -0.25f)
+            float drunk = Mathf.InverseLerp(-0.05f, -0.6f, _mindDev);
+            if (drunk > 0f)
             {
-                float sway = Mathf.Sin(Time.time * 2.3f) * 55f * Mathf.Min(1f, -_mindDev * 2f);
+                float sway = Mathf.Sin(Time.time * 2.3f) * 55f * drunk;
                 mv = Quaternion.Euler(0f, 0f, sway) * mv;
-                if (Random.value < Time.deltaTime * 0.3f)
+                if (Random.value < Time.deltaTime * 0.3f * drunk)
                     TakeHit(Random.insideUnitSphere * 2.5f + Vector3.up, 0f);
             }
 
@@ -344,12 +352,19 @@ namespace SpellyZombie
             float cour = SpellPayload.ToHuman(8, _dmg.Data.Courage - _dmg.Natural.Courage);
             BlindHeadFx(cour);
             bool burning = Time.time < _lastBurnAt + 1.2f;
-            if (Mathf.Abs(cour) < 35f && !burning) return mv;
+            // the legs are taken by degrees: a little terror and you drift off
+            // your line, deep terror and you run; bravado the same way. Fire
+            // owns the legs outright, unless the fear or bravado is total.
+            float fear = Mathf.InverseLerp(-8f, -45f, cour);
+            float brave = Mathf.InverseLerp(8f, 45f, cour);
+            float taken = burning ? 1f : Mathf.Max(fear, brave);
+            if (taken <= 0f) return mv;
+            bool full = !burning || Mathf.Max(fear, brave) >= 1f;
 
             if (Time.time >= _legsRepickAt)
             {
-                _legsRepickAt = Time.time + (burning ? 0.35f : 1.1f);
-                if (cour > 35f)
+                _legsRepickAt = Time.time + (burning ? 0.35f : Mathf.Lerp(1.6f, 1.1f, taken));
+                if (full && brave > 0f && brave >= fear)
                 {
                     // brave beyond sense: charge at SOMETHING, anything near
                     Transform prey = null; float best = 15f * 15f;
@@ -366,12 +381,12 @@ namespace SpellyZombie
                         : Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
                     _legsDir = new Vector3(to.x, 0f, to.z).normalized;
                 }
-                else if (cour < -35f)
+                else if (full && fear > 0f)
                 {
-                    // terror: run, stumble, fall
+                    // terror: run, stumble, fall - the deeper, the clumsier
                     _legsDir = Quaternion.Euler(0f, Random.Range(-140f, 140f), 0f)
                         * -transform.forward;
-                    if (Random.value < 0.35f)
+                    if (Random.value < 0.35f * fear)
                         TakeHit(_legsDir * 3.5f + Vector3.up * 1.2f, 0f);
                 }
                 else
@@ -381,10 +396,11 @@ namespace SpellyZombie
                 }
             }
             Vector3 local = transform.InverseTransformDirection(_legsDir);
-            return new Vector2(local.x, local.z).normalized;
+            var legs = new Vector2(local.x, local.z).normalized;
+            return Vector2.Lerp(mv, legs, taken);
         }
 
-        public void TakeHit(Vector3 impulse, float damage, string cause = null)
+        public void TakeHit(Vector3 impulse, float damage, string cause = null, int by = -1, bool viaMinion = false)
         {
             if (IsDowned)
             {
@@ -395,7 +411,7 @@ namespace SpellyZombie
             _shove += impulse;
             // THE NUMBER GOES THROUGH THE ONE LAW: offline and host subtract
             // here, a client asks the host and reacts when the answer lands.
-            if (damage > 0f && _dmg != null) _dmg.TakeDamage(damage, cause ?? "hit");
+            if (damage > 0f && _dmg != null) _dmg.TakeDamage(damage, cause ?? "hit", by, viaMinion);
         }
 
         /// What a wound FEELS like. Hung off the Element, so it runs the
@@ -457,6 +473,12 @@ namespace SpellyZombie
         void GoDown()
         {
             IsDowned = true;
+            // only a wound this moment names a killer; a fall or a self-inflicted
+            // end carries no one
+            bool wound = Time.time - _lastHurt < 0.5f;
+            DownedBy = wound ? _dmg.LastHitBy : -1;
+            DownedViaMinion = wound && _dmg.LastHitViaMinion;
+            _dmg.LastHitBy = -1;
             Health = 1f;
             _dmg.DeadStill = true;   // death arrives once - nothing else lands
             // no bleed-out anywhere: death goes straight to ghost, and the
@@ -472,6 +494,7 @@ namespace SpellyZombie
             if (_heartFx == null && FxLibrary.I != null)
                 _heartFx = FxLibrary.Spawn(FxLibrary.I.BrokenHeart, transform.position + Vector3.up * 2.1f, transform);
             Debug.Log("[SpellyZombie] Player DOWNED");
+            Downed?.Invoke(this);
         }
 
         public void Revive()
@@ -487,6 +510,7 @@ namespace SpellyZombie
             CancelMomentum();
             if (IsLocalViewer && RoundDirector.RunActive) Achievements.Unlock(Achievements.CameBack);
             Debug.Log("[SpellyZombie] Player revived!");
+            Revived?.Invoke(this);
         }
 
         void Awake()
@@ -829,10 +853,11 @@ namespace SpellyZombie
 
             // ---- move ----
             Vector2 mv = Vector2.zero;
-            if (kb.wKey.isPressed) mv.y += 1f;
-            if (kb.sKey.isPressed) mv.y -= 1f;
-            if (kb.dKey.isPressed) mv.x += 1f;
-            if (kb.aKey.isPressed) mv.x -= 1f;
+            // arrows walk too, the book no longer needs them
+            if (kb.wKey.isPressed || kb.upArrowKey.isPressed) mv.y += 1f;
+            if (kb.sKey.isPressed || kb.downArrowKey.isPressed) mv.y -= 1f;
+            if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) mv.x += 1f;
+            if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) mv.x -= 1f;
             if (gp != null) mv += gp.leftStick.ReadValue();
             if (mv.sqrMagnitude > 1f) mv.Normalize();
             // in draw modes WASD belongs to the view (orbit), not to walking
@@ -870,15 +895,17 @@ namespace SpellyZombie
             // floor: balance is friction, nothing in the air.
             bool onGround = _cc != null && _cc.isGrounded;
             if (_body != null) _body.Grounded = onGround;
-            if (_balDev > 0.3f && onGround && Time.time >= _stickPulseAt)
+            float glue = Mathf.InverseLerp(0.15f, 1f, _balDev);
+            if (glue > 0f && onGround && Time.time >= _stickPulseAt)
             {
-                _stickPulseAt = Time.time + 2f;
-                _feetStuckUntil = Time.time + 0.4f;
+                // the stickier, the sooner and the longer the boots refuse
+                _stickPulseAt = Time.time + Mathf.Lerp(3.2f, 1.2f, glue);
+                _feetStuckUntil = Time.time + Mathf.Lerp(0.15f, 0.6f, glue);
                 GrammarFX.PuffBurst(transform.position + Vector3.up * 0.05f,
                     new Color(0.85f, 0.65f, 0.2f), 4);
             }
-            _glideMv = Vector2.Lerp(_glideMv, mv,
-                Time.deltaTime * (_balDev < -0.15f && onGround ? 1.6f : 22f)); // skating needs a floor
+            _glideMv = Vector2.Lerp(_glideMv, mv, Time.deltaTime * (onGround // skating needs a floor
+                ? Mathf.Lerp(22f, 1.6f, Mathf.InverseLerp(-0.05f, -0.5f, _balDev)) : 22f));
             mv = _glideMv;
             // a Y owns you: inputs walk you the OTHER way
 
@@ -900,9 +927,10 @@ namespace SpellyZombie
             if (_body != null)
             {
                 speed *= _body.SpeedMul; // grip, frost, arrows and Ys all live here
-                // planted wades through glue on the ground; heavy trudges
-                if (_balDev > 0.15f && onGround) speed *= 1f - 0.7f * Mathf.Min(1f, _balDev);
-                if (_pressDev > 0.2f) speed *= 0.85f;
+                // planted wades through glue on the ground; heavy trudges -
+                // both by degrees, from the first touch
+                if (onGround) speed *= 1f - 0.7f * Mathf.Clamp01((_balDev - 0.03f) / 0.97f);
+                speed *= 1f - Mathf.Clamp(_pressDev * 0.75f, 0f, 0.45f);
                 if (_body.CrawlOnly && !IsCrouched)
                     speed = Mathf.Min(speed, MoveSpeed * 0.5f); // too heavy: crouch pace is all you have
             }

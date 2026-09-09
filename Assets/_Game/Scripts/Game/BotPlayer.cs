@@ -7,6 +7,10 @@ namespace SpellyZombie
     public class BotPlayer : MonoBehaviour
     {
         public const int OwnerId = 777;
+        public static readonly System.Collections.Generic.List<BotPlayer> All
+            = new System.Collections.Generic.List<BotPlayer>();
+        void OnEnable() => All.Add(this);
+        void OnDisable() => All.Remove(this);
 
         static bool _queued;
 
@@ -42,6 +46,9 @@ namespace SpellyZombie
             go.transform.position = at;
             var visual = Object.Instantiate(model, go.transform, false);
             visual.name = "Body";
+            // its grimoire is a copy: no page arrows, no reading of G
+            foreach (var pages in visual.GetComponentsInChildren<GrimoirePages>(true))
+                pages.HideForRemote();
             go.AddComponent<BotPlayer>();
 
             Sides.Set(OwnerId, Sides.LocalIsAcolyte ? Side.Wizard : Side.Acolyte);

@@ -19,6 +19,7 @@ lobby.
 | carry.down | put it down | posa | put down | |
 | scan.aim | scan it, become it | scansiona, diventa quello | scan, become that | |
 | absorb.aim | absorb it, learn its rune | assorbi, impara la sua runa | absorb, learn its rune | |
+| chest.open | open the chest | apri il baule | open the chest |  |
 | chip.grimoire | grimoire | grimorio | grimoire | |
 | chip.paint | paint your body | dipingi il tuo corpo | paint your body | |
 | chip.first | first person | prima persona | first person | |
@@ -135,3 +136,27 @@ lobby.
 | opt.mic.open | Open mic | Sempre aperto | always open |  |
 | opt.mic.ptt | Hold V | Tieni V | hold V | V is a physical key, kept |
 | opt.mic.off | Muted | Muto | mute |  |
+| opt.tab.game | Game | Gioco | game |  |
+| opt.tab.video | Video | Video | video |  |
+| opt.tab.audio | Audio | Audio | audio |  |
+| opt.resolution | Resolution: {0} | Risoluzione: {0} | resolution: {0} |  |
+| opt.resolution.title | Resolution | Risoluzione | resolution |  |
+| opt.display | Display | Schermo | screen |  |
+| opt.display.full | Fullscreen | Schermo intero | whole screen |  |
+| opt.display.borderless | Borderless | Senza bordi | without borders |  |
+| opt.display.windowed | Windowed | Finestra | window |  |
+| opt.quality | Quality | Qualità | quality |  |
+| opt.low | Low | Bassa | low |  |
+| opt.medium | Medium | Media | medium |  |
+| opt.high | High | Alta | high |  |
+| opt.textures | Textures | Texture | texture | kept, the usual term |
+| opt.shadows | Shadows | Ombre | shadows |  |
+| opt.effects | Effects | Effetti | effects |  |
+| opt.motionblur | Motion blur | Sfocatura di movimento | movement blur |  |
+| opt.aa | Antialiasing | Antialiasing | antialiasing | kept, the usual term |
+| opt.fps | Frame limit | Limite FPS | FPS limit |  |
+| opt.vsync | VSync | Sincronia verticale | vertical sync |  |
+| opt.off | Off | Disattivato | deactivated |  |
+| opt.on | On | Attivato | activated |  |
+| opt.music | Music: {0}% | Musica: {0}% | music: {0}% |  |
+| opt.sfx | Sounds: {0}% | Suoni: {0}% | sounds: {0}% |  |

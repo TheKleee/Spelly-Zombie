@@ -19,6 +19,7 @@ grammar needs, even in lowercase lines. Lobby is the word German players use.
 | carry.down | put it down | absetzen | set down | |
 | scan.aim | scan it, become it | scannen, das werden | scan, become that | |
 | absorb.aim | absorb it, learn its rune | absorbieren, die Rune lernen | absorb, the rune learn | |
+| chest.open | open the chest | Truhe öffnen | chest open | infinitive at the end, the German button form |
 | chip.grimoire | grimoire | Grimoire | grimoire | |
 | chip.paint | paint your body | deinen Körper bemalen | your body paint | |
 | chip.first | first person | Ego-Sicht | ego view | the German gaming term for first person |
@@ -135,3 +136,27 @@ grammar needs, even in lowercase lines. Lobby is the word German players use.
 | opt.mic.open | Open mic | Immer an | always on |  |
 | opt.mic.ptt | Hold V | V halten | hold V | V is a physical key, kept |
 | opt.mic.off | Muted | Stumm | silent |  |
+| opt.tab.game | Game | Spiel | game |  |
+| opt.tab.video | Video | Grafik | graphics |  |
+| opt.tab.audio | Audio | Ton | sound |  |
+| opt.resolution | Resolution: {0} | Auflösung: {0} | resolution: {0} |  |
+| opt.resolution.title | Resolution | Auflösung | resolution |  |
+| opt.display | Display | Anzeige | display |  |
+| opt.display.full | Fullscreen | Vollbild | full picture |  |
+| opt.display.borderless | Borderless | Randlos | borderless |  |
+| opt.display.windowed | Windowed | Fenster | window |  |
+| opt.quality | Quality | Qualität | quality |  |
+| opt.low | Low | Niedrig | low |  |
+| opt.medium | Medium | Mittel | medium |  |
+| opt.high | High | Hoch | high |  |
+| opt.textures | Textures | Texturen | textures |  |
+| opt.shadows | Shadows | Schatten | shadows |  |
+| opt.effects | Effects | Effekte | effects |  |
+| opt.motionblur | Motion blur | Bewegungsunschärfe | movement blur |  |
+| opt.aa | Antialiasing | Kantenglättung | edge smoothing | the German term |
+| opt.fps | Frame limit | Bildratenlimit | frame rate limit |  |
+| opt.vsync | VSync | VSync | VSync | kept |
+| opt.off | Off | Aus | off |  |
+| opt.on | On | An | on |  |
+| opt.music | Music: {0}% | Musik: {0}% | music: {0}% |  |
+| opt.sfx | Sounds: {0}% | Geräusche: {0}% | sounds: {0}% |  |

@@ -96,7 +96,20 @@ namespace SpellyZombie
         }
         float _looseTemp = NaturalTemp;
         Element _el;
-        public float Lum = NaturalLum;
+        /// ★ THE ELEMENT'S, like Temp: a dark spell, a dark linger and a dark
+        /// biome all move the one luminance the body has, so sight dims by
+        /// exactly as much as the place is dark. Read in board units around
+        /// NaturalLum so the severities keep their scale.
+        public float Lum
+        {
+            get => _el != null ? NaturalLum + (_el.Data.Lum - _el.Natural.Lum) : _looseLum;
+            set
+            {
+                if (_el == null) { _looseLum = value; return; }
+                var d = _el.Data; d.Lum = _el.Natural.Lum + (value - NaturalLum); _el.Data = d;
+            }
+        }
+        float _looseLum = NaturalLum;
         public float Grip;          // 0 natural · + sticky · − slick
         public float Weight = 1f;   // mass multiplier
 
@@ -203,7 +216,7 @@ namespace SpellyZombie
                 _el.Data = d;
             }
             else { _looseTemp = NaturalTemp; _looseAffinity = _ambAffinity; }
-            Lum = NaturalLum + _ambLight;
+            if (_el == null) _looseLum = NaturalLum + _ambLight; // element bodies: reset above
             Grip = _ambStick;
             Weight = 1f + _ambDensity;
             SetPhase(MatterPhase.Solid, 0f);
@@ -216,7 +229,7 @@ namespace SpellyZombie
         public float FreezeSeverity => Mathf.Clamp01((33f - Temp) / 42f);
         /// 0 = normal sight · 1 = pitch black (this IS the vision reduction)
         public float DarknessSeverity => Mathf.Clamp01((NaturalLum - Lum) / (NaturalLum + 0.55f));
-        public float BloomSeverity => Mathf.Clamp01((Lum - 1.4f) / 1.4f);
+        public float BloomSeverity => Mathf.Clamp01((Lum - NaturalLum - 0.15f) / 1.1f);
 
         /// STRENGTH IS THE OLD HP - one stat for players, creatures and
         /// scenery. A player's ceiling comes from Sides (side, buffs, the
@@ -390,12 +403,14 @@ namespace SpellyZombie
                 _phaseLeft -= dt;
                 if (_phaseLeft <= 0f) SetPhase(MatterPhase.Solid, 0f);
             }
-            if (_pilot != null)
+            if (_pilot != null && _el == null)
             {
-                // TEMPERATURE DRIFTS ON THE ELEMENT BEAT now - a second loop
-                // here pulled against it. Luminance is still the board's own.
+                // temperature and luminance drift on the ELEMENT beat - a
+                // second loop here pulled against it. Only a board with no
+                // element homes its own light.
                 float homeLum = NaturalLum + _ambLight;
-                Lum = Mathf.MoveTowards(Lum, homeLum, LumDriftPerSec * Rush(Lum - homeLum, 1.5f) * dt);
+                _looseLum = Mathf.MoveTowards(_looseLum, homeLum,
+                    LumDriftPerSec * Rush(_looseLum - homeLum, 1.5f) * dt);
             }
             Grip = Mathf.MoveTowards(Grip, _ambStick, GripDriftPerSec * Rush(Grip - _ambStick, 1.5f) * dt);
             // the balloon and the feel share one source: while a spell holds
@@ -693,7 +708,7 @@ namespace SpellyZombie
         }
 
         // ---- fullscreen tints are the status readout - local player only ----
-        static Texture2D _white;
+        static Texture2D _white, _tunnel;
         void OnGUI()
         {
             if (_pilot == null || !_pilot.IsLocalViewer) return;
@@ -705,7 +720,17 @@ namespace SpellyZombie
             }
             var full = new Rect(0f, 0f, Screen.width, Screen.height);
             float dark = DarknessSeverity;
-            if (dark > 0.01f) Tint(full, new Color(0f, 0f, 0.02f, Mathf.Min(1f, dark * 1.06f)));
+            if (dark > 0.01f)
+            {
+                // sight goes by degrees: the edges close in first as a
+                // tunnel, the middle dims behind it, deep dark is near blind
+                Tint(full, new Color(0f, 0f, 0.02f, Mathf.Clamp01(dark * dark * 0.85f + dark * 0.1f)));
+                if (_tunnel == null) _tunnel = HUD.VignetteTex(0.35f, 0.6f);
+                float grow = Mathf.Lerp(2.4f, 0.95f, dark);
+                var r = new Rect(Screen.width * (1f - grow) * 0.5f, Screen.height * (1f - grow) * 0.5f,
+                    Screen.width * grow, Screen.height * grow);
+                Tint(r, new Color(0f, 0f, 0.02f, Mathf.Clamp01(dark * 1.6f)), _tunnel);
+            }
             float bloom = BloomSeverity;
             if (bloom > 0.01f) Tint(full, new Color(1f, 1f, 0.94f, Mathf.Min(1f, bloom * 1.06f)));
             float frost = FreezeSeverity;
@@ -714,11 +739,11 @@ namespace SpellyZombie
             if (burn > 0.01f) Tint(full, new Color(1f, 0.32f, 0.06f, burn * 0.3f));
         }
 
-        static void Tint(Rect r, Color c)
+        static void Tint(Rect r, Color c, Texture2D tex = null)
         {
             var prev = GUI.color;
             GUI.color = c;
-            GUI.DrawTexture(r, _white);
+            GUI.DrawTexture(r, tex != null ? tex : _white);
             GUI.color = prev;
         }
     }

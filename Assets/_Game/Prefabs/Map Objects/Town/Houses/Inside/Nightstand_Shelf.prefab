@@ -1,5 +1,275 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &27242033202905777
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7693311106512421514}
+  - component: {fileID: 4906831883591996129}
+  m_Layer: 0
+  m_Name: Shelf Middle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7693311106512421514
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 27242033202905777}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.5, y: 0.5, z: 0.5, w: 0.5}
+  m_LocalPosition: {x: 0, y: 0, z: 0.006905}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 612352166580348997}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 90}
+--- !u!114 &4906831883591996129
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 27242033202905777}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2077c0e2edc5a2548841c92026a05126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.InteriorField
+  Size: {x: 0.28, y: 0.16, z: 0.4}
+  Center: {x: 0, y: 0.09, z: 0}
+  FieldSize: 0.05
+  Details:
+  - Prefab: {fileID: 470546834650239234, guid: 4ad80edad4afa8d46b8d8e86382fd4e0, type: 3}
+    Where: 0
+  - Prefab: {fileID: 5654627954147086588, guid: e281f0ace99bd074690d1fb6d625b492, type: 3}
+    Where: 0
+  - Prefab: {fileID: 375589730470886815, guid: eef3474a31abb3848bd8688a52babcd3, type: 3}
+    Where: 0
+  Walkway: 0.01
+  Ceiling: {fileID: 0}
+  CeilingHeight: 2
+  HoleSide: {fileID: 0}
+  Stairs: {fileID: 0}
+  PreviewSeed: 1
+  _stairTop: {x: 0, y: 0, z: 0}
+  _stairFoot: {x: 0, y: 0, z: 0}
+  _stairRise: 0
+  _stairLen: 0
+  _stairWidth: 0
+  _stairMeasured: 0
+--- !u!1 &6803801660574068727
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4378283510076399878}
+  - component: {fileID: 4705051071833516428}
+  m_Layer: 0
+  m_Name: Shelf Top
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4378283510076399878
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6803801660574068727}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.5, y: 0.5, z: 0.5, w: 0.5}
+  m_LocalPosition: {x: 0, y: 0, z: 0.009}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 612352166580348997}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 90}
+--- !u!114 &4705051071833516428
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6803801660574068727}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2077c0e2edc5a2548841c92026a05126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.InteriorField
+  Size: {x: 0.28, y: 0.13, z: 0.38}
+  Center: {x: 0, y: 0.09, z: 0}
+  FieldSize: 0.05
+  Details:
+  - Prefab: {fileID: 1506081445801550453, guid: 258d50e3182ee4242b58288085cb26a4, type: 3}
+    Where: 0
+  - Prefab: {fileID: 7580998287681915500, guid: 3b9c1b654b7c5274da42eba6e96a44e6, type: 3}
+    Where: 0
+  - Prefab: {fileID: 1782500477095868155, guid: 0e5ffb2c4d92a324fb79cb8cbdae9c74, type: 3}
+    Where: 0
+  Walkway: 0
+  Ceiling: {fileID: 0}
+  CeilingHeight: 2
+  HoleSide: {fileID: 0}
+  Stairs: {fileID: 0}
+  PreviewSeed: 1
+  _stairTop: {x: 0, y: 0, z: 0}
+  _stairFoot: {x: 0, y: 0, z: 0}
+  _stairRise: 0
+  _stairLen: 0
+  _stairWidth: 0
+  _stairMeasured: 0
+--- !u!1 &7824876890251010837
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5809168642854026154}
+  - component: {fileID: 7278122731366586926}
+  m_Layer: 0
+  m_Name: TOP
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5809168642854026154
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7824876890251010837}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.5, y: 0.5, z: 0.5, w: 0.5}
+  m_LocalPosition: {x: 0, y: -0, z: 0.01185}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 612352166580348997}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 90}
+--- !u!114 &7278122731366586926
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7824876890251010837}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2077c0e2edc5a2548841c92026a05126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.InteriorField
+  Size: {x: 0.32, y: 0.13, z: 0.65}
+  Center: {x: 0, y: 0.09, z: 0}
+  FieldSize: 0.05
+  Details:
+  - Prefab: {fileID: 6852030076674103079, guid: f7a327d4d25537c49a46b49eb468a9c2, type: 3}
+    Where: 0
+  - Prefab: {fileID: 1600057677143971910, guid: f3e47041621ae9542a08bf182972b15f, type: 3}
+    Where: 0
+  - Prefab: {fileID: 1782500477095868155, guid: 0e5ffb2c4d92a324fb79cb8cbdae9c74, type: 3}
+    Where: 0
+  - Prefab: {fileID: 347457043446394501, guid: 5f22b968ce6b6bd41a23838a61bb656a, type: 3}
+    Where: 0
+  - Prefab: {fileID: 4794382372936685710, guid: b38a996e8f7d4944caaeaaa478ee4200, type: 3}
+    Where: 0
+  - Prefab: {fileID: 2101507525508470021, guid: 9ea319e7a80b5be4f94ca9ac797c8d2d, type: 3}
+    Where: 0
+  Walkway: 0
+  Ceiling: {fileID: 0}
+  CeilingHeight: 2
+  HoleSide: {fileID: 0}
+  Stairs: {fileID: 0}
+  PreviewSeed: 1
+  _stairTop: {x: 0, y: 0, z: 0}
+  _stairFoot: {x: 0, y: 0, z: 0}
+  _stairRise: 0
+  _stairLen: 0
+  _stairWidth: 0
+  _stairMeasured: 0
+--- !u!1 &8156568591135716585
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3118090991061124291}
+  - component: {fileID: 7617805702371678756}
+  m_Layer: 0
+  m_Name: Shelf Bottom
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3118090991061124291
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8156568591135716585}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.5, y: 0.5, z: 0.5, w: 0.5}
+  m_LocalPosition: {x: 0, y: -0, z: 0.00453}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 612352166580348997}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 90}
+--- !u!114 &7617805702371678756
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8156568591135716585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2077c0e2edc5a2548841c92026a05126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.InteriorField
+  Size: {x: 0.28, y: 0.19, z: 0.47}
+  Center: {x: 0, y: 0.09, z: 0}
+  FieldSize: 0.05
+  Details:
+  - Prefab: {fileID: 1782500477095868155, guid: 0e5ffb2c4d92a324fb79cb8cbdae9c74, type: 3}
+    Where: 0
+  - Prefab: {fileID: 1844032843600836356, guid: 270de95dff7a1944895ea86c0244f9a5, type: 3}
+    Where: 0
+  - Prefab: {fileID: 470546834650239234, guid: 4ad80edad4afa8d46b8d8e86382fd4e0, type: 3}
+    Where: 0
+  Walkway: 0.01
+  Ceiling: {fileID: 0}
+  CeilingHeight: 2
+  HoleSide: {fileID: 0}
+  Stairs: {fileID: 0}
+  PreviewSeed: 1
+  _stairTop: {x: 0, y: 0, z: 0}
+  _stairFoot: {x: 0, y: 0, z: 0}
+  _stairRise: 0
+  _stairLen: 0
+  _stairWidth: 0
+  _stairMeasured: 0
 --- !u!1001 &1149889534331916206
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -34,23 +304,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.25960264
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.2596027
+      value: -0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.6577282
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.6577283
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -70,7 +340,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3118090991061124291}
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7693311106512421514}
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4378283510076399878}
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5809168642854026154}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
       insertIndex: -1
@@ -205,3 +487,8 @@ MonoBehaviour:
   CodeSplinters: 1
   DefaultSound: 1
   LobbyRespawnOverride: 0
+--- !u!4 &612352166580348997 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: ba46db9a59d51ad4b88fcd6821e9fc52, type: 3}
+  m_PrefabInstance: {fileID: 1149889534331916206}
+  m_PrefabAsset: {fileID: 0}

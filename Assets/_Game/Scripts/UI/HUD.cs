@@ -60,9 +60,10 @@ namespace SpellyZombie
             btr.offsetMax = new Vector2(-70f, -16f);
         }
 
-        /// Radial blood-edge texture: clear center, red creeping in from the
-        /// borders. Alpha animates with health; the shape is baked once.
-        static Texture2D VignetteTex()
+        /// Radial edge texture: clear centre out to `inner` (half-sizes),
+        /// full over the next `span`. Tinted by whoever draws it - blood for
+        /// the hurt edges, black for the darkness tunnel.
+        internal static Texture2D VignetteTex(float inner = 0.55f, float span = 0.75f)
         {
             const int size = 128;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
@@ -73,7 +74,7 @@ namespace SpellyZombie
                     float dx = (x - size / 2f) / (size / 2f);
                     float dy = (y - size / 2f) / (size / 2f);
                     float d = Mathf.Sqrt(dx * dx + dy * dy);       // 0 center  ~1.4 corner
-                    float a = Mathf.SmoothStep(0f, 1f, (d - 0.55f) / 0.75f);
+                    float a = Mathf.SmoothStep(0f, 1f, (d - inner) / span);
                     px[y * size + x] = new Color(1f, 1f, 1f, a);   // tinted by Image.color
                 }
             tex.SetPixels(px);

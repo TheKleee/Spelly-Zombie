@@ -142,6 +142,7 @@ namespace SpellyZombie
                     dd[ax] = PayloadNow[ax] * 0.35f;
                 bit.Data = dd;
                 bit.OwnerId = OwnerId;
+                bit.FromMinion = FromMinion;
                 bit.Lineage = Lineage;
                 bit.SrcSize = Mathf.Clamp(SrcSize * 0.4f, 0.1f, 0.5f);
                 bit.Reach = Reach * 0.45f; // small debris, small effect areas (his rule)
@@ -291,6 +292,11 @@ namespace SpellyZombie
         /// Whose cast this is - dormant wake rules ask which side the spell
         /// serves (0 = unowned/unknown: treats everyone as a friend).
         public int OwnerId;
+        /// Cast by a summoned creature on OwnerId's behalf, not by the owner's own wand.
+        public bool FromMinion;
+        /// One number per life - a pooled mote comes back with a new one.
+        static int _lifeSerial;
+        public int LifeId = ++_lifeSerial;
 
         public void Claim(Transform holder)
         {
@@ -544,6 +550,7 @@ namespace SpellyZombie
                     mate.SrcSize = _pendingSrc;
                     mate.Lineage = _pendingLin;
                     mate.OwnerId = OwnerId;
+                    mate.FromMinion = FromMinion;
                     mate.Data = _pendingData;   // the carried half returns WHOLE
                     mate.JoinSeal(SealId);      // still family for the pool count
                 }
@@ -776,64 +783,58 @@ namespace SpellyZombie
             if (lib == null) return;
             Vector3 at = transform.position;
 
-            // ★ DETONATION IS THE NUMBERS (his rule): every loud axis
-            // detonates as what it IS - heat as flame, chill as ice, light
-            // as a flash, dark as a poof, liquid as a splash in its own
-            // colour. Several loud axes burst together.
+            // ★ DETONATION IS THE NUMBERS (his rule): every axis the spell
+            // carries bursts as what it IS, sized by how much of it there is.
+            // Weak = small, never another kind's effect. Below the meaningful
+            // floor (the same one a linger uses) an axis is a trace, not a
+            // thing it has; a spell with nothing shows nothing.
             var p = PayloadNow;
             bool any = false;
-            bool Loud(int axis) =>
-                Mathf.Abs(SpellPayload.ToHuman(axis, p[axis])) >= SpellPayload.LineFor(axis);
+            float Amount(int axis)
+            {
+                if (Mathf.Abs(p.Unit(axis)) < 0.15f) return 0f;
+                return Mathf.Clamp(Mathf.Abs(SpellPayload.ToHuman(axis, p[axis])) / SpellPayload.LineFor(axis), 0.3f, 1.25f);
+            }
+            void Sized(GameObject fx, float s) { if (fx != null) fx.transform.localScale *= s; }
 
-            if (Loud(0))
+            float heat = Amount(0);
+            if (heat > 0f)
             {
-                FxLibrary.Spawn(p.Temp > 0f ? lib.HitSpark : lib.IceHit, at);
-                if (p.Temp > 0f) { var b = FxLibrary.Spawn(lib.FireBurst, at);
-                    if (b != null) b.transform.localScale *= 0.55f; }
+                Sized(FxLibrary.Spawn(p.Temp > 0f ? lib.HitSpark : lib.IceHit, at), heat);
+                if (p.Temp > 0f) Sized(FxLibrary.Spawn(lib.FireBurst, at), 0.55f * heat);
                 any = true;
             }
-            if (Loud(1))
+            float light = Amount(1);
+            if (light > 0f)
             {
-                if (p.Lum > 0f) FxLibrary.Spawn(lib.HitLight, at);
-                else FxLibrary.SpawnTinted(lib.Poof, at, p.Tint());
+                Sized(p.Lum > 0f ? FxLibrary.Spawn(lib.HitLight, at) : FxLibrary.SpawnTinted(lib.Poof, at, p.Tint()), light);
                 any = true;
             }
-            if (Loud(2)) { FxLibrary.Spawn(lib.HitThud, at); any = true; }
-            if (Loud(5)) { FxLibrary.Spawn(lib.HitVector, at); any = true; }
+            float press = Amount(2);
+            if (press > 0f) { Sized(FxLibrary.Spawn(lib.HitThud, at), press); any = true; }
+            float aff = Amount(5);
+            if (aff > 0f) { Sized(FxLibrary.Spawn(lib.HitVector, at), aff); any = true; }
+            float bal = Amount(3);
+            if (bal > 0f)
+            {
+                // sticky lands as the comic BOING, slick as a puff in its own colour
+                if (p.Balance > 0f && lib.TextBoing != null)
+                    Sized(FxLibrary.Spawn(lib.TextBoing, at + Vector3.up * 0.6f), bal);
+                else
+                    Sized(FxLibrary.SpawnTinted(lib.Poof, at, p.Tint()), bal);
+                any = true;
+            }
+            float state = Amount(4);
             switch (SpellPayload.PhaseOf(p.State))
             {
                 case MatterPhase.Liquid:
-                    FxLibrary.SpawnTinted(lib.Splash, at, p.Tint()); any = true; break;
+                    Sized(FxLibrary.SpawnTinted(lib.Splash, at, p.Tint()), Mathf.Max(0.3f, state)); any = true; break;
                 case MatterPhase.Gas:
-                    var g = FxLibrary.Spawn(lib.GasCloud, at, null, 1.2f);
-                    if (g != null) g.transform.localScale *= 0.4f;
-                    any = true; break;
+                    Sized(FxLibrary.Spawn(lib.GasCloud, at, null, 1.2f), 0.4f * Mathf.Max(0.3f, state)); any = true; break;
                 default:
-                    if (Loud(4)) { FxLibrary.Spawn(lib.GroundHit, at); any = true; }
+                    if (state > 0f) { Sized(FxLibrary.Spawn(lib.GroundHit, at), state); any = true; }
                     break;
             }
-            if (any) return;
-
-            // nothing loud: the old kind-family fallback still pops
-            var fam = Family(Kind);
-            if (Kind == ParticleKind.Flame || fam == ParticleKind.Spark)
-            {
-                FxLibrary.Spawn(lib.HitSpark, at);
-                var boom = FxLibrary.Spawn(lib.FireBurst, at);
-                if (boom != null) boom.transform.localScale *= 0.55f;
-            }
-            else if (fam == ParticleKind.Frost)
-                FxLibrary.Spawn(lib.IceHit, at);
-            else if (Kind == ParticleKind.Push)
-                FxLibrary.Spawn(lib.HitVector, at);
-            else if (fam == ParticleKind.Light || Kind == ParticleKind.Lightning)
-                FxLibrary.Spawn(lib.HitLight, at);
-            else if (fam == ParticleKind.Dark)
-                FxLibrary.Spawn(lib.Poof, at);
-            else if (Kind == ParticleKind.Dense || Kind == ParticleKind.Spread)
-                FxLibrary.Spawn(lib.HitThud, at);
-            else
-                FxLibrary.Spawn(lib.Poof, at);
         }
 
         /// ★ ATTRACT AND REPEL ARE PARTICLES NORMALLY (his rule): the sign of
@@ -926,6 +927,7 @@ namespace SpellyZombie
         {
             _dead = false;
             _age = 0f;
+            LifeId = ++_lifeSerial;
             // pool rebirth: the primitive's own trigger size (emission and
             // the settle path both rescale it per life)
             var resetSc = GetComponent<SphereCollider>();
@@ -1108,6 +1110,7 @@ namespace SpellyZombie
                 if (piece == null) continue;
                 piece.Data = each.Clamped();
                 piece.OwnerId = OwnerId;
+                piece.FromMinion = FromMinion;
                 piece.SrcSize = SrcSize * 0.6f;
                 piece.Vel = d * DrawingConfig.ScatterSpeed;
                 piece.Wake();
@@ -1148,6 +1151,7 @@ namespace SpellyZombie
             p.Power = Mathf.Clamp(intensity, 0.2f, 2f);
             p.SrcSize = DrawingConfig.RuneSizeMin;  // callers that know better overwrite it
             p._generation = generation;
+            p._owned = 0;               // a fresh life: it owns only what it is seeded with
             p._appetite = Random.value; // personality: some motes stalk, some are lazy
 
             // stamped once from the ground it was cast on. Every carrier
@@ -1809,7 +1813,10 @@ namespace SpellyZombie
             // the result an almost-expired one. Spawn order is stable either
             // way, so a match still replays the same twice.
             if (Invested(other) > Invested(hi) && other.OwnerId >= 0)
+            {
                 hi.OwnerId = other.OwnerId;
+                hi.FromMinion = other.FromMinion;
+            }
             var lo = hi == a ? b : a;
 
             if (Mathf.Max(la, lb) >= 3) { hi.Absorb(lo); return; } // capped: eats its kin
@@ -2096,6 +2103,18 @@ namespace SpellyZombie
         /// far enough and State crosses on its own.
         const float DriftPeriod = 0.25f;
 
+        // the axes this spell was made with, or picked up by merging. Only
+        // these follow the place; an axis it never had does not move at all,
+        // and one it had keeps moving even through zero
+        int _owned;
+        public bool Owns(int axis) => (_owned & (1 << axis)) != 0;
+        void NoteOwned()
+        {
+            var d = Data;
+            for (int i = 0; i < SpellPayload.AxisCount; i++)
+                if (Mathf.Abs(d[i]) > 1e-4f) _owned |= 1 << i;
+        }
+
         void TickDrift(float dt)
         {
             if (!WorldClock.IsBeat(DriftPeriod, ClockKey, ref _driftBeat)) return;
@@ -2128,6 +2147,7 @@ namespace SpellyZombie
             }
 
             var was = Data;
+            NoteOwned();
             RemarkBiome(SpellLaw.Here(this));
             SpellLaw.Drift(this, DriftPeriod);
             if (GrammarLevel >= 3)
@@ -2474,14 +2494,6 @@ namespace SpellyZombie
 
             if (OwnerId >= 0) el.Owner = OwnerId;   // blame rides along
 
-            // Luminance still lives on the body board for players - the last
-            // number that has not moved onto the element yet.
-            if (Mathf.Abs(give.Lum) > 0.001f)
-            {
-                var pl = c.GetComponentInParent<SimpleFPSController>();
-                if (pl != null) BodyState.Of(pl)?.PushLum(give.Lum);
-            }
-
             // BALANCE IS GRIP, and a rigidbody cannot read a number - so the
             // one place a payload turns into physics. Positive is sticky and
             // holds things still; negative is slick and takes their feet away.
@@ -2534,9 +2546,9 @@ namespace SpellyZombie
             if (lib != null) FxLibrary.Spawn(lib.ElectricHit, hit, null, 3f);
 
             var pl = best.GetComponent<SimpleFPSController>();
-            if (pl != null) { pl.TakeHit(Vector3.down * 4f, 24f); return; }
+            if (pl != null) { pl.TakeHit(Vector3.down * 4f, 24f, null, OwnerId, FromMinion); return; }
             var d = best.GetComponentInParent<Element>();
-            if (d != null) d.TakeDamage(50f * Power, "struck by lightning");
+            if (d != null) d.TakeDamage(50f * Power, "struck by lightning", OwnerId, FromMinion);
             GiveHeat(best, 150f); // a strike IGNITES what it hits
             var rb = best.attachedRigidbody;
             if (rb != null) rb.AddForce(Vector3.down * 7f, ForceMode.VelocityChange);
@@ -2684,7 +2696,7 @@ namespace SpellyZombie
             get
             {
                 string baseName = _newest != null ? _newest.Name
-                                : AxisName(PayloadNow.Dominant, PayloadNow);
+                                : AxisName(WornAxis(PayloadNow), PayloadNow);
                 if (baseName == null) return null;
 
                 // A LEVEL CAN HAVE ITS OWN SHAPE. Attract is an arrow of force;
@@ -2701,6 +2713,17 @@ namespace SpellyZombie
                 }
                 return baseName;
             }
+        }
+
+        /// The axis a mote wears: its strongest, and only while it holds at
+        /// least a quarter of that axis's line. A trace never dresses a mote,
+        /// so a fading spell keeps the shape it had instead of turning into
+        /// whatever residue is left.
+        static int WornAxis(SpellPayload p)
+        {
+            int ax = p.Dominant;
+            if (ax < 0) return -1;
+            return Mathf.Abs(SpellPayload.ToHuman(ax, p[ax])) >= 0.25f * SpellPayload.LineFor(ax) ? ax : -1;
         }
 
         static string AxisName(int axis, SpellPayload p) => axis switch
@@ -3073,7 +3096,7 @@ namespace SpellyZombie
                         new Color(0.45f, 1f, 0.55f), 4);
             }
             else if (give.Strength < -0.5f)
-                pilot.GetComponent<Element>()?.TakeDamage(-give.Strength, "draining spell", OwnerId);
+                pilot.GetComponent<Element>()?.TakeDamage(-give.Strength, "draining spell", OwnerId, FromMinion);
             ImpactFx();
             ManifestState(transform.position); // the rock still lands ON people
             Die();

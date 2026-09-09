@@ -1,19 +1,26 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 namespace SpellyZombie
 {
     /// The travel egg: during scene loads the local player stands frozen in a
-    /// dark shell; only egg-layer objects render, a few spell motes float
-    /// around, then the shell dissolves. Purely local, never replicated.
+    /// dark shell around the camera; only egg-layer objects render, a few
+    /// spell motes float around. When the match opens the shell grows from
+    /// the eye outward - the world comes back near to far - and the far shell
+    /// burns away. Purely local, never replicated.
     public class LoadEgg : MonoBehaviour
     {
-        const float Radius = 8f;   // covers the third person camera with room
+        const float ShellRadius = 2.4f;  // the closed egg, around the camera
+        const float FarRadius = 70f;     // where the opening shell burns out
         const int EggLayer = 31;
-        const float DissolveSeconds = 1.6f;
+        const float RevealSeconds = 2.2f;
 
         static LoadEgg _live;
+
+        /// Shell up and the camera seeing only the egg: the veil may drop.
+        public static bool Closed => _live != null && _live._cam != null && _live._opening < 0f;
 
         Transform _shell;
         Material _mat;
@@ -24,7 +31,8 @@ namespace SpellyZombie
         readonly List<Transform> _relayered = new List<Transform>();
         readonly List<int> _prevLayers = new List<int>();
         readonly List<SpellParticle> _toys = new List<SpellParticle>();
-        float _toyIn, _relayerIn, _dissolve = -1f;
+        float _toyIn, _relayerIn, _opening = -1f;
+        float _radius = ShellRadius, _openFrom = ShellRadius;
         float _arrivedAt = -1f, _bornAt;
 
         public static void Cover()
@@ -46,11 +54,13 @@ namespace SpellyZombie
         {
             _bornAt = Time.unscaledTime;
             SceneManager.sceneLoaded += OnLoaded;
+            RenderPipelineManager.beginCameraRendering += OnBeginCamera;
         }
 
         void OnDestroy()
         {
             SceneManager.sceneLoaded -= OnLoaded;
+            RenderPipelineManager.beginCameraRendering -= OnBeginCamera;
             Unwrap();
             if (_shell != null) Destroy(_shell.gameObject);
             if (_live == this) _live = null;
@@ -78,13 +88,10 @@ namespace SpellyZombie
                 sphere.name = "EggShell";
                 Destroy(sphere.GetComponent<Collider>());
                 _shell = sphere.transform;
+                _shell.SetParent(transform, false); // rides the egg object across loads
                 _mat = new Material(Shader.Find("SpellyZombie/EggDissolve"));
                 sphere.GetComponent<Renderer>().sharedMaterial = _mat;
             }
-            _shell.SetParent(_pilot.transform, false);
-            _shell.localPosition = Vector3.up;
-            _shell.localRotation = Quaternion.identity;
-            _shell.localScale = Vector3.one * (Radius * 2f);
             _shell.gameObject.layer = EggLayer;
 
             Wrap();
@@ -97,7 +104,28 @@ namespace SpellyZombie
                     _maskTaken = true;
                 }
                 _cam.cullingMask = 1 << EggLayer;
+                FollowCamera();
             }
+        }
+
+        /// The shell is centred on the camera, set right before the camera
+        /// renders so it never lags the eye. Closed, it is a tight egg - but
+        /// never smaller than the body needs (third person stands back).
+        void FollowCamera()
+        {
+            if (_shell == null || _cam == null) return;
+            _shell.position = _cam.transform.position;
+            if (_opening < 0f && _pilot != null)
+            {
+                Vector3 head = _pilot.transform.position + Vector3.up * 1.6f;
+                _radius = Mathf.Max(ShellRadius, (head - _cam.transform.position).magnitude + 0.9f);
+            }
+            _shell.localScale = Vector3.one * (_radius * 2f);
+        }
+
+        void OnBeginCamera(ScriptableRenderContext ctx, Camera cam)
+        {
+            if (cam == _cam) FollowCamera();
         }
 
         /// The player and the toys live on the egg's layer while the shell is
@@ -142,23 +170,28 @@ namespace SpellyZombie
             _toyIn = 1.6f;
             ParticleKind kind = Random.value < 0.4f ? ParticleKind.Push
                 : Random.value < 0.5f ? ParticleKind.Light : ParticleKind.Dense;
-            Vector3 at = _pilot.transform.position + Vector3.up * 1.4f
-                + Random.insideUnitSphere * 2f;
+            Vector3 eye = _cam != null ? _cam.transform.position
+                : _pilot.transform.position + Vector3.up * 1.4f;
+            Vector3 at = eye + Random.insideUnitSphere * (ShellRadius * 0.55f);
             var p = SpellParticle.Emit(kind, at, Random.onUnitSphere, 0.7f);
             if (p != null) _toys.Add(p);
         }
 
         void Update()
         {
-            if (_dissolve >= 0f)
+            if (_opening >= 0f)
             {
-                _dissolve += Time.unscaledDeltaTime / DissolveSeconds;
-                if (_mat != null) _mat.SetFloat("_Cut", Mathf.Clamp01(_dissolve));
-                if (_dissolve >= 1f) Destroy(gameObject);
+                _opening += Time.unscaledDeltaTime / RevealSeconds;
+                float p = Mathf.Clamp01(_opening);
+                // the world comes back from the eye outward: slow at first,
+                // then rushing away; the far shell burns off at the end
+                _radius = Mathf.Lerp(_openFrom, FarRadius, p * p);
+                if (_mat != null) _mat.SetFloat("_Cut", Mathf.Clamp01((p - 0.65f) / 0.35f));
+                if (_opening >= 1f) Destroy(gameObject);
                 return;
             }
 
-            if (_pilot == null || !_pilot.gameObject.activeInHierarchy) Attach();
+            if (_pilot == null || !_pilot.gameObject.activeInHierarchy || _cam == null) Attach();
             _relayerIn -= Time.unscaledDeltaTime;
             if (_relayerIn <= 0f)
             {
@@ -177,20 +210,18 @@ namespace SpellyZombie
                 : NetGame.Connected && !NetGame.IsHost
                     ? NetSync.HasRound && NetSync.NetPhase == 1
                     : RoundDirector.RunActive;
-            if (open && Time.unscaledTime - _arrivedAt > 0.8f) Reveal();
+            // the dark room registers before it burns
+            if (open && Time.unscaledTime - _arrivedAt > 1.5f) Reveal();
         }
 
-        /// The world fades in: layers and camera come back first, then the
-        /// shell burns away around the player.
+        /// The world comes back: layers and camera first, then the shell
+        /// grows away from the eye until it burns out at the horizon.
         void Reveal()
         {
             Unwrap();
-            _dissolve = 0f;
-            if (_shell != null)
-            {
-                _shell.SetParent(null, true);
-                _shell.gameObject.layer = 0;
-            }
+            _openFrom = _radius;
+            _opening = 0f;
+            if (_shell != null) _shell.gameObject.layer = 0;
         }
     }
 }

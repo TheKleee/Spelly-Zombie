@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace SpellyZombie
 {
     /// Acolytes start with NO runes and earn all four by doing the thing the
@@ -9,32 +11,67 @@ namespace SpellyZombie
     /// Callers just report the deed; this decides what it grants.
     public static class AcolyteDeeds
     {
-        static bool IsAcolyte(int owner) => Sides.Of(owner) == Side.Acolyte;
-
-        static void Grant(int owner, RuneType rune)
+        /// The mischief deeds, numbered 1..8. Each unlocks one existing glyph.
+        public enum Deed
         {
-            if (!IsAcolyte(owner) || Grimoire.HasRune(owner, rune)) return;
-            Grimoire.UnlockRune(owner, rune); // the toast fires from in there
+            Decoy = 1, Reveal, DeathNeedle, LifeNeedle,
+            Evaporation, Transformation, Aggressive, Spreading
         }
 
-        public static void Scanned(int owner) => Grant(owner, RuneType.StateSolid);
+        /// owner, rune, world position of the deed. Fires only on a fresh grant.
+        public static event System.Action<int, RuneType, Vector3> Granted;
 
-        public static void RevertedToSelf(int owner) => Grant(owner, RuneType.StateLiquid);
+        static bool IsAcolyte(int owner) => Sides.Of(owner) == Side.Acolyte;
+
+        static bool Grant(int owner, RuneType rune, Vector3 at)
+        {
+            if (!IsAcolyte(owner) || Grimoire.HasRune(owner, rune)) return false;
+            Granted?.Invoke(owner, rune, at); // the placed tell first, then the book
+            Grimoire.UnlockRune(owner, rune);  // the toast fires from in there
+            return true;
+        }
+
+        public static RuneType RuneFor(Deed d)
+        {
+            switch (d)
+            {
+                case Deed.Decoy: return RuneType.HeatUp;
+                case Deed.Reveal: return RuneType.HeatDown;
+                case Deed.DeathNeedle: return RuneType.StickyUp;
+                case Deed.LifeNeedle: return RuneType.StickyDown;
+                case Deed.Evaporation: return RuneType.LuminanceUp;
+                case Deed.Transformation: return RuneType.LuminanceDown;
+                case Deed.Aggressive: return RuneType.DensityUp;
+                case Deed.Spreading: return RuneType.DensityDown;
+                default: return RuneType.None;
+            }
+        }
+
+        /// The rune granted, or None when the owner is no acolyte or owns it already.
+        public static RuneType Grant(int owner, Deed deed, Vector3 at = default)
+        {
+            var rune = RuneFor(deed);
+            return Grant(owner, rune, at) ? rune : RuneType.None;
+        }
+
+        public static void Scanned(int owner, Vector3 at) => Grant(owner, RuneType.StateSolid, at);
+
+        public static void RevertedToSelf(int owner, Vector3 at) => Grant(owner, RuneType.StateLiquid, at);
 
         /// One call per summoning seal.
-        public static void Summoned(int owner, int count)
+        public static void Summoned(int owner, int count, Vector3 at)
         {
-            if (count > 0) Grant(owner, RuneType.Attract);
+            if (count > 0) Grant(owner, RuneType.Attract, at);
         }
 
         /// ★ THE Y DEED: at least 2 of your zombies alive at the same time -
         /// across seals, not per seal. Checked after every summon lands.
-        public static void ZombiesAlive(int owner)
+        public static void ZombiesAlive(int owner, Vector3 at)
         {
             int alive = 0;
             foreach (var z in Zombie.All)
                 if (z != null && z.OwnerId == owner) alive++;
-            if (alive > 1) Grant(owner, RuneType.Repel);
+            if (alive > 1) Grant(owner, RuneType.Repel, at);
         }
     }
 }

@@ -560,7 +560,7 @@ namespace SpellyZombie
                     float dmg = Mathf.Max(0f, momentum - 14f) * 0.6f;
                     if (dmg > 0.5f)
                     {
-                        hitPl.TakeHit(-col.relativeVelocity * 0.4f, dmg, "hit by flying matter");
+                        hitPl.TakeHit(-col.relativeVelocity * 0.4f, dmg, "hit by flying matter", TeamOwner);
                         // momentum decides the knockdown, not the damage math
                         if (momentum > 22f)
                             hitPl.KnockDown(Mathf.Min(2f, 0.6f + momentum * 0.03f));
@@ -907,7 +907,7 @@ namespace SpellyZombie
                     pilot.KnockDown(1f); // the slick pool takes your feet eventually
                 // burn gate is 100°C: steam is born around 130° and must scald
                 if (Owner.Temperature > 100f && Tick(0.5f))
-                    pilot.TakeHit(Vector3.zero, Owner.Temperature > 150f ? 6f : 3f);
+                    pilot.TakeHit(Vector3.zero, Owner.Temperature > 150f ? 6f : 3f, null, Owner.TeamOwner);
                 else if (Owner.Temperature < -20f && Tick(0.5f))
                     SpellParticle.GiveHeatTo(other, Owner.Temperature * 0.15f); // icy water CHILLS waders
                 return;

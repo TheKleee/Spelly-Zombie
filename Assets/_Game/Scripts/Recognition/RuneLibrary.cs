@@ -286,6 +286,15 @@ namespace SpellyZombie
             RuneType.Attract, RuneType.Repel
         };
 
+        /// The mischief glyphs, 1..8; earned by deed (AcolyteDeeds.Deed).
+        public static readonly RuneType[] AcolyteMischief =
+        {
+            RuneType.HeatUp, RuneType.HeatDown,
+            RuneType.StickyUp, RuneType.StickyDown,
+            RuneType.LuminanceUp, RuneType.LuminanceDown,
+            RuneType.DensityUp, RuneType.DensityDown
+        };
+
         /// Rune Studio is the practice hall: the whole alphabet shows there
         /// and drawing costs nothing.
         public static bool PracticeHall =>

@@ -19,6 +19,7 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | carry.down | put it down | 내려놓기 | putting down | |
 | scan.aim | scan it, become it | 스캔하면 그것이 된다 | if you scan, you become that | |
 | absorb.aim | absorb it, learn its rune | 흡수하면 그 룬을 배운다 | if you absorb, you learn that rune | |
+| chest.open | open the chest | 상자 열기 | chest opening | noun form, like the grimoire lines |
 | chip.grimoire | grimoire | 마도서 | grimoire | |
 | chip.paint | paint your body | 몸에 그리기 | on the body, drawing | |
 | chip.first | first person | 1인칭 | 1st person | |
@@ -135,3 +136,27 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | opt.mic.open | Open mic | 항상 켬 | always on |  |
 | opt.mic.ptt | Hold V | V 눌러 말하기 | press V to talk | V is a physical key, kept |
 | opt.mic.off | Muted | 음소거 | mute |  |
+| opt.tab.game | Game | 게임 | game |  |
+| opt.tab.video | Video | 영상 | video |  |
+| opt.tab.audio | Audio | 소리 | sound |  |
+| opt.resolution | Resolution: {0} | 해상도: {0} | resolution: {0} |  |
+| opt.resolution.title | Resolution | 해상도 | resolution |  |
+| opt.display | Display | 화면 모드 | screen mode |  |
+| opt.display.full | Fullscreen | 전체 화면 | whole screen |  |
+| opt.display.borderless | Borderless | 테두리 없음 | no border |  |
+| opt.display.windowed | Windowed | 창 모드 | window mode |  |
+| opt.quality | Quality | 화질 | picture quality |  |
+| opt.low | Low | 낮음 | low |  |
+| opt.medium | Medium | 중간 | middle |  |
+| opt.high | High | 높음 | high |  |
+| opt.textures | Textures | 텍스처 | texture |  |
+| opt.shadows | Shadows | 그림자 | shadow |  |
+| opt.effects | Effects | 효과 | effects |  |
+| opt.motionblur | Motion blur | 모션 블러 | motion blur |  |
+| opt.aa | Antialiasing | 안티앨리어싱 | antialiasing |  |
+| opt.fps | Frame limit | 프레임 제한 | frame limit |  |
+| opt.vsync | VSync | 수직 동기화 | vertical sync |  |
+| opt.off | Off | 끔 | off |  |
+| opt.on | On | 켬 | on |  |
+| opt.music | Music: {0}% | 음악: {0}% | music: {0}% |  |
+| opt.sfx | Sounds: {0}% | 효과음: {0}% | sound effects: {0}% |  |

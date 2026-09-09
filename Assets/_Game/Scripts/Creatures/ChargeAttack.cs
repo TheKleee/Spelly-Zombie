@@ -139,11 +139,31 @@ namespace SpellyZombie
 
         void TakeStrengthBack()
         {
-            if (_me2 == null || _lentStrength <= 0f) return;
-            _me2.MaxStrength = Mathf.Max(1f, _me2.MaxStrength - _lentStrength);
-            // it keeps whatever the charge cost it; only the loan goes back
-            _me2.Health = Mathf.Min(_me2.Health, _me2.MaxStrength);
-            _lentStrength = 0f;
+            if (_me2 != null && _lentStrength > 0f)
+            {
+                _me2.MaxStrength = Mathf.Max(1f, _me2.MaxStrength - _lentStrength);
+                // it keeps whatever the charge cost it; only the loan goes back
+                _me2.Health = Mathf.Min(_me2.Health, _me2.MaxStrength);
+                _lentStrength = 0f;
+            }
+            if (_me2 != null && _recoilOwed > 0f)
+            {
+                // paid after the loan is back, so the loan cannot swallow it
+                float owed = _recoilOwed;
+                _recoilOwed = 0f;
+                _me2.TakeDamage(owed, "hit a player");
+            }
+        }
+
+        float _recoilOwed;
+
+        /// A wild golem cracks by a share of its own strength for hitting a player.
+        void OweRecoil()
+        {
+            if (_me2 == null) _me2 = GetComponent<Element>();
+            if (_me2 == null) return;
+            float own = Mathf.Max(0f, _me2.MaxStrength - _lentStrength);
+            _recoilOwed += own * DrawingConfig.WildGolemChargeRecoilShare;
         }
 
         void OnCollisionEnter(Collision c)
@@ -163,7 +183,12 @@ namespace SpellyZombie
             if (zo != null) chOwner = zo.OwnerId;
             var go = GetComponentInParent<Golem>();
             if (go != null) chOwner = go.OwnerId;
-            PlayerInk.CreditWand(chOwner, hit * 0.12f);
+            // a wild golem is a nuisance, not an executioner: a hit that grows
+            // with its size from a trip to a real blow, and it pays for landing it
+            bool wild = go != null && go.OwnerId < 0;
+            if (wild)
+                hit = DrawingConfig.WildGolemChargeDamage
+                    * Mathf.Pow(Mathf.Max(0.05f, go.SizeMul), DrawingConfig.WildGolemChargeSizePower) * mul;
             if (FxLibrary.I != null)
                 FxLibrary.Spawn(FxLibrary.I.GroundHit, spot);
             GrammarFX.PuffBurst(spot, new Color(0.9f, 0.85f, 0.7f), 4);
@@ -181,7 +206,7 @@ namespace SpellyZombie
                     ? SpellPayload.ToHuman(3, pel.Data.Balance - pel.Natural.Balance) : 0f;
                 if (bal > 15f && hit < bal * 1.2f)
                 {
-                    player.TakeHit(shove * 0.15f, hit, $"{name} charge"); // hurt, not toppled
+                    player.TakeHit(shove * 0.15f, hit, $"{name} charge", chOwner, true); // hurt, not toppled
                     var mrb = GetComponent<Rigidbody>();
                     if (mrb != null)
                         mrb.linearVelocity = -_dir * Mathf.Max(4f, mrb.linearVelocity.magnitude * 0.6f)
@@ -193,17 +218,22 @@ namespace SpellyZombie
                     // flattened: extra shove, mostly flat, and the slip law glides it
                     Vector3 flat = _dir; flat.y = 0f;
                     player.TakeHit(flat.normalized * shove.magnitude * 1.7f + Vector3.up * 1f,
-                        hit, $"{name} charge");
+                        hit, $"{name} charge", chOwner, true);
                     GrammarFX.PuffBurst(spot, new Color(0.6f, 0.85f, 1f), 5); // the WHOOPS
                 }
-                else player.TakeHit(shove, hit, $"{name} charge");
+                else player.TakeHit(shove, hit, $"{name} charge", chOwner, true);
                 if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.TextPow, spot + Vector3.up * 1.2f);
+                if (wild) OweRecoil();
             }
             else
             {
                 var dmg = c.collider.GetComponentInParent<Element>();
                 if (dmg != null && dmg.gameObject != gameObject)
-                    dmg.TakeDamage(hit, $"{name} charge");
+                {
+                    dmg.TakeDamage(hit, $"{name} charge", chOwner, true);
+                    // a remote player's puppet is a player hit too
+                    if (wild && dmg.GetComponentInParent<NetAvatar>() != null) OweRecoil();
+                }
                 var orb = c.collider.attachedRigidbody;
                 if (orb != null && !orb.isKinematic) orb.AddForce(shove, ForceMode.VelocityChange);
             }

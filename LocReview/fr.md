@@ -19,6 +19,7 @@ Salon is the French word for a game lobby.
 | carry.down | put it down | poser | put down | |
 | scan.aim | scan it, become it | scanne, deviens ça | scan, become that | |
 | absorb.aim | absorb it, learn its rune | absorbe, apprends sa rune | absorb, learn its rune | |
+| chest.open | open the chest | ouvrir le coffre | open the chest |  |
 | chip.grimoire | grimoire | grimoire | grimoire | |
 | chip.paint | paint your body | peindre ton corps | paint your body | |
 | chip.first | first person | première personne | first person | |
@@ -135,3 +136,27 @@ Salon is the French word for a game lobby.
 | opt.mic.open | Open mic | Toujours ouvert | always open |  |
 | opt.mic.ptt | Hold V | Maintiens V | hold V | V is a physical key, kept |
 | opt.mic.off | Muted | Coupé | cut |  |
+| opt.tab.game | Game | Jeu | game |  |
+| opt.tab.video | Video | Vidéo | video |  |
+| opt.tab.audio | Audio | Audio | audio |  |
+| opt.resolution | Resolution: {0} | Résolution : {0} | resolution: {0} | space before the colon |
+| opt.resolution.title | Resolution | Résolution | resolution |  |
+| opt.display | Display | Affichage | display |  |
+| opt.display.full | Fullscreen | Plein écran | full screen |  |
+| opt.display.borderless | Borderless | Sans bordure | without border |  |
+| opt.display.windowed | Windowed | Fenêtré | windowed |  |
+| opt.quality | Quality | Qualité | quality |  |
+| opt.low | Low | Faible | low |  |
+| opt.medium | Medium | Moyenne | medium |  |
+| opt.high | High | Élevée | high |  |
+| opt.textures | Textures | Textures | textures |  |
+| opt.shadows | Shadows | Ombres | shadows |  |
+| opt.effects | Effects | Effets | effects |  |
+| opt.motionblur | Motion blur | Flou de mouvement | movement blur |  |
+| opt.aa | Antialiasing | Anticrénelage | antialiasing | the French term |
+| opt.fps | Frame limit | Limite d'images | image limit |  |
+| opt.vsync | VSync | Synchro verticale | vertical sync |  |
+| opt.off | Off | Désactivé | deactivated |  |
+| opt.on | On | Activé | activated |  |
+| opt.music | Music: {0}% | Musique : {0}% | music: {0}% | space before the colon |
+| opt.sfx | Sounds: {0}% | Sons : {0}% | sounds: {0}% | space before the colon |

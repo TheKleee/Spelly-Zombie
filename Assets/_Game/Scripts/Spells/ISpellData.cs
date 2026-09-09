@@ -89,8 +89,12 @@ namespace SpellyZombie
             // axes on itself - the byproducts appear on the THINGS the data
             // lands on, through their own drift.
             bool couple = !(thing is SpellParticle);
+            var mote = thing as SpellParticle;
             for (int i = 0; i < SpellPayload.AxisCount; i++)
             {
+                // a spell moves only on the axes it has (his rule): what it
+                // never carried the place cannot give it
+                if (mote != null && !mote.Owns(i)) continue;
                 // STRENGTH DOES NOT DRIFT. Drifting it back toward natural IS
                 // regeneration, and that is its own system with its own rate
                 // (the biome's RegenScale, and "the lower your maximum the
@@ -99,6 +103,10 @@ namespace SpellyZombie
                 // undo damage as fast as fire could deal it.
                 if (i == 6) continue;
                 float target = SpellPayload.TargetFor(i, natural[i], here[i]);
+                // a mote carries heat as a DELTA from room temperature while its
+                // natural and the place speak in degrees: aim it at the place's
+                // offset, or every neutral mote warms into a spark in a second
+                if (i == 0 && !couple) target -= Element.RoomTemp;
                 // the effect axes are byproducts of the carried data (his
                 // coupling table) - the data deviation offsets the target
                 if (i >= 7 && couple) target += SpellPayload.EffectCoupling(i, d - natural);

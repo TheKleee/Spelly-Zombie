@@ -22,6 +22,7 @@ from the zh-CN sheet.
 | carry.down | put it down | 放下 | put down | |
 | scan.aim | scan it, become it | 掃描它，變成它 | scan it, become it | |
 | absorb.aim | absorb it, learn its rune | 吸收它，學會它的符文 | absorb it, learn its rune | |
+| chest.open | open the chest | 打開箱子 | open chest |  |
 | chip.grimoire | grimoire | 魔導書 | magic guide book | |
 | chip.paint | paint your body | 在身上畫 | on the body, draw | |
 | chip.first | first person | 第一人稱 | first person | |
@@ -138,3 +139,27 @@ from the zh-CN sheet.
 | opt.mic.open | Open mic | 常開 | always open |  |
 | opt.mic.ptt | Hold V | 按住V說話 | hold V to talk | V is a physical key, kept |
 | opt.mic.off | Muted | 靜音 | silence |  |
+| opt.tab.game | Game | 遊戲 | game |  |
+| opt.tab.video | Video | 畫面 | picture |  |
+| opt.tab.audio | Audio | 音訊 | audio | Taiwan word |
+| opt.resolution | Resolution: {0} | 解析度: {0} | resolution: {0} | Taiwan word |
+| opt.resolution.title | Resolution | 解析度 | resolution |  |
+| opt.display | Display | 顯示模式 | display mode |  |
+| opt.display.full | Fullscreen | 全螢幕 | full screen | Taiwan word |
+| opt.display.borderless | Borderless | 無邊框 | no border |  |
+| opt.display.windowed | Windowed | 視窗 | window | Taiwan word |
+| opt.quality | Quality | 畫質 | picture quality |  |
+| opt.low | Low | 低 | low |  |
+| opt.medium | Medium | 中 | medium |  |
+| opt.high | High | 高 | high |  |
+| opt.textures | Textures | 材質 | material | Taiwan word for textures |
+| opt.shadows | Shadows | 陰影 | shadow |  |
+| opt.effects | Effects | 特效 | special effects |  |
+| opt.motionblur | Motion blur | 動態模糊 | motion blur |  |
+| opt.aa | Antialiasing | 反鋸齒 | anti sawtooth | Taiwan form |
+| opt.fps | Frame limit | 幀數上限 | frame count limit |  |
+| opt.vsync | VSync | 垂直同步 | vertical sync |  |
+| opt.off | Off | 關 | off |  |
+| opt.on | On | 開 | on |  |
+| opt.music | Music: {0}% | 音樂: {0}% | music: {0}% |  |
+| opt.sfx | Sounds: {0}% | 音效: {0}% | sound effects: {0}% |  |

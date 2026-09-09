@@ -19,6 +19,7 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | carry.down | put it down | soltar | let go | |
 | scan.aim | scan it, become it | escanéalo, conviértete en eso | scan it, turn yourself into that | |
 | absorb.aim | absorb it, learn its rune | absórbelo, aprende su runa | absorb it, learn its rune | |
+| chest.open | open the chest | abrir el cofre | open the chest |  |
 | chip.grimoire | grimoire | grimorio | grimoire | |
 | chip.paint | paint your body | pintar tu cuerpo | paint your body | |
 | chip.first | first person | primera persona | first person | |
@@ -135,3 +136,27 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | opt.mic.open | Open mic | Siempre abierto | always open |  |
 | opt.mic.ptt | Hold V | Mantén V | hold V | V is a physical key, kept |
 | opt.mic.off | Muted | Silenciado | silenced |  |
+| opt.tab.game | Game | Juego | game |  |
+| opt.tab.video | Video | Vídeo | video | Spain spelling |
+| opt.tab.audio | Audio | Audio | audio |  |
+| opt.resolution | Resolution: {0} | Resolución: {0} | resolution: {0} |  |
+| opt.resolution.title | Resolution | Resolución | resolution |  |
+| opt.display | Display | Pantalla | screen |  |
+| opt.display.full | Fullscreen | Pantalla completa | full screen |  |
+| opt.display.borderless | Borderless | Sin bordes | without borders |  |
+| opt.display.windowed | Windowed | Ventana | window |  |
+| opt.quality | Quality | Calidad | quality |  |
+| opt.low | Low | Baja | low |  |
+| opt.medium | Medium | Media | medium |  |
+| opt.high | High | Alta | high |  |
+| opt.textures | Textures | Texturas | textures |  |
+| opt.shadows | Shadows | Sombras | shadows |  |
+| opt.effects | Effects | Efectos | effects |  |
+| opt.motionblur | Motion blur | Desenfoque de movimiento | movement blur |  |
+| opt.aa | Antialiasing | Antialiasing | antialiasing | kept, the usual term |
+| opt.fps | Frame limit | Límite de FPS | FPS limit |  |
+| opt.vsync | VSync | Sincronización vertical | vertical synchronisation |  |
+| opt.off | Off | Desactivado | deactivated |  |
+| opt.on | On | Activado | activated |  |
+| opt.music | Music: {0}% | Música: {0}% | music: {0}% |  |
+| opt.sfx | Sounds: {0}% | Sonidos: {0}% | sounds: {0}% |  |

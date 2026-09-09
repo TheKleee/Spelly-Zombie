@@ -83,10 +83,14 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AddPrecomputedVelocity: 0
     - _AlphaClip: 0
     - _AlphaToMask: 0
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
+    - _BubbleRise: 0.8
+    - _BubbleScale: 14
+    - _Bubbles: 0.55
     - _BumpScale: 1
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
@@ -97,23 +101,37 @@ Material:
     - _DstBlend: 0
     - _DstBlendAlpha: 0
     - _EnvironmentReflections: 1
+    - _GasAlpha: 0.22
     - _GlossMapScale: 1
     - _Glossiness: 0.179
     - _GlossyReflections: 1
+    - _HoleScale: 7
+    - _Holes: 0.55
+    - _LiquidAlpha: 0.8
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
     - _QueueOffset: 0
     - _ReceiveShadows: 1
+    - _Rim: 0.9
+    - _Skinned: 0
     - _Smoothness: 0.179
     - _SmoothnessTextureChannel: 0
+    - _SolidAlpha: 1
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
+    - _StateT: 1
     - _Surface: 0
+    - _Swirl: 0.5
+    - _SwirlSpeed: 0.4
+    - _Turbulence: 0.1
     - _UVSec: 0
+    - _Wobble: 0.015
+    - _WobbleSpeed: 0.45
     - _WorkflowMode: 1
+    - _XRMotionVectorsPass: 1
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 0.8, g: 0.8, b: 0.8, a: 1}

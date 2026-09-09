@@ -11,7 +11,7 @@ namespace SpellyZombie
         /// Hit a player with an impulse and optional damage. Breaks drawing
         /// first when the impulse is over the threshold.
         public static void Hit(SimpleFPSController player, Vector3 impulse,
-            float damage, string cause = null)
+            float damage, string cause = null, int by = -1, bool viaMinion = false)
         {
             if (player == null) return;
 
@@ -19,7 +19,7 @@ namespace SpellyZombie
             // a big enough hit must end them all here first
             if (impulse.magnitude < DrawingConfig.ShoveBreaksDrawing)
             {
-                player.TakeHit(impulse, damage, cause);
+                player.TakeHit(impulse, damage, cause, by, viaMinion);
                 return;
             }
 
@@ -56,7 +56,7 @@ namespace SpellyZombie
             if (wasInAMode)
                 DrawingWorld.Instance?.LogEvent("the blast throws you out of it");
 
-            player.TakeHit(impulse, damage, cause);
+            player.TakeHit(impulse, damage, cause, by, viaMinion);
         }
 
         static readonly Collider[] _blastHits = new Collider[48];
@@ -66,7 +66,8 @@ namespace SpellyZombie
         /// physics), loose props thrown. One implementation for the zombie
         /// detonation and the acolyte death burst.
         public static void Blast(Vector3 at, float radius, float power,
-            float baseDamage, string cause, Rigidbody except = null)
+            float baseDamage, string cause, Rigidbody except = null,
+            int by = -1, bool viaMinion = false)
         {
             Juice.Thud(at);
 
@@ -84,7 +85,7 @@ namespace SpellyZombie
                 Hit(p,
                     away.normalized * power * t + Vector3.up * power * 0.3f * t,
                     corrupted ? 0f : baseDamage * t,
-                    cause);
+                    cause, by, viaMinion);
             }
 
             int n = Physics.OverlapSphereNonAlloc(at, radius, _blastHits,
