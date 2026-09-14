@@ -107,6 +107,7 @@ namespace SpellyZombie
             Vector3 ps = parent.lossyScale;
             go.transform.localScale = Vector3.Scale(_runePrefab.transform.localScale,
                 new Vector3(1f / Mathf.Max(1e-4f, ps.x), 1f / Mathf.Max(1e-4f, ps.y), 1f / Mathf.Max(1e-4f, ps.z)));
+            Element.Refile(go.transform);
             return go;
         }
 

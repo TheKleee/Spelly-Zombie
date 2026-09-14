@@ -91,6 +91,62 @@ namespace SpellyZombie
         static int _frame, _spawnedThisFrame;
         const int MaxPerFrame = 8;
 
+        // ================================================== THE WIRE IDS ====
+        // Prefab kinds: the typed roles in field order, then the Named list -
+        // the same asset on every machine, so an index names a prefab without
+        // sending its name. Code-built looks and sounds take fixed ids above.
+        public const byte FxPuff = 200, FxFireBloom = 201, FxFireCone = 202, FxBolt = 203,
+            FxLantern = 204, FxGlint = 205, FxCometDown = 206;
+        public const byte SndBoom = 220, SndPop = 221, SndWhoosh = 222, SndCrackle = 223,
+            SndThud = 224, SndChime = 225, SndSting = 226, SndDrum = 227, SndWhistle = 228;
+        public const byte FxNone = 255;
+
+        static List<GameObject> _wire;
+        static Dictionary<GameObject, byte> _wireId;
+
+        static void BuildWire()
+        {
+            _wire = new List<GameObject>();
+            _wireId = new Dictionary<GameObject, byte>();
+            if (I == null) return;
+            foreach (var f in typeof(FxLibrary).GetFields())
+            {
+                if (f.FieldType != typeof(GameObject)) continue;
+                Add(f.GetValue(I) as GameObject);
+            }
+            if (I.Named != null) foreach (var go in I.Named) Add(go);
+        }
+
+        static void Add(GameObject go)
+        {
+            if (go == null || _wire.Count >= 190) return;
+            if (_wireId.ContainsKey(go)) return;
+            _wireId[go] = (byte)_wire.Count;
+            _wire.Add(go);
+        }
+
+        /// The wire id of a library prefab, FxNone for anything else.
+        public static byte IdOf(GameObject prefab)
+        {
+            if (prefab == null) return FxNone;
+            if (_wire == null) BuildWire();
+            return _wireId.TryGetValue(prefab, out var id) ? id : FxNone;
+        }
+
+        public static GameObject PrefabAt(byte id)
+        {
+            if (_wire == null) BuildWire();
+            return id < _wire.Count ? _wire[id] : null;
+        }
+
+        public static byte SoundId(string clip) => clip switch
+        {
+            "SZ_boom" => SndBoom, "SZ_pop" => SndPop, "SZ_whoosh" => SndWhoosh,
+            "SZ_crackle" => SndCrackle, "SZ_thud" => SndThud, "SZ_chime" => SndChime,
+            "SZ_sting" => SndSting, "SZ_drum" => SndDrum, "SZ_whistle" => SndWhistle,
+            _ => FxNone,
+        };
+
         // ===================================================== THE POOL ====
         // pooled: built once and reused instead of Instantiate/Destroy per effect
         static readonly Dictionary<GameObject, Stack<GameObject>> _pool
@@ -100,15 +156,20 @@ namespace SpellyZombie
 
         /// Spawn an effect (null-safe, frame-budgeted, pooled), tinting every
         /// particle system; pooled instances are re-dressed each spawn.
-        public static GameObject SpawnTinted(GameObject prefab, Vector3 pos, Color c)
+        public static GameObject SpawnTinted(GameObject prefab, Vector3 pos, Color c,
+            Transform parent = null, float life = 0f, bool relay = true)
         {
-            var go = Spawn(prefab, pos);
+            var go = Spawn(prefab, pos, parent, life, relay);
             if (go != null)
+            {
                 foreach (var ps in go.GetComponentsInChildren<ParticleSystem>(true))
                 {
                     var main = ps.main;
                     main.startColor = c;
                 }
+                var keeper = go.GetComponent<FxReturn>();
+                if (keeper != null) { keeper.Tinted = true; keeper.Tint = c; }
+            }
             return go;
         }
 
@@ -140,7 +201,10 @@ namespace SpellyZombie
             return prefab == null ? null : Spawn(prefab, pos, parent, life);
         }
 
-        public static GameObject Spawn(GameObject prefab, Vector3 pos, Transform parent = null, float life = 0f)
+        /// relay: the host ships it to the clients (FxMsg). False at sites the
+        /// clients already replay on their own.
+        public static GameObject Spawn(GameObject prefab, Vector3 pos, Transform parent = null, float life = 0f,
+            bool relay = true)
         {
             if (prefab == null) return null;
             if (Time.frameCount != _frame) { _frame = Time.frameCount; _spawnedThisFrame = 0; }
@@ -185,6 +249,10 @@ namespace SpellyZombie
             }
 
             keeper.Arm(life > 0f ? life : 3f);   // everything returns to the pool
+            keeper.Prefab = prefab;
+            keeper.Tinted = false;
+            // shipped next frame, once the caller has sized it
+            keeper.Relay = relay && NetSync.WantsFxRelay;
             return fx;
         }
 
@@ -210,7 +278,7 @@ namespace SpellyZombie
                 if (prefab == null) continue;
                 for (int i = 0; i < each; i++)
                 {
-                    var fx = Spawn(prefab, new Vector3(0f, -999f, 0f), null, 0.01f);
+                    var fx = Spawn(prefab, new Vector3(0f, -999f, 0f), null, 0.01f, false);
                     if (fx != null) Recycle(fx);
                 }
             }
@@ -223,10 +291,24 @@ namespace SpellyZombie
         /// The instance's particle systems, cached at build (spares a GetComponentsInChildren per pooled spawn).
         public ParticleSystem[] Systems;
 
+        // the relay waits a frame so the caller's scale and tint ride along
+        [System.NonSerialized] public GameObject Prefab;
+        [System.NonSerialized] public bool Relay, Tinted;
+        [System.NonSerialized] public Color Tint;
+
         float _due;
-        public void Arm(float life) { _due = Time.time + life; enabled = true; }
+        int _armedFrame;
+        public void Arm(float life) { _due = Time.time + life; _armedFrame = Time.frameCount; enabled = true; }
         void Update()
         {
+            if (Relay && Time.frameCount > _armedFrame)
+            {
+                Relay = false;
+                var el = transform.parent != null ? transform.parent.GetComponentInParent<Element>() : null;
+                NetSync.PushFx(FxLibrary.IdOf(Prefab), transform.position, transform.localScale,
+                    Tinted ? Tint : Color.white, el != null ? el.NetId : 0, _due - Time.time,
+                    (byte)(Tinted ? 1 : 0));
+            }
             if (Time.time < _due) return;
             enabled = false;
             FxLibrary.Recycle(gameObject);

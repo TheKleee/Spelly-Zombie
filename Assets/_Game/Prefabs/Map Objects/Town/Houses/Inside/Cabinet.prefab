@@ -34,23 +34,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.101035036
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.10103505
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.69985133
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.69985145
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
+      value: -90
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -58,7 +58,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
+      value: 180
       objectReference: {fileID: 0}
     - target: {fileID: -7511558181221131132, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -91,6 +91,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1659124903515041556}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5868033573174633085}
   m_SourcePrefab: {fileID: 100100000, guid: 2a2731d549001394582f1d60e437ff8d, type: 3}
 --- !u!1 &1308127368703902100 stripped
 GameObject:
@@ -128,10 +131,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1308127368703902100}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &5613570264979426758
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -209,3 +212,37 @@ MonoBehaviour:
   CodeSplinters: 1
   DefaultSound: 1
   LobbyRespawnOverride: 0
+--- !u!114 &5868033573174633085
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1308127368703902100}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2077c0e2edc5a2548841c92026a05126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.InteriorField
+  Size: {x: 1.63, y: 0.36, z: 0.4}
+  Center: {x: 0, y: 1.15, z: 0}
+  FieldSize: 0.03
+  Details:
+  - Prefab: {fileID: 1600057677143971910, guid: f3e47041621ae9542a08bf182972b15f, type: 3}
+    Where: 0
+  - Prefab: {fileID: 6852030076674103079, guid: f7a327d4d25537c49a46b49eb468a9c2, type: 3}
+    Where: 0
+  - Prefab: {fileID: 347457043446394501, guid: 5f22b968ce6b6bd41a23838a61bb656a, type: 3}
+    Where: 0
+  Walkway: 0
+  Ceiling: {fileID: 0}
+  CeilingHeight: 2
+  HoleSide: {fileID: 0}
+  Stairs: {fileID: 0}
+  PreviewSeed: 1
+  _stairTop: {x: 0, y: 0, z: 0}
+  _stairFoot: {x: 0, y: 0, z: 0}
+  _stairRise: 0
+  _stairLen: 0
+  _stairWidth: 0
+  _stairMeasured: 0

@@ -50,6 +50,59 @@ namespace SpellyZombie
 
         void Awake() => CaptureRest();
 
+        /// The joint table on a mixamo skeleton - the pilot's rig and every
+        /// puppet share it, so a pose saved on one plays on the other.
+        /// `root` gives the body's facing for the hinge axes.
+        public static void Populate(EmoteRig rig, Transform[] bones, Transform root)
+        {
+            rig.Joints.Clear();
+            Transform B(string boneName) => SocketSet.FindBone(bones, boneName);
+            var armL = B("LeftArm"); var armR = B("RightArm");
+            var handL = B("LeftHand"); var handR = B("RightHand");
+            var foreL = B("LeftForeArm"); var foreR = B("RightForeArm");
+            var head = B("Head"); var neck = B("Neck"); var headTop = B("HeadTop");
+            var spine1 = B("Spine1"); var spine2 = B("Spine2");
+            var upLegL = B("LeftUpLeg"); var upLegR = B("RightUpLeg");
+            var legL = B("LeftLeg"); var legR = B("RightLeg");
+            var footL = B("LeftFoot"); var footR = B("RightFoot");
+
+            void Joint(string id, Transform bone, Transform hint)
+            {
+                if (bone == null) return;
+                rig.Joints.Add(new JointEntry
+                {
+                    Id = id, T = bone, GrabHint = hint != null ? hint : bone,
+                    Rest = bone.localRotation
+                });
+            }
+            Joint("shoulder.L", armL, handL);
+            Joint("shoulder.R", armR, handR);
+            Joint("neck", neck != null ? neck : head, headTop != null ? headTop : head);
+            Joint("spine", spine2 != null ? spine2 : spine1, spine2);
+            Joint("leg.L", upLegL, footL);
+            Joint("leg.R", upLegR, footR);
+
+            // elbows and knees are hinge-limited. The hinge axis is the bind
+            // pose's side axis in each joint's own rest frame; flip the sign
+            // consts if a test bend goes backwards.
+            void Hinge(string id, Transform bone, Transform hint, float sign, float maxFlex)
+            {
+                if (bone == null) return;
+                Vector3 sideWorld = Vector3.Cross(Vector3.up, root.forward);
+                rig.Joints.Add(new JointEntry
+                {
+                    Id = id, T = bone, GrabHint = hint != null ? hint : bone,
+                    Rest = bone.localRotation, Limited = true,
+                    HingeAxis = (Quaternion.Inverse(bone.rotation) * (sideWorld * sign)).normalized,
+                    MinDeg = -5f, MaxDeg = maxFlex,
+                });
+            }
+            Hinge("elbow.L", foreL, handL, CharacterRig.ElbowHingeSign, 140f);
+            Hinge("elbow.R", foreR, handR, CharacterRig.ElbowHingeSign, 140f);
+            Hinge("knee.L", legL, footL, CharacterRig.KneeHingeSign, 135f);
+            Hinge("knee.R", legR, footR, CharacterRig.KneeHingeSign, 135f);
+        }
+
         /// Rest must be captured after the animator's first evaluated frame:
         /// on a baked prefab, Awake sees the raw FBX bind pose. CharacterRig
         /// re-captures at its first LateUpdate; Awake only pre-initialises.

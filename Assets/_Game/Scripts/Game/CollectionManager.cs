@@ -71,6 +71,32 @@ namespace SpellyZombie
                  "Anything not listed quietly uses the blob.")]
         [SerializeField] GameObject[] _particleShapes;
 
+        [Header("AREA LOOKS")]
+        [Tooltip("Which look each area (AOE) wears in builds and on every client. Area = the area's Name in " +
+                 "the AOE Creator, Look = its prefab. Filled by Spelly Zombie/Spells/Add Missing Area Looks " +
+                 "To Collection Manager; an entry with no Area is found by the prefab's own name.")]
+        [SerializeField] AreaLook[] _areaLooks;
+
+        [System.Serializable]
+        public struct AreaLook
+        {
+            public string Area;
+            public GameObject Look;
+        }
+
+        /// The area look under this name, or null.
+        public static GameObject AreaLookFor(string name)
+        {
+            if (I == null || I._areaLooks == null || string.IsNullOrEmpty(name)) return null;
+            foreach (var e in I._areaLooks)
+            {
+                if (e.Look == null) continue;
+                string key = string.IsNullOrEmpty(e.Area) ? e.Look.name : e.Area;
+                if (string.Equals(key, name, System.StringComparison.OrdinalIgnoreCase)) return e.Look;
+            }
+            return null;
+        }
+
         [Header("GRIMOIRE PAGES")]
         [Tooltip("Every page the book can show, 1024x742. THE FILE'S NAME IS THE KEY - just drop " +
                  "the images in. The book asks for GrimoirePage_<Rune>, an optional " +
@@ -87,6 +113,22 @@ namespace SpellyZombie
             if (I == null || I._bookPages == null || string.IsNullOrEmpty(name)) return null;
             foreach (var t in I._bookPages)
                 if (t != null && string.Equals(t.name, name,
+                        System.StringComparison.OrdinalIgnoreCase))
+                    return t;
+            return null;
+        }
+
+        [Header("MAP PICTURES")]
+        [Tooltip("One picture per map for the lobby's map row, 1280x720. THE FILE'S NAME IS THE KEY: the map scene's name. " +
+                 "Spelly Zombie/Maps/Take Map Picture makes one from the Scene view; the same menu adds new ones here.")]
+        [SerializeField] Texture2D[] _mapPictures;
+
+        /// The picture of a map scene, or null.
+        public static Texture2D MapPicture(string sceneName)
+        {
+            if (I == null || I._mapPictures == null || string.IsNullOrEmpty(sceneName)) return null;
+            foreach (var t in I._mapPictures)
+                if (t != null && string.Equals(t.name, sceneName,
                         System.StringComparison.OrdinalIgnoreCase))
                     return t;
             return null;

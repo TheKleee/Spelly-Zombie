@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SpellyZombie
@@ -7,6 +8,75 @@ namespace SpellyZombie
     /// (a volume you float and sink in).
     public abstract class Biome : MonoBehaviour
     {
+        [Header("BY OBJECTS")]
+        [Tooltip("Off: the whole box is the biome. On: the biome lives around the props the map placed here (anything a wizard can break or absorb): full within Object Full metres of one, gone past Object Reach. Break every tree and that forest stops being a forest.")]
+        public bool ByObjects;
+        [Tooltip("Metres from an object's edge where the effect is still full.")]
+        public float ObjectFull = 3f;
+        [Tooltip("Metres from an object's edge where the effect has faded to nothing.")]
+        public float ObjectReach = 8f;
+
+        // the standing props born here, on a coarse grid so hundreds stay cheap
+        readonly Dictionary<(int, int), List<Element>> _cells = new Dictionary<(int, int), List<Element>>();
+        readonly Dictionary<Element, ((int, int) cell, float radius)> _sources = new Dictionary<Element, ((int, int), float)>();
+        float CellSize => Mathf.Max(1f, ObjectReach);
+        (int, int) CellOf(Vector3 p) => (Mathf.FloorToInt(p.x / CellSize), Mathf.FloorToInt(p.z / CellSize));
+
+        /// A prop born here stands for this biome until it breaks.
+        public void AddSource(Element e, float radius)
+        {
+            if (e == null || _sources.ContainsKey(e)) return;
+            var cell = CellOf(e.transform.position);
+            _sources[e] = (cell, radius);
+            if (!_cells.TryGetValue(cell, out var list)) _cells[cell] = list = new List<Element>();
+            list.Add(e);
+        }
+
+        public void RemoveSource(Element e)
+        {
+            if (e == null || !_sources.TryGetValue(e, out var s)) return;
+            _sources.Remove(e);
+            if (_cells.TryGetValue(s.cell, out var list)) list.Remove(e);
+        }
+
+        /// How much of this biome a point feels: everything with the box
+        /// rule, else the pull of the nearest standing object.
+        public float WeightAt(Vector3 world)
+        {
+            if (!ByObjects) return 1f;
+            var c = CellOf(world);
+            float best = 0f;
+            float fade = Mathf.Max(0.01f, ObjectReach - ObjectFull);
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dz = -1; dz <= 1; dz++)
+                {
+                    if (!_cells.TryGetValue((c.Item1 + dx, c.Item2 + dz), out var list)) continue;
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        var e = list[i];
+                        if (e == null || !_sources.TryGetValue(e, out var s)) continue;
+                        float d = Mathf.Max(0f, Vector3.Distance(world, e.transform.position) - s.radius);
+                        float w = 1f - Mathf.Clamp01((d - ObjectFull) / fade);
+                        if (w > best) best = w;
+                    }
+                }
+            return best;
+        }
+
+        /// The payload a point feels here: offsets scaled by the weight,
+        /// capacities eased back to ordinary as the weight fades.
+        public SpellPayload PayloadAt(Vector3 world)
+        {
+            var p = Natural;
+            float w = WeightAt(world);
+            if (w >= 1f) return p;
+            for (int i = 0; i < 6; i++) p[i] *= w;
+            p.Strength = w > 0f ? p.Strength / w : 0f;   // 0 = no ceiling
+            p.Int = Mathf.Lerp(1f, p.Int, w);            // 1 = an ordinary mind
+            p.Courage = Mathf.Lerp(1f, p.Courage, w);    // 1 = ordinary courage
+            p.Clones = Mathf.Lerp(0f, p.Clones, w);
+            return p;
+        }
         [Tooltip("Box size in metres. Center = this transform's position. The box's OWN bottom/top Y are the biome's elevation band.")]
         public Vector3 Size = new Vector3(30f, 8f, 30f);
 
@@ -43,6 +113,8 @@ namespace SpellyZombie
         [Header("FILL")]
         [Tooltip("Grid field size in metres for this box (peak wants small fields, town wants building-sized).")]
         public float FieldSize = 2f;
+        [Tooltip("Steepest ground, in degrees, this biome's fill may land on. 45 keeps things off cliffs; a rocky mountain wants 70 to 80 so stones cover its faces too. Things on a slope lean with it; above 45 even big ones do, instead of getting a flat pad.")]
+        [Range(0f, 89f)] public float MaxSlope = 45f;
         [Tooltip("THE ABUNDANCE: what fills this biome up. Ground biomes place on the surface; liquids float their spawns INSIDE the volume.")]
         public GameObject[] Props;
 
@@ -52,6 +124,10 @@ namespace SpellyZombie
         public int MinSources = 1;
         [Tooltip("Never more than this many - wizards must stay hungry.")]
         public int MaxSources = 3;
+        [Tooltip("A light hung on one random outer wall of every house (a prop with a door) placed here. It spawns hidden like an unticked torch: the Sources count above decides which ones burn.")]
+        public GameObject WallLight;
+        [Tooltip("Height of the light's pivot above the house floor, in metres. Low enough for a player to reach it.")]
+        public float WallLightHeight = 1.1f;
 
         [Header("CAULDRON")]
         [Tooltip("The pot prefab this biome MAY host, at a random spot inside it. Empty = never a cauldron here. The map's CauldronLimit picks which candidate biomes actually get theirs each match.")]
@@ -85,12 +161,12 @@ namespace SpellyZombie
         [Space(2)]
         // ★ THE SECOND GROUP. These are CAPACITIES, not impositions: a place
         // can hold you back but never lift you past what you are. A 120
-        // strength biome leaves a 90-cap acolyte at 90; a dreadful place
-        // unnerves the brave, and a safe one never emboldens a coward.
+        // strength biome leaves a 90-cap acolyte at 90. Courage is the one
+        // exception: the ground moves it both ways (scared forest, bold beach).
         [Tooltip("CAPACITY. How clear-headed things are here. LOW IS A CAPACITY, NOT A CURSE: a mindless place drags a sharp mind down, but a clever one never makes a stupid thing clever. 25 = ordinary, 100 = a genius place.")]
         [Range(0, 100)] public int IntCap = 25;
 
-        [Tooltip("CAPACITY. How brave things are here. Same rule: a dreadful place unnerves the brave, a safe one does not embolden a coward. 25 = ordinary, 100 = nothing here fears anything.")]
+        [Tooltip("How brave everything living here becomes, both ways, settling in over a few seconds. 0 = terrified (your eyes dart off anything you look at), 25 = ordinary, 50 = bold (your gaze locks onto the nearest thing; zombies stop fleeing), 100 = fearless beyond sense. Light adds to it: +12 light is about +6 courage, -20 light about -10.")]
         [Range(0, 100)] public int CourageCap = 25;
 
         [Tooltip("CAPACITY. How many copies of itself a thing naturally has here. 0 = ordinary. Anything above needs a body that can HAVE clones, or it gets none.")]
@@ -155,7 +231,7 @@ namespace SpellyZombie
             new System.Collections.Generic.List<Biome>();
         public static System.Collections.Generic.IReadOnlyList<Biome> All => _all;
         protected virtual void OnEnable() { if (!_all.Contains(this)) _all.Add(this); }
-        protected virtual void OnDisable() { _all.Remove(this); }
+        protected virtual void OnDisable() { _all.Remove(this); _sources.Clear(); _cells.Clear(); }
 
         /// THE COMPOSITE BIOME. Overlapping biomes make a new one where they
         /// meet simply by adding up - no intersection is authored, nothing is
@@ -163,10 +239,24 @@ namespace SpellyZombie
         /// heavy because both boxes said so.
         public static SpellPayload CompositeAt(Vector3 world) => CompositeAt(world, out _);
 
+        /// The boxes holding a point, by name - the Console's answer to "where am I".
+        public static string NamesAt(Vector3 world)
+        {
+            string s = "";
+            for (int i = 0; i < _all.Count; i++)
+            {
+                var b = _all[i];
+                if (b == null || !b.Area.Contains(world)) continue;
+                s += (s.Length > 0 ? " + " : "") + b.name + (b.ByObjects ? $" {b.WeightAt(world):0.00}" : "");
+            }
+            return s.Length > 0 ? s : "no biome box";
+        }
+
         /// One pass that answers both questions - what the place is, and
         /// whether it is a place at all. Asking them separately walked every
         /// biome in the scene twice, for every element, five times a second.
-        public static SpellPayload CompositeAt(Vector3 world, out bool any)
+        /// Unweighted, a native is born of the whole biome, not of the spot.
+        public static SpellPayload CompositeAt(Vector3 world, out bool any, bool weighted = true)
         {
             var sum = new SpellPayload();
             any = false;
@@ -174,7 +264,7 @@ namespace SpellyZombie
             {
                 var b = _all[i];
                 if (b == null || !b.Area.Contains(world)) continue;
-                sum += b.Natural;
+                sum += weighted ? b.PayloadAt(world) : b.Natural;
                 any = true;
             }
             return sum;

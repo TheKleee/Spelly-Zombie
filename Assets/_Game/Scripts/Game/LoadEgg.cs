@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -16,11 +17,82 @@ namespace SpellyZombie
         const float FarRadius = 70f;     // where the opening shell burns out
         const int EggLayer = 31;
         const float RevealSeconds = 2.2f;
+        const float FormSeconds = 1.1f;  // the shell closes in from the horizon
+        const float MusicDuck = 0.15f;   // the music under a closed egg
 
         static LoadEgg _live;
 
         /// Shell up and the camera seeing only the egg: the veil may drop.
-        public static bool Closed => _live != null && _live._cam != null && _live._opening < 0f;
+        public static bool Closed => _live != null && _live._cam != null && _live._opening < 0f && !_live.Forming;
+
+        float _form = -1f;               // 0..1 while the shell closes in
+        bool Forming => _form >= 0f && _form < 1f;
+
+        /// What the music should sit at: full with no egg, down as the shell
+        /// forms, low while it is closed, back up as it breaks apart.
+        public static float MusicLevel
+        {
+            get
+            {
+                if (_live == null) return 1f;
+                if (_live.Forming) return Mathf.Lerp(1f, MusicDuck, _live._form);
+                if (_live._opening < 0f) return MusicDuck;
+                return Mathf.Lerp(MusicDuck, 1f, Mathf.Clamp01(_live._opening));
+            }
+        }
+
+        /// The trip, in order: the shell forms around the eye with the world
+        /// still in view, then the loading text rides its dark and the scene
+        /// loads, then the new scene breaks it open.
+        public static void Travel(string scene) => Travel(() => SceneManager.LoadScene(scene));
+        public static void Travel(int buildIndex) => Travel(() => SceneManager.LoadScene(buildIndex));
+
+        static void Travel(System.Action load)
+        {
+            if (_live != null && _live.Forming) return; // the trip is already underway
+            var cam = _live == null ? Camera.main : null;
+            if (cam != null && Shader.Find("SpellyZombie/EggDissolve") != null)
+            {
+                var go = new GameObject("LoadEgg");
+                DontDestroyOnLoad(go);
+                _live = go.AddComponent<LoadEgg>();
+                GhostState.ReviveLocalNow(); // a lobby ghost stands up for the trip
+                _live.StartCoroutine(_live.FormThen(cam, load));
+                return;
+            }
+            Cover();
+            LoadingHints.Show();
+            load();
+        }
+
+        IEnumerator FormThen(Camera cam, System.Action load)
+        {
+            _cam = cam;
+            foreach (var p in SimpleFPSController.All)
+                if (p != null && p.IsLocalViewer) { _pilot = p; break; }
+            if (_pilot != null) _pilot.StickFeet(600f);
+            EnsureShell();
+            _form = 0f;
+            _radius = FarRadius;
+            while (_form < 1f)
+            {
+                _form = Mathf.Min(1f, _form + Time.unscaledDeltaTime / FormSeconds);
+                float e = 1f - (1f - _form) * (1f - _form); // fast from afar, soft landing
+                _radius = Mathf.Lerp(FarRadius, ClosedRadius(), e);
+                if (_mat != null) _mat.SetFloat("_Cut", Mathf.Clamp01(1f - _form / 0.35f)); // embers knit into a shell
+                yield return null;
+            }
+            Attach(); // closed: the world masked away, the body wrapped
+            LoadingHints.Show();
+            load();
+        }
+
+        float ClosedRadius()
+        {
+            if (_pilot == null || _cam == null) return ShellRadius;
+            Vector3 head = _pilot.transform.position + Vector3.up * 1.6f;
+            return Mathf.Max(ShellRadius, (head - _cam.transform.position).magnitude + 0.9f);
+        }
 
         Transform _shell;
         Material _mat;
@@ -82,17 +154,7 @@ namespace SpellyZombie
 
             _pilot.StickFeet(600f); // stuck in place until the match opens
 
-            if (_shell == null)
-            {
-                var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                sphere.name = "EggShell";
-                Destroy(sphere.GetComponent<Collider>());
-                _shell = sphere.transform;
-                _shell.SetParent(transform, false); // rides the egg object across loads
-                _mat = new Material(Shader.Find("SpellyZombie/EggDissolve"));
-                sphere.GetComponent<Renderer>().sharedMaterial = _mat;
-            }
-            _shell.gameObject.layer = EggLayer;
+            EnsureShell();
 
             Wrap();
             _cam = Camera.main;
@@ -111,15 +173,26 @@ namespace SpellyZombie
         /// The shell is centred on the camera, set right before the camera
         /// renders so it never lags the eye. Closed, it is a tight egg - but
         /// never smaller than the body needs (third person stands back).
+        void EnsureShell()
+        {
+            if (_shell == null)
+            {
+                var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                sphere.name = "EggShell";
+                Destroy(sphere.GetComponent<Collider>());
+                _shell = sphere.transform;
+                _shell.SetParent(transform, false); // rides the egg object across loads
+                _mat = new Material(Shader.Find("SpellyZombie/EggDissolve"));
+                sphere.GetComponent<Renderer>().sharedMaterial = _mat;
+            }
+            _shell.gameObject.layer = EggLayer;
+        }
+
         void FollowCamera()
         {
             if (_shell == null || _cam == null) return;
             _shell.position = _cam.transform.position;
-            if (_opening < 0f && _pilot != null)
-            {
-                Vector3 head = _pilot.transform.position + Vector3.up * 1.6f;
-                _radius = Mathf.Max(ShellRadius, (head - _cam.transform.position).magnitude + 0.9f);
-            }
+            if (_opening < 0f && !Forming && _pilot != null) _radius = ClosedRadius();
             _shell.localScale = Vector3.one * (_radius * 2f);
         }
 
@@ -190,6 +263,7 @@ namespace SpellyZombie
                 if (_opening >= 1f) Destroy(gameObject);
                 return;
             }
+            if (Forming) return; // the shell is still closing in
 
             if (_pilot == null || !_pilot.gameObject.activeInHierarchy || _cam == null) Attach();
             _relayerIn -= Time.unscaledDeltaTime;

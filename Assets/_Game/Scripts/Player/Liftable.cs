@@ -115,6 +115,19 @@ namespace SpellyZombie
                         "That mesh is the world, not a prop; it stays static geometry", mc);
                     continue;
                 }
+                if (mc.sharedMesh != null && !mc.sharedMesh.isReadable)
+                {
+                    // a build cannot cook a convex hull from an unreadable mesh: the
+                    // collider would silently vanish and the prop fall through the world
+                    var box = mc.gameObject.AddComponent<BoxCollider>();
+                    box.center = mc.sharedMesh.bounds.center;
+                    box.size = mc.sharedMesh.bounds.size;
+                    box.material = mc.material;
+                    mc.enabled = false;
+                    Debug.LogError($"[SpellyZombie] {mc.name}: mesh '{mc.sharedMesh.name}' is not readable, boxed instead. " +
+                        "Run Spelly Zombie/Build/Make Prop Collider Meshes Readable and rebuild.", mc);
+                    continue;
+                }
                 mc.convex = true;
             }
         }

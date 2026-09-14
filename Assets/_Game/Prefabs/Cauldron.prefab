@@ -137,15 +137,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: f733b049c55c08d4197918191beda3ba, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.55
+      value: 0.0055
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f733b049c55c08d4197918191beda3ba, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.55
+      value: 0.0055
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f733b049c55c08d4197918191beda3ba, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.55
+      value: 0.0055
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: f733b049c55c08d4197918191beda3ba, type: 3}
       propertyPath: m_LocalPosition.x
@@ -291,11 +291,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2c05615ec5a453648a17e74199905892, type: 3}
       propertyPath: m_LocalScale.z
-      value: 95.82342
+      value: 95.8234
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2c05615ec5a453648a17e74199905892, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.000000017424156
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 2c05615ec5a453648a17e74199905892, type: 3}
       propertyPath: m_LocalPosition.y
@@ -406,7 +406,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 4884948637868380248}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
   Material: 3
@@ -481,8 +481,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 400
-  Destructible: 1
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 400
+  _authoredMax: 0
+  RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!4 &5224459564016732898 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2c05615ec5a453648a17e74199905892, type: 3}

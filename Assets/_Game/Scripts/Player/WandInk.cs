@@ -62,15 +62,49 @@ namespace SpellyZombie
                 MatterFX.Get(DrawingConfig.InkColor, MoteShade.Opaque);
         }
 
+        // a friend's wand: their announced fraction and wand state drive it
+        bool _remote, _remoteWand = true;
+        float _remoteF = 1f;
+        // the fraction steps by 1/255 per packet: the rate between steps
+        // reads as the owner's steady flow, and fades once the steps stop
+        float _remoteRate, _remoteChangedAt = -1f;
+        const float RemoteRateHold = 0.6f;
+
+        /// NetAvatar feeds a puppet's wand from its owner's presence.
+        public void RemoteDrive(float fraction, bool hasWand)
+        {
+            _remote = true;
+            if (fraction != _remoteF)
+            {
+                float now = Time.time;
+                _remoteRate = _remoteChangedAt < 0f ? 0f
+                    : (fraction - _remoteF) / Mathf.Max(0.05f, now - _remoteChangedAt);
+                _remoteChangedAt = now;
+            }
+            _remoteF = fraction;
+            _remoteWand = hasWand;
+        }
+
         void LateUpdate()
         {
             if (_ink == null) return;
-            if (_pool == null)
+            float f;
+            bool hasWand;
+            if (_remote)
             {
-                _pool = GetComponentInParent<PlayerInk>();
-                if (_pool == null) return;
+                f = Mathf.Clamp01(_remoteF);
+                hasWand = _remoteWand;
             }
-            float f = Mathf.Clamp01(_pool.Fraction);
+            else
+            {
+                if (_pool == null)
+                {
+                    _pool = GetComponentInParent<PlayerInk>();
+                    if (_pool == null) return;
+                }
+                f = Mathf.Clamp01(_pool.Fraction);
+                hasWand = _state == null || _state.HasWand;
+            }
             var s = _fullScale;
             s.y *= Mathf.Max(f, 0.03f); // a dry wand keeps a visible dreg
             _ink.localScale = s;
@@ -79,12 +113,17 @@ namespace SpellyZombie
             if (_flow == null) _flow = GetComponent<WandTipFlow>()
                 ?? gameObject.AddComponent<WandTipFlow>();
             float dt = Mathf.Max(0.0001f, Time.deltaTime);
-            _flow.Report((f - _lastF) / dt);
+            if (_remote)
+            {
+                if (Time.time - _remoteChangedAt > RemoteRateHold) _remoteRate = 0f;
+                _flow.Report(_remoteRate);
+            }
+            else _flow.Report((f - _lastF) / dt);
             _lastF = f;
 
             // the wand body follows the ink - wandless melts it to nothing,
             // a refill FORMS it back (the same motion, reversed)
-            float target = _state != null && !_state.HasWand
+            float target = !hasWand
                 ? 0f
                 : Mathf.Lerp(0.4f, 1f, f);
             _factor = Mathf.MoveTowards(_factor, target,

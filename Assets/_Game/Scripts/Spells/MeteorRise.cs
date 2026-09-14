@@ -75,6 +75,7 @@ namespace SpellyZombie
             // same numbers as the FlameBurst ultimate; damage hits everyone in the area
             float r = DrawingConfig.UltimateRadius;
             var seen = new System.Collections.Generic.HashSet<Element>();
+            var seenAv = new System.Collections.Generic.HashSet<NetAvatar>();
             var hits = Physics.OverlapSphere(at, r);
             foreach (var c in hits)
             {
@@ -83,6 +84,15 @@ namespace SpellyZombie
                 {
                     pl.TakeHit((pl.transform.position - at).normalized * 9f, 28f);
                     pl.KnockDown(1.2f);
+                    continue;
+                }
+                // a friend's puppet: the kick travels to them, the wound lands here
+                var av = c.GetComponentInParent<NetAvatar>();
+                if (av != null)
+                {
+                    if (!seenAv.Add(av)) continue;
+                    NetSync.SendKick(NetSync.OwnerIdOf(av.Id), (av.transform.position - at).normalized * 9f, true);
+                    av.GetComponent<Element>()?.TakeDamage(28f, "meteor impact");
                     continue;
                 }
                 SpellParticle.GiveHeatTo(c, 200f); // houses catch, wood burns

@@ -342,14 +342,18 @@ namespace SpellyZombie
             bool readsFine = _lastReadAs != RuneType.None
                 && _lastReadScore >= DrawingConfig.MinRuneScore;
 
-            // seal page: world drawings only - the detector must still find
-            // the loop on F. Body ink is excluded; body seals close via poses.
+            // seal page: world runes only. Body ink is excluded; body seals close via poses.
             if (GrimoirePages.BookOpen && GrimoirePages.SealPageOpen)
             {
                 bool onBody = false;
                 foreach (var m in _inkMembers)
                     if (m.Persistent) { onBody = true; break; }
-                _inkSeal = !onBody;
+                // aimed at a rune: the whole group it would seal lights up.
+                // Anything else offers nothing: the seal page acts on runes only
+                bool runes = !onBody && AutoComplete.LooksLikeRunes(_inkMembers);
+                if (runes && DrawingWorld.Instance != null)
+                    AutoComplete.GatherGroup(_inkMembers, DrawingWorld.Instance.Strokes);
+                _inkSeal = runes;
                 return;
             }
 
@@ -376,30 +380,20 @@ namespace SpellyZombie
             _fizzledInSight = !readsFine && !anyDeclared;
         }
 
-        /// Seal page + F: run the closure detectors over the aimed drawing;
-        /// found = the seal forms and casts, not found = the log says why.
+        /// Seal page + F: the ring draws itself around the runes near the aimed
+        /// one, from the wand's ink. No rune there = nothing happens.
         void DeclareSeal()
         {
             var world = DrawingWorld.Instance;
             if (world == null) return;
             Highlight(null); // put the real colours back before the seal repaints them
-            if (!NetGame.IsAuthority)
-            {
-                // world seals are HOST business - ship the intent, keep the UX (netcode §2)
-                NetSync.SendDeclareSealIntent(_inkMembers);
-                _inkMembers.Clear();
-                _inkSeal = false;
-                DeclareInReach = false;
-                _lastHash = 0;
-                _inkScan = 0f;
-                return;
-            }
-            if (world.TryDeclareSeal(new List<Stroke>(_inkMembers)))
+            var group = new List<Stroke>(_inkMembers);
+            AutoComplete.GatherGroup(group, world.Strokes);
+            if (AutoComplete.SealGroup(group))
             {
                 Juice.Chime(_pilot.transform.position);
-                // the seal page's own bar (its ramp lives on RuneType.None)
-                Grimoire.BumpWriting(Grimoire.LocalPlayerId, RuneType.None,
-                    DrawingConfig.WritingPerDeclare);
+                NetSync.PushInkFx(NetSync.InkFxChime, _pilot.transform.position);
+                Grimoire.BumpWriting(Grimoire.LocalPlayerId, RuneType.None, DrawingConfig.WritingPerDeclare);
             }
             _inkMembers.Clear();
             _inkSeal = false;
@@ -408,34 +402,24 @@ namespace SpellyZombie
             _inkScan = 0f;
         }
 
-        /// Stamp DeclaredRune on the drawing (seals trust it outright), leave
-        /// the ink in place, and teach the strokes as handwriting.
+        /// Rune page + F: the book finishes the aimed drawing as the page's rune,
+        /// animated, from the wand. Nothing is stamped; the ink is read as drawn.
         void DeclareInk()
         {
-            Highlight(null); // drop the aim tint first - RuneColor below is the real answer
-            var raw = RuneGlyph.RawStrokesOf(_inkMembers);
-            foreach (var m in _inkMembers)
+            Highlight(null);
+            // the page names the rune and the game finishes the drawing as it,
+            // animated, from the wand; the scribble never teaches the matcher
+            if (AutoComplete.Manual(new List<Stroke>(_inkMembers), _inkRune))
             {
-                m.DeclaredRune = _inkRune;
-                m.SetColor(Stroke.RuneColor); // it reads as a rune NOW
-                m.MarkDirty();
+                // a correction is real practice - the writing bar takes a full step
+                Grimoire.BumpWriting(Grimoire.LocalPlayerId, _inkRune, DrawingConfig.WritingPerDeclare);
+                Vector3 at = Vector3.zero;
+                foreach (var m in _inkMembers) at += m.Centroid();
+                at /= _inkMembers.Count;
+                if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, at);
+                Juice.Chime(at);
+                NetSync.PushInkFx(NetSync.InkFxPoof, at);
             }
-            // ★ ROUND-ONLY (his rule): a match declare teaches the matcher for
-            // THIS run and is forgotten at round end - it must never write the
-            // template file, where it was even ROLLING OUT his oldest authored
-            // studio drawing to make room. Only Rune Studio persists.
-            bool learned = RuneLibrary.AddSample(_inkRune, raw, quiet: true);
-            NetSync.PushDeclare(_inkMembers, _inkRune); // every machine stamps the same ink (netcode §1)
-            // a correction is real practice - the writing bar takes a full step
-            Grimoire.BumpWriting(Grimoire.LocalPlayerId, _inkRune, DrawingConfig.WritingPerDeclare);
-            Vector3 at = Vector3.zero;
-            foreach (var m in _inkMembers) at += m.Centroid();
-            at /= _inkMembers.Count;
-            if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, at);
-            Juice.Chime(at);
-            DrawingWorld.Instance?.LogEvent(learned
-                ? $"declared: this is {RuneLibrary.IconInline(_inkRune)}. the book learns your hand"
-                : $"declared: this is {RuneLibrary.IconInline(_inkRune)}");
             _inkMembers.Clear();
             _inkRune = RuneType.None;
             DeclareInReach = false;

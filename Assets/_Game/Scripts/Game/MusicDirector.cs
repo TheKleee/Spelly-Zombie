@@ -15,6 +15,8 @@ namespace SpellyZombie
         static MusicDirector _instance;
 
         AudioSource _chill, _action;
+        float _chillMix, _actionMix;     // the crossfade, before the egg's duck
+        float _duck = 1f;                // follows LoadEgg.MusicLevel
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -31,6 +33,7 @@ namespace SpellyZombie
             _instance._action = Source(go, actionClip);
             // scheduled start keeps both clips sample-locked
             double at = AudioSettings.dspTime + 0.1;
+            _instance._chillMix = Vol;
             if (_instance._chill != null) { _instance._chill.volume = Vol; _instance._chill.PlayScheduled(at); }
             if (_instance._action != null) { _instance._action.volume = 0f; _instance._action.PlayScheduled(at); }
         }
@@ -87,6 +90,7 @@ namespace SpellyZombie
                 if (g == null || !Teams.Enemies(mine, Teams.OfOwner(g.OwnerId))) continue;
                 if ((g.transform.position - at).sqrMagnitude < sq) return true;
             }
+            if (NetSync.AnyEnemyGolemNear(at, r, mine)) return true;
 
             // live, unheld enemy motes; a held mote's threat is its holder
             foreach (var m in SpellParticle.Living)
@@ -95,6 +99,7 @@ namespace SpellyZombie
                 if (!Teams.Enemies(mine, Teams.OfOwner(m.OwnerId))) continue;
                 if ((m.transform.position - at).sqrMagnitude < sq) return true;
             }
+            if (NetSync.AnyEnemyMoteNear(at, r, mine)) return true;
             return false;
         }
 
@@ -106,19 +111,21 @@ namespace SpellyZombie
             bool action = _dangerHold > 0f;
 
             float step = (BaseVolume / FadeSeconds) * Time.unscaledDeltaTime;
-            if (_chill != null)
-                _chill.volume = Mathf.MoveTowards(_chill.volume, action ? 0f : Vol, step);
-            if (_action != null)
-                _action.volume = Mathf.MoveTowards(_action.volume, action ? Vol : 0f, step);
+            _chillMix = Mathf.MoveTowards(_chillMix, action ? 0f : Vol, step);
+            _actionMix = Mathf.MoveTowards(_actionMix, action ? Vol : 0f, step);
+            // the egg carries the music: down as the shell forms, up as it breaks apart
+            _duck = Mathf.MoveTowards(_duck, LoadEgg.MusicLevel, Time.unscaledDeltaTime * 3f);
+            if (_chill != null) _chill.volume = _chillMix * _duck;
+            if (_action != null) _action.volume = _actionMix * _duck;
 
             // pin the silent clip to the other's sample clock so the loops never drift
             if (_chill != null && _action != null
                 && _chill.clip.samples == _action.clip.samples)
             {
-                if (_action.volume <= 0f && _chill.volume > 0f
+                if (_actionMix <= 0f && _chillMix > 0f
                     && Mathf.Abs(_action.timeSamples - _chill.timeSamples) > 512)
                     _action.timeSamples = _chill.timeSamples;
-                else if (_chill.volume <= 0f && _action.volume > 0f
+                else if (_chillMix <= 0f && _actionMix > 0f
                     && Mathf.Abs(_chill.timeSamples - _action.timeSamples) > 512)
                     _chill.timeSamples = _action.timeSamples;
             }

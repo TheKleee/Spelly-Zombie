@@ -17,6 +17,7 @@ namespace SpellyZombie
         Transform[] _motes;
         Renderer[] _rends;
         SimpleFPSController _pilot;
+        NetAvatar _puppet;
 
         float _phase;
         float _rate;         // signed ink fraction per second, straight from WandInk
@@ -100,8 +101,10 @@ namespace SpellyZombie
 
             // the COLOURS: a wizard's ink is black, an acolyte's is corrupt
             // green. Asked per body so a second player's wand is right too.
-            Color want = Sides.IsAcolytePlayer(_pilot)
-                ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
+            if (_puppet == null && _pilot == null) _puppet = GetComponentInParent<NetAvatar>();
+            bool corrupt = _pilot != null ? Sides.IsAcolytePlayer(_pilot)
+                : _puppet != null && _puppet.Acolyte; // a friend's wand: their announced side
+            Color want = corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
             if (want != _tint)
             {
                 _tint = want;

@@ -32,8 +32,9 @@ namespace SpellyZombie
 
         public float Power = 1f;
         public Vector3 Vel;
-        Transform _home;   // a thrown mote's lock: the enemy it steers into
-        float _homeUntil;
+        Transform _pullTarget;  // precision: the enemy ahead this flying mote is drawn to
+        float _pullLift = 0.9f, _pullScanAt;
+        bool _pulling;
         /// Fused size is the SUM of both parents, capped. Every fusion path
         /// must use this - never Max.
         public static float FuseSize(float a, float b) =>
@@ -118,7 +119,12 @@ namespace SpellyZombie
                 solid ? MatterPhase.Solid : MatterPhase.Liquid,
                 Mathf.Clamp(SrcSize * 0.5f * sizeK, 0.12f, 0.9f));
             sd.OwnerId = OwnerId;
-            if (m.TryGetComponent<Rigidbody>(out var mrb)) mrb.linearVelocity = Vel * 0.6f;
+            if (m.TryGetComponent<Rigidbody>(out var mrb))
+            {
+                mrb.linearVelocity = Vel * 0.6f;
+                if (Vel.sqrMagnitude > DrawingConfig.SpellPullMinSpeed * DrawingConfig.SpellPullMinSpeed)
+                    Homing.Arm(mrb, OwnerId); // a rock born flying is drawn in like the spell was
+            }
 
             // ★ EVERYTHING NEEDS JUICE (his words): a state being born is an
             // EVENT - a bang and a puff, one solid piece, no weak chips
@@ -240,7 +246,6 @@ namespace SpellyZombie
             var baseSc = GetComponent<SphereCollider>();
             if (baseSc != null) baseSc.radius = 0.5f;
         }
-        public int Echo;           // ECHO powerup stacks: landing may re-emit
 
         // GRAMMAR v4 (SPELL_PARTICLES.md): same+same levels up, opposites
         // synthesize; all 12 runes in one lineage summons the Demon.
@@ -296,6 +301,16 @@ namespace SpellyZombie
         public int OwnerId;
         /// Cast by a summoned creature on OwnerId's behalf, not by the owner's own wand.
         public bool FromMinion;
+        /// An acolyte's dart: a MischiefKind, 0 for every ordinary mote. The hit is the whole spell.
+        public byte Mischief;
+        /// The spellbook row a dart wears: its authored look, never its numbers.
+        public SpellDef WornRow;
+        SpellDef _skinRow;
+        /// The row whose authored look is on this mote right now, for the wire.
+        public SpellDef SkinRow => _skinRow;
+        /// Its colour on the wire: a dart shows its row's colour, like the Spell Creator preview.
+        public Color32 ShownTint => WornRow != null && Fusions.Count == 0
+            ? (Color32)WornRow.Payload.Tint() : (Color32)WireTint;
         /// One number per life - a pooled mote comes back with a new one.
         static int _lifeSerial;
         public int LifeId = ++_lifeSerial;
@@ -341,22 +356,40 @@ namespace SpellyZombie
             WakeIn(DrawingConfig.WakeDelaySeconds);
         }
 
-        /// The throw locked onto this enemy: the flight bends into it for a while.
-        public void HomeOn(Transform target)
+        /// Precision: a spell in the air is drawn to the nearest enemy ahead of
+        /// it within range, the pull growing as it closes, so the flight bends
+        /// into a natural curve on top of the throw. A sleeping spell wakes at
+        /// its mark; a primed one goes off as it passes it. Nothing pulls a mote
+        /// back toward what it has already passed, so a dodge still works.
+        void Pull(float dt)
         {
-            _home = target;
-            _homeUntil = Time.time + DrawingConfig.ThrowLockSeconds;
-        }
-
-        void Home(float dt)
-        {
-            if (_home == null || Time.time >= _homeUntil) return;
-            float speed = Vel.magnitude;
-            if (speed < 1f) return;
-            Vector3 want = _home.position + Vector3.up * 0.9f - transform.position;
-            if (want.sqrMagnitude < 0.01f) return;
-            Vel = Vector3.RotateTowards(Vel / speed, want.normalized,
-                DrawingConfig.ThrowLockTurn * Mathf.Deg2Rad * dt, 0f) * speed;
+            _pulling = false;
+            if (Holder != null || _settled || _dead) return;
+            float range = DrawingConfig.SpellPullRange;
+            float min = DrawingConfig.SpellPullMinSpeed;
+            if (range <= 0f || Vel.sqrMagnitude < min * min) return;
+            if (Time.time >= _pullScanAt)
+            {
+                _pullScanAt = Time.time + 0.1f;
+                _pullTarget = LockOn.Nearest(transform.position, Vel, OwnerId, range, out _pullLift);
+            }
+            if (_pullTarget == null) return;
+            Vector3 want = _pullTarget.position + Vector3.up * _pullLift - transform.position;
+            float dist = want.magnitude;
+            if (dist > range || dist < 0.01f || Vector3.Dot(want, Vel) < 0f) { _pullTarget = null; return; }
+            _pulling = true;
+            if (Dormant) { Wake(); if (_dead) return; }
+            if (_primed && DrawingConfig.SpellPullFuse > 0f)
+            {
+                float fuse = AuraRadius * DrawingConfig.SpellPullFuse;
+                if (fuse >= 0.4f && dist < fuse)
+                {
+                    Vel = Vector3.zero;
+                    DetonateNow();
+                    return;
+                }
+            }
+            Vel += want / dist * (DrawingConfig.SpellPull * (1f - dist / range) * dt);
         }
 
         // ---- DORMANT / ACTIVE ----------------------------------------------
@@ -644,8 +677,24 @@ namespace SpellyZombie
                     if (Vel.sqrMagnitude > DrawingConfig.DormantSeekSpeed * DrawingConfig.DormantSeekSpeed)
                         Vel = Vel.normalized * DrawingConfig.DormantSeekSpeed;
                 }
-                if (inFlight) Home(dt);
-                transform.position += Vel * dt;
+                if (inFlight) { Pull(dt); if (_dead) return; }
+                // a sleeping throw still hits what stands in its way this frame
+                // instead of passing through it between frames: a primed one
+                // goes off there, any other stops there and wakes on its clock
+                bool swept = false;
+                float step = inFlight ? Vel.magnitude * dt : 0f;
+                if (step > 0.03f && Physics.Raycast(transform.position, Vel.normalized, out var sweep, step + 0.06f,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)
+                    && sweep.collider.GetComponent<SpellParticle>() == null
+                    && !(_thrownBy != null && Time.time < _thrownAt + 0.5f && sweep.collider.transform.IsChildOf(_thrownBy)))
+                {
+                    transform.position = sweep.point + sweep.normal * 0.08f;
+                    Touch(sweep.collider);
+                    if (_dead) return;
+                    Vel = Vector3.zero;
+                    swept = true;
+                }
+                if (!swept) transform.position += Vel * dt;
                 // a thrown ghost faces where it is going, same as a live one
                 if (inFlight && Vel.sqrMagnitude > 1.2f)
                     transform.rotation = Quaternion.LookRotation(Vel);
@@ -948,6 +997,9 @@ namespace SpellyZombie
         {
             _dead = false;
             _age = 0f;
+            Mischief = 0;
+            WornRow = null;
+            _skinRow = null;
             LifeId = ++_lifeSerial;
             // pool rebirth: the primitive's own trigger size (emission and
             // the settle path both rescale it per life)
@@ -974,6 +1026,7 @@ namespace SpellyZombie
             _ballistic = false;
             _thrownBy = null;
             _kickedBodies.Clear();
+            _gluedBodies.Clear();
             _liveAreas.Clear();
             BecameObj = null;
             Claimed = false;
@@ -995,13 +1048,14 @@ namespace SpellyZombie
             _wornArea = null;
             _areaHome = null;
             Natural = new SpellPayload();
-            _biomes.Remove(this);
+            LeaveBiomes();
             Attached = false;
             if (_tail != null) { Destroy(_tail); _tail = null; }
             if (_rowFx != null) { Destroy(_rowFx); _rowFx = null; }
             if (_areaLook != null) { Destroy(_areaLook); _areaLook = null; }
             _newest = null;
             _wearing = null;
+            _idleFxOn = false;
             _morph = 1f;
             _poseP = null; _poseR = null; _poseS = null;
             _bones.Clear(); _boneList.Clear();
@@ -1014,7 +1068,6 @@ namespace SpellyZombie
             _clockKey = _nextKey++;
             Vel = Vector3.zero;
             SrcSize = DrawingConfig.RuneSizeMin;
-            Echo = 0;
         }
 
         // ------------------------------------------------------------- birth --
@@ -1102,6 +1155,17 @@ namespace SpellyZombie
         /// The window needs the identity pass to run right after it sets the
         /// numbers, or the particle spends a beat not knowing what it is.
         public void RefreshIdentity_Public() => RefreshIdentity();
+
+        /// Dress this mote as a spellbook row's look without taking its numbers:
+        /// an acolyte's dart is its spell, and its hit is the whole effect.
+        public void WearRow(SpellDef row)
+        {
+            WornRow = row;
+            if (row == null) return;
+            _wearing = null;   // the shape is asked again under the row's name
+            ReshapeBody();
+            RefreshSkin();
+        }
 
         /// ★ WHAT IT DIES HOLDING, SCATTERED. Not a debris feature - debris is
         /// simply numbers that were still there when something ended.
@@ -1329,7 +1393,8 @@ namespace SpellyZombie
                 {
                     Vel += Vector3.down * (EffDensity() - AirDensity) * 2.5f * dt;
                     Vel *= Mathf.Max(0f, 1f - 0.6f * dt);
-                    Home(dt);
+                    Pull(dt);
+                    if (_dead) return;
                     transform.position += Vel * dt;
                 }
                 _fearTick -= dt;
@@ -1486,6 +1551,7 @@ namespace SpellyZombie
                                 mrb.AddForce(Vel.normalized * (3f * Power * dt), ForceMode.VelocityChange);
                         }
 
+                    if (_pulling) near = null; // drawn to an enemy: it hunts nothing else
                     if (near != null)
                     {
                         // affinity beats appetite
@@ -1508,7 +1574,7 @@ namespace SpellyZombie
                         if (bestSqr < meetR * meetR && GetInstanceID() < near.GetInstanceID())
                             ResolveLaw(this, near);
                     }
-                    else if (!iAmPush)
+                    else if (!iAmPush && !_pulling)
                     {
                         // no particle nearby - a spell still hunts MATTER blobs
                         Matter mNear = null;
@@ -1534,6 +1600,8 @@ namespace SpellyZombie
                     // heavy and it LANDS; everything else glides mote-style
                     if (_ballistic) Vel += Physics.gravity * 0.85f * dt;
                     else Vel *= Mathf.Max(0f, 1f - (Kind == ParticleKind.Push ? 0.25f : 1.4f) * dt);
+                    Pull(dt); // precision: the flight bends to the nearest enemy ahead
+                    if (_dead) return;
                     // ★ RUNES HIT THE FLOOR (his fix): a ray down the flight
                     // direction - if something stands inside this frame's
                     // step, the mote stops THERE and touches it, instead of
@@ -1724,6 +1792,14 @@ namespace SpellyZombie
         static void ResolveLaw(SpellParticle a, SpellParticle b)
         {
             if (a._dead || b._dead) return;
+            if (a.Mischief != 0 || b.Mischief != 0)
+            {
+                // a dart never fuses; a barrier stops it
+                var dart = a.Mischief != 0 ? a : b;
+                var other = dart == a ? b : a;
+                if (!dart.Dormant && other.Kind == ParticleKind.BarrierMote) { dart.ImpactFx(); dart.Die(); }
+                return;
+            }
             // AN ATTACHED PARTICLE DOES NOT COMBINE. It is riding something and
             // doing its own job; a passing mote must not absorb it or be
             // absorbed by it.
@@ -1950,7 +2026,7 @@ namespace SpellyZombie
             if (mask == 0)
             {
                 GrammarLevel = 2;
-                _biomes.Remove(this);
+                LeaveBiomes();
                 DrawingWorld.Instance?.LogEvent("the biome collapses");
             }
         }
@@ -2000,6 +2076,26 @@ namespace SpellyZombie
         /// It grows to its summed size and starts imposing. Nothing else
         /// changes - the aura it had at lvl2 keeps running, which is why a
         /// biome both HOLDS you at its numbers and keeps pushing more at you.
+        /// Off the biome list, and the clients told their copy of the numbers is gone.
+        void LeaveBiomes()
+        {
+            if (!_biomes.Remove(this)) return;
+            NetSync.PushParticleBiome(gameObject.GetInstanceID(), transform.position, new SpellPayload(),
+                0f, 0f, true);
+        }
+
+        /// The numbers a lvl3 imposes, on the axes it holds - clients keep a
+        /// quiet copy so their ground readers agree with the host.
+        void PushBiomeNumbers()
+        {
+            var p = PayloadNow;
+            var masked = new SpellPayload();
+            for (int k = 0; k < SpellPayload.AxisCount; k++)
+                if (BiomeOn(k)) masked[k] = p[k];
+            NetSync.PushParticleBiome(gameObject.GetInstanceID(), transform.position, masked,
+                AuraRadius, Mathf.Max(1f, _biomeLeft));
+        }
+
         void BecomeBiome()
         {
             if (!_biomes.Contains(this)) _biomes.Add(this);
@@ -2016,6 +2112,7 @@ namespace SpellyZombie
                 _reachRing = GrammarFX.GroundRing(transform, new Color(1f, 1f, 1f, 0.5f));
             DrawingWorld.Instance?.LogEvent("the ink becomes a BIOME");
             RefreshLook();
+            PushBiomeNumbers();
         }
 
 
@@ -2109,6 +2206,15 @@ namespace SpellyZombie
                     pl.AddSpellForce((transform.position - c.transform.position).normalized * 5f * Power, dt);
                     continue;
                 }
+                var av = c.GetComponentInParent<NetAvatar>();
+                if (av != null)
+                {
+                    if (_nudgedAvatars.TryGetValue(av, out int frame) && frame == Time.frameCount) continue;
+                    _nudgedAvatars[av] = Time.frameCount;
+                    NetSync.AccumulateForce(NetSync.OwnerIdOf(av.Id),
+                        (transform.position - av.transform.position).normalized * 5f * Power);
+                    continue;
+                }
                 var p = c.GetComponent<SpellParticle>();
                 if (p != null && p != this) { p.Pull(transform.position, dt); continue; }
                 var rb = c.attachedRigidbody;
@@ -2161,7 +2267,7 @@ namespace SpellyZombie
                 {
                     // the ground goes back to whatever it was; the mote itself
                     // is spent along with it
-                    _biomes.Remove(this);
+                    LeaveBiomes();
                     DrawingWorld.Instance?.LogEvent("the biome fades");
                     Die();
                     return;
@@ -2311,7 +2417,9 @@ namespace SpellyZombie
                     dir = (dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.up)
                         + Vector3.up * 0.35f;
                     float kick = 2.5f + Power * 1.5f;
+                    var av = c.GetComponentInParent<NetAvatar>();
                     if (pl != null) pl.TakeHit(dir * kick, 0f);
+                    else if (av != null) NetSync.SendKick(NetSync.OwnerIdOf(av.Id), dir * kick, false);
                     else
                     {
                         // props FLY tumbling (mass decides how far), rooted
@@ -2374,6 +2482,8 @@ namespace SpellyZombie
         /// determines weight (his rule). Immovables weigh infinity.
         public static float MassOf(Collider c)
         {
+            // a friend's puppet weighs a body; its bone bodies are kinematic
+            if (c.GetComponentInParent<NetAvatar>() != null) return ReferenceMass;
             var rb = c.attachedRigidbody;
             if (rb != null) return rb.isKinematic ? float.PositiveInfinity : rb.mass;
             var pl = c.GetComponentInParent<SimpleFPSController>();
@@ -2385,8 +2495,20 @@ namespace SpellyZombie
             return float.PositiveInfinity;
         }
 
+        static readonly Dictionary<NetAvatar, int> _nudgedAvatars = new Dictionary<NetAvatar, int>();
+
         static void Nudge(Collider c, Vector3 dv)
         {
+            // a friend's puppet: the push travels to the body that can move
+            var av = c.GetComponentInParent<NetAvatar>();
+            if (av != null)
+            {
+                // one push per body per frame: a puppet is many bone colliders
+                if (_nudgedAvatars.TryGetValue(av, out int frame) && frame == Time.frameCount) return;
+                _nudgedAvatars[av] = Time.frameCount;
+                NetSync.AccumulateForce(NetSync.OwnerIdOf(av.Id), dv / Mathf.Max(0.001f, Time.deltaTime));
+                return;
+            }
             var rb = c.attachedRigidbody;
             if (rb != null && !rb.isKinematic) rb.AddForce(dv, ForceMode.VelocityChange);
             else
@@ -2576,8 +2698,11 @@ namespace SpellyZombie
             if (rb != null) rb.AddForce(Vector3.down * 7f, ForceMode.VelocityChange);
         }
 
-        static void Bolt(Vector3 a, Vector3 b)
+        /// The lightning line; the host ships it (FxMsg).
+        public static void Bolt(Vector3 a, Vector3 b, bool relay = true)
         {
+            if (relay && NetSync.WantsFxRelay)
+                NetSync.PushFx(FxLibrary.FxBolt, a, b, Color.white, 0, 0.12f, 0);
             var go = new GameObject("Bolt");
             var lr = go.AddComponent<LineRenderer>();
             lr.useWorldSpace = true;
@@ -2713,27 +2838,48 @@ namespace SpellyZombie
         /// name is all CollectionManager needs - drop a posed blob called
         /// "Tornado" into Particle Shapes and tornadoes are tornado-shaped,
         /// with no code touched and no enum extended.
-        public string ShapeName
-        {
-            get
-            {
-                string baseName = _newest != null ? _newest.Name
-                                : AxisName(WornAxis(PayloadNow), PayloadNow);
-                if (baseName == null) return null;
+        public string ShapeName =>
+            LevelledShape(_newest != null ? ShapeOf(_newest)
+                        : WornRow != null ? ShapeOf(WornRow)
+                        : AxisName(WornAxis(PayloadNow), PayloadNow), GrammarLevel);
 
-                // A LEVEL CAN HAVE ITS OWN SHAPE. Attract is an arrow of force;
-                // Attract at lvl2 is a TORNADO - same axis, completely
-                // different thing to look at. So "Attract 2" and "Attract 3"
-                // are asked for first and the bare name is the fallback, which
-                // means only the levels that deserve their own silhouette need
-                // one authored.
-                if (GrammarLevel >= 2)
-                {
-                    string levelled = baseName + " " + GrammarLevel;
-                    if (SpellBook.Live.Shape(levelled) != null
-                        || CollectionManager.ParticleShapeFor(levelled) != null) return levelled;
-                }
-                return baseName;
+        /// The shape a row is worn in: the one picked for it in the Spell Creator,
+        /// else its own name - the rule the Creator's preview poses by.
+        public static string ShapeOf(SpellDef row) =>
+            row == null ? null : string.IsNullOrEmpty(row.Shape) ? row.Name : row.Shape;
+
+        /// A LEVEL CAN HAVE ITS OWN SHAPE. Attract is an arrow of force;
+        /// Attract at lvl2 is a TORNADO - same axis, completely different thing
+        /// to look at. So "Attract 2" and "Attract 3" are asked for first and the
+        /// bare name is the fallback, which means only the levels that deserve
+        /// their own silhouette need one authored.
+        public static string LevelledShape(string baseName, int level)
+        {
+            if (baseName == null) return null;
+            if (level >= 2)
+            {
+                string levelled = baseName + " " + level;
+                if (SpellBook.Live.Shape(levelled) != null
+                    || CollectionManager.ParticleShapeFor(levelled) != null) return levelled;
+            }
+            return baseName;
+        }
+
+        /// Pose a blob's bones as a book shape holds them, at once: a client's
+        /// stand-in wears the host's shape without the morph.
+        public static void PoseNow(Transform body, ShapeDef pose)
+        {
+            if (body == null || pose == null || pose.Bones == null) return;
+            var want = new Dictionary<string, BonePose>();
+            foreach (var b in pose.Bones)
+                if (!string.IsNullOrEmpty(b.Bone) && !want.ContainsKey(b.Bone)) want[b.Bone] = b;
+            var seen = new HashSet<string>();
+            foreach (var t in body.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == body || !seen.Add(t.name) || !want.TryGetValue(t.name, out var b)) continue;
+                t.localPosition = b.P;
+                t.localRotation = b.R;
+                t.localScale = b.S;
             }
         }
 
@@ -2764,6 +2910,7 @@ namespace SpellyZombie
         /// says so and wears the blended colour.
         void RefreshIdentity()
         {
+            if (WornRow != null) return; // a dart is its row, whatever its numbers drift to
             // THE CASTER'S BOOK decides which regions exist for this mote. A
             // particle with no owner - the demon's, a biome's leftovers - reads
             // from every book, because nobody is holding one.
@@ -2864,6 +3011,17 @@ namespace SpellyZombie
         // ------------------------------------------------- touching the world --
         void Touch(Collider c)
         {
+            // an acolyte's dart: what it hits decides the spell, no grammar, spent at once
+            if (Mischief != 0 && !Dormant)
+            {
+                if (_thrownBy != null && Time.time < _thrownAt + 0.5f
+                    && c.transform.IsChildOf(_thrownBy)) return;
+                if (MischiefLaw.IsCasterBody(OwnerId, c)) return; // it leaves through its own caster
+                MischiefLaw.Land(this, c);
+                ImpactFx();
+                Die();
+                return;
+            }
             // a thrown rune's first contact IS its detonation (his law) -
             // merging with other motes still happens upstream in ResolveLaw.
             // The thrower's own body is immune for the first half second: in
@@ -2973,6 +3131,9 @@ namespace SpellyZombie
             // so limb+root double-events are safe
             var pilot = c.GetComponentInParent<SimpleFPSController>();
             if (pilot != null) { TouchPlayer(pilot); return; }
+            // a remote player's puppet is a player too: the same rules, over the wire
+            var puppet = c.GetComponentInParent<NetAvatar>();
+            if (puppet != null) { TouchPuppet(puppet); return; }
 
             // the DEMON absorbs anything that touches it - it BECOMES the last
             // element it ate, so even a fireball is food, not a hit
@@ -3031,17 +3192,6 @@ namespace SpellyZombie
 
             Donate(c, m, creature, rb);
             ImpactFx(); // the payload LANDS visibly
-
-            // ECHO powerup: the payload delivered, the particle sometimes
-            // ricochets back to life at half power (mayhem compounding)
-            if (Echo > 0 && _generation < 2 && Random.value < 0.22f * Echo)
-            {
-                var e = Emit(Kind, transform.position + Vector3.up * 0.15f,
-                    (Random.onUnitSphere + Vector3.up).normalized, Power * 0.6f, _generation + 1);
-                e.SrcSize = SrcSize;
-                e.Lineage = Lineage; // the echo remembers its ancestry
-                e.JoinSeal(SealId);   // and its family
-            }
             Die();
         }
 
@@ -3054,13 +3204,75 @@ namespace SpellyZombie
             // zombie's head, so its own cast spawned INTO it - the hit
             // re-downed the pilot and threw them out of the body every time.
             if (pilot.IsDowned) return;
-            var board = BodyState.Of(pilot); // the slider board takes it from here
+            TouchBody(pilot, pilot.GetComponent<Element>(), BodyState.Of(pilot),
+                Grimoire.LocalPlayerId, pilot.Velocity);
+        }
+
+        /// A remote player's puppet takes the pilot's rules: kicks by KickMsg,
+        /// grip and weight by PlayerFxMsg, the rest into the puppet Element,
+        /// which StateMsg carries to its owner.
+        void TouchPuppet(NetAvatar av)
+        {
+            if (Dormant || av.Downed) return;
+            TouchBody(av, av.GetComponent<Element>(), null, NetSync.OwnerIdOf(av.Id), av.Velocity);
+        }
+
+        // the board pushes on whichever body: the pilot's board, or the puppet
+        // Element for the axes the owner's board reads off its element
+        static void PushTemp(BodyState board, Element el, float d)
+        {
+            if (board != null) { board.PushTemp(d); return; }
+            if (el == null) return;
+            var data = el.Data; data.Temp = Mathf.Clamp(data.Temp + d, -60f, 160f); el.Data = data;
+        }
+
+        static void PushLum(BodyState board, Element el, float d)
+        {
+            if (board != null) { board.PushLum(d); return; }
+            if (el == null) return;
+            var data = el.Data; data.Lum += d; el.Data = data.Clamped();
+        }
+
+        static void PushAffinity(BodyState board, Element el, float d)
+        {
+            if (board != null) { board.PushAffinity(d); return; }
+            if (el == null) return;
+            var data = el.Data;
+            data.Affinity = Mathf.Clamp(data.Affinity + d, -DrawingConfig.AxisCap, DrawingConfig.AxisCap);
+            el.Data = data;
+        }
+
+        static void PushGrip(BodyState board, int owner, float d)
+        {
+            if (board != null) board.PushGrip(d);
+            else NetSync.PushPlayerFx(owner, 7, d);
+        }
+
+        static void PushWeight(BodyState board, int owner, float d)
+        {
+            if (board != null) board.PushWeight(d);
+            else NetSync.PushPlayerFx(owner, 8, d);
+        }
+
+        static void Kick(Component body, int owner, Vector3 impulse)
+        {
+            if (body is SimpleFPSController pl) pl.TakeHit(impulse, 0f);
+            else NetSync.SendKick(owner, impulse, false);
+        }
+
+        /// One glue boing per body per puppet: a puppet has no board to ask.
+        readonly System.Collections.Generic.HashSet<Object> _gluedBodies =
+            new System.Collections.Generic.HashSet<Object>();
+
+        void TouchBody(Component body, Element bodyEl, BodyState board, int owner, Vector3 bodyVel)
+        {
+            Vector3 at = body.transform.position;
             if (Kind == ParticleKind.Flame)
             {
                 _donateTick -= Time.deltaTime;
                 if (_donateTick > 0f) return;
                 _donateTick = 0.7f;
-                board?.PushTemp(Mathf.Max(6f, Temp * 0.05f)); // fire only HEATS - the band does the hurting
+                PushTemp(board, bodyEl, Mathf.Max(6f, Temp * 0.05f)); // fire only HEATS - the band does the hurting
                 return;
             }
             // lvl2 grip: you're stuck where you stand; the glue never dies
@@ -3068,10 +3280,10 @@ namespace SpellyZombie
             if (Kind == ParticleKind.Glue && GrammarLevel >= 2)
             {
                 // slows into a deep shuffle - never a full stop
-                bool was = board != null && board.Grip > BodyState.GripSlowAt;
-                board?.PushGrip(0.9f);
+                bool was = board != null ? board.Grip > BodyState.GripSlowAt : !_gluedBodies.Add(body);
+                PushGrip(board, owner, 0.9f);
                 if (!was && FxLibrary.I != null) // comic beat - first stick only
-                    FxLibrary.Spawn(FxLibrary.I.TextBoing, pilot.transform.position + Vector3.up * 2f);
+                    FxLibrary.Spawn(FxLibrary.I.TextBoing, at + Vector3.up * 2f);
                 return;
             }
             // ground patches: a settled sticky mote is a glue spot, a slick
@@ -3084,41 +3296,40 @@ namespace SpellyZombie
                 _patchTick = 0.55f;
                 if (Kind == ParticleKind.Glue)
                 {
-                    board?.PushGrip(0.5f); // glue spot: grip climbs toward planted
+                    PushGrip(board, owner, 0.5f); // glue spot: grip climbs toward planted
                 }
                 else
                 {
                     // soap spot: grip drains toward skating
-                    board?.PushGrip(-0.55f);
-                    Vector3 v = pilot.Velocity; v.y = 0f;
-                    if (v.sqrMagnitude > 0.2f) pilot.TakeHit(v.normalized * 3.2f, 0f); // momentum keeps you
+                    PushGrip(board, owner, -0.55f);
+                    Vector3 v = bodyVel; v.y = 0f;
+                    if (v.sqrMagnitude > 0.2f) Kick(body, owner, v.normalized * 3.2f); // momentum keeps you
                 }
                 return;
             }
             if (Kind == ParticleKind.Push)
-                pilot.TakeHit(VectorImpulse(pilot.Velocity, pilot.transform.position), 0f); // the felt kick
+                Kick(body, owner, VectorImpulse(bodyVel, at)); // the felt kick
 
             // ★ ABSORB ITS VALUES (his rule): a spell that spends itself on a
             // body hands over EVERYTHING it carries, whatever kind it wears -
             // friendly fire included, your own release included. The per-kind
             // fixed handouts were eating every other axis a fusion carried.
             var give = Data;
-            if (Mathf.Abs(give.Temp) > 0.5f) board?.PushTemp(give.Temp * 0.3f);
-            if (Mathf.Abs(give.Lum) > 0.05f) board?.PushLum(give.Lum * 0.5f);
-            if (Mathf.Abs(give.Pressure) > 0.05f) board?.PushWeight(give.Pressure * 0.45f);
-            if (Mathf.Abs(give.Balance) > 0.05f) board?.PushGrip(give.Balance * 0.9f);
-            if (Mathf.Abs(give.Affinity) > 0.05f) board?.PushAffinity(give.Affinity);
+            if (Mathf.Abs(give.Temp) > 0.5f) PushTemp(board, bodyEl, give.Temp * 0.3f);
+            if (Mathf.Abs(give.Lum) > 0.05f) PushLum(board, bodyEl, give.Lum * 0.5f);
+            if (Mathf.Abs(give.Pressure) > 0.05f) PushWeight(board, owner, give.Pressure * 0.45f);
+            if (Mathf.Abs(give.Balance) > 0.05f) PushGrip(board, owner, give.Balance * 0.9f);
+            if (Mathf.Abs(give.Affinity) > 0.05f) PushAffinity(board, bodyEl, give.Affinity);
             // Strength is hp: positive mends toward the ceiling, negative is
             // damage through the one damage door. HP IS HP, no conversion.
             if (give.Strength > 0.5f)
             {
-                var pel = pilot.GetComponent<Element>();
-                if (pel != null && pel.Heal(give.Strength))
-                    GrammarFX.PuffBurst(pilot.transform.position + Vector3.up * 1.2f,
+                if (bodyEl != null && bodyEl.Heal(give.Strength))
+                    GrammarFX.PuffBurst(at + Vector3.up * 1.2f,
                         new Color(0.45f, 1f, 0.55f), 4);
             }
             else if (give.Strength < -0.5f)
-                pilot.GetComponent<Element>()?.TakeDamage(-give.Strength, "draining spell", OwnerId, FromMinion);
+                bodyEl?.TakeDamage(-give.Strength, "draining spell", OwnerId, FromMinion);
             ImpactFx();
             ManifestState(transform.position); // the rock still lands ON people
             Die();
@@ -3273,18 +3484,8 @@ namespace SpellyZombie
             el.Data = d.Clamped();
         }
 
-        void AttachLantern(Collider c)
-        {
-            var go = new GameObject("Lantern");
-            go.transform.SetParent(c.transform, true);
-            go.transform.position = transform.position;
-            var l = go.AddComponent<Light>();
-            l.type = LightType.Point;
-            l.range = 5f;
-            l.intensity = 2.6f * Mathf.Min(2f, Lum);
-            l.color = new Color(1f, 0.95f, 0.75f);
-            Destroy(go, 7f);
-        }
+        void AttachLantern(Collider c) =>
+            GrammarFX.Lantern(c.transform, transform.position, 2.6f * Mathf.Min(2f, Lum));
 
         // glue memory: the last two glued bodies get JOINED if they meet soon
         static Rigidbody _lastGlued;
@@ -3351,20 +3552,30 @@ namespace SpellyZombie
             if (old != null) Destroy(old.gameObject);
             // an FX_<Kind> prefab owns the look; no CFXR effect on top.
             // Destroy runs first so a stale IdleFx can't survive a kind change.
+            _idleFxOn = false;
             if (_customLook != null) return;
-            var lib = FxLibrary.I;
-            if (lib == null) return;
-            GameObject pick = null;
-            float scale = 3.2f; // motes are ~0.14 scale - children inherit it
-            var fam = Family(Kind);
-            // only actively burning kinds wear a looping effect
-            if (Kind == ParticleKind.Flame || (fam == ParticleKind.Spark && GrammarLevel >= 2))
-                pick = lib.Fire;
-            else if (Kind == ParticleKind.Lightning) pick = lib.ElectricHit;
+            var pick = IdleFxFor(Kind, GrammarLevel);
             if (pick == null) return;
+            float scale = 3.2f; // motes are ~0.14 scale - children inherit it
             var fx = Instantiate(pick, transform.position, Quaternion.identity, transform);
             fx.name = "IdleFx";
             fx.transform.localScale *= scale; // *= keeps an authored prefab scale
+            _idleFxOn = true; // the wire says so (flag 16): clients wear it only when this one does
+        }
+        bool _idleFxOn;
+
+        /// The looping effect a burning kind wears; the mote proxies pick the
+        /// same one from the kind the snapshot carries.
+        public static GameObject IdleFxFor(ParticleKind kind, int level)
+        {
+            var lib = FxLibrary.I;
+            if (lib == null) return null;
+            var fam = Family(kind);
+            // only actively burning kinds wear a looping effect
+            if (kind == ParticleKind.Flame || (fam == ParticleKind.Spark && level >= 2))
+                return lib.Fire;
+            if (kind == ParticleKind.Lightning) return lib.ElectricHit;
+            return null;
         }
 
         /// The kind's identity colour - ONE switch, shared by the live look
@@ -3569,8 +3780,10 @@ namespace SpellyZombie
             if (_shapeBody == null) return;
 
             SpellTable.Look look = null;
+            _skinRow = null;
             for (int i = 0; i < Fusions.Count; i++)
-                if (Fusions[i].Skin != null) look = Fusions[i].Skin;   // newest wins
+                if (Fusions[i].Skin != null) { look = Fusions[i].Skin; _skinRow = Fusions[i]; }   // newest wins
+            if (look == null && WornRow != null && WornRow.Skin != null) { look = WornRow.Skin; _skinRow = WornRow; }
             // a shape saved with its own material brings it along - the book
             // first, then legacy prefabs
             if (look == null)
@@ -3592,9 +3805,11 @@ namespace SpellyZombie
             // already taught us, re-made here.
             var view = _shapeBody.GetComponent<StateView>();
             if (view == null) view = _shapeBody.AddComponent<StateView>();
-            view.Tint = PayloadNow.Tint();
+            // a dart has no numbers of its own: it wears its row's colour and state
+            var shown = WornRow != null && Fusions.Count == 0 ? WornRow.Payload : PayloadNow;
+            view.Tint = shown.Tint();
             view.DriveTint = true;
-            view.StateT = SpellPayload.StateT01(PayloadNow.State);
+            view.StateT = SpellPayload.StateT01(shown.State);
             if (look != null) view.Look = look;
             // ★ A GHOST IS SEE-THROUGH (his complaint: dormant looked exactly
             // like awake). The ghost dress only ever touched the hidden code
@@ -3615,6 +3830,37 @@ namespace SpellyZombie
         public byte ShapeId => CollectionManager.ParticleShapeIndex(ShapeName);
         public Color32 WireTint => PayloadNow.Tint();
         public byte WireLevel => (byte)Mathf.Clamp(Level, 1, 3);
+
+        /// The worn area's index in the book, 255 for none - a client wears
+        /// the same authored look (NetMoteProxy).
+        public byte WireArea
+        {
+            get
+            {
+                if (_wornArea == null) return 255;
+                var aoes = SpellBook.Live.aoes;
+                if (aoes == null) return 255;
+                for (int i = 0; i < aoes.Count && i < 255; i++)
+                    if (aoes[i] == _wornArea || aoes[i].Name == _wornArea.Name) return (byte)i;
+                return 255;
+            }
+        }
+
+        /// 1 dormant, 2 claimed, 4 hidden area child, 8 carries a light -
+        /// the looks a client cannot read off the shape and the colour.
+        public byte WireFlags
+        {
+            get
+            {
+                int f = 0;
+                if (Dormant) f |= 1;
+                if (Claimed) f |= 2;
+                if (_isAreaChild && _rend != null && !_rend.enabled && _areaLook == null) f |= 4;
+                if (GetComponent<Light>() != null) f |= 8;
+                if (_idleFxOn) f |= 16;
+                return (byte)f;
+            }
+        }
 
         /// ★ NOBODY TYPES A LEVEL. No area is a hit, an area makes it an area,
         /// a locked axis makes it a place - read back from what the author

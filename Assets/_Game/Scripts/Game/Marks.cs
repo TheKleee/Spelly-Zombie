@@ -40,7 +40,7 @@ namespace SpellyZombie
         static readonly Dictionary<Key, int> _marks = new Dictionary<Key, int>(new KeyCompare());
 
         /// Nothing is remembered at the start of a match.
-        public static void Clear() => _marks.Clear();
+        public static void Clear() { _marks.Clear(); KillLedger.Clear(); }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Hook()
@@ -55,6 +55,7 @@ namespace SpellyZombie
         public static void Set(int owner, Mark what, int value)
         {
             if (owner == 0) return; // 0 = no id; hashes and instance ids go negative
+            if (what == Mark.KilledBy) KillLedger.Record(owner, value); // the needles ask "did you ever"
             SetLocal(owner, what, value);
             NetSync.PushMark(owner, what, value);
         }

@@ -40,7 +40,10 @@ namespace SpellyZombie
         /// artificial biome covering the point (additive, by ruling).
         /// No map at all - the lobby - imposes nothing and caps nothing, so
         /// you are simply yourself.
-        public static SpellPayload Here(ISpellData thing)
+        public static SpellPayload Here(ISpellData thing) => Here(thing, out _);
+
+        /// The same, with the spell-made part handed back on its own.
+        public static SpellPayload Here(ISpellData thing, out SpellPayload spell)
         {
             Vector3 at = thing.transform.position;
             // EVERY biome you are standing in, added together. Overlaps make a
@@ -61,7 +64,8 @@ namespace SpellyZombie
             var ground = inAny ? composite : thing.Natural;
             // map biomes, spell-made biomes, and lvl3 PARTICLES - all three
             // are just places that impose, and they add
-            return ground + ArtificialBiome.SampleAt(at) + SpellParticle.SampleAt(at);
+            spell = ArtificialBiome.SampleAt(at) + SpellParticle.SampleAt(at);
+            return ground + spell;
         }
 
         /// THE AXES ARE NOT ON ONE SCALE. Temp is carried in degrees - a spark
@@ -82,7 +86,7 @@ namespace SpellyZombie
         public static void Drift(ISpellData thing, float dt)
         {
             var natural = thing.Natural;
-            var here = Here(thing);
+            var here = Here(thing, out var spell);
             var d = thing.Data;
             // ★ COUPLING IS FOR THE ENVIRONMENT'S ELEMENTS, not for runes
             // (his rule): a spell mote's carried data never breeds effect
@@ -90,6 +94,12 @@ namespace SpellyZombie
             // lands on, through their own drift.
             bool couple = !(thing is SpellParticle);
             var mote = thing as SpellParticle;
+            // a living thing's courage follows the biome it stands in, both ways
+            Biome underfoot = mote == null && natural.Int > 0f
+                ? SpellyMap.BiomeAt(thing.transform.position) : null;
+            if (underfoot != null)
+                here.Courage = Mathf.Lerp(natural.Courage, underfoot.Natural.Courage,
+                    underfoot.WeightAt(thing.transform.position)) + spell.Courage;
             for (int i = 0; i < SpellPayload.AxisCount; i++)
             {
                 // a spell moves only on the axes it has (his rule): what it
@@ -102,7 +112,9 @@ namespace SpellyZombie
                 // everything - walls included - a quarter point a second, and
                 // undo damage as fast as fire could deal it.
                 if (i == 6) continue;
-                float target = SpellPayload.TargetFor(i, natural[i], here[i]);
+                float target = underfoot != null
+                    ? SpellPayload.GroundTarget(i, natural[i], here[i])
+                    : SpellPayload.TargetFor(i, natural[i], here[i]);
                 // a mote carries heat as a DELTA from room temperature while its
                 // natural and the place speak in degrees: aim it at the place's
                 // offset, or every neutral mote warms into a spark in a second
@@ -115,9 +127,14 @@ namespace SpellyZombie
                 // expired before its values ever landed. Approach toward an
                 // imposing place is fast; the relax back home stays slow.
                 float rate = RateFor(i);
-                if (i < 6)
+                bool imposing = Mathf.Abs(here[i] - natural[i]) > 0.02f;
+                // the map's own ground settles in on the curve instead; spell
+                // areas and motes still land at once
+                if (imposing && mote == null && Mathf.Abs(spell[i]) <= 0.02f)
+                    rate = Mathf.Abs(target - d[i]) * DrawingConfig.BiomeSettlePerSec + rate * 0.15f;
+                else if (i < 6)
                 {
-                    if (Mathf.Abs(here[i] - natural[i]) > 0.02f)
+                    if (imposing)
                         rate *= 6f; // a place that imposes, imposes NOW
                     else
                     {

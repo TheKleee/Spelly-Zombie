@@ -14,6 +14,8 @@ namespace SpellyZombie
         [Tooltip("Randomized maps reshuffle biome boxes per seed (not built yet - layout is authored for now).")]
         public bool Randomized;
 
+        [Tooltip("The terrain's material: a Universal Render Pipeline/Terrain/Lit material (SZ_Terrain). A build has no default terrain material - empty = pink ground in the build.")]
+        public Material TerrainMaterial;
         [Tooltip("Your grey stone brush, painted automatically wherever the ground is steeper than Cliff Slope.")]
         public TerrainLayer CliffLayer;
         [Tooltip("Degrees. Steeper than this = cliff paint (and later: no walking, no spawns).")]
@@ -36,6 +38,16 @@ namespace SpellyZombie
         [Tooltip("Heightmap resolution. 257 is plenty for a lowpoly island.")]
         public int Resolution = 257;
 
+        [Header("FLAT GROUND UNDER BIG OBJECTS")]
+        [Tooltip("An Object Box whose footprint covers at least this many square metres gets flat ground beneath it, houses for example. Smaller things sit on the slope.")]
+        public float FlattenArea = 9f;
+        [Tooltip("Metres of flat ground past the box edge.")]
+        public float FlattenApron = 0.5f;
+        [Tooltip("Metres over which the flat ground eases back into the land around it.")]
+        public float FlattenBlend = 3f;
+        [Tooltip("A spot whose ground rises more than this many metres under the box is skipped, so a house is never cut into a cliff.")]
+        public float FlattenMaxRise = 1.5f;
+
         [Header("HORIZON")]
         [Tooltip("Distance fog color - match the sky at the waterline.")]
         public Color FogColor = new Color(0.62f, 0.85f, 0.92f);
@@ -52,9 +64,6 @@ namespace SpellyZombie
 
         [Tooltip("Draw the path network as purple lines in the Scene view, updating live as you move nodes and boxes. Needs one Generate first.")]
         public bool AlwaysPreviewPaths = true;
-
-        [Tooltip("Rebuild the whole map automatically about a second after you stop editing boxes or nodes. Edit-mode only.")]
-        public bool AutoRegenerate = false;
 
         const string GeneratedName = "~SpellyTerrain";
 
@@ -104,6 +113,8 @@ namespace SpellyZombie
         /// Grow the world from the boxes. Deterministic per seed.
         public void Generate(int seed)
         {
+            _meshBoxes.Clear(); // prefabs may have changed since the last grow
+            _absorbables.Clear();
             var biomes = FindObjectsByType<Biome>(FindObjectsSortMode.None);
             if (biomes.Length == 0)
             {
@@ -139,6 +150,7 @@ namespace SpellyZombie
             _warpZ = (float)rng.NextDouble() * 4096f;
 
             PrepareLayout(biomes, rng);
+            EnsureGround();
 
             // who owns which ground: one wizard home, the rest acolyte
             SpawnPlan.Build(biomes, seed);
@@ -208,6 +220,10 @@ namespace SpellyZombie
 
             var terrainGo = Terrain.CreateTerrainGameObject(data);
             terrainGo.name = "Terrain";
+            // the editor lends URP's default terrain material, a build does not
+            if (TerrainMaterial != null) terrainGo.GetComponent<Terrain>().materialTemplate = TerrainMaterial;
+            else Debug.LogError("[SpellyZombie] SpellyMap: the Terrain Material slot is empty - the ground is pink in a build. " +
+                "Drag Assets/_Game/Art/3D/Materials/SZ_Terrain into it.", this);
             terrainGo.transform.SetParent(root.transform, false);
             terrainGo.transform.position = new Vector3(_west, baseY, _south);
 
@@ -218,11 +234,11 @@ namespace SpellyZombie
                 if (liquid == null || liquid.Surface == null) continue;
                 var plane = Instantiate(liquid.Surface, root.transform);
                 plane.name = liquid.name + "Surface";
+                Element.Refile(plane.transform);
                 Vector2 lc = CenterOf(liquid);
                 plane.transform.position = new Vector3(lc.x, liquid.Area.max.y, lc.y);
                 // Unity plane = 10m at scale 1; padded just past the border waves
-                float pad = Mathf.Min(CoastWobble,
-                    Mathf.Min(liquid.Size.x, liquid.Size.z) * 0.25f) * 2f + 1f;
+                float pad = SurfacePad(liquid);
                 plane.transform.localScale = new Vector3(
                     (liquid.Size.x + pad) / 10f, 1f, (liquid.Size.z + pad) / 10f);
             }
@@ -233,9 +249,13 @@ namespace SpellyZombie
                 if (b.Landmark == null) continue;
                 Vector2 c = CenterOf(b);
                 float y = baseY + SampleH(heights, res, world, c) * heightRange;
+                // the prefab's own tilt kept, the bottom of its mesh on the ground
+                Bounds lb = MeshBox(b.Landmark);
+                if (lb.size.sqrMagnitude > 0f) y -= lb.min.y;
                 var mark = Instantiate(b.Landmark, new Vector3(c.x, y, c.y),
-                    Quaternion.identity, root.transform);
+                    Facing(b.Landmark, 0f), root.transform);
                 mark.name = b.name + "Landmark";
+                Element.Refile(mark.transform);
             }
 
             // ---- fog hides the map edge and the wrap seam ----
@@ -257,16 +277,21 @@ namespace SpellyZombie
                 candidates.RemoveAt(pick);
             }
 
-            // ---- fill: each biome places its Props on its own ground ----
-            _spurs.Clear();
+            // ---- fill: each biome places its Props on its own ground; a house
+            // carves its door trail as it lands, so nothing after it stands there ----
             Physics.SyncTransforms(); // the fresh terrain collider must answer rays
+            _fillHeights = heights; _fillData = data; _fillRes = res;
+            _fillWorld = world; _fillRange = heightRange; _fillBase = baseY;
+            _trailMask = new float[res, res];
+            _wallLights = 0;
+            _keep = new bool[res, res];
             int placed = FillBiomes(biomes, rng, pathMask, res, world, root.transform);
-
-            // ---- door spurs: carve a trail from each entrance to the network ----
-            foreach (var (door, target) in _spurs)
-                CarveRoute(heights, pathMask, res, world, heightRange,
-                    FindRoute(door, target, heights, res, world, heightRange));
-            _spurs.Clear();
+            // the trails join the roads for the brushes
+            if (pathMask != null)
+                for (int z = 0; z < res; z++)
+                    for (int x = 0; x < res; x++)
+                        if (_trailMask[z, x] > pathMask[z, x]) pathMask[z, x] = _trailMask[z, x];
+            _fillHeights = null; _fillData = null; _trailMask = null; _keep = null;
             data.SetHeights(0, 0, heights);
 
             // ---- brushes last, over the final ground: floors, cliffs, paths ----
@@ -277,7 +302,7 @@ namespace SpellyZombie
             _baseRef = baseY;
             _previewKey = 0; // force a fresh preview
 
-            Debug.Log($"[SpellyZombie] SpellyMap grew {biomes.Length} biomes, {placed} props, seed {seed}.");
+            Debug.Log($"[SpellyZombie] SpellyMap grew {biomes.Length} biomes, {placed} props, {_wallLights} wall lights, seed {seed}.");
 
             // the ground is READY (his event): everything that derived before
             // the biomes existed re-derives now, once, from where it stands
@@ -289,17 +314,15 @@ namespace SpellyZombie
         /// snapped neighbours stay seamless.
         Biome WinnerRaw(float wx, float wz)
         {
-            // a protected core wins outright; the core is an ellipse, not a square
+            // a box lifted over the cores (EnsureGround) wins inside its own rect
+            if (_top != null && _top.Length == _sorted.Length)
+                for (int i = 0; i < _sorted.Length; i++)
+                    if (_top[i] && wx >= _minX[i] && wx <= _maxX[i] && wz >= _minZ[i] && wz <= _maxZ[i])
+                        return _sorted[i];
+
+            // a protected core wins outright
             for (int i = 0; i < _sorted.Length; i++)
-            {
-                float pc = _sorted[i].ProtectedCore;
-                if (pc <= 0.01f) continue;
-                float rx = Mathf.Max(0.01f, (_maxX[i] - _minX[i]) * 0.5f * pc);
-                float rz = Mathf.Max(0.01f, (_maxZ[i] - _minZ[i]) * 0.5f * pc);
-                float dx = (wx - (_minX[i] + _maxX[i]) * 0.5f) / rx;
-                float dz = (wz - (_minZ[i] + _maxZ[i]) * 0.5f) / rz;
-                if (dx * dx + dz * dz <= 1f) return _sorted[i];
-            }
+                if (CoreHas(i, wx, wz)) return _sorted[i];
 
             float s = Mathf.Max(2f, WobbleScale);
             for (int i = 0; i < _sorted.Length; i++)
@@ -320,14 +343,93 @@ namespace SpellyZombie
             return null;
         }
 
+        /// Inside box i's protected core: an ellipse at its center, not a square.
+        bool CoreHas(int i, float wx, float wz)
+        {
+            float pc = _sorted[i].ProtectedCore;
+            if (pc <= 0.01f) return false;
+            float rx = Mathf.Max(0.01f, (_maxX[i] - _minX[i]) * 0.5f * pc);
+            float rz = Mathf.Max(0.01f, (_maxZ[i] - _minZ[i]) * 0.5f * pc);
+            float dx = (wx - (_minX[i] + _maxX[i]) * 0.5f) / rx;
+            float dz = (wz - (_minZ[i] + _maxZ[i]) * 0.5f) / rz;
+            return dx * dx + dz * dz <= 1f;
+        }
+
+        float AreaOf(int i) => (_maxX[i] - _minX[i]) * (_maxZ[i] - _minZ[i]);
+
+        bool[] _top; // lifted over the protected cores by EnsureGround, _sorted order
+
+        /// Every biome owns ground. A box that bigger boxes cover completely is
+        /// lifted above them, over their protected cores too; a box covered by
+        /// one no bigger than itself stays where it is and says so.
+        void EnsureGround()
+        {
+            int n = _sorted.Length;
+            _top = new bool[n];
+            const int grid = 13;
+            for (int pass = 0; pass < 2 * n; pass++)
+            {
+                int lift = -1, to = 0;
+                bool overCore = false;
+                for (int i = 0; i < n && lift < 0; i++)
+                {
+                    int cut = i;
+                    bool owns = false, covered = false, core = false;
+                    float smallest = float.MaxValue;
+                    for (int g = 0; g < grid * grid && !owns; g++)
+                    {
+                        float wx = Mathf.Lerp(_minX[i], _maxX[i], g % grid / (grid - 1f));
+                        float wz = Mathf.Lerp(_minZ[i], _maxZ[i], g / grid / (grid - 1f));
+                        var w = WinnerRaw(wx, wz);
+                        if (w == _sorted[i]) { owns = true; continue; }
+                        int wi = System.Array.IndexOf(_sorted, w);
+                        if (wi < 0) continue;
+                        bool byCore = _top[wi] || CoreHas(wi, wx, wz);
+                        if (wi > i && !byCore) continue; // its own wavy edge, not a cover
+                        covered = true;
+                        core |= byCore;
+                        cut = Mathf.Min(cut, wi);
+                        smallest = Mathf.Min(smallest, AreaOf(wi));
+                    }
+                    if (owns || !covered) continue;
+                    if (AreaOf(i) >= smallest)
+                    {
+                        if (pass == 0)
+                            Debug.LogWarning($"[SpellyZombie] '{_sorted[i].name}' has no ground: a box no bigger than it covers all of it. Move it or make it smaller.", _sorted[i]);
+                        continue;
+                    }
+                    lift = i; to = cut; overCore = core;
+                }
+                if (lift < 0) return;
+                Debug.Log($"[SpellyZombie] '{_sorted[lift].name}' was covered completely, so it now sits on top of what covered it.", _sorted[lift]);
+                MoveBox(lift, to);
+                _top[to] |= overCore;
+            }
+        }
+
+        /// Moves box 'from' up to index 'to' in every _sorted-order array.
+        void MoveBox(int from, int to)
+        {
+            if (to >= from) return;
+            void Up<T>(T[] a) { T v = a[from]; System.Array.Copy(a, to, a, to + 1, from - to); a[to] = v; }
+            Up(_sorted); Up(_minX); Up(_maxX); Up(_minZ); Up(_maxZ); Up(_top);
+        }
+
         static float Wave(float a, float t) => (Mathf.PerlinNoise(a, t) - 0.5f) * 2f;
 
         Biome[] _sorted;
         float _warpX, _warpZ;
         float _west, _south;                     // terrain's south-west corner
         readonly HashSet<Biome> _potWinners = new HashSet<Biome>();
-        readonly List<Bounds> _reserved = new List<Bounds>();   // roundabout plazas: no spawns
-        readonly List<(Vector2 door, Vector2 target)> _spurs = new List<(Vector2, Vector2)>();
+
+        // the ground being filled: big objects flatten it as they land
+        float[,] _fillHeights;
+        float[,] _trailMask; // door trails, carved as each house lands; roads stay in the path mask
+        int _wallLights;
+        bool[,] _keep;       // ground under placed things: later pads and trails leave it alone
+        TerrainData _fillData;
+        int _fillRes;
+        float _fillWorld, _fillRange, _fillBase;
         float[] _minX, _maxX, _minZ, _maxZ;      // effective rects, _sorted order
         Dictionary<Biome, Vector2> _shift;       // this generation's virtual moves
 
@@ -433,6 +535,192 @@ namespace SpellyZombie
                     if (!t.gameObject.activeSelf) t.gameObject.SetActive(true);
         }
 
+        /// One light on a random outer wall of a house: a flat patch of one of
+        /// its wall pieces at WallLightHeight, away from the doors, with nothing
+        /// sticking into the light, its back on the wall and its front out. It
+        /// spawns hidden, a rider like an unticked torch. No spot = no light.
+        void HangWallLight(GameObject house, GameObject prefab, Biome b, System.Random rng)
+        {
+            var box = prefab.GetComponent<ObjectBox>();
+            if (box == null) return; // the walls are unknown without the measured box
+            Physics.SyncTransforms();
+            var t = house.transform;
+            var doors = house.GetComponentsInChildren<PathPoint>(true);
+            float height = t.position.y + b.WallLightHeight;
+            float scale = Mathf.Max(t.lossyScale.x, t.lossyScale.z);
+            Vector3[] sides = { Vector3.right, Vector3.left, Vector3.forward, Vector3.back };
+            for (int tries = 0; tries < 16; tries++)
+            {
+                Vector3 n = sides[rng.Next(4)];            // outward, in the house frame
+                Vector3 run = new Vector3(n.z, 0f, -n.x);  // along that wall
+                float halfOut = Mathf.Abs(Vector3.Dot(box.Size, n)) * 0.5f;
+                float halfRun = Mathf.Abs(Vector3.Dot(box.Size, run)) * 0.5f;
+                float s = ((float)rng.NextDouble() * 2f - 1f) * halfRun * 0.7f;
+                Vector3 from = t.TransformPoint(box.Center + n * (halfOut + 0.5f) + run * s);
+                from.y = height;
+                Vector3 dir = -t.TransformDirection(n);
+                dir.y = 0f;
+                if (dir.sqrMagnitude < 1e-4f) continue;
+                dir.Normalize();
+                float reach = (halfOut + 0.5f) * scale + 2f;
+                if (!WallHit(from, dir, reach, t, out var hit)) continue;
+
+                bool nearDoor = false;
+                foreach (var d in doors)
+                {
+                    Vector3 dd = d.transform.position - hit.point;
+                    dd.y = 0f;
+                    if (dd.magnitude < 1.3f) { nearDoor = true; break; }
+                }
+                if (nearDoor) continue;
+
+                // a flat patch around it: windows, doors, shutters and corners fail
+                Vector3 side = Vector3.Cross(Vector3.up, dir);
+                bool flat = true;
+                for (int k = 0; k < 4 && flat; k++)
+                {
+                    Vector3 o = (k < 2 ? side : Vector3.up) * (k % 2 == 0 ? 0.35f : -0.35f);
+                    flat = WallHit(from + o, dir, reach, t, out var h2)
+                        && Mathf.Abs(h2.distance - hit.distance) < 0.08f;
+                }
+                if (!flat) continue;
+
+                Vector3 outward = -dir;
+                float yaw = Mathf.Atan2(outward.x, outward.z) * Mathf.Rad2Deg;
+                Bounds mesh = InteriorField.UprightBounds(b.WallLight,
+                    Facing(b.WallLight, 0f) * Quaternion.Inverse(b.WallLight.transform.rotation));
+                Vector3 at = hit.point + outward * -mesh.min.z; // its back against the wall
+                at.y = height;
+
+                // shutters, frames, sills and doors stick out of a house: none may
+                // reach into the light, with a finger of air around it
+                Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+                Vector3 lo = mesh.min, hi = mesh.max;
+                lo.z += 0.03f; // clear of the wall it hangs on
+                Vector3 mid = at + turn * ((lo + hi) * 0.5f);
+                Vector3 half = (hi - lo) * 0.5f + new Vector3(0.05f, 0.05f, 0.05f);
+                if (Blocked(mid, half, turn)) continue;
+
+                var lamp = Instantiate(b.WallLight, at, Facing(b.WallLight, yaw), t);
+                lamp.name = b.WallLight.name;
+                Vector3 ps = t.lossyScale;
+                lamp.transform.localScale = Vector3.Scale(b.WallLight.transform.localScale,
+                    new Vector3(1f / Mathf.Max(1e-4f, ps.x), 1f / Mathf.Max(1e-4f, ps.y), 1f / Mathf.Max(1e-4f, ps.z)));
+                lamp.SetActive(false); // a rider: the biome decides whether it shows
+                _wallLights++;
+                return;
+            }
+        }
+
+        static bool WallHit(Vector3 from, Vector3 dir, float reach, Transform house, out RaycastHit hit)
+            => Physics.Raycast(from, dir, out hit, reach, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)
+               && hit.collider.transform.IsChildOf(house)
+               && IsWall(hit.collider.transform)
+               && Vector3.Dot(hit.normal, -dir) > 0.9f;
+
+        /// Every wall piece in his kit carries "Wall" in its name; a window,
+        /// a frame, a shutter, a door or a corner post is never a mount.
+        static bool IsWall(Transform t)
+            => t.name.IndexOf("wall", System.StringComparison.OrdinalIgnoreCase) >= 0;
+
+        static readonly Collider[] _nearLight = new Collider[32];
+
+        /// Anything but a wall inside the box.
+        static bool Blocked(Vector3 center, Vector3 half, Quaternion turn)
+        {
+            int n = Physics.OverlapBoxNonAlloc(center, half, _nearLight, turn,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+                if (!IsWall(_nearLight[i].transform)) return true;
+            return false;
+        }
+
+        struct Placer
+        {
+            public Biome B;
+            public System.Func<GameObject, float, float, bool> Place;
+            public List<GameObject> Riders;
+        }
+
+        /// Every kind of absorbable the map can show stands somewhere on it, so no
+        /// rune is out of reach: a kind nobody rolled first gets one of its hidden
+        /// riders revealed, else one placed as a standalone source in a biome that
+        /// lists it, past that biome MaxSources.
+        void EnsureEveryAbsorbable(Transform root, List<Placer> placers, System.Random rng)
+        {
+            var have = new HashSet<string>();
+            foreach (var a in root.GetComponentsInChildren<AbsorbSource>(true))
+                if (a.gameObject.activeInHierarchy) have.Add(KindOf(a));
+
+            var riderOf = new Dictionary<string, List<(List<GameObject> list, GameObject rider)>>();
+            var sourceOf = new Dictionary<string, List<(Placer p, GameObject prefab)>>();
+            var label = new Dictionary<string, string>();
+            foreach (var p in placers)
+            {
+                foreach (var rider in p.Riders)
+                    foreach (var a in rider.GetComponentsInChildren<AbsorbSource>(true))
+                    {
+                        string k = KindOf(a);
+                        if (!riderOf.TryGetValue(k, out var rl))
+                            riderOf[k] = rl = new List<(List<GameObject> list, GameObject rider)>();
+                        rl.Add((p.Riders, rider));
+                        if (!label.ContainsKey(k)) label[k] = a.name;
+                    }
+                if (p.B.Sources == null) continue;
+                foreach (var prefab in p.B.Sources)
+                {
+                    if (prefab == null) continue;
+                    foreach (var a in prefab.GetComponentsInChildren<AbsorbSource>(true))
+                    {
+                        string k = KindOf(a);
+                        if (!sourceOf.TryGetValue(k, out var sl))
+                            sourceOf[k] = sl = new List<(Placer p, GameObject prefab)>();
+                        sl.Add((p, prefab));
+                        if (!label.ContainsKey(k)) label[k] = prefab.name;
+                    }
+                }
+            }
+
+            var kinds = new List<string>(label.Keys);
+            kinds.Sort(System.StringComparer.Ordinal); // the same order on every machine
+            foreach (var k in kinds)
+            {
+                if (have.Contains(k)) continue;
+                bool shown = false;
+                if (riderOf.TryGetValue(k, out var rs))
+                {
+                    var hidden = rs.FindAll(r => r.list.Contains(r.rider));
+                    if (hidden.Count > 0)
+                    {
+                        var pick = hidden[rng.Next(hidden.Count)];
+                        Reveal(pick.rider);
+                        pick.list.Remove(pick.rider);
+                        foreach (var a in pick.rider.GetComponentsInChildren<AbsorbSource>(true)) have.Add(KindOf(a));
+                        shown = true;
+                    }
+                }
+                if (!shown && sourceOf.TryGetValue(k, out var ss))
+                    for (int t = 0; t < 200 && !shown; t++)
+                    {
+                        var pk = ss[rng.Next(ss.Count)];
+                        Vector2 bc = CenterOf(pk.p.B);
+                        float wx = bc.x + ((float)rng.NextDouble() - 0.5f) * pk.p.B.Size.x;
+                        float wz = bc.y + ((float)rng.NextDouble() - 0.5f) * pk.p.B.Size.z;
+                        if (!pk.p.Place(pk.prefab, wx, wz)) continue;
+                        shown = true;
+                        foreach (var a in pk.prefab.GetComponentsInChildren<AbsorbSource>(true)) have.Add(KindOf(a));
+                    }
+                if (!shown)
+                    Debug.LogWarning($"[SpellyZombie] SpellyMap: no room anywhere for a {label[k]}; what it teaches is out of reach this seed.");
+            }
+        }
+
+        /// What an absorbable teaches, as a key: its authored list, else its axes.
+        static string KindOf(AbsorbSource a)
+            => a.Teaches != null && a.Teaches.Length > 0
+                ? "teaches " + string.Join(",", a.Teaches)
+                : $"axes {a.Temperature},{a.Light},{a.Density},{a.Balance},{a.State},{a.Affinity}";
+
         /// World rotation for a prefab the map stands up: the yaw the spawner
         /// chose, the root's authored tilt kept, its saved yaw dropped. Kit
         /// pieces are saved with the -90 X that stands them up.
@@ -442,18 +730,298 @@ namespace SpellyZombie
             return Quaternion.AngleAxis(yaw, Vector3.up) * Quaternion.FromToRotation(upLocal, Vector3.up);
         }
 
+        /// A claimed footprint on the ground: a rectangle turned with the
+        /// object, plus the height it spans.
+        struct Claim
+        {
+            public Vector2 C, AxX, AxZ; // center, and the rectangle's unit axes on the ground
+            public float Hx, Hz, Y0, Y1;
+
+            public static Claim Of(Bounds b) => new Claim
+            {
+                C = new Vector2(b.center.x, b.center.z), AxX = Vector2.right, AxZ = Vector2.up,
+                Hx = b.extents.x, Hz = b.extents.z, Y0 = b.min.y, Y1 = b.max.y
+            };
+
+            float Reach(Vector2 axis) =>
+                Hx * Mathf.Abs(Vector2.Dot(AxX, axis)) + Hz * Mathf.Abs(Vector2.Dot(AxZ, axis));
+
+            public bool Overlaps(in Claim o)
+            {
+                if (Y1 < o.Y0 || o.Y1 < Y0) return false;
+                Vector2 d = o.C - C;
+                if (Mathf.Abs(Vector2.Dot(d, AxX)) > Hx + o.Reach(AxX)) return false;
+                if (Mathf.Abs(Vector2.Dot(d, AxZ)) > Hz + o.Reach(AxZ)) return false;
+                if (Mathf.Abs(Vector2.Dot(d, o.AxX)) > o.Hx + Reach(o.AxX)) return false;
+                if (Mathf.Abs(Vector2.Dot(d, o.AxZ)) > o.Hz + Reach(o.AxZ)) return false;
+                return true;
+            }
+
+            public bool Covers(Vector2 p)
+            {
+                Vector2 d = p - C;
+                return Mathf.Abs(Vector2.Dot(d, AxX)) <= Hx + 0.01f && Mathf.Abs(Vector2.Dot(d, AxZ)) <= Hz + 0.01f;
+            }
+
+            public Vector2 Corner(int i) => C + AxX * ((i & 1) == 0 ? -Hx : Hx) + AxZ * ((i & 2) == 0 ? -Hz : Hz);
+
+            public float Area => 4f * Hx * Hz;
+
+            /// The axis-aligned ground square that holds it.
+            public void Ground(out Vector2 lo, out Vector2 hi)
+            {
+                var r = new Vector2(Reach(Vector2.right), Reach(Vector2.up));
+                lo = C - r;
+                hi = C + r;
+            }
+        }
+
+        /// Where a prefab standing at 'at', turned by 'yaw', claims the ground:
+        /// its ObjectBox carried by the tilt and scale it stands with, else its
+        /// own meshes measured upright; a modest cube only when it has neither.
+        static Claim ClaimFor(GameObject prefab, Vector3 at, float yaw, float fieldSize)
+        {
+            var box = prefab.GetComponent<ObjectBox>();
+            Vector3 mn, mx;
+            if (box != null)
+            {
+                Quaternion stand = Facing(prefab, 0f);
+                Vector3 sc = prefab.transform.localScale;
+                Vector3 lo = box.Center - box.Size * 0.5f, hi = box.Center + box.Size * 0.5f;
+                mn = Vector3.one * float.MaxValue;
+                mx = Vector3.one * float.MinValue;
+                for (int k = 0; k < 8; k++)
+                {
+                    Vector3 p = stand * Vector3.Scale(new Vector3(
+                        (k & 1) == 0 ? lo.x : hi.x, (k & 2) == 0 ? lo.y : hi.y, (k & 4) == 0 ? lo.z : hi.z), sc);
+                    mn = Vector3.Min(mn, p);
+                    mx = Vector3.Max(mx, p);
+                }
+            }
+            else
+            {
+                Bounds mb = MeshBox(prefab);
+                if (mb.size.x < 0.01f && mb.size.z < 0.01f)
+                {
+                    float s = fieldSize * 0.8f;
+                    return Claim.Of(new Bounds(at + Vector3.up * s * 0.5f, Vector3.one * s));
+                }
+                mn = mb.min;
+                mx = mb.max;
+            }
+            Vector3 mid = (mn + mx) * 0.5f, half = (mx - mn) * 0.5f;
+            Quaternion turn = Quaternion.AngleAxis(yaw, Vector3.up);
+            Vector3 wc = at + turn * mid;
+            Vector3 ax = turn * Vector3.right, az = turn * Vector3.forward;
+            return new Claim
+            {
+                C = new Vector2(wc.x, wc.z),
+                AxX = new Vector2(ax.x, ax.z), AxZ = new Vector2(az.x, az.z),
+                Hx = half.x, Hz = half.z, Y0 = wc.y - half.y, Y1 = wc.y + half.y
+            };
+        }
+
+        static readonly Dictionary<GameObject, Bounds> _meshBoxes = new Dictionary<GameObject, Bounds>();
+
+        /// A prefab's meshes around its pivot, standing as the map stands it, unturned.
+        static Bounds MeshBox(GameObject prefab)
+        {
+            if (!_meshBoxes.TryGetValue(prefab, out var b))
+                _meshBoxes[prefab] = b = InteriorField.UprightBounds(prefab,
+                    Facing(prefab, 0f) * Quaternion.Inverse(prefab.transform.rotation));
+            return b;
+        }
+
+        /// How far a prefab reaches sideways from its pivot, whatever its turn.
+        static float MeshReach(GameObject prefab)
+        {
+            Bounds mb = MeshBox(prefab);
+            return Mathf.Sqrt(Mathf.Max(mb.min.x * mb.min.x, mb.max.x * mb.max.x)
+                            + Mathf.Max(mb.min.z * mb.min.z, mb.max.z * mb.max.z));
+        }
+
+        const float AbsorbBorder = 2f; // metres an absorbable keeps from any other biome
+        static readonly Dictionary<GameObject, bool> _absorbables = new Dictionary<GameObject, bool>();
+
+        /// The prefab IS an absorbable: an AbsorbSource or Analyzable that shows in
+        /// it. Hidden ones are riders, revealed later where their prop stands.
+        static bool IsAbsorbable(GameObject prefab)
+        {
+            if (_absorbables.TryGetValue(prefab, out bool known)) return known;
+            bool found = false;
+            foreach (var a in prefab.GetComponentsInChildren<AbsorbSource>(true))
+                if (Shown(a.transform, prefab.transform)) { found = true; break; }
+            if (!found)
+                foreach (var a in prefab.GetComponentsInChildren<Analyzable>(true))
+                    if (Shown(a.transform, prefab.transform)) { found = true; break; }
+            _absorbables[prefab] = found;
+            return found;
+        }
+
+        static bool Shown(Transform t, Transform root)
+        {
+            for (; t != null; t = t.parent)
+            {
+                if (!t.gameObject.activeSelf) return false;
+                if (t == root) break;
+            }
+            return true;
+        }
+
+        /// Every point within radius of (x, z) belongs to biome b: no border near.
+        bool DeepInside(Biome b, float x, float z, float radius)
+        {
+            if (WinnerAt(x, z) != b) return false;
+            for (int k = 0; k < 8; k++)
+            {
+                float ang = k * Mathf.PI * 0.25f;
+                if (WinnerAt(x + Mathf.Cos(ang) * radius, z + Mathf.Sin(ang) * radius) != b) return false;
+            }
+            return true;
+        }
+
+        /// Padding of a liquid surface plane past its box, just beyond the border waves.
+        float SurfacePad(LiquidBiome liquid)
+            => Mathf.Min(CoastWobble, Mathf.Min(liquid.Size.x, liquid.Size.z) * 0.25f) * 2f + 1f;
+
+        /// Whether a point lies below the surface of a liquid spread over it.
+        bool UnderLiquid(float x, float z, float y)
+        {
+            foreach (var bio in _sorted)
+            {
+                var liquid = bio as LiquidBiome;
+                if (liquid == null || y >= liquid.Area.max.y) continue;
+                Vector2 lc = CenterOf(liquid);
+                float pad = SurfacePad(liquid);
+                if (Mathf.Abs(x - lc.x) <= (liquid.Size.x + pad) * 0.5f
+                    && Mathf.Abs(z - lc.y) <= (liquid.Size.z + pad) * 0.5f) return true;
+            }
+            return false;
+        }
+
+        /// Flat ground beneath a big object: its footprint plus the apron go to
+        /// target (world y) and the land eases back over FlattenBlend. The
+        /// terrain answers rays at once, so whatever lands later stands on it.
+        void FlattenUnder(in Claim k, float target)
+        {
+            if (_fillHeights == null || _fillData == null) return;
+            int res = _fillRes;
+            float step = _fillWorld / (res - 1);
+            float apron = Mathf.Max(0f, FlattenApron), blend = Mathf.Max(0.01f, FlattenBlend);
+            float hx = k.Hx + apron, hz = k.Hz + apron;
+            k.Ground(out var lo, out var hi);
+            float reach = apron + blend;
+            int x0 = Mathf.Clamp(Mathf.FloorToInt((lo.x - reach - _west) / step), 0, res - 1);
+            int x1 = Mathf.Clamp(Mathf.CeilToInt((hi.x + reach - _west) / step), 0, res - 1);
+            int z0 = Mathf.Clamp(Mathf.FloorToInt((lo.y - reach - _south) / step), 0, res - 1);
+            int z1 = Mathf.Clamp(Mathf.CeilToInt((hi.y + reach - _south) / step), 0, res - 1);
+            if (x1 < x0 || z1 < z0) return;
+            float t = Mathf.Clamp01((target - _fillBase) / _fillRange);
+            for (int z = z0; z <= z1; z++)
+                for (int x = x0; x <= x1; x++)
+                {
+                    Vector2 d = new Vector2(_west + x * step, _south + z * step) - k.C;
+                    float du = Mathf.Max(0f, Mathf.Abs(Vector2.Dot(d, k.AxX)) - hx);
+                    float dv = Mathf.Max(0f, Mathf.Abs(Vector2.Dot(d, k.AxZ)) - hz);
+                    float w = 1f - Mathf.SmoothStep(0f, 1f, Mathf.Sqrt(du * du + dv * dv) / blend);
+                    if (w > 0f && (_keep == null || !_keep[z, x]))
+                        _fillHeights[z, x] = Mathf.Lerp(_fillHeights[z, x], t, w);
+                }
+            PushHeights(x0, z0, x1, z1);
+        }
+
+        /// Sends a block of the fill heights to the terrain; its collider
+        /// answers rays at once.
+        void PushHeights(int x0, int z0, int x1, int z1)
+        {
+            if (_fillHeights == null || _fillData == null || x1 < x0 || z1 < z0) return;
+            var sub = new float[z1 - z0 + 1, x1 - x0 + 1];
+            for (int z = z0; z <= z1; z++)
+                for (int x = x0; x <= x1; x++)
+                    sub[z - z0, x - x0] = _fillHeights[z, x];
+            _fillData.SetHeights(x0, z0, sub);
+        }
+
+        /// The ground under a footprint as a plane fitted to nine heights: its
+        /// normal (straight up when the thing stands upright) and the pivot
+        /// height at which no sampled point of the base is above the ground.
+        Vector3 GroundUnder(in Claim k, Vector3 pivot, bool upright, out float pivotY)
+        {
+            var hs = new float[9];
+            var us = new float[9];
+            var vs = new float[9];
+            float su = 0f, sv = 0f, uu = 0f, vv = 0f;
+            int i = 0;
+            for (int a = -1; a <= 1; a++)
+                for (int e = -1; e <= 1; e++, i++)
+                {
+                    float u = a * k.Hx, v = e * k.Hz;
+                    Vector2 q = k.C + k.AxX * u + k.AxZ * v;
+                    hs[i] = _fillBase + _fillData.GetInterpolatedHeight(
+                        Mathf.Clamp01((q.x - _west) / _fillWorld), Mathf.Clamp01((q.y - _south) / _fillWorld));
+                    us[i] = u; vs[i] = v;
+                    su += u * hs[i]; uu += u * u;
+                    sv += v * hs[i]; vv += v * v;
+                }
+            float gu = upright || uu < 1e-6f ? 0f : su / uu; // rise per metre along AxX
+            float gv = upright || vv < 1e-6f ? 0f : sv / vv; // and along AxZ
+            Vector2 d = new Vector2(pivot.x, pivot.z) - k.C;
+            float pu = Vector2.Dot(d, k.AxX), pv = Vector2.Dot(d, k.AxZ);
+            pivotY = float.MaxValue;
+            for (int j = 0; j < 9; j++)
+                pivotY = Mathf.Min(pivotY, hs[j] - gu * (us[j] - pu) - gv * (vs[j] - pv));
+            Vector3 n = Vector3.Cross(new Vector3(k.AxZ.x, gv, k.AxZ.y), new Vector3(k.AxX.x, gu, k.AxX.y)).normalized;
+            return n.y < 0f ? -n : n;
+        }
+
+        /// The ground under a placed thing is its own now: later pads and door
+        /// trails leave these cells alone, so nothing placed is left hanging.
+        void Keep(in Claim k)
+        {
+            if (_keep == null) return;
+            int res = _fillRes;
+            float step = _fillWorld / (res - 1);
+            k.Ground(out var lo, out var hi);
+            int x0 = Mathf.Clamp(Mathf.FloorToInt((lo.x - _west) / step) - 1, 0, res - 1);
+            int x1 = Mathf.Clamp(Mathf.CeilToInt((hi.x - _west) / step) + 1, 0, res - 1);
+            int z0 = Mathf.Clamp(Mathf.FloorToInt((lo.y - _south) / step) - 1, 0, res - 1);
+            int z1 = Mathf.Clamp(Mathf.CeilToInt((hi.y - _south) / step) + 1, 0, res - 1);
+            for (int z = z0; z <= z1; z++)
+                for (int x = x0; x <= x1; x++)
+                {
+                    Vector2 d = new Vector2(_west + x * step, _south + z * step) - k.C;
+                    if (Mathf.Abs(Vector2.Dot(d, k.AxX)) <= k.Hx + step
+                        && Mathf.Abs(Vector2.Dot(d, k.AxZ)) <= k.Hz + step)
+                        _keep[z, x] = true;
+                }
+        }
+
+        /// A door's trail to its road, carved the moment the house lands.
+        void CarveTrail(Vector2 door, Vector2 road)
+        {
+            if (_fillHeights == null || _trailMask == null) return;
+            var route = FindRoute(door, road, _fillHeights, _fillRes, _fillWorld, _fillRange);
+            var cells = CarveRoute(_fillHeights, _trailMask, _fillRes, _fillWorld, _fillRange, route, _keep);
+            PushHeights(cells.xMin, cells.yMin, cells.xMax - 1, cells.yMax - 1);
+        }
+
         int FillBiomes(Biome[] biomes, System.Random rng, float[,] pathMask,
             int res, float world, Transform root)
         {
             int total = 0;
-            var claims = new List<Bounds>(); // world-space claimed boxes
-            claims.AddRange(_reserved);      // roundabout plazas stay empty
+            int lostPots = 0; // lottery pots whose biome had no room for them
+            var claims = new List<Claim>(); // world-space claimed footprints
+            var placers = new List<Placer>(); // each biome, kept for the every-kind pass after the fill
 
             foreach (var b in biomes)
             {
                 bool hasProps = b.Props != null && b.Props.Length > 0;
                 bool hasSources = b.Sources != null && b.Sources.Length > 0;
-                if (!hasProps && !hasSources) continue;
+                if (!hasProps && !hasSources)
+                {
+                    if (_potWinners.Contains(b)) lostPots++; // nothing to place it with: another biome takes it
+                    continue;
+                }
 
                 var fill = new GameObject(b.name + "Fill").transform;
                 fill.SetParent(root, false);
@@ -464,14 +1032,15 @@ namespace SpellyZombie
                 bool liquid = b is LiquidBiome;
                 // riders: disabled Sources authored inside placed props
                 var riders = new List<GameObject>();
+                var placedKinds = new HashSet<GameObject>(); // what this biome has placed, by prefab
 
-                // nearest-sample mask read for placement rules
+                // nearest-sample read of the roads and the door trails
                 float MaskW(float mx, float mz)
                 {
                     if (pathMask == null) return 0f;
                     int qx = Mathf.Clamp(Mathf.RoundToInt((mx - _west) / world * (res - 1)), 0, res - 1);
                     int qz = Mathf.Clamp(Mathf.RoundToInt((mz - _south) / world * (res - 1)), 0, res - 1);
-                    return pathMask[qz, qx];
+                    return _trailMask != null ? Mathf.Max(pathMask[qz, qx], _trailMask[qz, qx]) : pathMask[qz, qx];
                 }
 
                 // every placement rule in one place
@@ -480,15 +1049,31 @@ namespace SpellyZombie
                     if (prefab == null) return false;
                     if (Mathf.Abs(wx) > LoopDistance || Mathf.Abs(wz) > LoopDistance) return false;
                     if (WinnerAt(wx, wz) != b) return false;
+                    // an absorbable stands wholly on its own biome, clear of every border
+                    if (IsAbsorbable(prefab) && !DeepInside(b, wx, wz, MeshReach(prefab) + AbsorbBorder)) return false;
 
                     Vector3 at;
-                    Vector3 up = Vector3.up;
                     if (liquid)
                     {
-                        // floating fill: anywhere in the volume above the bed
-                        float y = Mathf.Lerp(area.min.y + 1f, area.max.y - 0.4f,
-                            (float)rng.NextDouble());
-                        at = new Vector3(wx, y, wz);
+                        // floating fill, wholly in the water: its bottom clear of the
+                        // bed under its whole reach, its top under the surface; a spot
+                        // too shallow for it is skipped
+                        Bounds mb = MeshBox(prefab);
+                        float reach = MeshReach(prefab);
+                        float bedY = area.min.y;
+                        if (_fillData != null)
+                            for (int k = 0; k < 5; k++)
+                            {
+                                float ox = k == 1 ? reach : k == 2 ? -reach : 0f;
+                                float oz = k == 3 ? reach : k == 4 ? -reach : 0f;
+                                bedY = Mathf.Max(bedY, _fillBase + _fillData.GetInterpolatedHeight(
+                                    Mathf.Clamp01((wx + ox - _west) / _fillWorld),
+                                    Mathf.Clamp01((wz + oz - _south) / _fillWorld)));
+                            }
+                        float lowPivot = bedY - mb.min.y + 0.05f;
+                        float highPivot = area.max.y - mb.max.y - 0.05f;
+                        if (highPivot < lowPivot) return false;
+                        at = new Vector3(wx, Mathf.Lerp(lowPivot, highPivot, (float)rng.NextDouble()), wz);
                     }
                     else
                     {
@@ -499,30 +1084,12 @@ namespace SpellyZombie
                                 QueryTriggerInteraction.Ignore)) return false;
                         if (!(hit.collider is TerrainCollider)) return false; // ground only, never on a prop
                         if (hit.point.y < area.min.y - 0.5f) return false;
-                        if (hit.normal.y < 0.7f) return false; // too steep = wall
-                        // nothing spawns on the path bed
-                        int hx = Mathf.Clamp(Mathf.RoundToInt((wx - _west) / world * (res - 1)), 0, res - 1);
-                        int hz = Mathf.Clamp(Mathf.RoundToInt((wz - _south) / world * (res - 1)), 0, res - 1);
-                        if (pathMask != null && pathMask[hz, hx] > 0.45f) return false;
+                        if (hit.normal.y < Mathf.Cos(b.MaxSlope * Mathf.Deg2Rad)) return false; // steeper than this biome allows
+                        // only a liquid biome keeps things inside the water
+                        if (UnderLiquid(wx, wz, hit.point.y)) return false;
+                        // nothing spawns where a road or a trail shows
+                        if (MaskW(wx, wz) > PathShowsAt) return false;
                         at = hit.point;
-                        up = hit.normal;
-                    }
-
-                    // the claim: authored ObjectBox wins, else a modest guess
-                    var box = prefab.GetComponent<ObjectBox>();
-                    Vector3 claimSize = box != null ? box.Size : Vector3.one * (b.FieldSize * 0.8f);
-                    Vector3 claimCenter = at + (box != null ? box.Center : Vector3.up * claimSize.y * 0.5f);
-                    var claim = new Bounds(claimCenter, claimSize);
-                    for (int i = 0; i < claims.Count; i++)
-                        if (claims[i].Intersects(claim)) return false;
-
-                    // the whole claim area is tested against the path mask
-                    if (!liquid && pathMask != null)
-                    {
-                        for (float mx = claim.min.x; mx <= claim.max.x + 0.01f; mx += 1.5f)
-                            for (float mz = claim.min.z; mz <= claim.max.z + 0.01f; mz += 1.5f)
-                                if (MaskW(Mathf.Min(mx, claim.max.x),
-                                          Mathf.Min(mz, claim.max.z)) > 0.45f) return false;
                     }
 
                     // entrances face the nearest path however far, and a trail
@@ -535,7 +1102,9 @@ namespace SpellyZombie
                     if (!liquid && prefab.GetComponentInChildren<PathPoint>(true) != null)
                     {
                         Vector2 flat = new Vector2(at.x, at.z);
-                        if (NearestPath(flat, LoopDistance, out spurTarget))
+                        // a street on its own biome's ground first, so a town house faces the town
+                        if (NearestPath(flat, LoopDistance, out spurTarget, b)
+                            || NearestPath(flat, LoopDistance, out spurTarget))
                         {
                             // far cells mostly wait for a nearer one; some still take
                             if (!NearestPath(flat, 18f, out _) && rng.NextDouble() > 0.35) return false;
@@ -553,7 +1122,79 @@ namespace SpellyZombie
                     }
                     else yaw = (float)rng.NextDouble() * 360f;
 
-                    var go = Instantiate(prefab, at, Facing(prefab, yaw), fill);
+                    // the claim turns with the object: authored ObjectBox wins, else a modest guess
+                    var claim = ClaimFor(prefab, at, yaw, b.FieldSize);
+                    for (int i = 0; i < claims.Count; i++)
+                        if (claims[i].Overlaps(claim)) return false;
+
+                    // the whole claim area is tested against the roads and trails
+                    if (!liquid && pathMask != null)
+                    {
+                        for (int k = 0; k < 4; k++)
+                        {
+                            Vector2 q = claim.Corner(k);
+                            if (MaskW(q.x, q.y) > PathShowsAt) return false;
+                        }
+                        claim.Ground(out var glo, out var ghi);
+                        for (float mx = glo.x; mx <= ghi.x + 0.01f; mx += 1.5f)
+                            for (float mz = glo.y; mz <= ghi.y + 0.01f; mz += 1.5f)
+                            {
+                                var q = new Vector2(Mathf.Min(mx, ghi.x), Mathf.Min(mz, ghi.y));
+                                if (claim.Covers(q) && MaskW(q.x, q.y) > PathShowsAt) return false;
+                            }
+                    }
+
+                    // a big object gets flat ground beneath it; too much rise there = no spot
+                    // a biome that allows steep ground leans its big things on it instead
+                    bool pad = !liquid && _fillHeights != null && b.MaxSlope <= 45f
+                        && prefab.GetComponent<ObjectBox>() != null && claim.Area >= FlattenArea;
+                    if (pad)
+                    {
+                        float lowH = float.MaxValue, highH = float.MinValue, sumH = 0f;
+                        for (int k = 0; k < 9; k++)
+                        {
+                            Vector2 q = k < 4 ? claim.Corner(k)
+                                : k == 4 ? claim.C
+                                : k == 5 ? claim.C + claim.AxX * claim.Hx
+                                : k == 6 ? claim.C - claim.AxX * claim.Hx
+                                : k == 7 ? claim.C + claim.AxZ * claim.Hz
+                                : claim.C - claim.AxZ * claim.Hz;
+                            float hq = _fillBase + SampleH(_fillHeights, _fillRes, _fillWorld, q) * _fillRange;
+                            lowH = Mathf.Min(lowH, hq);
+                            highH = Mathf.Max(highH, hq);
+                            sumH += hq;
+                        }
+                        if (highH - lowH > FlattenMaxRise) return false;
+                        at.y = sumH / 9f;
+                        claim = ClaimFor(prefab, at, yaw, b.FieldSize);
+                        FlattenUnder(claim, at.y);
+                    }
+
+                    // outside a liquid everything sits ON the ground, tangent to it: the
+                    // base follows the ground under the footprint, no part hangs in the air,
+                    // and the bottom of the mesh meets the ground wherever the pack put the
+                    // pivot. Tall thin things (trees, posts) stand upright; big boxes sit on
+                    // their flat pad
+                    Quaternion rot = Facing(prefab, yaw);
+                    if (!liquid)
+                    {
+                        Vector3 n = Vector3.up;
+                        if (!pad && _fillData != null)
+                        {
+                            bool upright = claim.Y1 - claim.Y0 >= 5f * Mathf.Max(claim.Hx, claim.Hz);
+                            n = GroundUnder(claim, at, upright, out float seatY);
+                            at.y = seatY;
+                            rot = Quaternion.FromToRotation(Vector3.up, n) * rot;
+                        }
+                        Bounds mbx = MeshBox(prefab);
+                        if (mbx.size.sqrMagnitude > 0f) at += n * -mbx.min.y;
+                    }
+
+                    var go = Instantiate(prefab, at, rot, fill);
+                    Keep(claim);
+                    // one name per placement, the same on every machine: the
+                    // network tells copies of a prefab apart by their paths
+                    go.name = $"{prefab.name} #{total}";
                     // EVERYTHING PLACED IS AN ELEMENT. A prop with no Element
                     // is outside the world entirely - it cannot be burnt,
                     // broken or read, and nothing tells you. Prefabs should
@@ -564,10 +1205,9 @@ namespace SpellyZombie
                     // the MAP's rng - same seed, same clutter, every machine
                     foreach (var f in go.GetComponentsInChildren<InteriorField>(true))
                         f.Fill(rng);
-                    // gentle tilt onto slopes
-                    if (!liquid && up.y < 0.995f)
-                        go.transform.rotation = Quaternion.FromToRotation(Vector3.up,
-                            Vector3.Slerp(Vector3.up, up, 0.35f)) * go.transform.rotation;
+                    if (!liquid && b.WallLight != null && prefab.GetComponentInChildren<PathPoint>(true) != null)
+                        HangWallLight(go, prefab, b, rng);
+                    Element.Refile(go.transform);
 
                     if (go.GetComponentInChildren<Collider>() == null)
                         foreach (var mf in go.GetComponentsInChildren<MeshFilter>())
@@ -581,38 +1221,126 @@ namespace SpellyZombie
                     foreach (var a in go.GetComponentsInChildren<AbsorbSource>(true)) AddRider(a.transform, go.transform, riders);
                     foreach (var a in go.GetComponentsInChildren<Analyzable>(true)) AddRider(a.transform, go.transform, riders);
 
-                    // every placed doorway grows its own trail to the network
+                    // every placed doorway gets its trail now, to the closest road on its own biome
                     if (hasSpur)
                         foreach (var doorNow in go.GetComponentsInChildren<PathPoint>(true))
                         {
                             var dp = new Vector2(doorNow.transform.position.x,
                                 doorNow.transform.position.z);
-                            _spurs.Add((dp, NearestPath(dp, LoopDistance, out var own) ? own : spurTarget));
+                            CarveTrail(dp, NearestPath(dp, LoopDistance, out var own, b)
+                                || NearestPath(dp, LoopDistance, out own) ? own : spurTarget);
                         }
 
                     claims.Add(claim);
+                    placedKinds.Add(prefab);
                     count++;
                     total++;
                     return true;
                 }
 
-                // the Props grid fill
+                // the Props grid fill: every field rolls its prop first, then the
+                // biggest rolls are placed first and the smaller ones fill the
+                // fields left around them
                 if (hasProps)
                 {
                     int nx = Mathf.Max(1, Mathf.FloorToInt(b.Size.x / b.FieldSize));
                     int nz = Mathf.Max(1, Mathf.FloorToInt(b.Size.z / b.FieldSize));
-                    for (int iz = 0; iz < nz && count < cap; iz++)
+                    var rolls = new List<(float x, float z, GameObject prefab, float area, bool door, double tie)>(nx * nz);
+                    var areas = new Dictionary<GameObject, (float area, bool door)>();
+                    var kinds = new List<GameObject>();
+                    foreach (var prop in b.Props)
+                        if (prop != null && !areas.ContainsKey(prop))
+                        {
+                            areas[prop] = (ClaimFor(prop, Vector3.zero, 0f, b.FieldSize).Area,
+                                prop.GetComponentInChildren<PathPoint>(true) != null);
+                            kinds.Add(prop);
+                        }
+
+                    // houses first, on every field of the biome, nearest a road first:
+                    // their door trails stay short so more of them fit, and at each
+                    // spot the bigger houses are likelier to be tried first
+                    var doorKinds = new List<GameObject>();
+                    foreach (var kind in kinds) if (areas[kind].door) doorKinds.Add(kind);
+                    if (doorKinds.Count > 0)
                     {
-                        for (int ix = 0; ix < nx && count < cap; ix++)
+                        var spots = new List<(float x, float z, float dist, double tie)>(nx * nz);
+                        for (int iz = 0; iz < nz; iz++)
+                            for (int ix = 0; ix < nx; ix++)
+                            {
+                                float fx = c.x - b.Size.x * 0.5f + (ix + 0.5f) * b.FieldSize
+                                    + ((float)rng.NextDouble() - 0.5f) * b.FieldSize * 0.6f;
+                                float fz = c.y - b.Size.z * 0.5f + (iz + 0.5f) * b.FieldSize
+                                    + ((float)rng.NextDouble() - 0.5f) * b.FieldSize * 0.6f;
+                                if (rng.NextDouble() < 0.3) continue; // breathing room
+                                var fp = new Vector2(fx, fz);
+                                float roadDist = NearestPath(fp, 30f, out var roadAt, b)
+                                    ? (roadAt - fp).magnitude : float.MaxValue;
+                                spots.Add((fx, fz, roadDist, rng.NextDouble()));
+                            }
+                        spots.Sort((s1, s2) => s1.dist != s2.dist ? s1.dist.CompareTo(s2.dist) : s1.tie.CompareTo(s2.tie));
+                        var pickOrder = new List<GameObject>(doorKinds.Count);
+                        var pickKeys = new List<double>(doorKinds.Count);
+                        foreach (var spot in spots)
+                        {
+                            if (count >= cap) break;
+                            var sp = new Vector2(spot.x, spot.z);
+                            bool taken = false;
+                            foreach (var cl in claims) if (cl.Covers(sp)) { taken = true; break; }
+                            if (taken) continue;
+                            // weighted draw, key = u^(1/area): bigger houses tend to come first
+                            pickOrder.Clear();
+                            pickKeys.Clear();
+                            foreach (var house in doorKinds)
+                            {
+                                double key = System.Math.Pow(rng.NextDouble(), 1.0 / System.Math.Max(0.01, areas[house].area));
+                                int slot = 0;
+                                while (slot < pickKeys.Count && pickKeys[slot] >= key) slot++;
+                                pickOrder.Insert(slot, house);
+                                pickKeys.Insert(slot, key);
+                            }
+                            foreach (var house in pickOrder)
+                                if (TryPlace(house, spot.x, spot.z)) break;
+                        }
+                    }
+
+                    // one of the five biggest always stands here, placed before the
+                    // grid takes the room: a town is never without a house
+                    var big = new List<GameObject>(kinds);
+                    big.Sort((g1, g2) => areas[g2].area != areas[g1].area
+                        ? areas[g2].area.CompareTo(areas[g1].area)
+                        : kinds.IndexOf(g1).CompareTo(kinds.IndexOf(g2)));
+                    if (big.Count > 5) big.RemoveRange(5, big.Count - 5);
+                    bool bigStood = big.Exists(placedKinds.Contains);
+                    for (int t = 0; t < 300 && !bigStood && big.Count > 0; t++)
+                    {
+                        float gx = c.x + ((float)rng.NextDouble() - 0.5f) * b.Size.x;
+                        float gz = c.y + ((float)rng.NextDouble() - 0.5f) * b.Size.z;
+                        bigStood = TryPlace(big[rng.Next(big.Count)], gx, gz);
+                    }
+                    if (!bigStood && big.Count > 0)
+                        Debug.LogWarning($"[SpellyZombie] '{b.name}' found no room for any of its {big.Count} largest props this seed.", b);
+                    for (int iz = 0; iz < nz; iz++)
+                    {
+                        for (int ix = 0; ix < nx; ix++)
                         {
                             float wx = c.x - b.Size.x * 0.5f + (ix + 0.5f) * b.FieldSize
                                 + ((float)rng.NextDouble() - 0.5f) * b.FieldSize * 0.6f;
                             float wz = c.y - b.Size.z * 0.5f + (iz + 0.5f) * b.FieldSize
                                 + ((float)rng.NextDouble() - 0.5f) * b.FieldSize * 0.6f;
                             if (rng.NextDouble() < 0.3) continue; // breathing room
-                            TryPlace(b.Props[rng.Next(b.Props.Length)], wx, wz);
+                            var pick = b.Props[rng.Next(b.Props.Length)];
+                            if (pick == null) continue;
+                            if (!areas.TryGetValue(pick, out var ad))
+                                areas[pick] = ad = (ClaimFor(pick, Vector3.zero, 0f, b.FieldSize).Area,
+                                    pick.GetComponentInChildren<PathPoint>(true) != null);
+                            rolls.Add((wx, wz, pick, ad.area, ad.door, rng.NextDouble()));
                         }
                     }
+                    // houses first, so their trails exist before anything else lands
+                    rolls.Sort((p, q) => p.door != q.door ? q.door.CompareTo(p.door)
+                        : p.area != q.area ? q.area.CompareTo(p.area) : p.tie.CompareTo(q.tie));
+                    for (int r = 0; r < rolls.Count && count < cap; r++)
+                        TryPlace(rolls[r].prefab, rolls[r].x, rolls[r].z);
                 }
 
                 // sources: riders get revealed, standalones get spawned, at
@@ -656,13 +1384,40 @@ namespace SpellyZombie
                         float wz = c.y + ((float)rng.NextDouble() - 0.5f) * b.Size.z;
                         stood = TryPlace(b.Cauldron, wx, wz);
                     }
-                    if (!stood)
-                        Debug.LogWarning($"[SpellyZombie] '{b.name}' won a cauldron but found no ground for it.", b);
+                    if (!stood) lostPots++;
+                }
+                placers.Add(new Placer { B = b, Place = TryPlace, Riders = riders });
+            }
+
+            // a winner with no room hands its pot on: another biome with a
+            // Cauldron slot takes it, so the map keeps its count
+            var spare = new List<Placer>();
+            foreach (var p in placers)
+                if (p.B.Cauldron != null && !_potWinners.Contains(p.B)) spare.Add(p);
+            while (lostPots > 0 && spare.Count > 0)
+            {
+                int pick = rng.Next(spare.Count);
+                var p = spare[pick];
+                spare.RemoveAt(pick);
+                Vector2 pc = CenterOf(p.B);
+                for (int t = 0; t < 80; t++)
+                {
+                    float wx = pc.x + ((float)rng.NextDouble() - 0.5f) * p.B.Size.x;
+                    float wz = pc.y + ((float)rng.NextDouble() - 0.5f) * p.B.Size.z;
+                    if (!p.Place(p.B.Cauldron, wx, wz)) continue;
+                    _potWinners.Add(p.B);
+                    lostPots--;
+                    break;
                 }
             }
+            if (lostPots > 0)
+                Debug.LogWarning($"[SpellyZombie] {lostPots} cauldron(s) found no ground in any biome with a Cauldron slot.", this);
+            EnsureEveryAbsorbable(root, placers, rng);
             return total;
         }
 
+        // the path brush starts showing at this mask weight, so nothing may stand past it
+        const float PathShowsAt = 0.3f;
         float[,] _maskRef, _heightsRef;
         int _resRef;
         float _worldRef, _rangeRef, _baseRef;
@@ -732,24 +1487,37 @@ namespace SpellyZombie
                     Gizmos.DrawLine(line[i - 1], line[i]);
         }
 
-        /// The nearest point of the path network within reach: a widening
-        /// ring scan over the bed mask. Entrances face this; spurs grow to it.
-        bool NearestPath(Vector2 at, float maxR, out Vector2 hit)
+        /// The closest road point within reach, read cell by cell from the road
+        /// mask in growing squares (door trails are not roads). Entrances face
+        /// this; trails grow to it. 'inside' keeps the search to roads on that
+        /// biome's own ground.
+        bool NearestPath(Vector2 at, float maxR, out Vector2 hit, Biome inside = null)
         {
             hit = default;
             if (_maskRef == null) return false;
-            for (float r = 3f; r <= maxR; r += 3f)
-            {
-                for (int k = 0; k < 16; k++)
+            int res = _resRef;
+            float step = _worldRef / (res - 1);
+            int cx = Mathf.RoundToInt((at.x - _west) / step), cz = Mathf.RoundToInt((at.y - _south) / step);
+            int reach = Mathf.CeilToInt(maxR / step);
+            float best = float.MaxValue;
+            for (int k = 0; k <= reach && k * step <= best; k++)
+                for (int dz = -k; dz <= k; dz++)
                 {
-                    float ang = k / 16f * Mathf.PI * 2f;
-                    Vector2 p = at + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * r;
-                    int qx = Mathf.Clamp(Mathf.RoundToInt((p.x - _west) / _worldRef * (_resRef - 1)), 0, _resRef - 1);
-                    int qz = Mathf.Clamp(Mathf.RoundToInt((p.y - _south) / _worldRef * (_resRef - 1)), 0, _resRef - 1);
-                    if (_maskRef[qz, qx] > 0.6f) { hit = p; return true; }
+                    int z = cz + dz;
+                    if (z < 0 || z >= res) continue;
+                    bool rim = dz == -k || dz == k; // the square ring: whole top and bottom rows, only the ends between
+                    for (int dx = -k; dx <= k; dx += rim ? 1 : 2 * k)
+                    {
+                        int x = cx + dx;
+                        if (x < 0 || x >= res || _maskRef[z, x] <= 0.6f) continue;
+                        Vector2 p = new Vector2(_west + x * step, _south + z * step);
+                        float d = (p - at).magnitude;
+                        if (d >= best || d > maxR) continue;
+                        if (inside != null && WinnerAt(p.x, p.y) != inside) continue;
+                        best = d; hit = p;
+                    }
                 }
-            }
-            return false;
+            return best < float.MaxValue;
         }
 
         /// When selected, draws the shuffled layout: colored boxes with names.
@@ -831,7 +1599,6 @@ namespace SpellyZombie
             var own = new List<Biome>();
             var ring = new List<float>();     // >0 = this node is a roundabout
             var joinWeb = new List<bool>();
-            _reserved.Clear();
 
             // authored PathNodes first: a biome containing any gets no auto
             // nodes; nodes ride their biome's shuffle
@@ -986,7 +1753,7 @@ namespace SpellyZombie
                 CarveRoute(heights, mask, res, world, heightRange, route);
             }
 
-            // ROUNDABOUTS: the ring path itself + the keep-clear plaza inside
+            // ROUNDABOUTS: the ring is a road; the inside fills like any ground
             for (int i = 0; i < pts.Count; i++)
             {
                 if (ring[i] <= 0f) continue;
@@ -997,9 +1764,6 @@ namespace SpellyZombie
                     circle.Add(pts[i] + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * ring[i]);
                 }
                 CarveRoute(heights, mask, res, world, heightRange, circle);
-                float side = Mathf.Max(1f, (ring[i] - 1.2f) * 2f);
-                _reserved.Add(new Bounds(new Vector3(pts[i].x, 0f, pts[i].y),
-                    new Vector3(side, 400f, side)));
             }
             return mask;
         }
@@ -1121,8 +1885,9 @@ namespace SpellyZombie
             return (p - (a + ab * t)).magnitude;
         }
 
-        void CarveRoute(float[,] heights, float[,] mask, int res, float world, float heightRange,
-            List<Vector2> route)
+        /// Stamps a route into the heights and the mask; returns the cells it touched.
+        RectInt CarveRoute(float[,] heights, float[,] mask, int res, float world, float heightRange,
+            List<Vector2> route, bool[,] keep = null)
         {
             float step = world / (res - 1);
 
@@ -1146,7 +1911,7 @@ namespace SpellyZombie
                 for (int k = 0; k < n; k++) pts.Add(Vector2.Lerp(route[i], route[i + 1], k / (float)n));
             }
             pts.Add(route[route.Count - 1]);
-            if (pts.Count < 2) return;
+            if (pts.Count < 2) return default;
 
             // relax the line to the PathSlope grade
             var lineH = new float[pts.Count];
@@ -1170,11 +1935,12 @@ namespace SpellyZombie
                     line[i] = new Vector3(pts[i].x,
                         _baseRef + lineH[i] * heightRange + 0.35f, pts[i].y);
                 _routeLog.Add(line);
-                return; // preview never stamps
+                return default; // preview never stamps
             }
 
             // stamp: flat bed; shoulder width grows with cut/fill depth
             float half = PathWidth * 0.5f;
+            int minX = res, minZ = res, maxX = -1, maxZ = -1;
             for (int i = 0; i < pts.Count; i++)
             {
                 float depth = Mathf.Abs(lineH[i] - terrH[i]) * heightRange;
@@ -1194,11 +1960,15 @@ namespace SpellyZombie
                         if (d > shoulder) continue;
                         float w = d <= half ? 1f
                             : Mathf.SmoothStep(1f, 0f, (d - half) / (shoulder - half));
+                        if (keep != null && keep[z, x]) continue; // a placed thing keeps its ground
                         heights[z, x] = Mathf.Lerp(heights[z, x], lineH[i], w);
                         if (w > mask[z, x]) mask[z, x] = w; // full soft ribbon
+                        minX = Mathf.Min(minX, x); maxX = Mathf.Max(maxX, x);
+                        minZ = Mathf.Min(minZ, z); maxZ = Mathf.Max(maxZ, z);
                     }
                 }
             }
+            return maxX < 0 ? default : new RectInt(minX, minZ, maxX - minX + 1, maxZ - minZ + 1);
         }
 
         float SampleH(float[,] heights, int res, float world, Vector2 p)
@@ -1260,7 +2030,7 @@ namespace SpellyZombie
                 if (win != null && win.PathLayer != null)
                 {
                     pathIdx = layers.IndexOf(win.PathLayer);
-                    pathW = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 0.8f, MaskAt(fx, fz)));
+                    pathW = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(PathShowsAt, 0.8f, MaskAt(fx, fz)));
                 }
 
                 float cliffW = 0f;

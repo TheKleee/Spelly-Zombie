@@ -9,12 +9,16 @@ namespace SpellyZombie
     /// the top-right status line is an always-on readout, not a control.
     public class NetGame : MonoBehaviour
     {
+        /// Asks FishNet's list directly: InstanceFinder logs on every call while
+        /// no NetworkManager is open (a map played straight from the editor).
+        public static bool HasManager => FishNet.Managing.NetworkManager.Instances.Count > 0;
+
         public static bool Connected =>
-            InstanceFinder.NetworkManager != null &&
+            HasManager &&
             (InstanceFinder.ServerManager.Started || InstanceFinder.ClientManager.Started);
 
         public static bool IsHost =>
-            InstanceFinder.NetworkManager != null && InstanceFinder.ServerManager.Started;
+            HasManager && InstanceFinder.ServerManager.Started;
 
         /// Host-authoritative law: solo and the host simulate; clients ship intents (netcode §0).
         public static bool IsAuthority => !Connected || IsHost;
@@ -61,7 +65,7 @@ namespace SpellyZombie
 
         void LateUpdate()
         {
-            bool sceneOk = InstanceFinder.NetworkManager != null
+            bool sceneOk = HasManager
                 && !GameMenu.IsOpen && !PoseStudio.IsOpen
                 // the MAIN MENU has its own Create/Find Server buttons - this panel belongs to lobby + game
                 && ActiveScene.Name != "Menu";
@@ -132,7 +136,7 @@ namespace SpellyZombie
             int players = NetSync.RemoteCount + 1;
             if (players == _shownPlayers && IsHost == _shownHost) return;
             _shownPlayers = players; _shownHost = IsHost;
-            string line = $"● {(IsHost ? "HOSTING" : "CONNECTED")}, {players} player(s)";
+            string line = Loc.F(IsHost ? "net.hosting" : "net.connected", players);
             if (_status != null) _status.text = line;
             if (_statusCorner != null) _statusCorner.text = line;
         }
@@ -144,12 +148,21 @@ namespace SpellyZombie
             int likes = NetSync.LikeCount(map);
             if (map == _shownMap && likes == _shownLikes) return;
             _shownMap = map; _shownLikes = likes;
-            _mapLabel.text = likes > 0 ? $"MAP: {map} · ♥{likes}" : $"MAP: {map}";
+            _mapLabel.text = likes > 0 ? Loc.F("net.maplikes", map, likes) : Loc.F("net.map", map);
+        }
+
+        /// LAN rides Tugboat, one road of the Multipass on the NetworkManager.
+        static void UseLan()
+        {
+            var nm = InstanceFinder.NetworkManager;
+            var mp = nm != null ? nm.GetComponent<FishNet.Transporting.Multipass.Multipass>() : null;
+            if (mp != null) mp.SetClientTransport<FishNet.Transporting.Tugboat.Tugboat>();
         }
 
         void Host()
         {
             HostPassword = _password ?? "";
+            UseLan();
             InstanceFinder.ServerManager.StartConnection();
             InstanceFinder.ClientManager.StartConnection();
         }
@@ -157,6 +170,7 @@ namespace SpellyZombie
         void Join()
         {
             JoinPassword = _password ?? "";
+            UseLan();
             InstanceFinder.ClientManager.StartConnection(_address);
         }
 
@@ -204,31 +218,33 @@ namespace SpellyZombie
             // left: who is here, ready ticks, kick and ban
             var ph = UIKit.Label(_ui, Loc.T("stand.players"), 15, new Color(1f, 0.92f, 0.75f), TextAnchor.MiddleLeft, true);
             UIKit.Place((RectTransform)ph.transform, new Vector2(0f, 1f), new Vector2(16f, -64f), new Vector2(200f, 20f));
-            float y = -90f;
-            RosterRow(SteamLobby.SteamReady ? Steamworks.SteamFriends.GetPersonaName() + " (you)" : "you",
-                MatchLobby.LocalReady, -1, 0UL, ref y);
+            // the list scrolls: a lobby holds as many as the host allows
+            var roster = UIKit.Scroll(_ui, "Roster", 284f, 430f, 0f);
+            UIKit.Place((RectTransform)roster.parent, new Vector2(0f, 1f), new Vector2(0f, -88f), new Vector2(284f, 430f));
+            int row = 0;
+            RosterRow(roster, row++, SteamLobby.SteamReady ? Steamworks.SteamFriends.GetPersonaName() + " (you)" : "you",
+                MatchLobby.LocalReady, -1, 0UL);
             foreach (var id in NetSync.RemoteIds)
             {
                 NetSync.IdentityOf(id, out string pname, out ulong sid);
-                RosterRow(string.IsNullOrEmpty(pname) ? $"player {id}" : pname,
-                    MatchLobby.IsReady(id), id, sid, ref y);
+                RosterRow(roster, row++, string.IsNullOrEmpty(pname) ? $"player {id}" : pname,
+                    MatchLobby.IsReady(id), id, sid);
             }
-            y -= 8f;
+            UIKit.Gap(roster, 8f);
             foreach (var ban in BanList.All)
             {
-                if (y < -520f) break;
-                var lbl = UIKit.Label(_ui, Loc.F("stand.banned", ban.Value), 12,
+                var line = UIKit.Row(UIKit.Group(roster, "Ban" + row++), 284f, 28f);
+                var lbl = UIKit.Label(line, Loc.F("stand.banned", ban.Value), 12,
                     new Color(1f, 0.55f, 0.5f), TextAnchor.MiddleLeft);
-                UIKit.Place((RectTransform)lbl.transform, new Vector2(0f, 1f), new Vector2(16f, y - 2f), new Vector2(170f, 18f));
+                UIKit.Place((RectTransform)lbl.transform, new Vector2(0f, 1f), new Vector2(16f, -2f), new Vector2(170f, 18f));
                 ulong sid = ban.Key;
-                LobbyBrowserUI.Chip(_ui, 192f, y, 88f, Loc.T("stand.unban"), false,
+                LobbyBrowserUI.Chip(line, 192f, 0f, 88f, Loc.T("stand.unban"), false,
                     () => { BanList.Unban(sid); BuildUI(); });
-                y -= 28f;
             }
 
             // right: the match settings and the big verbs
             float rx = 310f, ry = -64f;
-            LobbyBrowserUI.ArrowRow(_ui, rx, ry, 270f, $"MAP: {MatchLobby.SelectedMap}",
+            LobbyBrowserUI.ArrowRow(_ui, rx, ry, 270f, Loc.F("net.map", MatchLobby.SelectedMap),
                 () => { MatchLobby.CycleMap(-1); BuildUI(); },
                 () => { MatchLobby.CycleMap(1); BuildUI(); });
             ry -= 30f;
@@ -269,26 +285,28 @@ namespace SpellyZombie
             var closeBtn = UIKit.Button(_ui, Loc.T("stand.delete"), SteamLobby.DeleteLobby,
                 skin != null ? skin.ButtonRed : null, 14);
             UIKit.Place((RectTransform)closeBtn.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(270f, 36f));
+            ry -= 44f;
+            LobbyBrowserUI.MapPicture(_ui, rx, ry, 270f);
         }
 
-        void RosterRow(string name, bool ready, int clientId, ulong steamId, ref float y)
+        void RosterRow(RectTransform list, int index, string name, bool ready, int clientId, ulong steamId)
         {
-            var lbl = UIKit.Label(_ui, (ready ? "OK " : "-- ") + name, 14,
+            var line = UIKit.Row(UIKit.Group(list, "Roster" + index), 284f, 28f);
+            var lbl = UIKit.Label(line, (ready ? "OK " : "-- ") + name, 14,
                 ready ? new Color(0.6f, 1f, 0.65f) : new Color(0.95f, 0.93f, 0.85f), TextAnchor.MiddleLeft);
-            UIKit.Place((RectTransform)lbl.transform, new Vector2(0f, 1f), new Vector2(16f, y - 2f), new Vector2(150f, 18f));
+            UIKit.Place((RectTransform)lbl.transform, new Vector2(0f, 1f), new Vector2(16f, -2f), new Vector2(150f, 18f));
             if (clientId >= 0)
             {
                 int cid = clientId;
                 ulong sid = steamId;
                 string pname = name;
-                LobbyBrowserUI.Chip(_ui, 170f, y, 54f, Loc.T("stand.kick"), false, () => NetSync.Kick(cid));
-                LobbyBrowserUI.Chip(_ui, 230f, y, 50f, Loc.T("stand.ban"), false, () =>
+                LobbyBrowserUI.Chip(line, 170f, 0f, 54f, Loc.T("stand.kick"), false, () => NetSync.Kick(cid));
+                LobbyBrowserUI.Chip(line, 230f, 0f, 50f, Loc.T("stand.ban"), false, () =>
                 {
                     BanList.Ban(sid, pname);
                     NetSync.Kick(cid);
                 });
             }
-            y -= 28f;
         }
 
         // ---- alone at the stand: the two-tab screen ----
@@ -319,15 +337,13 @@ namespace SpellyZombie
             else
                 LobbyBrowserUI.BuildJoinView(_ui, 20f, -56f, 560f, 6);
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-            // dev LAN row: never in release builds
+            // the LAN road: a second build, a VPN, a port forward - H hosts, J joins
             _addrField = UIKit.Input(_ui, _address, v => _address = v);
             UIKit.Place((RectTransform)_addrField.transform, new Vector2(0f, 1f), new Vector2(20f, -590f), new Vector2(140f, 22f));
-            var lanH = UIKit.Button(_ui, "LAN H", Host, skin != null ? skin.ButtonGrey : null, 11);
-            UIKit.Place((RectTransform)lanH.transform, new Vector2(0f, 1f), new Vector2(168f, -588f), new Vector2(56f, 22f));
-            var lanJ = UIKit.Button(_ui, "LAN J", Join, skin != null ? skin.ButtonGrey : null, 11);
-            UIKit.Place((RectTransform)lanJ.transform, new Vector2(0f, 1f), new Vector2(230f, -588f), new Vector2(56f, 22f));
-#endif
+            var lanH = UIKit.Button(_ui, Loc.T("stand.lanhost"), Host, skin != null ? skin.ButtonGrey : null, 11);
+            UIKit.Place((RectTransform)lanH.transform, new Vector2(0f, 1f), new Vector2(168f, -588f), new Vector2(84f, 22f));
+            var lanJ = UIKit.Button(_ui, Loc.T("stand.lanjoin"), Join, skin != null ? skin.ButtonGrey : null, 11);
+            UIKit.Place((RectTransform)lanJ.transform, new Vector2(0f, 1f), new Vector2(258f, -588f), new Vector2(84f, 22f));
         }
     }
 }

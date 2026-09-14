@@ -110,7 +110,10 @@ namespace SpellyZombie
         {
             if (Spent) return;
             Spent = true;
-            if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, transform.position);
+            // the same look as the absorber's screen
+            if (AbsorbFx != null) Instantiate(AbsorbFx, transform.position, Quaternion.identity);
+            else if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, transform.position);
+            Juice.Chime(transform.position);
             Depart();
         }
 
@@ -128,7 +131,10 @@ namespace SpellyZombie
             bool lobby = ActiveScene.Name == "Lobby";
             if (!lobby && Remains != null)
             {
-                Instantiate(Remains, transform.position, transform.rotation, transform.parent);
+                // the same name and path on every machine, so hits on it agree
+                var left = Instantiate(Remains, transform.position, transform.rotation, transform.parent);
+                left.name = $"{name}#remains";
+                Element.Refile(left.transform);
                 Destroy(gameObject);
                 return;
             }

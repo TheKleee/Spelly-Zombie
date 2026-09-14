@@ -84,10 +84,8 @@ Salon is the French word for a game lobby.
 | stand.hostpublic | CREATE PUBLIC LOBBY | CRÉER UN SALON PUBLIC | CREATE A PUBLIC LOBBY | |
 | stand.pw | password (optional) | mot de passe (facultatif) | password (optional) | |
 | stand.code | entry code (optional) | code d'entrée (facultatif) | entry code (optional) | |
-| stand.botmatch | test match vs a bot | partie d'essai contre un bot | trial game against a bot | |
 | stand.hint | walk away to close | éloigne-toi pour fermer | move away to close | |
 | stand.map | change map | changer de carte | change map | |
-| stand.seed | seed | graine | seed | |
 | stand.share | acolytes at least {0}% | acolytes au moins {0}% | acolytes at least {0}% | |
 | stand.setcode | set code | définir le code | define the code | |
 | stand.readycall | ready check | tout le monde est prêt ? | everyone is ready? | |
@@ -160,3 +158,43 @@ Salon is the French word for a game lobby.
 | opt.on | On | Activé | activated |  |
 | opt.music | Music: {0}% | Musique : {0}% | music: {0}% | space before the colon |
 | opt.sfx | Sounds: {0}% | Sons : {0}% | sounds: {0}% | space before the colon |
+| seal.norune | no rune here to seal. aim at one of your runes | pas de rune à sceller ici. vise une de tes runes | no rune to seal here. aim at one of your runes |  |
+| seal.noink | not enough ink for the seal | pas assez d'encre pour le sceau | not enough ink for the seal |  |
+| rune.noink | not enough ink to finish the rune | pas assez d'encre pour finir la rune | not enough ink to finish the rune |  |
+| round.safe | THE LOBBY IS SAFE GROUND | LE SALON EST UN LIEU SÛR | the lobby is a safe place | salon = lobby, as in the rest of the file |
+| round.versus | WIZARDS vs ACOLYTES | MAGES contre ACOLYTES | wizards against acolytes |  |
+| round.wizards | WIZARDS WIN | LES MAGES GAGNENT | the wizards win |  |
+| round.acolytes | ACOLYTES WIN | LES ACOLYTES GAGNENT | the acolytes win |  |
+| round.home | {0}. back to the lobby in {1} | {0}. retour au salon dans {1} | {0}. return to the lobby in {1} | {1} is seconds |
+| round.pot |  · pot {0}% |  · chaudron {0}% | cauldron {0}% |  |
+| round.green |  · the pot is GREEN |  · le chaudron est VERT | the cauldron is GREEN |  |
+| gate.accepts | THE GATE ACCEPTS | LA PORTE ACCEPTE | the gate accepts |  |
+| net.hostleft | THE HOST LEFT | L'HÔTE EST PARTI | the host has left |  |
+| net.hosting | ● HOSTING, {0} player(s) | ● HÔTE, {0} joueur(s) | host, {0} player(s) |  |
+| net.connected | ● CONNECTED, {0} player(s) | ● CONNECTÉ, {0} joueur(s) | connected, {0} player(s) |  |
+| net.map | MAP: {0} | CARTE : {0} | map : {0} | space before the colon, French typography |
+| net.maplikes | MAP: {0} · ♥{1} | CARTE : {0} · ♥{1} | map : {0} · ♥{1} |  |
+| steam.offline | Steam not running, offline & LAN only | Steam n'est pas lancé, hors ligne et LAN seulement | Steam not is launched, offline and LAN only |  |
+| steam.ready | Steam ready: {0} | Steam prêt : {0} | Steam ready : {0} | {0} is the Steam name |
+| steam.leavefirst | leave your lobby first | quitte d'abord ton salon | leave first your lobby |  |
+| steam.ping | your ping to that host is {0}ms, lobby allows {1} | ton ping vers cet hôte est de {0} ms, le salon permet {1} | your ping toward that host is of {0} ms, the lobby allows {1} |  |
+| steam.joining | joining… | entrée en cours… | entry in progress… |  |
+| steam.deleted | lobby deleted | salon supprimé | lobby deleted |  |
+| steam.notrunning | Steam not running | Steam n'est pas lancé | Steam not is launched |  |
+| steam.creating | creating lobby… | création du salon… | creation of the lobby… |  |
+| steam.failed | lobby failed: {0} | le salon a échoué : {0} | the lobby has failed : {0} | {0} is a Steam error code |
+| steam.noenter | couldn't enter the lobby | impossible d'entrer dans le salon | impossible to enter into the lobby |  |
+| steam.nohost | lobby has no host, try again | le salon n'a pas d'hôte, réessaie | the lobby not has host, retry |  |
+| steam.connecting | joined, connecting… | dedans, connexion… | inside, connection… |  |
+| steam.private | PRIVATE LOBBY, invite friends | SALON PRIVÉ, invite tes amis | private lobby, invite your friends |  |
+| steam.public | PUBLIC LOBBY, listed | SALON PUBLIC, dans la liste | public lobby, in the list |  |
+| menu.tagline | draw fast. die funny. | dessine vite. meurs drôlement. | draw fast. die funnily. |  |
+| menu.close | Close | Fermer | close |  |
+| chip.pages | turn the pages | tourner les pages | turn the pages | the mouse wheel turns the grimoire pages |
+| round.potopens |  · pot opens in {0} |  · le chaudron s'ouvre dans {0} | the cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · ink in flight {0} |  · encre en vol {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| stand.lanhost | LAN host | héberger en LAN | host on LAN | book stand, the LAN row: host over the local network |
+| stand.lanjoin | LAN join | rejoindre en LAN | join on LAN | book stand, the LAN row: join the address in the field |
+| opt.uiscale | UI size: {0}% | Taille de l'interface : {0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
+| stand.nocap | no cap | sans limite | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | your connection carries everyone | ta connexion porte tout le monde | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |

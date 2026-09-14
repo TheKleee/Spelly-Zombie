@@ -1,68 +1,73 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// A throw locks onto the enemy nearest the aim, inside a cone and in
-    /// view, and flies into it. A hidden acolyte is a prop to the hand too.
+    /// Where a flying spell or a thrown thing is drawn to: the nearest enemy
+    /// in range that is still ahead of it. A hidden acolyte is a prop here too.
     public static class LockOn
     {
-        static readonly RaycastHit[] _hits = new RaycastHit[8];
+        static readonly Dictionary<int, float> _lift = new Dictionary<int, float>();
+        static float _liftClearAt;
 
-        /// The lock for a throw from 'from' along 'dir', or null. 'thrower' and
-        /// 'thrown' are skipped by the sight check (the hand and what it holds).
-        public static Transform Pick(Vector3 from, Vector3 dir, int ownerId, Transform thrower, Transform thrown)
+        /// The nearest enemy of `ownerId` within `range` of `from` that lies
+        /// ahead along `vel` (nothing pulls a mote back to what it passed),
+        /// and where on it to aim. Null when there is none.
+        public static Transform Nearest(Vector3 from, Vector3 vel, int ownerId, float range, out float lift)
         {
-            if (dir.sqrMagnitude < 0.01f) return null;
-            dir.Normalize();
             Team mine = Teams.OfOwner(ownerId);
-            float range = DrawingConfig.ThrowLockRange;
-            float bestDot = Mathf.Cos(DrawingConfig.ThrowLockCone * Mathf.Deg2Rad);
+            float bestSqr = range * range;
             Transform best = null;
+            lift = 0.9f;
 
-            void Consider(Transform t, Component c)
+            void Consider(Transform t, Team theirs)
             {
-                if (t == null || !Teams.Enemies(mine, Teams.Of(c))) return;
-                Vector3 to = t.position + Vector3.up * 0.9f - from;
-                float d = to.magnitude;
-                if (d < 0.5f || d > range) return;
-                Vector3 n = to / d;
-                float dot = Vector3.Dot(n, dir);
-                if (dot <= bestDot) return;
-                if (!Clear(from, n, d, t, thrower, thrown)) return;
-                bestDot = dot;
+                if (t == null || theirs == mine) return; // three teams, all against each other
+                Vector3 to = t.position - from;
+                float d = to.sqrMagnitude;
+                if (d >= bestSqr) return;
+                if (vel.sqrMagnitude > 0.01f && Vector3.Dot(to, vel) < 0f) return;
+                bestSqr = d;
                 best = t;
             }
 
             foreach (var p in SimpleFPSController.All)
             {
-                if (p == null || p.IsDowned) continue;
-                if (thrower != null && p.transform == thrower) continue;
-                if (ShapeShift.Disguised(p)) continue;
-                Consider(p.transform, p);
+                if (p == null || p.IsDowned || ShapeShift.Disguised(p)) continue;
+                Consider(p.transform, Teams.Of(p));
             }
-            foreach (var z in Zombie.All) if (z != null) Consider(z.transform, z);
-            foreach (var g in Golem.All) if (g != null && g.Alive) Consider(g.transform, g);
+            foreach (var a in NetAvatar.All)
+                if (a != null && !a.Downed && !a.Disguised) Consider(a.transform, Teams.OfOwner(NetSync.OwnerIdOf(a.Id)));
+            foreach (var z in Zombie.All) if (z != null) Consider(z.transform, Team.Acolyte);
+            foreach (var g in Golem.All) if (g != null && g.Alive) Consider(g.transform, Teams.OfOwner(g.OwnerId));
+            if (best != null) lift = AimHeight(best);
             return best;
         }
 
-        static bool Clear(Vector3 from, Vector3 dir, float len, Transform target, Transform thrower, Transform thrown)
+        /// How far above its root a body's middle sits: the middle of its solid
+        /// colliders, else of what it renders, else chest height. Remembered per
+        /// body, so a flying spell never walks a hierarchy every frame.
+        public static float AimHeight(Transform t)
         {
-            int n = Physics.RaycastNonAlloc(from, dir, _hits, len,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-            float nearest = float.MaxValue;
-            Collider blocker = null;
-            for (int i = 0; i < n; i++)
+            if (Time.time >= _liftClearAt) { _lift.Clear(); _liftClearAt = Time.time + 30f; }
+            int id = t.GetInstanceID();
+            if (_lift.TryGetValue(id, out float h)) return h;
+            bool any = false;
+            var b = new Bounds();
+            foreach (var c in t.GetComponentsInChildren<Collider>())
             {
-                var h = _hits[i];
-                if (h.collider == null) continue;
-                var t = h.collider.transform;
-                if (thrower != null && t.IsChildOf(thrower)) continue;
-                if (thrown != null && t.IsChildOf(thrown)) continue;
-                if (h.distance < nearest) { nearest = h.distance; blocker = h.collider; }
+                if (c == null || c.isTrigger) continue;
+                if (!any) { b = c.bounds; any = true; } else b.Encapsulate(c.bounds);
             }
-            if (blocker == null || blocker.transform.IsChildOf(target)) return true;
-            var shell = ZombieOwner.From(blocker); // a zombie's paint shell sits outside its hierarchy
-            return shell != null && shell.transform == target;
+            if (!any)
+                foreach (var r in t.GetComponentsInChildren<Renderer>())
+                {
+                    if (r == null || r is TrailRenderer || r is LineRenderer || r is ParticleSystemRenderer) continue;
+                    if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
+                }
+            h = any ? Mathf.Max(0.05f, b.center.y - t.position.y) : 0.9f;
+            _lift[id] = h;
+            return h;
         }
     }
 }

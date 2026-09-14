@@ -23,8 +23,8 @@ namespace SpellyZombie
         /// An acolyte with nothing stored gets no third person - that view IS
         /// the disguise camera. The controller's Tab toggle consults this.
         public static bool ThirdPersonAllowed =>
-            Sides.Of(Grimoire.LocalPlayerId) != Side.Acolyte
-            || (Local != null && Local._storedShape != null);
+            !Forced && (Sides.Of(Grimoire.LocalPlayerId) != Side.Acolyte
+            || (Local != null && Local._storedShape != null));
 
         static ShapeShift Local;
 
@@ -85,6 +85,62 @@ namespace SpellyZombie
                 && (t == s._worn.transform || t.IsChildOf(s._worn.transform))) return true;
             return s._storedShape != null && t == s._storedShape;
         }
+
+        /// A prop lent by a biome, addressed the same on every machine.
+        public static string LentKey(Biome home, int index) =>
+            "@" + index + "@" + ScenePath.Of(home.transform);
+
+        /// The object a shape address names on this machine, and the biome
+        /// that raised it. Addresses are a ScenePath or a LentKey.
+        public static Transform ResolveShape(string key, out Biome home)
+        {
+            home = null;
+            if (string.IsNullOrEmpty(key)) return null;
+            if (key[0] == '@')
+            {
+                int at = key.IndexOf('@', 1);
+                if (at < 0 || !int.TryParse(key.Substring(1, at - 1), out int index)) return null;
+                var holder = ScenePath.Find(key.Substring(at + 1));
+                home = holder != null ? holder.GetComponent<Biome>() : null;
+                if (home == null || home.Props == null || index < 0 || index >= home.Props.Length) return null;
+                return home.Props[index] != null ? home.Props[index].transform : null;
+            }
+            var found = ScenePath.Find(key);
+            if (found == null) return null;
+            home = SpellyMap.BiomeAt(found.transform.position);
+            return found.transform;
+        }
+
+        /// A look-only copy of an object: its renderers and look driver,
+        /// nothing that acts. The local disguise and a remote one both use it.
+        public static GameObject CloneShape(Transform source, Transform parent)
+        {
+            var worn = Instantiate(source.gameObject, parent);
+            worn.name = "WornShape";
+
+            // strip lights. UniversalAdditionalLightData depends on Light, so
+            // destroy the rider first or Unity refuses
+            foreach (var l in worn.GetComponentsInChildren<Light>(true))
+            {
+                var rider = l.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>();
+                if (rider != null) Destroy(rider);
+                Destroy(l);
+            }
+
+            foreach (var c in worn.GetComponentsInChildren<Component>(true))
+            {
+                if (c is Transform || c is Renderer || c is MeshFilter) continue;
+                if (c is Light) continue; // handled above, in dependency order
+                if (c is UnityEngine.Rendering.Universal.UniversalAdditionalLightData) continue;
+                // the look driver stays - without it a StateView-painted thing
+                // (absorbable motes included) wears back to bare white and the
+                // disguise gives itself away. Instantiate froze its values at
+                // scan time, which is exactly what a disguise should show.
+                if (c is StateView) continue;
+                Destroy(c);
+            }
+            return worn;
+        }
         Quaternion _wornRot = Quaternion.identity; // WORLD rotation - a barrel must not spin when you strafe
         readonly Quaternion[] _slots = new Quaternion[10];
         readonly bool[] _slotUsed = new bool[10];
@@ -106,7 +162,22 @@ namespace SpellyZombie
             if (kb == null || UIKit.Typing || GameMenu.IsOpen || PoseStudio.IsOpen) return;
             if (_pilot == null) return;
 
-            bool acolyte = Sides.Of(Grimoire.LocalPlayerId) == Side.Acolyte;
+            // the transformation ink: worn against your will for a few seconds, no keys
+            if (Time.time < _forcedUntil)
+            {
+                if (!SimpleFPSController.ThirdPersonActive) _pilot.EnterThirdPerson();
+                if (!LocalIsShaped && _storedShape != null) BecomeObject(_storedShape);
+                return;
+            }
+            if (_forcedUntil > 0f)
+            {
+                _forcedUntil = 0f;
+                Unwear(puff: false);
+                if (SimpleFPSController.ThirdPersonActive) _pilot.ToggleThirdPerson();
+            }
+
+            // the book in hand decides: the Life curse hands a wizard the acolyte's
+            bool acolyte = Grimoires.HeldBy(Grimoire.LocalPlayerId) == BookKind.Acolyte;
             if (!acolyte)
             {
                 if (LocalIsShaped) Unwear(); // switching sides sheds the disguise
@@ -125,11 +196,15 @@ namespace SpellyZombie
                 && !SimpleFPSController.ThirdPersonActive)
             {
                 var home = MyHomeBiome();
-                var pick = home != null && home.Props != null && home.Props.Length > 0
-                    ? home.Props[Random.Range(0, home.Props.Length)] : null;
+                int pickAt = home != null && home.Props != null && home.Props.Length > 0
+                    ? Random.Range(0, home.Props.Length) : -1;
+                var pick = pickAt >= 0 ? home.Props[pickAt] : null;
                 if (pick != null)
                 {
                     _storedShape = pick.transform; // a prefab clones fine as a source
+                    _storedKey = LentKey(home, pickAt);
+                    _storedHome = home;
+                    _storedHomeAt = home.transform.position;
                     var r = pick.GetComponentInChildren<Renderer>();
                     _storedGroundOffset = r != null ? r.bounds.extents.y : 0.25f;
                     DrawingWorld.Instance?.LogEvent("your home lends you a shape");
@@ -150,6 +225,9 @@ namespace SpellyZombie
                     if (found != null)
                     {
                         _storedShape = found;
+                        _storedKey = ScenePath.Of(found);
+                        _storedHome = SpellyMap.BiomeAt(found.position);
+                        _storedHomeAt = found.position;
                         _storedGroundOffset = CenterHeightAboveGround(found);
                         DrawingWorld.Instance?.LogEvent("the room lends you a shape");
                     }
@@ -295,6 +373,12 @@ namespace SpellyZombie
             Vector3 c = _worn.transform.TransformPoint(_wornCenterLocal);
             _worn.transform.position += TargetCenterWorld() - c;
 
+            // a turned or re-seated shape reaches everyone, a few times a second at most
+            if (Time.time >= _sentAt + 0.15f
+                && (Quaternion.Angle(_wornRot, _sentRot) > 1f
+                    || Mathf.Abs(TargetCenterWorld().y - transform.position.y - _sentLift) > 0.05f))
+                PushDisguise(true);
+
             // pose mode: pinned body, free cursor - runs after the controller, so it sticks
             if (_posing)
             {
@@ -358,7 +442,12 @@ namespace SpellyZombie
             {
                 var s = col.bounds.size;
                 float dim = Mathf.Max(s.x, Mathf.Max(s.y, s.z));
-                if (dim <= 0.05f || dim > DrawingConfig.LiftMaxDimension) return false;
+                if (dim <= 0.05f) return false;
+                // over the lift cap: only what a wizard can break, never a piece of a house
+                if (dim > DrawingConfig.LiftMaxDimension
+                    && (col.GetComponentInParent<Breakable>() == null
+                        || col.GetComponentInParent<InteriorField>() != null))
+                    return false;
             }
 
             root = pot != null ? pot.transform
@@ -384,6 +473,9 @@ namespace SpellyZombie
             if (!CanScan(hit.collider, out var root)) return;
 
             _storedShape = root; // the last shape, remembered for TAB
+            _storedKey = ScenePath.Of(root);
+            _storedHome = SpellyMap.BiomeAt(root.position);
+            _storedHomeAt = root.position;
             _storedGroundOffset = CenterHeightAboveGround(root);
 
             // award ink BEFORE the mode change so the wand is full when the
@@ -400,13 +492,16 @@ namespace SpellyZombie
 
             AcolyteDeeds.Scanned(Grimoire.LocalPlayerId, root.position);
             _pilot.EnterThirdPerson();   // scanning always ENTERS, never toggles
-            // clone BEFORE tinting, or the disguise is born green
             BecomeObject(root);
             TintScanGreen(root);
+            NetSync.PushLocalScan(_storedKey); // the same green on every machine
         }
 
         /// Null until the first scan; TAB reads this to decide if it may switch.
         Transform _storedShape;
+        string _storedKey;      // its address on every machine (ScenePath or LentKey)
+        Biome _storedHome;      // the biome that raised it - the wearer's ground while worn
+        Vector3 _storedHomeAt;  // where it was raised: the ground sum there is the home
         Vector3 _sourceLossy = Vector3.one; // the object's world size, held while worn
         float _storedGroundOffset;
         static readonly RaycastHit[] _groundBuf = new RaycastHit[16];
@@ -437,7 +532,7 @@ namespace SpellyZombie
         static Mesh _bake;
 
         /// The skin as it is posed right now, in world space.
-        static Bounds SkinBounds(SkinnedMeshRenderer smr)
+        public static Bounds SkinBounds(SkinnedMeshRenderer smr)
         {
             if (smr.sharedMesh == null) return smr.bounds;
             if (_bake == null) _bake = new Mesh();
@@ -485,51 +580,63 @@ namespace SpellyZombie
             return Mathf.Clamp(b.center.y - best, -3f, 2.5f);
         }
 
-        /// Each scan nudges the object's materials toward corrupt green -
-        /// repeat scans stack visibly.
-        void TintScanGreen(Transform source)
+        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        static readonly int ColorId = Shader.PropertyToID("_Color");
+        static MaterialPropertyBlock _tintBlock;
+
+        /// Each scan nudges the object toward corrupt green - repeat scans
+        /// stack visibly. A property block, never a material copy: Instantiate
+        /// does not carry blocks, so a disguise is never born green.
+        public static void TintScanGreen(Transform source)
         {
+            if (_tintBlock == null) _tintBlock = new MaterialPropertyBlock();
             foreach (var r in source.GetComponentsInChildren<Renderer>())
             {
                 if (r == null) continue;
-                var m = r.material; // instance - cloned here if it wasn't yet
-                if (m.HasProperty("_BaseColor"))
-                    m.SetColor("_BaseColor",
-                        Color.Lerp(m.GetColor("_BaseColor"), DrawingConfig.CorruptInkColor, 0.22f));
-                else if (m.HasProperty("_Color"))
-                    m.color = Color.Lerp(m.color, DrawingConfig.CorruptInkColor, 0.22f);
+                r.GetPropertyBlock(_tintBlock);
+                Color cur;
+                if (_tintBlock.HasColor(BaseColorId)) cur = _tintBlock.GetColor(BaseColorId);
+                else
+                {
+                    var m = r.sharedMaterial;
+                    cur = m != null && m.HasProperty(BaseColorId) ? m.GetColor(BaseColorId)
+                        : m != null && m.HasProperty(ColorId) ? m.color : Color.white;
+                }
+                Color mixed = Color.Lerp(cur, DrawingConfig.CorruptInkColor, 0.22f);
+                _tintBlock.SetColor(BaseColorId, mixed);
+                _tintBlock.SetColor(ColorId, mixed);
+                r.SetPropertyBlock(_tintBlock);
             }
         }
 
         /// Turn into the object exactly as it stands, with a poof on the swap.
+        float _forcedUntil;
+        /// The transformation ink has this body: no TAB, no F, until it lets go.
+        public static bool Forced => Local != null && Time.time < Local._forcedUntil;
+
+        /// Wear this address now: the transformation ink landed on you, or the
+        /// wizard holding your cursed book scanned something (his double edge).
+        /// Resolves like a scan, gives no ink and no deed.
+        public static void WearKey(string key, float forcedSeconds = 0f)
+        {
+            if (Local == null || Local._pilot == null || string.IsNullOrEmpty(key)) return;
+            var t = ResolveShape(key, out var home);
+            if (t == null) return;
+            Local._storedShape = t;
+            Local._storedKey = key;
+            Local._storedHome = home;
+            Local._storedHomeAt = t.position;
+            Local._storedGroundOffset = Local.CenterHeightAboveGround(t);
+            if (forcedSeconds > 0f) Local._forcedUntil = Time.time + forcedSeconds;
+            if (!SimpleFPSController.ThirdPersonActive) Local._pilot.EnterThirdPerson();
+            Local.BecomeObject(t);
+        }
+
         void BecomeObject(Transform source)
         {
             if (_pilot != null && _pilot.IsLocalViewer) Achievements.Unlock(Achievements.Disguise);
             if (_worn != null) Destroy(_worn);
-            _worn = Instantiate(source.gameObject, transform);
-            _worn.name = "WornShape";
-
-            // strip lights. UniversalAdditionalLightData depends on Light, so
-            // destroy the rider first or Unity refuses
-            foreach (var l in _worn.GetComponentsInChildren<Light>(true))
-            {
-                var rider = l.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>();
-                if (rider != null) Destroy(rider);
-                Destroy(l);
-            }
-
-            foreach (var c in _worn.GetComponentsInChildren<Component>(true))
-            {
-                if (c is Transform || c is Renderer || c is MeshFilter) continue;
-                if (c is Light) continue; // handled above, in dependency order
-                if (c is UnityEngine.Rendering.Universal.UniversalAdditionalLightData) continue;
-                // the look driver stays - without it a StateView-painted thing
-                // (absorbable motes included) wears back to bare white and the
-                // disguise gives itself away. Instantiate froze its values at
-                // scan time, which is exactly what a disguise should show.
-                if (c is StateView) continue;
-                Destroy(c);
-            }
+            _worn = CloneShape(source, transform);
             _sourceLossy = source.lossyScale;
             _worn.transform.localScale = _sourceLossy;
             _wornRot = source.rotation; // exactly as it stood
@@ -542,12 +649,13 @@ namespace SpellyZombie
             _wornCenterLocal = FindObjectCenterLocal(_worn.transform, true);
             _worn.transform.position +=
                 TargetCenterWorld() - _worn.transform.TransformPoint(_wornCenterLocal);
-            Wear();
+            Wear(poof: true);
             if (FxLibrary.I != null)
                 FxLibrary.Spawn(FxLibrary.I.Poof, transform.position + Vector3.up * 0.5f);
         }
 
-        void Wear()
+        /// poof: a fresh clone went on - the swap burst shows on every machine.
+        void Wear(bool poof = false)
         {
             if (_worn == null) return;
             _hidden.Clear();
@@ -560,6 +668,8 @@ namespace SpellyZombie
             }
             _worn.SetActive(true);
             LocalIsShaped = true;
+            GroundOn(true);
+            PushDisguise(true, poof: poof);
         }
 
         float _puffAt = -999f;
@@ -573,15 +683,53 @@ namespace SpellyZombie
             if (_worn != null) _worn.SetActive(false);
             _posing = false;
             LocalIsShaped = false;
+            if (wasShaped)
+            {
+                GroundOn(false);
+                PushDisguise(false, puff);
+            }
 
-            // leaving the disguise releases poison - never touches acolytes
+            // leaving the disguise releases poison - never touches acolytes.
+            // Host law: the host opens it here and on every client; a client's
+            // DisguiseMsg (Puff) asks the host to open it at their puppet.
             if (puff && wasShaped
                 && Time.time >= _puffAt + DrawingConfig.PoisonExitCooldown)
             {
                 _puffAt = Time.time;
-                PoisonField.Open(transform.position + Vector3.up * 0.9f,
-                    DrawingConfig.PoisonExitRadius, DrawingConfig.PoisonExitSeconds);
+                NetSync.HostDisguiseExit(transform.position + Vector3.up * 0.9f);
             }
+        }
+
+        Element _el;
+        float _sentAt = -999f, _sentLift;
+        Quaternion _sentRot = Quaternion.identity;
+
+        /// While worn, the biome that raised the object is this body's ground.
+        void GroundOn(bool worn)
+        {
+            if (_el == null) _el = GetComponent<Element>();
+            if (_el == null) return;
+            if (worn) _el.WearGround(_storedHomeAt, _storedHome);
+            else _el.ShedGround();
+            _el.RefreshLook(); // worn = the object's own size, shed = the side's body
+        }
+
+        /// Tell everyone what this acolyte looks like now.
+        void PushDisguise(bool worn, bool puff = false, bool poof = false)
+        {
+            _sentAt = Time.time;
+            _sentRot = _wornRot;
+            _sentLift = TargetCenterWorld().y - transform.position.y;
+            string key = _storedKey;
+            if (string.IsNullOrEmpty(key) && _storedShape != null && _storedShape.gameObject.scene.IsValid())
+                key = ScenePath.Of(_storedShape);
+            NetSync.PushLocalDisguise(worn, key, _wornRot, _sentLift, puff, poof);
+        }
+
+        /// A newcomer needs the current disguise too.
+        public static void RepushLocal()
+        {
+            if (Local != null && LocalIsShaped) Local.PushDisguise(true);
         }
 
 

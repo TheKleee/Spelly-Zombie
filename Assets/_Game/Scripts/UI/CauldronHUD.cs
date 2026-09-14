@@ -4,8 +4,10 @@ using UnityEngine.UI;
 namespace SpellyZombie
 {
     /// Cauldron status bar at top: colour = who holds the pot (black wizards,
-    /// green acolytes), length = ink left; the trophy hovers over whoever wins
-    /// if the clock hit zero now. Match maps only; art assigned in Inspector.
+    /// green acolytes), length = ink left, and the cauldron icon rides the
+    /// ink's edge - the pointer toward the side that is winning. The trophy
+    /// hovers over whoever wins if the clock hit zero now. Match maps only;
+    /// art assigned in Inspector.
     public class CauldronHUD : MonoBehaviour
     {
         [Header("the art — dragged in, never generated")]
@@ -31,20 +33,48 @@ namespace SpellyZombie
         /// The pot's live truth - the cauldron economy writes these.
         public static float Fill = 1f;   // 0..1 ink remaining
         public static bool Corrupt;      // true = the acolytes hold it
-        /// Seconds shown centred above the bar; negative hides it.
-        public static float TimerSeconds = -1f;
-
         RectTransform _ui;
         Image _fill, _icon, _trophy;
-        Text _timer;
         float _shownFill = -1f;
         bool _shownCorrupt;
-        int _shownTimer = int.MinValue;
         float _trophyX;
 
-        void Start() => Build();
+        /// The one bar on screen: it outlives every pot until the scene ends.
+        static CauldronHUD _shown;
 
-        void OnDestroy() => UIKit.Retire(_ui);
+        void Start()
+        {
+            // on a pot, the art moves to a scene object of its own and the pot's copy stands down
+            if (GetComponentInParent<CauldronEconomy>() != null)
+            {
+                if (_shown == null) _shown = Carry();
+                enabled = false;
+                return;
+            }
+            if (_shown != null && _shown != this) { enabled = false; return; }
+            _shown = this;
+            Build();
+        }
+
+        CauldronHUD Carry()
+        {
+            var keep = new GameObject("~CauldronHUD").AddComponent<CauldronHUD>();
+            keep.CauldronWizard = CauldronWizard;
+            keep.CauldronAcolyte = CauldronAcolyte;
+            keep.AcolyteFace = AcolyteFace;
+            keep.WizardFace = WizardFace;
+            keep.Trophy = Trophy;
+            keep.BarWidth = BarWidth;
+            keep.BarHeight = BarHeight;
+            keep.IconSize = IconSize;
+            return keep;
+        }
+
+        void OnDestroy()
+        {
+            if (_shown == this) _shown = null;
+            UIKit.Retire(_ui);
+        }
 
         // container-local X of each face's centre - the trophy hops between these
         float FaceX => BarWidth * 0.5f + IconSize * 0.62f;
@@ -88,7 +118,7 @@ namespace SpellyZombie
             PlaceIcon(Img(_ui, "FaceAcolyte"), AcolyteFace, -FaceX, barY, icon);
             PlaceIcon(Img(_ui, "FaceWizard"), WizardFace, FaceX, barY, icon);
 
-            // cauldron icon centred on the bar's right end
+            // cauldron icon rides the ink's edge; it starts at the full end
             _icon = Img(_ui, "Cauldron");
             PlaceIcon(_icon, CauldronWizard, w * 0.5f, barY, icon);
 
@@ -97,28 +127,12 @@ namespace SpellyZombie
             PlaceIcon(_trophy, Trophy, FaceX, barY + icon * 0.92f, icon * 0.8f);
             _trophyX = FaceX; // starts over the wizard - the pot opens black
 
-            var timerGo = new GameObject("Timer", typeof(RectTransform), typeof(Text));
-            timerGo.transform.SetParent(_ui, false);
-            _timer = timerGo.GetComponent<Text>();
-            _timer.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _timer.fontSize = 20;
-            _timer.fontStyle = FontStyle.Bold;
-            _timer.alignment = TextAnchor.MiddleCenter;
-            _timer.color = new Color(0.15f, 0.1f, 0.2f);
-            _timer.raycastTarget = false;
-            var timerRt = (RectTransform)timerGo.transform;
-            timerRt.anchorMin = timerRt.anchorMax = new Vector2(0.5f, 1f);
-            timerRt.pivot = new Vector2(0.5f, 0.5f);
-            timerRt.anchoredPosition = new Vector2(0f, barY + icon * 0.95f);
-            timerRt.sizeDelta = new Vector2(140f, 26f);
-
             if (CauldronWizard == null || CauldronAcolyte == null || AcolyteFace == null
                 || WizardFace == null || Trophy == null)
                 Debug.LogWarning("[SpellyZombie] CauldronHUD: an art slot is EMPTY. All five sprites " +
                     "are yours to drag in — nothing is generated for you.", this);
 
             _shownFill = -1f;
-            _shownTimer = int.MinValue;
         }
 
         static Image Img(RectTransform parent, string imgName)
@@ -151,13 +165,6 @@ namespace SpellyZombie
             if (_ui != null && _ui.gameObject.activeSelf == hidden) _ui.gameObject.SetActive(!hidden);
             if (hidden) return;
 
-            int t = TimerSeconds >= 0f ? Mathf.CeilToInt(TimerSeconds) : -1;
-            if (_timer != null && t != _shownTimer)
-            {
-                _shownTimer = t;
-                _timer.text = t >= 0 ? t.ToString() : "";
-            }
-
             // trophy: corrupt or empty pot = acolyte side, clean = wizard side
             if (_trophy != null && _trophy.enabled)
             {
@@ -173,12 +180,16 @@ namespace SpellyZombie
             _shownFill = f;
             _shownCorrupt = Corrupt;
 
+            float barW = Mathf.Max(120f, BarWidth);
             var frt = (RectTransform)_fill.transform;
-            frt.sizeDelta = new Vector2((Mathf.Max(120f, BarWidth) - 2f) * f, frt.sizeDelta.y);
+            frt.sizeDelta = new Vector2((barW - 2f) * f, frt.sizeDelta.y);
             // same two ink colours as the wands
             _fill.color = Corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
             if (_icon != null)
             {
+                // full sits at the wizards' end, empty at the acolytes'
+                var irt = (RectTransform)_icon.transform;
+                irt.anchoredPosition = new Vector2(-barW * 0.5f + 1f + (barW - 2f) * f, irt.anchoredPosition.y);
                 var want = Corrupt ? CauldronAcolyte : CauldronWizard;
                 if (want != null && _icon.sprite != want) _icon.sprite = want;
             }

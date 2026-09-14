@@ -68,6 +68,8 @@ namespace SpellyZombie
         float _mendFxAt;
         Vector3 _camDefaultLocal;
         GooglyEyes _eyes;
+        /// The live pair (the rig may swap the code-built one): presence carries their mood and gaze.
+        public GooglyEyes Eyes => _eyes;
         WeaponSlots _slots;
         EmotePlayer _emotes;
 
@@ -188,14 +190,10 @@ namespace SpellyZombie
 
             // a corrupt body gasses off like a detonated zombie, shove and
             // all - poison damages only wizards, the push throws everyone.
+            // Host law: the host opens it everywhere; on a client the host
+            // sees this body's downed flag and opens it at the puppet.
             if (Sides.IsAcolytePlayer(this))
-            {
-                Vector3 at = transform.position + Vector3.up * 0.9f;
-                PoisonField.Open(at, DrawingConfig.PoisonDeathRadius,
-                    DrawingConfig.PoisonDeathSeconds);
-                Shove.Blast(at, DrawingConfig.PoisonDeathRadius,
-                    DrawingConfig.DetonateShove, 0f, "a dying acolyte burst");
-            }
+                NetSync.HostAcolyteDeath(transform.position + Vector3.up * 0.9f);
         }
 
         /// Physical hits shove the player and chip health. At 0 HP the ghost
@@ -225,14 +223,109 @@ namespace SpellyZombie
             DrawingWorld.Instance?.LogEvent(parts.ToString());
         }
 
-        // ★ COURAGE OWNS YOUR LEGS + FIRE WON'T LET YOU STAND (his designs):
-        // blinded by LIGHT you are too brave - you charge at whatever is
-        // near, anything at all. Under DARK you are terrified - you flee,
-        // stumbling and falling. BURNING, you cannot stay in place. And
-        // frozen deep enough, you are an ICE CUBE sliding on momentum.
+        // ★ COURAGE OWNS YOUR EYES + FIRE WON'T LET YOU STAND (his designs):
+        // blinded by LIGHT you are too brave - your gaze locks onto whatever
+        // is near, anything at all. Under DARK you are terrified - your eyes
+        // dart off anything you look at. Legs that walk on their own would
+        // stop you drawing, so courage never touches them. BURNING, you
+        // cannot stay in place. And frozen deep enough, you are an ICE CUBE
+        // sliding on momentum.
         float _legsRepickAt;
         Vector3 _legsDir;
         float _lastBurnAt = -99f;
+        float _eyesScanAt, _eyesHintAt;
+        Collider _eyesThing;
+        float _avertSide = 1f;
+
+        /// The bravado magnet and the fear flinch, on the view. The mouse
+        /// always wins a contest; it just has to keep winning.
+        void CourageEyes()
+        {
+            if (IsDowned || IsDead || IsFrozenCube || CameraPivot == null || _dmg == null) return;
+            float cour = SpellPayload.ToHuman(8, _dmg.Data.Courage - _dmg.Natural.Courage);
+            float fear = Mathf.InverseLerp(-8f, -45f, cour);
+            float brave = Mathf.InverseLerp(8f, 45f, cour);
+            bool scared = fear > 0f;
+            if (!scared && brave <= 0f) { _eyesThing = null; return; }
+            // the pen is precise work: bravado leaves a stroke alone. Terror
+            // does not - too scared to look at it is too scared to draw on it
+            if (!scared && SurfaceDrawer.IsPenActive) return;
+
+            Vector3 eye = CameraPivot.position;
+            Vector3 fwd = CameraPivot.forward;
+            if (Time.time >= _eyesScanAt)
+            {
+                _eyesScanAt = Time.time + 0.2f;
+                _eyesThing = NearestThingInView(eye, fwd,
+                    scared ? DrawingConfig.CourageAvertCone : DrawingConfig.CourageFocusCone);
+            }
+            if (_eyesThing == null) return;
+
+            Vector3 to = _eyesThing.bounds.center - eye;
+            if (to.sqrMagnitude < 0.01f) return;
+            float yaw = Vector3.SignedAngle(new Vector3(fwd.x, 0f, fwd.z), new Vector3(to.x, 0f, to.z), Vector3.up);
+            float step = Time.deltaTime * (scared
+                ? Mathf.Lerp(DrawingConfig.CourageAvertDegPerSecMin, DrawingConfig.CourageAvertDegPerSecMax, fear)
+                : Mathf.Lerp(DrawingConfig.CourageFocusDegPerSecMin, DrawingConfig.CourageFocusDegPerSecMax, brave));
+
+            if (scared)
+            {
+                // turn away, the same way until the thing leaves the cone
+                if (Mathf.Abs(yaw) > 1f) _avertSide = -Mathf.Sign(yaw);
+                transform.Rotate(0f, _avertSide * step, 0f);
+            }
+            else
+            {
+                transform.Rotate(0f, Mathf.Clamp(yaw, -step, step), 0f);
+                if (!ThirdPersonActive)
+                {
+                    // pivot pitch is negative looking up
+                    float pitchTo = -Mathf.Asin(Mathf.Clamp(to.normalized.y, -1f, 1f)) * Mathf.Rad2Deg;
+                    _pitch = Mathf.Clamp(Mathf.MoveTowards(_pitch, pitchTo, step), -85f, 85f);
+                    CameraPivot.localEulerAngles = new Vector3(_pitch, 0f, 0f);
+                }
+            }
+
+            if (Time.time >= _eyesHintAt)
+            {
+                _eyesHintAt = Time.time + 10f;
+                DrawingWorld.Instance?.LogEvent(scared
+                    ? "eyes too scared, they run away from it"
+                    : "eyes too brave, they lock on it");
+            }
+        }
+
+        /// The thing nearest the middle of the view: creatures, other players
+        /// (a disguise counts as the prop it wears) and loose props. The
+        /// world itself - ground, houses, trees - is nothing to look at.
+        Collider NearestThingInView(Vector3 eye, Vector3 fwd, float coneDeg)
+        {
+            Collider best = null;
+            float bestAng = coneDeg;
+            var held = HandGrab.LocalHeldBody;
+            foreach (var h in Physics.OverlapSphere(eye, DrawingConfig.CourageEyesReach,
+                         Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            {
+                if (h.GetComponentInParent<SimpleFPSController>() == this) continue;
+                if (held != null && h.attachedRigidbody == held) continue;
+                if (h.GetComponent<TerrainCollider>() != null) continue;
+                if (h.GetComponentInParent<SpellParticle>() != null) continue;
+                var av = h.GetComponentInParent<NetAvatar>();
+                if (av != null)
+                {
+                    // a hidden body would give the disguise away: only the worn prop is a thing
+                    if (av.Disguised && (av.Worn == null || !h.transform.IsChildOf(av.Worn))) continue;
+                }
+                else if (h.GetComponentInParent<Creature>() == null)
+                {
+                    var el = h.GetComponentInParent<Element>();
+                    if (el == null || Liftable.WorldScale(el.transform, out _)) continue;
+                }
+                float ang = Vector3.Angle(fwd, h.bounds.center - eye);
+                if (ang < bestAng) { bestAng = ang; best = h; }
+            }
+            return best;
+        }
         float _frozenUntil; // the minimum statue moment; the ICE itself is the state
         public bool IsFrozenCube => _iceChunks.Count > 0;
 
@@ -241,12 +334,15 @@ namespace SpellyZombie
         // across the map can read WHY that wizard is charging or fleeing
         float _headFxAt;
         void BlindHeadFx(float cour)
+            => BlindHeadFx(cour, transform.position + Vector3.up * 1.7f, ref _headFxAt);
+
+        /// Shared with the puppets: the same sparks off a friend's skull.
+        public static void BlindHeadFx(float cour, Vector3 head, ref float nextAt)
         {
             float t = Mathf.InverseLerp(8f, 45f, Mathf.Abs(cour));
-            if (Time.time < _headFxAt || t <= 0f) return;
-            _headFxAt = Time.time + Mathf.Lerp(1.3f, 0.4f, t); // a few wisps, then a storm
+            if (Time.time < nextAt || t <= 0f) return;
+            nextAt = Time.time + Mathf.Lerp(1.3f, 0.4f, t); // a few wisps, then a storm
             int n = Mathf.RoundToInt(Mathf.Lerp(1f, 4f, t));
-            Vector3 head = transform.position + Vector3.up * 1.7f;
             if (cour > 0f) GrammarFX.PuffBurst(head, new Color(1f, 0.98f, 0.85f), n);
             else GrammarFX.PuffBurst(head, new Color(0.12f, 0.08f, 0.18f), n);
         }
@@ -257,14 +353,18 @@ namespace SpellyZombie
         /// the hat. All chunks melt away together when the cold lets go.
         readonly System.Collections.Generic.List<GameObject> _iceChunks =
             new System.Collections.Generic.List<GameObject>();
-        void FreezeOntoBones()
+        void FreezeOntoBones() => FreezeOntoBones(transform, _iceChunks);
+
+        /// Shared with the puppets: the same chunks on a friend's limbs.
+        public static void FreezeOntoBones(Transform root,
+            System.Collections.Generic.List<GameObject> chunks)
         {
             var cube = CollectionManager.IceCube;
             if (cube == null) return;
             int made = 0;
-            foreach (var limb in GetComponentsInChildren<Rigidbody>())
+            foreach (var limb in root.GetComponentsInChildren<Rigidbody>())
             {
-                if (limb.transform == transform || made >= 7) continue;
+                if (limb.transform == root || made >= 7) continue;
                 var chunk = Instantiate(cube, limb.worldCenterOfMass,
                     Random.rotation, limb.transform);
                 chunk.transform.localScale = Vector3.one * 0.45f;
@@ -272,23 +372,29 @@ namespace SpellyZombie
                     Destroy(col); // dress, not physics
                 foreach (var rb in chunk.GetComponentsInChildren<Rigidbody>())
                     Destroy(rb);
-                _iceChunks.Add(chunk);
+                chunks.Add(chunk);
                 made++;
             }
             if (made == 0) // no limb rig: one body-sized chunk at the chest
             {
-                var chunk = Instantiate(cube, transform.position + Vector3.up * 0.9f,
-                    Quaternion.identity, transform);
+                var chunk = Instantiate(cube, root.position + Vector3.up * 0.9f,
+                    Quaternion.identity, root);
                 chunk.transform.localScale = Vector3.one * 1.4f;
-                _iceChunks.Add(chunk);
+                chunks.Add(chunk);
             }
         }
         void ThawIce()
         {
             _frozenUntil = 0f;
-            foreach (var c in _iceChunks) if (c != null) Destroy(c);
-            _iceChunks.Clear();
-            GrammarFX.PuffBurst(transform.position + Vector3.up * 0.8f,
+            ThawIce(transform, _iceChunks);
+            NetSync.PushBodyFx(5, transform.position + Vector3.up * 0.8f);
+        }
+
+        public static void ThawIce(Transform root, System.Collections.Generic.List<GameObject> chunks)
+        {
+            foreach (var c in chunks) if (c != null) Destroy(c);
+            chunks.Clear();
+            GrammarFX.PuffBurst(root.position + Vector3.up * 0.8f,
                 new Color(0.85f, 0.95f, 1f), 5); // the melt
         }
 
@@ -296,6 +402,28 @@ namespace SpellyZombie
         float _balDev, _pressDev, _mindDev;
         Vector2 _glideMv;
         float _auraShoveAt, _slipFallCd, _stickPulseAt;
+
+        // ---- the decoy curse: your legs run from the nearest wizard while one is near ----
+        float _decoyUntil;
+        bool _decoyFleeing;
+
+        /// Under an acolyte's decoy for `seconds`: whenever another wizard is
+        /// within DecoyRange your legs run from them; out of range you are yours again.
+        public void Decoy(float seconds) => _decoyUntil = Mathf.Max(_decoyUntil, Time.time + seconds);
+
+        Vector2 DecoyLegs(Vector2 mv)
+        {
+            _decoyFleeing = false;
+            if (Time.time >= _decoyUntil || IsDowned || IsDead) return mv;
+            if (!MischiefLaw.NearestWizard(transform.position, DrawingConfig.DecoyRange, Grimoire.LocalPlayerId, out var wizard))
+                return mv;
+            Vector3 away = transform.position - wizard;
+            away.y = 0f;
+            if (away.sqrMagnitude < 0.01f) away = transform.forward;
+            away.Normalize();
+            _decoyFleeing = true;
+            return new Vector2(Vector3.Dot(away, transform.right), Vector3.Dot(away, transform.forward)).normalized;
+        }
 
         Vector2 PossessedLegs(Vector2 mv)
         {
@@ -346,58 +474,24 @@ namespace SpellyZombie
                 _frozenUntil = Time.time + 1f; // a minimum moment of statue
                 FreezeOntoBones();
                 Juice.Thud(transform.position);
+                NetSync.PushBodyFx(0, transform.position);
                 return Vector2.zero;
             }
 
             float cour = SpellPayload.ToHuman(8, _dmg.Data.Courage - _dmg.Natural.Courage);
             BlindHeadFx(cour);
+            // courage takes the eyes (CourageEyes), never the legs; fire alone moves you
             bool burning = Time.time < _lastBurnAt + 1.2f;
-            // the legs are taken by degrees: a little terror and you drift off
-            // your line, deep terror and you run; bravado the same way. Fire
-            // owns the legs outright, unless the fear or bravado is total.
-            float fear = Mathf.InverseLerp(-8f, -45f, cour);
-            float brave = Mathf.InverseLerp(8f, 45f, cour);
-            float taken = burning ? 1f : Mathf.Max(fear, brave);
-            if (taken <= 0f) return mv;
-            bool full = !burning || Mathf.Max(fear, brave) >= 1f;
+            if (!burning) return mv;
 
             if (Time.time >= _legsRepickAt)
             {
-                _legsRepickAt = Time.time + (burning ? 0.35f : Mathf.Lerp(1.6f, 1.1f, taken));
-                if (full && brave > 0f && brave >= fear)
-                {
-                    // brave beyond sense: charge at SOMETHING, anything near
-                    Transform prey = null; float best = 15f * 15f;
-                    foreach (var h in Physics.OverlapSphere(transform.position, 15f))
-                    {
-                        if (h.GetComponentInParent<SimpleFPSController>() == this) continue;
-                        if (h.GetComponentInParent<Element>() == null
-                            && h.GetComponentInParent<Creature>() == null) continue;
-                        float d = (h.transform.position - transform.position).sqrMagnitude;
-                        if (d > 1f && d < best && Random.value < 0.5f)
-                        { best = d; prey = h.transform; }
-                    }
-                    Vector3 to = prey != null ? prey.position - transform.position
-                        : Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
-                    _legsDir = new Vector3(to.x, 0f, to.z).normalized;
-                }
-                else if (full && fear > 0f)
-                {
-                    // terror: run, stumble, fall - the deeper, the clumsier
-                    _legsDir = Quaternion.Euler(0f, Random.Range(-140f, 140f), 0f)
-                        * -transform.forward;
-                    if (Random.value < 0.35f * fear)
-                        TakeHit(_legsDir * 3.5f + Vector3.up * 1.2f, 0f);
-                }
-                else
-                {
-                    // burning: the ground is lava, literally - frantic shuffle
-                    _legsDir = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
-                }
+                // burning: the ground is lava, literally - frantic shuffle
+                _legsRepickAt = Time.time + 0.35f;
+                _legsDir = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f) * Vector3.forward;
             }
             Vector3 local = transform.InverseTransformDirection(_legsDir);
-            var legs = new Vector2(local.x, local.z).normalized;
-            return Vector2.Lerp(mv, legs, taken);
+            return new Vector2(local.x, local.z).normalized;
         }
 
         public void TakeHit(Vector3 impulse, float damage, string cause = null, int by = -1, bool viaMinion = false)
@@ -429,6 +523,7 @@ namespace SpellyZombie
             {
                 _lastFeelShake = Time.time;
                 Juice.Thud(transform.position);
+                NetSync.PushBodyFx(0, transform.position);
                 Juice.Shake(SurfaceDrawer.IsPenActive ? 0.18f : 0.35f, 0.25f);
                 Debug.Log($"[SpellyZombie] Player hit! {Mathf.Max(0, Health):0} hp");
             }
@@ -554,6 +649,19 @@ namespace SpellyZombie
                     // SpellyMap only reaches Camera.main, the scene one
                     if (_cam.GetComponent<LiquidSense>() == null)
                         _cam.gameObject.AddComponent<LiquidSense>();
+                    // a second live camera draws over this one, Camera.main picks it
+                    // (badges, marks, the pen aim), and its listener doubles the audio:
+                    // switch it off for the run and name it, loudly
+                    foreach (var other in Camera.allCameras)
+                        if (other != null && other != _cam && other.isActiveAndEnabled
+                            && other.GetComponentInParent<SimpleFPSController>() == null
+                            && other.GetComponentInParent<NetAvatar>() == null)
+                        {
+                            Debug.LogError($"[SpellyZombie] '{other.name}' was an active camera in this scene beside the " +
+                                "player's: switched off for this run. Deactivate that object in the scene " +
+                                "(the Lobby keeps its Main Camera inactive).", other);
+                            other.gameObject.SetActive(false);
+                        }
                 }
             }
             // eyes stay visible in every mode: the camera rides in front of
@@ -669,6 +777,7 @@ namespace SpellyZombie
                 _mendFxAt = Time.time + 0.8f;
                 GrammarFX.PuffBurst(transform.position + Vector3.up * 1.1f,
                     new Color(0.45f, 1f, 0.55f), 2);
+                NetSync.PushBodyFx(6, transform.position + Vector3.up * 1.1f);
             }
 
             // F9: the body's temperature picture at this exact spot - the
@@ -786,6 +895,7 @@ namespace SpellyZombie
                     if (CameraPivot != null)
                         CameraPivot.localEulerAngles = new Vector3(_pitch, 0f, 0f);
                 }
+                if (!drawingMode) CourageEyes();
             }
 
             // ---- downed ----
@@ -863,6 +973,7 @@ namespace SpellyZombie
             // in draw modes WASD belongs to the view (orbit), not to walking
             if (drawingMode) mv = Vector2.zero;
             mv = PossessedLegs(mv);
+            mv = DecoyLegs(mv);
             // ★ SLICK LEGS SKATE (his rule): on a slick body the input only
             // slowly wins over momentum - ice under your boots, always.
             // And a hard direction FLIP throws you on your face - we have
@@ -888,6 +999,7 @@ namespace SpellyZombie
                     TakeHit(skid * (4f + 6f * slick) + Vector3.up * 1.2f, 0f);
                     GrammarFX.PuffBurst(transform.position + Vector3.up * 0.1f,
                         new Color(0.7f, 0.9f, 1f), 4);
+                    NetSync.PushBodyFx(7, transform.position + Vector3.up * 0.1f);
                 }
             }
             // ★ PLANTED GRIPS THE GROUND (his rule, cranked): past real glue
@@ -903,6 +1015,7 @@ namespace SpellyZombie
                 _feetStuckUntil = Time.time + Mathf.Lerp(0.15f, 0.6f, glue);
                 GrammarFX.PuffBurst(transform.position + Vector3.up * 0.05f,
                     new Color(0.85f, 0.65f, 0.2f), 4);
+                NetSync.PushBodyFx(8, transform.position + Vector3.up * 0.05f);
             }
             _glideMv = Vector2.Lerp(_glideMv, mv, Time.deltaTime * (onGround // skating needs a floor
                 ? Mathf.Lerp(22f, 1.6f, Mathf.InverseLerp(-0.05f, -0.5f, _balDev)) : 22f));
@@ -910,6 +1023,7 @@ namespace SpellyZombie
             // a Y owns you: inputs walk you the OTHER way
 
             bool sprint = kb.leftShiftKey.isPressed || (gp != null && gp.leftStickButton.isPressed);
+            if (_decoyFleeing) sprint = true; // a decoyed wizard runs
             if (_body != null && !_body.CanSprint) sprint = false; // too heavy to run
             if (_balDev > 0.15f) sprint = false; // glue does not do running (his rule)
             IsSprinting = sprint && !IsDowned && !IsCrouched && mv.sqrMagnitude > 0.01f;
@@ -952,6 +1066,7 @@ namespace SpellyZombie
                     if (dmg > 0f) TakeHit(Vector3.zero, dmg);
                     else KnockDown(1.1f); // already scraping 1 hp: just the pratfall
                     Juice.Thud(transform.position);
+                    NetSync.PushBodyFx(0, transform.position);
                     Juice.Shake(Mathf.Min(0.5f, landing * 0.02f));
                 }
                 _wasGrounded = true;
@@ -1029,6 +1144,7 @@ namespace SpellyZombie
                     _spellVel.x += planar.x;
                     _spellVel.z += planar.z;
                     Juice.Whoosh(transform.position); // the "uh oh" cue
+                    NetSync.PushBodyFx(2, transform.position);
                 }
             }
 
@@ -1173,6 +1289,7 @@ namespace SpellyZombie
                     TakeHit(hit.normal * into * (0.8f + k * 1.2f) + Vector3.up * (1.5f * k), 0f);
                     Juice.Pop(hit.point);
                     GrammarFX.PuffBurst(hit.point, new Color(1f, 0.9f, 0.6f), 4);
+                    NetSync.PushBodyFx(9, hit.point);
                 }
             }
             var body = hit.collider.attachedRigidbody;

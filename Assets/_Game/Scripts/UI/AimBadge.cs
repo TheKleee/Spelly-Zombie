@@ -87,7 +87,8 @@ namespace SpellyZombie
             _show = false;
             bool danger = false;
             var cam = Camera.main;
-            bool uiBusy = GameMenu.IsOpen || PoseStudio.IsOpen || LobbyStand.PanelOpen;
+            bool uiBusy = GameMenu.IsOpen || PoseStudio.IsOpen || LobbyStand.PanelOpen
+                || ActiveScene.Name == "Menu"; // nothing to aim at from the main menu
 
             if (cam != null && !uiBusy && HandGrab.LocalHolding)
             {

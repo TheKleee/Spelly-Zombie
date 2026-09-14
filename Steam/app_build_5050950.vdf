@@ -1,0 +1,19 @@
+"AppBuild"
+{
+	"AppID" "5050950"
+	"Desc" "Spelly Zombie build"
+	"ContentRoot" "..\content\"
+	"BuildOutput" "..\output\"
+	"Depots"
+	{
+		"5050951"
+		{
+			"FileMapping"
+			{
+				"LocalPath" "*"
+				"DepotPath" "."
+				"recursive" "1"
+			}
+		}
+	}
+}

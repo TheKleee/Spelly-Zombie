@@ -61,8 +61,37 @@ namespace SpellyZombie
             return clip;
         }
 
-        static void Play(AudioClip clip, Vector3 at, float volume, float pitch)
+        /// A sound the host's sim made, replayed on a client (FxMsg).
+        public static void PlayWire(byte kind, Vector3 at, float volume, float pitch)
         {
+            AudioClip clip = kind switch
+            {
+                FxLibrary.SndBoom => Clip("boom", SynthBoom),
+                FxLibrary.SndPop => Clip("pop", SynthPop),
+                FxLibrary.SndWhoosh => Clip("whoosh", SynthWhoosh),
+                FxLibrary.SndCrackle => Clip("crackle", SynthCrackle),
+                FxLibrary.SndThud => Clip("thud", SynthThud),
+                FxLibrary.SndChime => Clip("chime", SynthChime),
+                FxLibrary.SndSting => Clip("sting", SynthSting),
+                FxLibrary.SndDrum => Clip("drum", SynthDrum),
+                FxLibrary.SndWhistle => Clip("whistle", SynthWhistle),
+                _ => null,
+            };
+            if (clip != null) Play(clip, at, volume, pitch, false);
+        }
+
+        /// World sounds ride the wire from the host; chime, sting, drum and
+        /// whistle are personal cues and stay on the machine that made them.
+        static bool WorldSound(byte kind) => kind == FxLibrary.SndBoom || kind == FxLibrary.SndPop
+            || kind == FxLibrary.SndWhoosh || kind == FxLibrary.SndCrackle || kind == FxLibrary.SndThud;
+
+        static void Play(AudioClip clip, Vector3 at, float volume, float pitch, bool relay = true)
+        {
+            if (relay && NetSync.WantsFxRelay)
+            {
+                byte kind = FxLibrary.SoundId(clip.name);
+                if (WorldSound(kind)) NetSync.PushFx(kind, at, Vector3.zero, Color.white, 0, pitch, 0, volume);
+            }
             var go = new GameObject("SFX_" + clip.name);
             go.transform.position = at;
             var src = go.AddComponent<AudioSource>();

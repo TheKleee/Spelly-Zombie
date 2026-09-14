@@ -71,6 +71,14 @@ namespace SpellyZombie
             // repeat: Element re-derives from its authored snapshot.
             var el = go.GetComponent<Element>();
             if (el != null) el.DeriveFrom(at);
+            // a player's birth in the Console: which boxes made the home
+            if (el != null && go.GetComponent<SimpleFPSController>() != null)
+            {
+                var n = el.Natural;
+                Debug.Log($"[SpellyZombie] {go.name} born in '{b.name}' at {at}, inside {Biome.NamesAt(at)}: " +
+                    $"home heat {n.Temp - Element.RoomTemp - Element.BodyWarmth:+0;-0}\u00B0, " +
+                    $"light {SpellPayload.ToHuman(1, n.Lum):+0;-0}, courage {SpellPayload.ToHuman(8, n.Courage):0}", go);
+            }
 
             var s = go.GetComponent<BiomeStamp>();
             if (s == null) s = go.AddComponent<BiomeStamp>();
@@ -101,6 +109,8 @@ namespace SpellyZombie
         /// for Shift() instead, so one writer owns body colour.
         public void Show()
         {
+            // a player looks the same as in the lobby wherever they were born
+            if (GetComponent<SimpleFPSController>() != null || GetComponent<NetAvatar>() != null) return;
             var view = GetComponent<StateView>();
             if (view == null) view = gameObject.AddComponent<StateView>();
             view.Set(Phase);
@@ -133,6 +143,26 @@ namespace SpellyZombie
             Add(Stick > 0f ? Tacky : Slippy, Stick);
             if (Phase == MatterPhase.Liquid) Add(Wet, 1f);
             return w > 0.001f ? sum / w : Color.white;
+        }
+
+        /// His palette by rune: the colour recognized ink wears. Affinity has
+        /// no biome colour and keeps the plain rune cyan.
+        public static Color RuneTint(RuneType rune)
+        {
+            switch (rune)
+            {
+                case RuneType.HeatUp: return Warm;
+                case RuneType.HeatDown: return Cold;
+                case RuneType.LuminanceUp: return Bright;
+                case RuneType.LuminanceDown: return Dark;
+                case RuneType.DensityUp: return Heavy;
+                case RuneType.DensityDown: return Airy;
+                case RuneType.StickyUp: return Tacky;
+                case RuneType.StickyDown: return Slippy;
+                case RuneType.StateLiquid: return Wet;
+                case RuneType.StateSolid: return Heavy;
+                default: return Stroke.RuneColor;
+            }
         }
 
         static readonly Color Warm = new Color(0.95f, 0.25f, 0.15f);  // heat up

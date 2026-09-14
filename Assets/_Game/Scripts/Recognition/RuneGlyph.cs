@@ -60,11 +60,17 @@ namespace SpellyZombie
         /// Flatten a set of strokes into one shared 2D frame in the surface's
         /// own plane, oriented to how the drawer saw it (raw camera axes would
         /// perspective-squash floor drawings).
-        public static List<List<Vector2>> RawStrokesOf(IReadOnlyList<Stroke> members)
+        /// The shared 2D frame of a cluster: origin at the lead stroke's first
+        /// node, right = the drawer's screen-right laid onto the surface (the
+        /// frame rides the surface, SurfaceDelta), up across it, and the mean
+        /// surface normal. Handedness: Cross(right, up) == -normal, the line
+        /// ZombieScribe.PlaneBasis ends with - never hand-roll another.
+        public static bool Frame(IReadOnlyList<Stroke> members,
+            out Vector3 origin, out Vector3 right, out Vector3 up, out Vector3 normal)
         {
-            var result = new List<List<Vector2>>();
+            origin = default; right = default; up = default;
+            normal = Vector3.zero;
             Stroke lead = null;
-            Vector3 normal = Vector3.zero;
             foreach (var m in members)
             {
                 if (m == null || !m.Alive) continue;
@@ -72,26 +78,31 @@ namespace SpellyZombie
                 foreach (var n in m.Nodes)
                     if (n != null) normal += n.SurfaceNormal;
             }
-            if (lead == null) return result;
+            if (lead == null) return false;
             normal = normal.sqrMagnitude > 1e-4f ? normal.normalized : Vector3.up;
-
-            Vector3 origin = lead.First.transform.position;
-            // "right" = the drawer's screen-right laid flat onto the surface;
-            // "up" = up the wall / away from the drawer on the floor.
-            // The frame rides the surface (SurfaceDelta): a carried or posed
-            // surface re-reads identically wherever it now faces.
-            Vector3 right = Vector3.ProjectOnPlane(
-                lead.First.SurfaceDelta * lead.BasisRight, normal);
+            origin = lead.First.transform.position;
+            right = Vector3.ProjectOnPlane(lead.First.SurfaceDelta * lead.BasisRight, normal);
             if (right.sqrMagnitude < 1e-4f) right = Vector3.ProjectOnPlane(Vector3.forward, normal);
             right.Normalize();
-            // the handedness law: every path that writes or repaints ink must
-            // build its frame with THIS line. It implies
-            //     Cross(right, up) == -normal
-            // the OPPOSITE sign to a raw Unity transform basis; mixing the two
-            // conventions is a reflection and mirrors every glyph.
-            // ZombieScribe.PlaneBasis ends with this same line - use it rather
-            // than hand-rolling a basis anywhere else.
-            Vector3 up = Vector3.Cross(right, normal).normalized;
+            up = Vector3.Cross(right, normal).normalized;
+            return true;
+        }
+
+        /// Two points at least a millimetre apart; anything less has no shape
+        /// to read and only trips the graph builder.
+        static bool HasExtent(List<Vector2> pts)
+        {
+            if (pts == null || pts.Count < 2) return false;
+            Vector2 a = pts[0];
+            for (int i = 1; i < pts.Count; i++)
+                if ((pts[i] - a).sqrMagnitude > 1e-6f) return true;
+            return false;
+        }
+
+        public static List<List<Vector2>> RawStrokesOf(IReadOnlyList<Stroke> members)
+        {
+            var result = new List<List<Vector2>>();
+            if (!Frame(members, out var origin, out var right, out var up, out var normal)) return result;
 
             // unroll the surface: every pen step, pen-up jumps included, is
             // measured in a parallel-transported local tangent frame and laid
@@ -134,7 +145,7 @@ namespace SpellyZombie
                     lrPrev = lr;
                     pts.Add(pen);
                 }
-                if (pts.Count >= 2) result.Add(pts);
+                if (pts.Count >= 2) if (HasExtent(pts)) result.Add(pts); // a stroke with no length is a point, not ink
             }
             return result;
         }

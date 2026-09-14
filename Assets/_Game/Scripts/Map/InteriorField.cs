@@ -14,9 +14,9 @@ namespace SpellyZombie
     ///
     /// UPPER FLOOR: author-set ("some houses simply have an upper floor").
     /// The structure goes in FIRST - the ceiling tiles itself from ONE
-    /// piece, one random cell stays open with a rim piece on each closed
-    /// edge, one flight climbs into it - and only then the random details
-    /// fill both floors.
+    /// piece, the tiles over the flight stay open with a rim piece on each
+    /// closed edge, one flight climbs into it - and only then the random
+    /// details fill both floors.
     ///
     /// Details are ordinary prefabs, so they can be anything he sets up -
     /// including an AbsorbSource that teaches.
@@ -34,6 +34,9 @@ namespace SpellyZombie
             public GameObject Prefab;
             [Tooltip("Which floor it may take. Upper falls back to the ground floor in a house with no ceiling.")]
             public Floor Where = Floor.Anywhere;
+            // the faceless side of the standing piece, read from its meshes:
+            // 0 +Z, 1 +X, 2 -Z, 3 -X; -1 every side dressed, -2 not measured yet
+            [HideInInspector] public int Open = -2;
         }
 
         public enum Floor { Anywhere, Ground, Upper }
@@ -56,7 +59,7 @@ namespace SpellyZombie
         public GameObject Ceiling;
         [Tooltip("Top surface of the ceiling tiles above this transform: the upper floor you walk on.")]
         public float CeilingHeight = 2.6f;
-        [Tooltip("ONE rim piece for ONE edge of the opening, a kit HoleCover as it comes. The field leaves a random cell open, drops this on the missing tile's pivot and turns it onto each of the three closed edges; the stairs side stays open. Empty = no upper floor access.")]
+        [Tooltip("ONE rim piece for ONE edge of the opening, a kit HoleCover as it comes. The field leaves every tile over the flight open, drops this on each missing tile's pivot and turns it onto the closed edges; the stairs side stays open. Empty = no upper floor access.")]
         public GameObject HoleSide;
         [Tooltip("One flight, a kit Stair_Interior as it comes (Simple or Solid: rails count toward the rise). The field reads its top and foot from the mesh, turns it, scales the rise to Ceiling Height, shrinks the run to what the room allows and seats the top step on the open cell's exit edge.")]
         public GameObject Stairs;
@@ -97,7 +100,7 @@ namespace SpellyZombie
         public float StairLen => _stairLen;
 
 #if UNITY_EDITOR
-        void OnValidate() { MeasureStairs(); }
+        void OnValidate() { MeasureStairs(); MeasureOpenSides(); }
 
         /// Editor only, outside play mode: reads the flight's mesh once and
         /// stores its ends. Keeps the old measurement if reading fails.
@@ -134,6 +137,59 @@ namespace SpellyZombie
             _stairFoot = Stairs.transform.InverseTransformPoint(foot);
             _stairMeasured = true;
         }
+
+        /// Editor only, outside play mode: each detail's faceless side, read
+        /// from its meshes and kept on the entry, so a build never reads meshes.
+        public void MeasureOpenSides()
+        {
+            if (Application.isPlaying || Details == null) return;
+            foreach (var d in Details)
+                if (d != null) d.Open = d.Prefab != null ? OpenSide(d.Prefab) : -1;
+        }
+
+        /// The side of the standing piece with next to no faces looking out of
+        /// it while the opposite side is dressed (a book row with no back, a
+        /// panel seen from one side): 0 +Z, 1 +X, 2 -Z, 3 -X, -1 when none.
+        static int OpenSide(GameObject prefab)
+        {
+            var faced = new float[4];
+            Vector3[] sides = { Vector3.forward, Vector3.right, Vector3.back, Vector3.left };
+            Quaternion untilt = SpellyMap.Facing(prefab, 0f) * Quaternion.Inverse(prefab.transform.rotation);
+            try
+            {
+                foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    var mesh = mf.sharedMesh;
+                    if (mesh == null) continue;
+                    var verts = mesh.vertices;
+                    var tris = mesh.triangles;
+                    for (int i = 0; i + 2 < tris.Length; i += 3)
+                    {
+                        Vector3 a = untilt * mf.transform.TransformPoint(verts[tris[i]]);
+                        Vector3 b = untilt * mf.transform.TransformPoint(verts[tris[i + 1]]);
+                        Vector3 c = untilt * mf.transform.TransformPoint(verts[tris[i + 2]]);
+                        Vector3 cr = Vector3.Cross(b - a, c - a);
+                        float twice = cr.magnitude;
+                        if (twice < 1e-9f) continue;
+                        Vector3 nrm = cr / twice;
+                        for (int s = 0; s < 4; s++)
+                            if (Vector3.Dot(nrm, sides[s]) > 0.5f) faced[s] += twice * 0.5f;
+                    }
+                }
+            }
+            catch (System.Exception) { return -1; } // unreadable: nothing is guessed
+            float most = Mathf.Max(Mathf.Max(faced[0], faced[1]), Mathf.Max(faced[2], faced[3]));
+            if (most <= 0f) return -1;
+            int open = -1;
+            float front = 0.3f * most;
+            for (int s = 0; s < 4; s++)
+                if (faced[s] < 0.05f * most && faced[(s + 2) & 3] > front)
+                {
+                    front = faced[(s + 2) & 3];
+                    open = s;
+                }
+            return open;
+        }
 #endif
 
         /// Hand-placed in a scene (studio, lobby): fill itself with a seed
@@ -169,6 +225,7 @@ namespace SpellyZombie
 
             // claims live in this field's space, so a turned house keeps its whole room
             var claims = new List<Bounds>();
+            var spawned = new HashSet<Collider>(); // placed details: never the wall for the next piece
             // furniture he placed by hand keeps its space when it carries an
             // ObjectBox; the house's own box (the prop claim) is not a room item
             foreach (var ob in GetComponentsInChildren<ObjectBox>(true))
@@ -197,6 +254,11 @@ namespace SpellyZombie
             bool opening = twoFloors && HoleSide != null && cx * cz >= 2;
             if (twoFloors && HoleSide != null && !opening)
                 Debug.LogWarning($"[InteriorField] {name}: the room is smaller than one ceiling tile, no upper floor access.");
+            // every tile the flight passes under stays open: no slab edge over a head on the way down
+            bool alongX = Mathf.Abs(dir.x) > 0.5f;
+            float len = alongX ? tile.x : tile.z;
+            float run = RunFor(dir, holeLX, holeLZ, len, stairsRun);
+            int open = Mathf.Min(OpenCells(run, len), CellsAhead(hx, hz, dir, cx, cz));
             if (twoFloors)
             {
                 if (Ceiling.GetComponentInChildren<Collider>(true) == null)
@@ -204,63 +266,71 @@ namespace SpellyZombie
                 for (int ix = 0; ix < cx; ix++)
                     for (int iz = 0; iz < cz; iz++)
                     {
-                        if (opening && ix == hx && iz == hz) continue; // the way up
+                        if (opening && InOpening(ix, iz, hx, hz, dir, open)) continue; // the way up
                         var piece = Instantiate(Ceiling, root);
+                        piece.name = $"{Ceiling.name} {ix}_{iz}";
                         Seat(piece, x0 + ix * tile.x, CeilingHeight, z0 + iz * tile.z);
                     }
             }
             if (opening)
             {
-                bool alongX = Mathf.Abs(dir.x) > 0.5f;
-                float len = alongX ? tile.x : tile.z;
                 float edge = len * 0.5f;
-                float run = RunFor(dir, holeLX, holeLZ, len, stairsRun);
                 Vector3 hole = new Vector3(holeLX, CeilingHeight, holeLZ);
                 Vector3 top = hole - dir * edge; // the top step: the exit edge onto the next tile
 
-                // the missing tile's pivot, without spawning it: kit rims are built around it
+                // the missing tiles' pivots, without spawning them: kit rims are built around them
                 Bounds ab = AssetBounds(Ceiling);
-                Vector3 cellPivot = Ceiling.transform.localPosition
+                Vector3 firstPivot = Ceiling.transform.localPosition
                     + new Vector3(holeLX - ab.center.x, CeilingHeight - ab.max.y, holeLZ - ab.center.z);
 
                 Vector3[] sides = { Vector3.right, Vector3.left, Vector3.forward, Vector3.back };
-                foreach (var n in sides)
+                int rimNo = 0;
+                for (int tileNo = 0; tileNo < open; tileNo++)
                 {
-                    if (Vector3.Dot(n, -dir) > 0.5f) continue; // the exit edge stays open
-                    var trim = Instantiate(HoleSide, root);
-                    trim.transform.localPosition = cellPivot;
-                    Vector3 off = LocalBounds(trim).center - cellPivot;
-                    off.y = 0f;
-                    if (off.magnitude > 0.25f)
+                    bool lastTile = tileNo == open - 1;
+                    Vector3 cellPivot = firstPivot + dir * (len * tileNo);
+                    Vector3 cellMid = hole + dir * (len * tileNo);
+                    foreach (var n in sides)
                     {
-                        // geometry sits on one edge of its pivot: turn it onto this edge
-                        trim.transform.localRotation = Quaternion.AngleAxis(
-                            Vector3.SignedAngle(off.normalized, n, Vector3.up), Vector3.up)
-                            * trim.transform.localRotation;
-                    }
-                    else
-                    {
-                        // authored on the edge middle, +Z into the opening
-                        trim.transform.localRotation =
-                            Quaternion.LookRotation(-n) * trim.transform.localRotation;
-                        trim.transform.localPosition =
-                            hole + n * ((Mathf.Abs(n.x) > 0.5f ? tile.x : tile.z) * 0.5f);
-                    }
-                    // clean corners from straight pieces: the rim over the flight
-                    // grows past both corners, the side rims stop at its inner face
-                    Bounds tb = LocalBounds(trim);
-                    bool farSide = Vector3.Dot(n, dir) > 0.5f;
-                    bool edgeX = Mathf.Abs(n.x) > 0.5f;
-                    float along = edgeX ? tb.size.z : tb.size.x;
-                    float across = edgeX ? tb.size.x : tb.size.z;
-                    if (along > 0.1f && across > 0.01f)
-                    {
-                        float k = farSide ? (along + across) / along : (along - across * 0.5f) / along;
-                        Quaternion inv = Quaternion.Inverse(trim.transform.localRotation);
-                        Vector3 sc = trim.transform.localScale;
-                        sc[Axis(inv * (edgeX ? Vector3.forward : Vector3.right))] *= k;
-                        trim.transform.localScale = sc;
-                        if (!farSide) trim.transform.localPosition -= dir * (across * 0.25f);
+                        if (Vector3.Dot(n, -dir) > 0.5f) continue; // the exit edge, or the open tile before
+                        bool farSide = Vector3.Dot(n, dir) > 0.5f;
+                        if (farSide && !lastTile) continue;         // open on into the next tile
+                        var trim = Instantiate(HoleSide, root);
+                        trim.name = $"{HoleSide.name} {rimNo++}";
+                        trim.transform.localPosition = cellPivot;
+                        Vector3 off = LocalBounds(trim).center - cellPivot;
+                        off.y = 0f;
+                        if (off.magnitude > 0.25f)
+                        {
+                            // geometry sits on one edge of its pivot: turn it onto this edge
+                            trim.transform.localRotation = Quaternion.AngleAxis(
+                                Vector3.SignedAngle(off.normalized, n, Vector3.up), Vector3.up)
+                                * trim.transform.localRotation;
+                        }
+                        else
+                        {
+                            // authored on the edge middle, +Z into the opening
+                            trim.transform.localRotation =
+                                Quaternion.LookRotation(-n) * trim.transform.localRotation;
+                            trim.transform.localPosition =
+                                cellMid + n * ((Mathf.Abs(n.x) > 0.5f ? tile.x : tile.z) * 0.5f);
+                        }
+                        // clean corners from straight pieces: the rim at the flight's end
+                        // grows past both corners, the last side rims stop at its inner face
+                        if (!farSide && !lastTile) continue;
+                        Bounds tb = LocalBounds(trim);
+                        bool edgeX = Mathf.Abs(n.x) > 0.5f;
+                        float along = edgeX ? tb.size.z : tb.size.x;
+                        float across = edgeX ? tb.size.x : tb.size.z;
+                        if (along > 0.1f && across > 0.01f)
+                        {
+                            float k = farSide ? (along + across) / along : (along - across * 0.5f) / along;
+                            Quaternion inv = Quaternion.Inverse(trim.transform.localRotation);
+                            Vector3 sc = trim.transform.localScale;
+                            sc[Axis(inv * (edgeX ? Vector3.forward : Vector3.right))] *= k;
+                            trim.transform.localScale = sc;
+                            if (!farSide) trim.transform.localPosition -= dir * (across * 0.25f);
+                        }
                     }
                 }
 
@@ -288,11 +358,14 @@ namespace SpellyZombie
                 claims.Add(new Bounds(
                     new Vector3(top.x, (floorY + CeilingHeight) * 0.5f, top.z) + dir * (strip * 0.5f),
                     new Vector3(alongX ? strip : tile.x, CeilingHeight - floorY, alongX ? tile.z : strip)));
-                claims.Add(new Bounds(hole, new Vector3(tile.x + 0.24f, 1f, tile.z + 0.24f))); // the rims straddle the edges
+                float openLen = len * open + 0.24f; // the rims straddle the edges
+                claims.Add(new Bounds(hole + dir * (len * (open - 1) * 0.5f),
+                    alongX ? new Vector3(openLen, 1f, tile.z + 0.24f) : new Vector3(tile.x + 0.24f, 1f, openLen)));
                 claims.Add(new Bounds(top - dir * (FootClearance * 0.5f) + Vector3.up,
                     new Vector3(alongX ? FootClearance : tile.x, 2f, alongX ? tile.z : FootClearance)));
             }
             if (twoFloors) Physics.SyncTransforms(); // the new tiles must catch the upper floor rays
+            Element.Refile(root); // the pieces carry their final names now
 
             // ---- 2. THEN THE RANDOM DETAILS, both floors ----
             // fully random: cells come in random order, each draws one of the
@@ -365,6 +438,37 @@ namespace SpellyZombie
                 return false;
             }
 
+            // the turn whose back meets the nearest real surface around the spot
+            // (a room wall, a shelf's back board): rays along the field axes at
+            // the piece's mid height, placed details ignored; the field's own
+            // nearest edge when nothing is near. Turn k backs onto: 0 -Z, 1 -X, 2 +Z, 3 +X
+            int WallSide(Vector3 mid, float px, float pz)
+            {
+                int wallTurn = -1;
+                float wallDist = float.MaxValue;
+                float wallReach = Mathf.Max(Size.x, Size.z);
+                for (int w = 0; w < 4; w++)
+                {
+                    Vector3 axis = w == 0 ? Vector3.back : w == 1 ? Vector3.left : w == 2 ? Vector3.forward : Vector3.right;
+                    int got = physics.Raycast(mid, f2w.MultiplyVector(axis), _wallHits, wallReach,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                    for (int i = 0; i < got; i++)
+                    {
+                        var wh = _wallHits[i];
+                        if (wh.distance >= wallDist || spawned.Contains(wh.collider)) continue;
+                        wallDist = wh.distance;
+                        wallTurn = w;
+                    }
+                }
+                if (wallTurn >= 0) return wallTurn;
+                int edgeTurn = 0;
+                float nearEdge = pz - area.min.z;
+                if (px - area.min.x < nearEdge) { nearEdge = px - area.min.x; edgeTurn = 1; }
+                if (area.max.z - pz < nearEdge) { nearEdge = area.max.z - pz; edgeTurn = 2; }
+                if (area.max.x - px < nearEdge) edgeTurn = 3;
+                return edgeTurn;
+            }
+
             bool Cell(int floor, int ix, int iz)
             {
                 var pool = pools[floor];
@@ -412,25 +516,23 @@ namespace SpellyZombie
                     // the MESH lands on the surface, wherever the pack put the pivot
                     Vector3 seatAt = hit.point + Vector3.up * SeatLift(d.Prefab);
 
-                    // of the four square turns, the one whose front looks at the
-                    // room comes first and the back-to-the-room one last: a cabinet
-                    // against a wall shows its doors. Front = the standing piece's
-                    // +Z, the kit's Blender front
-                    Vector2 toMid = new Vector2(Center.x - lx, Center.z - lz);
-                    int facing = 0;
-                    float bestDot = float.NegativeInfinity;
-                    for (int k = 0; k < 4; k++)
+                    // of the square turns, the one with its back to the wall comes first,
+                    // then its two sides; the one facing that wall is never used, so a
+                    // cabinet by a wall shows its doors. Front = the +Z of the standing
+                    // piece, the kit Blender front. A piece with a faceless side turns
+                    // that side to the wall instead and never stands free
+#if UNITY_EDITOR
+                    if (d.Open == -2) d.Open = OpenSide(d.Prefab); // not baked yet: read it now
+#endif
+                    int facing = WallSide(seatAt + Vector3.up * (height * 0.5f), lx, lz);
+                    bool openBack = d.Open >= 0;
+                    float openTurn = openBack ? (2 - d.Open) * 90f : 0f;
+                    for (int t = openBack ? 3 : 0; t < 3 + SquareOrder.Length; t++)
                     {
-                        float a = 90f * k * Mathf.Deg2Rad;
-                        float dot = Mathf.Sin(a) * toMid.x + Mathf.Cos(a) * toMid.y;
-                        if (dot > bestDot) { bestDot = dot; facing = k; }
-                    }
-                    for (int t = 0; t < 7; t++)
-                    {
-                        // three random turns, then the four square to the room
+                        // three random turns, then the square ones
                         // for what only fits along a wall
                         float yawDeg = t < 3 ? (float)rng.NextDouble() * 360f
-                                             : fieldYaw + 90f * ((facing + SquareOrder[t - 3]) & 3);
+                                             : fieldYaw + 90f * ((facing + SquareOrder[t - 3]) & 3) + openTurn;
                         Quaternion rot = SpellyMap.Facing(d.Prefab, yawDeg);
                         Bounds claim = Footprint(d.Prefab, seatAt, rot);
                         // inside the walls
@@ -447,6 +549,7 @@ namespace SpellyZombie
                         claims.Add(padded);
 
                         var go = Instantiate(d.Prefab, seatAt, rot, root);
+                        go.name = $"{d.Prefab.name} #{landed}";
                         // the piece keeps its own size under a scaled root
                         Vector3 ps = root.lossyScale;
                         go.transform.localScale = Vector3.Scale(d.Prefab.transform.localScale,
@@ -465,6 +568,8 @@ namespace SpellyZombie
                         // small things on a table, on a shelf
                         foreach (var nf in go.GetComponentsInChildren<InteriorField>(true))
                             nf.Fill(rng, under != null ? nf.transform : null, riders);
+                        Element.Refile(go.transform);
+                        foreach (var placedCol in go.GetComponentsInChildren<Collider>(true)) spawned.Add(placedCol);
                         landed++;
                         placed[floor]++;
                         return true;
@@ -531,25 +636,28 @@ namespace SpellyZombie
 
         /// A prefab's mesh bounds around its pivot after 'untilt' stands it up
         /// square: the tight box the piece really needs.
-        static Bounds UprightBounds(GameObject prefab, Quaternion untilt)
+        public static Bounds UprightBounds(GameObject prefab, Quaternion untilt)
         {
             bool any = false;
             var b = new Bounds();
             Vector3 pivot = prefab.transform.position;
-            foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true))
+            void Add(Transform t, Bounds m)
             {
-                if (mf.sharedMesh == null) continue;
-                Bounds m = mf.sharedMesh.bounds;
                 for (int i = 0; i < 8; i++)
                 {
                     Vector3 c = new Vector3((i & 1) == 0 ? m.min.x : m.max.x,
                                             (i & 2) == 0 ? m.min.y : m.max.y,
                                             (i & 4) == 0 ? m.min.z : m.max.z);
-                    Vector3 p = untilt * (mf.transform.TransformPoint(c) - pivot);
+                    Vector3 p = untilt * (t.TransformPoint(c) - pivot);
                     if (!any) { b = new Bounds(p, Vector3.zero); any = true; }
                     else b.Encapsulate(p);
                 }
             }
+            foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true))
+                if (mf.sharedMesh != null) Add(mf.transform, mf.sharedMesh.bounds);
+            // skinned pieces (the absorbable blobs, chests) by their mesh at rest
+            foreach (var skin in prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                if (skin.sharedMesh != null) Add(skin.transform, skin.sharedMesh.bounds);
             return any ? b : new Bounds(Vector3.zero, Vector3.zero);
         }
 
@@ -620,17 +728,16 @@ namespace SpellyZombie
             return any ? b : new Bounds(Vector3.zero, Vector3.zero);
         }
 
-        static readonly int[] SquareOrder = { 0, 1, 3, 2 }; // room-facing, its two sides, its back
+        static readonly int[] SquareOrder = { 0, 1, 3 }; // back to the wall, then its two sides; never facing it
+        static readonly RaycastHit[] _wallHits = new RaycastHit[16];
         const float FloorTolerance = 0.35f; // a floor sits within this of the box bottom; higher is furniture
         const float HeadroomAir = 0.02f;    // air kept over a piece; a book on a 13 cm shelf gap must still fit
         const float FootClearance = 1f;   // floor kept in front of the first step
         const float MinRun = 1.8f;        // shorter than this the flight gets too steep
-        const float Headroom = 2f;        // kept above the tread where it passes under the next tile
-        const float StepMargin = 0.25f;   // one riser plus the slab, the tread line sits below the treads
 
-        /// The run the room allows: the top step sits on the far edge of the
-        /// open cell and the flight runs the cell and on under the next tile,
-        /// as far as the wall, the landing and the headroom allow.
+        /// The run the room allows: the top step sits on the open cell's exit
+        /// edge and the flight runs on as far as the wall and the landing allow.
+        /// The tiles over it stay open, so its length never costs headroom.
         float RunFor(Vector3 dir, float holeLX, float holeLZ, float len, float stairsRun)
         {
             bool alongX = Mathf.Abs(dir.x) > 0.5f;
@@ -638,15 +745,38 @@ namespace SpellyZombie
             float wall = alongX ? (dir.x > 0f ? Center.x + Size.x * 0.5f : Center.x - Size.x * 0.5f)
                                 : (dir.z > 0f ? Center.z + Size.z * 0.5f : Center.z - Size.z * 0.5f);
             float available = Mathf.Abs(wall - hole) + len * 0.5f - FootClearance;
-            float cap = len * (CeilingHeight - (Center.y - Size.y * 0.5f)) / (Headroom + StepMargin);
             float want = stairsRun > 0.1f ? stairsRun : len;
-            return Mathf.Min(want, Mathf.Min(available, cap));
+            return Mathf.Min(want, available);
+        }
+
+        /// How many tiles the flight passes under, the open cell included.
+        static int OpenCells(float run, float len) =>
+            Mathf.Max(1, Mathf.CeilToInt(run / Mathf.Max(0.1f, len) - 0.001f));
+
+        /// Tiles from (hx, hz) on along dir that are still in the grid, the first included.
+        static int CellsAhead(int hx, int hz, Vector3 dir, int cx, int cz)
+        {
+            int sx = Mathf.RoundToInt(dir.x), sz = Mathf.RoundToInt(dir.z);
+            if (sx == 0 && sz == 0) return 1;
+            int n = 0;
+            for (int x = hx, z = hz; x >= 0 && x < cx && z >= 0 && z < cz; x += sx, z += sz) n++;
+            return n;
+        }
+
+        /// Whether a ceiling cell is part of the opening over the flight.
+        static bool InOpening(int ix, int iz, int hx, int hz, Vector3 dir, int open)
+        {
+            int sx = Mathf.RoundToInt(dir.x), sz = Mathf.RoundToInt(dir.z);
+            for (int k = 0; k < open; k++)
+                if (ix == hx + sx * k && iz == hz + sz * k) return true;
+            return false;
         }
 
         /// Grid, open cell and stairs direction for one rng. The fill and the
         /// gizmo share it, so the markers show exactly what will spawn. Valid:
         /// a tile beyond the top step to walk onto, a flight that fits without
-        /// getting too steep, and no door cell under the flight or its landing.
+        /// getting too steep, every tile over it inside the grid, and no door
+        /// cell under the flight or its landing.
         void Plan(System.Random rng, Vector3 tile, float stairsRun, bool quiet, out int cx, out int cz,
                   out float x0, out float z0, out int hx, out int hz, out Vector3 dir,
                   List<Vector2Int> doorCells)
@@ -691,6 +821,8 @@ namespace SpellyZombie
                         float run = RunFor(d, lx, lz, len, stairsRun);
                         float want = Mathf.Min(stairsRun > 0.1f ? stairsRun : len, MinRun);
                         if (run + 0.01f < want) continue;
+                        // the tiles over the flight all open: they must be in the grid
+                        if (OpenCells(run, len) > CellsAhead(ix, iz, d, cx, cz)) continue;
                         // every ground cell under the flight and its landing is a free cell
                         int beyond = Mathf.Max(0, Mathf.CeilToInt((run + FootClearance - len) / len - 0.001f));
                         bool blocked = false;
@@ -853,7 +985,7 @@ namespace SpellyZombie
 #endif
 
         /// Green = the field, white = the cell inside a door, orange = ceiling
-        /// tiles, red = the open cell with its three rims, cyan = the flight
+        /// tiles, red = the open tiles over the flight and their rims, cyan = the flight
         /// from its exit edge down to the foot and landing, all for PreviewSeed.
         void OnDrawGizmosSelected()
         {
@@ -874,31 +1006,38 @@ namespace SpellyZombie
                 Gizmos.DrawWireCube(
                     new Vector3(x0 + c.x * tile.x, floorY + 0.02f, z0 + c.y * tile.z),
                     new Vector3(tile.x, 0.04f, tile.z));
-            Gizmos.color = new Color(0.9f, 0.7f, 0.3f, 0.6f);
-            for (int ix = 0; ix < cx; ix++)
-                for (int iz = 0; iz < cz; iz++)
-                    if (ix != hx || iz != hz)
-                        Gizmos.DrawWireCube(
-                            new Vector3(x0 + ix * tile.x, CeilingHeight - tile.y * 0.5f, z0 + iz * tile.z),
-                            new Vector3(tile.x, tile.y, tile.z));
-
             float holeLX = x0 + hx * tile.x, holeLZ = z0 + hz * tile.z;
             Vector3 hole = new Vector3(holeLX, CeilingHeight, holeLZ);
             bool alongX = Mathf.Abs(dir.x) > 0.5f;
             float len = alongX ? tile.x : tile.z;
             float edge = len * 0.5f;
+            float run = RunFor(dir, holeLX, holeLZ, len, stairsRun);
+            int open = Mathf.Min(OpenCells(run, len), CellsAhead(hx, hz, dir, cx, cz));
+
+            Gizmos.color = new Color(0.9f, 0.7f, 0.3f, 0.6f);
+            for (int ix = 0; ix < cx; ix++)
+                for (int iz = 0; iz < cz; iz++)
+                    if (!InOpening(ix, iz, hx, hz, dir, open))
+                        Gizmos.DrawWireCube(
+                            new Vector3(x0 + ix * tile.x, CeilingHeight - tile.y * 0.5f, z0 + iz * tile.z),
+                            new Vector3(tile.x, tile.y, tile.z));
+
             Gizmos.color = Color.red;
-            Gizmos.DrawWireCube(hole, new Vector3(tile.x, 0.05f, tile.z));
             Vector3[] sides = { Vector3.right, Vector3.left, Vector3.forward, Vector3.back };
-            foreach (var n in sides)
+            for (int tileNo = 0; tileNo < open; tileNo++)
             {
-                if (Vector3.Dot(n, -dir) > 0.5f) continue;
-                bool nx = Mathf.Abs(n.x) > 0.5f;
-                Vector3 at = hole + n * ((nx ? tile.x : tile.z) * 0.5f);
-                Gizmos.DrawWireCube(at, new Vector3(nx ? 0.24f : tile.x, 0.2f, nx ? tile.z : 0.24f));
+                Vector3 cellMid = hole + dir * (len * tileNo);
+                Gizmos.DrawWireCube(cellMid, new Vector3(tile.x, 0.05f, tile.z));
+                foreach (var n in sides)
+                {
+                    if (Vector3.Dot(n, -dir) > 0.5f) continue;
+                    if (Vector3.Dot(n, dir) > 0.5f && tileNo < open - 1) continue;
+                    bool nx = Mathf.Abs(n.x) > 0.5f;
+                    Vector3 at = cellMid + n * ((nx ? tile.x : tile.z) * 0.5f);
+                    Gizmos.DrawWireCube(at, new Vector3(nx ? 0.24f : tile.x, 0.2f, nx ? tile.z : 0.24f));
+                }
             }
 
-            float run = RunFor(dir, holeLX, holeLZ, len, stairsRun);
             Vector3 top = hole - dir * edge;
             Vector3 foot = new Vector3(top.x, floorY, top.z) + dir * run;
             Gizmos.color = Color.cyan;

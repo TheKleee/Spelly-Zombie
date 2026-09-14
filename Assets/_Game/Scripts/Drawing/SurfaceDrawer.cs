@@ -30,6 +30,7 @@ namespace SpellyZombie
         bool _wasErasing;         // falling edge  re-preview the edited ink
         int _holdEraseStart;      // ErasedTotal at rub start - a rub that kills nothing speaks
         float _pilotRetry;        // controller lookup throttle
+        static string _noWorldScene; // the scene already told about its missing DrawingWorld
 
         void Update()
         {
@@ -38,6 +39,13 @@ namespace SpellyZombie
             if (mouse == null || kb == null || Cam == null || DrawingWorld.Instance == null)
             {
                 IsPenActive = false;
+                // a pilot in a scene with no DrawingWorld can never draw: say so once
+                if (DrawingWorld.Instance == null && Cam != null && ActiveScene.Name != _noWorldScene)
+                {
+                    _noWorldScene = ActiveScene.Name;
+                    Debug.LogError($"[SpellyZombie] Scene '{_noWorldScene}' has no DrawingWorld: nothing can be " +
+                        "drawn here. Add an empty object with the DrawingWorld component (the Lobby's SZ_DrawingWorld).", this);
+                }
                 return;
             }
 
@@ -107,7 +115,7 @@ namespace SpellyZombie
 
             // any open menu owns the mouse - no drawing through panels
             if (GameMenu.IsOpen || HatPillar.PanelOpen || LobbyStand.PanelOpen
-                || PoseStudio.IsOpen || Powerups.IsChoosing || UIKit.Typing
+                || PoseStudio.IsOpen || UIKit.Typing
                 || LobbyInspect.PanelOpen)
             {
                 EndStroke();
@@ -153,15 +161,22 @@ namespace SpellyZombie
                     Vector3 from = _hasEraseTrack && Vector3.Distance(_lastErasePoint, eraseHit.point) < 0.75f
                         ? _lastErasePoint : eraseHit.point;
                     if (_inkPool == null) _inkPool = GetComponentInParent<PlayerInk>();
-                    // rubbed-out ink flows back to YOUR wand
-                    DrawingWorld.Instance.EraseAlong(from, eraseHit.point, DrawingConfig.EraseRadius, _inkPool);
+                    // body paint: the rub travels in the limb's own space, so the
+                    // copies on your puppet (posed differently) are rubbed too
+                    Transform bone = SelfPaint.IsActive ? EraseBone(eraseHit) : null;
+                    void Rub(Vector3 a, Vector3 b)
+                    {
+                        // rubbed-out ink flows back to YOUR wand
+                        DrawingWorld.Instance.EraseAlong(a, b, DrawingConfig.EraseRadius, _inkPool, netSend: bone == null);
+                        if (bone != null) NetSync.OnLocalBodyErase(bone, a, b, DrawingConfig.EraseRadius);
+                    }
+                    Rub(from, eraseHit.point);
                     // body-paint depth slack: older body ink can hover a few cm off
                     // today's pen surface - same pen width, forgiving depth, along the aim
                     if (SelfPaint.IsActive)
                     {
                         Vector3 depth = eraseRay.direction * 0.03f;
-                        DrawingWorld.Instance.EraseAlong(eraseHit.point - depth, eraseHit.point + depth,
-                            DrawingConfig.EraseRadius, _inkPool);
+                        Rub(eraseHit.point - depth, eraseHit.point + depth);
                     }
                     _lastErasePoint = eraseHit.point;
                     _hasEraseTrack = true;
@@ -227,6 +242,20 @@ namespace SpellyZombie
             return best < float.MaxValue;
         }
 
+        /// The limb a body-paint rub lands on (the shell resolves to the nearest
+        /// bone, like the pen); null when the hit is not on a bone.
+        static Transform EraseBone(RaycastHit hit)
+        {
+            Transform t = hit.collider.transform;
+            if (t.name == "PaintShell" && SelfPaint.ActiveRoot != null)
+            {
+                var rig = SelfPaint.ActiveRoot.GetComponent<CharacterRig>();
+                var limb = rig != null ? rig.NearestLimbSurface(hit.point) : null;
+                if (limb != null) t = limb;
+            }
+            return t.name.StartsWith("mixamorig:") ? t : null;
+        }
+
         static bool BestOnBody(RaycastHit[] hits, int count, out RaycastHit hit)
         {
             hit = default;
@@ -282,6 +311,13 @@ namespace SpellyZombie
                 // period) so the next stroke doesn't start on a walking target
                 zombieOwner.PaintFreeze(DrawingConfig.ZombiePaintFreezeSeconds);
             }
+            else
+            {
+                // a host zombie's stand-in: the ink rides its root, the same
+                // frame the host mounts it in; the host freezes the real one
+                var proxy = hit.collider.GetComponentInParent<NetZombieProxy>();
+                if (proxy != null) surface = proxy.transform;
+            }
 
             // one stroke, one surface - crossing a joint ends it; a seam-weld node
             // at the crossing keeps both sides touching in every pose
@@ -321,7 +357,8 @@ namespace SpellyZombie
                     BasisRight = Cam.transform.right,
                     BasisUp = Cam.transform.up,
                     Surface = surface, // the LIMB on a body, the collider elsewhere
-                    OwnerId = Grimoire.LocalPlayerId // your pen, your ink
+                    OwnerId = Grimoire.LocalPlayerId, // your pen, your ink
+                    LiveId = NetSync.ClaimLiveId()    // friends watch it grow under this name
                 };
                 DrawingWorld.Instance.Register(_current);
                 _smoothedPoint = hit.point;
@@ -340,6 +377,7 @@ namespace SpellyZombie
             _lastHitSurface = surface;
             _lastHitLocal = surface != null ? surface.InverseTransformPoint(hit.point) : hit.point;
             WorldEvents.Report(WorldEventKind.Ink, _smoothedPoint, 0.5f); // eyes follow the pen - ink is a decoy
+            NetSync.OnLocalStrokeGrow(_current); // the line grows on every screen (10 Hz inside)
 
             var last = _current.Last;
             if (last != null && Vector3.Distance(_smoothedPoint, last.transform.position) < DrawingConfig.NodeSpacing)
@@ -351,7 +389,7 @@ namespace SpellyZombie
             if (_ink != null && last != null)
             {
                 float cost = Vector3.Distance(_smoothedPoint, last.transform.position)
-                    * DrawingConfig.InkCostPerMeter;
+                    * DrawingConfig.InkCostPerMeter * _ink.DrawRate;
                 if (!_ink.TrySpend(cost))
                 {
                     DrawingWorld.Instance.LogEvent("OUT OF INK. kills refill the well");

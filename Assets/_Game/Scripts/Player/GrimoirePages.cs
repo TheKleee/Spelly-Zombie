@@ -20,6 +20,9 @@ namespace SpellyZombie
         /// holds the book up to read; closed, the book hand hangs free.
         public static bool BookOpen { get; private set; }
 
+        /// The page the local book is on (0 when no book has opened yet) - NetSync ships it.
+        public static int LocalPage => _owner != null ? _owner._page : 0;
+
         /// The rune on the open page (one rune per page). None when closed,
         /// mid-flip, or on the seal-lesson page. The declare flow reads this.
         public static RuneType PageRune { get; private set; }
@@ -104,23 +107,75 @@ namespace SpellyZombie
 
         void LateUpdate()
         {
-            if (!_remote) TuckOrDraw();
+            if (!_remote) TuckOrDraw(HandGrab.LocalHolding || InkRuneStone.Carried != null);
+            // a friend's open book follows their unlocks and side as they land
+            else if (_pageOpen && (OwnedMask() != _cardsShown || _sideShown != ShownSide(OwnerId)))
+                RebuildRemote();
             _pageK = Mathf.MoveTowards(_pageK, _pageOpen ? 1f : 0f,
                 Time.deltaTime / Mathf.Max(0.01f, PageSwingSeconds));
             ApplyCover();
         }
 
+        /// A friend's copy: their announced open state and page. The cover
+        /// swings, the paper flips and THEIR pages show (their unlocks, their side).
+        public void RemoteSet(bool open, int page, bool fx = true)
+        {
+            if (!_remote) return;
+            bool wasOpen = _pageOpen;
+            bool turned = open && page != _page;
+            if (open != wasOpen)
+            {
+                SetCoverOpen(open);
+                if (fx) Juice.Chime(transform.position);
+            }
+            else if (turned && fx)
+            {
+                PageFlipFx.Play(_anchor, Lift, page > _page ? -1 : 1);
+                Juice.Chime(transform.position); // the page-turn flourish
+            }
+            _page = page;
+            if (!open) ClearContent();
+            else if (!wasOpen || turned) RebuildRemote();
+        }
+
+        /// The page build for a friend's book. The statics describe the local
+        /// book only, so they are put back after.
+        void RebuildRemote()
+        {
+            var rune = PageRune;
+            bool seal = SealPageOpen, scan = ScanPageOpen, absorb = AbsorbPageOpen;
+            int mask = OwnedMask();
+            _cardsShown = mask;
+            _sideShown = ShownSide(OwnerId);
+            _page = Mathf.Clamp(_page, 0, Mathf.Max(1, PageCount) - 1);
+            Rebuild(mask);
+            PageRune = rune;
+            SealPageOpen = seal;
+            ScanPageOpen = scan;
+            AbsorbPageOpen = absorb;
+        }
+
+        /// A friend's copy: their hands filled or emptied.
+        public void RemoteTuck(bool full)
+        {
+            if (_remote) TuckOrDraw(full);
+        }
+
         /// Full hands: the book waits at the belt socket, closed. Empty hands
         /// bring it back to the palm exactly as it sat there.
-        void TuckOrDraw()
+        void TuckOrDraw(bool full)
         {
             if (SelfPaint.FloatingBook == transform) return; // the easel owns it
-            bool full = HandGrab.LocalHolding || InkRuneStone.Carried != null;
             if (full == _tucked) return;
             if (full)
             {
                 var rig = GetComponentInParent<CharacterRig>();
                 var belt = rig != null ? rig.BookSocket : null;
+                if (belt == null) // a puppet has no rig: its sockets answer directly
+                {
+                    var set = GetComponentInParent<SocketSet>();
+                    belt = set != null ? (set.Get("Book") ?? set.Get("Belt")) : null;
+                }
                 if (belt == null) return;
                 _handParent = transform.parent;
                 _handLocalPos = transform.localPosition;
@@ -263,11 +318,11 @@ namespace SpellyZombie
             // must fill in front of the player, not on the next flip
             int stamp = OwnedMask();
             if (stamp != _cardsShown || _writingShown != Grimoire.WritingVersion
-                || _sideShown != Sides.Of(Grimoire.LocalPlayerId)) // C mid-open = new book
+                || _sideShown != ShownSide(Grimoire.LocalPlayerId)) // C mid-open = new book
             {
                 _cardsShown = stamp;
                 _writingShown = Grimoire.WritingVersion;
-                _sideShown = Sides.Of(Grimoire.LocalPlayerId);
+                _sideShown = ShownSide(Grimoire.LocalPlayerId);
                 _page = Mathf.Min(_page, pages - 1);
                 Rebuild(stamp);
             }
@@ -280,15 +335,20 @@ namespace SpellyZombie
         bool _arrowsWarned;
 
         bool _remote;
+        int _remoteOwner;
+
+        /// Whose book this is: the local player's, or the friend a puppet copies.
+        int OwnerId => _remote ? _remoteOwner : Grimoire.LocalPlayerId;
 
         /// A remote copy: the book stays visible but the page arrows are local UI.
         /// The component stays on, so the page bone pin (LateUpdate) holds their
         /// book together too; only the keyboard and the riffle are local.
-        public void HideForRemote()
+        public void HideForRemote(int owner)
         {
             if (ArrowNext != null) ArrowNext.SetActive(false);
             if (ArrowBack != null) ArrowBack.SetActive(false);
             _remote = true;
+            _remoteOwner = owner;
         }
 
         /// The page arrows are authored objects on the book: parented there,
@@ -413,10 +473,10 @@ namespace SpellyZombie
         // acolyte book: the shared seal page, then the runes they have EARNED
         // by deed (AcolyteDeeds), then the Scan page. Nothing is owned at start.
         static readonly List<RuneType> _acoPages = new List<RuneType>();
-        static List<RuneType> AcolytePageList()
+        List<RuneType> AcolytePageList()
         {
             _acoPages.Clear();
-            int me = Grimoire.LocalPlayerId;
+            int me = OwnerId;
             foreach (var r in RuneLibrary.AcolyteKit)      // canonical order
                 if (RuneLibrary.IsUnlocked(me, r)) _acoPages.Add(r);
             foreach (var r in RuneLibrary.AcolyteMischief) // then the earned mischief glyphs
@@ -427,7 +487,9 @@ namespace SpellyZombie
         /// seal lesson, then the runes.
         public static bool ScanPageOpen { get; private set; }
         public static bool AbsorbPageOpen { get; private set; }
-        bool Acolyte => Sides.Of(Grimoire.LocalPlayerId) == Side.Acolyte;
+        bool Acolyte => Grimoires.HeldBy(OwnerId) == BookKind.Acolyte;
+        /// The side whose book is in these hands: the Life curse hands a wizard the acolyte's.
+        static Side ShownSide(int owner) => Grimoires.HeldBy(owner) == BookKind.Acolyte ? Side.Acolyte : Side.Wizard;
         Side _sideShown = (Side)255; // force the first build to pick a side
 
         /// Arena: a rune's page exists only once the rune is absorbed. The
@@ -436,7 +498,7 @@ namespace SpellyZombie
         List<RuneType> WizardPageList()
         {
             _wizPages.Clear();
-            int me = Grimoire.LocalPlayerId;
+            int me = OwnerId;
             foreach (var fam in Families)
             {
                 Pair(fam, out var up, out var down);
@@ -456,7 +518,7 @@ namespace SpellyZombie
         int OwnedMask()
         {
             int mask = 0;
-            foreach (var c in Grimoire.CardsOf(Grimoire.LocalPlayerId))
+            foreach (var c in Grimoire.CardsOf(OwnerId))
                 mask |= 1 << (int)c;
             return mask;
         }
@@ -510,9 +572,9 @@ namespace SpellyZombie
                     var arune = acoPages[ai];
                     PageRune = arune; // declare flow works on the kit pages too
                     // art: acolyte variant ("_Acolyte") first, wizard art as the stand-in
-                    if (CustomPage($"GrimoirePage_{PageKey(arune)}_Acolyte", true)) return;
+                    if (CustomPage($"GrimoirePage_{AcolytePageKey(arune)}_Acolyte", true)) return;
                     if (CustomPage($"GrimoirePage_{PageKey(arune)}", true)) return;
-                    Label(RuneLibrary.Icon(arune), new Vector3(0f, 0.001f, 0.094f), 0.003f, Ink);
+                    Label(RuneLibrary.IconFor(arune, OwnerId), new Vector3(0f, 0.001f, 0.094f), 0.003f, Ink);
                     var atex = Wardrobe.RuneIcon(arune, Ink);
                     if (atex != null) Quad(atex, new Vector3(0f, 0f, 0.012f), 0.092f);
                     return;
@@ -548,7 +610,7 @@ namespace SpellyZombie
         /// exists; free-play runes without a ramp show nothing.
         void WritingBar(RuneType rune)
         {
-            int me = Grimoire.LocalPlayerId;
+            int me = OwnerId;
             if (!Grimoire.WritingTracked(me, rune)) return;
             float level = Grimoire.WritingLevelOf(me, rune);
             var shader = Shader.Find("Sprites/Default");
@@ -585,6 +647,16 @@ namespace SpellyZombie
             _ => rune.ToString()
         };
 
+        /// His acolyte pages carry the other glyph under each file name: the march
+        /// page (DirectionAway_Acolyte) draws the arrow = Repel, the scatter page
+        /// (DirectionToward_Acolyte) the Y = Attract.
+        public static string AcolytePageKey(RuneType rune) => rune switch
+        {
+            RuneType.Attract => "DirectionToward",
+            RuneType.Repel => "DirectionAway",
+            _ => PageKey(rune)
+        };
+
         public static string PageKey(RuneCardType family)
             => family == RuneCardType.Affinity ? "Direction" : family.ToString();
 
@@ -597,7 +669,7 @@ namespace SpellyZombie
             Texture2D Load(string n) => PageImage(n);
             if (acolyte)
             {
-                var acolytePage = Load($"GrimoirePage_{PageKey(rune)}_Acolyte");
+                var acolytePage = Load($"GrimoirePage_{AcolytePageKey(rune)}_Acolyte");
                 if (acolytePage != null) return acolytePage;
             }
             var mine = Load($"GrimoirePage_{PageKey(rune)}");

@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3382389893070358978}
   - component: {fileID: 3430746826592524289}
+  - component: {fileID: 1528769285944480232}
   m_Layer: 0
   m_Name: House 5
   m_TagString: Untagged
@@ -133,6 +134,20 @@ MonoBehaviour:
   _stairLen: 4.295659
   _stairWidth: 1.6756666
   _stairMeasured: 1
+--- !u!114 &1528769285944480232
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1635779686520596805}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b575723cb6321e4e927be234f31f9b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.ObjectBox
+  Size: {x: 7.6923647, y: 9.9664135, z: 5.5130796}
+  Center: {x: -0.0033874512, y: 4.93467, z: 0}
 --- !u!1 &5916639887760294007
 GameObject:
   m_ObjectHideFlags: 0
@@ -297,10 +312,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 916797254268012146}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &120422496847799977
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -433,10 +448,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 966789916738001912}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &171621076168059441
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -535,10 +550,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1054072816266811232}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!64 &1316704868527126732
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -688,10 +703,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 350614625179814574}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &1123211086596018196 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2efb20e34beafdf40a10be79fc53a204, type: 3}
@@ -812,10 +827,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 315729254123916666}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &1092794410324793280 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: fe452a497a202b0489cbbc94ada6d156, type: 3}
@@ -948,10 +963,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 421882730456406702}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &1049625373102931988 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a9731af8ff7271644a608019552e21e2, type: 3}
@@ -1089,10 +1104,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 2029952000234151367}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &1405481169427094096
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1225,10 +1240,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 2251848727830390529}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &1527872403289940240
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1349,10 +1364,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1870539805687094337}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &1569780704184461363
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1485,10 +1500,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1804134660064695650}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &1815991122938532615
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1616,10 +1631,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1581567898899361366}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &2213813007526327532 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2efb20e34beafdf40a10be79fc53a204, type: 3}
@@ -1749,10 +1764,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1182108807800447558}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &1397254263691639963
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1959,10 +1974,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1433026817149629964}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &5802238621951840911
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -2165,10 +2180,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 2938273413745262160}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &2661490842757386381
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2301,10 +2316,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 2895508896629091804}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &2831714958446815779
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2438,10 +2453,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 3138212969279444850}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &4831603510615239431
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -2651,10 +2666,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 3138629518767176834}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &3190503795318178703
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2770,10 +2785,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 2344013233346903774}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!4 &3155980113791984740 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 28f3f237931cffe459437de4400f1a6d, type: 3}
@@ -2912,10 +2927,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 4346233423312216669}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &7600507503727099024
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -3126,10 +3141,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 4451891455056922365}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &409057734082943376
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -3340,10 +3355,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 4461555940393235861}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &4012574540409827439
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -3545,10 +3560,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 4214142451722301603}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!1001 &3963369800792212744
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3682,10 +3697,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 4305966828136839257}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &8848237129017873184
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -3890,10 +3905,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 3837888392955994029}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &4470169544724104471 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a9731af8ff7271644a608019552e21e2, type: 3}
@@ -3997,10 +4012,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 5542474563906788130}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!64 &7609823476555671951
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -4156,10 +4171,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 5680224379511231046}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &938380604054964890
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -4366,10 +4381,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 5322462987788067089}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &2843778587105370686
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -4576,10 +4591,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 5335518953591009735}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &697859451452012126
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -4785,10 +4800,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 4901930512530541834}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &8620506707123425978
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -4999,10 +5014,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 5110935705698347249}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &5544112764710283740
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -5212,10 +5227,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 4846343249770996449}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &5191096960891107419 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2efb20e34beafdf40a10be79fc53a204, type: 3}
@@ -5341,10 +5356,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6687697295804701171}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &6069075738043544857
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5443,10 +5458,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6411113675537238088}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!64 &2778282698439448254
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -5567,10 +5582,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6460091749811070392}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!64 &1606367613233132730
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -5725,10 +5740,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6534898145341209012}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &6379547442429794644
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5856,10 +5871,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6073628877447144453}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &6846049657592413887 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a9731af8ff7271644a608019552e21e2, type: 3}
@@ -5984,10 +5999,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6175732597487742206}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &6845274342649951812 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: fddfac6983d49254cbdec30cf766bdd2, type: 3}
@@ -6086,10 +6101,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6036327780397786259}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!64 &4532940628402296917
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -6237,10 +6252,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7975469286117414917}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &7125880287395459950
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6373,10 +6388,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7936854973447867967}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &7308889430650345006
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6513,10 +6528,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7615320782516284287}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &7497603493850120958
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -6741,10 +6756,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7646721590373503717}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &7544389781233855962
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6869,10 +6884,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7237961184589828235}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &2404528551361657535
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -7048,10 +7063,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7309126248214981146}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!64 &46067482735554989
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -7206,10 +7221,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7487632113434688297}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &7828022584731279763 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2efb20e34beafdf40a10be79fc53a204, type: 3}
@@ -7334,10 +7349,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7473109289212204115}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &7853716868167241449 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: fddfac6983d49254cbdec30cf766bdd2, type: 3}
@@ -7470,10 +7485,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6936767919926473733}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &7714535350776540863 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 2efb20e34beafdf40a10be79fc53a204, type: 3}
@@ -7607,10 +7622,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7031135501566686319}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &2763180488131302146
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -7821,10 +7836,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 7197560715493552573}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &3743957659285393001
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -8039,10 +8054,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 9002634361177529585}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &8358187138349800682
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8175,10 +8190,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 9169143276586475963}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &8382614909346539233
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8299,10 +8314,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 8688690567052483504}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!1001 &9121174358091661650
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8430,10 +8445,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 8238634104086182915}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &8727504103129343673 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: a9731af8ff7271644a608019552e21e2, type: 3}
@@ -8554,10 +8569,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 8242945956256262674}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 0
 --- !u!4 &8732201501093916840 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: fe452a497a202b0489cbbc94ada6d156, type: 3}

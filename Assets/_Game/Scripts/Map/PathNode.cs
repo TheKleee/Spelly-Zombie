@@ -7,7 +7,7 @@ namespace SpellyZombie
     /// under a Biome binds it: no auto nodes there, and it rides the shuffle.
     public class PathNode : MonoBehaviour
     {
-        [Tooltip("0 = plain junction. >0 = roundabout: ring path at this radius, nothing ever spawns inside it.")]
+        [Tooltip("0 = plain junction. >0 = roundabout: ring path at this radius. The inside fills like any ground; nothing spawns on the ring itself.")]
         public float Radius = 0f;
 
         [Tooltip("Nodes this one connects to - drawing your sketch. Each link is carved exactly (bent only by the biome's PathCurve).")]

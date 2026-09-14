@@ -92,10 +92,52 @@ namespace SpellyZombie
         void OnEnable() => All.Add(this);
         void OnDisable() => All.Remove(this);
 
+        // CLIENT: the numbers of the host's lvl3 particles, by their host id -
+        // no dome, no ring, no puffs; the mote proxy is the look
+        static readonly Dictionary<int, ArtificialBiome> _quiet = new Dictionary<int, ArtificialBiome>();
+        bool _isQuiet;
+
+        public static void OpenQuiet(int id, Vector3 at, SpellPayload offsets, float radius, float seconds)
+        {
+            if (_quiet.TryGetValue(id, out var had) && had != null)
+            {
+                had.transform.position = at;
+                had.Offsets = offsets;
+                had.Radius = Mathf.Max(0.1f, radius);
+                had.Seconds = Mathf.Max(1f, seconds);
+                had._age = 0f;
+                return;
+            }
+            var go = new GameObject("ParticleBiome");
+            go.transform.position = at;
+            var b = go.AddComponent<ArtificialBiome>();
+            b.Offsets = offsets;
+            b.Radius = Mathf.Max(0.1f, radius);
+            b.Seconds = Mathf.Max(1f, seconds);
+            b._isQuiet = true;
+            _quiet[id] = b;
+        }
+
+        public static void CloseQuiet(int id)
+        {
+            if (_quiet.TryGetValue(id, out var b) && b != null) Destroy(b.gameObject);
+            _quiet.Remove(id);
+        }
+
         void Update()
         {
             _age += Time.deltaTime;
             if (_age >= Seconds) { Destroy(gameObject); return; }
+            if (_isQuiet) return;
+            // the clients open their own copy (BiomeMsg): the puffs are theirs
+            bool quiet = NetSync.FxQuiet;
+            NetSync.FxQuiet = true;
+            try { Breathe(); }
+            finally { NetSync.FxQuiet = quiet; }
+        }
+
+        void Breathe()
+        {
             // affinity drifts onto the things inside like every axis - THEY
             // pull and push, the place never drags toward its own centre
 

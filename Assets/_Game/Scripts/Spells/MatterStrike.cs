@@ -67,10 +67,12 @@ namespace SpellyZombie
             if (_rb == null) return;
             // grabbed/claimed matter belongs to the hand systems, not to us
             if (InkRuneStone.Carried != null && InkRuneStone.Carried.transform == transform) return;
-            if (HandGrab.LocalHeldBody == _rb) { _held = true; return; } // in the hand
+            // in a hand: the local one, or a friend's the host drives
+            bool heldNow = HandGrab.LocalHeldBody == _rb || NetSync.IsRemoteHeld(_rb);
+            if (heldNow) { _held = true; return; }
 
             // thrown = ballistic with gravity; only seeing prey mid-flight wakes the strike once more
-            if (_held && HandGrab.LocalHeldBody != _rb)
+            if (_held && !heldNow)
             {
                 _held = false;
                 _thrown = true;

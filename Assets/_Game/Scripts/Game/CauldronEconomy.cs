@@ -32,10 +32,16 @@ namespace SpellyZombie
 
         VesselShell _shell;   // the true-bowl follower, when the Bowl slot is filled
 
+        static Material _potInk, _potCorrupt; // the pots' own ink, worn by the grounded pool
+        Vector3 _poolAt;     // grounded pool: where the blob stands at full size
+        float _poolBottom;   // and how far its mesh bottom sits from its pivot
+
         Renderer[] _inkRends;   // the ink's renderers, found once
 
         /// 0 = black, 1 = green; rises while corruption progresses, falls during a defuse.
-        public float Greenness { get; private set; }
+        /// The authority computes it; clients read the mirror PotMsg carries.
+        float _green;
+        public float Greenness => NetGame.IsAuthority ? _green : _syncGreen;
 
         bool _lobby;
         float _lobbySkyIn = -1f;  // lobby: seconds until the ink falls from the sky
@@ -76,7 +82,7 @@ namespace SpellyZombie
         public static float Capacity { get; private set; } = DrawingConfig.PotCapacityInk;
 
         /// Corruption rates are tuned at the floor capacity and grow with the pot.
-        static float Scale => Capacity / Mathf.Max(1f, DrawingConfig.PotCapacityInk);
+        public static float Scale => Capacity / Mathf.Max(1f, DrawingConfig.PotCapacityInk);
 
         static float SizeForMatch()
         {
@@ -96,21 +102,70 @@ namespace SpellyZombie
         static float _syncFill = -1f;
         static bool _syncCorrupt;
         static float _syncPrep;
-        public static void ApplyNet(float fill01, bool corrupt, float prep)
+        static string _syncPot;
+        static float _syncGreen;
+        static bool _syncVacuum;       // the post-shatter countdown: prep rides with no pot named
+        static float _syncAt = -1f;    // when the last PotMsg landed; the countdowns run between pushes
+        static float _syncRate;        // fill change per second between pushes, for the flow motes
+        static string _ratePot;
+        // the previous message, for the edges the host only hears locally
+        static float _syncPrevPrep;
+        static bool _syncPrevCorrupt, _syncPrevGrounded;
+        static string _syncPrevPot;
+        public static void ApplyNet(float fill01, bool corrupt, float prep, string pot, bool grounded, float capacity,
+            float green)
         {
+            float now = Time.time;
+            _syncRate = _syncFill >= 0f && pot == _ratePot && _syncAt >= 0f
+                ? (fill01 - _syncFill) / Mathf.Max(0.1f, now - _syncAt) : 0f;
+            _ratePot = pot;
+            _syncAt = now;
             _syncFill = fill01;
             _syncCorrupt = corrupt;
             _syncPrep = prep;
+            _syncGreen = green;
+            _syncVacuum = !grounded && string.IsNullOrEmpty(pot) && prep > 0f;
+            if (capacity > 0f) Capacity = capacity; // the spill and the drain scale with the host's pot
+            // every pot broken on the host: this machine pools the ink at its own InkGrave
+            if (grounded)
+            {
+                if (Active == null || !Active.Grounded) GroundHere(corrupt);
+            }
+            else if (pot != _syncPot || Active == null)
+            {
+                // the host names its live pot, so a client pours from the same one
+                _syncPot = pot;
+                var go = string.IsNullOrEmpty(pot) ? null : ScenePath.Find(pot);
+                var live = go != null ? go.GetComponent<CauldronEconomy>() : null;
+                if (live != null) Active = live;
+            }
+
+            // the same pot as last push: the host's cues play here on the edge
+            bool samePot = Active != null && (grounded ? _syncPrevGrounded
+                : !string.IsNullOrEmpty(pot) && pot == _syncPrevPot);
+            if (samePot && _syncPrevPrep > 0f && prep <= 0f) Juice.Chime(Active.transform.position);
+            // black again after a defuse (a broken or dry pot also drops corrupt, with no ink left)
+            if (samePot && _syncPrevCorrupt && !corrupt && fill01 > 0.01f) Juice.Chime(Active.transform.position);
+            _syncPrevPrep = prep;
+            _syncPrevCorrupt = corrupt;
+            _syncPrevPot = pot;
+            _syncPrevGrounded = grounded;
         }
 
+        /// Seconds since the last PotMsg; client countdowns keep moving between pushes.
+        static float SyncAge => _syncAt < 0f ? 0f : Mathf.Min(1f, Time.time - _syncAt);
+
         /// Current truth for anyone asking (HUD, bots): 0..1 and the owner.
-        public static float Fill01 => Active == null ? 1f
-            : NetGame.IsAuthority ? (Active._open ? Active._ink / Mathf.Max(1f, Capacity) : 0f)
-            : Mathf.Max(0f, _syncFill);
-        public static bool IsCorrupt => Active == null ? false
-            : NetGame.IsAuthority ? Active._corrupt : _syncCorrupt;
+        /// Between pots (the vacuum and the comet) it is the ink in flight.
+        public static float Fill01 => !NetGame.IsAuthority ? (_syncFill >= 0f ? _syncFill : 1f)
+            : Active != null ? (Active._open ? Active._ink / Mathf.Max(1f, Capacity) : 0f)
+            : _fleeing ? _fleeInk / Mathf.Max(1f, Capacity) : 1f;
+        public static bool IsCorrupt => !NetGame.IsAuthority ? _syncCorrupt
+            : Active != null ? Active._corrupt : _fleeing && _fleeCorrupt;
+        /// Some ink is in play: in a pot, on the ground or in flight between pots.
+        public static bool HasInk => NetGame.IsAuthority ? Active != null || _fleeing : _syncFill >= 0f;
         public static float PrepRemaining => Active == null ? 0f
-            : NetGame.IsAuthority ? Active._prep : _syncPrep;
+            : NetGame.IsAuthority ? Active._prep : Mathf.Max(0f, _syncPrep - SyncAge);
 
         Vector3 _surfaceScale0;
         MaterialPropertyBlock _blk;
@@ -123,7 +178,7 @@ namespace SpellyZombie
         {
             All.Add(this);
             // first pot awake holds the ink; later ones are dormant until the hop picks them
-            if (Active == null) Active = this;
+            if (Active == null) { Active = this; _fleeing = false; }
 
             _prep = DrawingConfig.PotPrepSeconds;
             _open = false;
@@ -131,6 +186,8 @@ namespace SpellyZombie
             _ink = 0f;
             if (InkSurface != null) _surfaceScale0 = InkSurface.localScale;
             _blk = new MaterialPropertyBlock();
+            if (InkMaterial != null) _potInk = InkMaterial;
+            if (CorruptInkMaterial != null) _potCorrupt = CorruptInkMaterial;
 
             // concave-bowl follower so the liquid stays inside once lifted (see VesselShell)
             if (Bowl != null && _shell == null)
@@ -154,12 +211,21 @@ namespace SpellyZombie
             _lobby = RoundDirector.InLobby;
             if (NetGame.IsAuthority) Simulate(dt);
             LocalWandTick(dt);
+            SpillTick(dt);
+            // a client's bills reach the host twice a second
+            if (!NetGame.IsAuthority && Active == this)
+            {
+                _billTimer -= dt;
+                if (_billTimer <= 0f && _drinkBill > 0.01f)
+                {
+                    _billTimer = 0.5f;
+                    NetSync.SendPotDrink(_drinkBill);
+                    _drinkBill = 0f;
+                }
+            }
 
             CauldronHUD.Fill = Fill01;
             CauldronHUD.Corrupt = IsCorrupt;
-            CauldronHUD.TimerSeconds = VacuumRemaining >= 0f ? VacuumRemaining
-                : _lobbySkyIn > 0f ? _lobbySkyIn
-                : PrepRemaining > 0f ? PrepRemaining : -1f;
             PaintSurface();
             FlowTick(dt);
 
@@ -178,10 +244,13 @@ namespace SpellyZombie
         static bool _hopGap;       // the 10s vacuum after a shatter: no pot pours
         static float _fleeInk;     // ink carried mid-flight
         static bool _fleeCorrupt;  // breaking never cleanses
+        static bool _fleeing;      // ink between pots: the vacuum and the comet
         static Vector3 _lastBrokenAt;
 
         /// Seconds left in the vacuum, -1 when none.
-        public static float VacuumRemaining => _hopGap ? Mathf.Max(0f, _hopTimer) : -1f;
+        public static float VacuumRemaining => NetGame.IsAuthority
+            ? (_hopGap ? Mathf.Max(0f, _hopTimer) : -1f)
+            : (_syncVacuum ? Mathf.Max(0f, _syncPrep - SyncAge) : -1f);
 
         /// Counts down the post-shatter vacuum, then lands the ink in a random
         /// surviving pot, or grounds it at the InkGrave when none survive.
@@ -190,24 +259,27 @@ namespace SpellyZombie
         public static void GapTick(float dt)
         {
             if (!NetGame.IsAuthority || !_hopGap) return;
-            if (RoundDirector.InLobby) { _hopGap = false; return; } // lobby falls its own way
+            if (RoundDirector.InLobby) { _hopGap = false; _fleeing = false; return; } // lobby falls its own way
 
             _hopTimer -= dt;
-            if (_hopTimer > 0f) return;
+            if (_hopTimer > 0f) { PushGap(); return; }
             _hopGap = false;
 
             // the comet chases a surviving pot; ink lands on arrival, not on a timer
             if (All.Count == 0) { Ground(); return; }
             var pick = All[Random.Range(0, All.Count)];
-            SkyBeam.Down(pick.transform,
-                _fleeCorrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor,
-                () => LandMatchInk(pick));
+            Color colour = _fleeCorrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
+            SkyBeam.Down(pick.transform, colour, () => LandMatchInk(pick));
+            // clients fall the same comet onto the same pot; the ink itself arrives by PotMsg
+            NetSync.PushFx(FxLibrary.FxCometDown, pick.transform.position, Vector3.zero, colour,
+                pick._hp != null ? pick._hp.NetId : 0, 0f, 1, 1f, true);
         }
 
         /// Comet arrival mid-match: the fled ink moves in. If the target died
         /// during the fall, another survivor takes it, or the ink grounds.
         static void LandMatchInk(CauldronEconomy pot)
         {
+            _fleeing = false; // it lands here, or grounds below
             var next = pot != null && All.Contains(pot) ? pot
                 : All.Count > 0 ? All[Random.Range(0, All.Count)] : null;
             if (next == null) { Ground(); return; }
@@ -251,6 +323,17 @@ namespace SpellyZombie
             Juice.Chime(transform.position);
         }
 
+        static float _gapPush;
+        /// Clients count the vacuum down too: the countdown rides the prep field.
+        static void PushGap()
+        {
+            if (!NetGame.Connected || !NetGame.IsHost) return;
+            _gapPush -= Time.deltaTime;
+            if (_gapPush > 0f) return;
+            _gapPush = 0.5f;
+            NetSync.PushPot(_fleeInk / Mathf.Max(1f, Capacity), _fleeCorrupt, Mathf.Max(0f, _hopTimer), "", false, 0f);
+        }
+
         /// Every pot broken: the ink pools at the InkGrave and can never move
         /// again. All pot rules keep running on the puddle.
         static void Ground()
@@ -264,13 +347,29 @@ namespace SpellyZombie
                     "Using the last pot's grave instead.");
                 at = _lastBrokenAt;
             }
+            var pool = MakePool(at, _fleeCorrupt);
+            pool._ink = Mathf.Max(_fleeInk, 1f);
+            _fleeing = false;
+        }
 
+        /// A client's copy of the pool: the host said the ink grounded; the
+        /// fill and the colour keep arriving on the wire.
+        static void GroundHere(bool corrupt)
+        {
+            MakePool(InkGrave.I != null ? InkGrave.I.transform.position : _lastBrokenAt, corrupt);
+        }
+
+        /// The endgame puddle object, on any machine: the authored InkGrave
+        /// blob becomes its ink surface and it is the live pot from now on.
+        static CauldronEconomy MakePool(Vector3 at, bool corrupt)
+        {
             var go = new GameObject("~GroundedInk");
             go.transform.position = at;
             var pool = go.AddComponent<CauldronEconomy>();
             pool.Grounded = true;
-            pool._ink = Mathf.Max(_fleeInk, 1f);
-            pool._corrupt = _fleeCorrupt;
+            pool.InkMaterial = _potInk;
+            pool.CorruptInkMaterial = _potCorrupt;
+            pool._corrupt = corrupt;
             pool._open = true;
             pool._prep = 0f;
             Active = pool;
@@ -281,13 +380,16 @@ namespace SpellyZombie
                 InkGrave.I.Reveal();
                 pool.InkSurface = InkGrave.I.transform;
                 pool._surfaceScale0 = InkGrave.I.transform.localScale;
+                pool._poolAt = InkGrave.I.transform.position;
+                pool._poolBottom = InteriorField.UprightBounds(InkGrave.I.gameObject, Quaternion.identity).min.y;
             }
 
-            Color c = pool._corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
+            Color c = corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
             SkyBeam.Down(at, c);
             if (FxLibrary.I != null) FxLibrary.SpawnTinted(FxLibrary.I.Splash, at + Vector3.up * 0.3f, c);
             Juice.Thud(at);
             DrawingWorld.Instance?.LogEvent("no cauldron left. the ink pools at the heart of the map");
+            return pool;
         }
 
         /// Lobby pot: resets for a sky-fall rebirth. Match pot: gone for good;
@@ -298,20 +400,29 @@ namespace SpellyZombie
             if (_lobby)
             {
                 // LobbyRespawn rebuilds the pot; the ink falls back after it stands again
-                if (_open && _ink > 0.5f)
+                bool held = NetGame.IsAuthority ? (_open && _ink > 0.5f) : (Active == this && Fill01 > 0.01f);
+                if (held)
                     SkyBeam.Up(transform.position,
-                        _corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
+                        IsCorrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
                 _open = false; _ink = 0f; _corrupt = false;
                 _defuse = 0f; _corruptTouch = 0f;
                 _lobbySkyIn = -1f;
                 LobbyRespawn.Take(gameObject, DrawingConfig.LobbyRespawnSeconds);
                 return;
             }
-            if (!NetGame.IsAuthority) return; // clients mirror via PushNet
+            if (!NetGame.IsAuthority)
+            {
+                // clients mirror the vacuum via PushNet; the fleeing comet plays here
+                if (Active == this && Fill01 > 0.01f)
+                    SkyBeam.Up(transform.position,
+                        IsCorrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
+                return;
+            }
             if (Active == this)
             {
                 _fleeInk = Mathf.Max(_ink, 1f);
                 _fleeCorrupt = _corrupt;
+                _fleeing = true;
                 SkyBeam.Up(transform.position,
                     _corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
                 Active = null;
@@ -355,6 +466,8 @@ namespace SpellyZombie
                     {
                         _cometSent = true;
                         SkyBeam.Down(transform, DrawingConfig.InkColor, LandLobbyInk);
+                        NetSync.PushFx(FxLibrary.FxCometDown, transform.position, Vector3.zero, DrawingConfig.InkColor,
+                            _hp != null ? _hp.NetId : 0, 0f, 1, 1f, true);
                     }
                     PushNet();
                     return; // an empty vessel until the comet actually lands
@@ -366,7 +479,7 @@ namespace SpellyZombie
                     _open = false;
                     _corrupt = false;
                     _defuse = 0f;
-                    Greenness = 0f;
+                    _green = 0f;
                     _lobbySkyIn = -1f; // the empty-vessel path arms the comet
                     DrawingWorld.Instance?.LogEvent("the pot ran dry. new ink will fall from the sky");
                 }
@@ -400,7 +513,7 @@ namespace SpellyZombie
             if (_corrupt)
             {
                 // greenness runs 1 -> 0 as the defuse holds; PaintSurface lerps the colour by it
-                Greenness = 1f - Mathf.Clamp01(_defuse / Mathf.Max(0.1f, DrawingConfig.PotDefuseSeconds));
+                _green = 1f - Mathf.Clamp01(_defuse / Mathf.Max(0.1f, DrawingConfig.PotDefuseSeconds));
 
                 float defusers = 0f, babysitters = 0f;
                 EachPlayer((side, pos) =>
@@ -439,7 +552,7 @@ namespace SpellyZombie
             else
             {
                 // greenness 0 -> 1 while corruption progresses
-                Greenness = Mathf.Clamp01(_corruptTouch / Mathf.Max(0.1f, DrawingConfig.PotCorruptSeconds));
+                _green = Mathf.Clamp01(_corruptTouch / Mathf.Max(0.1f, DrawingConfig.PotCorruptSeconds));
 
                 // an acolyte at a black pot for the plant time turns it
                 float touching = 0f;
@@ -472,22 +585,39 @@ namespace SpellyZombie
                     DrawingWorld.Instance?.LogEvent("the cauldron turns GREEN");
                 }
 
-                // the spill: the local wizard loitering close with a full wand;
-                // remote machines bill their own refills through PotDrink
-                var p = LocalPlayer();
-                if (p != null && Sides.Of(Grimoire.LocalPlayerId) == Side.Wizard)
-                {
-                    var ink = p.GetComponent<PlayerInk>();
-                    if (ink != null && ink.Fraction >= 0.999f
-                        && Vector3.Distance(p.transform.position, transform.position)
-                            <= DrawingConfig.PotCloseRadius)
-                        _ink -= DrawingConfig.PotSpillPerSec * dt
-                            / Mathf.Max(1, Sides.CountOn(Side.Wizard)); // per-one-wizard, split by the team
-                }
             }
 
             _ink = Mathf.Clamp(_ink, 0f, Capacity);
             PushNet();
+        }
+
+        /// The spill, on every machine for its own wizard: a full wand
+        /// loitering at the pot keeps the tap running and the pot pays,
+        /// per one wizard, split by the team.
+        void SpillTick(float dt)
+        {
+            if (Active != this || PrepRemaining > 0f || IsCorrupt || Fill01 <= 0f) return;
+            var p = LocalPlayer();
+            if (p == null || Sides.Of(Grimoire.LocalPlayerId) != Side.Wizard) return;
+            var ink = p.GetComponent<PlayerInk>();
+            if (ink == null || ink.Fraction < 0.999f) return;
+            if (Vector3.Distance(p.transform.position, transform.position) > DrawingConfig.PotCloseRadius) return;
+            Bill(DrawingConfig.PotSpillPerSec * Scale * dt / Mathf.Max(1, Sides.CountOn(Side.Wizard)));
+        }
+
+        /// Ink leaving the pot for this machine's wizard: the authority
+        /// subtracts, a client bills it to the host through PotDrink.
+        void Bill(float amount)
+        {
+            if (NetGame.IsAuthority) _ink = Mathf.Max(0f, _ink - amount);
+            else _drinkBill += amount;
+        }
+
+        /// The evaporation ink dried some of the pot, whoever owns it right now.
+        public void Evaporate(float amount)
+        {
+            if (!NetGame.IsAuthority) return;
+            _ink = Mathf.Max(0f, _ink - Mathf.Max(0f, amount));
         }
 
         /// Host bills a client's refill (PotDrink message).
@@ -503,7 +633,7 @@ namespace SpellyZombie
             _pushTimer -= Time.deltaTime;
             if (_pushTimer > 0f) return;
             _pushTimer = 0.5f;
-            NetSync.PushPot(Fill01, _corrupt, _prep);
+            NetSync.PushPot(Fill01, _corrupt, _prep, Grounded ? "" : ScenePath.Of(transform), Grounded, _green);
         }
 
         // ------------------------------------------- every machine, own wand --
@@ -538,19 +668,7 @@ namespace SpellyZombie
             float amount = rate * dt;
             ink.Award(amount);
 
-            // every awarded drop is billed to the pot
-            if (NetGame.IsAuthority) _ink = Mathf.Max(0f, _ink - amount);
-            else
-            {
-                _drinkBill += amount;
-                _billTimer -= dt;
-                if (_billTimer <= 0f && _drinkBill > 0.01f)
-                {
-                    _billTimer = 0.5f;
-                    NetSync.SendPotDrink(_drinkBill);
-                    _drinkBill = 0f;
-                }
-            }
+            Bill(amount); // every awarded drop is billed to the pot
         }
 
         static SimpleFPSController LocalPlayer() =>
@@ -579,10 +697,14 @@ namespace SpellyZombie
         void FlowTick(float dt)
         {
             if (InkSurface == null) return;
-            float fill = Fill01;
+            float fill = Active == this ? Fill01 : 0f;
             if (_lastFill < 0f) { _lastFill = fill; return; }
 
-            float rate = (fill - _lastFill) / Mathf.Max(0.0001f, dt);
+            // a client's fill only steps when a PotMsg lands: the rate between
+            // pushes reads as the steady stream the host sees
+            float rate = !NetGame.IsAuthority && Active == this
+                ? (SyncAge < 1f ? _syncRate : 0f)
+                : (fill - _lastFill) / Mathf.Max(0.0001f, dt);
             _lastFill = fill;
             if (PrepRemaining > 0f) rate = 0f;
 
@@ -654,12 +776,16 @@ namespace SpellyZombie
                 }
                 return;
             }
-            float f = PrepRemaining > 0f ? 0f : Fill01;
+            // only the live pot holds ink; the others stand empty until the ink lands in them
+            float f = Active != this || PrepRemaining > 0f ? 0f : Fill01;
             bool show = f > 0.01f;
             if (InkSurface.gameObject.activeSelf != show) InkSurface.gameObject.SetActive(show);
             if (!show) return;
             // whole-body scale down to a speck so near-empty reads as nearly gone
-            InkSurface.localScale = _surfaceScale0 * Mathf.Lerp(0.05f, 1f, f);
+            float k = Mathf.Lerp(0.05f, 1f, f);
+            InkSurface.localScale = _surfaceScale0 * k;
+            // the grounded blob shrinks toward its pivot: keep its bottom on the ground
+            if (Grounded) InkSurface.position = _poolAt + Vector3.up * ((1f - k) * _poolBottom);
             // material slots: both filled = swap black/green assets; only black
             // filled = green MPB tint while corrupt; none = authored material untouched
             if (_inkRends == null) _inkRends = InkSurface.GetComponentsInChildren<Renderer>(true);

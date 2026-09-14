@@ -157,21 +157,44 @@ namespace SpellyZombie
             _flameTimer -= dt;
             if (_flameTimer <= 0f)
             {
-                _flameTimer = 0.14f;
-                var flame = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                flame.name = "Flame";
-                Destroy(flame.GetComponent<Collider>());
-                flame.transform.position = transform.position + Vector3.up * Random.Range(0.2f, 1.6f)
-                    + Random.insideUnitSphere * 0.35f;
-                flame.transform.localScale = Vector3.one * Random.Range(0.15f, 0.3f);
-                flame.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(
-                    Color.Lerp(new Color(1f, 0.75f, 0.15f, 0.95f), new Color(1f, 0.3f, 0.05f, 0.95f), Random.value),
-                    MoteShade.Additive);
-                var rise = flame.AddComponent<Rigidbody>();
-                rise.useGravity = false;
-                rise.linearVelocity = Vector3.up * Random.Range(0.8f, 1.6f);
-                Destroy(flame, Random.Range(0.35f, 0.6f));
+                _flameTimer = FlameEvery;
+                SpawnFlame(transform);
             }
+        }
+
+        /// The flame cadence, shared with the stand-ins.
+        public const float FlameEvery = 0.14f;
+
+        /// One flame blob boiling off a body. The stand-ins burn with the same.
+        public static void SpawnFlame(Transform body)
+        {
+            var flame = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            flame.name = "Flame";
+            Destroy(flame.GetComponent<Collider>());
+            flame.transform.position = body.position + Vector3.up * Random.Range(0.2f, 1.6f)
+                + Random.insideUnitSphere * 0.35f;
+            flame.transform.localScale = Vector3.one * Random.Range(0.15f, 0.3f);
+            flame.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(
+                Color.Lerp(new Color(1f, 0.75f, 0.15f, 0.95f), new Color(1f, 0.3f, 0.05f, 0.95f), Random.value),
+                MoteShade.Additive);
+            var rise = flame.AddComponent<Rigidbody>();
+            rise.useGravity = false;
+            rise.linearVelocity = Vector3.up * Random.Range(0.8f, 1.6f);
+            Destroy(flame, Random.Range(0.35f, 0.6f));
+        }
+
+        /// The ice cube a frozen body wears. The stand-ins wear the same.
+        public static GameObject BuildIceShell(Transform body)
+        {
+            var shell = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            shell.name = "IceShell";
+            var shellCol = shell.GetComponent<Collider>();
+            if (shellCol != null) Destroy(shellCol);
+            shell.transform.SetParent(body, false);
+            shell.transform.localScale = Vector3.one * 1.25f;
+            shell.GetComponent<Renderer>().sharedMaterial =
+                MatterFX.Get(new Color(0.72f, 0.88f, 1f, 0.55f), MoteShade.Transparent);
+            return shell;
         }
 
         void Freeze()
@@ -179,14 +202,7 @@ namespace SpellyZombie
             Frozen = true;
             Juice.Crackle(transform.position);
             if (_rb != null) _rb.constraints = RigidbodyConstraints.FreezeAll; // statue
-            _iceShell = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            _iceShell.name = "IceShell";
-            var shellCol = _iceShell.GetComponent<Collider>();
-            if (shellCol != null) Destroy(shellCol);
-            _iceShell.transform.SetParent(transform, false);
-            _iceShell.transform.localScale = Vector3.one * 1.25f;
-            _iceShell.GetComponent<Renderer>().sharedMaterial =
-                MatterFX.Get(new Color(0.72f, 0.88f, 1f, 0.55f), MoteShade.Transparent);
+            _iceShell = BuildIceShell(transform);
         }
 
         void Unfreeze()

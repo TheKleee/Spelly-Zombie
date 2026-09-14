@@ -78,6 +78,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 35384140114d47047a01ac352bd8e04f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 287318103319486868}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 35384140114d47047a01ac352bd8e04f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7061157793848355365}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 35384140114d47047a01ac352bd8e04f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -2882696973081982422}
   m_SourcePrefab: {fileID: 100100000, guid: 35384140114d47047a01ac352bd8e04f, type: 3}
 --- !u!1 &2101507525508470021 stripped
 GameObject:
@@ -115,7 +121,57 @@ MonoBehaviour:
   m_GameObject: {fileID: 2101507525508470021}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 9
+--- !u!114 &7061157793848355365
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2101507525508470021}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Element
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 100
+  _authoredMax: 0
+  RemoveOnDeath: 1
+  DeadStill: 0
+--- !u!114 &-2882696973081982422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2101507525508470021}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
+  LobbyRespawnOverride: 0

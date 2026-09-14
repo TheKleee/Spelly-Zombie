@@ -74,7 +74,7 @@ A hide-and-seek party game where you cast spells by drawing them, played as Wiza
 
 - The Meccha Chameleon crowd, 12 million players who loved a simple hide-and-seek and burned out on it. Two things they complain about are the two things this game fixes: playing the hunter is boring here it is the powerful spell caster, and dead players sit in a menu here they become ghosts that keep playing.
 - Witch Hat Atelier fans. Its magic system is drawn glyphs in circles with ink, and no game adaptation exists. The grimoire, the pointy hats, the cauldron all read at a glance.
-- Friends first. The full game needs other people, so every player recruits. The built in bot opponent is deliberately terrible: it teaches the shape of a match and makes you want a real friend across the table.
+- Friends first. The full game needs other people, so every player recruits. Alone you can practice in the lobby or run the map on the clock, never against a bot.
 - Clip factory by design: every combo and every failure should read in a 15 second clip. Slipping on your own oil, freezing your friend, a meteor drawn on a wall, a wizard blasting a barrel that turns out to be a person.
 - Positioning line the developer uses: familiar but ours. Recognisable prop hunt structure, one new verb.
 
@@ -82,7 +82,7 @@ A hide-and-seek party game where you cast spells by drawing them, played as Wiza
 
 - Developer: Marko, solo, eight years of games, based in Serbia. Spelly Zombie is his first market-first title.
 - Engine and platform: Unity 6, Steam, PC (Windows, Mac, Linux builds).
-- Players: online multiplayer, lobbies of 2 to 4 in the demo, larger later. Public lobby browser with region and language tags, private lobbies through Steam invites. No single player mode beyond the practice lobby and the bot match.
+- Players: online multiplayer, lobbies of 2 to 12. Public lobby browser with region and language tags, private lobbies through Steam invites, LAN for players on one network. No single player mode beyond the practice lobby and a solo practice run on the clock.
 - The lobby is the tutorial: an immortal sandbox where you can switch sides freely and absorb every rune from immortal sources before a match.
 - Release: 2026, very soon. The game launches on momentum, not on a festival calendar. Steam Next Fest is not part of the plan.
 - Steam page: live immediately, demo public on the page ahead of launch.

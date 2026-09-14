@@ -98,11 +98,18 @@ namespace SpellyZombie
         /// Set by things that are simply never afraid - the demon, and a
         /// zombie under the aggression rune. Courage can also earn it.
         public bool AlwaysFearless;
+        /// The aggression rune's minute: nothing scares it either. ZombieBuff sets and clears it.
+        public bool BuffFearless;
+        /// Under a decoy: every wizard is a terror, wand or not, until this time.
+        public float DecoyedUntil;
+        public bool Decoyed => Time.time < DecoyedUntil;
+        /// The transformation ink: a crate for a moment - it walks, it does not bite.
+        public float TransformedUntil;
+        public bool Transformed => Time.time < TransformedUntil;
 
         /// ★ COURAGE IS A NUMBER, and the ground moves it. 0 is afraid of
-        /// everything, high faces anything - so a dreadful biome unnerves a
-        /// brave zombie, and a safe one never emboldens a coward, because
-        /// courage is a CAPACITY: you get the lesser of yours and the place's.
+        /// everything, high faces anything - a dreadful biome unnerves a
+        /// brave zombie and a bold one emboldens a coward.
         ///
         /// It was a bare bool that only ever got switched on by hand, which
         /// meant biomes could freeze a zombie and burn it but never frighten it.
@@ -116,7 +123,7 @@ namespace SpellyZombie
         }
         Element _el;
 
-        public bool Fearless => AlwaysFearless || Courage >= DrawingConfig.FearlessAt;
+        public bool Fearless => AlwaysFearless || BuffFearless || Courage >= DrawingConfig.FearlessAt;
 
         /// How readily it takes fright at all. A coward panics at things a
         /// braver one walks past.
@@ -309,7 +316,7 @@ namespace SpellyZombie
                         out var hit, SightRange) && hit.collider.GetComponentInParent<SimpleFPSController>() == null)
                     continue; // wall in the way
                 // armed players are feared; wandless players are prey
-                if (IsArmed(p) && !Fearless)
+                if (Decoyed || (IsArmed(p) && !Fearless))
                 {
                     Remember(MemKind.Danger, MemEvent.HeardDanger, p.transform.position, p.transform);
                     if (Random.value < 0.15f) Mumble("NO NO NO", 1.5f);
@@ -318,6 +325,28 @@ namespace SpellyZombie
                 }
 
                 Remember(MemKind.Player, MemEvent.SawPlayer, p.transform.position, p.transform);
+                if (!TryGet(MemKind.MadAt, out _)) Mumble("BRAAINS!", 2f);
+            }
+
+            // friends' puppets (host only): the same cone, sight line and wand rule
+            foreach (var a in NetAvatar.All)
+            {
+                if (a == null || a.Downed || a.Disguised) continue;
+                if (Sides.Of(NetSync.OwnerIdOf(a.Id)) == Side.Acolyte) continue;
+                Vector3 to = a.transform.position - transform.position;
+                if (to.sqrMagnitude > SightRange * SightRange) continue;
+                if (Vector3.Angle(transform.forward, to) > 70f) continue;
+                if (Physics.Raycast(transform.position + Vector3.up * 1.4f, to.normalized,
+                        out var hit, SightRange) && hit.collider.GetComponentInParent<NetAvatar>() == null)
+                    continue;
+                if (Decoyed || (!a.Wandless && !Fearless))
+                {
+                    Remember(MemKind.Danger, MemEvent.HeardDanger, a.transform.position, a.transform);
+                    if (Random.value < 0.15f) Mumble("NO NO NO", 1.5f);
+                    Eyes?.SetMood(EyeMood.Scared, 0.4f);
+                    continue;
+                }
+                Remember(MemKind.Player, MemEvent.SawPlayer, a.transform.position, a.transform);
                 if (!TryGet(MemKind.MadAt, out _)) Mumble("BRAAINS!", 2f);
             }
         }
@@ -392,6 +421,18 @@ namespace SpellyZombie
                         AttackTarget = p.transform;
                         Eyes?.SetMood(EyeMood.Mad, 0.3f);
                         return;   // the march resumes by itself once the road is clear
+                    }
+                    foreach (var a in NetAvatar.All)
+                    {
+                        if (a == null || a.Downed || a.Disguised) continue;
+                        if (Sides.Of(NetSync.OwnerIdOf(a.Id)) == Side.Acolyte) continue;
+                        Vector3 to = a.transform.position - transform.position; to.y = 0f;
+                        if (to.sqrMagnitude > 3.2f * 3.2f) continue;
+                        if (Vector3.Dot(to.normalized, marchDir) < 0.35f) continue;
+                        Head(a.transform.position, 1.15f);
+                        AttackTarget = a.transform;
+                        Eyes?.SetMood(EyeMood.Mad, 0.3f);
+                        return;
                     }
                     Head(_orderTarget, 1f); return;
                 }
@@ -536,6 +577,20 @@ namespace SpellyZombie
                 bestSq = d2;
                 best = p.transform;
                 bestFacing = looking;
+            }
+            // friends' puppets (host only): the same range and back-turned rule
+            foreach (var a in NetAvatar.All)
+            {
+                if (a == null || a.Downed || a.Disguised) continue;
+                if (Sides.Of(NetSync.OwnerIdOf(a.Id)) == Side.Acolyte) continue;
+                Vector3 to = a.transform.position - transform.position;
+                to.y = 0f;
+                float d2 = to.sqrMagnitude;
+                if (d2 > bestSq) continue;
+                Vector3 theirFwd = a.transform.forward; theirFwd.y = 0f;
+                bestSq = d2;
+                best = a.transform;
+                bestFacing = Vector3.Angle(theirFwd, -to) < DrawingConfig.ZombieBackAngle;
             }
 
             facingMe = bestFacing;
@@ -728,22 +783,35 @@ namespace SpellyZombie
             if (_mumble == null) return;
             _mumble.text = text;
             _mumbleUntil = Time.time + seconds;
+            NetSync.PushMumble(gameObject.GetInstanceID(), text, seconds); // the stand-ins say it too
         }
 
-        void BuildMumbleText()
+        void BuildMumbleText() => _mumble = BuildMumbleText(transform);
+
+        /// The speech bubble over a zombie's head; the stand-ins wear the same one.
+        public static TextMesh BuildMumbleText(Transform body)
         {
             var go = new GameObject("Mumble");
-            go.transform.SetParent(transform, false);
+            go.transform.SetParent(body, false);
             go.transform.localPosition = new Vector3(0f, 2.2f, 0f);
-            _mumble = go.AddComponent<TextMesh>();
+            var mumble = go.AddComponent<TextMesh>();
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _mumble.font = font;
+            mumble.font = font;
             go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
-            _mumble.characterSize = 0.14f;
-            _mumble.fontSize = 32;
-            _mumble.anchor = TextAnchor.MiddleCenter;
-            _mumble.color = new Color(0.9f, 1f, 0.85f);
-            _mumble.text = "";
+            mumble.characterSize = 0.14f;
+            mumble.fontSize = 32;
+            mumble.anchor = TextAnchor.MiddleCenter;
+            mumble.color = new Color(0.9f, 1f, 0.85f);
+            mumble.text = "";
+            return mumble;
+        }
+
+        /// Faces the bubble at whoever is looking, host body and stand-in alike.
+        public static void FaceMumble(TextMesh mumble)
+        {
+            if (mumble == null || Camera.main == null) return;
+            mumble.transform.rotation =
+                Quaternion.LookRotation(mumble.transform.position - Camera.main.transform.position);
         }
 
         /// Hard zombie-on-zombie contact can spark a brawl; wall bumps re-plan patrol (floor normals don't count).

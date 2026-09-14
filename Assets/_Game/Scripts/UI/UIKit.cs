@@ -59,10 +59,33 @@ namespace SpellyZombie
 
         static bool _immersive = PlayerPrefs.GetInt("sz_immersive", 0) == 1;
 
+        /// UI size: the canvas reference resolution divided by this, so 1.2
+        /// draws everything a fifth larger. Both canvases follow.
+        public static float UiScale
+        {
+            get => _uiScale;
+            set
+            {
+                _uiScale = Mathf.Clamp(value, 0.6f, 1.4f);
+                PlayerPrefs.SetFloat("sz_ui_scale", _uiScale);
+                ApplyUiScale();
+            }
+        }
+        static float _uiScale = Mathf.Clamp(PlayerPrefs.GetFloat("sz_ui_scale", 1f), 0.6f, 1.4f);
+        static Vector2 _baseRef = new Vector2(1600f, 900f); // the skin's own reference, read once
+
+        static void ApplyUiScale()
+        {
+            var s = _canvas != null ? _canvas.GetComponent<CanvasScaler>() : null;
+            if (s != null) s.referenceResolution = _baseRef / _uiScale;
+            var f = _floatCanvas != null ? _floatCanvas.GetComponent<CanvasScaler>() : null;
+            if (f != null) f.referenceResolution = _baseRef / _uiScale;
+        }
+
         /// Screens the player opened; these outrank immersive.
         static bool ModalOpen =>
             GameMenu.IsOpen || UIKit.Typing || HatPillar.PanelOpen
-            || LobbyStand.PanelOpen || PoseStudio.IsOpen || Powerups.IsChoosing
+            || LobbyStand.PanelOpen || PoseStudio.IsOpen
             || LobbyInspect.PanelOpen || ActiveScene.Name == "Menu";
 
         /// Ticked by SideBootstrap, which survives scene loads.
@@ -159,7 +182,7 @@ namespace SpellyZombie
         {
             "MainMenu", "Settings", "PauseMenu", "HUD", "Vitals", "RoundBanner",
             "Downed", "LobbyBanner", "LobbyBoard", "NetPanel", "PromptGroup", "PromptChips",
-            "RuneChooser", "PowerupChooser", "Announcement", "SealGallery", "JoinPanel", "HatPanel",
+            "RuneChooser", "Announcement", "SealGallery", "JoinPanel", "HatPanel",
         };
 
         static void EnsureCanvas()
@@ -184,6 +207,9 @@ namespace SpellyZombie
                     foreach (Transform child in _canvas.transform)
                         if (ManagedSurfaces.Contains(child.name))
                             child.gameObject.SetActive(false);
+                    var sc = _canvas.GetComponent<CanvasScaler>();
+                    if (sc != null) _baseRef = sc.referenceResolution;
+                    ApplyUiScale();
                     EnsureEventSystem();
                     Debug.Log("[SpellyZombie] UI: SZ_UI.prefab adopted. Edits in the prefab are law.");
                     return;
@@ -200,6 +226,8 @@ namespace SpellyZombie
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1600f, 900f);
             scaler.matchWidthOrHeight = 0.5f;
+            _baseRef = scaler.referenceResolution;
+            ApplyUiScale();
             go.AddComponent<GraphicRaycaster>();
             EnsureEventSystem();
         }
@@ -706,7 +734,7 @@ namespace SpellyZombie
         TMPro.TextMeshProUGUI _label; // TMP: prompts name runes by EMOJI (sprites)
         int _lastFrame = -1;
 
-        public static void Show(string key, string text, Color? accent = null)
+        public static void Show(string key, string text, Color? accent = null, int priority = 0)
         {
             if (_i == null)
             {
@@ -716,7 +744,10 @@ namespace SpellyZombie
                 _i.BuildUI(key);
             }
             // record only - applied once in LateUpdate so same-frame callers
-            // don't rebuild the keycap against each other
+            // don't rebuild the keycap against each other; a stronger claim
+            // this frame stands (a ready call over a teaching prompt)
+            if (_i._lastFrame == Time.frameCount && priority < _i._wantPriority) return;
+            _i._wantPriority = priority;
             _i._wantKey = key;
             _i._wantText = text;
             _i._wantColor = accent ?? UIKit.Gold;
@@ -754,6 +785,7 @@ namespace SpellyZombie
 
         string _wantKey, _wantText;
         Color _wantColor;
+        int _wantPriority;
 
         // Weak tier: each Offer this frame becomes one chip, max 3 per frame.
         // Any Show() hides the whole row.

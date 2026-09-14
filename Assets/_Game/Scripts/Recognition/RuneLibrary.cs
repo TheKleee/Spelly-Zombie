@@ -283,7 +283,7 @@ namespace SpellyZombie
         public static readonly RuneType[] AcolyteKit =
         {
             RuneType.StateSolid, RuneType.StateLiquid,
-            RuneType.Attract, RuneType.Repel
+            RuneType.Repel, RuneType.Attract // march before scatter, the order they are earned
         };
 
         /// The mischief glyphs, 1..8; earned by deed (AcolyteDeeds.Deed).
@@ -305,7 +305,8 @@ namespace SpellyZombie
         public static bool IsUnlocked(int ownerId, RuneType type)
         {
             if (type == RuneType.None) return false;
-            return AllRunesUnlockedForTesting || PracticeHall || Grimoire.HasRune(ownerId, type);
+            // a cursed wizard's book is the curser's: its unlocks are theirs
+            return AllRunesUnlockedForTesting || PracticeHall || Grimoire.HasRune(Grimoires.BookOwnerOf(ownerId), type);
         }
 
         public static RuneCardType CardOf(RuneType type)
@@ -484,10 +485,11 @@ namespace SpellyZombie
             }
         }
 
-        /// Acolytes see zombie/skull for Solid/Liquid. The recognizer is
-        /// untouched - it still reads the shape as StateSolid/StateLiquid;
-        /// only what the acolyte's book calls it changes. New icons = one Noto
-        /// png in Assets/_Game/Fonts/sz-emoji (see EmojiGridBuilder).
+        /// Acolytes see zombie/skull for Solid/Liquid and their own spell for
+        /// the eight mischief glyphs. The recognizer is untouched - it still
+        /// reads the shapes as the same runes; only what the acolyte's book
+        /// calls them changes. New icons = one Noto png in
+        /// Assets/_Game/Fonts/sz-emoji (see EmojiGridBuilder).
         public static string IconFor(RuneType r, int owner)
         {
             if (!Sides.IsAcolyte(owner)) return Icon(r);
@@ -495,6 +497,14 @@ namespace SpellyZombie
             {
                 case RuneType.StateSolid: return "🧟";   // U+1F9DF
                 case RuneType.StateLiquid: return "💀";  // U+1F480
+                case RuneType.HeatUp: return "\U0001F3C3";        // decoy: runs from wizards
+                case RuneType.HeatDown: return "\U0001F922";      // reveal: poison gas
+                case RuneType.StickyUp: return "\U0001F47B";      // death needle: a ghost for a minute
+                case RuneType.StickyDown: return "\U0001F4D7";    // life needle: an acolyte book
+                case RuneType.LuminanceUp: return "\U0001F32B";   // evaporation ink
+                case RuneType.LuminanceDown: return "\U0001F98B"; // transformation ink
+                case RuneType.DensityUp: return "\U0001F621";     // aggressive zombie
+                case RuneType.DensityDown: return "\U0001F9A0";   // zombie spreading
                 default: return Icon(r);
             }
         }
@@ -757,6 +767,34 @@ namespace SpellyZombie
             }
 
             return (rune, score);
+        }
+
+        /// The two best different runes with their scores, for a caller that
+        /// breaks its own ties (the completion's habit prior).
+        public static (RuneType t1, float s1, RuneType t2, float s2) Classify2(int ownerId,
+            IReadOnlyList<IReadOnlyList<Vector2>> rawStrokes)
+        {
+            Init();
+            return Top2(ownerId, rawStrokes);
+        }
+
+        /// The clean drawing of a rune: the newest saved sample's strokes, or
+        /// null when the pool has none for it.
+        public static List<List<Vector2>> SamplePath(RuneType rune)
+        {
+            Init();
+            if (_saved == null) return null;
+            foreach (var t in _saved.items)
+            {
+                if (t == null || t.rune != (int)rune) continue;
+                var result = new List<List<Vector2>>();
+                if (t.strokes != null)
+                    foreach (var s in t.strokes)
+                        if (s != null && s.points != null && s.points.Count >= 2) result.Add(new List<Vector2>(s.points));
+                if (result.Count == 0 && t.points != null && t.points.Count >= 2) result.Add(new List<Vector2>(t.points));
+                return result.Count > 0 ? result : null;
+            }
+            return null;
         }
 
         /// The drawing becomes one descriptor (signed corners, or stem plus

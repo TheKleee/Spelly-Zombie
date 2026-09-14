@@ -61,7 +61,7 @@ namespace SpellyZombie
 
             bool available = SimpleFPSController.ThirdPersonActive
                 && !PoseStudio.IsOpen && !SelfPaint.IsActive
-                && !GameMenu.IsOpen && !Powerups.IsChoosing && !UIKit.Typing
+                && !GameMenu.IsOpen && !UIKit.Typing
                 && (_pilot == null
                     || (!_pilot.IsDowned && !_pilot.IsSprawled && !_pilot.IsAirTumbling));
             if (!available)
@@ -132,6 +132,7 @@ namespace SpellyZombie
 
             Orbit(kb, mouse);
             HandleGrab(mouse);
+            NetSync.PushLiveEmote(_rig); // friends' puppets follow the sculpt
         }
 
         static PoseGrab _live;
@@ -150,12 +151,14 @@ namespace SpellyZombie
             _dist = 2.6f;
             _pan = Vector3.zero;
             _emotes?.Interrupt(); // the doll holds whatever it's doing
+            NetSync.BeginLiveEmote();
             ApplyOrbit();
         }
 
         void Close()
         {
             IsOpen = false;
+            NetSync.EndLiveEmote();
             _grabbed = null;
             _ikRoot = null; _ikMid = null; _ikEnd = null;
             if (_cam != null)

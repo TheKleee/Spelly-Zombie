@@ -12,7 +12,32 @@ namespace SpellyZombie
     /// NetworkManager lives in the Lobby scene, so menu-started flows connect deferred.
     public class SteamLobby : MonoBehaviour
     {
-        public const int MaxPlayers = 4; // demo cap
+        /// Steam's own ceiling for a lobby. The real size is the host's pick,
+        /// PendingSize; at the ceiling the stand reads "no cap".
+        public const int MaxPlayers = 250;
+        /// The size a fresh stand offers, and the crowd past which the stand
+        /// says the host's connection carries everyone.
+        public const int DefaultSize = 12, ComfortPlayers = 32;
+        static readonly int[] SizeLadder = { 20, 24, 32, 48, 64, 100, MaxPlayers };
+
+        /// The next size the stand's arrows offer: by one up to 16, then the ladder.
+        public static int StepSize(int size, int dir)
+        {
+            if (dir > 0)
+            {
+                if (size < 16) return size + 1;
+                foreach (int rung in SizeLadder) if (rung > size) return rung;
+                return MaxPlayers;
+            }
+            if (size <= 16) return Mathf.Max(2, size - 1);
+            int prev = 16;
+            foreach (int rung in SizeLadder) { if (rung >= size) break; prev = rung; }
+            return prev;
+        }
+
+        /// The size row's text: a number, or no cap at Steam's ceiling.
+        public static string SizeLabel(int size) =>
+            size >= MaxPlayers ? Loc.T("stand.nocap") : Loc.F("stand.size", size);
 
         public static SteamLobby I { get; private set; }
         public static bool SteamReady { get; private set; }
@@ -25,7 +50,7 @@ namespace SpellyZombie
         bool _isPrivate;
         Pending _pending = Pending.None;
         string _hostAddress = "";
-        bool _transportReady;
+        bool _creating; // one Steam lobby per click, the callback is async
         string _hostPassword = "";
         float _plocRefresh; // ping location goes stale; republished while hosting
 
@@ -66,8 +91,8 @@ namespace SpellyZombie
         public static string PendingLang = "";  // "" = adopt the player's game language
         public static int PendingTags;
         public static string PendingName = "";
-        /// Host-picked lobby size, 2..MaxPlayers.
-        public static int PendingSize = MaxPlayers;
+        /// Host-picked lobby size, 2..MaxPlayers (MaxPlayers = no cap).
+        public static int PendingSize = DefaultSize;
 
         public static readonly List<PublicLobby> Lobbies = new List<PublicLobby>();
         /// Bumps every time Lobbies is refilled - UI rebuilds on change.
@@ -97,7 +122,7 @@ namespace SpellyZombie
             }
             if (!SteamReady)
             {
-                Status = "Steam not running, offline & LAN only";
+                Status = Loc.T("steam.offline");
                 return;
             }
             _cbCreated = Callback<LobbyCreated_t>.Create(OnLobbyCreated);
@@ -108,7 +133,7 @@ namespace SpellyZombie
             // measure our network coordinates now so ping estimates exist by
             // the time anyone browses a lobby
             SteamNetworkingUtils.InitRelayNetworkAccess();
-            Status = $"Steam ready: {SteamFriends.GetPersonaName()}";
+            Status = Loc.F("steam.ready", SteamFriends.GetPersonaName());
         }
 
         // ------------------------------------------------------ public API --
@@ -163,19 +188,19 @@ namespace SpellyZombie
         public static void JoinListed(CSteamID lobby, string password)
         {
             if (I == null) return;
-            if (NetGame.Connected) { Status = "leave your lobby first"; return; }
+            if (NetGame.Connected) { Status = Loc.T("steam.leavefirst"); return; }
             if (SteamMatchmaking.GetLobbyData(lobby, "sz_pw") == "1"
                 && Hash(password ?? "") != SteamMatchmaking.GetLobbyData(lobby, "sz_pwh"))
             {
-                Status = "that lobby wants a password";
+                Status = Loc.T("browse.needpw");
                 return;
             }
             if (I.PingTooHigh(lobby, out int ms, out int cap))
             {
-                Status = $"your ping to that host is {ms}ms, lobby allows {cap}";
+                Status = Loc.F("steam.ping", ms, cap);
                 return;
             }
-            Status = "joining…";
+            Status = Loc.T("steam.joining");
             SteamMatchmaking.JoinLobby(lobby);
         }
 
@@ -211,7 +236,7 @@ namespace SpellyZombie
                 InstanceFinder.ServerManager.StopConnection(true);
             if (InstanceFinder.ClientManager != null && InstanceFinder.ClientManager.Started)
                 InstanceFinder.ClientManager.StopConnection();
-            Status = "lobby deleted";
+            Status = Loc.T("steam.deleted");
         }
 
         /// Steam's own invite dialog for the current lobby (host presses this).
@@ -224,11 +249,12 @@ namespace SpellyZombie
         // ---------------------------------------------------------- hosting --
         void CreateLobby(bool friendsPrivate, string password)
         {
-            if (!SteamReady) { Status = "Steam not running"; return; }
-            if (NetGame.Connected || _pending != Pending.None) return;
+            if (!SteamReady) { Status = Loc.T("steam.notrunning"); return; }
+            if (NetGame.Connected || _pending != Pending.None || _creating) return;
+            _creating = true;
             _isPrivate = friendsPrivate;
             _hostPassword = friendsPrivate ? "" : (password ?? "").Trim();
-            Status = "creating lobby…";
+            Status = Loc.T("steam.creating");
             // private = invite only through Steam, invisible to every search
             SteamMatchmaking.CreateLobby(
                 friendsPrivate ? ELobbyType.k_ELobbyTypePrivate : ELobbyType.k_ELobbyTypePublic,
@@ -237,9 +263,10 @@ namespace SpellyZombie
 
         void OnLobbyCreated(LobbyCreated_t r)
         {
+            _creating = false;
             if (r.m_eResult != EResult.k_EResultOK)
             {
-                Status = $"lobby failed: {r.m_eResult}";
+                Status = Loc.F("steam.failed", r.m_eResult);
                 return;
             }
             _lobby = new CSteamID(r.m_ulSteamIDLobby);
@@ -267,7 +294,7 @@ namespace SpellyZombie
             PublishPingLocation();
 
             _pending = Pending.Host;
-            Status = _isPrivate ? "PRIVATE LOBBY, invite friends" : "PUBLIC LOBBY, listed";
+            Status = Loc.T(_isPrivate ? "steam.private" : "steam.public");
             Debug.Log($"[SpellyZombie] Steam lobby up: {Status}");
             EnterVillage();
         }
@@ -290,7 +317,7 @@ namespace SpellyZombie
         {
             if (!_lobby.IsValid()) return;
             if (SteamNetworkingUtils.GetLocalPingLocation(out var loc) < 0f) return; // not measured yet, retried by Update
-            SteamNetworkingUtils.ConvertPingLocationToString(ref loc, out string s, 512);
+            SteamNetworkingUtils.ConvertPingLocationToString(ref loc, out string s, 1024);
             if (!string.IsNullOrEmpty(s)) SteamMatchmaking.SetLobbyData(_lobby, "sz_ploc", s);
         }
 
@@ -312,18 +339,18 @@ namespace SpellyZombie
                 return; // the host's own lobby entry
             if (r.m_EChatRoomEnterResponse != (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess)
             {
-                Status = "couldn't enter the lobby";
+                Status = Loc.T("steam.noenter");
                 return;
             }
             _lobby = new CSteamID(r.m_ulSteamIDLobby);
             _hostAddress = SteamMatchmaking.GetLobbyData(_lobby, "sz_host");
             if (string.IsNullOrEmpty(_hostAddress))
             {
-                Status = "lobby has no host, try again";
+                Status = Loc.T("steam.nohost");
                 return;
             }
             _pending = Pending.Client;
-            Status = "joined, connecting…";
+            Status = Loc.T("steam.connecting");
             EnterVillage();
         }
 
@@ -332,9 +359,7 @@ namespace SpellyZombie
         {
             if (SceneManager.GetActiveScene().name != "Lobby")
             {
-                LoadEgg.Cover();
-                LoadingHints.Show(); // one random tip rides every load
-                SceneManager.LoadScene("Lobby"); // the NetworkManager lives there
+                LoadEgg.Travel("Lobby"); // the NetworkManager lives there
             }
         }
 
@@ -366,20 +391,17 @@ namespace SpellyZombie
             _pending = Pending.None;
         }
 
+        /// The NetworkManager's Multipass holds Tugboat (LAN) and FishySteamworks,
+        /// both bound at startup; the server listens on both, the client picks its road.
         void UseSteamTransport(FishNet.Managing.NetworkManager nm)
         {
-            var fs = nm.GetComponent<global::FishySteamworks.FishySteamworks>();
-            if (fs == null)
+            var mp = nm.GetComponent<FishNet.Transporting.Multipass.Multipass>();
+            if (mp == null)
             {
-                fs = nm.gameObject.AddComponent<global::FishySteamworks.FishySteamworks>();
-                _transportReady = false;
+                Debug.LogError("[SpellyZombie] The Lobby's NetworkManager needs a Multipass transport holding Tugboat and FishySteamworks.", nm);
+                return;
             }
-            if (!_transportReady)
-            {
-                fs.Initialize(nm, 0); // runtime-added transports self-initialize
-                _transportReady = true;
-            }
-            nm.TransportManager.Transport = fs;
+            mp.SetClientTransport<global::FishySteamworks.FishySteamworks>();
         }
 
         void OnDestroy()

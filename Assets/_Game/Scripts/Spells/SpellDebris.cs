@@ -53,11 +53,21 @@ namespace SpellyZombie
             float r = Mathf.Clamp(_size * 3f, 0.6f, 2.5f) * (1f + force * 0.5f);
             float dmg = Mathf.Clamp(_size * 30f, 4f, 22f) * (0.5f + force * 1.5f);
             var seen = new System.Collections.Generic.HashSet<Element>();
+            var seenAv = new System.Collections.Generic.HashSet<NetAvatar>();
             foreach (var c in Physics.OverlapSphere(at, r))
             {
                 var el = c.GetComponentInParent<Element>();
                 if (el != null && el.gameObject != gameObject && seen.Add(el))
                     el.TakeDamage(dmg, "flying debris", OwnerId);
+                // a friend's puppet has no body to push: the shove travels to them
+                var av = c.GetComponentInParent<NetAvatar>();
+                if (av != null)
+                {
+                    if (seenAv.Add(av))
+                        NetSync.SendKick(NetSync.OwnerIdOf(av.Id), (av.transform.position - at).normalized
+                            * (3f + _size * 6f) * (1f + force * 2f), force > 0.5f);
+                    continue;
+                }
                 var rb = c.attachedRigidbody;
                 if (rb != null && rb.gameObject != gameObject)
                     rb.AddForce((rb.worldCenterOfMass - at).normalized

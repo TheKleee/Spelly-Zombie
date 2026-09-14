@@ -3,7 +3,7 @@
 Twelve languages, Meccha Chameleon's set minus Arabic (dropped Sep 4 2026).
 English is compiled into `Assets/_Game/Scripts/Loc.cs`. Every other language
 is one JSON file in `Assets/StreamingAssets/Loc/` and one review sheet in
-`LocReview/`. Same 130 keys everywhere, checked by script and by the menu
+`LocReview/`. Same 192 keys everywhere, checked by script and by the menu
 `Spelly Zombie/Localization/Check translations for missing keys`.
 
 ## How to verify a line

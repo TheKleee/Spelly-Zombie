@@ -73,6 +73,7 @@ namespace SpellyZombie
         {
             if (s.Nodes.Count < DrawingConfig.MinStrokeNodes)
             {
+                NetSync.OnLocalStrokeDropped(s); // its live preview goes too
                 s.Burn();
                 Strokes.Remove(s);
                 return;
@@ -89,7 +90,7 @@ namespace SpellyZombie
 
             // ink laid on a surface adds to the owner's claim on it (static scenery included)
             if (s.Surface != null && s.Surface.GetComponentInParent<SimpleFPSController>() == null
-                && s.Surface.GetComponentInParent<Creature>() == null)
+                && s.Surface.GetComponentInParent<Creature>() == null && !s.OnPuppet)
                 InkMark.For(s.Surface, true)?.Add(s.OwnerId,
                     s.PathLength() * DrawingConfig.InkCostPerMeter);
 
@@ -98,8 +99,9 @@ namespace SpellyZombie
             NetSync.OnLocalStrokeFinished(s); // co-op: friends see your ink
 
             // self-closure first (a circle grazing a Y seals on itself); clients
-            // close body loops only - the host closes world loops (netcode §2)
-            if (allowCloseOntoInk && (NetGame.IsAuthority || s.Persistent)
+            // close body loops only - the host closes world loops (netcode §2);
+            // ink on a puppet or zombie proxy closes nothing here
+            if (allowCloseOntoInk && (NetGame.IsAuthority || s.Persistent) && !s.OnPuppet
                 && (TryCloseOntoSelf(s) || TryCloseOntoInk(s))) return;
 
             LastInk = s;
@@ -108,7 +110,31 @@ namespace SpellyZombie
 
         /// Read the connected drawing and float a fading label over it showing
         /// what a seal would fire: green = clean, amber = weak, ??? = fizzle.
-        void PreviewRune(Stroke seed)
+        /// Recognized ink wears its rune's colour, so what it is can be told
+        /// later from across the room; unreadable ink goes back to plain ink.
+        public static void TintCluster(List<Stroke> members, RuneType rune, float score)
+        {
+            bool read = rune != RuneType.None && score >= DrawingConfig.MinRuneScore;
+            // the colour is the power read: fuller and brighter the better the
+            // rune reads, dimmer for what the game filled in
+            float quality = read ? Mathf.InverseLerp(DrawingConfig.MinRuneScore, DrawingConfig.GoodRuneScore, score) : 0f;
+            foreach (var m in members)
+            {
+                if (m == null || !m.Alive) continue;
+                Color baseInk = Stroke.InkColorFor(m.OwnerId);
+                if (!read) { m.SetColor(baseInk); continue; }
+                float len = m.PathLength();
+                float autoShare = len > 1e-4f ? Mathf.Clamp01(m.AutoLength / len) : (m.AutoDrawn ? 1f : 0f);
+                float p = Mathf.Clamp01(quality) * Mathf.Lerp(1f, DrawingConfig.AutoCompletePowerMul, autoShare);
+                Color tint = BiomeStamp.RuneTint(rune) * Mathf.Lerp(0.75f, 1.2f, p);
+                tint.a = 1f;
+                m.SetColor(Color.Lerp(baseInk, tint, Mathf.Lerp(0.55f, 0.9f, p)));
+            }
+        }
+
+        /// `net` = the verdict is a re-read (erase lifted): the copies wear it too.
+        /// Pen-up verdicts already ride the StrokeMsg.
+        void PreviewRune(Stroke seed, bool net = false)
         {
             if (seed == null || !seed.Alive || seed.State != StrokeState.Open) return;
             if (seed.OwnerId != Grimoire.LocalPlayerId) return; // your pen only
@@ -120,6 +146,8 @@ namespace SpellyZombie
 
             // guarded read (cache + foreign-ink fizzle) - same verdict a seal gets (netcode §1)
             var (type, score) = RuneGlyph.ReadVerdict(members, seed.OwnerId);
+            TintCluster(members, type, score);
+            if (net) NetSync.PushTint(members, type, score);
             string label;
             Color color;
             if (type == RuneType.None || score < DrawingConfig.MinRuneScore)
@@ -170,7 +198,7 @@ namespace SpellyZombie
                     }
                 }
             }
-            if (bestStroke != null) PreviewRune(bestStroke);
+            if (bestStroke != null) PreviewRune(bestStroke, net: true);
         }
 
         /// A stroke whose both ends land on the same existing stroke closes a loop
@@ -185,7 +213,7 @@ namespace SpellyZombie
 
             foreach (var a in Strokes)
             {
-                if (a == b || !a.Alive || a.State != StrokeState.Open) continue;
+                if (a == b || !a.Alive || a.State != StrokeState.Open || a.OnPuppet) continue;
                 // clients close BODY loops only - never split a world stroke the host owns (netcode §2)
                 if (!NetGame.IsAuthority && !a.Persistent) continue;
                 if (a.Nodes.Count < 3 || !a.ChainIntact() || a.Hidden()) continue;
@@ -213,12 +241,10 @@ namespace SpellyZombie
                 if (bulge < DrawingConfig.MinLoopBulge) continue;
 
                 // split A at the junctions; the outer pieces stay ink but never rune content
-                var beforePiece = lo > 0 ? AdoptPiece(a, 0, lo - 1, allowTiny: false) : null;
-                var midPiece = AdoptPiece(a, lo, hi, allowTiny: true);
-                var afterPiece = hi < a.Nodes.Count - 1 ? AdoptPiece(a, hi + 1, a.Nodes.Count - 1, allowTiny: false) : null;
-                if (beforePiece != null) beforePiece.SealResidue = true;
-                if (afterPiece != null) afterPiece.SealResidue = true;
-                a.Retire();
+                if (lo > 0) SplitPiece(a, 0, lo - 1, allowTiny: false, residue: true);
+                var midPiece = SplitPiece(a, lo, hi, allowTiny: true);
+                if (hi < a.Nodes.Count - 1) SplitPiece(a, hi + 1, a.Nodes.Count - 1, allowTiny: false, residue: true);
+                RetireSplit(a);
                 if (midPiece == null) return false; // defensive; loop guards make this impossible
 
                 b.State = StrokeState.Open;
@@ -272,12 +298,10 @@ namespace SpellyZombie
                     if (d > DrawingConfig.SelfCloseThreshold(loopLen)) continue;
                     Vector3 ja = nodes[j].transform.position, jb = nodes[i].transform.position;
                     if (MaxBulge(nodes, j, i, ja, jb) < DrawingConfig.MinLoopBulge) continue; // must enclose something
-                    Stroke leadIn = j > 0 ? AdoptPiece(b, 0, j - 1, allowTiny: false) : null;
-                    var loop = AdoptPiece(b, j, i, allowTiny: true);
-                    Stroke hookTail = i < last ? AdoptPiece(b, i + 1, last, allowTiny: false) : null;
-                    if (leadIn != null) leadIn.SealResidue = true;     // stays ink, never rune content
-                    if (hookTail != null) hookTail.SealResidue = true;
-                    b.Retire();
+                    if (j > 0) SplitPiece(b, 0, j - 1, allowTiny: false, residue: true);
+                    var loop = SplitPiece(b, j, i, allowTiny: true);
+                    if (i < last) SplitPiece(b, i + 1, last, allowTiny: false, residue: true);
+                    RetireSplit(b);
                     if (loop == null) return false;
                     CreateSeal(new List<SealDetector.LoopEntry> { new SealDetector.LoopEntry(loop, true) },
                         "end touched own ink");
@@ -308,9 +332,10 @@ namespace SpellyZombie
         /// ink; recognition happens later when a seal closes around it. When
         /// `reverse` is set the node order is flipped, so an arc traversed the
         /// other way still forms a continuous ring.
-        Stroke AdoptPiece(Stroke src, int from, int to, bool allowTiny, bool reverse = false)
+        Stroke AdoptPiece(Stroke src, int from, int to, bool allowTiny, bool reverse = false, int netId = 0)
         {
-            var piece = new Stroke { BasisRight = src.BasisRight, BasisUp = src.BasisUp, OwnerId = src.OwnerId, NetId = src.NetId };
+            var piece = new Stroke { BasisRight = src.BasisRight, BasisUp = src.BasisUp, OwnerId = src.OwnerId,
+                NetId = netId != 0 ? netId : src.NetId, LiveId = src.LiveId };
             if (reverse)
             {
                 for (int idx = Mathf.Min(to, src.Nodes.Count - 1); idx >= from; idx--)
@@ -331,23 +356,66 @@ namespace SpellyZombie
                     piece.AddNode(n);
                 }
             }
-            return FinishPiece(piece, allowTiny);
+            return FinishPiece(piece, src, allowTiny);
+        }
+
+        // ---- closure splits ship, so every copy splits into the same pieces (netcode §0) ----
+        readonly List<NetSync.SplitPart> _splitParts = new List<NetSync.SplitPart>();
+
+        /// AdoptPiece for a seal closure: the piece gets its own net id when
+        /// this machine's split is the one that counts, and the range is recorded
+        /// for the SplitMsg that RetireSplit sends.
+        Stroke SplitPiece(Stroke src, int from, int to, bool allowTiny, bool reverse = false, bool residue = false)
+        {
+            int id = NetSync.ShipsSplit(src) ? NetSync.NextSplitId() : 0;
+            var piece = AdoptPiece(src, from, to, allowTiny, reverse, id);
+            if (piece != null && residue) piece.SealResidue = true; // stays ink, never rune content
+            if (id != 0)
+                _splitParts.Add(new NetSync.SplitPart
+                    { From = from, To = to, Reverse = reverse, Tiny = allowTiny, Residue = residue, Id = id });
+            return piece;
+        }
+
+        /// Retire a closure-split source and ship its pieces.
+        void RetireSplit(Stroke src)
+        {
+            if (_splitParts.Count > 0) NetSync.PushSplit(src, _splitParts);
+            _splitParts.Clear();
+            src.Retire();
+        }
+
+        /// A friend's closure split, replayed on this machine's copy with the ids
+        /// their seal messages will name.
+        public void ApplySplit(Stroke src, int[] from, int[] to, bool[] reverse, bool[] tiny, bool[] residue, int[] ids)
+        {
+            if (src == null || !src.Alive) return;
+            bool wasLastInk = LastInk == src;
+            for (int i = 0; i < from.Length; i++)
+            {
+                var piece = AdoptPiece(src, from[i], to[i], tiny[i], reverse[i], ids[i]);
+                if (piece == null) continue;
+                if (residue[i]) piece.SealResidue = true;
+                if (wasLastInk) LastInk = piece;
+            }
+            if (wasLastInk && LastInk == src) LastInk = null;
+            src.Retire();
         }
 
         /// Same adoption from an explicit node list (erase-repair fragments, mid-draw tail split).
         public Stroke AdoptPiece(Stroke src, List<DrawNode> nodes, bool allowTiny)
         {
-            var piece = new Stroke { BasisRight = src.BasisRight, BasisUp = src.BasisUp, OwnerId = src.OwnerId, NetId = src.NetId };
+            var piece = new Stroke { BasisRight = src.BasisRight, BasisUp = src.BasisUp, OwnerId = src.OwnerId,
+                NetId = src.NetId, LiveId = src.LiveId };
             foreach (var n in nodes)
             {
                 if (n == null) continue;
                 n.SetStroke(piece);
                 piece.AddNode(n);
             }
-            return FinishPiece(piece, allowTiny);
+            return FinishPiece(piece, src, allowTiny);
         }
 
-        Stroke FinishPiece(Stroke piece, bool allowTiny)
+        Stroke FinishPiece(Stroke piece, Stroke src, bool allowTiny)
         {
             if (piece.Nodes.Count == 0) return null;
             if (!allowTiny && piece.Nodes.Count < DrawingConfig.MinStrokeNodes)
@@ -358,9 +426,11 @@ namespace SpellyZombie
             }
 
             Register(piece);
+            piece.SetColor(src.Color); // a rune tint survives the split on every machine
             piece.State = StrokeState.Open;
             piece.CachePersistence();
             piece.ComputeRawShape();
+            NetSync.RegisterNetStroke(piece); // same (owner, id) as its source: burns and declares still find it
             return piece;
         }
 
@@ -372,12 +442,40 @@ namespace SpellyZombie
             s.ComputeRawShape(); // kept for debugging/inspection, not classified
             NetSync.OnLocalStrokeFinished(s); // friends' worlds close this loop too
             // client world loop: the HOST closes it from the replicated stroke (netcode §2)
-            if (!NetGame.IsAuthority && !s.Persistent) return;
+            if ((!NetGame.IsAuthority && !s.Persistent) || s.OnPuppet) return;
             CreateSeal(new List<SealDetector.LoopEntry> { new SealDetector.LoopEntry(s, true) }, "closed while drawing");
         }
 
-        void OnEnable() => Application.onBeforeRender += RefreshInk;
-        void OnDisable() => Application.onBeforeRender -= RefreshInk;
+        void OnEnable()
+        {
+            Application.onBeforeRender += RefreshInk;
+            Sides.Changed += OnSideChanged;
+        }
+
+        void OnDisable()
+        {
+            Application.onBeforeRender -= RefreshInk;
+            Sides.Changed -= OnSideChanged;
+        }
+
+        /// A hand changed side: its plain ink takes the new side's colour
+        /// (rune tints, seal gold and spent brown are left as they are).
+        void OnSideChanged(int owner, Side side)
+        {
+            Color was = side == Side.Acolyte ? Stroke.InkColor : DrawingConfig.CorruptInkColor;
+            Color now = Stroke.InkColorFor(owner);
+            foreach (var s in Strokes)
+                if (s.Alive && s.OwnerId == owner && s.State == StrokeState.Open && s.Color == was)
+                    s.SetColor(now);
+        }
+
+        /// The player's id changed (offline id to connected owner id): their ink follows.
+        public void RekeyOwner(int oldId, int newId)
+        {
+            if (oldId == newId) return;
+            foreach (var s in Strokes)
+                if (s.OwnerId == oldId) s.OwnerId = newId;
+        }
 
         // ink follows moving surfaces: read right before the frame renders, after
         // every script has moved its bones (static ink skips its rebuild inside)
@@ -392,6 +490,8 @@ namespace SpellyZombie
             // F12: toggle ink debug (endpoint dots)
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb != null && kb.f12Key.wasPressedThisFrame) _inkDebug = !_inkDebug;
+
+            AutoComplete.Tick(this); // rested drawings finish themselves
 
             // loose Open world ink evaporates; Persistent, drawing and seal ink are exempt
             _evapTimer -= Time.deltaTime;
@@ -445,6 +545,7 @@ namespace SpellyZombie
                 if (s.Nodes.Count < 3) continue;
                 if (!s.ChainIntact()) continue;
                 if (s.Hidden()) continue; // stowed-weapon ink doesn't exist right now
+                if (s.OnPuppet) continue; // a friend's body ink copy: its owner seals it, not this machine
                 if (!NetGame.IsAuthority && !s.Persistent) continue; // clients scan BODY ink only (netcode §2)
                 _eligibleCache.Add(s);
             }
@@ -542,178 +643,6 @@ namespace SpellyZombie
             return k == _detectSnap.Count;
         }
 
-        /// Seal-page declare: re-run both closure detectors on just this drawing's
-        /// strokes. True = a seal formed and activated through the normal casting path.
-        public bool TryDeclareSeal(List<Stroke> cluster, bool allowMirror = true)
-        {
-            if (cluster == null) return false;
-            var eligible = new List<Stroke>();
-            foreach (var s in cluster)
-            {
-                if (s == null || !s.Alive || s.State != StrokeState.Open) continue;
-                if (s.Nodes.Count < 3 || !s.ChainIntact() || s.Hidden()) continue;
-                eligible.Add(s);
-            }
-            if (eligible.Count == 0) return false;
-
-            SealDetector.LastNearMiss = null;
-            var loop = SealDetector.FindLoop(eligible);
-            float loopPerim = loop != null ? SealDetector.LoopPerimeter(loop) : -1f;
-            var cross = CrossingFinder.Find(eligible);
-            float crossPerim = cross.Valid ? cross.Perimeter : -1f;
-
-            if (loop != null && loopPerim >= crossPerim)
-            {
-                CreateSeal(loop, "declared at the book");
-                return true;
-            }
-            if (cross.Valid)
-            {
-                ApplyCrossingLoop(cross);
-                return true;
-            }
-
-            // try the pen's closure paths before the mirror
-            foreach (var s in eligible)
-            {
-                if (!s.Alive || s.State != StrokeState.Open) continue;
-                if (TryCloseOntoSelf(s) || TryCloseOntoInk(s)) return true;
-            }
-
-            // remote intents stop here: the mirror costs the drawer's ink (netcode §2)
-            if (!allowMirror)
-            {
-                LogEvent(SealDetector.LastNearMiss ?? CrossingFinder.LastNearMiss
-                    ?? "no closed path. the line must come back around");
-                return false;
-            }
-
-            // mirror completion is never allowed on a body (a flat mirror can't follow limbs)
-            foreach (var s in eligible)
-                if (s.Persistent)
-                {
-                    LogEvent("the book can't complete a loop on a body. close it with a pose");
-                    return false;
-                }
-
-            // completion costs ink; only boundary is mirrored - runes are content, never the mouth
-            var mouth = BoundaryCandidates(eligible);
-
-            float mirrorLen = 0f;
-            foreach (var s in mouth) mirrorLen += s.PathLength();
-            float mirrorCost = mirrorLen * DrawingConfig.InkCostPerMeter;
-            var payer = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
-            var payerInk = payer != null ? payer.GetComponent<PlayerInk>() : null;
-            if (payerInk != null && !payerInk.TrySpend(mirrorCost))
-            {
-                LogEvent("not enough ink, the seal fizzles");
-                return false;
-            }
-            var made = MirrorComplete(mouth);
-            // nothing drawn = nothing owed: refund when the mirror produced no ink
-            if (made.Count == 0 && payerInk != null) payerInk.Award(mirrorCost);
-            if (made.Count > 0)
-            {
-                var all2 = new List<Stroke>(eligible);
-                all2.AddRange(made);
-                SealDetector.LastNearMiss = null;
-                var loop2 = SealDetector.FindLoop(all2);
-                if (loop2 != null)
-                {
-                    CreateSeal(loop2, "the book completed the loop");
-                    return true;
-                }
-                // both detectors: the reflection can land on the original's ink, not just its tips
-                var cross2 = CrossingFinder.Find(all2);
-                if (cross2.Valid)
-                {
-                    ApplyCrossingLoop(cross2);
-                    return true;
-                }
-                // rare: the reflection didn't close it - the mirrored ink stays ordinary ink
-            }
-            LogEvent(SealDetector.LastNearMiss ?? CrossingFinder.LastNearMiss
-                ?? "no closed path. the line must come back around");
-            return false;
-        }
-
-        /// Boundary candidates: drop strokes that are rune content (declared or
-        /// recognized). Falls back to the whole set when every stroke reads as a rune.
-        List<Stroke> BoundaryCandidates(List<Stroke> eligible)
-        {
-            var mouth = new List<Stroke>();
-            var one = new List<Stroke>(1) { null };
-            foreach (var s in eligible)
-            {
-                if (s.DeclaredRune != RuneType.None) continue; // already said what this is
-                one[0] = s;
-                // guarded read: cached verdicts + foreign-ink fizzle (netcode §1)
-                var (type, score) = RuneGlyph.ReadVerdict(one, s.OwnerId);
-                if (type != RuneType.None && score >= DrawingConfig.MinRuneScore) continue;
-                mouth.Add(s);
-            }
-            return mouth.Count > 0 ? mouth : eligible;
-        }
-
-        /// Mirror every stroke across the line between the cluster's two farthest
-        /// endpoints (the mouth). Reflections are real ink, marked SealResidue so
-        /// they serve as boundary, never rune content.
-        List<Stroke> MirrorComplete(List<Stroke> cluster)
-        {
-            var made = new List<Stroke>();
-            var ends = new List<Vector3>();
-            foreach (var s in cluster)
-            {
-                if (s.First != null) ends.Add(s.First.transform.position);
-                if (s.Last != null) ends.Add(s.Last.transform.position);
-            }
-            if (ends.Count < 2) return made;
-            Vector3 a = ends[0], b = ends[0];
-            float best = -1f;
-            foreach (var p1 in ends)
-                foreach (var p2 in ends)
-                {
-                    float d = (p1 - p2).sqrMagnitude;
-                    if (d > best) { best = d; a = p1; b = p2; }
-                }
-            if (best < 0.02f * 0.02f) return made; // a closed dot has no mouth
-
-            Vector3 axis = (b - a).normalized;
-            foreach (var src in cluster)
-            {
-                var piece = new Stroke
-                {
-                    BasisRight = src.BasisRight,
-                    BasisUp = src.BasisUp,
-                    Surface = src.Surface,
-                    OwnerId = src.OwnerId
-                };
-                int idx = 0;
-                foreach (var n in src.Nodes)
-                {
-                    if (n == null) continue;
-                    Vector3 d = n.transform.position - a;
-                    Vector3 along = Vector3.Dot(d, axis) * axis;
-                    Vector3 mirrored = a + along - (d - along);
-                    var node = DrawNode.Create(piece, idx++, mirrored, n.SurfaceNormal, src.Surface);
-                    piece.AddNode(node);
-                }
-                if (piece.Nodes.Count < 2)
-                {
-                    foreach (var n in piece.Nodes)
-                        if (n != null) Destroy(n.gameObject);
-                    continue;
-                }
-                Register(piece);
-                piece.State = StrokeState.Open;
-                piece.SealResidue = true; // boundary ink, never rune content
-                piece.CachePersistence();
-                piece.ComputeRawShape();
-                made.Add(piece);
-            }
-            return made;
-        }
-
         /// Turn a detected crossing cycle into a seal: split every crossed stroke
         /// at its crossings, adopt the enclosed arcs as boundary (in ring order),
         /// leave the leftover tails as ordinary ink.
@@ -742,19 +671,12 @@ namespace SpellyZombie
                 {
                     var arc = r.Cycle[ai];
                     if (arc.Lo > cursor)
-                    {
-                        var left = AdoptPiece(stroke, cursor, arc.Lo - 1, allowTiny: false); // leftover ink, never rune content
-                        if (left != null) left.SealResidue = true;
-                    }
-                    pieceForArc[ai] = AdoptPiece(stroke, arc.Lo, arc.Hi, allowTiny: true, reverse: arc.Reversed);
+                        SplitPiece(stroke, cursor, arc.Lo - 1, allowTiny: false, residue: true); // leftover ink
+                    pieceForArc[ai] = SplitPiece(stroke, arc.Lo, arc.Hi, allowTiny: true, reverse: arc.Reversed);
                     cursor = arc.Hi + 1;
                 }
-                if (cursor <= end)
-                {
-                    var tail = AdoptPiece(stroke, cursor, end, allowTiny: false);
-                    if (tail != null) tail.SealResidue = true;
-                }
-                stroke.Retire();
+                if (cursor <= end) SplitPiece(stroke, cursor, end, allowTiny: false, residue: true);
+                RetireSplit(stroke);
             }
 
             var boundary = new List<SealDetector.LoopEntry>();
@@ -802,6 +724,7 @@ namespace SpellyZombie
                             e.Stroke.SetColor(Stroke.SpentColor);
                             strokes.Add(e.Stroke);
                         }
+                    NetSync.PushInkState(strokes, NetSync.InkLookSpent);
                     RegisterSpentGroup(strokes, pairs, new List<SealDetector.LoopEntry>(loop));
                 }
                 return;
@@ -812,6 +735,7 @@ namespace SpellyZombie
             ActiveSeals.Add(seal);
             if (key != null) _castKeys.Add(key);
             LogEvent($"SEAL #{seal.Id} ACTIVATED ({how}): {seal.Describe()}");
+            NetSync.PushSealLook(seal, NetSync.InkLookSealed); // gold ring and rune tints on every machine
             if (seal.OwnerId == Grimoire.LocalPlayerId)
             {
                 bool body = true;
@@ -860,6 +784,7 @@ namespace SpellyZombie
             seal.Spell?.End(); // spell cancels the instant the seal breaks or expires
             if (resolved && seal.OwnerId == Grimoire.LocalPlayerId) Achievements.Unlock(Achievements.FirstSpell);
             NetSync.PushSealEnd(seal, resolved); // clients drop the ring, burn matching ink (netcode §2)
+            NetSync.PushSealLook(seal, resolved ? NetSync.InkLookSpent : NetSync.InkLookPlain); // the copies' colours follow
             LogEvent(message);
         }
 
@@ -1004,6 +929,7 @@ namespace SpellyZombie
                 s.SetColor(Stroke.InkColorFor(s.OwnerId));
                 s.SetLoop(false);
             }
+            NetSync.PushInkState(strokes, NetSync.InkLookPlain); // re-armed everywhere
         }
 
         /// Perf guard: characters/weapons carry bounded ink, but the environment
@@ -1096,7 +1022,7 @@ namespace SpellyZombie
             Try(s.First);
             foreach (var t in Strokes)
             {
-                if (t == null || t == s || !t.Alive) continue;
+                if (t == null || t == s || !t.Alive || t.State == StrokeState.Drawing) continue; // a friend's live line is not an end yet
                 if (t.Persistent != s.Persistent) continue; // body bridges body, world bridges world
                 Try(t.First);
                 Try(t.Last);
@@ -1111,9 +1037,10 @@ namespace SpellyZombie
         /// Erase a thin track along the cursor's path between frames (a swept
         /// segment, so a fast hand can't skip over nodes). `scoopInto`: rubbed-out
         /// ink flows back into that pool; null = plain erase.
-        public void EraseAlong(Vector3 from, Vector3 to, float radius, PlayerInk scoopInto = null)
+        public void EraseAlong(Vector3 from, Vector3 to, float radius, PlayerInk scoopInto = null,
+            bool netSend = true)
         {
-            NetSync.OnLocalErase(from, to, radius); // ink graphs must not drift (netcode §2)
+            if (netSend) NetSync.OnLocalErase(from, to, radius); // ink graphs must not drift (netcode §2)
             Vector3 seg = to - from;
             float len2 = seg.sqrMagnitude;
             float r2 = radius * radius;
@@ -1143,7 +1070,7 @@ namespace SpellyZombie
                     {
                         // refund below full worth: scooping must never be a free ink loop
                         scoopInto?.Award(DrawingConfig.NodeSpacing * DrawingConfig.InkCostPerMeter
-                            * DrawingConfig.ScoopRefund);
+                            * DrawingConfig.ScoopRefund * scoopInto.DrawRate);
                         Destroy(n.gameObject);
                         ErasedTotal++;
                         rubbed = true;

@@ -131,10 +131,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 5231969623864807983}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 1
 --- !u!54 &7055781533127107009
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -249,7 +249,7 @@ MonoBehaviour:
   CeilingHeight: 2
   HoleSide: {fileID: 0}
   Stairs: {fileID: 0}
-  PreviewSeed: 9
+  PreviewSeed: 1
   _stairTop: {x: 0, y: 0, z: 0}
   _stairFoot: {x: 0, y: 0, z: 0}
   _stairRise: 0

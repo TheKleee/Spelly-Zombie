@@ -51,7 +51,7 @@ namespace SpellyZombie
 
             // drawing wears the wand - local pen only
             if (local && HasWand && SurfaceDrawer.IsPenActive)
-                _ink.Ink = Mathf.Max(0f, _ink.Ink - DrainPerSec * dt);
+                _ink.Ink = Mathf.Max(0f, _ink.Ink - DrainPerSec * _ink.DrawRate * dt);
 
             if (HasWand)
             {

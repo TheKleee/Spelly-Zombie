@@ -16,7 +16,7 @@ namespace SpellyZombie
         /// Match length in minutes. ZERO = NO TIMER: the same rules, played
         /// for as long as everyone wants, and the clock can never be the thing
         /// that decides a winner. Same as the lobby, but it is a real match.
-        public static int DurationMin = 10;
+        public static int DurationMin = 5;
         public static bool Endless => DurationMin <= 0;
 
         /// What the bookstand shows. A bare dash for no timer: nobody has to
@@ -137,7 +137,10 @@ namespace SpellyZombie
 
         public static bool LocalReady => Instance != null && Instance._readyLocal;
 
-        /// Start gate: everyone ready and at least 2 players.
+        public static int ReadyCount => Instance != null
+            ? (Instance._readyLocal ? 1 : 0) + Instance._remoteReady.Count : 0;
+
+        /// Start gate: everyone ready. The host alone runs the map as a practice run on the clock.
         public static bool CanStart
         {
             get
@@ -145,13 +148,13 @@ namespace SpellyZombie
                 if (Instance == null || !NetGame.Connected) return false;
                 int total = 1 + NetSync.RemoteCount;
                 int ready = (Instance._readyLocal ? 1 : 0) + Instance._remoteReady.Count;
-                return total >= 2 && ready >= total;
+                return ready >= total;
             }
         }
 
-        /// Host (or solo, vs the bot) starts the match. Fills the acolyte
-        /// quota first: pillar volunteers keep their side, the rest is drawn
-        /// at random, always at least 1 acolyte and 1 wizard.
+        /// The host starts the match (solo: a practice run on the clock).
+        /// Fills the acolyte quota first: pillar volunteers keep their side,
+        /// the rest is drawn at random, always at least 1 acolyte and 1 wizard.
         public static void StartMatch()
         {
             if (NetGame.Connected)
@@ -159,10 +162,6 @@ namespace SpellyZombie
                 if (!NetGame.IsHost || !CanStart) return;
                 AssignSides();
                 SteamLobby.SetInGame(true); // browser rows show "game in progress"
-            }
-            else
-            {
-                BotPlayer.QueueForNextMatch();
             }
             RoundDirector.ForceStart();
         }
@@ -195,8 +194,12 @@ namespace SpellyZombie
             NetSync.PushSideAssign(acolytes.ToArray());
         }
 
+        /// The last assignment applied here - the host repeats it to a joiner.
+        public static int[] LastAcolytes { get; private set; }
+
         public static void ApplySideAssign(int[] acolyteOwners)
         {
+            LastAcolytes = acolyteOwners;
             var set = new HashSet<int>(acolyteOwners);
             int me = Grimoire.LocalPlayerId;
             Sides.Set(me, set.Contains(me) ? Side.Acolyte : Side.Wizard);
@@ -257,7 +260,7 @@ namespace SpellyZombie
             }
 
             if (CallActive)
-                UIPrompt.Show("B", Loc.T("lobby.readycall"), new Color(0.6f, 1f, 0.65f));
+                UIPrompt.Show("B", Loc.T("lobby.readycall"), new Color(0.6f, 1f, 0.65f), priority: 1);
 
             if (client) return;
 

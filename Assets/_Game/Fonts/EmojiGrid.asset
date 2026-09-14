@@ -91,103 +91,143 @@ MonoBehaviour:
     m_Scale: 1
     m_Name: emoji_u1f31e
   - m_ElementType: 2
-    m_Unicode: 127820
+    m_Unicode: 127787
     m_GlyphIndex: 2
+    m_Scale: 1
+    m_Name: emoji_u1f32b
+  - m_ElementType: 2
+    m_Unicode: 127820
+    m_GlyphIndex: 3
     m_Scale: 1
     m_Name: emoji_u1f34c
   - m_ElementType: 2
     m_Unicode: 127855
-    m_GlyphIndex: 3
+    m_GlyphIndex: 4
     m_Scale: 1
     m_Name: emoji_u1f36f
   - m_ElementType: 2
     m_Unicode: 127909
-    m_GlyphIndex: 4
+    m_GlyphIndex: 5
     m_Scale: 1
     m_Name: emoji_u1f3a5
   - m_ElementType: 2
     m_Unicode: 127917
-    m_GlyphIndex: 5
+    m_GlyphIndex: 6
     m_Scale: 1
     m_Name: emoji_u1f3ad
   - m_ElementType: 2
+    m_Unicode: 127939
+    m_GlyphIndex: 7
+    m_Scale: 1
+    m_Name: emoji_u1f3c3
+  - m_ElementType: 2
     m_Unicode: 128065
-    m_GlyphIndex: 6
+    m_GlyphIndex: 8
     m_Scale: 1
     m_Name: emoji_u1f441
   - m_ElementType: 2
     m_Unicode: 65534
-    m_GlyphIndex: 7
+    m_GlyphIndex: 9
     m_Scale: 1
     m_Name: emoji_u1f441_200d_1f5e8
   - m_ElementType: 2
+    m_Unicode: 128123
+    m_GlyphIndex: 10
+    m_Scale: 1
+    m_Name: emoji_u1f47b
+  - m_ElementType: 2
     m_Unicode: 128128
-    m_GlyphIndex: 8
+    m_GlyphIndex: 11
     m_Scale: 1
     m_Name: emoji_u1f480
   - m_ElementType: 2
     m_Unicode: 128166
-    m_GlyphIndex: 9
+    m_GlyphIndex: 12
     m_Scale: 1
     m_Name: emoji_u1f4a6
   - m_ElementType: 2
     m_Unicode: 128168
-    m_GlyphIndex: 10
+    m_GlyphIndex: 13
     m_Scale: 1
     m_Name: emoji_u1f4a8
   - m_ElementType: 2
     m_Unicode: 128214
-    m_GlyphIndex: 11
+    m_GlyphIndex: 14
     m_Scale: 1
     m_Name: emoji_u1f4d6
   - m_ElementType: 2
+    m_Unicode: 128215
+    m_GlyphIndex: 15
+    m_Scale: 1
+    m_Name: emoji_u1f4d7
+  - m_ElementType: 2
     m_Unicode: 128293
-    m_GlyphIndex: 12
+    m_GlyphIndex: 16
     m_Scale: 1
     m_Name: emoji_u1f525
   - m_ElementType: 2
     m_Unicode: 128488
-    m_GlyphIndex: 13
+    m_GlyphIndex: 17
     m_Scale: 1
     m_Name: emoji_u1f5e8
   - m_ElementType: 2
     m_Unicode: 128511
-    m_GlyphIndex: 14
+    m_GlyphIndex: 18
     m_Scale: 1
     m_Name: emoji_u1f5ff
   - m_ElementType: 2
+    m_Unicode: 128545
+    m_GlyphIndex: 19
+    m_Scale: 1
+    m_Name: emoji_u1f621
+  - m_ElementType: 2
     m_Unicode: 128640
-    m_GlyphIndex: 15
+    m_GlyphIndex: 20
     m_Scale: 1
     m_Name: emoji_u1f680
   - m_ElementType: 2
     m_Unicode: 129295
-    m_GlyphIndex: 16
+    m_GlyphIndex: 21
     m_Scale: 1
     m_Name: emoji_u1f90f
   - m_ElementType: 2
+    m_Unicode: 129314
+    m_GlyphIndex: 22
+    m_Scale: 1
+    m_Name: emoji_u1f922
+  - m_ElementType: 2
+    m_Unicode: 129419
+    m_GlyphIndex: 23
+    m_Scale: 1
+    m_Name: emoji_u1f98b
+  - m_ElementType: 2
+    m_Unicode: 129440
+    m_GlyphIndex: 24
+    m_Scale: 1
+    m_Name: emoji_u1f9a0
+  - m_ElementType: 2
     m_Unicode: 129485
-    m_GlyphIndex: 17
+    m_GlyphIndex: 25
     m_Scale: 1
     m_Name: emoji_u1f9cd
   - m_ElementType: 2
     m_Unicode: 129503
-    m_GlyphIndex: 18
+    m_GlyphIndex: 26
     m_Scale: 1
     m_Name: emoji_u1f9df
   - m_ElementType: 2
     m_Unicode: 129522
-    m_GlyphIndex: 19
+    m_GlyphIndex: 27
     m_Scale: 1
     m_Name: emoji_u1f9f2
   - m_ElementType: 2
     m_Unicode: 9999
-    m_GlyphIndex: 20
+    m_GlyphIndex: 28
     m_Scale: 1
     m_Name: emoji_u270f
   - m_ElementType: 2
     m_Unicode: 10052
-    m_GlyphIndex: 21
+    m_GlyphIndex: 29
     m_Scale: 1
     m_Name: emoji_u2744
   m_GlyphTable:
@@ -537,6 +577,134 @@ MonoBehaviour:
     m_GlyphRect:
       m_X: 2560
       m_Y: 2560
+      m_Width: 512
+      m_Height: 512
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 0}
+  - m_Index: 22
+    m_Metrics:
+      m_Width: 512
+      m_Height: 512
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 462.3
+      m_HorizontalAdvance: 512
+    m_GlyphRect:
+      m_X: 3072
+      m_Y: 2560
+      m_Width: 512
+      m_Height: 512
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 0}
+  - m_Index: 23
+    m_Metrics:
+      m_Width: 512
+      m_Height: 512
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 462.3
+      m_HorizontalAdvance: 512
+    m_GlyphRect:
+      m_X: 3584
+      m_Y: 2560
+      m_Width: 512
+      m_Height: 512
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 0}
+  - m_Index: 24
+    m_Metrics:
+      m_Width: 512
+      m_Height: 512
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 462.3
+      m_HorizontalAdvance: 512
+    m_GlyphRect:
+      m_X: 0
+      m_Y: 2048
+      m_Width: 512
+      m_Height: 512
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 0}
+  - m_Index: 25
+    m_Metrics:
+      m_Width: 512
+      m_Height: 512
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 462.3
+      m_HorizontalAdvance: 512
+    m_GlyphRect:
+      m_X: 512
+      m_Y: 2048
+      m_Width: 512
+      m_Height: 512
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 0}
+  - m_Index: 26
+    m_Metrics:
+      m_Width: 512
+      m_Height: 512
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 462.3
+      m_HorizontalAdvance: 512
+    m_GlyphRect:
+      m_X: 1024
+      m_Y: 2048
+      m_Width: 512
+      m_Height: 512
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 0}
+  - m_Index: 27
+    m_Metrics:
+      m_Width: 512
+      m_Height: 512
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 462.3
+      m_HorizontalAdvance: 512
+    m_GlyphRect:
+      m_X: 1536
+      m_Y: 2048
+      m_Width: 512
+      m_Height: 512
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 0}
+  - m_Index: 28
+    m_Metrics:
+      m_Width: 512
+      m_Height: 512
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 462.3
+      m_HorizontalAdvance: 512
+    m_GlyphRect:
+      m_X: 2048
+      m_Y: 2048
+      m_Width: 512
+      m_Height: 512
+    m_Scale: 1
+    m_AtlasIndex: 0
+    m_ClassDefinitionType: 0
+    sprite: {fileID: 0}
+  - m_Index: 29
+    m_Metrics:
+      m_Width: 512
+      m_Height: 512
+      m_HorizontalBearingX: 0
+      m_HorizontalBearingY: 462.3
+      m_HorizontalAdvance: 512
+    m_GlyphRect:
+      m_X: 2560
+      m_Y: 2048
       m_Width: 512
       m_Height: 512
     m_Scale: 1

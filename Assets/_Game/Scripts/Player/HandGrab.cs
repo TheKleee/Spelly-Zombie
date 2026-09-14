@@ -13,6 +13,8 @@ namespace SpellyZombie
         // particle push speed, aimed down the cursor (host reuses - netcode §4);
         // overridable via sz_tuning.json
         public static float ThrowSpeed => DrawingConfig.ThrowSpeed * LocalStrength();
+        /// The same law with a remote friend's strength (the host throws for them).
+        public static float ThrowSpeedFor(int ownerId) => DrawingConfig.ThrowSpeed * NetSync.StrengthOf(ownerId);
 
         /// STRENGTH IS HEALTH: what you can lift and how hard you throw scale
         /// with how much of your ceiling you still have. Wounded = weaker, so
@@ -39,6 +41,26 @@ namespace SpellyZombie
         /// What the local hands hold (HandIK puts the wizard's hands ON it).
         public static Rigidbody LocalHeldBody { get; private set; }
         public static SpellParticle LocalHeldMote { get; private set; }
+
+        /// CLIENT: the proxy this hand holds through the host, and where the
+        /// hand is - the proxy rides it so the cargo does not lag a round trip.
+        public static Transform PredictedCargo { get; private set; }
+        public static Vector3 PredictedHand { get; private set; }
+
+        /// The hand point for a proxy this machine holds; false = not held here.
+        public static bool PredictCargo(Transform t, out Vector3 hand)
+        {
+            hand = PredictedHand;
+            return PredictedCargo != null && PredictedCargo == t;
+        }
+
+        /// The wire name of the local cargo, for the presence (0 = none).
+        public static void LocalHeldId(out byte kind, out int id)
+        {
+            var g = _localGrab;
+            NetSync.HeldIdOf(g != null ? g._heldBody : null, g != null ? g._heldParticle : null,
+                g != null ? g._remoteCargo : null, out kind, out id);
+        }
 
         SimpleFPSController _pilot;
         WeaponSlots _slots;
@@ -115,6 +137,8 @@ namespace SpellyZombie
             var golem = rb.GetComponentInParent<Golem>();
             if (golem != null && golem.OwnerId == ownerId) return 1f;
 
+            if (OwnPot(rb.transform, ownerId)) return 1f;
+
             if (marks == null) return 0f;
 
             // the WHOLE subtree, not one transform - ledgers live on whichever
@@ -132,7 +156,7 @@ namespace SpellyZombie
             share = all > 0f ? Mathf.Clamp01(mine / all) : 1f;
 
             // a wounded lifter needs more ink for the same mass
-            float need = rb.mass * DrawingConfig.LiftInkPerKg / Mathf.Max(0.05f, LocalStrength());
+            float need = rb.mass * DrawingConfig.LiftInkPerKg / Mathf.Max(0.05f, NetSync.StrengthOf(ownerId));
             return Mathf.Clamp01(mine / Mathf.Max(0.01f, need));
         }
 
@@ -148,7 +172,8 @@ namespace SpellyZombie
                 return;
             }
 
-            Vector3 delta = HandPoint() - _heldBody.position;
+            // the middle of the thing rides the hand, never its pivot
+            Vector3 delta = HandPoint() - _heldBody.worldCenterOfMass;
             float accel = Mathf.Lerp(4f, 90f, auth) * share;
             Vector3 target = Vector3.ClampMagnitude(delta * 8f, Mathf.Lerp(2.5f, 14f, auth));
             _heldBody.linearVelocity = Vector3.MoveTowards(
@@ -163,8 +188,18 @@ namespace SpellyZombie
 
             // heavy things still turn grudgingly once you CAN lift them
             float turn = Mathf.Lerp(2f, 12f, auth) * Mathf.Clamp01(10f / Mathf.Max(1f, _heldBody.mass));
-            _heldBody.MoveRotation(Quaternion.Slerp(_heldBody.rotation, HoldRot(),
-                turn * Time.fixedDeltaTime));
+            TurnAboutCenter(_heldBody, HoldRot(), turn);
+        }
+
+        /// Turns a held body toward 'want' by angular velocity, which physics
+        /// applies about the center of mass, so it spins in place instead of
+        /// swinging around its pivot. 'rate' = share of the gap closed per second.
+        public static void TurnAboutCenter(Rigidbody rb, Quaternion want, float rate)
+        {
+            (want * Quaternion.Inverse(rb.rotation)).ToAngleAxis(out float deg, out Vector3 axis);
+            if (deg > 180f) deg -= 360f;
+            rb.angularVelocity = Mathf.Abs(deg) < 0.05f ? Vector3.zero
+                : axis.normalized * (deg * Mathf.Deg2Rad * rate);
         }
 
         void Update()
@@ -187,6 +222,9 @@ namespace SpellyZombie
             LocalHolding = holding;
             LocalHeldBody = _heldBody;
             LocalHeldMote = _heldParticle;
+            // the proxy in hand rides the hand; the host's snapshots only correct it
+            PredictedCargo = _remoteHolding ? _remoteCargo : null;
+            PredictedHand = HandPoint();
 
             // remote hold: stream the hand point so the HOST can drive (netcode §4)
             if (_remoteHolding)
@@ -264,6 +302,7 @@ namespace SpellyZombie
                     _heldParticle = null;
                     p.ReleaseHeld(Vector3.zero);
                     p.Wake();
+                    SpellKick.Apply(p, Vector3.zero, _pilot.transform, Grimoire.LocalPlayerId); // it wakes in your hand: it pushes you off
                 }
                 else DropHeld(Vector3.zero);
                 return;
@@ -309,7 +348,7 @@ namespace SpellyZombie
                     var pvm = _pilot.CameraPivot;
                     BeginRemoteHold(pvm != null
                         ? Mathf.Clamp(Vector3.Distance(pvm.position, bestM.transform.position), 0.7f, GrabRange)
-                        : 0.92f);
+                        : 0.92f, bestM.transform);
                     return;
                 }
             }
@@ -395,10 +434,16 @@ namespace SpellyZombie
             if (!NetGame.IsAuthority)
             {
                 var proxyBlob = aimed.collider.GetComponentInParent<NetMatterProxy>();
+                // a creature stand-in has no scene path the host knows: its snapshot id names it
+                var zp = aimed.collider.GetComponentInParent<NetZombieProxy>();
+                var gp = aimed.collider.GetComponentInParent<NetGolemProxy>();
+                int creature = zp != null ? zp.Id : gp != null ? gp.Id : 0;
                 NetSync.SendGrabIntent(proxyBlob != null ? proxyBlob.HostId : 0,
-                    proxyBlob != null ? "" : NetSync.PathOf(aimed.collider.transform),
-                    aimed.distance);
-                BeginRemoteHold(Mathf.Clamp(aimed.distance, 0.7f, LiftRangeMax));
+                    proxyBlob != null || creature != 0 ? "" : NetSync.PathOf(aimed.collider.transform),
+                    aimed.distance, creature, (byte)(zp != null ? 1 : gp != null ? 2 : 0));
+                var cargoRb = aimed.collider.attachedRigidbody;
+                BeginRemoteHold(Mathf.Clamp(aimed.distance, 0.7f, LiftRangeMax),
+                    cargoRb != null ? cargoRb.transform : aimed.collider.transform);
                 return;
             }
 
@@ -451,6 +496,17 @@ namespace SpellyZombie
         static bool IsPotInk(Collider c)
             => c != null && CauldronEconomy.IsInk(c.transform);
 
+        /// The pot holding the ink lifts for its own side with no ink on it:
+        /// clean for wizards, green for acolytes. A client cannot tell which
+        /// pot holds the ink, so it predicts for any pot; the host decides.
+        static bool OwnPot(Transform t, int ownerId)
+        {
+            if (t == null || ownerId < 0) return false;
+            var pot = t.GetComponentInParent<CauldronEconomy>();
+            if (pot == null || (NetGame.IsAuthority && pot != CauldronEconomy.Active)) return false;
+            return Teams.OfOwner(ownerId) == (CauldronEconomy.IsCorrupt ? Team.Acolyte : Team.Wizard);
+        }
+
         public static bool CanAcquire(Collider aimedCollider, int ownerId)
         {
             if (aimedCollider == null) return false;
@@ -474,7 +530,7 @@ namespace SpellyZombie
                 if (hitRb.isKinematic)
                 {
                     if (Liftable.WorldScale(hitRb.transform, out _)) return false;
-                    if (InkMark.AuthorityIn(hitRb.transform, ownerId) <= 0f) return false;
+                    if (!OwnPot(hitRb.transform, ownerId) && InkMark.AuthorityIn(hitRb.transform, ownerId) <= 0f) return false;
                 }
                 return AuthorityFor(hitRb, hitRb.GetComponentsInChildren<InkMark>(true),
                     ownerId, out _) > 0f;
@@ -486,7 +542,7 @@ namespace SpellyZombie
             if (Liftable.WorldScale(host, out _)) return false;   // the ground and the buildings
 
             float hold = lift != null ? lift.HoldStrength : InkMark.AnchorHold(host);
-            return InkMark.AuthorityIn(host, ownerId) >= hold;
+            return OwnPot(aimedCollider.transform, ownerId) || InkMark.AuthorityIn(host, ownerId) >= hold;
         }
 
         public static Rigidbody AcquireBody(Collider aimedCollider, int ownerId)
@@ -526,7 +582,7 @@ namespace SpellyZombie
                         $"the world itself refuses: {hitRb.name} is {kd.x:0.#}×{kd.y:0.#}×{kd.z:0.#}m of world, not a prop");
                     return null;
                 }
-                if (InkMark.AuthorityIn(hitRb.transform, ownerId) <= 0f)
+                if (!OwnPot(hitRb.transform, ownerId) && InkMark.AuthorityIn(hitRb.transform, ownerId) <= 0f)
                 {
                     DrawingWorld.Instance?.LogEvent($"no ink on {hitRb.name}, draw on it to lift it");
                     return null;
@@ -567,7 +623,7 @@ namespace SpellyZombie
 
             float mine = InkMark.AuthorityIn(host, ownerId);
             float hold = lift != null ? lift.HoldStrength : InkMark.AnchorHold(host);
-            if (mine < hold)
+            if (mine < hold && !OwnPot(aimedCollider.transform, ownerId))
             {
                 DrawingWorld.Instance?.LogEvent(
                     $"it is rooted. your ink is {mine:0} of {hold:0} needed");
@@ -632,10 +688,12 @@ namespace SpellyZombie
         // ---------------------------------------------- remote hold (client) --
         bool _remoteHolding;   // this machine holds via host intents (netcode §4)
         float _aimStream;      // 10 Hz LiftAim throttle
+        Transform _remoteCargo; // the proxy/prop aimed at: predicted into the hand, named in the presence
 
-        void BeginRemoteHold(float dist)
+        void BeginRemoteHold(float dist, Transform cargo)
         {
             _remoteHolding = true;
+            _remoteCargo = cargo;
             _holdDist = dist;
             _slotAtGrab = _slots != null ? _slots.Current : 1;
             _spinRot = Quaternion.identity;
@@ -650,6 +708,7 @@ namespace SpellyZombie
         {
             if (_localGrab == null || !_localGrab._remoteHolding) return;
             _localGrab._remoteHolding = false;
+            _localGrab._remoteCargo = null;
             DrawingWorld.Instance?.LogEvent(string.IsNullOrEmpty(why) ? "the host refused the grab" : why);
         }
 
@@ -661,32 +720,31 @@ namespace SpellyZombie
             if (_remoteHolding)
             {
                 _remoteHolding = false;
+                _remoteCargo = null;
                 NetSync.SendThrowIntent(dir); // the host does the physics (netcode §4)
                 return;
             }
-            // the throw locks onto the enemy nearest the aim and flies into it
-            Vector3 eye = piv != null ? piv.position : transform.position;
+            // in the air it is drawn to the nearest enemy ahead of it (SpellParticle.Pull, Homing)
             if (_heldParticle != null)
             {
                 var p = _heldParticle;
                 _heldParticle = null;
-                var target = LockOn.Pick(eye, dir, Grimoire.LocalPlayerId, _pilot.transform, p.transform);
                 p.ReleaseHeld(dir * ThrowSpeed); // the push ability, down your own cursor
                 p.PrimeToBlow(transform); // detonates on impact; the thrower is briefly immune
-                p.Wake(); // ★ INSTANTLY ALIVE when thrown (his fix): a living
-                          // mote sweeps the world properly and lands its hit
-                if (target != null) p.HomeOn(target);
+                // E wakes it for real (his rule): the awakening gust pushes you
+                // off, then it flies where you threw it, alive and dangerous
+                SpellKick.Apply(p, dir, _pilot.transform, Grimoire.LocalPlayerId);
+                p.Wake();
             }
             else if (_heldBody != null)
             {
                 var b = _heldBody;
-                var target = LockOn.Pick(eye, dir, Grimoire.LocalPlayerId, _pilot.transform, b.transform);
                 ClearBodyHold();
                 // a conjured rock flies faster than a prop (his law)
                 var sm = b.GetComponent<Matter>();
                 float mul = sm != null && sm.SpellBorn ? DrawingConfig.SpellThrowMul : 1f;
                 b.AddForce(dir * ThrowImpulse * mul, ForceMode.VelocityChange);
-                if (target != null) Homing.Steer(b, target);
+                Homing.Arm(b, Grimoire.LocalPlayerId);
             }
         }
 
@@ -695,6 +753,7 @@ namespace SpellyZombie
             if (_remoteHolding)
             {
                 _remoteHolding = false;
+                _remoteCargo = null;
                 NetSync.SendDropIntent(); // the host lets go (netcode §4)
                 return;
             }

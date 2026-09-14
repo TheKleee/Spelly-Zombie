@@ -26,8 +26,21 @@ namespace SpellyZombie
         const string WishlistUrl = "https://store.steampowered.com/"; // real page URL once it exists
 
         bool _options, _langPick, _micPick, _resPick;
+        bool _fromMainMenu;   // opened by the main menu's Options: no pause, Back closes
         int _tab; // 0 game, 1 video, 2 audio
         float _sens;
+        static GameMenu _i;
+
+        /// The main menu's Options: the same page as in play.
+        public static void OpenOptions()
+        {
+            if (_i == null || IsOpen) return;
+            _i.Open();
+            Time.timeScale = 1f;
+            _i._fromMainMenu = true;
+            _i._options = true;
+            _i.BuildUI();
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -39,6 +52,7 @@ namespace SpellyZombie
 
         void Awake()
         {
+            _i = this;
             _sens = PlayerPrefs.GetFloat("sz_look_sens", 0.12f);
             AudioListener.volume = AudioOptions.Master;
         }
@@ -60,7 +74,8 @@ namespace SpellyZombie
             // the MAIN MENU owns its screen - no pause menu on top of it
             if (ActiveScene.Name == "Menu")
             {
-                if (IsOpen) Close();
+                // only its own Options page may sit on top of the main menu
+                if (IsOpen && (!_fromMainMenu || kb.escapeKey.wasPressedThisFrame)) Close();
                 return;
             }
             if (kb.escapeKey.wasPressedThisFrame)
@@ -92,6 +107,7 @@ namespace SpellyZombie
         void Close()
         {
             IsOpen = false;
+            _fromMainMenu = false;
             Time.timeScale = 1f;
             PlayerPrefs.SetFloat("sz_look_sens", _sens);
             PlayerPrefs.Save();
@@ -218,6 +234,14 @@ namespace SpellyZombie
                     }), W, 26f);
                     UIKit.Gap(at, 4f);
 
+                    var uiLabel = UIKit.Row(UIKit.Label(at, Loc.F("opt.uiscale", Mathf.RoundToInt(UIKit.UiScale * 100f)), 15, UIKit.Ink, TextAnchor.MiddleLeft, true), W, 22f);
+                    UIKit.Row(UIKit.Slider(at, 0.6f, 1.4f, UIKit.UiScale, v =>
+                    {
+                        UIKit.UiScale = Mathf.Round(v * 20f) / 20f; // 5 percent steps
+                        uiLabel.text = Loc.F("opt.uiscale", Mathf.RoundToInt(UIKit.UiScale * 100f));
+                    }), W, 26f);
+                    UIKit.Gap(at, 4f);
+
                     // the language button opens the picker: every language at once
                     OptionButton(Loc.F("opt.language", Loc.NativeName(Loc.LanguageCode)),
                         () => { _langPick = true; BuildUI(); });
@@ -292,7 +316,8 @@ namespace SpellyZombie
                 }
 
                 UIKit.Gap(pr, 6f);
-                UIKit.Row(UIKit.Button(pr, Loc.T("menu.back"), () => { _options = false; BuildUI(); }, grey), 300f, 44f);
+                UIKit.Row(UIKit.Button(pr, Loc.T("menu.back"),
+                    () => { if (_fromMainMenu) Close(); else { _options = false; BuildUI(); } }, grey), 300f, 44f);
                 return;
 
                 void OptionButton(string label, System.Action act)
@@ -353,10 +378,7 @@ namespace SpellyZombie
                 MenuButton(Loc.T("menu.restart"), () =>
                 {
                     Close();
-                    LoadEgg.Cover();
-                    LoadingHints.Show();
-                    UnityEngine.SceneManagement.SceneManager.LoadScene(
-                        UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+                    LoadEgg.Travel(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
                 });
             MenuButton(Loc.T("menu.options"), () => { _options = true; BuildUI(); });
             if (NetGame.Connected && !NetGame.IsHost)

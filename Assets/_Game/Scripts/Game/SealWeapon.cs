@@ -77,7 +77,11 @@ namespace SpellyZombie
             {
                 _wasShut = shut;
                 DrawingWorld.Instance?.RequestDetect();
-                if (shut) Juice.Crackle(transform.position);
+                if (shut)
+                {
+                    Juice.Crackle(transform.position);
+                    NetSync.PushInkFx(NetSync.InkFxCrackle, transform.position);
+                }
             }
         }
     }

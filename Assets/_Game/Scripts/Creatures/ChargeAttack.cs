@@ -38,6 +38,9 @@ namespace SpellyZombie
         /// Dazed after a hit: it stands, then walks, before lining up another.
         public bool Recovering => _beat == Beat.Recover;
 
+        /// The beat as the golem snapshot carries it: 0 idle, 1 tell, 2 run, 3 recover.
+        public byte BeatWire => (byte)_beat;
+
         void Awake()
         {
             _rb = GetComponent<Rigidbody>();
@@ -194,34 +197,39 @@ namespace SpellyZombie
             GrammarFX.PuffBurst(spot, new Color(0.9f, 0.85f, 0.7f), 4);
             Juice.Thud(spot);
 
-            var player = c.collider.GetComponentInParent<SimpleFPSController>();
-            if (player != null)
+            // ★ BALANCE IS A BARRIER (his design): a planted wizard takes
+            // the damage but not the tumble - the charger BOUNCES off
+            // unless it hits hard enough to break the barrier. A slick
+            // wizard is the opposite: flattened and sent gliding.
+            // Shared by the pilot and a puppet, so the split lands the same
+            // on every machine.
+            Vector3 ShoveFor(Element pel)
             {
-                // ★ BALANCE IS A BARRIER (his design): a planted wizard takes
-                // the damage but not the tumble - the charger BOUNCES off
-                // unless it hits hard enough to break the barrier. A slick
-                // wizard is the opposite: flattened and sent gliding.
-                var pel = player.GetComponent<Element>();
                 float bal = pel != null
                     ? SpellPayload.ToHuman(3, pel.Data.Balance - pel.Natural.Balance) : 0f;
                 if (bal > 15f && hit < bal * 1.2f)
                 {
-                    player.TakeHit(shove * 0.15f, hit, $"{name} charge", chOwner, true); // hurt, not toppled
                     var mrb = GetComponent<Rigidbody>();
                     if (mrb != null)
                         mrb.linearVelocity = -_dir * Mathf.Max(4f, mrb.linearVelocity.magnitude * 0.6f)
                             + Vector3.up * 2.5f;
                     GrammarFX.PuffBurst(spot, new Color(0.95f, 0.8f, 0.3f), 6); // the BOING
+                    return shove * 0.15f; // hurt, not toppled
                 }
-                else if (bal < -15f)
+                if (bal < -15f)
                 {
                     // flattened: extra shove, mostly flat, and the slip law glides it
                     Vector3 flat = _dir; flat.y = 0f;
-                    player.TakeHit(flat.normalized * shove.magnitude * 1.7f + Vector3.up * 1f,
-                        hit, $"{name} charge", chOwner, true);
                     GrammarFX.PuffBurst(spot, new Color(0.6f, 0.85f, 1f), 5); // the WHOOPS
+                    return flat.normalized * shove.magnitude * 1.7f + Vector3.up * 1f;
                 }
-                else player.TakeHit(shove, hit, $"{name} charge", chOwner, true);
+                return shove;
+            }
+
+            var player = c.collider.GetComponentInParent<SimpleFPSController>();
+            if (player != null)
+            {
+                player.TakeHit(ShoveFor(player.GetComponent<Element>()), hit, $"{name} charge", chOwner, true);
                 if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.TextPow, spot + Vector3.up * 1.2f);
                 if (wild) OweRecoil();
             }
@@ -231,8 +239,15 @@ namespace SpellyZombie
                 if (dmg != null && dmg.gameObject != gameObject)
                 {
                     dmg.TakeDamage(hit, $"{name} charge", chOwner, true);
-                    // a remote player's puppet is a player hit too
-                    if (wild && dmg.GetComponentInParent<NetAvatar>() != null) OweRecoil();
+                    // a remote player's puppet is a player hit too: their own
+                    // body takes the shove, and the same POW everyone sees
+                    var av = dmg.GetComponentInParent<NetAvatar>();
+                    if (av != null)
+                    {
+                        NetSync.SendKick(NetSync.OwnerIdOf(av.Id), ShoveFor(dmg), false);
+                        if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.TextPow, spot + Vector3.up * 1.2f);
+                        if (wild) OweRecoil();
+                    }
                 }
                 var orb = c.collider.attachedRigidbody;
                 if (orb != null && !orb.isKinematic) orb.AddForce(shove, ForceMode.VelocityChange);

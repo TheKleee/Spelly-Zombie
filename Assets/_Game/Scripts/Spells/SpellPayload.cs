@@ -110,6 +110,12 @@ namespace SpellyZombie
         public static float TargetFor(int axis, float natural, float here) =>
             LawOf(axis) == AxisLaw.Impose ? here : Mathf.Min(natural, here);
 
+        /// The same on the biome a living thing stands in, where courage is the
+        /// one capacity the ground moves both ways: scared in a dreadful place,
+        /// bold in a bold one.
+        public static float GroundTarget(int axis, float natural, float here) =>
+            axis == 8 ? here : TargetFor(axis, natural, here);
+
         /// ★ HIS COUPLING TABLE (Aug 26): the effect axes are BYPRODUCTS of
         /// the carried data, offset onto the capacity drift targets.
         ///   Lum      -> Courage (light emboldens, darkness frightens)

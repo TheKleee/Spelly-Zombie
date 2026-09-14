@@ -27,7 +27,7 @@ namespace SpellyZombie
         {
             if (!IsAcolyte(owner) || Grimoire.HasRune(owner, rune)) return false;
             Granted?.Invoke(owner, rune, at); // the placed tell first, then the book
-            Grimoire.UnlockRune(owner, rune);  // the toast fires from in there
+            Grimoire.UnlockRune(owner, rune, at);  // the toast fires from in there; at rides the wire
             return true;
         }
 
@@ -61,7 +61,7 @@ namespace SpellyZombie
         /// One call per summoning seal.
         public static void Summoned(int owner, int count, Vector3 at)
         {
-            if (count > 0) Grant(owner, RuneType.Attract, at);
+            if (count > 0) Grant(owner, RuneType.Repel, at); // the arrow: march
         }
 
         /// ★ THE Y DEED: at least 2 of your zombies alive at the same time -
@@ -71,7 +71,7 @@ namespace SpellyZombie
             int alive = 0;
             foreach (var z in Zombie.All)
                 if (z != null && z.OwnerId == owner) alive++;
-            if (alive > 1) Grant(owner, RuneType.Repel, at);
+            if (alive > 1) Grant(owner, RuneType.Attract, at); // the Y: scatter
         }
     }
 }

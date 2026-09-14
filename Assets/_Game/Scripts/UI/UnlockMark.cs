@@ -8,8 +8,8 @@ namespace SpellyZombie
     /// is yours. While the situation holds it shows a question mark where the
     /// drawing would be, plus a bar underneath when there is a fill time; on
     /// Flip the question mark becomes the earned page, which pops, holds and
-    /// poofs. Screen-space float on UIKit.FloatRoot, like AimBadge. Local
-    /// machine only.
+    /// poofs. Screen-space float on UIKit.FloatRoot, like AimBadge. The card
+    /// is local; the poof and pop reach the other machines through UnlockMsg.
     public class UnlockMark : MonoBehaviour
     {
         static readonly Color Ink = new Color(0.15f, 0.1f, 0.2f);
@@ -49,6 +49,10 @@ namespace SpellyZombie
         }
 
         readonly List<Mark> _marks = new List<Mark>();
+
+        // another machine's page: the poof lands here when their page would
+        readonly List<Vector3> _poofAt = new List<Vector3>();
+        readonly List<float> _poofDue = new List<float>();
 
         static UnlockMark Me
         {
@@ -109,6 +113,24 @@ namespace SpellyZombie
             m.Anchor = null;
             m.At = worldPos;
             Me.Resolve(m, rune);
+        }
+
+        /// Someone else earned a page over this world point (UnlockMsg): no
+        /// card here, just the poof and pop when their page would poof.
+        public static void PoofAt(Vector3 worldPos)
+        {
+            Me._poofAt.Add(worldPos);
+            Me._poofDue.Add(Time.unscaledTime + DrawingConfig.UnlockMarkPageSeconds);
+        }
+
+        /// Every machine plays its own from UnlockMsg: never relayed as FX.
+        static void Poof(Vector3 at)
+        {
+            if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, at, null, 0f, false);
+            bool quiet = NetSync.FxQuiet;
+            NetSync.FxQuiet = true;
+            try { Juice.Pop(at); }
+            finally { NetSync.FxQuiet = quiet; }
         }
 
         /// The situation ended with nothing: fade out.
@@ -202,10 +224,18 @@ namespace SpellyZombie
 
         void LateUpdate()
         {
+            float now = Time.unscaledTime;
+            for (int i = _poofDue.Count - 1; i >= 0; i--)
+            {
+                if (now < _poofDue[i]) continue;
+                Poof(_poofAt[i]);
+                _poofAt.RemoveAt(i);
+                _poofDue.RemoveAt(i);
+            }
+
             if (_marks.Count == 0) return;
             var cam = Camera.main;
             float dt = Time.unscaledDeltaTime; // a pause must not freeze the tell
-            float now = Time.unscaledTime;
 
             for (int i = _marks.Count - 1; i >= 0; i--)
             {
@@ -266,8 +296,7 @@ namespace SpellyZombie
                 if (!m.Poofed)
                 {
                     m.Poofed = true;
-                    if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, m.At);
-                    Juice.Pop(m.At);
+                    Poof(m.At); // the others got theirs from UnlockMsg
                 }
                 a *= Mathf.Clamp01(1f - (m.Age - hold) / FadeSeconds);
             }

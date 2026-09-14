@@ -10,34 +10,54 @@ namespace SpellyZombie
     ///
     /// His ruling: "the spell list is team based not meshed" - and more
     /// precisely grimoire based, because the curse changes the book without
-    /// changing the side.
+    /// changing the side. The cursed book BELONGS to the curser: its unlocks
+    /// are theirs and the dead it raises are theirs (his double edge).
     public static class Grimoires
     {
         static readonly Dictionary<int, BookKind> _held = new Dictionary<int, BookKind>();
         static readonly Dictionary<int, float> _until = new Dictionary<int, float>();
+        static readonly Dictionary<int, int> _curser = new Dictionary<int, int>();
 
         /// The book in this player's hands right now.
         public static BookKind HeldBy(int owner)
         {
             if (_held.TryGetValue(owner, out var g))
             {
-                if (_until.TryGetValue(owner, out var t) && Time.time >= t)
-                {
-                    _held.Remove(owner); _until.Remove(owner);   // the curse wore off
-                }
+                if (_until.TryGetValue(owner, out var t) && Time.time >= t) Restore(owner); // the curse wore off
                 else return g;
             }
             return Sides.IsAcolyte(owner) ? BookKind.Acolyte : BookKind.Wizard;
         }
 
-        /// Hand someone a different book for a while. This is the curse.
+        /// Hand someone a different book for a while.
         public static void Swap(int owner, BookKind book, float seconds)
         {
             _held[owner] = book;
             _until[owner] = Time.time + seconds;
         }
 
-        public static void Restore(int owner) { _held.Remove(owner); _until.Remove(owner); }
-        public static void ResetAll() { _held.Clear(); _until.Clear(); }
+        /// The Life curse: `by` hands `owner` their acolyte book for a while.
+        public static void Curse(int owner, int by, float seconds)
+        {
+            Swap(owner, BookKind.Acolyte, seconds);
+            _curser[owner] = by;
+        }
+
+        /// The acolyte whose book this player holds, or -1 when it is their own.
+        public static int CurserOf(int owner) =>
+            HeldBy(owner) == BookKind.Acolyte && _curser.TryGetValue(owner, out var by) ? by : -1;
+
+        /// Whose unlocks this player's book shows: the curser's while cursed.
+        public static int BookOwnerOf(int owner)
+        {
+            int by = CurserOf(owner);
+            return by >= 0 ? by : owner;
+        }
+
+        /// Who a summon raised by this player belongs to: the curser while cursed.
+        public static int SummonerFor(int owner) => BookOwnerOf(owner);
+
+        public static void Restore(int owner) { _held.Remove(owner); _until.Remove(owner); _curser.Remove(owner); }
+        public static void ResetAll() { _held.Clear(); _until.Clear(); _curser.Clear(); }
     }
 }

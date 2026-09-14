@@ -26,17 +26,80 @@ namespace SpellyZombie
         /// body, and its colour shades the zombie's own green.
         public SpellDef Spell;
 
+        /// Seconds of life left: the smallest is the oldest.
+        public float Left => _left;
+
+        /// Spreading: it comes apart where it fell into `count` smaller ones
+        /// of the same kind, weaker, with what life it had left. One
+        /// generation: the halves inherit no rune.
+        public void SplitInto(int count, float scaleMul, float strengthMul)
+        {
+            var me = GetComponent<Zombie>();
+            var myEl = GetComponent<Element>();
+            var myRb = GetComponent<Rigidbody>();
+            for (int i = 0; i < count; i++)
+            {
+                float a = (i / (float)count) * Mathf.PI * 2f;
+                Vector3 spot = transform.position + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 0.5f + Vector3.up * 0.2f;
+                var z = Zombie.Spawn(spot);
+                if (z == null) return;
+                var half = z.gameObject.AddComponent<SummonedZombie>(); // before Wear (the law)
+                if (Spell != null) z.Wear(Spell);
+                else z.Abilities.Add(Ranged ? "Goo" : Zombie.Charge);
+                z.transform.localScale = transform.localScale * scaleMul;
+                var rb = z.GetComponent<Rigidbody>();
+                if (rb != null && myRb != null)
+                    rb.mass = Mathf.Max(DrawingConfig.SummonMinMass, myRb.mass * scaleMul * scaleMul * scaleMul);
+                var el = z.GetComponent<Element>();
+                if (el != null && myEl != null)
+                {
+                    el.MaxStrength = Mathf.Max(DrawingConfig.SummonMinStrength, myEl.MaxStrength * strengthMul);
+                    el.Health = el.MaxStrength;
+                }
+                if (me != null) z.AttackDamage = me.AttackDamage * strengthMul;
+                half.Begin(SummonedBy, Ranged, Mathf.Max(5f, _left), GasRadius * scaleMul);
+                BiomeStamp.Apply(z.gameObject, spot);
+                var brain = z.GetComponent<ZombieBrain>();
+                if (brain != null) brain.StrikesTurnedBacks = true;
+            }
+        }
+
+        /// The island holds DrawingConfig.ZombieBudget summons. This one is the
+        /// newest, so when it is one too many the summoner's oldest crumbles,
+        /// or the oldest anywhere when they had none.
+        void EnforceBudget()
+        {
+            int others = 0;
+            SummonedZombie mineOldest = null, anyOldest = null;
+            foreach (var z in Zombie.All)
+            {
+                if (z == null) continue;
+                var s = z.GetComponent<SummonedZombie>();
+                if (s == null || s == this || s._left <= 0f) continue;
+                others++;
+                if (s.SummonedBy == SummonedBy && (mineOldest == null || s._left < mineOldest._left)) mineOldest = s;
+                if (anyOldest == null || s._left < anyOldest._left) anyOldest = s;
+            }
+            if (others < DrawingConfig.ZombieBudget) return;
+            var gone = mineOldest ?? anyOldest;
+            if (gone != null) gone._left = 0f; // its own Update runs the death path
+        }
+
         public void Begin(int owner, bool ranged, float seconds, float gasRadius)
         {
             SummonedBy = owner;
             Ranged = ranged;
             _left = seconds;
+            EnforceBudget();
             // gasRadius drives the DEATH cloud only; alive it keeps a body-tight aura
             GasRadius = gasRadius;
             float bodyHeight = transform.localScale.y * 2f;
+            float auraRadius = Mathf.Min(bodyHeight * DrawingConfig.PoisonAuraBodyMul, 0.88f);
             _gas = PoisonField.Open(transform.position + Vector3.up * bodyHeight * 0.35f,
-                Mathf.Min(bodyHeight * DrawingConfig.PoisonAuraBodyMul, 0.88f),
-                seconds + 1f, transform);
+                auraRadius, seconds + 1f, transform);
+            // clients ride the same aura on this zombie's stand-in
+            NetSync.PushField(2, _gas.transform.position, auraRadius, seconds + 1f,
+                gameObject.GetInstanceID());
             Paint();
         }
 

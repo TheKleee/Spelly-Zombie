@@ -10,6 +10,9 @@ namespace SpellyZombie
     {
         public WeaponSlots Slots;
         public Transform Pivot; // the camera pivot - pen/grimoire anchor
+        /// Set on a friend's puppet: stances come from their presence, never
+        /// from the local statics (whose hands would otherwise reach for OUR load).
+        [System.NonSerialized] public NetAvatar Puppet;
 
         Animator _anim;
         float _weight;
@@ -53,9 +56,64 @@ namespace SpellyZombie
             return cache;
         }
 
+        /// A puppet's hands: the wand thrust while their pen is down, the
+        /// book raised while it is open, both hands on what they carry. The
+        /// stances hang off a virtual pivot at their head, facing their look.
+        void PuppetIK()
+        {
+            var head = Puppet.Head;
+            Vector3 pivotPos = head != null ? head.position : Puppet.transform.position + Vector3.up * 1.5f;
+            var pivotRot = Quaternion.Euler(Puppet.Pitch, Puppet.transform.eulerAngles.y, 0f);
+            Vector3 At(Vector3 local) => pivotPos + pivotRot * local;
+
+            var held = Puppet.HeldTransform;
+            bool carry = held != null || Puppet.HandsFull;
+            bool cast = !carry && Puppet.PenDown;
+            bool read = !carry && !cast && Puppet.BookOpen;
+            Vector3 grip, support;
+            if (carry)
+            {
+                Vector3 c;
+                float half = 0.18f;
+                if (held != null)
+                {
+                    var rb = held.GetComponent<Rigidbody>();
+                    c = rb != null ? rb.worldCenterOfMass : held.position;
+                    var cargoCol = held.GetComponent<Collider>();
+                    if (cargoCol != null)
+                        half = Mathf.Clamp(cargoCol.bounds.extents.magnitude * 0.55f, 0.14f, 0.5f);
+                }
+                else c = At(new Vector3(0f, -0.25f, 0.45f)); // a load this machine cannot see
+                Vector3 side = _anim.transform.right * half;
+                grip = c + side;
+                support = c - side;
+            }
+            else if (cast)
+            {
+                grip = At(CastGripDefault);
+                support = At(CastSupportDefault);
+            }
+            else
+            {
+                grip = At(ReadGripDefault);
+                support = At(ReadSupportDefault);
+            }
+            bool any = carry || cast || read;
+            if (_grip == Vector3.zero) { _grip = grip; _support = support; }
+            _grip = Vector3.Lerp(_grip, grip, Time.deltaTime * 7f);
+            _support = Vector3.Lerp(_support, support, Time.deltaTime * 7f);
+            _weight = Mathf.MoveTowards(_weight, any ? 1f : 0f, Time.deltaTime * 5f);
+            _supportWeight = Mathf.MoveTowards(_supportWeight, carry || read ? 1f : 0f, Time.deltaTime * 5f);
+            _anim.SetIKPositionWeight(AvatarIKGoal.RightHand, _weight);
+            _anim.SetIKPosition(AvatarIKGoal.RightHand, _grip);
+            _anim.SetIKPositionWeight(AvatarIKGoal.LeftHand, _supportWeight);
+            _anim.SetIKPosition(AvatarIKGoal.LeftHand, _support);
+        }
+
         void OnAnimatorIK(int layerIndex)
         {
             if (_anim == null) return;
+            if (Puppet != null) { PuppetIK(); return; }
             var weapon = Slots != null ? Slots.CurrentWeapon : null;
             bool weaponHold = weapon != null && weapon.gameObject.activeInHierarchy;
             bool penHold = !weaponHold && Slots != null && Slots.PenSelected && Pivot != null

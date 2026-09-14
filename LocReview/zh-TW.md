@@ -87,10 +87,8 @@ from the zh-CN sheet.
 | stand.hostpublic | CREATE PUBLIC LOBBY | 建立公開房間 | create public room | |
 | stand.pw | password (optional) | 密碼（選填） | password (optional field) | 選填 = fill in if you want, the Taiwan form label |
 | stand.code | entry code (optional) | 進入碼（選填） | entry code (optional field) | |
-| stand.botmatch | test match vs a bot | 和機器人打一場測試 | with a robot play one test match | |
 | stand.hint | walk away to close | 走開就關閉 | walk away and it closes | |
 | stand.map | change map | 換地圖 | change map | |
-| stand.seed | seed | 種子 | seed | |
 | stand.share | acolytes at least {0}% | 侍祭至少{0}% | acolytes at least {0}% | |
 | stand.setcode | set code | 設定進入碼 | set entry code | |
 | stand.readycall | ready check | 準備確認 | readiness confirm | |
@@ -163,3 +161,43 @@ from the zh-CN sheet.
 | opt.on | On | 開 | on |  |
 | opt.music | Music: {0}% | 音樂: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | 音效: {0}% | sound effects: {0}% |  |
+| seal.norune | no rune here to seal. aim at one of your runes | 這裡沒有可以畫法陣的符文。瞄準你自己的符文 | here there is no rune to draw a magic array around. aim at your own rune |  |
+| seal.noink | not enough ink for the seal | 墨水不夠畫法陣 | ink not enough to draw the magic array |  |
+| rune.noink | not enough ink to finish the rune | 墨水不夠畫完符文 | ink not enough to finish drawing the rune |  |
+| round.safe | THE LOBBY IS SAFE GROUND | 房間是安全區 | room is safe zone | 房間 = lobby, as in the rest of the file |
+| round.versus | WIZARDS vs ACOLYTES | 巫師 對 侍祭 | wizard versus acolyte |  |
+| round.wizards | WIZARDS WIN | 巫師獲勝 | wizards win |  |
+| round.acolytes | ACOLYTES WIN | 侍祭獲勝 | acolytes win |  |
+| round.home | {0}. back to the lobby in {1} | {0}。{1}秒後回房間 | {0}. after {1} seconds return to room | 秒 (seconds) added, Chinese needs the unit |
+| round.pot |  · pot {0}% |  · 大鍋 {0}% | cauldron {0}% |  |
+| round.green |  · the pot is GREEN |  · 大鍋變綠了 | cauldron turned green |  |
+| gate.accepts | THE GATE ACCEPTS | 大門接受了 | gate accepted |  |
+| net.hostleft | THE HOST LEFT | 房主走了 | room owner left | 房主 = host |
+| net.hosting | ● HOSTING, {0} player(s) | ● 你是房主，{0}人 | you are room owner, {0} people |  |
+| net.connected | ● CONNECTED, {0} player(s) | ● 已連線，{0}人 | connected, {0} people | 連線, the Taiwan word |
+| net.map | MAP: {0} | 地圖: {0} | map: {0} |  |
+| net.maplikes | MAP: {0} · ♥{1} | 地圖: {0} · ♥{1} | map: {0} · ♥{1} |  |
+| steam.offline | Steam not running, offline & LAN only | Steam沒開，只能離線和區域網路 | Steam not open, only can offline and LAN | 區域網路 = LAN, the Taiwan word |
+| steam.ready | Steam ready: {0} | Steam就緒: {0} | Steam ready: {0} | {0} is the Steam name |
+| steam.leavefirst | leave your lobby first | 先離開你的房間 | first leave your room |  |
+| steam.ping | your ping to that host is {0}ms, lobby allows {1} | 你到房主的延遲是{0}毫秒，房間上限{1} | your to room owner latency is {0} ms, room limit {1} |  |
+| steam.joining | joining… | 正在加入… | joining… |  |
+| steam.deleted | lobby deleted | 房間已刪除 | room deleted |  |
+| steam.notrunning | Steam not running | Steam沒開 | Steam not open |  |
+| steam.creating | creating lobby… | 正在開房間… | opening room… |  |
+| steam.failed | lobby failed: {0} | 開房間失敗: {0} | open room failed: {0} | {0} is a Steam error code |
+| steam.noenter | couldn't enter the lobby | 進不了房間 | cannot enter room |  |
+| steam.nohost | lobby has no host, try again | 房間沒有房主，再試一次 | room has no owner, try once more |  |
+| steam.connecting | joined, connecting… | 進來了，正在連線… | came in, connecting… |  |
+| steam.private | PRIVATE LOBBY, invite friends | 私密房間，找朋友來 | private room, find friends to come |  |
+| steam.public | PUBLIC LOBBY, listed | 公開房間，已上列表 | public room, already on list |  |
+| menu.tagline | draw fast. die funny. | 畫得快。死得搞笑。 | draw fast. die funny. |  |
+| menu.close | Close | 關閉 | close |  |
+| chip.pages | turn the pages | 翻頁 | turn page | the mouse wheel turns the grimoire pages |
+| round.potopens |  · pot opens in {0} |  · 大鍋 {0} 秒後開啟 | cauldron opens after {0} seconds | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · ink in flight {0} |  · 墨水飛行中 {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| stand.lanhost | LAN host | 區域網路主機 | LAN host | book stand, the LAN row: host over the local network |
+| stand.lanjoin | LAN join | 加入區域網路 | join LAN | book stand, the LAN row: join the address in the field |
+| opt.uiscale | UI size: {0}% | 介面大小：{0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
+| stand.nocap | no cap | 無上限 | no upper limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | your connection carries everyone | 所有人的連線都由你承擔 | everyone's connection is borne by you | book stand, under the size row past 32 players: the host's upload carries the lobby |

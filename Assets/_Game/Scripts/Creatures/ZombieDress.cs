@@ -322,15 +322,59 @@ namespace SpellyZombie
             return d;
         }
 
+        // one-shot bits the zombie snapshot carries; the attack variant rides the top two
+        public const byte AnimAttack = 1, AnimHit = 2, AnimScream = 4, AnimStandUp = 8, AnimFidget = 16;
+
+        Zombie _zombie;
+        void Tell(byte bit)
+        {
+            if (_zombie == null && _target != null) _zombie = _target.GetComponent<Zombie>();
+            _zombie?.Tell(bit);
+        }
+
         public void Attack()
         {
             if (_anim == null) return;
-            _anim.SetFloat("Variant", Random.Range(0, 4)); // punch / kick / headbutt / classic
+            int variant = Random.Range(0, 4); // punch / kick / headbutt / classic
+            _anim.SetFloat("Variant", variant);
             _anim.SetTrigger("Attack");
+            Tell((byte)(AnimAttack | (variant << 6)));
         }
 
-        public void Hit() { if (_anim != null) _anim.SetTrigger("Hit"); }
-        public void Scream() { if (_anim != null) _anim.SetTrigger("Scream"); }
+        public void Hit() { if (_anim != null) _anim.SetTrigger("Hit"); Tell(AnimHit); }
+        public void Scream() { if (_anim != null) _anim.SetTrigger("Scream"); Tell(AnimScream); }
+
+        /// The Speed float and the stride clamp, the same on a body and its stand-in.
+        public static void Stride(Animator anim, float speed, float scaleY)
+        {
+            anim.SetFloat("Speed", speed);
+            var st = anim.GetCurrentAnimatorStateInfo(0);
+            bool walking = st.shortNameHash == HashWalk;
+            bool running = st.shortNameHash == HashRun;
+            if ((walking || running) && speed > 0.05f)
+            {
+                float authored = (running ? RunClipSpeed : WalkClipSpeed) * Mathf.Max(0.2f, scaleY);
+                anim.speed = Mathf.Clamp(speed / authored, 0.4f, 2.5f);
+            }
+            else anim.speed = 1f;
+        }
+
+        /// Plays a snapshot's one-shot bits on a stand-in's Animator; the scream
+        /// prefers the worn spell's authored clip, as PlayMove does on the host.
+        public static void PlayWire(GameObject body, Animator anim, byte bits, AnimationClip scream)
+        {
+            if (anim == null || bits == 0) return;
+            if ((bits & AnimAttack) != 0)
+            {
+                anim.SetFloat("Variant", (bits >> 6) & 3);
+                anim.SetTrigger("Attack");
+            }
+            if ((bits & AnimHit) != 0) anim.SetTrigger("Hit");
+            if ((bits & AnimScream) != 0 && (scream == null || !OneShotClip.Play(body, scream)))
+                anim.SetTrigger("Scream");
+            if ((bits & AnimStandUp) != 0) anim.SetTrigger("StandUp");
+            if ((bits & AnimFidget) != 0) anim.SetTrigger("Fidget");
+        }
 
         void LateUpdate()
         {
@@ -382,32 +426,17 @@ namespace SpellyZombie
             //   · playback rate touches locomotion states only (Animator.speed gates every clip)
             //   · reference speed is the current state's own authored ground speed
             //   · clamped tight, so only honest stride matching
-            _anim.SetFloat("Speed", speed);
-            var st = _anim.GetCurrentAnimatorStateInfo(0);
-            bool walking = st.shortNameHash == HashWalk;
-            bool running = st.shortNameHash == HashRun;
-            if ((walking || running) && speed > 0.05f)
-            {
-                // clips are authored for a 1-scale body: a scaled body's legs
-                // cover proportionally different ground, and summons come in
-                // many sizes - so the reference speed scales with the body,
-                // and the ceiling is high enough to actually catch up
-                float scaleY = Mathf.Max(0.2f,
-                    _body != null ? _body.transform.lossyScale.y : transform.lossyScale.y);
-                float authored = (running ? RunClipSpeed : WalkClipSpeed) * scaleY;
-                _anim.speed = Mathf.Clamp(speed / authored, 0.4f, 2.5f);
-            }
-            else
-            {
-                // idle, one-shots, and the Shamble blend-tree controller run at 1x
-                _anim.speed = 1f;
-            }
+            // clips are authored for a 1-scale body: a scaled body's legs
+            // cover proportionally different ground, and summons come in
+            // many sizes - so the reference speed scales with the body,
+            // and the ceiling is high enough to actually catch up
+            Stride(_anim, speed, _body != null ? _body.transform.lossyScale.y : transform.lossyScale.y);
 
             // struggled back to its feet - play the climb
             if (_creature != null)
             {
                 bool gettingUp = _creature.GettingUp;
-                if (gettingUp && !_wasGettingUp) _anim.SetTrigger("StandUp");
+                if (gettingUp && !_wasGettingUp) { _anim.SetTrigger("StandUp"); Tell(AnimStandUp); }
                 _wasGettingUp = gettingUp;
             }
 
@@ -434,6 +463,7 @@ namespace SpellyZombie
                 {
                     _fidgetIn = Random.Range(8f, 16f);
                     _anim.SetTrigger("Fidget");
+                    Tell(AnimFidget);
                 }
             }
             else

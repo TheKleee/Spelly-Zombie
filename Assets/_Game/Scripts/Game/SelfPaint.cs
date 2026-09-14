@@ -44,7 +44,7 @@ namespace SpellyZombie
         {
             var kb = Keyboard.current;
             if (kb == null) return;
-            if (PoseStudio.IsOpen || GameMenu.IsOpen || Powerups.IsChoosing || UIKit.Typing)
+            if (PoseStudio.IsOpen || GameMenu.IsOpen || UIKit.Typing)
             {
                 if (IsActive) Exit();
                 return;
@@ -145,7 +145,7 @@ namespace SpellyZombie
                 DrawingWorld.Instance?.LogEvent("no body ink to drink");
                 return;
             }
-            ink.Award(drunk);
+            ink.Award(drunk * ink.DrawRate); // back at the share it was paid
             Juice.Chime(transform.position);
             DrawingWorld.Instance?.LogEvent(
                 $"the body ink flows back into the wand ({strokes} drawing(s) drunk)");

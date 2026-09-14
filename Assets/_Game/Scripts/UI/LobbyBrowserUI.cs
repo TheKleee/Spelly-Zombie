@@ -90,7 +90,7 @@ namespace SpellyZombie
                 var back = UIKit.Panel(parent, null, RowBack);
                 UIKit.Place((RectTransform)back.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(width - 190f, 40f));
 
-                string line = $"{l.Name}   {l.Players}/{l.Max}"
+                string line = $"{l.Name}   {l.Players}" + (l.Max < SteamLobby.MaxPlayers ? $"/{l.Max}" : "")
                     + (l.Ping >= 0 ? $"   {l.Ping}ms" : "")
                     + (l.Locked ? "   " + Loc.T("browse.locked") : "");
                 var name = UIKit.Label(parent, line, 14, Color.white, TextAnchor.MiddleLeft, true);
@@ -183,14 +183,23 @@ namespace SpellyZombie
             var nameField = UIKit.Input(parent, string.IsNullOrEmpty(SteamLobby.PendingName)
                 ? (SteamLobby.SteamReady ? Steamworks.SteamFriends.GetPersonaName() + "'s lobby" : "lobby")
                 : SteamLobby.PendingName, v => SteamLobby.PendingName = v);
-            UIKit.Place((RectTransform)nameField.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(width - 190f, 26f));
+            UIKit.Place((RectTransform)nameField.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(240f, 26f));
+            var nameLbl = UIKit.Label(parent, Loc.T("stand.name"), 12, new Color(0.85f, 0.85f, 0.88f), TextAnchor.MiddleLeft);
+            UIKit.Place((RectTransform)nameLbl.transform, new Vector2(0f, 1f), new Vector2(rx + 248f, ry - 4f), new Vector2(width - 190f - 248f, 18f));
             ry -= 32f;
 
-            ArrowRow(parent, rx, ry, width - 190f, Loc.F("stand.size", SteamLobby.PendingSize),
-                () => SteamLobby.PendingSize = Mathf.Max(2, SteamLobby.PendingSize - 1),
-                () => SteamLobby.PendingSize = Mathf.Min(SteamLobby.MaxPlayers, SteamLobby.PendingSize + 1),
+            ArrowRow(parent, rx, ry, width - 190f, SteamLobby.SizeLabel(SteamLobby.PendingSize),
+                () => SteamLobby.PendingSize = SteamLobby.StepSize(SteamLobby.PendingSize, -1),
+                () => SteamLobby.PendingSize = SteamLobby.StepSize(SteamLobby.PendingSize, 1),
                 SteamLobby.PendingSize > 2, SteamLobby.PendingSize < SteamLobby.MaxPlayers);
             ry -= 30f;
+            if (SteamLobby.PendingSize > SteamLobby.ComfortPlayers)
+            {
+                // past the comfortable crowd the host's upload is the match's ceiling
+                var heavy = UIKit.Label(parent, Loc.T("stand.heavy"), 12, new Color(1f, 0.78f, 0.4f), TextAnchor.MiddleCenter);
+                UIKit.Place((RectTransform)heavy.transform, new Vector2(0f, 1f), new Vector2(rx, ry + 4f), new Vector2(width - 190f, 16f));
+                ry -= 18f;
+            }
 
             ArrowRow(parent, rx, ry, width - 190f, Loc.F("stand.duration", MatchLobby.DurationLabel),
                 () => MatchLobby.DurationMin = Mathf.Max(5, MatchLobby.DurationMin - 5),
@@ -198,7 +207,7 @@ namespace SpellyZombie
                 MatchLobby.DurationMin > 5, MatchLobby.DurationMin < 15);
             ry -= 30f;
 
-            ArrowRow(parent, rx, ry, width - 190f, $"MAP: {MatchLobby.SelectedMap}",
+            ArrowRow(parent, rx, ry, width - 190f, Loc.F("net.map", MatchLobby.SelectedMap),
                 () => MatchLobby.CycleMap(-1), () => MatchLobby.CycleMap(1));
             ry -= 30f;
 
@@ -207,13 +216,6 @@ namespace SpellyZombie
                 () => MatchLobby.AcolytePercent = Mathf.Min(90, MatchLobby.AcolytePercent + 10),
                 MatchLobby.AcolytePercent > 10, MatchLobby.AcolytePercent < 90);
             ry -= 34f;
-
-            var seed = UIKit.Input(parent, MatchLobby.Seed == 0 ? "" : MatchLobby.Seed.ToString(),
-                v => MatchLobby.Seed = int.TryParse(v, out var s) ? s : 0);
-            UIKit.Place((RectTransform)seed.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(110f, 26f));
-            var seedLbl = UIKit.Label(parent, Loc.T("stand.seed"), 12, new Color(0.85f, 0.85f, 0.88f), TextAnchor.MiddleLeft);
-            UIKit.Place((RectTransform)seedLbl.transform, new Vector2(0f, 1f), new Vector2(rx + 118f, ry - 4f), new Vector2(80f, 18f));
-            ry -= 32f;
 
             var pw = UIKit.Input(parent, HostPw, v => HostPw = v);
             ((RectTransform)pw.transform).name = "PwField";
@@ -233,10 +235,38 @@ namespace SpellyZombie
                 skin != null ? skin.ButtonGrey : null, 13);
             UIKit.Place((RectTransform)priv.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(width - 190f, 30f));
             ry -= 36f;
-            Chip(parent, rx, ry, width - 190f, Loc.T("stand.botmatch"), false, MatchLobby.StartMatch);
+            // alone: the picked map as a practice run on the clock
+            var solo = UIKit.Button(parent, Loc.T("stand.start"), MatchLobby.StartMatch,
+                skin != null ? skin.ButtonGrey : null, 13);
+            UIKit.Place((RectTransform)solo.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(width - 190f, 30f));
+            ry -= 40f;
+            MapPicture(parent, rx, ry, 300f);
         }
 
         public static string HostPw = "";
+        static readonly System.Collections.Generic.HashSet<string> _noPicture =
+            new System.Collections.Generic.HashSet<string>();
+
+        /// The picture of the picked map under its MAP row: the Collection
+        /// Manager's Map Pictures, keyed by scene name. No picture = one
+        /// warning and no card.
+        public static void MapPicture(RectTransform parent, float x, float y, float width)
+        {
+            string map = MatchLobby.SelectedMap;
+            var tex = CollectionManager.MapPicture(map);
+            if (tex == null)
+            {
+                if (_noPicture.Add(map))
+                    Debug.LogWarning($"[SpellyZombie] No picture for the map '{map}'. Open it, frame the Scene view, " +
+                        "run Spelly Zombie/Maps/Take Map Picture, then add it to the Lobby's Collection Manager with the same menu.");
+                return;
+            }
+            var card = UIKit.PageCard(parent, "MapPicture", width, 16f / 9f, out var art, out var group);
+            art.texture = tex;
+            group.alpha = 1f;
+            UIKit.Place(card, new Vector2(0f, 1f), new Vector2(x, y), card.sizeDelta);
+        }
+
 
         // one column, two meanings: JOIN filters the list, HOST selects the card
         static void BuildFilterColumn(RectTransform parent, float x, ref float y, bool selecting)

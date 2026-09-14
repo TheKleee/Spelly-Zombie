@@ -86,10 +86,8 @@ lines lose their emphasis on purpose.
 | stand.hostpublic | CREATE PUBLIC LOBBY | 公開ロビーを作る | public lobby, make | |
 | stand.pw | password (optional) | パスワード（任意） | password (optional) | |
 | stand.code | entry code (optional) | 入室コード（任意） | room-entry code (optional) | |
-| stand.botmatch | test match vs a bot | ボットとテスト試合 | with a bot, test match | |
 | stand.hint | walk away to close | 離れると閉じる | when you move away, it closes | |
 | stand.map | change map | マップをかえる | map, change | |
-| stand.seed | seed | シード | seed | katakana loan, what Minecraft Japan uses |
 | stand.share | acolytes at least {0}% | アコライトは最低{0}% | acolytes, at minimum {0}% | アコライト = transliteration of the game noun |
 | stand.setcode | set code | コードを決める | code, decide | |
 | stand.readycall | ready check | 準備確認 | readiness confirm | |
@@ -162,3 +160,43 @@ lines lose their emphasis on purpose.
 | opt.on | On | オン | on |  |
 | opt.music | Music: {0}% | 音楽: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | 効果音: {0}% | sound effects: {0}% |  |
+| seal.norune | no rune here to seal. aim at one of your runes | ここに魔法陣で囲むルーンがない。自分のルーンをねらえ | here there is no rune to surround with a magic circle. aim at your own rune | 魔法陣 (magic circle) for "seal", as in the hints |
+| seal.noink | not enough ink for the seal | 魔法陣を描くインクが足りない | ink to draw the magic circle is lacking |  |
+| rune.noink | not enough ink to finish the rune | ルーンを描き終えるインクが足りない | ink to finish drawing the rune is lacking |  |
+| round.safe | THE LOBBY IS SAFE GROUND | ロビーは安全地帯 | lobby is safe zone |  |
+| round.versus | WIZARDS vs ACOLYTES | 魔法使い 対 アコライト | wizard versus acolyte | 対 is the match word, as in sports |
+| round.wizards | WIZARDS WIN | 魔法使いの勝ち | wizards' win |  |
+| round.acolytes | ACOLYTES WIN | アコライトの勝ち | acolytes' win |  |
+| round.home | {0}. back to the lobby in {1} | {0}。あと{1}でロビーに戻る | {0}. in {1} more return to lobby | {1} is seconds |
+| round.pot |  · pot {0}% |  · 大釜 {0}% | cauldron {0}% | 大釜 = the big cauldron |
+| round.green |  · the pot is GREEN |  · 大釜が緑になった | cauldron has become green |  |
+| gate.accepts | THE GATE ACCEPTS | 門が受け入れた | gate accepted |  |
+| net.hostleft | THE HOST LEFT | ホストがいなくなった | host went away |  |
+| net.hosting | ● HOSTING, {0} player(s) | ● ホスト中、{0}人 | hosting, {0} people | 人 counts players |
+| net.connected | ● CONNECTED, {0} player(s) | ● 接続中、{0}人 | connected, {0} people |  |
+| net.map | MAP: {0} | マップ: {0} | map: {0} |  |
+| net.maplikes | MAP: {0} · ♥{1} | マップ: {0} · ♥{1} | map: {0} · ♥{1} |  |
+| steam.offline | Steam not running, offline & LAN only | Steamが起動していない。オフラインとLANだけ | Steam is not running. offline and LAN only |  |
+| steam.ready | Steam ready: {0} | Steam準備OK: {0} | Steam ready OK: {0} | {0} is the Steam name |
+| steam.leavefirst | leave your lobby first | 先に自分のロビーを出よう | first own lobby let's leave |  |
+| steam.ping | your ping to that host is {0}ms, lobby allows {1} | そのホストへのピングは{0}ms、ロビーの上限は{1} | ping to that host is {0}ms, lobby's limit is {1} |  |
+| steam.joining | joining… | 参加中… | joining… |  |
+| steam.deleted | lobby deleted | ロビーを消した | lobby erased |  |
+| steam.notrunning | Steam not running | Steamが起動していない | Steam is not running |  |
+| steam.creating | creating lobby… | ロビーを作っている… | lobby is being made… |  |
+| steam.failed | lobby failed: {0} | ロビーを作れなかった: {0} | lobby could not be made: {0} | {0} is a Steam error code |
+| steam.noenter | couldn't enter the lobby | ロビーに入れなかった | could not enter lobby |  |
+| steam.nohost | lobby has no host, try again | ロビーにホストがいない。もう一回 | in lobby there is no host. once more |  |
+| steam.connecting | joined, connecting… | 入った。接続中… | entered. connecting… |  |
+| steam.private | PRIVATE LOBBY, invite friends | プライベートロビー、友だちを呼ぼう | private lobby, let's call friends | 友だち in kana, the kid word |
+| steam.public | PUBLIC LOBBY, listed | 公開ロビー、リストに載せた | public lobby, put on the list |  |
+| menu.tagline | draw fast. die funny. | 速く描け。楽しく死ね。 | draw fast. die enjoyably. | blunt imperatives, the game's voice |
+| menu.close | Close | 閉じる | close |  |
+| chip.pages | turn the pages | ページをめくる | turn pages | the mouse wheel turns the grimoire pages |
+| round.potopens |  · pot opens in {0} |  · 大釜は{0}秒後に開く | cauldron opens after {0} seconds | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · ink in flight {0} |  · インクが飛行中 {0} | ink is in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| stand.lanhost | LAN host | LANでホスト | host on LAN | book stand, the LAN row: host over the local network |
+| stand.lanjoin | LAN join | LANに参加 | join LAN | book stand, the LAN row: join the address in the field |
+| opt.uiscale | UI size: {0}% | UIサイズ: {0}% | UI size: {0}% | options, game tab: the slider that scales every panel and chip |
+| stand.nocap | no cap | 上限なし | no upper limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | your connection carries everyone | 全員の通信をあなたが担います | you carry everyone's connection | book stand, under the size row past 32 players: the host's upload carries the lobby |

@@ -46,12 +46,40 @@ namespace SpellyZombie
             return b;
         }
 
+        // every machine breaks the same object with the same roll: the dice
+        // are seeded by the element's shared net id, the pieces named so
+        // ScenePath and Element.Refile agree on them everywhere
+        System.Random _rng;
+        string _pieceTag;
+
+        static float Next(System.Random r, float min, float max) => min + (float)r.NextDouble() * (max - min);
+
+        static Vector3 NextInSphere(System.Random r)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                var v = new Vector3(Next(r, -1f, 1f), Next(r, -1f, 1f), Next(r, -1f, 1f));
+                if (v.sqrMagnitude <= 1f) return v;
+            }
+            return Vector3.zero;
+        }
+
+        static Vector3 NextOnSphere(System.Random r)
+        {
+            var v = NextInSphere(r);
+            return v.sqrMagnitude > 0.0001f ? v.normalized : Vector3.up;
+        }
+
         void Shatter()
         {
             Bounds b = MyBounds();
             float maxDim = Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z));
             var tag = GetComponentInParent<SurfaceMaterialTag>();
             var mat = tag != null ? tag.Material : SurfaceMaterialType.Wood;
+            var el = GetComponent<Element>();
+            int seed = el != null && el.NetId != 0 ? el.NetId : GetInstanceID();
+            _rng = new System.Random(seed);
+            _pieceTag = $"{name}#{(uint)seed:X8}";
 
             // ---- authored effect, or the fallback ----
             if (BreakFx != null) Instantiate(BreakFx, b.center, Quaternion.identity);
@@ -60,14 +88,18 @@ namespace SpellyZombie
 
             // ---- optional standing piece ----
             if (Standing != null)
-                Instantiate(Standing, transform.position, transform.rotation, transform.parent);
+            {
+                var stump = Instantiate(Standing, transform.position, transform.rotation, transform.parent);
+                stump.name = $"{_pieceTag}#stand";
+                Element.Refile(stump.transform);
+            }
 
             int count = DebrisMax > 0
-                ? Random.Range(Mathf.Max(1, DebrisMin), DebrisMax + 1)
+                ? _rng.Next(Mathf.Max(1, DebrisMin), DebrisMax + 1)
                 : Mathf.Clamp(Mathf.RoundToInt(1f + maxDim * 1.5f), 2, 5);
 
             if (DebrisPrefabs != null && DebrisPrefabs.Length > 0) SpawnYourDebris(count, b, mat);
-            else SpawnCodeChunks(count, b, mat);
+            else if (NetGame.IsAuthority) SpawnCodeChunks(count, b, mat); // clients see the host's via MatterSnap
 
             if (CodeSplinters) Splinters(b, mat);
 
@@ -82,7 +114,7 @@ namespace SpellyZombie
         {
             for (int i = 0; i < count; i++)
             {
-                var prefab = DebrisPrefabs[Random.Range(0, DebrisPrefabs.Length)];
+                var prefab = DebrisPrefabs[_rng.Next(0, DebrisPrefabs.Length)];
                 if (prefab == null) continue;
 
                 Vector3 at;
@@ -95,19 +127,22 @@ namespace SpellyZombie
                 }
                 else
                 {
-                    at = b.center + Vector3.Scale(Random.insideUnitSphere, b.extents * 0.7f);
+                    at = b.center + Vector3.Scale(NextInSphere(_rng), b.extents * 0.7f);
                     rot = prefab.transform.rotation; // authored orientation
                 }
 
                 var piece = Instantiate(prefab, at, rot);
+                piece.name = $"{_pieceTag}#{i}";
+                Element.Refile(piece.transform);
 
                 // adopt, never dictate: authored rigidbody/collider/tag win
                 var rb = Adopt.Component<Rigidbody>(piece, out bool madeRb);
                 if (madeRb && piece.GetComponentInChildren<Collider>() == null)
                     Debug.LogWarning($"[SpellyZombie] Debris '{prefab.name}' has no collider: " +
                                      "it will fall through the world. Add one to the prefab.", prefab);
-                rb.linearVelocity = Random.onUnitSphere * DebrisSpread + Vector3.up * (DebrisSpread * 0.5f);
-                rb.angularVelocity = Random.insideUnitSphere * 4f;
+                rb.linearVelocity = NextOnSphere(_rng) * DebrisSpread + Vector3.up * (DebrisSpread * 0.5f);
+                rb.angularVelocity = NextInSphere(_rng) * 4f;
+                NetSync.TrackPropLater(rb); // the host's flight is the one the clients see
 
                 if (piece.GetComponentInChildren<SurfaceMaterialTag>() == null)
                     piece.AddComponent<SurfaceMaterialTag>().Material = mat;
@@ -123,12 +158,12 @@ namespace SpellyZombie
             var blame = GetComponent<Element>();
             for (int i = 0; i < count; i++)
             {
-                var chunk = Matter.Spawn(mat, MatterPhase.Solid, Random.Range(0.1f, 0.17f),
-                    b.center + Vector3.Scale(Random.insideUnitSphere, b.extents * 0.7f));
+                var chunk = Matter.Spawn(mat, MatterPhase.Solid, Next(_rng, 0.1f, 0.17f),
+                    b.center + Vector3.Scale(NextInSphere(_rng), b.extents * 0.7f));
                 if (chunk == null) continue;
                 if (blame != null) chunk.StampOwner(blame.Owner);
                 if (chunk.TryGetComponent<Rigidbody>(out var rb))
-                    rb.linearVelocity = Random.onUnitSphere * DebrisSpread + Vector3.up * 1.5f;
+                    rb.linearVelocity = NextOnSphere(_rng) * DebrisSpread + Vector3.up * 1.5f;
             }
         }
 
@@ -140,15 +175,15 @@ namespace SpellyZombie
             {
                 var s = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 s.name = "Splinter";
-                s.transform.position = b.center + Vector3.Scale(Random.insideUnitSphere, b.extents * 0.8f);
-                s.transform.rotation = Random.rotation;
-                s.transform.localScale = new Vector3(0.04f, Random.Range(0.1f, 0.24f), 0.04f);
+                s.transform.position = b.center + Vector3.Scale(NextInSphere(_rng), b.extents * 0.8f);
+                s.transform.rotation = Quaternion.Euler(Next(_rng, 0f, 360f), Next(_rng, 0f, 360f), Next(_rng, 0f, 360f));
+                s.transform.localScale = new Vector3(0.04f, Next(_rng, 0.1f, 0.24f), 0.04f);
                 s.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(shard, MoteShade.Opaque);
                 var srb = s.AddComponent<Rigidbody>();
                 srb.mass = 0.05f;
-                srb.linearVelocity = Random.onUnitSphere * Random.Range(2f, 4f) + Vector3.up * 2f;
-                srb.angularVelocity = Random.insideUnitSphere * 8f;
-                Destroy(s, Random.Range(3f, 5f));
+                srb.linearVelocity = NextOnSphere(_rng) * Next(_rng, 2f, 4f) + Vector3.up * 2f;
+                srb.angularVelocity = NextInSphere(_rng) * 8f;
+                Destroy(s, Next(_rng, 3f, 5f));
             }
         }
     }

@@ -37,6 +37,13 @@ namespace SpellyZombie
         public Vector3 SpiritAt => _ghost != null ? _ghost.position : transform.position;
         public float SpiritYaw => _ghost != null ? _ghost.eulerAngles.y : 0f;
 
+        /// A possession or release chime: the others hear it too (Chime is not a WorldSound).
+        static void GhostChime(Vector3 at)
+        {
+            Juice.Chime(at);
+            NetSync.PushBodyFx(4, at);
+        }
+
         SimpleFPSController _pilot;
         Camera _bodyCam;
         Transform _ghost;
@@ -84,8 +91,8 @@ namespace SpellyZombie
 
             if (!IsGhost)
             {
-                // K = die on purpose, lobby and matches for now
-                if (_pilot.IsLocalViewer && !_pilot.IsDowned)
+                // K = die on purpose, lobby only
+                if (_pilot.IsLocalViewer && !_pilot.IsDowned && ActiveScene.Name == "Lobby")
                 {
                     var kb0 = Keyboard.current;
                     if (kb0 != null && kb0.kKey.wasPressedThisFrame && !UIKit.Typing && !GameMenu.IsOpen)
@@ -158,7 +165,7 @@ namespace SpellyZombie
                         _ridden = null;
                         _third = false;
                         _noGrabUntil = Time.time + 0.8f;
-                        Juice.Chime(_ghost.position);
+                        GhostChime(_ghost.position);
                         DrawingWorld.Instance?.LogEvent("you release the spell");
                         return;
                     }
@@ -226,7 +233,7 @@ namespace SpellyZombie
                     g.PossessBy(true);
                     if (_pilot.IsLocalViewer) Achievements.Unlock(Achievements.RideGolem);
                     _third = true;
-                    Juice.Chime(_ghost.position);
+                    GhostChime(_ghost.position);
                     DrawingWorld.Instance?.LogEvent("you take the golem. click to charge");
                     return;
                 }
@@ -241,7 +248,7 @@ namespace SpellyZombie
                     z.PossessBy(true);
                     if (_pilot.IsLocalViewer) Achievements.Unlock(Achievements.RideZombie);
                     _third = true;
-                    Juice.Chime(_ghost.position);
+                    GhostChime(_ghost.position);
                     DrawingWorld.Instance?.LogEvent("you take the zombie. LMB uses what it is");
                     return;
                 }
@@ -255,7 +262,7 @@ namespace SpellyZombie
                 {
                     _rbRidden = strike.GetComponent<Rigidbody>();
                     _third = true;
-                    Juice.Chime(_ghost.position);
+                    GhostChime(_ghost.position);
                     DrawingWorld.Instance?.LogEvent("you combine with the spell");
                     break;
                 }
@@ -267,7 +274,7 @@ namespace SpellyZombie
                 _ridden = p;
                 if (p.Dormant) p.Wake();
                 _third = true;
-                Juice.Chime(_ghost.position);
+                GhostChime(_ghost.position);
                 DrawingWorld.Instance?.LogEvent("you combine with the spell");
                 break;
             }
@@ -299,7 +306,7 @@ namespace SpellyZombie
             if (!uiBusy && kb.fKey.wasPressedThisFrame)
             {
                 _noGrabUntil = Time.time + 0.8f;
-                Juice.Chime(_ghost.position);
+                GhostChime(_ghost.position);
                 DrawingWorld.Instance?.LogEvent("you release the zombie");
                 LeaveZombie();
                 return;
@@ -339,7 +346,7 @@ namespace SpellyZombie
                     _rbRidden = null;
                     _third = false;
                     _noGrabUntil = Time.time + 0.8f;
-                    Juice.Chime(_ghost.position);
+                    GhostChime(_ghost.position);
                     DrawingWorld.Instance?.LogEvent("you release the spell");
                     return;
                 }
@@ -374,7 +381,7 @@ namespace SpellyZombie
             if (!uiBusy && kb.fKey.wasPressedThisFrame)
             {
                 _noGrabUntil = Time.time + 0.8f;
-                Juice.Chime(_ghost.position);
+                GhostChime(_ghost.position);
                 DrawingWorld.Instance?.LogEvent("you release the golem");
                 LeaveGolem();
                 return;
@@ -424,7 +431,7 @@ namespace SpellyZombie
                 g._proxyId = id;
                 g._third = true;
                 g.SetProxyEyes(false);
-                Juice.Chime(g._ghost.position);
+                GhostChime(g._ghost.position);
                 Achievements.Unlock(kind == 1 ? Achievements.RideZombie : Achievements.RideGolem);
                 DrawingWorld.Instance?.LogEvent(kind == 1
                     ? "you take the zombie. LMB uses what it is" : "you take the golem. click to charge");
@@ -442,7 +449,7 @@ namespace SpellyZombie
             if (!uiBusy && kb.fKey.wasPressedThisFrame)
             {
                 _noGrabUntil = Time.time + 0.8f;
-                Juice.Chime(_ghost.position);
+                GhostChime(_ghost.position);
                 DrawingWorld.Instance?.LogEvent(_proxyKind == 1 ? "you release the zombie" : "you release the golem");
                 LeaveProxy(true);
                 return;
@@ -696,8 +703,19 @@ namespace SpellyZombie
                 _ghost.position += move.normalized * (GhostSpeed * Time.deltaTime);
         }
 
+        static float _forceReviveAt = -1f;
+        /// The death needle: dead now, back on your feet by yourself after `seconds`.
+        public static void ReviveIn(float seconds) => _forceReviveAt = Time.time + seconds;
+
         void TickRevive()
         {
+            if (_forceReviveAt > 0f && Time.time >= _forceReviveAt && _pilot != null && _pilot.IsLocalViewer)
+            {
+                _forceReviveAt = -1f;
+                _pilot.Revive();
+                Land();
+                return;
+            }
             bool home = AtHome;
 
             // lobby: hover over your own body, no teammate needed

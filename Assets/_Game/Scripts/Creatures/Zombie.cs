@@ -66,6 +66,14 @@ namespace SpellyZombie
         /// Set by Demon on attach; demons don't count toward ending a round.
         public bool IsDemon;
 
+        /// One-shot animation bits since the last snapshot (ZombieDress.Anim*);
+        /// SendZombieSnap ships and clears them.
+        public byte AnimLatch;
+        public void Tell(byte bit) => AnimLatch |= bit;
+
+        /// Lifted by a remote hand through the host: no steering, no biting.
+        public bool Held;
+
         /// Live registry; the RoundDirector's alive count.
         public static readonly List<Zombie> All = new List<Zombie>();
 
@@ -156,6 +164,8 @@ namespace SpellyZombie
             var dmg = Adopt.Component<Element>(go, out bool dmgNew);
             if (dmgNew)
                 dmg.Health = 60f;
+            // the snapshots name it by its GameObject id; the stand-ins are stamped with the same
+            dmg.Rename(go.GetInstanceID());
 
             var creature = Adopt.Component<Creature>(go);
             Adopt.Component<WeightSag>(go);   // weight you can see before it crushes
@@ -388,6 +398,10 @@ namespace SpellyZombie
             HoldPose(seconds);
         }
 
+        /// Pinned by fresh ink right now - the snapshot carries it to the stand-ins.
+        public bool Tranced => _brain != null && _brain.Tranced;
+        public bool Transformed => _brain != null && _brain.Transformed;
+
         Animator _anim;
         float _poseHeldUntil;
 
@@ -479,6 +493,7 @@ namespace SpellyZombie
             var def = _summon != null ? _summon.Spell : null;
             var clip = def != null ? def.MoveClip(move) : null;
             if (clip == null || !OneShotClip.Play(gameObject, clip)) builtIn?.Invoke();
+            else Tell(ZombieDress.AnimScream); // the stand-ins play the same clip off their worn spell
         }
 
         /// Fires this kind's attack: scribblers throw the curse, the rest
@@ -603,8 +618,8 @@ namespace SpellyZombie
             if (_charging) { TickCharge(); return; }
             if (!_creature.CanMove) return;
 
-            // while held by a grab: no steering, no turning, no chewing
-            if (HandGrab.LocalHeldBody == _rb) { _windup = 0f; return; }
+            // while held by a grab, local or a friend's through the host: no steering, no turning, no chewing
+            if (Held || HandGrab.LocalHeldBody == _rb) { _windup = 0f; return; }
 
             // trance: full stop (steered, not hard-set, so forces still apply).
             // ★ NOT WHILE RIDDEN (his rule): the ghost is the mind, so fresh
@@ -707,6 +722,11 @@ namespace SpellyZombie
             foreach (var p in SimpleFPSController.All)
                 if (p != null && Sides.SideOfThing(p.gameObject) == Side.Wizard)
                     Consider(p.transform);
+            // friends' puppets: a wizard on another machine is a mark too
+            foreach (var a in NetAvatar.All)
+                if (a != null && !a.Downed && !a.Disguised
+                    && Sides.Of(NetSync.OwnerIdOf(a.Id)) == Side.Wizard)
+                    Consider(a.transform);
             if (CauldronEconomy.Active != null) Consider(CauldronEconomy.Active.transform);
             return found;
         }
@@ -716,6 +736,7 @@ namespace SpellyZombie
         /// fires, on the zombie's own judgement.
         void TickCaster(string spellName, Transform target, float dist)
         {
+            if (Transformed) return;
             _castCooldown -= Time.fixedDeltaTime;
 
             bool itChases = target.GetComponentInParent<CauldronEconomy>() == null;
@@ -774,6 +795,7 @@ namespace SpellyZombie
 
             if (hit.collider.GetComponentInParent<Creature>() != null) return;            // creatures excluded
             if (hit.collider.GetComponentInParent<SimpleFPSController>() != null) return; // players excluded
+            if (hit.collider.GetComponentInParent<NetAvatar>() != null) return;           // friends' puppets too
             var obstacle = hit.collider.GetComponentInParent<Element>();
             if (obstacle == null) return; // real wall - go around
 
@@ -803,6 +825,14 @@ namespace SpellyZombie
                 float d = Vector3.Distance(transform.position, p.transform.position);
                 if (d <= AttackRange) { TrySwipe(p.transform, d); return; }
             }
+            // friends' puppets on the host: the same reach, never its summoner's
+            foreach (var a in NetAvatar.All)
+            {
+                if (a == null || a.Downed || a.Disguised) continue;
+                if (mine != null && NetSync.OwnerIdOf(a.Id) == mine.SummonedBy) continue;
+                float d = Vector3.Distance(transform.position, a.transform.position);
+                if (d <= AttackRange) { TrySwipe(a.transform, d); return; }
+            }
             foreach (var z in All)
             {
                 if (z == this || z == null || z._rising) continue;
@@ -815,6 +845,7 @@ namespace SpellyZombie
         float _attackTimer;
         void TrySwipe(Transform target, float dist)
         {
+            if (Transformed) return; // a crate does not bite
             _attackTimer -= Time.fixedDeltaTime;
             if (dist > AttackRange || _attackTimer > 0f) return;
             _attackTimer = AttackCooldown;
@@ -827,6 +858,16 @@ namespace SpellyZombie
                 player.TakeHit(dir * 6f + Vector3.up * 2f, AttackDamage, null, OwnerId, true);
                 return;
             }
+            // a friend's puppet: the wound lands on its hurtbox (HealthMsg to
+            // its owner), the shove ships to the body that can move
+            var av = target.GetComponentInParent<NetAvatar>();
+            if (av != null)
+            {
+                Vector3 dir = (target.position - transform.position).normalized;
+                av.GetComponent<Element>()?.TakeDamage(AttackDamage, name, OwnerId, true);
+                NetSync.SendKick(NetSync.OwnerIdOf(av.Id), dir * 6f + Vector3.up * 2f, false);
+                return;
+            }
             // zombie brawl: swiping the zombie it's mad at
             var d = target.GetComponentInParent<Element>();
             if (d != null) d.TakeDamage(AttackDamage * 1.5f, $"{name} brawl");
@@ -837,6 +878,7 @@ namespace SpellyZombie
         // ----------------------------------------------------------- charger --
         void TickChargerWindup(Transform target, float dist)
         {
+            if (Transformed) return;
             _chargeCooldown -= Time.fixedDeltaTime;
             if (_chargeCooldown > 0f) { TrySwipe(target, dist); return; }
             if (dist > 12f || dist < 2f) { TrySwipe(target, dist); return; }
@@ -876,6 +918,14 @@ namespace SpellyZombie
         void OnCollisionEnter(Collision col)
         {
             if (!_charging) return;
+            // a friend's puppet, before the wall test: its bones are not a wall
+            var puppet = col.collider.GetComponentInParent<NetAvatar>();
+            if (puppet != null)
+            {
+                puppet.GetComponent<Element>()?.TakeDamage(AttackDamage * 2f, name, OwnerId, true);
+                NetSync.SendKick(NetSync.OwnerIdOf(puppet.Id), _chargeDir * 12f + Vector3.up * 4f, false);
+                return;
+            }
             if (col.collider.attachedRigidbody == null && col.collider.GetComponent<CharacterController>() == null)
             {
                 // hit something immovable
@@ -947,6 +997,7 @@ namespace SpellyZombie
 
             // leaves one poison field where it stood; the field owns its visuals and lifetime
             PoisonField.Open(at, radius, DrawingConfig.DetonateFieldSeconds);
+            NetSync.PushField(3, at, radius, DrawingConfig.DetonateFieldSeconds);
 
             // shared blast: players shoved with falloff, acolytes never damaged,
             // own body excluded from the prop throw
@@ -960,6 +1011,10 @@ namespace SpellyZombie
         void OnDeath(string cause)
         {
             WorldEvents.Report(WorldEventKind.Death, transform.position, 2f); // nearby zombies hear it
+            // under Spreading a killed zombie comes apart into two smaller ones where it fell
+            var buff = GetComponent<ZombieBuff>();
+            if (buff != null && buff.Active && buff.Kind == MischiefKind.Spreading)
+                GetComponent<SummonedZombie>()?.SplitInto(2, DrawingConfig.SpreadingScale, DrawingConfig.SpreadingStrength);
             RoundDirector.NotifyKill(this); // round economy
             DeathPoof(cause);
 
@@ -967,11 +1022,11 @@ namespace SpellyZombie
             // detonation is the SummonGasDetonateMul version
             var mine = GetComponent<SummonedZombie>();
             mine?.FreeGas();   // the living aura lingers where the body fell
-            PoisonField.Open(
-                transform.position + Vector3.up * transform.localScale.y * 0.35f,
-                // world zombies (no seal) get the minimum radius
-                mine != null ? mine.GasRadius : DrawingConfig.SummonGasRadiusMin,
-                DrawingConfig.ZombieDeathCloudSeconds);
+            Vector3 cloudAt = transform.position + Vector3.up * transform.localScale.y * 0.35f;
+            // world zombies (no seal) get the minimum radius
+            float cloudRadius = mine != null ? mine.GasRadius : DrawingConfig.SummonGasRadiusMin;
+            PoisonField.Open(cloudAt, cloudRadius, DrawingConfig.ZombieDeathCloudSeconds);
+            NetSync.PushField(3, cloudAt, cloudRadius, DrawingConfig.ZombieDeathCloudSeconds);
 
             // the summoner whistles at their own position; 3D falloff limits the tell
             if (mine != null) WhistleOwner(mine.SummonedBy);
@@ -999,7 +1054,9 @@ namespace SpellyZombie
                 : $"{name} falls apart: {cause}");
         }
 
-        static void WhistleOwner(int ownerId)
+        /// The summoner's whistle at their own position. The host calls it on
+        /// a death; a client owner calls it from the KillFeed.
+        public static void WhistleOwner(int ownerId)
         {
             if (ownerId < 0) return;
             Vector3 at;

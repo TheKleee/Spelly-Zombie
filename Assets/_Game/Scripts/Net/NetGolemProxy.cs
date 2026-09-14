@@ -3,17 +3,19 @@ using UnityEngine;
 namespace SpellyZombie
 {
     /// Client-side stand-in for a host-simulated golem: no wandering, no
-    /// charge, no decisions - it lerps to snapshots, takes spells as a valid
+    /// charge, no decisions - it glides to snapshots, takes spells as a valid
     /// target, and relays the damage to the host. Same shape as
     /// NetZombieProxy, and the same law: what the host raised is what every
     /// screen shows.
     public class NetGolemProxy : MonoBehaviour
     {
-        Vector3 _targetPos;
-        float _targetYaw;
+        readonly CreatureGlide _glide = new CreatureGlide();
         Color _skin = Color.gray;
         public int OwnerId = -1; // from the snapshot, for the ghost and the achievements
         public int Id;           // the host's instance id, the snapshot key
+
+        /// A ghost drives it on the host.
+        public bool Possessed { get; private set; }
 
         /// Where a rider looks from: the eyes, else the top of the body.
         public Vector3 HeadAt
@@ -78,34 +80,130 @@ namespace SpellyZombie
             dmg.Health = 100000f;      // the HOST owns real strength
             dmg.RemoveOnDeath = false;  // never dies locally - snapshots decide
 
+            // the weight you can see: StateMsg feeds the burden, the sag reads it
+            if (go.GetComponent<WeightSag>() == null) go.AddComponent<WeightSag>();
+
             var proxy = go.AddComponent<NetGolemProxy>();
             proxy.Id = id;
-            proxy._targetPos = pos;
+            proxy._glide.Push(pos, Quaternion.identity, Vector3.zero);
             proxy._skin = skin;
+            proxy._view = view;
+            proxy._eyes = go.GetComponentInChildren<GooglyEyes>(true);
+            if (proxy._eyes != null) proxy._eyes.Facing = go.transform; // as Golem.Awake aims them
             return proxy;
         }
 
-        public void Target(Vector3 pos, float yaw)
+        StateView _view;
+        byte _look = 254;
+        SpellDef _worn;
+
+        /// The tint, the spell look and the phase the snapshot carries (Golem.Wear).
+        public void Wear(Color skin, byte look, float stateT)
         {
-            _targetPos = pos;
-            _targetYaw = yaw;
+            if (_view == null) return;
+            bool moved = false;
+            if (skin != _skin) { _skin = skin; _view.Tint = skin; moved = true; }
+            if (look != _look)
+            {
+                _look = look;
+                _worn = SpellBook.Live.At(look);
+                _view.Look = _worn != null ? _worn.Skin : null;
+                moved = true;
+            }
+            _view.StateT = stateT;
+            if (moved) _view.PushNow();
+        }
+
+        public void Target(Vector3 pos, Quaternion rot, Vector3 vel) => _glide.Push(pos, rot, vel);
+
+        // ---- eyes: mood, red pupils, the charge swell ----
+        GooglyEyes _eyes;
+        bool _moodHeld, _pupilsRed, _swelling;
+
+        public void SetEyes(byte bits)
+        {
+            if (_eyes == null) return;
+            var mood = (EyeMood)(bits & 7);
+            if (mood != EyeMood.Neutral) { _eyes.SetMood(mood, 0.3f); _moodHeld = true; }
+            else if (_moodHeld) { _eyes.SetMood(EyeMood.Neutral, 0f); _moodHeld = false; }
+
+            bool red = (bits & 8) != 0;
+            if (red != _pupilsRed)
+            {
+                _pupilsRed = red;
+                _eyes.SetPupilTint(red ? DrawingConfig.MindControlEyeColor : (Color?)null);
+            }
+            bool swell = (bits & 16) != 0;
+            if (swell && !_swelling)
+                _eyes.Swell(DrawingConfig.ChargeTellSeconds, DrawingConfig.ChargeTellEyeSwell);
+            _swelling = swell;
+        }
+
+        /// The host's pupils aimed at prey; zero lets the local AutoWatch wander.
+        public void SetGaze(Vector3 gaze)
+        {
+            if (_eyes == null || gaze == Vector3.zero) return;
+            _eyes.LookTarget = gaze;
+            _eyes.HoldGazeUntil = Time.time + 0.3f;   // one beat, re-armed while it stares
+        }
+
+        /// The weight the host sees it carrying; WeightSag bends the hips by it.
+        public void SetBurden(byte b)
+        {
+            var dmg = GetComponent<Element>();
+            if (dmg != null) dmg.BurdenOverride = b / 100f;
+        }
+
+        // ---- burning, frozen, ridden ----
+        bool _burning;
+        float _flameIn;
+        GameObject _iceShell;
+
+        public void SetCondition(byte bits)
+        {
+            _burning = (bits & 1) != 0;
+            bool frozen = (bits & 2) != 0;
+            if (frozen && _iceShell == null) _iceShell = Creature.BuildIceShell(transform);
+            else if (!frozen && _iceShell != null) { Destroy(_iceShell); _iceShell = null; }
+
+            bool ridden = (bits & 8) != 0;
+            if (ridden != Possessed)
+            {
+                Possessed = ridden;
+                ShowEyes(!ridden);
+            }
+        }
+
+        // ---- the charge: the authored tell clip on the tell edge (the hop rides the position) ----
+        byte _beat;
+
+        public void SetBeat(byte beat)
+        {
+            if (beat == _beat) return;
+            _beat = beat;
+            if (beat != 1) return;
+            var tell = _worn != null ? _worn.MoveClip(Zombie.Charge) : null;
+            if (tell != null) OneShotClip.Play(gameObject, tell);
         }
 
         void Update()
         {
-            transform.position = Vector3.Lerp(transform.position, _targetPos, Time.deltaTime * 10f);
-            transform.rotation = Quaternion.Slerp(transform.rotation,
-                Quaternion.Euler(0f, _targetYaw, 0f), Time.deltaTime * 8f);
+            if (_burning && (_flameIn -= Time.deltaTime) <= 0f)
+            {
+                _flameIn = Creature.FlameEvery;
+                Creature.SpawnFlame(transform);
+            }
+            if (_glide.Sample(out var pos, out var rot))
+            {
+                transform.position = pos;
+                transform.rotation = rot;
+            }
         }
 
-        /// Snapshot stopped listing it: the host says it came apart. Same burst
-        /// the host plays, so a death reads the same on every screen.
+        /// Snapshot stopped listing it: the host says it came apart. Its burst
+        /// and thud already arrived from the host (FxMsg), so nothing plays twice.
         public void Vanish()
         {
-            Vector3 at = transform.position + Vector3.up * 0.2f;
-            GrammarFX.PuffBurst(at, _skin, 7);
-            if (FxLibrary.I != null) FxLibrary.SpawnTinted(FxLibrary.I.Poof, at, _skin);
-            Juice.Thud(transform.position);
             Destroy(gameObject);
         }
     }

@@ -40,6 +40,8 @@ namespace SpellyZombie
         /// on the hips when baked, else the costume belt socket.
         public Transform BookSocket => _sockets != null
             ? (_sockets.Get("Book") ?? _sockets.Get("Belt")) : null;
+        /// The worn hat: the pillar paints everything under it.
+        public Transform HatSocket => _sockets != null ? _sockets.Get("Hat") : null;
 
         /// True once the real model is worn (SelfPaint then skips the fat
         /// invisible controller capsule and paints the limbs directly).
@@ -264,42 +266,7 @@ namespace SpellyZombie
             // ---- the emote rig moves onto real bones (same ids = old poses work) ----
             var rig = GetComponent<EmoteRig>();
             if (rig == null) rig = gameObject.AddComponent<EmoteRig>();
-            rig.Joints.Clear();
-            void Joint(string id, Transform bone, Transform hint)
-            {
-                if (bone == null) return;
-                rig.Joints.Add(new EmoteRig.JointEntry
-                {
-                    Id = id, T = bone, GrabHint = hint != null ? hint : bone,
-                    Rest = bone.localRotation
-                });
-            }
-            Joint("shoulder.L", _armL, _handL);
-            Joint("shoulder.R", _armR, _handR);
-            Joint("neck", neck != null ? neck : _head, headTop != null ? headTop : _head);
-            Joint("spine", spine2 != null ? spine2 : _spine1, spine2);
-            Joint("leg.L", upLegL, footL);
-            Joint("leg.R", upLegR, footR);
-
-            // elbows and knees are hinge-limited. The hinge axis is the bind
-            // pose's side axis in each joint's own rest frame; flip the sign
-            // consts if a test bend goes backwards.
-            void Hinge(string id, Transform bone, Transform hint, float sign, float maxFlex)
-            {
-                if (bone == null) return;
-                Vector3 sideWorld = Vector3.Cross(Vector3.up, transform.forward);
-                rig.Joints.Add(new EmoteRig.JointEntry
-                {
-                    Id = id, T = bone, GrabHint = hint != null ? hint : bone,
-                    Rest = bone.localRotation, Limited = true,
-                    HingeAxis = (Quaternion.Inverse(bone.rotation) * (sideWorld * sign)).normalized,
-                    MinDeg = -5f, MaxDeg = maxFlex,
-                });
-            }
-            Hinge("elbow.L", _foreL, _handL, ElbowHingeSign, 140f);
-            Hinge("elbow.R", _foreR, _handR, ElbowHingeSign, 140f);
-            Hinge("knee.L", legL, footL, KneeHingeSign, 135f);
-            Hinge("knee.R", legR, footR, KneeHingeSign, 135f);
+            EmoteRig.Populate(rig, allBones, transform); // the same table a puppet gets
             if (GetComponent<EmotePlayer>() == null) gameObject.AddComponent<EmotePlayer>();
 
             // the bake runs on the raw bind pose (the animator faces the body
@@ -424,6 +391,9 @@ namespace SpellyZombie
 
         /// The grimoire in the left hand - absorb flights aim here.
         public Transform BookTransform => _book != null ? _book.transform : null;
+
+        /// The wand is on show (pen slot, first person, on its feet) - NetSync ships it.
+        public bool PenShown { get; private set; }
         readonly List<Renderer> _bookRenderers = new List<Renderer>(); // reused buffer (no-alloc law)
         bool _propsBuilt;
 
@@ -942,6 +912,8 @@ namespace SpellyZombie
                     GetComponent<EmoteRig>()?.CaptureRest();
                     _teamShown = MatchLobby.LocalTeam;
                     _costume = Wardrobe.DressPlayer(_sockets, TeamColor(_teamShown), null);
+                    // the wardrobe's hat arrives unpainted: the pillar colour goes on now
+                    if (_pilot.IsLocalViewer) HatColor.Dress(_pilot);
                 }
             }
 
@@ -971,6 +943,7 @@ namespace SpellyZombie
             {
                 bool showPen = _slots.PenSelected && !_ragdolling
                     && (!SimpleFPSController.ThirdPersonActive && !SelfPaint.IsActive);
+                PenShown = showPen;
                 if (_wand.activeSelf != showPen) _wand.SetActive(showPen);
 
                 // the book stays active on the easel: active + renderers off

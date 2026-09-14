@@ -33,6 +33,17 @@ namespace SpellyZombie
 
         static readonly RuneType[] AcolyteKit = { };
 
+        static RuneType[] KitFor(Side side) => side == Side.Acolyte ? AcolyteKit : WizardKit;
+
+        /// The match starts every player's book over at their side's kit:
+        /// the lobby is practice, what was learned there stays there.
+        public static void ResetBooksForMatch()
+        {
+            var owners = new System.Collections.Generic.List<int> { Grimoire.LocalPlayerId };
+            foreach (var id in NetSync.RemoteIds) owners.Add(NetSync.OwnerIdOf(id));
+            Grimoire.ResetForMatch(owners, o => KitFor(Sides.Of(o)));
+        }
+
         /// Changing side REPLACES the book, lobby included - you become that
         /// side with that side's starting state. The old lobby-only-adds rule
         /// let a wizard carry push and pull into the acolyte, who owns nothing.

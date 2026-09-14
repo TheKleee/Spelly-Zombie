@@ -65,7 +65,7 @@ namespace SpellyZombie
         public GameObject UIPrefab;
 
         [Header("the surface prefabs: prefab NAME = the UI group it replaces")]
-        [Tooltip("Drop ANY menu/submenu/popup prefab here. Whenever the game is about to code-build a UI group whose name matches a prefab in this list, YOUR prefab is instantiated instead, untouched. Known names: MainMenu, Settings, PauseMenu, HUD, Vitals, RoundBanner, Downed, LobbyBanner, LobbyBoard, NetPanel, PromptGroup, RuneChooser, PowerupChooser, Announcement, SealGallery. Buttons and live texts wire up by name + sibling order.")]
+        [Tooltip("Drop ANY menu/submenu/popup prefab here. Whenever the game is about to code-build a UI group whose name matches a prefab in this list, YOUR prefab is instantiated instead, untouched. Known names: MainMenu, Settings, PauseMenu, HUD, Vitals, RoundBanner, Downed, LobbyBanner, LobbyBoard, NetPanel, PromptGroup, RuneChooser, Announcement, SealGallery. Buttons and live texts wire up by name + sibling order.")]
         public List<GameObject> SurfacePrefabs = new List<GameObject>();
 
         /// The prefab for a named UI surface; null = code builds it.

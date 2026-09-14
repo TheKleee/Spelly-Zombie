@@ -84,10 +84,8 @@ lobby.
 | stand.hostpublic | CREATE PUBLIC LOBBY | CREA STANZA PUBBLICA | CREATE PUBLIC ROOM | |
 | stand.pw | password (optional) | password (facoltativa) | password (optional) | |
 | stand.code | entry code (optional) | codice d'ingresso (facoltativo) | entry code (optional) | |
-| stand.botmatch | test match vs a bot | partita di prova contro un bot | trial match against a bot | |
 | stand.hint | walk away to close | allontanati per chiudere | move away to close | |
 | stand.map | change map | cambia mappa | change map | |
-| stand.seed | seed | seme | seed | |
 | stand.share | acolytes at least {0}% | accoliti almeno {0}% | acolytes at least {0}% | |
 | stand.setcode | set code | imposta codice | set code | |
 | stand.readycall | ready check | tutti pronti? | all ready? | |
@@ -160,3 +158,43 @@ lobby.
 | opt.on | On | Attivato | activated |  |
 | opt.music | Music: {0}% | Musica: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | Suoni: {0}% | sounds: {0}% |  |
+| seal.norune | no rune here to seal. aim at one of your runes | qui non c'è nessuna runa da sigillare. mira a una delle tue rune | here there is no rune to seal. aim at one of your runes |  |
+| seal.noink | not enough ink for the seal | non c'è abbastanza inchiostro per il sigillo | there is not enough ink for the seal |  |
+| rune.noink | not enough ink to finish the rune | non c'è abbastanza inchiostro per finire la runa | there is not enough ink to finish the rune |  |
+| round.safe | THE LOBBY IS SAFE GROUND | LA STANZA È TERRENO SICURO | the room is safe ground | stanza = lobby, as in the rest of the file |
+| round.versus | WIZARDS vs ACOLYTES | MAGHI contro ACCOLITI | wizards against acolytes |  |
+| round.wizards | WIZARDS WIN | VINCONO I MAGHI | win the wizards | verb first, the Italian headline order |
+| round.acolytes | ACOLYTES WIN | VINCONO GLI ACCOLITI | win the acolytes |  |
+| round.home | {0}. back to the lobby in {1} | {0}. si torna nella stanza tra {1} | {0}. one returns into the room in {1} | {1} is seconds |
+| round.pot |  · pot {0}% |  · calderone {0}% | cauldron {0}% |  |
+| round.green |  · the pot is GREEN |  · il calderone è VERDE | the cauldron is GREEN |  |
+| gate.accepts | THE GATE ACCEPTS | IL CANCELLO ACCETTA | the gate accepts |  |
+| net.hostleft | THE HOST LEFT | L'HOST SE N'È ANDATO | the host has gone away | host is the word Italian players use |
+| net.hosting | ● HOSTING, {0} player(s) | ● HOST, {0} giocatore/i | host, {0} player/s |  |
+| net.connected | ● CONNECTED, {0} player(s) | ● CONNESSO, {0} giocatore/i | connected, {0} player/s |  |
+| net.map | MAP: {0} | MAPPA: {0} | map: {0} |  |
+| net.maplikes | MAP: {0} · ♥{1} | MAPPA: {0} · ♥{1} | map: {0} · ♥{1} |  |
+| steam.offline | Steam not running, offline & LAN only | Steam non è aperto, solo offline e LAN | Steam not is open, only offline and LAN |  |
+| steam.ready | Steam ready: {0} | Steam pronto: {0} | Steam ready: {0} | {0} is the Steam name |
+| steam.leavefirst | leave your lobby first | prima esci dalla tua stanza | first exit from your room |  |
+| steam.ping | your ping to that host is {0}ms, lobby allows {1} | il tuo ping verso quell'host è {0} ms, la stanza permette {1} | your ping toward that host is {0} ms, the room allows {1} |  |
+| steam.joining | joining… | entro… | I enter… |  |
+| steam.deleted | lobby deleted | stanza eliminata | room deleted |  |
+| steam.notrunning | Steam not running | Steam non è aperto | Steam not is open |  |
+| steam.creating | creating lobby… | creo la stanza… | I create the room… |  |
+| steam.failed | lobby failed: {0} | stanza fallita: {0} | room failed: {0} | {0} is a Steam error code |
+| steam.noenter | couldn't enter the lobby | non si entra nella stanza | not one enters into the room |  |
+| steam.nohost | lobby has no host, try again | la stanza non ha host, riprova | the room not has host, retry |  |
+| steam.connecting | joined, connecting… | dentro, mi collego… | inside, I connect… |  |
+| steam.private | PRIVATE LOBBY, invite friends | STANZA PRIVATA, invita gli amici | private room, invite the friends |  |
+| steam.public | PUBLIC LOBBY, listed | STANZA PUBBLICA, in lista | public room, in list |  |
+| menu.tagline | draw fast. die funny. | disegna in fretta. muori ridendo. | draw in a hurry. die laughing. | die funny becomes die laughing, the Italian idiom |
+| menu.close | Close | Chiudi | close |  |
+| chip.pages | turn the pages | sfoglia le pagine | leaf through the pages | the mouse wheel turns the grimoire pages |
+| round.potopens |  · pot opens in {0} |  · il calderone si apre tra {0} | the cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · ink in flight {0} |  · inchiostro in volo {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| stand.lanhost | LAN host | ospita LAN | host LAN | book stand, the LAN row: host over the local network |
+| stand.lanjoin | LAN join | entra in LAN | join LAN | book stand, the LAN row: join the address in the field |
+| opt.uiscale | UI size: {0}% | Dimensione interfaccia: {0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
+| stand.nocap | no cap | senza limite | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | your connection carries everyone | la tua connessione regge tutti | your connection holds everyone up | book stand, under the size row past 32 players: the host's upload carries the lobby |

@@ -4,7 +4,9 @@ namespace SpellyZombie
 {
     /// Nature's answer to wrecking the place. A golem belongs to nobody: it
     /// wanders, and anything it sees is an enemy. It does not guard a summoner
-    /// and it does not take orders.
+    /// and it does not take orders. A wild one is born furious and loses its
+    /// nerve to wounds, spells and anyone closing in on it or drawing; left
+    /// alone it grows brave again, and cornered it turns and fights.
     /// Its one attack is the shared ChargeAttack - hop, lock the direction,
     /// drive straight - so it is dodgeable by moving, and its debuff is
     /// whatever its BiomeStamp made it.
@@ -31,6 +33,10 @@ namespace SpellyZombie
             PossessedFace = Vector3.zero;
             if (_eyes != null) _eyes.SetMood(on ? EyeMood.Mad : EyeMood.Neutral, 0.6f);
         }
+
+        /// What the snapshot reads: the eyes and the charge beat.
+        public GooglyEyes Eyes => _eyes;
+        public byte ChargeBeat => _charge != null ? _charge.BeatWire : (byte)0;
 
         /// Where a rider looks from: the eyes, else the top of the body.
         public Vector3 HeadAt => _eyes != null ? _eyes.transform.position
@@ -70,6 +76,12 @@ namespace SpellyZombie
         int _circleSign = 1; // which way it circles a wand it will not approach
         static readonly RaycastHit[] _sight = new RaycastHit[8];
         float _safeUntil;   // birth shield: it cannot be killed while rising
+        float _nerve = 1f;          // wild only: 0 terrified .. 1 furious
+        float _rageUntil;           // cornered: it fights whatever its nerve
+        float _birthRageUntil;      // fresh from the ground: hard to scare
+        float _lastScareAt = -1f;   // the blast already counted against its nerve
+        float _blocked;             // seconds spent backing off and getting nowhere
+        Vector3 _lastPos;
 
         /// Live registry - the host walks this to snapshot them for clients,
         /// the same way Zombie.All works.
@@ -246,6 +258,7 @@ namespace SpellyZombie
             var dmg = go.GetComponent<Element>();
             if (dmg != null)
             {
+                dmg.Rename(go.GetInstanceID()); // the snapshot's name for it, the stand-in's too
                 dmg.MaxStrength = Mathf.Max(DrawingConfig.GolemMinStrength,
                     Element.StrengthFromBody(scale, rb != null ? rb.mass : 0f));
                 dmg.Health = dmg.MaxStrength;
@@ -287,6 +300,10 @@ namespace SpellyZombie
             _eyes = GetComponentInChildren<GooglyEyes>();
             if (_eyes != null) _eyes.Facing = transform;
             _circleSign = (GetInstanceID() & 1) == 0 ? 1 : -1;
+            // born angry: it goes for whoever woke it, from any direction
+            _birthRageUntil = Time.time + DrawingConfig.GolemBirthRage;
+            _alertUntil = _birthRageUntil;
+            _lastPos = transform.position;
 
             // it never just disappears: whatever kills it, it comes apart in
             // its own colour so you can see it happen
@@ -408,6 +425,14 @@ namespace SpellyZombie
                 return;
             }
 
+            float dt = Time.fixedDeltaTime;
+            // how far it really got since last tick: a wall shows up here
+            Vector3 stepped = transform.position - _lastPos;
+            stepped.y = 0f;
+            float moved = stepped.magnitude / Mathf.Max(1e-4f, dt);
+            _lastPos = transform.position;
+            bool wild = OwnerId < 0;
+
             // ★ EVERYONE FEARS A SPELL BEING MADE (his rule): a fresh spell
             // or a blast nearby sends the golem off the other way, no charge
             if (WorldEvents.TryGetLoudest(2.5f, out var scare)
@@ -418,6 +443,7 @@ namespace SpellyZombie
                 away.y = 0f;
                 if (away.sqrMagnitude > 0.01f && away.sqrMagnitude < FearRange * FearRange)
                 {
+                    if (scare.Time != _lastScareAt) { _lastScareAt = scare.Time; Frighten(DrawingConfig.GolemFearBlast); }
                     _wander = away.normalized;
                     _pickAt = Time.time + 1.5f;
                     if (_eyes != null) _eyes.SetMood(EyeMood.Scared, 1f);
@@ -427,33 +453,19 @@ namespace SpellyZombie
                 }
             }
 
-            // a spell already OUT there scares a wild one even more than a wand:
-            // it runs from the nearest live spell inside its fear range
-            if (OwnerId < 0)
+            // the nearest AWAKE spell wears a wild one's nerve down; a sleeping
+            // preview over a seal scares nothing
+            SpellParticle near = null;
+            float nearSqr = FearRange * FearRange;
+            if (wild)
             {
-                SpellParticle near = null;
-                float nearSqr = FearRange * FearRange;
                 var living = SpellParticle.Living;
                 for (int i = 0; i < living.Count; i++)
                 {
                     var sp = living[i];
-                    if (sp == null) continue;
+                    if (sp == null || sp.Dormant || sp.Dead) continue;
                     float dsq = (sp.transform.position - transform.position).sqrMagnitude;
                     if (dsq < nearSqr) { nearSqr = dsq; near = sp; }
-                }
-                if (near != null)
-                {
-                    Vector3 away = transform.position - near.transform.position;
-                    away.y = 0f;
-                    if (away.sqrMagnitude > 0.01f)
-                    {
-                        _wander = away.normalized;
-                        _pickAt = Time.time + 1f;
-                        if (_eyes != null) _eyes.SetMood(EyeMood.Scared, 1f);
-                        _sawPrey = false;
-                        Step(_wander, mul * 1.5f);
-                        return;
-                    }
                 }
             }
 
@@ -463,15 +475,39 @@ namespace SpellyZombie
             // into sight, a non-enemy is NOT prey - the golem patrols on,
             // exactly like the zombie. Second gate on purpose: the target
             // filter and the verb must both agree before anything charges.
-            if (prey != null && !Teams.Enemies(Teams.OfOwner(OwnerId), Teams.Of(prey)))
+            if (prey != null && !Teams.Enemies(Teams.OfOwner(OwnerId), TeamOf(prey)))
                 prey = null;
             if (prey != null && prey != _loggedPrey)
             {
                 // the FOLLOWING moment itself, on the record
                 _loggedPrey = prey;
                 Debug.Log($"[SpellyZombie] golem (owner {OwnerId}/{Teams.OfOwner(OwnerId)}) " +
-                    $"HUNTS {prey.name} ({Teams.Of(prey)})");
+                    $"HUNTS {prey.name} ({TeamOf(prey)})");
             }
+
+            // ---- nerve (wild only): what scares it this tick, per second ----
+            if (wild)
+            {
+                float fear = 0f;
+                if (near != null) fear += DrawingConfig.GolemFearSpell * (1f - Mathf.Sqrt(nearSqr) / FearRange);
+                if (prey != null && IsPlayer(prey))
+                {
+                    Vector3 toPrey = prey.position - transform.position;
+                    toPrey.y = 0f;
+                    float d = toPrey.magnitude;
+                    if (d > 0.1f)
+                    {
+                        // closing in scares it; standing still does not
+                        float closing = Vector3.Dot(PlayerVelocity(prey), -toPrey / d);
+                        if (closing > 0.5f) fear += DrawingConfig.GolemFearApproach * closing;
+                    }
+                    if (PenDown(prey)) fear += DrawingConfig.GolemFearDrawing;
+                }
+                if (Time.time < _birthRageUntil) fear *= 0.35f;
+                _nerve = fear > 0f ? Mathf.Max(0f, _nerve - fear * dt)
+                                   : Mathf.Min(1f, _nerve + DrawingConfig.GolemNerveRecover * dt);
+            }
+
             if (prey != null)
             {
                 // the face does the talking: it stares at whatever it found
@@ -484,38 +520,112 @@ namespace SpellyZombie
 
                 Vector3 to = prey.position - transform.position;
                 to.y = 0f;
-                // the wand is a keep-away: a wild golem never closes on a wizard
-                // holding a working wand. It backs off to its respect distance and
-                // circles there; wandless is the danger state
-                var pilot = prey.GetComponent<SimpleFPSController>();
-                if (OwnerId < 0 && pilot != null && WandState.Armed(pilot))
+                float dist = to.magnitude;
+                // a working wand is respected by a wild one as far as its nerve
+                // allows; wandless is the danger state, hunted whatever the nerve
+                bool armed = wild && ArmedPlayer(prey);
+                bool rage = Time.time < _rageUntil;
+                if (armed && !rage && _nerve < DrawingConfig.GolemFleeAt)
                 {
-                    float respect = DrawingConfig.GolemRespectRange;
-                    float dist = to.magnitude;
+                    // scared: away from the nearest scare, a spell before a wizard
+                    Vector3 from = near != null ? near.transform.position : prey.position;
+                    Vector3 away = transform.position - from;
+                    away.y = 0f;
+                    if (away.sqrMagnitude > 0.01f) _wander = away.normalized;
                     if (_eyes != null) _eyes.SetMood(EyeMood.Scared, 0.6f);
-                    if (dist < respect * 0.9f) _wander = -to.normalized;
+                    Step(_wander, mul * 1.3f);
+                    Cornered(moved, WalkSpeed * mul * 1.3f, dt);
+                    return;
+                }
+                if (armed && !rage && _nerve < DrawingConfig.GolemBraveAt)
+                {
+                    // wary: it backs off to its respect distance and circles there
+                    float respect = DrawingConfig.GolemRespectRange;
+                    if (_eyes != null) _eyes.SetMood(EyeMood.Scared, 0.6f);
+                    bool backing = dist < respect * 0.9f;
+                    if (backing) _wander = -to.normalized;
                     else if (dist <= respect * 1.2f) _wander = Vector3.Cross(Vector3.up, to.normalized) * _circleSign;
                     else if (Time.time >= _pickAt) PickWander();
                     Step(_wander, mul);
+                    Cornered(moved, backing ? WalkSpeed * mul : 0f, dt);
                     return;
                 }
+                _blocked = 0f;
                 if (_charge != null && _charge.TryStart(prey.position))
                 {
                     // the second fact for his console: WHO it committed on
                     Debug.Log($"[SpellyZombie] golem (owner {OwnerId}/{Teams.OfOwner(OwnerId)}) " +
-                        $"CHARGES {prey.name} ({Teams.Of(prey)})");
+                        $"CHARGES {prey.name} ({TeamOf(prey)})");
                     return;
                 }
                 if (to.sqrMagnitude > 0.04f) _wander = to.normalized;
             }
             else
             {
+                _blocked = 0f;
                 if (_sawPrey && _eyes != null) _eyes.SetMood(EyeMood.Neutral, 0.4f);
                 _sawPrey = false;
-                if (Time.time >= _pickAt) PickWander();
+                if (wild && near != null && _nerve < DrawingConfig.GolemFleeAt)
+                {
+                    // no one in sight, still shaken: away from the spell
+                    Vector3 away = transform.position - near.transform.position;
+                    away.y = 0f;
+                    if (away.sqrMagnitude > 0.01f) { _wander = away.normalized; _pickAt = Time.time + 1f; }
+                }
+                else if (Time.time >= _pickAt) PickWander();
             }
 
             Step(_wander, mul);
+        }
+
+        void Frighten(float amount) => _nerve = Mathf.Max(0f, _nerve - amount);
+
+        /// Backing off and getting nowhere for a moment: it turns and fights.
+        void Cornered(float moved, float want, float dt)
+        {
+            if (want <= 0.01f) { _blocked = 0f; return; }
+            _blocked = moved < want * 0.3f ? _blocked + dt : 0f;
+            if (_blocked < DrawingConfig.GolemCorneredSeconds) return;
+            _blocked = 0f;
+            _nerve = 1f;
+            _rageUntil = Time.time + DrawingConfig.GolemRageSeconds;
+            if (_eyes != null) _eyes.SetMood(EyeMood.Mad, DrawingConfig.GolemRageSeconds);
+            Debug.Log("[SpellyZombie] golem cornered: it turns and fights");
+        }
+
+        // a player is the host's own body or a friend's stand-in; the friend's
+        // wand state rides their presence (NetAvatar.Wandless)
+        static bool IsPlayer(Transform t)
+            => t.GetComponent<SimpleFPSController>() != null || t.GetComponent<NetAvatar>() != null;
+
+        static bool ArmedPlayer(Transform t)
+        {
+            var pilot = t.GetComponent<SimpleFPSController>();
+            if (pilot != null) return WandState.Armed(pilot);
+            var a = t.GetComponent<NetAvatar>();
+            return a != null && !a.Wandless;
+        }
+
+        static bool PenDown(Transform t)
+        {
+            var pilot = t.GetComponent<SimpleFPSController>();
+            if (pilot != null) return pilot.IsLocalViewer && SurfaceDrawer.IsPenActive;
+            var a = t.GetComponent<NetAvatar>();
+            return a != null && a.PenDown;
+        }
+
+        static Vector3 PlayerVelocity(Transform t)
+        {
+            var pilot = t.GetComponent<SimpleFPSController>();
+            if (pilot != null) return pilot.Velocity;
+            var a = t.GetComponent<NetAvatar>();
+            return a != null ? a.Velocity : Vector3.zero;
+        }
+
+        static Team TeamOf(Transform t)
+        {
+            var a = t.GetComponent<NetAvatar>();
+            return a != null ? Teams.OfOwner(NetSync.OwnerIdOf(a.Id)) : Teams.Of(t);
         }
 
         /// Walks by SKIPPING: a little hop with every step rather than a glide.
@@ -538,6 +648,7 @@ namespace SpellyZombie
         void Felt()
         {
             _alertUntil = Time.time + DrawingConfig.GolemAlertSeconds;
+            Frighten(DrawingConfig.GolemFearHit);
             var who = BodyOfOwner(_dmg != null ? _dmg.LastHitBy : -1);
             if (who == null) return;
             Vector3 to = who.position - transform.position;
@@ -613,6 +724,13 @@ namespace SpellyZombie
                 if (ShapeShift.Disguised(p)) continue;
                 float d = (p.transform.position - transform.position).sqrMagnitude;
                 if (d < bestSqr && Notices(p.transform, d)) { bestSqr = d; best = p.transform; }
+            }
+            foreach (var a in NetAvatar.All)
+            {
+                if (a == null || a.Downed || a.Disguised) continue;
+                if (!Teams.Enemies(mine, Teams.OfOwner(NetSync.OwnerIdOf(a.Id)))) continue;
+                float d = (a.transform.position - transform.position).sqrMagnitude;
+                if (d < bestSqr && Notices(a.transform, d)) { bestSqr = d; best = a.transform; }
             }
             foreach (var z in Zombie.All)
             {

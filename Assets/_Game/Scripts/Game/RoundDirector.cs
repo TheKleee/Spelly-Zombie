@@ -14,13 +14,20 @@ namespace SpellyZombie
 
         public static RoundDirector Instance { get; private set; }
 
+        // a client's referee never runs: its phase is the host's, off the wire
+        static bool Remote => NetGame.Connected && !NetGame.IsHost;
+        static int NetPhase => NetSync.HasRound ? NetSync.NetPhase : 0;
+
         /// True while a match runs - gates ink costs and real player downs.
-        public static bool RunActive => Instance != null && Instance._phase == Phase.Live;
+        public static bool RunActive => Remote ? NetPhase == 1
+            : Instance != null && Instance._phase == Phase.Live;
 
         /// True before a match starts - the MatchLobby lives here.
-        public static bool InLobby => Instance != null && Instance._phase == Phase.Idle;
+        public static bool InLobby => Remote ? NetPhase == 0
+            : Instance != null && Instance._phase == Phase.Idle;
         /// A real match on the map, running or just decided. Achievements gate on it.
-        public static bool InMatch => Instance != null && Instance._phase != Phase.Idle;
+        public static bool InMatch => Remote ? NetPhase != 0
+            : Instance != null && Instance._phase != Phase.Idle;
 
         /// True while the match runs - the music director crossfades on this.
         public static bool WaveActive => RunActive;
@@ -62,7 +69,6 @@ namespace SpellyZombie
             Instance._kills++;
             PlayerInk.AwardAll(DrawingConfig.InkPerKill);
             SealAutopsy.OnKill(); // kill bursts near a seal trigger the replay
-            Powerups.OnKill();    // kills feed the level-up track
             if (z != null)
             {
                 var el = z.GetComponent<Element>();
@@ -75,6 +81,7 @@ namespace SpellyZombie
 
         // ------------------------------------------------------------- flow --
         float _netPush;
+        bool _bootChecked; // the first scene with players has been looked at
 
         void Update()
         {
@@ -94,7 +101,9 @@ namespace SpellyZombie
                 if (_netPush <= 0f)
                 {
                     _netPush = 0.5f;
-                    NetSync.PushRoundState((byte)_phase, _winner, 0, _clock, _kills, (byte)_ending);
+                    // over: the timer carries the countdown home instead of the match clock
+                    NetSync.PushRoundState((byte)_phase, _winner, 0,
+                        _phase == Phase.Over ? _overTimer : _clock, _kills, (byte)_ending);
                 }
             }
 
@@ -103,6 +112,13 @@ namespace SpellyZombie
                 case Phase.Idle:
                     if (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame)
                         StartRun();
+                    else if (!_bootChecked && _players.Count > 0)
+                    {
+                        _bootChecked = true;
+                        // a map played straight from the editor runs a real match;
+                        // players only reach a map from the lobby, which starts it itself
+                        if (FindFirstObjectByType<SpellyMap>() != null) StartRun();
+                    }
                     break;
 
                 case Phase.Live:
@@ -149,12 +165,10 @@ namespace SpellyZombie
                 if (Application.CanStreamedLevelBeLoaded(GameSceneName))
                 {
                     _startOnLoad = true;
-                    LoadEgg.Cover();     // ghosts revive, everyone travels dark
-                    LoadingHints.Show(); // one random tip rides every load
-                    SceneManager.LoadScene(GameSceneName);
+                    LoadEgg.Travel(GameSceneName); // the shell forms, then everyone travels dark
                     return;
                 }
-                ComboBanner.Show("THE LOBBY IS SAFE GROUND", new Color(0.7f, 0.9f, 1f));
+                ComboBanner.Show(Loc.T("round.safe"), new Color(0.7f, 0.9f, 1f));
                 DrawingWorld.Instance?.LogEvent(
                     "matches happen on the game map. no 'Game' scene in Build Settings yet");
                 return;
@@ -173,9 +187,9 @@ namespace SpellyZombie
             _clock = MatchLobby.Endless ? -1f
                 : Mathf.Clamp(MatchLobby.DurationMin, 5, 15) * 60f;
             PlayerInk.RefillAll();
-            Powerups.ResetRun(); // fresh build every match
             SealGallery.Clear();
             RuneLibrary.ForgetRoundLearning();
+            SideBootstrap.ResetBooksForMatch(); // lobby learning stays in the lobby
 
             // elimination endings only count sides that actually fielded
             // someone - a solo practice match runs on the clock alone
@@ -183,7 +197,7 @@ namespace SpellyZombie
             _hadAcolytes = AnySide(Side.Acolyte, aliveOnly: false);
 
             _phase = Phase.Live;
-            ComboBanner.Show("WIZARDS vs ACOLYTES", new Color(1f, 0.85f, 0.4f));
+            ComboBanner.Show(Loc.T("round.versus"), new Color(1f, 0.85f, 0.4f));
             var p0 = _players.Count > 0 && _players[0] != null ? _players[0].transform.position : Vector3.zero;
             Juice.Drum(p0);
             DrawingWorld.Instance?.LogEvent($"the match is on. {Mathf.RoundToInt(_clock / 60f)} minutes");
@@ -200,7 +214,13 @@ namespace SpellyZombie
         {
             // NO TIMER: the rules are identical, the clock simply is not
             // one of the ways a match can end. Everything below still applies.
-            if (_clock >= 0f) _clock -= Time.deltaTime;
+            // clamped at zero so the bell below rings; negative stays the endless flag
+            if (_clock > 0f) _clock = Mathf.Max(0f, _clock - Time.deltaTime);
+
+            // a side is fielded the moment anyone of it stands: bodies are
+            // built after the scene arrives, so the start snapshot saw none
+            _hadWizards |= AnySide(Side.Wizard, aliveOnly: false);
+            _hadAcolytes |= AnySide(Side.Acolyte, aliveOnly: false);
 
             bool potReady = CauldronEconomy.Active != null
                 && CauldronEconomy.PrepRemaining <= 0f
@@ -252,7 +272,7 @@ namespace SpellyZombie
             _ending = ending;
             _overTimer = 7f;
             bool wizards = winner == 1;
-            ComboBanner.Show(wizards ? "WIZARDS WIN" : "ACOLYTES WIN",
+            ComboBanner.Show(Loc.T(wizards ? "round.wizards" : "round.acolytes"),
                 wizards ? new Color(0.65f, 0.85f, 1f) : new Color(0.55f, 1f, 0.45f));
             DrawingWorld.Instance?.LogEvent(how);
             var at = _players.Count > 0 && _players[0] != null ? _players[0].transform.position : Vector3.zero;
@@ -271,9 +291,7 @@ namespace SpellyZombie
                 _ending = Achievements.Ending.None;
                 return;
             }
-            LoadEgg.Cover();
-            LoadingHints.Show();
-            SceneManager.LoadScene(LobbySceneName);
+            LoadEgg.Travel(LobbySceneName);
         }
 
         // ----------------------------------------------------------- helpers --
@@ -297,9 +315,11 @@ namespace SpellyZombie
             bool remote = NetGame.Connected && !NetGame.IsHost;
             (int, int, int, int) key = remote
                 ? (NetSync.HasRound ? NetSync.NetPhase : -1, NetSync.NetRound,
-                    Mathf.RoundToInt(NetSync.NetTimer), NetSync.NetKills)
+                    NetSync.NetPhase == 2 ? Mathf.CeilToInt(NetSync.NetTimer) : Mathf.RoundToInt(NetSync.NetTimer),
+                    NetSync.NetKills)
                 : (100 + (int)Instance._phase, Instance._winner,
-                    Mathf.RoundToInt(Instance._clock), Instance._kills);
+                    Instance._phase == Phase.Over ? Mathf.CeilToInt(Instance._overTimer) : Mathf.RoundToInt(Instance._clock),
+                    Instance._kills);
             if (key == _hudKey) return _hud;
             _hudKey = key;
             _hud = remote ? RemoteStatus() : LocalStatus();
@@ -313,17 +333,23 @@ namespace SpellyZombie
             return $"{s / 60}:{s % 60:00}";
         }
 
+        static string Victory(bool wizards, float secondsHome) =>
+            Loc.F("round.home", Loc.T(wizards ? "round.wizards" : "round.acolytes"),
+                Mathf.Max(1, Mathf.CeilToInt(secondsHome)));
+
         static string PotWord() =>
-            CauldronEconomy.Active == null ? ""
-            : CauldronEconomy.IsCorrupt ? " · the pot is GREEN"
-            : $" · pot {Mathf.RoundToInt(CauldronEconomy.Fill01 * 100f)}%";
+            !CauldronEconomy.HasInk ? ""
+            : CauldronEconomy.VacuumRemaining >= 0f
+                ? Loc.F("round.inkflight", Mathf.CeilToInt(CauldronEconomy.VacuumRemaining))
+            : CauldronEconomy.PrepRemaining > 0f
+                ? Loc.F("round.potopens", Mathf.CeilToInt(CauldronEconomy.PrepRemaining))
+            : CauldronEconomy.IsCorrupt ? Loc.T("round.green")
+            : Loc.F("round.pot", Mathf.RoundToInt(CauldronEconomy.Fill01 * 100f));
 
         static string LocalStatus() => Instance._phase switch
         {
             Phase.Live => $"{Clock(Instance._clock)}{PotWord()}",
-            Phase.Over => Instance._winner == 1
-                ? "WIZARDS WIN. back to the lobby"
-                : "ACOLYTES WIN. back to the lobby",
+            Phase.Over => Victory(Instance._winner == 1, Instance._overTimer),
             _ => "",
         };
 
@@ -332,9 +358,7 @@ namespace SpellyZombie
                 : NetSync.NetPhase switch
                 {
                     1 => $"{Clock(NetSync.NetTimer)}{PotWord()}",
-                    2 => NetSync.NetRound == 1
-                        ? "WIZARDS WIN. back to the lobby"
-                        : "ACOLYTES WIN. back to the lobby",
+                    2 => Victory(NetSync.NetRound == 1, NetSync.NetTimer),
                     _ => "",
                 };
     }

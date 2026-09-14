@@ -145,9 +145,23 @@ namespace SpellyZombie
                 float glyphSize = glyph.WorldBounds().size.magnitude;
                 glyph.SizeRatio = Mathf.Clamp01(glyphSize / sealSize);
                 float sizePower = Mathf.Lerp(DrawingConfig.MinSizePower, 1f, Mathf.Clamp01(glyph.SizeRatio * 3f));
+                // what the game drew for you is weaker than what you drew (his rule):
+                // the share of the glyph's ink that was filled in, by length
+                float autoLen = 0f, allLen = 0f;
+                foreach (var member in glyph.Members)
+                {
+                    float l = member.PathLength();
+                    allLen += l;
+                    autoLen += Mathf.Min(l, member.AutoLength);
+                }
+                float autoShare = allLen > 1e-4f ? autoLen / allLen : 0f;
+                bool autoDrawn = autoShare > 0.5f;
                 // the writing level never touches Strength
-                glyph.Strength = glyph.Rune != RuneType.None ? Mathf.Clamp01(match) * sizePower : 0f;
+                glyph.Strength = glyph.Rune != RuneType.None
+                    ? Mathf.Clamp01(match) * sizePower * Mathf.Lerp(1f, DrawingConfig.AutoCompletePowerMul, autoShare) : 0f;
                 Runes.Add(glyph);
+                if (glyph.Rune != RuneType.None && OwnerId == Grimoire.LocalPlayerId)
+                    RuneHabits.NoteCast(glyph.Rune, !autoDrawn);
 
                 // a clean cast of your own joins your handwriting pool (throttled);
                 // sloppy and declared/stamped casts never teach
@@ -161,6 +175,7 @@ namespace SpellyZombie
                     RuneLibrary.AddSample(glyph.Rune, RuneGlyph.RawStrokesOf(glyph.Members), quiet: true);
                 }
 
+                List<Stroke> stamped = null;
                 foreach (var member in glyph.Members)
                 {
                     Payload.Add(member);
@@ -169,15 +184,27 @@ namespace SpellyZombie
                     // re-casts trust the stamp
                     if (member.Persistent && glyph.Rune != RuneType.None
                         && member.DeclaredRune == RuneType.None)
+                    {
                         member.DeclaredRune = glyph.Rune;
+                        (stamped ??= new List<Stroke>()).Add(member);
+                    }
                     member.SetColor(glyph.Rune != RuneType.None ? Stroke.RuneColor : Stroke.FizzleColor);
                 }
+                if (stamped != null) NetSync.PushDeclare(stamped, glyph.Rune); // the stamp lands on every copy
             }
+
+            // the runes that fired together are a habit
+            if (OwnerId == Grimoire.LocalPlayerId)
+                for (int i = 0; i < Runes.Count; i++)
+                    for (int j = i + 1; j < Runes.Count; j++)
+                        if (Runes[i].Rune != RuneType.None && Runes[j].Rune != RuneType.None)
+                            RuneHabits.NotePair(Runes[i].Rune, Runes[j].Rune);
 
             bool Eligible(Stroke s)
             {
                 if (s == null || s.State != StrokeState.Open || !s.Alive || s.Nodes.Count < 3) return false;
                 if (s.SealResidue) return false; // closing-gesture leftovers are not rune content
+                if (s.OnPuppet) return false;    // a friend's body ink copy is read on their machine
                 if (!s.ChainIntact()) return false;
                 foreach (var e in Boundary)
                     if (e.Stroke == s) return false;

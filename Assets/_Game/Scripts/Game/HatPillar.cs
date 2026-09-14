@@ -17,6 +17,8 @@ namespace SpellyZombie
         RectTransform _dot;
         Renderer _beam, _glow;
         float _h = 0.02f, _s = 0.85f, _v = 0.9f;
+        SimpleFPSController _viewer;   // whose view the wheel moved
+        bool _enteredThird;            // the wheel put the view in third person; closing takes it back
 
         void Start()
         {
@@ -76,9 +78,13 @@ namespace SpellyZombie
         void Open()
         {
             PanelOpen = true;
-            // no backing panel; the controls float free
+            // the hat is on your head: you watch it from behind while you paint it
+            _viewer = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
+            _enteredThird = _viewer != null && !SimpleFPSController.ThirdPersonActive;
+            if (_enteredThird) _viewer.EnterThirdPerson();
+            // no backing panel; the controls float free, off to the side so the hat stays in view
             _panel = UIKit.Group(UIKit.Root, "HatPanel");
-            UIKit.Place(_panel, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(380f, 420f));
+            UIKit.Place(_panel, new Vector2(0.78f, 0.5f), Vector2.zero, new Vector2(380f, 420f));
 
             // hue runs around the wheel, saturation runs outward
             var wheelGo = new GameObject("Wheel", typeof(RectTransform), typeof(Image));
@@ -176,6 +182,9 @@ namespace SpellyZombie
             PanelOpen = false;
             UIKit.Retire(_panel);
             _panel = null;
+            if (_enteredThird && _viewer != null && SimpleFPSController.ThirdPersonActive) _viewer.EnterFirstPerson();
+            _enteredThird = false;
+            _viewer = null;
         }
 
         void OnDisable() { if (PanelOpen) Close(); }
@@ -235,43 +244,65 @@ namespace SpellyZombie
             PlayerPrefs.SetString(Key, "#" + ColorUtility.ToHtmlStringRGB(c));
             var p = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             if (p != null) Dress(p);
+            NetSync.PushLocalOutfit(); // the pick re-announces: friends' copies wear it too
         }
 
-        /// Tints every renderer under the child whose name contains "Hat".
-        /// Property block only: the material asset is never touched.
-        /// Remote wizards' hat colors are not yet synced (needs a player-state slot).
-        // cached per player rig
+        /// The socket the wardrobe dresses; every renderer under it is the hat.
+        const string SocketName = "Socket.Hat";
+
+        /// Only a real hat is remembered: the body and its sockets build after
+        /// spawn, so a miss is looked up again next time.
         static readonly System.Collections.Generic.Dictionary<SimpleFPSController, Transform> _found =
             new System.Collections.Generic.Dictionary<SimpleFPSController, Transform>();
 
+        static Transform HatOf(SimpleFPSController p)
+        {
+            if (_found.TryGetValue(p, out var hat) && hat != null) return hat;
+            var rig = p.GetComponentInChildren<CharacterRig>();
+            hat = rig != null ? rig.HatSocket : null;
+            if (hat == null)
+                foreach (var t in p.GetComponentsInChildren<Transform>(true))
+                    if (t.name == SocketName) { hat = t; break; }
+            if (hat != null) _found[p] = hat;
+            return hat;
+        }
+
+        /// Part of a worn hat?
+        public static bool IsHat(Transform t)
+        {
+            for (var w = t; w != null; w = w.parent)
+                if (w.name == SocketName) return true;
+            return false;
+        }
+
+        /// Paints every renderer under the hat socket. Property block only: the
+        /// material asset is never touched. The side hint comes from SideLook,
+        /// which starts from this colour too.
+        /// Friends' copies get the colour through OutfitMsg; NetAvatar paints it the same way.
         public static void Dress(SimpleFPSController p)
         {
             var saved = Saved();
             if (p == null || saved == null) return;
-            if (!_found.TryGetValue(p, out var hat))
-            {
-                foreach (var t in p.GetComponentsInChildren<Transform>(true))
-                    if (t.name.IndexOf("hat", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                    { hat = t; break; }
-                _found[p] = hat; // null remembered too - never rescan this rig
-            }
+            var hat = HatOf(p);
             if (hat == null)
             {
-                if (!_warnedNoHat)
+                var rig = p.GetComponentInChildren<CharacterRig>();
+                if (rig != null && rig.HasBody && !_warnedNoHat)
                 {
                     _warnedNoHat = true;
-                    Debug.LogWarning("[SpellyZombie] A hat color is saved but no child containing " +
-                        "'Hat' exists under the player rig — name the hat object (e.g. \"Hat\") so " +
-                        "the pillar has something to paint.");
+                    Debug.LogWarning("[SpellyZombie] A hat color is saved but the player has no " +
+                        SocketName + " to paint.");
                 }
                 return;
             }
+            var look = p.GetComponent<SideLook>();
+            Color c = look != null ? look.HatShade(saved.Value) : saved.Value;
             if (_blk == null) _blk = new MaterialPropertyBlock();
             foreach (var r in hat.GetComponentsInChildren<Renderer>(true))
             {
                 r.GetPropertyBlock(_blk);
-                _blk.SetColor(BaseColorId, saved.Value);
-                _blk.SetColor(ColorId, saved.Value);
+                _blk.SetColor(BaseColorId, c);
+                _blk.SetColor(ColorId, c);
                 r.SetPropertyBlock(_blk);
             }
         }

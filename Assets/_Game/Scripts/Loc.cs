@@ -75,6 +75,7 @@ namespace SpellyZombie
             ["menu.quit"] = "Quit",
             ["menu.back"] = "Back",
             ["opt.sens"] = "Look sensitivity: {0}",
+            ["opt.uiscale"] = "UI size: {0}%",
             ["opt.volume"] = "Volume: {0}%",
             ["opt.language"] = "Language: {0}",
             ["opt.immersive.on"] = "Immersive mode: ON",
@@ -125,13 +126,13 @@ namespace SpellyZombie
             // ---- the book stand (host controller) ----
             ["stand.title"] = "the book stand",
             ["stand.hostprivate"] = "create private lobby (invite only)",
+            ["stand.lanhost"] = "LAN host",
+            ["stand.lanjoin"] = "LAN join",
             ["stand.hostpublic"] = "CREATE PUBLIC LOBBY",
             ["stand.pw"] = "password (optional)",
             ["stand.code"] = "entry code (optional)",
-            ["stand.botmatch"] = "test match vs a bot",
             ["stand.hint"] = "walk away to close",
             ["stand.map"] = "change map",
-            ["stand.seed"] = "seed",
             ["stand.share"] = "acolytes at least {0}%",
             ["stand.setcode"] = "set code",
             ["stand.readycall"] = "ready check",
@@ -145,6 +146,8 @@ namespace SpellyZombie
             ["stand.unban"] = "unban",
             ["stand.name"] = "lobby name",
             ["stand.size"] = "size {0}",
+            ["stand.nocap"] = "no cap",
+            ["stand.heavy"] = "your connection carries everyone",
             ["stand.region"] = "region: {0}",
             ["stand.tab.host"] = "HOST",
             ["stand.tab.join"] = "JOIN",
@@ -178,6 +181,49 @@ namespace SpellyZombie
             ["tag.tryhard"] = "try hards",
             ["tag.mic"] = "mic on",
             ["tag.quiet"] = "quiet ok",
+
+            // ---- the book finishing drawings ----
+            ["seal.norune"] = "no rune here to seal. aim at one of your runes",
+            ["seal.noink"] = "not enough ink for the seal",
+            ["rune.noink"] = "not enough ink to finish the rune",
+
+            // ---- the referee's banners and status line ----
+            ["round.safe"] = "THE LOBBY IS SAFE GROUND",
+            ["round.versus"] = "WIZARDS vs ACOLYTES",
+            ["round.wizards"] = "WIZARDS WIN",
+            ["round.acolytes"] = "ACOLYTES WIN",
+            ["round.home"] = "{0}. back to the lobby in {1}",
+            ["round.pot"] = " · pot {0}%",
+            ["round.green"] = " · the pot is GREEN",
+            ["round.potopens"] = " · pot opens in {0}",
+            ["round.inkflight"] = " · ink in flight {0}",
+            ["gate.accepts"] = "THE GATE ACCEPTS",
+
+            // ---- the connection corner and the Steam layer's own words ----
+            ["net.hostleft"] = "THE HOST LEFT",
+            ["net.hosting"] = "● HOSTING, {0} player(s)",
+            ["net.connected"] = "● CONNECTED, {0} player(s)",
+            ["net.map"] = "MAP: {0}",
+            ["net.maplikes"] = "MAP: {0} · ♥{1}",
+            ["steam.offline"] = "Steam not running, offline & LAN only",
+            ["steam.ready"] = "Steam ready: {0}",
+            ["steam.leavefirst"] = "leave your lobby first",
+            ["steam.ping"] = "your ping to that host is {0}ms, lobby allows {1}",
+            ["steam.joining"] = "joining…",
+            ["steam.deleted"] = "lobby deleted",
+            ["steam.notrunning"] = "Steam not running",
+            ["steam.creating"] = "creating lobby…",
+            ["steam.failed"] = "lobby failed: {0}",
+            ["steam.noenter"] = "couldn't enter the lobby",
+            ["steam.nohost"] = "lobby has no host, try again",
+            ["steam.connecting"] = "joined, connecting…",
+            ["steam.private"] = "PRIVATE LOBBY, invite friends",
+            ["steam.public"] = "PUBLIC LOBBY, listed",
+
+            // ---- main menu ----
+            ["menu.tagline"] = "draw fast. die funny.",
+            ["menu.close"] = "Close",
+            ["chip.pages"] = "turn the pages",
         };
 
         static Dictionary<string, string> _active; // loaded translation (null = English)

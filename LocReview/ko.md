@@ -84,10 +84,8 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | stand.hostpublic | CREATE PUBLIC LOBBY | 공개 로비 만들기 | public lobby making | |
 | stand.pw | password (optional) | 비밀번호 (선택) | password (optional) | |
 | stand.code | entry code (optional) | 입장 코드 (선택) | entry code (optional) | |
-| stand.botmatch | test match vs a bot | 봇과 연습 경기 | with a bot, practice match | |
 | stand.hint | walk away to close | 멀어지면 닫힌다 | if you get far away, it closes | |
 | stand.map | change map | 맵 바꾸기 | map changing | |
-| stand.seed | seed | 시드 | seed | loanword, used by Korean Minecraft players |
 | stand.share | acolytes at least {0}% | 사도 최소 {0}% | apostles, minimum {0}% | 사도 = apostle, disciple, the closest common word; 시종 (attendant) sounds like a servant |
 | stand.setcode | set code | 코드 정하기 | code deciding | |
 | stand.readycall | ready check | 준비 확인 | readiness check | |
@@ -160,3 +158,43 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | opt.on | On | 켬 | on |  |
 | opt.music | Music: {0}% | 음악: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | 효과음: {0}% | sound effects: {0}% |  |
+| seal.norune | no rune here to seal. aim at one of your runes | 여기엔 마법진으로 감쌀 룬이 없다. 네 룬을 노려 봐 | here there is no rune to wrap in a magic circle. try aiming at your rune | 마법진 (magic circle) for "seal", as in the hints |
+| seal.noink | not enough ink for the seal | 마법진을 그릴 잉크가 모자란다 | ink to draw the magic circle falls short |  |
+| rune.noink | not enough ink to finish the rune | 룬을 다 그릴 잉크가 모자란다 | ink to draw the rune to the end falls short |  |
+| round.safe | THE LOBBY IS SAFE GROUND | 로비는 안전지대 | lobby is safe zone |  |
+| round.versus | WIZARDS vs ACOLYTES | 마법사 대 사도 | wizard versus acolyte | 사도 = acolyte, as in the rest of the file |
+| round.wizards | WIZARDS WIN | 마법사 승리 | wizard victory |  |
+| round.acolytes | ACOLYTES WIN | 사도 승리 | acolyte victory |  |
+| round.home | {0}. back to the lobby in {1} | {0}. {1}초 뒤 로비로 | {0}. after {1} seconds to lobby | 초 (seconds) added, Korean needs the unit |
+| round.pot |  · pot {0}% |  · 가마솥 {0}% | cauldron {0}% |  |
+| round.green |  · the pot is GREEN |  · 가마솥이 초록이다 | cauldron is green |  |
+| gate.accepts | THE GATE ACCEPTS | 문이 받아들였다 | gate accepted |  |
+| net.hostleft | THE HOST LEFT | 호스트가 나갔다 | host went out |  |
+| net.hosting | ● HOSTING, {0} player(s) | ● 호스트 중, {0}명 | hosting, {0} people | 명 counts players |
+| net.connected | ● CONNECTED, {0} player(s) | ● 접속 중, {0}명 | connecting, {0} people |  |
+| net.map | MAP: {0} | 맵: {0} | map: {0} |  |
+| net.maplikes | MAP: {0} · ♥{1} | 맵: {0} · ♥{1} | map: {0} · ♥{1} |  |
+| steam.offline | Steam not running, offline & LAN only | Steam이 꺼져 있다. 오프라인과 LAN만 | Steam is off. offline and LAN only |  |
+| steam.ready | Steam ready: {0} | Steam 준비됨: {0} | Steam readied: {0} | {0} is the Steam name |
+| steam.leavefirst | leave your lobby first | 먼저 네 로비에서 나가 | first from your lobby leave |  |
+| steam.ping | your ping to that host is {0}ms, lobby allows {1} | 그 호스트까지 핑 {0}ms, 로비 허용치 {1} | to that host ping {0}ms, lobby allowance {1} |  |
+| steam.joining | joining… | 들어가는 중… | entering… |  |
+| steam.deleted | lobby deleted | 로비 삭제됨 | lobby deleted |  |
+| steam.notrunning | Steam not running | Steam이 꺼져 있다 | Steam is off |  |
+| steam.creating | creating lobby… | 로비 만드는 중… | lobby making… |  |
+| steam.failed | lobby failed: {0} | 로비 실패: {0} | lobby failure: {0} | {0} is a Steam error code |
+| steam.noenter | couldn't enter the lobby | 로비에 못 들어갔다 | into lobby could not enter |  |
+| steam.nohost | lobby has no host, try again | 로비에 호스트가 없다. 다시 해 봐 | in lobby there is no host. try again |  |
+| steam.connecting | joined, connecting… | 들어왔다. 연결 중… | came in. connecting… |  |
+| steam.private | PRIVATE LOBBY, invite friends | 비공개 로비, 친구를 불러 | private lobby, call friends |  |
+| steam.public | PUBLIC LOBBY, listed | 공개 로비, 목록에 올렸다 | public lobby, put on list |  |
+| menu.tagline | draw fast. die funny. | 빨리 그려. 웃기게 죽어. | fast draw. funnily die. | blunt imperatives, the game's voice |
+| menu.close | Close | 닫기 | closing | noun form, the Korean button standard |
+| chip.pages | turn the pages | 페이지 넘기기 | page turning | the mouse wheel turns the grimoire pages |
+| round.potopens |  · pot opens in {0} |  · 가마솥 {0}초 뒤 열림 | cauldron opens after {0} seconds | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · ink in flight {0} |  · 잉크 비행 중 {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| stand.lanhost | LAN host | LAN 호스트 | LAN host | book stand, the LAN row: host over the local network |
+| stand.lanjoin | LAN join | LAN 참가 | LAN join | book stand, the LAN row: join the address in the field |
+| opt.uiscale | UI size: {0}% | UI 크기: {0}% | UI size: {0}% | options, game tab: the slider that scales every panel and chip |
+| stand.nocap | no cap | 제한 없음 | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | your connection carries everyone | 모두의 연결을 당신이 감당합니다 | you carry everyone's connection | book stand, under the size row past 32 players: the host's upload carries the lobby |

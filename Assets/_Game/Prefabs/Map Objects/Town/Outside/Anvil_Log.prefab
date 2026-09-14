@@ -86,6 +86,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 0a0d45593df051845b9834698414d2cc, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4449077549392392659}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 0a0d45593df051845b9834698414d2cc, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3447382123522305421}
   m_SourcePrefab: {fileID: 100100000, guid: 0a0d45593df051845b9834698414d2cc, type: 3}
 --- !u!1 &1947764993298738811 stripped
 GameObject:
@@ -123,7 +126,21 @@ MonoBehaviour:
   m_GameObject: {fileID: 1947764993298738811}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4989e52883d7164fa1b8afd9a1de41a, type: 3}
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
-  Type: 0
+  Material: 3
+--- !u!114 &3447382123522305421
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1947764993298738811}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b575723cb6321e4e927be234f31f9b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.ObjectBox
+  Size: {x: 0.009292873, y: 0.008213931, z: 0.010733786}
+  Center: {x: -0.00052725454, y: -0.0006377611, z: 0.005381208}

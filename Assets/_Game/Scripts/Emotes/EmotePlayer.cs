@@ -13,6 +13,10 @@ namespace SpellyZombie
     {
         public int ActiveSlot { get; private set; } = -1;
 
+        /// A friend's puppet: no keys, no hints, no rest rule - NetAvatar
+        /// plays and stops it from their presence.
+        [System.NonSerialized] public bool Remote;
+
         /// A pose is being held (rig frozen; the character still moves freely).
         public bool IsPosing => ActiveSlot >= 0;
 
@@ -31,6 +35,7 @@ namespace SpellyZombie
 
         void Update()
         {
+            if (Remote) return;
             // plain first person never holds a pose; open draw modes keep theirs
             if (IsPosing && !SimpleFPSController.ThirdPersonActive
                 && !SelfPaint.IsActive && !HeldWeapon.DrawMode)
@@ -49,7 +54,7 @@ namespace SpellyZombie
         void ShowPoseHint()
         {
             if (!SimpleFPSController.ThirdPersonActive) return;
-            if (PoseStudio.IsOpen || SelfPaint.IsActive || Powerups.IsChoosing || GameMenu.IsOpen) return;
+            if (PoseStudio.IsOpen || SelfPaint.IsActive || GameMenu.IsOpen) return;
             if (PoseGrab.IsOpen)
             {
                 // only the undiscoverable is hinted: hold-to-save
@@ -79,7 +84,6 @@ namespace SpellyZombie
             // in the Pose Studio, number keys bind poses instead of playing them
             if (PoseStudio.IsOpen || UIKit.Typing) return;
             // while choosing a powerup, 1-3 pick cards, not poses
-            if (Powerups.IsChoosing) return;
             if (kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed) return;
 
             // F melts back to idle unless the grimoire has a target (declare/absorb owns F)
@@ -143,6 +147,9 @@ namespace SpellyZombie
             ActiveSlot = slot;
             _returningToRest = false;
             EnterFrame(0);
+            if (Remote) return;
+            // friends' puppets strike the same pose; a live sculpt sends the rig instead
+            if (!NetSync.LiveEmote) NetSync.PushLocalEmote(slot, def);
             DrawingWorld.Instance?.LogEvent($"Emote: {def.name} (slot {slot})");
         }
 

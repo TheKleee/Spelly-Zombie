@@ -61,16 +61,20 @@ namespace SpellyZombie
         /// The local biome's ceiling for this player, 0 where the ground has none.
         public static float GroundCapFor(int owner)
         {
-            var b = BiomeUnder(owner);
-            return b != null ? b.StrengthCap : 0f;
+            var b = BiomeUnder(owner, out var at);
+            return b != null ? b.PayloadAt(at).Strength : 0f;
         }
 
-        static Biome BiomeUnder(int owner)
+        static Biome BiomeUnder(int owner, out Vector3 at)
         {
+            at = Vector3.zero;
             if (owner != LocalPlayerId) return null; // remote bodies: host authority, see netcode
             foreach (var p in SimpleFPSController.All)
                 if (p != null && p.IsLocalViewer)
-                    return SpellyMap.BiomeAt(p.transform.position);
+                {
+                    at = p.transform.position;
+                    return SpellyMap.BiomeAt(at);
+                }
             return null;
         }
 
@@ -91,8 +95,8 @@ namespace SpellyZombie
         /// then scales the result: hostile ground mends you slower.
         public static float RegenPerSecFor(int owner)
         {
-            var b = BiomeUnder(owner);
-            float scale = b != null ? Mathf.Max(0f, b.RegenScale) : 1f;
+            var b = BiomeUnder(owner, out var at);
+            float scale = b != null ? Mathf.Lerp(1f, Mathf.Max(0f, b.RegenScale), b.WeightAt(at)) : 1f;
             // ★ RESTFUL GROUND (his heal fix): a spell area carrying positive
             // Strength is a place that MENDS - standing inside multiplies your
             // natural recovery, toward your own ceiling, never past it. The
@@ -165,6 +169,8 @@ namespace SpellyZombie
             if (go == null) return null;
             var p = go.GetComponentInParent<SimpleFPSController>();
             if (p != null) return IsAcolytePlayer(p) ? Side.Acolyte : Side.Wizard;
+            var puppet = go.GetComponentInParent<NetAvatar>(); // a friend's body: their announced side
+            if (puppet != null) return Of(NetSync.OwnerIdOf(puppet.Id));
             if (go.GetComponentInParent<Zombie>() != null) return Side.Acolyte;
             return null;
         }
@@ -178,6 +184,15 @@ namespace SpellyZombie
 
         /// Wipe on round start / scene change - sides are per round, never saved.
         public static void ResetAll() { _byOwner.Clear(); _buff.Clear(); }
+
+        /// The player kept their side, only their id changed (offline id ->
+        /// connected owner id): move the entries, no event - nothing changed sides.
+        public static void Rekey(int oldId, int newId)
+        {
+            if (oldId == newId) return;
+            if (_byOwner.TryGetValue(oldId, out var side)) { _byOwner.Remove(oldId); _byOwner[newId] = side; }
+            if (_buff.TryGetValue(oldId, out var buff)) { _buff.Remove(oldId); _buff[newId] = buff; }
+        }
 
         /// How many players are on a side.
         public static int CountOn(Side side)

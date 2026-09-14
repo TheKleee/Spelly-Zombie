@@ -85,10 +85,8 @@ font lacks them, fill the OtherFont slot on UISkin.
 | stand.hostpublic | CREATE PUBLIC LOBBY | СОЗДАТЬ ОТКРЫТОЕ ЛОББИ | TO CREATE OPEN LOBBY | |
 | stand.pw | password (optional) | пароль (необязательно) | password (not required) | |
 | stand.code | entry code (optional) | код входа (необязательно) | entry code (not required) | |
-| stand.botmatch | test match vs a bot | пробный матч против бота | trial match against a bot | |
 | stand.hint | walk away to close | отойди, чтобы закрыть | step away, in order to close | |
 | stand.map | change map | сменить карту | to change map | |
-| stand.seed | seed | сид | seed | loanword, Russian Minecraft usage |
 | stand.share | acolytes at least {0}% | аколитов не меньше {0}% | of acolytes not less than {0}% | |
 | stand.setcode | set code | задать код | to set code | |
 | stand.readycall | ready check | все готовы? | all ready? | |
@@ -161,3 +159,43 @@ font lacks them, fill the OtherFont slot on UISkin.
 | opt.on | On | Вкл | on |  |
 | opt.music | Music: {0}% | Музыка: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | Звуки: {0}% | sounds: {0}% |  |
+| seal.norune | no rune here to seal. aim at one of your runes | здесь нет руны для печати. целься в одну из своих рун | here there is no rune for a seal. aim at one of your runes |  |
+| seal.noink | not enough ink for the seal | не хватает чернил на печать | ink is not enough for the seal |  |
+| rune.noink | not enough ink to finish the rune | не хватает чернил, чтобы дорисовать руну | ink is not enough to finish drawing the rune |  |
+| round.safe | THE LOBBY IS SAFE GROUND | В ЛОББИ БЕЗОПАСНО | in the lobby it is safe | no dash, the game's voice |
+| round.versus | WIZARDS vs ACOLYTES | МАГИ против АКОЛИТОВ | wizards against acolytes |  |
+| round.wizards | WIZARDS WIN | МАГИ ПОБЕДИЛИ | wizards won |  |
+| round.acolytes | ACOLYTES WIN | АКОЛИТЫ ПОБЕДИЛИ | acolytes won |  |
+| round.home | {0}. back to the lobby in {1} | {0}. в лобби через {1} | {0}. to lobby in {1} | {1} is seconds |
+| round.pot |  · pot {0}% |  · котёл {0}% | cauldron {0}% |  |
+| round.green |  · the pot is GREEN |  · котёл ЗЕЛЁНЫЙ | cauldron GREEN |  |
+| gate.accepts | THE GATE ACCEPTS | ВРАТА ПРИНЯЛИ | the gate accepted | врата, the old word for a magic gate |
+| net.hostleft | THE HOST LEFT | ХОСТ УШЁЛ | host left |  |
+| net.hosting | ● HOSTING, {0} player(s) | ● ТЫ ХОСТ, игроков: {0} | you host, players: {0} | count after the noun sidesteps Russian plurals |
+| net.connected | ● CONNECTED, {0} player(s) | ● ПОДКЛЮЧЕНО, игроков: {0} | connected, players: {0} |  |
+| net.map | MAP: {0} | КАРТА: {0} | map: {0} |  |
+| net.maplikes | MAP: {0} · ♥{1} | КАРТА: {0} · ♥{1} | map: {0} · ♥{1} |  |
+| steam.offline | Steam not running, offline & LAN only | Steam не запущен, только офлайн и LAN | Steam not launched, only offline and LAN |  |
+| steam.ready | Steam ready: {0} | Steam готов: {0} | Steam ready: {0} | {0} is the Steam name |
+| steam.leavefirst | leave your lobby first | сначала выйди из своего лобби | first exit from your lobby |  |
+| steam.ping | your ping to that host is {0}ms, lobby allows {1} | твой пинг до этого хоста {0} мс, лобби разрешает {1} | your ping to this host {0} ms, lobby allows {1} |  |
+| steam.joining | joining… | заходим… | we enter… |  |
+| steam.deleted | lobby deleted | лобби удалено | lobby deleted |  |
+| steam.notrunning | Steam not running | Steam не запущен | Steam not launched |  |
+| steam.creating | creating lobby… | создаём лобби… | we create lobby… |  |
+| steam.failed | lobby failed: {0} | лобби не создано: {0} | lobby not created: {0} | {0} is a Steam error code |
+| steam.noenter | couldn't enter the lobby | не удалось войти в лобби | not managed to enter into lobby |  |
+| steam.nohost | lobby has no host, try again | у лобби нет хоста, попробуй ещё раз | at lobby there is no host, try once more |  |
+| steam.connecting | joined, connecting… | вошли, подключаемся… | entered, we connect… |  |
+| steam.private | PRIVATE LOBBY, invite friends | ЗАКРЫТОЕ ЛОББИ, зови друзей | closed lobby, call friends |  |
+| steam.public | PUBLIC LOBBY, listed | ОТКРЫТОЕ ЛОББИ, в списке | open lobby, in list |  |
+| menu.tagline | draw fast. die funny. | рисуй быстро. умирай смешно. | draw fast. die funnily. |  |
+| menu.close | Close | Закрыть | to close | infinitive, the Russian button standard |
+| chip.pages | turn the pages | листать страницы | to leaf pages | the mouse wheel turns the grimoire pages |
+| round.potopens |  · pot opens in {0} |  · котёл откроется через {0} | cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · ink in flight {0} |  · чернила в полёте {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| stand.lanhost | LAN host | хост по LAN | host over LAN | book stand, the LAN row: host over the local network |
+| stand.lanjoin | LAN join | войти по LAN | join over LAN | book stand, the LAN row: join the address in the field |
+| opt.uiscale | UI size: {0}% | Размер интерфейса: {0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
+| stand.nocap | no cap | без ограничения | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | your connection carries everyone | твоё соединение тянет всех | your connection pulls everyone along | book stand, under the size row past 32 players: the host's upload carries the lobby |

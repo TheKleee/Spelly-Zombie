@@ -96,9 +96,10 @@ namespace SpellyZombie
         public Collider Core => _core;
         public Rigidbody Body => _rb;
 
-        /// Wire look byte for client proxies: 1 burning · 2 molten-glow · 4 ice · 8 dark (netcode §3).
+        /// Wire look byte for client proxies: 1 burning · 2 molten-glow · 4 ice · 8 dark,
+        /// high bits the puddle slump 0..15 (netcode §3).
         public byte NetLook => (byte)((_burning ? 1 : 0) | (Temperature > 300f ? 2 : 0)
-            | (_ice ? 4 : 0) | (DarkAura ? 8 : 0));
+            | (_ice ? 4 : 0) | (DarkAura ? 8 : 0) | (Mathf.Clamp((int)(_slump * 15f), 0, 15) << 4));
 
         static readonly int SquashID = Shader.PropertyToID("_Squash");
 
@@ -124,6 +125,9 @@ namespace SpellyZombie
             _tag = gameObject.GetComponent<SurfaceMaterialTag>();
             if (_tag == null) _tag = gameObject.AddComponent<SurfaceMaterialTag>();
             _tag.Material = mat;
+
+            // the wire name: MatterSnap and the client proxy key matter by the GameObject id
+            El.Rename(gameObject.GetInstanceID());
 
             SyncPhaseCollision(); // liquids are walk-through from birth
         }
@@ -491,11 +495,7 @@ namespace SpellyZombie
             Rebecome(_info.DenserForm, _baseSize * 0.8f);
             WorldEvents.Report(WorldEventKind.Sparkle, transform.position, 1.2f);
             // a short glint so the upgrade reads on camera
-            var glow = new GameObject("TransmuteGlint");
-            glow.transform.position = transform.position;
-            var l = glow.AddComponent<Light>();
-            l.type = LightType.Point; l.color = _info.SolidColor; l.intensity = 6f; l.range = 2.5f;
-            Destroy(glow, 0.4f);
+            GrammarFX.Glint(transform.position, _info.SolidColor);
         }
 
         void Rebecome(SurfaceMaterialType mat, float size)
@@ -567,6 +567,21 @@ namespace SpellyZombie
                             if (FxLibrary.I != null)
                             FxLibrary.Spawn(FxLibrary.I.TextPow,
                                 hitPl.transform.position + Vector3.up * 1.9f);
+                    }
+                }
+                // a remote player's puppet: the kick goes to the body that can move (KickMsg)
+                var hitAv = col.collider.GetComponentInParent<NetAvatar>();
+                if (hitAv != null)
+                {
+                    float momentum = _rb.mass * col.relativeVelocity.magnitude;
+                    float dmg = Mathf.Max(0f, momentum - 14f) * 0.6f;
+                    if (dmg > 0.5f)
+                    {
+                        NetSync.SendKick(NetSync.OwnerIdOf(hitAv.Id), -col.relativeVelocity * 0.4f, momentum > 22f);
+                        hitAv.GetComponent<Element>()?.TakeDamage(dmg, "hit by flying matter", TeamOwner);
+                        if (FxLibrary.I != null)
+                            FxLibrary.Spawn(FxLibrary.I.TextPow,
+                                hitAv.transform.position + Vector3.up * 1.9f);
                     }
                 }
             }

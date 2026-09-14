@@ -169,6 +169,8 @@ namespace SpellyZombie
                 if (p != null) Consider(p.transform.position);
             foreach (var z in Zombie.All)
                 if (z != null) Consider(z.transform.position);
+            foreach (var zp in NetZombieProxy.All) // the host's zombies on a client
+                if (zp != null) Consider(zp.transform.position);
             foreach (var a in NetAvatar.All)
                 if (a != null) Consider(a.transform.position);
         }

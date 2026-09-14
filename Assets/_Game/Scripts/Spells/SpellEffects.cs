@@ -106,6 +106,7 @@ namespace SpellyZombie
                 case "trail":
                     if (NetSync.PushPlayerFx(NetSync.OwnerOfBody(target), 5, row.Param)) break;
                     TrailMark.Wear(target.transform, row.Param);
+                    NetSync.PushPlayerLook(NetSync.OwnerOfBody(target), 5, row.Param); // the host's own body
                     break;
 
                 case "sun":
@@ -175,6 +176,7 @@ namespace SpellyZombie
             var view = c.GetComponentInParent<StateView>()
                     ?? c.GetComponentInChildren<StateView>();
             if (view != null) view.Fade(visible, seconds);
+            NetSync.PushPlayerLook(NetSync.OwnerOfBody(c), 6, seconds, new Vector3(visible, 0f, 0f)); // the host's own body
         }
 
         static void Shove(Collider c, Vector3 dir, float force)
@@ -203,6 +205,7 @@ namespace SpellyZombie
             root.position = to + Vector3.up * 0.3f;
             if (cc != null) cc.enabled = true;
             Juice.Chime(to);
+            NetSync.PushBodyFx(4, to); // chime is not a WorldSound: the others hear it from here
         }
 
         /// Heat + chill meeting: the one gas substance. A scalding steam blob.

@@ -1,0 +1,3767 @@
+{
+    "spells": [
+        {
+            "Name": "Heat",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Heat",
+            "Skin": {
+                "Wobble": 0.12399999797344208,
+                "WobbleSpeed": 0.4300000071525574,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.028999999165534974,
+                "BubbleSize": 4.5,
+                "BubbleRise": 1.2799999713897706,
+                "Holes": 0.21299999952316285,
+                "HoleSize": 8.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Chill",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                -25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Chill",
+            "Skin": {
+                "Wobble": 0.12399999797344208,
+                "WobbleSpeed": 0.20000000298023225,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.028999999165534974,
+                "BubbleSize": 4.5,
+                "BubbleRise": 0.3400000035762787,
+                "Holes": 0.21299999952316285,
+                "HoleSize": 8.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Light",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Light",
+            "Skin": {
+                "Wobble": 0.5,
+                "WobbleSpeed": 8.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.8709999918937683,
+                "BubbleSize": 28.899999618530275,
+                "BubbleRise": 3.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Dark",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                -25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Dark",
+            "Skin": {
+                "Wobble": 0.23499999940395356,
+                "WobbleSpeed": 0.3799999952316284,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Compress",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Compress",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Spread",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                -25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Spread",
+            "Skin": {
+                "Wobble": 0.5,
+                "WobbleSpeed": 0.09000000357627869,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Sticky",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                0,
+                25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Sticky",
+            "Skin": {
+                "Wobble": 0.13500000536441804,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.09099999815225601,
+                "BubbleSize": 4.099999904632568,
+                "BubbleRise": 0.07999999821186066,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Slick",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                0,
+                -25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Slick",
+            "Skin": {
+                "Wobble": 0.13199999928474427,
+                "WobbleSpeed": 4.710000038146973,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 1.5099999904632569,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Solid",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                0,
+                0,
+                50,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Liquid",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                0,
+                0,
+                -15,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Liquid",
+            "Skin": {
+                "Wobble": 0.04899999871850014,
+                "WobbleSpeed": 1.6200000047683716,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.1120000034570694,
+                "BubbleSize": 8.300000190734864,
+                "BubbleRise": 0.5,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 1.2699999809265137,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Attract",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                25,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Attract",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 1.2799999713897706,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Repel",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                -25,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Repel",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 1.2799999713897706,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Heat Area",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                50,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Fire",
+            "Shape": "Heat Area",
+            "Skin": {
+                "Wobble": 0.3479999899864197,
+                "WobbleSpeed": 2.630000114440918,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.03999999910593033,
+                "BubbleSize": 3.700000047683716,
+                "BubbleRise": 0.75,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Freeze Area",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                -50,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Frost",
+            "Shape": "Chill",
+            "Skin": {
+                "Wobble": 0.3700000047683716,
+                "WobbleSpeed": 0.20000000298023225,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.028999999165534974,
+                "BubbleSize": 4.5,
+                "BubbleRise": 0.3400000035762787,
+                "Holes": 0.21299999952316285,
+                "HoleSize": 8.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Blinding",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                50,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Glow",
+            "Shape": "Light",
+            "Skin": {
+                "Wobble": 0.5,
+                "WobbleSpeed": 8.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.8709999918937683,
+                "BubbleSize": 28.899999618530275,
+                "BubbleRise": 3.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Tornado",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                -25,
+                0,
+                -98,
+                50,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Tornado",
+            "Shape": "Tornado",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 6.0,
+                "SwirlSpeed": 0.7599999904632568,
+                "Turbulence": 0.5730000138282776,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 1.1200000047683716,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Flame",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                25,
+                25,
+                0,
+                0,
+                -15,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Fire",
+            "Shape": "Flame",
+            "Skin": {
+                "Wobble": 0.39500001072883608,
+                "WobbleSpeed": 4.039999961853027,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0689999982714653,
+                "BubbleSize": 4.800000190734863,
+                "BubbleRise": 1.340000033378601,
+                "Holes": 0.5019999742507935,
+                "HoleSize": 5.099999904632568,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Lightning",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                25,
+                25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Lightning",
+            "Shape": "Lightning",
+            "Skin": {
+                "Wobble": 0.5,
+                "WobbleSpeed": 8.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Heal",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                -5,
+                10,
+                0,
+                0,
+                0,
+                0,
+                40,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Healing",
+            "Shape": "Heal",
+            "Skin": {
+                "Wobble": 0.029999999329447748,
+                "WobbleSpeed": 5.110000133514404,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 1.0,
+                "BubbleSize": 40.0,
+                "BubbleRise": 2.9800000190734865,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Steam",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                25,
+                0,
+                0,
+                0,
+                -25,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Steam",
+            "Shape": "Steam",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 2.0,
+                "SwirlSpeed": 0.25999999046325686,
+                "Turbulence": 0.6000000238418579,
+                "Bubbles": 0.035999998450279239,
+                "BubbleSize": 6.900000095367432,
+                "BubbleRise": 1.4700000286102296,
+                "Holes": 1.0,
+                "HoleSize": 6.099999904632568,
+                "Rim": 0.6000000238418579,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Teleportation",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                25,
+                -25,
+                0,
+                60,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Teleportation",
+            "Skin": {
+                "Wobble": 0.09399999678134918,
+                "WobbleSpeed": 4.130000114440918,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Buff",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                25,
+                25,
+                0,
+                0,
+                40,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Buff",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Track",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                25,
+                0,
+                25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Track area",
+            "Shape": "Track",
+            "Skin": {
+                "Wobble": 0.22200000286102296,
+                "WobbleSpeed": 0.6399999856948853,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.09000000357627869,
+                "BubbleSize": 7.900000095367432,
+                "BubbleRise": 0.4699999988079071,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Transparency",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                -25,
+                25,
+                0,
+                -40,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Transparency",
+            "Skin": {
+                "Wobble": 0.08299999684095383,
+                "WobbleSpeed": 0.28999999165534975,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Plasma",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                60,
+                60,
+                25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Sun",
+            "Shape": "Plasma",
+            "Skin": {
+                "Wobble": 0.16099999845027924,
+                "WobbleSpeed": 1.9900000095367432,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 28.899999618530275,
+                "BubbleRise": 3.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Cloud",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                -25,
+                25,
+                0,
+                0,
+                -40,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Steam",
+            "Shape": "",
+            "Skin": {
+                "Wobble": 0.24300000071525575,
+                "WobbleSpeed": 0.46000000834465029,
+                "Swirl": 0.25999999046325686,
+                "SwirlSpeed": 3.009999990463257,
+                "Turbulence": 0.5419999957084656,
+                "Bubbles": 0.531000018119812,
+                "BubbleSize": 3.299999952316284,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.7799999713897705,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Explosion",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                50,
+                25,
+                0,
+                -60,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Blast",
+            "Shape": "",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Meteor",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                30,
+                20,
+                0,
+                0,
+                40,
+                0,
+                -25,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Meteor",
+            "Shape": "",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Goo",
+            "Body": 0,
+            "Book": 1,
+            "Axis": [
+                0,
+                0,
+                25,
+                25,
+                -25,
+                0,
+                -9,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Poison",
+            "Shape": "",
+            "Skin": {
+                "Wobble": 0.06199999898672104,
+                "WobbleSpeed": 0.8999999761581421,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.08500000089406967,
+                "BubbleSize": 3.4000000953674318,
+                "BubbleRise": 0.05000000074505806,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": true
+        },
+        {
+            "Name": "Fire Biome",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                120,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                true,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Fire",
+            "Shape": "",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Frost Biome",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                -90,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                true,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Frost",
+            "Shape": "",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Melee Zombie",
+            "Body": 1,
+            "Book": 1,
+            "Axis": [
+                0,
+                0,
+                0,
+                0,
+                150,
+                0,
+                60,
+                25,
+                25,
+                0
+            ],
+            "Runes": [
+                3
+            ],
+            "Abilities": [
+                "charge"
+            ],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Poison",
+            "Shape": "Melee Zombie",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Ranged Zombie",
+            "Body": 1,
+            "Book": 1,
+            "Axis": [
+                0,
+                0,
+                0,
+                0,
+                -10,
+                0,
+                45,
+                30,
+                15,
+                0
+            ],
+            "Runes": [
+                4
+            ],
+            "Abilities": [
+                "Goo"
+            ],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Poison",
+            "Shape": "Ranged Zombie",
+            "Skin": {
+                "Wobble": 0.03999999910593033,
+                "WobbleSpeed": 1.8300000429153443,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.035999998450279239,
+                "BubbleSize": 10.699999809265137,
+                "BubbleRise": 1.1399999856948853,
+                "Holes": 0.8479999899864197,
+                "HoleSize": 24.299999237060548,
+                "Rim": 0.550000011920929,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Demon",
+            "Body": 2,
+            "Book": 0,
+            "Axis": [
+                0,
+                -100,
+                0,
+                0,
+                -150,
+                -50,
+                300,
+                80,
+                100,
+                0
+            ],
+            "Runes": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12
+            ],
+            "Abilities": [
+                "Chill",
+                "Light",
+                "Dark",
+                "Compress",
+                "Spread",
+                "Sticky",
+                "Slick",
+                "Solid",
+                "Liquid",
+                "Attract",
+                "Repel",
+                "Flame Area",
+                "Freeze Area",
+                "Blinding",
+                "Tornado",
+                "Flame",
+                "Lightning",
+                "Heal",
+                "Steam",
+                "Teleportation",
+                "Buff",
+                "Trail",
+                "Transparency",
+                "Plasma",
+                "Cloud",
+                "Explosion",
+                "Meteor"
+            ],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Demon",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 1.0,
+                "SwirlSpeed": 0.6899999976158142,
+                "Turbulence": 0.3720000088214874,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.4180000126361847,
+                "HoleSize": 7.800000190734863,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Decoy",
+            "Body": 0,
+            "Book": 1,
+            "Axis": [
+                25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -60,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Decoy",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Reveal",
+            "Body": 0,
+            "Book": 1,
+            "Axis": [
+                -25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Reveal",
+            "Skin": {
+                "Wobble": 0.07500000298023224,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Death Needle",
+            "Body": 0,
+            "Book": 1,
+            "Axis": [
+                0,
+                0,
+                0,
+                25,
+                0,
+                0,
+                -300,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Death Needle",
+            "Skin": {
+                "Wobble": 0.18400000035762788,
+                "WobbleSpeed": 3.140000104904175,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Life Needle",
+            "Body": 0,
+            "Book": 1,
+            "Axis": [
+                0,
+                0,
+                0,
+                -25,
+                0,
+                0,
+                0,
+                -60,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Life needle",
+            "Skin": {
+                "Wobble": 0.2280000001192093,
+                "WobbleSpeed": 2.240000009536743,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Evaporation Ink",
+            "Body": 0,
+            "Book": 1,
+            "Axis": [
+                0,
+                25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Evaporation Ink",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Transformation Ink",
+            "Body": 0,
+            "Book": 1,
+            "Axis": [
+                0,
+                -25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Transformation Ink",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Aggressive",
+            "Body": 0,
+            "Book": 1,
+            "Axis": [
+                0,
+                0,
+                25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                80,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Aggressive",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": true
+        },
+        {
+            "Name": "Spreading",
+            "Body": 0,
+            "Book": 1,
+            "Axis": [
+                0,
+                0,
+                -25,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Spreading",
+            "Skin": {
+                "Wobble": 0.1679999977350235,
+                "WobbleSpeed": 1.2200000286102296,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": true
+        },
+        {
+            "Name": "Solid Golem",
+            "Body": 2,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                0,
+                0,
+                80,
+                0,
+                160,
+                20,
+                60,
+                0
+            ],
+            "Runes": [
+                3,
+                3
+            ],
+            "Abilities": [
+                "charge"
+            ],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Rocks",
+            "Shape": "",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Liquid Golem",
+            "Body": 2,
+            "Book": 0,
+            "Axis": [
+                0,
+                0,
+                0,
+                0,
+                -5,
+                0,
+                110,
+                20,
+                40,
+                0
+            ],
+            "Runes": [
+                4,
+                4
+            ],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Blobs",
+            "Shape": "",
+            "Skin": {
+                "Wobble": 0.0020000000949949028,
+                "WobbleSpeed": 0.3499999940395355,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.09099999815225601,
+                "BubbleSize": 5.0,
+                "BubbleRise": 0.09000000357627869,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.47999998927116396,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Meteor Area",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                300,
+                100,
+                100,
+                0,
+                150,
+                -100,
+                0,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "Fire",
+            "Shape": "",
+            "Skin": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        },
+        {
+            "Name": "Restful",
+            "Body": 0,
+            "Book": 0,
+            "Axis": [
+                5,
+                -10,
+                0,
+                0,
+                0,
+                0,
+                40,
+                0,
+                0,
+                0
+            ],
+            "Runes": [],
+            "Abilities": [],
+            "MoveAnims": [],
+            "BiomeAxis": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+            ],
+            "Aoe": "",
+            "Shape": "Restful",
+            "Skin": {
+                "Wobble": 0.19200000166893006,
+                "WobbleSpeed": 6.949999809265137,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 2.9509999752044679,
+                "Fx": "",
+                "ImpactFx": ""
+            },
+            "OnlyLiving": false
+        }
+    ],
+    "aoes": [
+        {
+            "Name": "Fire",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": true,
+            "Spell": "Heat Area",
+            "PrefabGuid": "043176b6a68be2b43b073aaaa4782c7d",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Frost",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": false,
+            "Spell": "",
+            "PrefabGuid": "3b7e489cc13dac144b93495cf5b38349",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Lightning",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": true,
+            "Spell": "",
+            "PrefabGuid": "effb650189dc5714e9e9801b1cfb3991",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Poison",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": true,
+            "Spell": "",
+            "PrefabGuid": "bbeeb0ddc21369746aaaae5c5c1c09cf",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Steam",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": false,
+            "Spell": "",
+            "PrefabGuid": "e509867be4f82f246a95eca1ee5a2d61",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Glow",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": false,
+            "Spell": "",
+            "PrefabGuid": "acdb90624a404aa438447006f1026065",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Healing",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": false,
+            "Spell": "Restful",
+            "PrefabGuid": "a71be3e7990efb040a07565c43cbb198",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Sun",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": false,
+            "Spell": "",
+            "PrefabGuid": "af6c1e3f046eecd4d81330aeb285600f",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Meteor",
+            "Offset": {
+                "x": 0.0,
+                "y": 22.0,
+                "z": 0.0
+            },
+            "Spreading": true,
+            "Spell": "Meteor Area",
+            "PrefabGuid": "87ee7299dd44ed747af24dbb91bcd33b",
+            "TrailWidth": 0.5,
+            "TrailSeconds": 0.699999988079071
+        },
+        {
+            "Name": "Tornado",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": false,
+            "Spell": "",
+            "PrefabGuid": "c248f95ffea8b8543bc7ad0fffe0216d",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Blast",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": false,
+            "Spell": "",
+            "PrefabGuid": "99bc28c0d45f51c4fbac01080b73edc7",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Splash",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": false,
+            "Spell": "",
+            "PrefabGuid": "326e86d5729c54e479798cacab220bb2",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Rocks",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": true,
+            "Spell": "",
+            "PrefabGuid": "87ee7299dd44ed747af24dbb91bcd33b",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Blobs",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": true,
+            "Spell": "",
+            "PrefabGuid": "326e86d5729c54e479798cacab220bb2",
+            "TrailWidth": 0.0,
+            "TrailSeconds": 0.0
+        },
+        {
+            "Name": "Track area",
+            "Offset": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "Spreading": false,
+            "Spell": "",
+            "PrefabGuid": "",
+            "TrailWidth": 0.14000000059604646,
+            "TrailSeconds": 12.0
+        }
+    ],
+    "shapes": [
+        {
+            "Name": "Meteor Area",
+            "Bones": [
+                {
+                    "Bone": "D_Dn",
+                    "P": {
+                        "x": 0.0,
+                        "y": -0.002749999985098839,
+                        "z": 0.0
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 1.0,
+                        "y": 1.910685465164705e-15,
+                        "z": 4.371138828673793e-8,
+                        "w": -4.371138828673793e-8
+                    }
+                },
+                {
+                    "Bone": "D_Up",
+                    "P": {
+                        "x": 0.0,
+                        "y": 0.002749999985098839,
+                        "z": 0.0
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 1.0
+                    }
+                },
+                {
+                    "Bone": "D_Xn",
+                    "P": {
+                        "x": 0.002749999985098839,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": 0.4999999701976776,
+                        "z": 0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Xp",
+                    "P": {
+                        "x": -0.002749999985098839,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": -0.4999999701976776,
+                        "z": -0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Yn",
+                    "P": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.002749999985098839
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -5.338507946817117e-8,
+                        "y": 0.7071068286895752,
+                        "z": 0.7071067094802856,
+                        "w": -5.338507236274381e-8
+                    }
+                },
+                {
+                    "Bone": "D_Yp",
+                    "P": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": -0.002749999985098839
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -0.7071068286895752,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 0.7071067094802856
+                    }
+                }
+            ],
+            "Look": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 3.0,
+                "Fx": "",
+                "ImpactFx": ""
+            }
+        },
+        {
+            "Name": "Restful",
+            "Bones": [
+                {
+                    "Bone": "D_Dn",
+                    "P": {
+                        "x": -0.00017386655963491648,
+                        "y": 0.0020377521868795158,
+                        "z": 0.00007652747444808483
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 1.0,
+                        "y": 1.910685465164705e-15,
+                        "z": 4.371138828673793e-8,
+                        "w": -4.371138828673793e-8
+                    }
+                },
+                {
+                    "Bone": "D_Up",
+                    "P": {
+                        "x": -0.00029544037533923984,
+                        "y": -0.0019185352139174939,
+                        "z": 0.00015268370043486357
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 1.0
+                    }
+                },
+                {
+                    "Bone": "D_Xn",
+                    "P": {
+                        "x": 0.015234836377203465,
+                        "y": 0.004371624439954758,
+                        "z": 0.0008118532132357359
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": 0.4999999701976776,
+                        "z": 0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Xp",
+                    "P": {
+                        "x": -0.013388819061219693,
+                        "y": 0.004102741368114948,
+                        "z": 0.0018767195288091899
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": -0.4999999701976776,
+                        "z": -0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Yn",
+                    "P": {
+                        "x": 0.0017107294406741858,
+                        "y": 0.0048479847609996799,
+                        "z": 0.014239950105547905
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -5.338507946817117e-8,
+                        "y": 0.7071068286895752,
+                        "z": 0.7071067094802856,
+                        "w": -5.338507236274381e-8
+                    }
+                },
+                {
+                    "Bone": "D_Yp",
+                    "P": {
+                        "x": -0.001285735983401537,
+                        "y": 0.004713114351034164,
+                        "z": -0.011665986850857735
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -0.7071068286895752,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 0.7071067094802856
+                    }
+                }
+            ],
+            "Look": {
+                "Wobble": 0.19200000166893006,
+                "WobbleSpeed": 6.949999809265137,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 2.9509999752044679,
+                "Fx": "",
+                "ImpactFx": ""
+            }
+        },
+        {
+            "Name": "Transformation Ink",
+            "Bones": [
+                {
+                    "Bone": "D_Dn",
+                    "P": {
+                        "x": 0.000019473058273433708,
+                        "y": -0.004322131630033255,
+                        "z": -0.00008571380749344826
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 1.0,
+                        "y": 1.910685465164705e-15,
+                        "z": 4.371138828673793e-8,
+                        "w": -4.371138828673793e-8
+                    }
+                },
+                {
+                    "Bone": "D_Up",
+                    "P": {
+                        "x": -0.0005669855163432658,
+                        "y": 0.005624385550618172,
+                        "z": 0.00136885279789567
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 1.0
+                    }
+                },
+                {
+                    "Bone": "D_Xn",
+                    "P": {
+                        "x": 0.007360740564763546,
+                        "y": 0.006918593309819698,
+                        "z": 0.0022210227325558664
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": 0.4999999701976776,
+                        "z": 0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Xp",
+                    "P": {
+                        "x": -0.00833352655172348,
+                        "y": 0.006092976778745651,
+                        "z": 0.0005046669393777847
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": -0.4999999701976776,
+                        "z": -0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Yn",
+                    "P": {
+                        "x": -0.000181995055754669,
+                        "y": 0.005781352054327726,
+                        "z": 0.0015721442177891732
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -5.338507946817117e-8,
+                        "y": 0.7071068286895752,
+                        "z": 0.7071067094802856,
+                        "w": -5.338507236274381e-8
+                    }
+                },
+                {
+                    "Bone": "D_Yp",
+                    "P": {
+                        "x": -0.001064381212927401,
+                        "y": 0.005689876154065132,
+                        "z": 0.0012528281658887864
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -0.7071068286895752,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 0.7071067094802856
+                    }
+                }
+            ],
+            "Look": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            }
+        },
+        {
+            "Name": "Reveal",
+            "Bones": [
+                {
+                    "Bone": "D_Dn",
+                    "P": {
+                        "x": -0.004936772398650646,
+                        "y": -0.003316727466881275,
+                        "z": -0.0015758484369143844
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 1.0,
+                        "y": 1.910685465164705e-15,
+                        "z": 4.371138828673793e-8,
+                        "w": -4.371138828673793e-8
+                    }
+                },
+                {
+                    "Bone": "D_Up",
+                    "P": {
+                        "x": 0.0033484953455626966,
+                        "y": 0.0027098357677459718,
+                        "z": 0.0003195113968104124
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 1.0
+                    }
+                },
+                {
+                    "Bone": "D_Xn",
+                    "P": {
+                        "x": 0.002669072709977627,
+                        "y": -0.002288015792146325,
+                        "z": 0.0015073514077812434
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": 0.4999999701976776,
+                        "z": 0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Xp",
+                    "P": {
+                        "x": -0.0023037143982946874,
+                        "y": 0.002552481135353446,
+                        "z": -0.0016504370141774417
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": -0.4999999701976776,
+                        "z": -0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Yn",
+                    "P": {
+                        "x": 0.001084379036910832,
+                        "y": -0.00008934736251831055,
+                        "z": 0.004925157874822617
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -5.338507946817117e-8,
+                        "y": 0.7071068286895752,
+                        "z": 0.7071067094802856,
+                        "w": -5.338507236274381e-8
+                    }
+                },
+                {
+                    "Bone": "D_Yp",
+                    "P": {
+                        "x": -0.0010882491478696466,
+                        "y": 0.00004804413765668869,
+                        "z": -0.00489416578784585
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -0.7071068286895752,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 0.7071067094802856
+                    }
+                }
+            ],
+            "Look": {
+                "Wobble": 0.07500000298023224,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            }
+        },
+        {
+            "Name": "Decoy",
+            "Bones": [
+                {
+                    "Bone": "D_Dn",
+                    "P": {
+                        "x": -0.00013304970343597233,
+                        "y": -0.0023453065659850837,
+                        "z": -0.002984478836879134
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 1.0,
+                        "y": 1.910685465164705e-15,
+                        "z": 4.371138828673793e-8,
+                        "w": -4.371138828673793e-8
+                    }
+                },
+                {
+                    "Bone": "D_Up",
+                    "P": {
+                        "x": -0.00011047323641832918,
+                        "y": 0.0025492010172456505,
+                        "z": -0.003112965729087591
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 1.0
+                    }
+                },
+                {
+                    "Bone": "D_Xn",
+                    "P": {
+                        "x": 0.0003206085821148008,
+                        "y": -0.00009675865294411778,
+                        "z": -0.000658928882330656
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": 0.4999999701976776,
+                        "z": 0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Xp",
+                    "P": {
+                        "x": -0.0005294453003443778,
+                        "y": -0.00025991705479100347,
+                        "z": 0.0006148903630673885
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": -0.4999999701976776,
+                        "z": -0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Yn",
+                    "P": {
+                        "x": 0.00003283912155893631,
+                        "y": -0.0002527562901377678,
+                        "z": 0.003305762307718396
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -5.338507946817117e-8,
+                        "y": 0.7071068286895752,
+                        "z": 0.7071067094802856,
+                        "w": -5.338507236274381e-8
+                    }
+                },
+                {
+                    "Bone": "D_Yp",
+                    "P": {
+                        "x": -0.0005073145148344338,
+                        "y": 0.000048716901801526546,
+                        "z": -0.001854340429417789
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -0.7071068286895752,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 0.7071067094802856
+                    }
+                }
+            ],
+            "Look": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            }
+        },
+        {
+            "Name": "Evaporation Ink",
+            "Bones": [
+                {
+                    "Bone": "D_Dn",
+                    "P": {
+                        "x": 0.003060036338865757,
+                        "y": -0.003377714427188039,
+                        "z": 0.001258857548236847
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 1.0,
+                        "y": 1.910685465164705e-15,
+                        "z": 4.371138828673793e-8,
+                        "w": -4.371138828673793e-8
+                    }
+                },
+                {
+                    "Bone": "D_Up",
+                    "P": {
+                        "x": 0.0025391976814717056,
+                        "y": 0.0035107098519802095,
+                        "z": 0.0010347012430429459
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 1.0
+                    }
+                },
+                {
+                    "Bone": "D_Xn",
+                    "P": {
+                        "x": -0.0006400221609510481,
+                        "y": 0.00007620581891387701,
+                        "z": -0.0010998230427503586
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": 0.4999999701976776,
+                        "z": 0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Xp",
+                    "P": {
+                        "x": -0.0018499813741073013,
+                        "y": 0.00023645389592275023,
+                        "z": 0.0003415624378249049
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": -0.4999999701976776,
+                        "z": -0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Yn",
+                    "P": {
+                        "x": -0.001331609790213406,
+                        "y": 0.00025375481345690787,
+                        "z": -0.00022943966905586421
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -5.338507946817117e-8,
+                        "y": 0.7071068286895752,
+                        "z": 0.7071067094802856,
+                        "w": -5.338507236274381e-8
+                    }
+                },
+                {
+                    "Bone": "D_Yp",
+                    "P": {
+                        "x": -0.0007656888337805867,
+                        "y": -0.00031357601983472705,
+                        "z": -0.00014907809963915497
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -0.7071068286895752,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 0.7071067094802856
+                    }
+                }
+            ],
+            "Look": {
+                "Wobble": 0.0,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            }
+        },
+        {
+            "Name": "Spreading",
+            "Bones": [
+                {
+                    "Bone": "D_Dn",
+                    "P": {
+                        "x": 0.0,
+                        "y": -0.002749999985098839,
+                        "z": 0.0
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 1.0,
+                        "y": 1.910685465164705e-15,
+                        "z": 4.371138828673793e-8,
+                        "w": -4.371138828673793e-8
+                    }
+                },
+                {
+                    "Bone": "D_Up",
+                    "P": {
+                        "x": -0.00018945391639135778,
+                        "y": 0.005988541059195995,
+                        "z": 0.0006126398220658302
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 1.0
+                    }
+                },
+                {
+                    "Bone": "D_Xn",
+                    "P": {
+                        "x": 0.006613046396523714,
+                        "y": 0.0005979304551146925,
+                        "z": 0.0005364992539398372
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": 0.4999999701976776,
+                        "z": 0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Xp",
+                    "P": {
+                        "x": -0.008294083178043366,
+                        "y": 0.0007120901718735695,
+                        "z": -0.0004629414761438966
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": -0.4999999701976776,
+                        "z": -0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Yn",
+                    "P": {
+                        "x": -0.0006001754081808031,
+                        "y": -0.0001175757497549057,
+                        "z": 0.007547296117991209
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -5.338507946817117e-8,
+                        "y": 0.7071068286895752,
+                        "z": 0.7071067094802856,
+                        "w": -5.338507236274381e-8
+                    }
+                },
+                {
+                    "Bone": "D_Yp",
+                    "P": {
+                        "x": 0.0011074773501604796,
+                        "y": 0.002608001697808504,
+                        "z": -0.0067906249314546589
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -0.7071068286895752,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 0.7071067094802856
+                    }
+                }
+            ],
+            "Look": {
+                "Wobble": 0.1679999977350235,
+                "WobbleSpeed": 0.0,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            }
+        },
+        {
+            "Name": "Death Needle",
+            "Bones": [
+                {
+                    "Bone": "D_Dn",
+                    "P": {
+                        "x": -0.001993648475036025,
+                        "y": -0.002220951719209552,
+                        "z": -0.0010974312899634243
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 1.0,
+                        "y": 1.910685465164705e-15,
+                        "z": 4.371138828673793e-8,
+                        "w": -4.371138828673793e-8
+                    }
+                },
+                {
+                    "Bone": "D_Up",
+                    "P": {
+                        "x": -0.0016263124998658896,
+                        "y": -0.00011857139179483056,
+                        "z": -0.0008159531280398369
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 1.0
+                    }
+                },
+                {
+                    "Bone": "D_Xn",
+                    "P": {
+                        "x": -0.0011200773296877742,
+                        "y": -0.0010581791866570712,
+                        "z": -0.000703405006788671
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": 0.4999999701976776,
+                        "z": 0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Xp",
+                    "P": {
+                        "x": -0.0026480327360332014,
+                        "y": -0.0014769583940505982,
+                        "z": -0.0005646535428240895
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": -0.4999999701976776,
+                        "z": -0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Yn",
+                    "P": {
+                        "x": -0.0005896619404666126,
+                        "y": -0.0017852867022156716,
+                        "z": 0.01710306480526924
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -5.338507946817117e-8,
+                        "y": 0.7071068286895752,
+                        "z": 0.7071067094802856,
+                        "w": -5.338507236274381e-8
+                    }
+                },
+                {
+                    "Bone": "D_Yp",
+                    "P": {
+                        "x": -0.0012458907440304757,
+                        "y": -0.0014003865653648973,
+                        "z": -0.001059210509993136
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -0.7071068286895752,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 0.7071067094802856
+                    }
+                }
+            ],
+            "Look": {
+                "Wobble": 0.18400000035762788,
+                "WobbleSpeed": 3.140000104904175,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            }
+        },
+        {
+            "Name": "Life needle",
+            "Bones": [
+                {
+                    "Bone": "D_Dn",
+                    "P": {
+                        "x": -0.001993648475036025,
+                        "y": -0.002220951719209552,
+                        "z": -0.0010974312899634243
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 1.0,
+                        "y": 1.910685465164705e-15,
+                        "z": 4.371138828673793e-8,
+                        "w": -4.371138828673793e-8
+                    }
+                },
+                {
+                    "Bone": "D_Up",
+                    "P": {
+                        "x": -0.0016263124998658896,
+                        "y": -0.00011857139179483056,
+                        "z": -0.0008159531280398369
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 1.0
+                    }
+                },
+                {
+                    "Bone": "D_Xn",
+                    "P": {
+                        "x": -0.0011200773296877742,
+                        "y": -0.0010581791866570712,
+                        "z": -0.000703405006788671
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": 0.4999999701976776,
+                        "z": 0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Xp",
+                    "P": {
+                        "x": -0.0026480327360332014,
+                        "y": -0.0014769583940505982,
+                        "z": -0.0005646535428240895
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 0.9999999403953552,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": 0.5,
+                        "y": -0.4999999701976776,
+                        "z": -0.5,
+                        "w": -0.5
+                    }
+                },
+                {
+                    "Bone": "D_Yn",
+                    "P": {
+                        "x": -0.0005896619404666126,
+                        "y": -0.0017852867022156716,
+                        "z": 0.01710306480526924
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -5.338507946817117e-8,
+                        "y": 0.7071068286895752,
+                        "z": 0.7071067094802856,
+                        "w": -5.338507236274381e-8
+                    }
+                },
+                {
+                    "Bone": "D_Yp",
+                    "P": {
+                        "x": -0.0012458907440304757,
+                        "y": -0.0014003865653648973,
+                        "z": -0.001059210509993136
+                    },
+                    "S": {
+                        "x": 1.0,
+                        "y": 1.0,
+                        "z": 1.0
+                    },
+                    "R": {
+                        "x": -0.7071068286895752,
+                        "y": 0.0,
+                        "z": 0.0,
+                        "w": 0.7071067094802856
+                    }
+                }
+            ],
+            "Look": {
+                "Wobble": 0.2280000001192093,
+                "WobbleSpeed": 2.240000009536743,
+                "Swirl": 0.0,
+                "SwirlSpeed": 0.0,
+                "Turbulence": 0.0,
+                "Bubbles": 0.0,
+                "BubbleSize": 1.0,
+                "BubbleRise": 0.0,
+                "Holes": 0.0,
+                "HoleSize": 1.0,
+                "Rim": 0.0,
+                "Fx": "",
+                "ImpactFx": ""
+            }
+        }
+    ],
+    "shippedHash": ""
+}

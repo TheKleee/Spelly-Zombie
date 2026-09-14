@@ -293,16 +293,34 @@ namespace SpellyZombie
         public float TrailWidth, TrailSeconds;
 
         [NonSerialized] GameObject _prefab;
+        [NonSerialized] bool _warned;
         public GameObject Prefab
         {
             get
             {
+                // the authored list resolves in builds and on clients; the GUID only in the editor
+                if (_prefab == null) _prefab = CollectionManager.AreaLookFor(Name);
 #if UNITY_EDITOR
                 if (_prefab == null && !string.IsNullOrEmpty(PrefabGuid))
                 {
                     string path = UnityEditor.AssetDatabase.GUIDToAssetPath(PrefabGuid);
                     if (!string.IsNullOrEmpty(path))
                         _prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                    if (_prefab != null && Application.isPlaying && !_warned)
+                    {
+                        _warned = true;
+                        Debug.LogWarning($"[SpellyZombie] area '{Name}' look resolves only in the editor: run " +
+                                         "Spelly Zombie/Spells/Add Missing Area Looks To Collection Manager in the Lobby, " +
+                                         "or builds and clients never see it.");
+                    }
+                }
+#else
+                // a build has no GUIDs to resolve: an unlisted look is simply missing, say so once
+                if (_prefab == null && !string.IsNullOrEmpty(PrefabGuid) && !_warned)
+                {
+                    _warned = true;
+                    Debug.LogError($"[SpellyZombie] area '{Name}' has a look in the spellbook but none in " +
+                                   "CollectionManager > Area Looks: it shows nothing in this build.");
                 }
 #endif
                 return _prefab;
@@ -331,6 +349,16 @@ namespace SpellyZombie
         public static string Path_ =>
             System.IO.Path.Combine(Application.persistentDataPath, FileName);
 
+        /// The copy that ships with the game. Every editor save mirrors the
+        /// local file here, so a build has the book the creator wrote.
+        public static string ShippedPath =>
+            System.IO.Path.Combine(Application.streamingAssetsPath, FileName);
+        public const string ShippedAssetPath = "Assets/StreamingAssets/" + FileName;
+
+        /// Hash of the shipped copy this file came from, or was mirrored to.
+        /// A build adopts the shipped book whenever it differs.
+        public string shippedHash = "";
+
         static SpellBook _loaded;
         public static SpellBook Live
         {
@@ -346,6 +374,7 @@ namespace SpellyZombie
 
         public static SpellBook Load()
         {
+            AdoptShipped();
             try
             {
                 if (File.Exists(Path_))
@@ -365,12 +394,96 @@ namespace SpellyZombie
             return new SpellBook();
         }
 
+        static string HashOf(string text)
+        {
+            ulong h = 14695981039346656037UL;
+            foreach (char c in text) { h ^= c; h *= 1099511628211UL; }
+            return h.ToString("x16");
+        }
+
+        /// A fresh machine, and a build on every update, takes the shipped
+        /// book over the local file. The editor's local file is the master.
+        static void AdoptShipped()
+        {
+            try
+            {
+                if (Application.isEditor && File.Exists(Path_)) return;
+                if (!File.Exists(ShippedPath)) return;
+                string text = File.ReadAllText(ShippedPath);
+                string hash = HashOf(text);
+                if (File.Exists(Path_))
+                {
+                    var local = JsonUtility.FromJson<SpellBook>(File.ReadAllText(Path_));
+                    if (local != null && local.shippedHash == hash) return;
+                }
+                var shipped = JsonUtility.FromJson<SpellBook>(text);
+                if (shipped == null) return;
+                shipped.shippedHash = hash;
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path_));
+                File.WriteAllText(Path_, JsonUtility.ToJson(shipped, true));
+                Debug.Log($"[SpellyZombie] adopted the shipped spellbook: {shipped.spells.Count} spells.");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SpellyZombie] shipped spellbook unreadable: {ex.Message}");
+            }
+        }
+
         public void Save()
         {
+#if UNITY_EDITOR
+            MirrorShipped();
+#endif
             File.WriteAllText(Path_, JsonUtility.ToJson(this, true));
             _loaded = this;
             NetSync.PushBook();   // hosting mid-edit: everyone gets the new book
         }
+
+#if UNITY_EDITOR
+        /// Writes the shipped copy (hash field blank) and stamps its hash on
+        /// this book, so the local file written after it knows its origin.
+        public void MirrorShipped()
+        {
+            try
+            {
+                shippedHash = "";
+                string text = JsonUtility.ToJson(this, true);
+                shippedHash = HashOf(text);
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ShippedPath));
+                if (File.Exists(ShippedPath) && File.ReadAllText(ShippedPath) == text) return;
+                File.WriteAllText(ShippedPath, text);
+                UnityEditor.AssetDatabase.ImportAsset(ShippedAssetPath);
+                Debug.Log($"[SpellyZombie] shipped spellbook updated: {ShippedAssetPath}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SpellyZombie] could not mirror the spellbook: {ex.Message}");
+            }
+        }
+
+        /// The local file mirrors itself on editor load, so a book saved
+        /// before mirroring existed still ships.
+        [UnityEditor.InitializeOnLoadMethod]
+        static void MirrorOnLoad() => UnityEditor.EditorApplication.delayCall += () =>
+        {
+            try
+            {
+                if (!File.Exists(Path_)) return;
+                var local = JsonUtility.FromJson<SpellBook>(File.ReadAllText(Path_));
+                if (local == null) return;
+                string stamp = local.shippedHash;
+                local.shippedHash = "";
+                string text = JsonUtility.ToJson(local, true);
+                if (stamp == HashOf(text) && File.Exists(ShippedPath)) return;
+                local.MirrorShipped();
+                File.WriteAllText(Path_, JsonUtility.ToJson(local, true));
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SpellyZombie] spellbook mirror on load failed: {ex.Message}");
+            }
+        };
+#endif
 
         /// The live book as JSON - what the wire carries.
         public static string LiveJson() => JsonUtility.ToJson(Live);
@@ -430,6 +543,18 @@ namespace SpellyZombie
             foreach (var a in aoes) if (a.Name == name) return a;
             return null;
         }
+
+        /// A def's place in the shipped book - the same file on every machine,
+        /// so a byte names a spell over the wire. 255 = none.
+        public byte IndexOf(SpellDef def)
+        {
+            if (def == null) return 255;
+            int i = spells.IndexOf(def);
+            return i >= 0 && i < 255 ? (byte)i : (byte)255;
+        }
+
+        public SpellDef At(byte index) =>
+            index < spells.Count ? spells[index] : null;
 
         public ShapeDef Shape(string name)
         {

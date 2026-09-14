@@ -42,13 +42,24 @@ namespace SpellyZombie
         /// The rune this stroke is, declared at draw time. Seals trust this
         /// outright - no recognition. None = plain ink.
         public RuneType DeclaredRune = RuneType.None;
+        public bool AutoDrawn;     // the game drew some of it (a completion or a seal ring)
+        public float AutoLength;   // metres of it the game drew; the rest is the hand's
+        public float CompletedAt;  // when a completion finished, for the erased-right-away signal
 
         /// Cross-machine stroke identity: (OwnerId, NetId) names the same ink on
         /// every machine; 0 = never replicated. Split pieces inherit it (netcode §0).
         public int NetId;
 
+        /// The id its live (pen-down) preview travelled under; split pieces
+        /// inherit it so the final stroke replaces the preview. 0 = none.
+        public int LiveId;
+
         /// Every node sits on a character/weapon - ink survives spell resolution.
         public bool Persistent { get; private set; }
+
+        /// Rides a remote stand-in (a friend's puppet, a zombie proxy): display
+        /// only here - it never closes a seal or feeds one on this machine.
+        public bool OnPuppet { get; private set; }
 
         /// Spans more than one surface, so the middle can move while the
         /// endpoints stand still - its line must refresh every frame.
@@ -155,6 +166,9 @@ namespace SpellyZombie
                 else if (parent != firstParent) MultiSurface = true;
             }
             Persistent = total > 0 && onBody * 2 > total;
+            OnPuppet = Surface != null
+                && (Surface.GetComponentInParent<NetAvatar>() != null
+                    || Surface.GetComponentInParent<NetZombieProxy>() != null);
         }
 
         /// Ink on a deactivated surface (stowed weapon) does not exist right now:

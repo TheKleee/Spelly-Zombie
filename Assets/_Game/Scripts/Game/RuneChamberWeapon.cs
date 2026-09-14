@@ -200,12 +200,17 @@ namespace SpellyZombie
                 if (closed)
                 {
                     Juice.Crackle(transform.position); // the hammer drops
+                    NetSync.PushInkFx(NetSync.InkFxCrackle, transform.position);
                 }
                 else
                 {
                     // release complete: next slot cycles into the window
                     _slot = (_slot + 1) % Slots;
-                    if (_slot == 0) Juice.Chime(transform.position); // carriage return
+                    if (_slot == 0)
+                    {
+                        Juice.Chime(transform.position); // carriage return
+                        NetSync.PushInkFx(NetSync.InkFxChime, transform.position);
+                    }
                 }
             }
 

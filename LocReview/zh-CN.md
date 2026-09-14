@@ -85,10 +85,8 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | stand.hostpublic | CREATE PUBLIC LOBBY | 创建公开房间 | create public room | |
 | stand.pw | password (optional) | 密码（可选） | password (optional) | |
 | stand.code | entry code (optional) | 进入码（可选） | entry code (optional) | |
-| stand.botmatch | test match vs a bot | 和机器人打一场测试 | with a robot play one test match | 机器人 = robot, the everyday word for a bot |
 | stand.hint | walk away to close | 走开就关闭 | walk away and it closes | |
 | stand.map | change map | 换地图 | change map | |
-| stand.seed | seed | 种子 | seed | same word as a plant seed, Minecraft usage |
 | stand.share | acolytes at least {0}% | 侍祭至少{0}% | acolytes at least {0}% | 侍祭 = attendant priest, the dictionary word for acolyte |
 | stand.setcode | set code | 设置进入码 | set entry code | |
 | stand.readycall | ready check | 准备确认 | readiness confirm | |
@@ -161,3 +159,43 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | opt.on | On | 开 | on |  |
 | opt.music | Music: {0}% | 音乐: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | 音效: {0}% | sound effects: {0}% |  |
+| seal.norune | no rune here to seal. aim at one of your runes | 这里没有可以画法阵的符文。瞄准你自己的符文 | here there is no rune to draw a magic array around. aim at your own rune | 法阵 for "seal", as in the hints |
+| seal.noink | not enough ink for the seal | 墨水不够画法阵 | ink not enough to draw the magic array |  |
+| rune.noink | not enough ink to finish the rune | 墨水不够画完符文 | ink not enough to finish drawing the rune |  |
+| round.safe | THE LOBBY IS SAFE GROUND | 房间是安全区 | room is safe zone | 房间 = lobby, as in the rest of the file |
+| round.versus | WIZARDS vs ACOLYTES | 巫师 对 侍祭 | wizard versus acolyte |  |
+| round.wizards | WIZARDS WIN | 巫师获胜 | wizards win |  |
+| round.acolytes | ACOLYTES WIN | 侍祭获胜 | acolytes win |  |
+| round.home | {0}. back to the lobby in {1} | {0}。{1}秒后回房间 | {0}. after {1} seconds return to room | 秒 (seconds) added, Chinese needs the unit |
+| round.pot |  · pot {0}% |  · 大锅 {0}% | cauldron {0}% |  |
+| round.green |  · the pot is GREEN |  · 大锅变绿了 | cauldron turned green |  |
+| gate.accepts | THE GATE ACCEPTS | 大门接受了 | gate accepted |  |
+| net.hostleft | THE HOST LEFT | 房主走了 | room owner left | 房主 = host |
+| net.hosting | ● HOSTING, {0} player(s) | ● 你是房主，{0}人 | you are room owner, {0} people |  |
+| net.connected | ● CONNECTED, {0} player(s) | ● 已连接，{0}人 | connected, {0} people |  |
+| net.map | MAP: {0} | 地图: {0} | map: {0} |  |
+| net.maplikes | MAP: {0} · ♥{1} | 地图: {0} · ♥{1} | map: {0} · ♥{1} |  |
+| steam.offline | Steam not running, offline & LAN only | Steam没开，只能离线和局域网 | Steam not open, only can offline and LAN |  |
+| steam.ready | Steam ready: {0} | Steam就绪: {0} | Steam ready: {0} | {0} is the Steam name |
+| steam.leavefirst | leave your lobby first | 先离开你的房间 | first leave your room |  |
+| steam.ping | your ping to that host is {0}ms, lobby allows {1} | 你到房主的延迟是{0}毫秒，房间上限{1} | your to room owner latency is {0} ms, room limit {1} |  |
+| steam.joining | joining… | 正在加入… | joining… |  |
+| steam.deleted | lobby deleted | 房间已删除 | room deleted |  |
+| steam.notrunning | Steam not running | Steam没开 | Steam not open |  |
+| steam.creating | creating lobby… | 正在开房间… | opening room… |  |
+| steam.failed | lobby failed: {0} | 开房间失败: {0} | open room failed: {0} | {0} is a Steam error code |
+| steam.noenter | couldn't enter the lobby | 进不了房间 | cannot enter room |  |
+| steam.nohost | lobby has no host, try again | 房间没有房主，再试一次 | room has no owner, try once more |  |
+| steam.connecting | joined, connecting… | 进来了，正在连接… | came in, connecting… |  |
+| steam.private | PRIVATE LOBBY, invite friends | 私密房间，叫上朋友 | private room, call friends |  |
+| steam.public | PUBLIC LOBBY, listed | 公开房间，已上列表 | public room, already on list |  |
+| menu.tagline | draw fast. die funny. | 画得快。死得搞笑。 | draw fast. die funny. |  |
+| menu.close | Close | 关闭 | close |  |
+| chip.pages | turn the pages | 翻页 | turn page | the mouse wheel turns the grimoire pages |
+| round.potopens |  · pot opens in {0} |  · 大锅 {0} 秒后开启 | cauldron opens after {0} seconds | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · ink in flight {0} |  · 墨水飞行中 {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| stand.lanhost | LAN host | 局域网主机 | LAN host | book stand, the LAN row: host over the local network |
+| stand.lanjoin | LAN join | 加入局域网 | join LAN | book stand, the LAN row: join the address in the field |
+| opt.uiscale | UI size: {0}% | 界面大小：{0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
+| stand.nocap | no cap | 无上限 | no upper limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | your connection carries everyone | 所有人的连接都由你承担 | everyone's connection is borne by you | book stand, under the size row past 32 players: the host's upload carries the lobby |

@@ -34,11 +34,11 @@ namespace SpellyZombie
         /// expiring, dealing damage, or their zombies wrecking things returns
         /// a bit of wand - counterplay against running dry. Feeds the RESERVE
         /// so the existing trickle grows the wand back, capped at full.
-        /// MP gap (flagged): a remote acolyte's credit needs a NetSync push.
+        /// A remote acolyte's credit travels to their machine (NetSync).
         public static void CreditWand(int ownerId, float amount)
         {
             if (ownerId < 0 || amount <= 0f || !Sides.IsAcolyte(ownerId)) return;
-            if (ownerId != Grimoire.LocalPlayerId) return;
+            if (ownerId != Grimoire.LocalPlayerId) { NetSync.SendWandCredit(ownerId, amount); return; }
             foreach (var ink in All)
             {
                 var pilot = ink.GetComponent<SimpleFPSController>();
@@ -48,12 +48,56 @@ namespace SpellyZombie
             }
         }
 
+        /// Acolytes drink wizard ink: each living acolyte near a living wizard
+        /// takes StealRate(distance) from that wizard's wand. The wizard sees it
+        /// only on the wand, thinning or refilling slower. Each machine runs its
+        /// own side from the positions it already has.
+        void StealTick(float dt)
+        {
+            if (DrawingConfig.AcolyteInkStealPerSec <= 0f || _pilot.IsDowned || GhostState.LocalIsGhost) return;
+            var mine = Sides.Of(Grimoire.LocalPlayerId);
+            if (mine != Side.Wizard && mine != Side.Acolyte) return;
+            float r2 = DrawingConfig.AcolyteInkStealRange * DrawingConfig.AcolyteInkStealRange;
+            Vector3 at = _pilot.transform.position;
+            float total = 0f;
+            foreach (var a in NetAvatar.All)
+            {
+                if (a == null || a.Downed) continue;
+                var side = Sides.Of(NetSync.OwnerIdOf(a.Id));
+                float d2 = (a.transform.position - at).sqrMagnitude;
+                if (side == mine || d2 > r2) continue;
+                if (mine == Side.Acolyte && (side != Side.Wizard || a.Wandless || a.InkFraction <= 0.01f)) continue;
+                if (mine == Side.Wizard && side != Side.Acolyte) continue;
+                total += StealRate(Mathf.Sqrt(d2));
+            }
+            if (total <= 0f) return;
+            if (mine == Side.Wizard)
+            {
+                if (!WandState.Armed(_pilot)) return;
+                Ink = Mathf.Max(0f, Ink - total * dt);
+            }
+            else Store(total * dt); // the reserve: in as soon as you are yourself
+        }
+
+        /// The steal at this distance: full inside AcolyteInkStealFullRange, easing
+        /// down to AcolyteInkStealEdgePerSec at AcolyteInkStealRange, none beyond.
+        static float StealRate(float d)
+        {
+            float outer = DrawingConfig.AcolyteInkStealRange;
+            float inner = Mathf.Min(DrawingConfig.AcolyteInkStealFullRange, outer);
+            if (d > outer) return 0f;
+            if (d <= inner) return DrawingConfig.AcolyteInkStealPerSec;
+            return Mathf.Lerp(DrawingConfig.AcolyteInkStealPerSec, DrawingConfig.AcolyteInkStealEdgePerSec,
+                (d - inner) / Mathf.Max(0.01f, outer - inner));
+        }
+
         /// No passive regen. Wizards: the pot is the only well
         /// (CauldronEconomy.LocalWandTick). Acolytes: ink evaporates, except
         /// while worn - a disguise has no wand to dry out.
         void Update()
         {
             if (_pilot == null) _pilot = GetComponent<SimpleFPSController>();
+            if (_pilot != null && _pilot.IsLocalViewer) StealTick(Time.deltaTime);
             if (!Sides.IsAcolytePlayer(_pilot)) return;   // wizards: the pot, or nothing
 
             float dt = Time.deltaTime;
@@ -85,6 +129,16 @@ namespace SpellyZombie
 
         public float Fraction => Ink / DrawingConfig.InkMax;
 
+        /// The share of a drawing charge this wand pays, and gets back when the ink returns.
+        public float DrawRate
+        {
+            get
+            {
+                if (_pilot == null) _pilot = GetComponent<SimpleFPSController>();
+                return Sides.IsAcolytePlayer(_pilot) ? DrawingConfig.AcolyteDrawCostMul : 1f;
+            }
+        }
+
         /// Rune Studio is the practice hall: drawing there never costs ink
         /// (his ask, Aug 26) and the wand stays full.
         public static bool Bottomless => RuneLibrary.PracticeHall;
@@ -100,6 +154,9 @@ namespace SpellyZombie
         }
 
         public void Award(float amount) => Ink = Mathf.Min(DrawingConfig.InkMax, Ink + amount);
+
+        /// The evaporation ink dried some of the wand.
+        public void Evaporate(float amount) => Ink = Mathf.Max(0f, Ink - Mathf.Max(0f, amount));
 
         public static void AwardAll(float amount)
         {

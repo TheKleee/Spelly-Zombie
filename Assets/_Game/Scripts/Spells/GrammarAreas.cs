@@ -47,8 +47,11 @@ namespace SpellyZombie
             return go.transform;
         }
 
-        public static void PuffBurst(Vector3 at, Color c, int n = 4)
+        /// relay: the host ships it (FxMsg); false where clients draw it themselves.
+        public static void PuffBurst(Vector3 at, Color c, int n = 4, bool relay = true)
         {
+            if (relay && NetSync.WantsFxRelay)
+                NetSync.PushFx(FxLibrary.FxPuff, at, Vector3.zero, c, 0, n, 0);
             for (int i = 0; i < n; i++)
             {
                 var puff = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -80,8 +83,10 @@ namespace SpellyZombie
         }
 
         /// A gravity-free fling of fire motes - the shared bloom look.
-        public static void FireBloom(Vector3 at, int count, float speed, float upKick)
+        public static void FireBloom(Vector3 at, int count, float speed, float upKick, bool relay = true)
         {
+            if (relay && NetSync.WantsFxRelay)
+                NetSync.PushFx(FxLibrary.FxFireBloom, at, new Vector3(upKick, 0f, 0f), Color.white, 0, count, 0, speed);
             for (int i = 0; i < count; i++)
             {
                 var f = FireMote(at + Random.insideUnitSphere * 0.4f,
@@ -92,9 +97,44 @@ namespace SpellyZombie
             }
         }
 
+        /// A lamp left on what a Light mote hit; the host ships it (FxMsg).
+        public static void Lantern(Transform parent, Vector3 at, float intensity, bool relay = true)
+        {
+            if (relay && NetSync.WantsFxRelay)
+            {
+                var el = parent != null ? parent.GetComponentInParent<Element>() : null;
+                NetSync.PushFx(FxLibrary.FxLantern, at, Vector3.zero, Color.white, el != null ? el.NetId : 0, 7f, 0, intensity);
+            }
+            var go = new GameObject("Lantern");
+            if (parent != null) go.transform.SetParent(parent, true);
+            go.transform.position = at;
+            var l = go.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.range = 5f;
+            l.intensity = intensity;
+            l.color = new Color(1f, 0.95f, 0.75f);
+            Object.Destroy(go, 7f);
+        }
+
+        /// A short glint where matter changed into its stronger form.
+        public static void Glint(Vector3 at, Color c, bool relay = true)
+        {
+            if (relay && NetSync.WantsFxRelay)
+                NetSync.PushFx(FxLibrary.FxGlint, at, Vector3.zero, c, 0, 0.4f, 1);
+            var glow = new GameObject("TransmuteGlint");
+            glow.transform.position = at;
+            var l = glow.AddComponent<Light>();
+            l.type = LightType.Point; l.color = c; l.intensity = 6f; l.range = 2.5f;
+            Object.Destroy(glow, 0.4f);
+        }
+
+        static readonly System.Collections.Generic.HashSet<NetAvatar> _burstSeen =
+            new System.Collections.Generic.HashSet<NetAvatar>();
+
         /// Spark lvl3 - FLAME BURST: flames burst across the area, once.
         public static void FlameBurst(Vector3 at, float power)
         {
+            _burstSeen.Clear();
             float r = DrawingConfig.UltimateRadius;
             Juice.Boom(at, 0.7f);
             if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.FireBurst, at);
@@ -107,6 +147,15 @@ namespace SpellyZombie
                 if (c == null) continue;
                 var pl = c.GetComponent<SimpleFPSController>();
                 if (pl != null) { pl.TakeHit((pl.transform.position - at).normalized * 9f, 28f * power); continue; }
+                // a friend's body: the kick travels to them, the wound lands on their puppet
+                var av = c.GetComponentInParent<NetAvatar>();
+                if (av != null)
+                {
+                    if (!_burstSeen.Add(av)) continue;
+                    NetSync.SendKick(NetSync.OwnerIdOf(av.Id), (av.transform.position - at).normalized * 9f, false);
+                    av.GetComponent<Element>()?.TakeDamage(28f * power, "flame burst");
+                    continue;
+                }
                 SpellParticle.GiveHeatTo(c, 200f * power); // combinations heat harder than single runes
                 var rb = c.attachedRigidbody;
                 if (rb != null) rb.AddForce((rb.worldCenterOfMass - at).normalized * 9f, ForceMode.VelocityChange);
@@ -224,6 +273,7 @@ namespace SpellyZombie
                     if (c == null) continue;
                     // one body = one tick: rigs are many limb colliders; dedupe by root
                     Component root = (Component)c.GetComponentInParent<SimpleFPSController>()
+                        ?? (Component)c.GetComponentInParent<NetAvatar>()
                         ?? (Component)c.GetComponentInParent<Creature>()
                         ?? (Component)c.GetComponent<Matter>()
                         ?? (Component)c.attachedRigidbody;
@@ -252,6 +302,10 @@ namespace SpellyZombie
     {
         /// Body wearing this cloud; it never poisons its own host.
         [System.NonSerialized] public Transform Wearer;
+
+        /// A client's copy of a host-opened field: it bills only the local
+        /// body (which asks the host); the host's own field bills creatures.
+        [System.NonSerialized] public bool Mirror;
 
         static readonly Color Sick = new Color(0.55f, 0.85f, 0.25f);
 
@@ -288,6 +342,8 @@ namespace SpellyZombie
             {
                 var host = Wearer.GetComponent<Zombie>();
                 if (host != null && host.Possessed) return;
+                var standIn = Wearer.GetComponent<NetZombieProxy>();
+                if (standIn != null && standIn.Possessed) return;
             }
 
             // one puff per tick, never a burst - FxLibrary drops spawns past its
@@ -325,7 +381,8 @@ namespace SpellyZombie
                         ? Vector3.forward : off.normalized) * 0.9f;
             }
 
-            var fx = FxLibrary.Spawn(FxLibrary.I.GasCloud, spot, null, PuffLife);
+            // every machine's copy of the field puffs for itself (FieldMsg)
+            var fx = FxLibrary.Spawn(FxLibrary.I.GasCloud, spot, null, PuffLife, false);
             // the prefab emits 2-3 UNIT particles, so metres need converting
             if (fx != null)
                 fx.transform.localScale = Vector3.one *
@@ -380,7 +437,10 @@ namespace SpellyZombie
         float _bornRadius;
 
         protected override bool AffectsPlayer(SimpleFPSController p) =>
-            !(SparesOwnTeam && Team.HasValue && Sides.SideOfThing(p.gameObject) == Team);
+            !(SparesOwnTeam && Team.HasValue && (Sides.SideOfThing(p.gameObject) == Team
+                // a wizard under the Life curse holds an acolyte's book and its immunity
+                || (Team == Side.Acolyte && p.IsLocalViewer
+                    && Grimoires.HeldBy(Grimoire.LocalPlayerId) == BookKind.Acolyte)));
 
         protected override void Affect(Collider c, float dt)
         {
@@ -391,9 +451,24 @@ namespace SpellyZombie
                 if (Wearer != null && p.transform == Wearer) return;  // your own cloud
                 if (!AffectsPlayer(p)) return;   // one predicate, asked here and by the HUD
                 p.TakeHit(Vector3.zero, Bite * dt, "the corruption");
-                Cling(p, dt);
+                Cling(p.transform, dt);
                 return;
             }
+
+            // a friend's body: their own machine's copy of this field bills
+            // them, here only the cloud clings so everyone sees it on them
+            var av = c.GetComponentInParent<NetAvatar>();
+            if (av != null)
+            {
+                if (av.Downed) return;
+                if (Wearer != null && av.transform == Wearer) return;
+                if (SparesOwnTeam && Team.HasValue
+                    && (Sides.Of(NetSync.OwnerIdOf(av.Id)) == Team
+                        || (Team == Side.Acolyte && Grimoires.HeldBy(NetSync.OwnerIdOf(av.Id)) == BookKind.Acolyte))) return;
+                Cling(av.transform, dt);
+                return;
+            }
+            if (Mirror) return;
 
             // ★ POISON EATS WHATEVER IS ALIVE, and a MIND is what living means -
             // a zombie has one, a wall does not. Asking the number means no
@@ -412,15 +487,16 @@ namespace SpellyZombie
 
         /// Attaches a small PoisonField to the victim's head; it grows with
         /// exposure and poisons others in turn.
-        static void Cling(SimpleFPSController victim, float dt)
+        void Cling(Transform victim, float dt)
         {
             var worn = victim.GetComponentInChildren<PoisonField>();
             if (worn == null)
             {
                 // on the head, small, visible to other players
-                PoisonField.Open(victim.transform.position + Vector3.up * 1.6f,
+                var cling = PoisonField.Open(victim.position + Vector3.up * 1.6f,
                     DrawingConfig.PoisonClingRadius,
-                    DrawingConfig.PoisonClingSeconds, victim.transform);
+                    DrawingConfig.PoisonClingSeconds, victim);
+                cling.Mirror = Mirror; // a mirror's cling bills like its source
                 return;
             }
             worn.Radius = Mathf.Min(worn.Radius + DrawingConfig.PoisonClingGrow * dt,

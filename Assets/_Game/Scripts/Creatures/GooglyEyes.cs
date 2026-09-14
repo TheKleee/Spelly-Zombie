@@ -10,6 +10,9 @@ namespace SpellyZombie
         public EyeMood Mood { get; private set; }
         public Vector3 LookTarget;
 
+        /// A stand-in's eyes hold a gaze the host sent until this time; AutoWatch waits.
+        [System.NonSerialized] public float HoldGazeUntil;
+
         /// Whose "forward" idle gaze follows. Eyes mounted on a BONE inherit
         /// that bone's axes, which rarely point where the body faces - a blob
         /// bone often points straight down. Set this to the body root and the
@@ -39,6 +42,10 @@ namespace SpellyZombie
 
         Material _pupilMatL, _pupilMatR;   // whatever the pupils wore before a tint
         bool _tinted;
+
+        // what the creature snapshots carry, so a stand-in's eyes match
+        public bool PupilTinted => _tinted;
+        public bool Swelling => Time.time < _swellUntil;
 
         /// Eyes go WIDE for a moment - the charge tell, and later the
         /// proximity-voice tell (bigger the louder you are). Size is its own
@@ -256,6 +263,7 @@ namespace SpellyZombie
 
         void AutoWatch()
         {
+            if (Time.time < HoldGazeUntil) return;   // the host is aiming these pupils
             // priority: nearby loud event (scared/wowed) > fresh ink > forward
             if (WorldEvents.TryGetLoudest(3f, out var evt))
             {

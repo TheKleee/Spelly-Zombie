@@ -13,6 +13,9 @@ GameObject:
   - component: {fileID: 6353924907753448199}
   - component: {fileID: 232836084278045829}
   - component: {fileID: 7726382262818846528}
+  - component: {fileID: 7302036756625245827}
+  - component: {fileID: -4635980131780620325}
+  - component: {fileID: -7862186944789291048}
   m_Layer: 0
   m_Name: Shrub
   m_TagString: Untagged
@@ -62,8 +65,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Damageable
-  Health: 20
-  Destructible: 1
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 20
+  _authoredMax: 0
+  RemoveOnDeath: 1
+  DeadStill: 0
 --- !u!114 &232836084278045829
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -100,6 +116,69 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
   Material: 1
+--- !u!114 &7302036756625245827
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4005849488707177128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34f3ab533aa684846928f5d4d55422fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Breakable
+  DebrisPrefabs: []
+  DebrisMin: 0
+  DebrisMax: 0
+  DebrisOrigins: []
+  DebrisSpread: 2.5
+  DebrisLifetime: 0
+  BreakFx: {fileID: 0}
+  Standing: {fileID: 0}
+  CodeSplinters: 1
+  DefaultSound: 1
+  LobbyRespawnOverride: 0
+--- !u!114 &-4635980131780620325
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4005849488707177128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 29411d9817986b04b9164ecb792df263, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.Element
+  Natural:
+    Temp: 0
+    Lum: 0
+    Pressure: 0
+    Balance: 0
+    State: 0
+    Affinity: 0
+    Strength: 0
+    Int: 0
+    Courage: 0
+    Clones: 0
+  _authoredHealth: 100
+  _authoredMax: 0
+  RemoveOnDeath: 1
+  DeadStill: 0
+--- !u!114 &-7862186944789291048
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4005849488707177128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef06a5fdfe014c14ca3c0f287edba7db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.SurfaceMaterialTag
+  Material: 0
 --- !u!1001 &9148493610834866745
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -60,7 +60,13 @@ namespace SpellyZombie
         void OnDestroy()
         {
             IsOpen = false;
+            if (_live) NetSync.EndLiveEmote();
+            _live = false;
         }
+
+        // the studio on the local player's own body: friends' puppets follow the sculpt
+        bool _live;
+        bool LocalBody => Target != null && Target.TryGetComponent<EmotePlayer>(out var p) && !p.Remote;
 
         void Update()
         {
@@ -87,6 +93,7 @@ namespace SpellyZombie
             HandleKeys(kb);
             UpdatePreviewBlend();
             UpdateMarkers();
+            if (_live) NetSync.PushLiveEmote(Target);
         }
 
         void Open()
@@ -102,6 +109,8 @@ namespace SpellyZombie
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             Target.GetComponent<EmotePlayer>()?.Interrupt();
+            _live = LocalBody;
+            if (_live) NetSync.BeginLiveEmote();
             CreateMarkers();
             _status = "";
         }
@@ -110,6 +119,8 @@ namespace SpellyZombie
         {
             if (AlwaysOpen) return;
             IsOpen = false;
+            if (_live) NetSync.EndLiveEmote();
+            _live = false;
             _grabbed = null;
             _rotatingCharacter = false;
             _previewFrame = null;

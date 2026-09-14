@@ -194,36 +194,123 @@ namespace SpellyZombie
         public void DeriveFrom(Vector3 at)
         {
             if (!_snapped) return;
+            var born = SpellyMap.BiomeAt(at);
+            _groundless = born == null;
+            _bornName = born != null ? born.name : "no biome";
+            _wearing = false;                // a fresh derive is a fresh body
+            StandFor(born);
+            var n = NaturalOn(at, born);
+            Natural = n;
+            Data = n;                        // born here, born full
+        }
+
+        string _bornName = "no biome";
+        Biome _standsFor;   // the biome this prop is a source of (ByObjects)
+
+        /// Props stand for the biome that raised them: bodies, creatures,
+        /// motes and the pot do not.
+        void StandFor(Biome born)
+        {
+            if (_standsFor != null && _standsFor != born) _standsFor.RemoveSource(this);
+            _standsFor = null;
+            if (born == null || Natural.Alive || _dead) return;
+            if (GetComponentInParent<SimpleFPSController>() != null || GetComponent<Creature>() != null
+                || GetComponentInParent<CauldronEconomy>() != null) return;
+            var r = GetComponentInChildren<Renderer>();
+            float radius = r != null ? r.bounds.extents.magnitude * 0.7f : 0.5f;
+            born.AddSource(this, radius);
+            _standsFor = born;
+        }
+
+        void StandDown()
+        {
+            if (_standsFor == null) return;
+            _standsFor.RemoveSource(this);
+            _standsFor = null;
+        }
+        public string BornName => _bornName;
+
+        /// The numbers the burn law compared, for the wound log: the body,
+        /// its home, the ground it stands on, spell places, and any much
+        /// hotter or colder thing within influence reach.
+        string TempReport(string cause)
+        {
+            if (cause != "burning" && cause != "freezing") return "";
+            var total = SpellLaw.Here(this, out var spell);
+            var here = SpellyMap.BiomeAt(transform.position);
+            var near = new System.Text.StringBuilder();
+            int n = Physics.OverlapSphereNonAlloc(transform.position, DrawingConfig.InfluenceReach,
+                GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = GrammarFX.ScanBuffer[i];
+                var o = c != null ? c.GetComponentInParent<Element>() : null;
+                if (o == null || o == this || Mathf.Abs(o.Data.Temp - Data.Temp) < 20f) continue;
+                near.Append(' ').Append(o.name).Append(' ').Append(o.Data.Temp.ToString("0")).Append('\u00B0');
+            }
+            return $" (body {Data.Temp:0}\u00B0, home {Natural.Temp:0}\u00B0 {_bornName}, ground {total.Temp - spell.Temp:0}\u00B0 "
+                + $"{(here != null ? here.name : "no biome")}, spell {spell.Temp:+0;-0}\u00B0"
+                + (near.Length > 0 ? ", near:" + near : "") + ")";
+        }
+
+        /// What this thing would naturally be if that ground had raised it:
+        /// every box holding the point, added - the same sum the ambient
+        /// reads (SpellLaw.Here), so home IS the ground you were born on.
+        SpellPayload NaturalOn(Vector3 at, Biome born)
+        {
             bool alive = Natural.Alive;      // an "is alive" patch survives
             float str = Natural.Strength;    // authored or controller-set
             var n = _authoredNat;
             n.Strength = str;
-
-            var born = SpellyMap.BiomeAt(at);
-            _groundless = born == null;
             if (born != null)
             {
-                var ground = born.Natural;
+                var ground = Biome.CompositeAt(at, out bool any, weighted: false);
+                if (!any) ground = born.Natural; // a point on a slab's edge still has its winner's ground
                 for (int i = 0; i < SpellPayload.AxisCount; i++)
                     n[i] = SpellPayload.TargetFor(i, n[i], n[i] + ground[i]);
                 if (born.StrengthCap > 0f)
                     n.Strength = Mathf.Min(n.Strength, born.StrengthCap);
             }
-
             if (alive)
             {
                 n.Int = Mathf.Max(n.Int, 1f);
                 n.Courage = Mathf.Max(n.Courage, 1f);
             }
             n.Temp += RoomTemp + (n.Int > 0f ? BodyWarmth : 0f);
+            return n;
+        }
+
+        SpellPayload _ownNatural;
+        bool _wearing;
+
+        /// An acolyte wearing an object takes the ground that raised it as
+        /// their own: at home wherever the object is at home. Strength and
+        /// what they are right now stay as they are.
+        public void WearGround(Vector3 homeAt, Biome home)
+        {
+            if (!_snapped || home == null) { ShedGround(); return; }
+            if (!_wearing) { _ownNatural = Natural; _wearing = true; }
+            var n = NaturalOn(homeAt, home);
+            n.Strength = Natural.Strength;
+            n.Courage = home.Natural.Courage; // courage follows the ground, so its level there is normal
             Natural = n;
-            Data = n;                        // born here, born full
+        }
+
+        /// Back in their own body: their own naturals return.
+        public void ShedGround()
+        {
+            if (!_wearing) return;
+            var n = _ownNatural;
+            n.Strength = Natural.Strength;
+            Natural = n;
+            _wearing = false;
         }
 
         void OnDestroy()
         {
             if (_byId.TryGetValue(NetId, out var d) && d == this) _byId.Remove(NetId);
             _live.Remove(this);
+            StandDown();
         }
 
         void OnEnable() { if (!_live.Contains(this)) _live.Add(this); }
@@ -337,6 +424,10 @@ namespace SpellyZombie
                     if (_ss == null || !_ss.IsShapedNow)
                         sideMul = DrawingConfig.AcolyteBodyScale;
                 }
+                // a friend's puppet: the same small body, the same true-size disguise
+                var puppet = GetComponent<NetAvatar>();
+                if (puppet != null && puppet.Acolyte && !puppet.Disguised)
+                    sideMul = DrawingConfig.AcolyteBodyScale;
             }
             // OVER THE TOP on purpose (his rule): the old factor moved a hit
             // player ~5% - invisible. Now a real hit visibly crushes or
@@ -344,7 +435,10 @@ namespace SpellyZombie
             // a fatter you, compress a thinner and slightly smaller you);
             // props keep the uniform balloon.
             bool shaped = GetComponent<SimpleFPSController>() != null
-                       || GetComponent<Creature>() != null;
+                       || GetComponent<Creature>() != null
+                       || GetComponent<NetAvatar>() != null
+                       || GetComponent<NetZombieProxy>() != null
+                       || GetComponent<NetGolemProxy>() != null;
             Vector3 target;
             if (shaped)
             {
@@ -390,6 +484,7 @@ namespace SpellyZombie
             if (bal < -0.12f && rb.linearVelocity.sqrMagnitude < 4f)
             {
                 rb.WakeUp();
+                TrackLoose(rb);
                 rb.AddForce(Quaternion.Euler(0f, (GetInstanceID() * 37) % 360, 0f)
                     * Vector3.forward * 1.4f, ForceMode.Acceleration);
             }
@@ -399,6 +494,7 @@ namespace SpellyZombie
             float tempDev = SpellPayload.ToHuman(0, Data.Temp - Natural.Temp);
             if (tempDev > 60f && Random.value < 0.12f)
             {
+                NetSync.TrackProp(rb); // the hop has to show on the clients too
                 rb.AddForce(Vector3.up * Random.Range(4f, 8f)
                     + Random.insideUnitSphere * 2f, ForceMode.VelocityChange);
                 rb.AddTorque(Random.onUnitSphere * 6f, ForceMode.VelocityChange);
@@ -527,7 +623,8 @@ namespace SpellyZombie
             // stack when several effects ride one body - PARTICLES are the
             // tell on the living. The goo layer is for objects only.
             if (GetComponentInParent<SimpleFPSController>() != null
-                || GetComponentInParent<Creature>() != null) return;
+                || GetComponentInParent<Creature>() != null
+                || GetComponentInParent<NetAvatar>() != null) return;
             bool wants = Mathf.Abs(press) > 0.2f || Mathf.Abs(bal) > 0.12f;
             if (!wants && !_tinted) return;
             if (GetComponentInChildren<StateView>() != null) return;
@@ -571,6 +668,15 @@ namespace SpellyZombie
         void AxisTellFx(float press, float bal)
         {
             if (Time.time < _nextAxisFx) return;
+            // the clients draw these from StateMsg themselves: nothing to ship
+            bool quiet = NetSync.FxQuiet;
+            NetSync.FxQuiet = true;
+            try { AxisTellFxNow(press, bal); }
+            finally { NetSync.FxQuiet = quiet; }
+        }
+
+        void AxisTellFxNow(float press, float bal)
+        {
             float aff = SpellPayload.ToHuman(5, Data.Affinity - Natural.Affinity) / 100f;
             float tmp = SpellPayload.ToHuman(0, Data.Temp - Natural.Temp);
             if (Mathf.Abs(bal) <= 0.12f && Mathf.Abs(press) <= 0.2f
@@ -682,9 +788,54 @@ namespace SpellyZombie
                 _view.StateT = SpellPayload.StateT01(Data.State);
             // a client draws the axes it was sent, the same look as the host
             // (the host already drew them on its beat)
-            if (!NetGame.IsAuthority)
-                LookAxes(SpellPayload.ToHuman(2, Data.Pressure - Natural.Pressure) / 100f,
-                         SpellPayload.ToHuman(3, Data.Balance - Natural.Balance) / 100f);
+            if (!NetGame.IsAuthority) RefreshLook();
+            ShowFlames();
+        }
+
+        /// The axes look from the numbers held right now. A puppet and a
+        /// client's own body never beat, so a side or disguise change that
+        /// moves the body size has to ask for it.
+        public void RefreshLook()
+        {
+            if (_dead) return;
+            LookAxes(SpellPayload.ToHuman(2, Data.Pressure - Natural.Pressure) / 100f,
+                     SpellPayload.ToHuman(3, Data.Balance - Natural.Balance) / 100f);
+        }
+
+        GameObject _flames;
+        bool _flameChecked, _flameWearer;
+
+        /// Anything burning wears flames, host and client alike, from the same
+        /// number. Things with their own flame system (Thermal, creatures,
+        /// bodies, matter, motes) keep it.
+        void ShowFlames()
+        {
+            if (!_flameChecked)
+            {
+                _flameChecked = true;
+                _flameWearer = GetComponent<Thermal>() == null && GetComponent<Matter>() == null
+                    && GetComponent<SpellParticle>() == null && GetComponent<SimpleFPSController>() == null
+                    && GetComponent<NetAvatar>() == null && GetComponentInParent<Creature>() == null;
+            }
+            if (!_flameWearer) return;
+            bool ablaze = Data.Temp > DrawingConfig.BurnThreshold;
+            if (ablaze && _flames == null)
+            {
+                var lib = FxLibrary.I;
+                if (lib == null || lib.Fire == null) return;
+                _flames = Instantiate(lib.Fire, transform);
+                _flames.name = "Flames";
+                _flames.transform.localPosition = Vector3.zero;
+                // undo the parent's scale so the flame keeps its authored size (Thermal's rule)
+                var ls = transform.lossyScale;
+                float inv = 1f / Mathf.Max(0.01f, Mathf.Max(ls.x, Mathf.Max(ls.y, ls.z)));
+                _flames.transform.localScale = Vector3.one * inv;
+            }
+            else if (!ablaze && _flames != null)
+            {
+                Destroy(_flames);
+                _flames = null;
+            }
         }
 
         /// A spell's positive Strength lands here: mends toward the same
@@ -844,7 +995,7 @@ namespace SpellyZombie
 
         /// The one object that answers to this id, or null.
         public static Element ById(int id) =>
-            _byId.TryGetValue(id, out var d) ? d : null;
+            _byId.TryGetValue(id, out var d) && d != null ? d : null;
 
         /// Stamp a spawned thing with the host's id, and re-file it.
         public void Rename(int id)
@@ -855,15 +1006,24 @@ namespace SpellyZombie
             _byId[id] = this;
         }
 
-        /// FNV-1a over the scene path. String.GetHashCode is not stable across
-        /// runtimes, and two machines disagreeing on an id is the whole bug.
-        static int PathId(Transform t)
+        /// A spawner that builds the same tree on every machine (the map, a
+        /// room, a chest) re-files its elements under their final paths, so a
+        /// hit or a health update finds the same object everywhere.
+        public static void Refile(Transform root)
         {
-            string path = t.name;
-            var up = t;
-            while (up.parent != null) { up = up.parent; path = up.name + "/" + path; }
-            return IdFor(path);
+            if (root == null || !Application.isPlaying) return;
+            foreach (var e in root.GetComponentsInChildren<Element>(true))
+            {
+                int id = PathId(e.transform);
+                if (e.NetId == 0) e.NetId = id; // not awake yet: Awake files it
+                else e.Rename(id);
+            }
         }
+
+        /// FNV-1a over the scene path (ScenePath tells same-named siblings
+        /// apart). String.GetHashCode is not stable across runtimes, and two
+        /// machines disagreeing on an id is the whole bug.
+        static int PathId(Transform t) => IdFor(ScenePath.Of(t));
 
         /// The same hash for anything that can name itself the same way on two
         /// machines - a scene path, or "player:3".
@@ -884,10 +1044,14 @@ namespace SpellyZombie
 
         /// 0 = carrying nothing but itself, 1 = at the point where it starts
         /// buckling. Views read this to show the strain before it kills.
+        /// A stand-in's burden as the host's snapshot carries it; below 0 = read the body.
+        [System.NonSerialized] public float BurdenOverride = -1f;
+
         public float Burden01
         {
             get
             {
+                if (BurdenOverride >= 0f) return Mathf.Clamp01(BurdenOverride);
                 if (_body == null || _body.isKinematic) return 0f;
                 float extra = Mathf.Max(0f, _body.mass - NaturalMass);
                 if (extra <= 0f) return 0f;
@@ -902,6 +1066,18 @@ namespace SpellyZombie
         // distinct key on purpose: "ImpactDamagePerSpeed" is the creature knob (Creature.cs)
         static readonly float ImpactScale = DrawingConfig.Overlay("PropImpactDamagePerSpeed", 2.2f);
 
+        /// A loose prop that just moved on the host moves on the clients too
+        /// (netcode §4). Bodies with their own snapshots are not props.
+        static void TrackLoose(Rigidbody rb)
+        {
+            if (rb == null || rb.isKinematic) return;
+            if (rb.GetComponentInParent<Creature>() != null
+                || rb.GetComponentInParent<SimpleFPSController>() != null
+                || rb.GetComponentInParent<NetAvatar>() != null
+                || rb.GetComponent<SpellParticle>() != null) return;
+            NetSync.TrackProp(rb);
+        }
+
         // ★ THE ENVIRONMENT REACTS (his rule): a spell-hit prop that survives
         // FLIES - launched tumbling into the distance, mass deciding how far.
         // A rooted thing SHAKES instead. Nothing eats a hit standing still.
@@ -909,6 +1085,7 @@ namespace SpellyZombie
         {
             if (_dead) return;
             if (GetComponent<SimpleFPSController>() != null) return; // pilots have TakeHit
+            if (GetComponent<NetAvatar>() != null) return;           // a puppet: the kick travels to its owner
             if (GetComponentInParent<Creature>() != null) return;    // creatures have their own hit acting
             var rb = GetComponent<Rigidbody>();
             if (rb != null && !rb.isKinematic)
@@ -917,6 +1094,7 @@ namespace SpellyZombie
                 dir = (dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.up)
                     + Vector3.up * 0.6f;
                 float fly = power * (2f + 10f / Mathf.Max(1f, rb.mass));
+                TrackLoose(rb);
                 rb.AddForce(dir.normalized * fly, ForceMode.VelocityChange);
                 rb.AddTorque(Random.onUnitSphere * fly * 2f, ForceMode.VelocityChange);
             }
@@ -956,6 +1134,10 @@ namespace SpellyZombie
             }
             float speed = col.relativeVelocity.magnitude;
             if (speed < ImpactFloor) return;
+
+            // a real knock (a kick, a blast, a thrown thing): both loose bodies go on the wire
+            TrackLoose(_body);
+            TrackLoose(col.rigidbody);
 
             // ★ DATA SPREADS ON IMPACT (his rule): two things colliding trade
             // a share of what rides them - a slicked crate slicks what it
@@ -1119,22 +1301,42 @@ namespace SpellyZombie
                 Marks.Set(NetId, Mark.KilledVia, viaMinion ? 1 : 0);
             }
             Apply(amount, cause);
-            NetSync.PushHealth(NetId, Health, MaxStrength, by, viaMinion);
+            NetSync.PushHealth(NetId, Health, MaxStrength, by, viaMinion, CauseCode(cause));
         }
+
+        /// The cause on the wire: 0 hit, 1 burning, 2 freezing, 3 anything else.
+        public static byte CauseCode(string cause)
+        {
+            if (cause == null) return 3;
+            if (cause.StartsWith("burning")) return 1;
+            if (cause.StartsWith("freezing")) return 2;
+            return cause == "hit" ? (byte)0 : (byte)3;
+        }
+
+        public static string CauseName(byte code) =>
+            code == 0 ? "hit" : code == 1 ? "burning" : code == 2 ? "freezing" : "magic";
 
         /// The host's answer, applied verbatim - no local arithmetic, so the
         /// number is the same everywhere by construction rather than by luck.
-        public void TakeNetHealth(float health, float max, int by = -1, bool viaMinion = false)
+        public void TakeNetHealth(float health, float max, int by = -1, bool viaMinion = false, byte cause = 3)
         {
             LastHitBy = by; LastHitViaMinion = by >= 0 && viaMinion;
             if (max > 0f) MaxStrength = max;
             float lost = Health - health;
             Health = health;
-            if (lost > 0f) OnDamaged?.Invoke(lost, "magic");
+            if (lost > 0f) OnDamaged?.Invoke(lost, CauseName(cause));
             if (Health > 0f || _dead) return;
             _dead = true;
-            OnDeath?.Invoke("magic");
-            if (RemoveOnDeath) Destroy(gameObject);
+            StandDown();
+            OnDeath?.Invoke(CauseName(cause));
+            if (!RemoveOnDeath) return;
+            // the host's lobby law, mirrored: authored props come back, the rest die for real
+            if (RoundDirector.InLobby && _authored
+                && GetComponent<Creature>() == null
+                && GetComponent<SimpleFPSController>() == null)
+                LobbyRespawn.Take(gameObject, DrawingConfig.LobbyRespawnSeconds);
+            else
+                Destroy(gameObject);
         }
 
         void Apply(float amount, string cause)
@@ -1144,12 +1346,13 @@ namespace SpellyZombie
             _logAccum += amount;
             if (_logAccum >= 30f)
             {
-                Debug.Log($"[SpellyZombie] {name}: {cause}, {Mathf.Max(0, Health):0} hp left");
+                Debug.Log($"[SpellyZombie] {name}: {cause}, {Mathf.Max(0, Health):0} hp left{TempReport(cause)}");
                 _logAccum = 0f;
             }
             if (Health <= 0f)
             {
                 _dead = true;
+            StandDown();
                 Debug.Log($"[SpellyZombie] {name} destroyed by {cause}");
                 OnDeath?.Invoke(cause);
                 if (!RemoveOnDeath) return;

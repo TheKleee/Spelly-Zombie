@@ -12,16 +12,13 @@ namespace SpellyZombie
     /// happens pre-match in the lobby, never in the menu.
     public class MainMenu : MonoBehaviour
     {
-        bool _settingsOpen;
-        float _sensitivity;
         string _status = "";
 
-        RectTransform _ui, _settingsUi;
+        RectTransform _ui;
         UnityEngine.UI.Text _statusLabel;
 
         void Awake()
         {
-            _sensitivity = PlayerPrefs.GetFloat("sz_look_sens", 0.12f);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
@@ -44,7 +41,7 @@ namespace SpellyZombie
             // title top-left, button column on the left - the Meccha layout
             var title = UIKit.Label(_ui, "Spelly Zombie", 58, UIKit.Parchment, TextAnchor.MiddleLeft, true);
             UIKit.Place((RectTransform)title.transform, new Vector2(0f, 1f), new Vector2(46f, -66f), new Vector2(700f, 80f));
-            var tag = UIKit.Label(_ui, "draw fast. die funny.", 20, UIKit.Gold, TextAnchor.MiddleLeft);
+            var tag = UIKit.Label(_ui, Loc.T("menu.tagline"), 20, UIKit.Gold, TextAnchor.MiddleLeft);
             UIKit.Place((RectTransform)tag.transform, new Vector2(0f, 1f), new Vector2(50f, -116f), new Vector2(500f, 26f));
 
             float y = -20f;
@@ -60,11 +57,9 @@ namespace SpellyZombie
             // menu needs exactly one verb
             MenuButton(Loc.T("menu.play"), () =>
             {
-                LoadEgg.Cover();
-                LoadingHints.Show();
-                SceneManager.LoadScene("Lobby");
+                LoadEgg.Travel("Lobby");
             });
-            MenuButton(Loc.T("menu.options"), ToggleSettings, skin != null ? skin.ButtonGrey : null);
+            MenuButton(Loc.T("menu.options"), GameMenu.OpenOptions, skin != null ? skin.ButtonGrey : null);
             MenuButton(Loc.T("menu.quit"), GameMenu.QuitGame, skin != null ? skin.ButtonRed : null);
 
             _statusLabel = UIKit.Label(_ui, _status, 15, UIKit.Parchment, TextAnchor.UpperLeft);
@@ -81,39 +76,6 @@ namespace SpellyZombie
 
         }
 
-        void ToggleSettings()
-        {
-            _settingsOpen = !_settingsOpen;
-            if (!_settingsOpen)
-            {
-                if (_settingsUi != null) Destroy(_settingsUi.gameObject);
-                _settingsUi = null;
-                return;
-            }
-
-            var skin = UISkin.I;
-            _settingsUi = UIKit.Group(_ui, "Settings");
-            UIKit.Place(_settingsUi, new Vector2(0f, 0.5f), new Vector2(330f, -20f), new Vector2(320f, 150f));
-            var back = UIKit.Panel(_settingsUi, skin != null ? skin.PanelBrown : null,
-                skin != null ? Color.white : new Color(0.22f, 0.17f, 0.12f, 0.95f));
-            UIKit.Stretch((RectTransform)back.transform);
-
-            var label = UIKit.Label(_settingsUi, $"Mouse sensitivity: {_sensitivity:0.00}",
-                16, UIKit.Ink, TextAnchor.MiddleLeft, true);
-            UIKit.Place((RectTransform)label.transform, new Vector2(0.5f, 1f), new Vector2(0f, -26f), new Vector2(270f, 22f));
-
-            var slider = UIKit.Slider(_settingsUi, 0.03f, 0.30f, _sensitivity, v =>
-            {
-                _sensitivity = v;
-                label.text = $"Mouse sensitivity: {_sensitivity:0.00}";
-                PlayerPrefs.SetFloat("sz_look_sens", _sensitivity);
-            });
-            UIKit.Place((RectTransform)slider.transform, new Vector2(0.5f, 1f), new Vector2(0f, -58f), new Vector2(270f, 26f));
-
-            var close = UIKit.Button(_settingsUi, "Close", ToggleSettings,
-                skin != null ? skin.ButtonGrey : null, 16);
-            UIKit.Place((RectTransform)close.transform, new Vector2(0.5f, 0f), new Vector2(0f, 24f), new Vector2(270f, 36f));
-        }
 
     }
 }

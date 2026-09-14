@@ -42,6 +42,8 @@ namespace SpellyZombie
         public static float LocalLevel { get; private set; }
         /// Owners this machine refuses to hear.
         public static readonly HashSet<int> Muted = new HashSet<int>();
+        /// Until this time the local mic sends nothing: a crate does not talk (the transformation ink).
+        public static float GagUntil;
 
         public enum MicMode { Open = 0, PushToTalk = 1, Off = 2 }
 
@@ -137,7 +139,7 @@ namespace SpellyZombie
                 || (mode == MicMode.PushToTalk && kb != null && kb.vKey.isPressed
                     && !GameMenu.IsOpen && !UIKit.Typing);
             if (want) _tailUntil = Time.time + 0.25f;
-            bool send = want || Time.time < _tailUntil;
+            bool send = (want || Time.time < _tailUntil) && Time.time >= GagUntil;
             LocalTalking = false;
 
             // everything the mic captured since last frame, in order

@@ -132,7 +132,7 @@ namespace SpellyZombie
             var pilot = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             bool floored = pilot != null
                 && (pilot.IsDowned || pilot.IsSprawled || pilot.IsAirTumbling);
-            if (kb.rKey.wasPressedThisFrame && !Powerups.IsChoosing && !floored)
+            if (kb.rKey.wasPressedThisFrame && !floored)
             {
                 DrawMode = !DrawMode;
                 if (DrawMode)
@@ -233,6 +233,7 @@ namespace SpellyZombie
                 _handLocalRot = transform.localRotation;
             }
             Juice.Chime(transform.position);
+            NetSync.PushInkFx(NetSync.InkFxChime, transform.position);
         }
 
         /// F puts it back into the world as a pickup, engraving intact.

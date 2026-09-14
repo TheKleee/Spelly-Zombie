@@ -124,12 +124,6 @@ namespace SpellyZombie
                 // a wizard down on the spot has not left; his bar just waits
                 NoteWizard(owner, av.transform, me, range, frame, av.Downed ? 0f : dt);
             }
-            foreach (var bot in BotPlayer.All)
-            {
-                if (bot == null || Sides.Of(BotPlayer.OwnerId) != Side.Wizard) continue;
-                NoteWizard(BotPlayer.OwnerId, bot.transform, me, range, frame, dt);
-            }
-
             // a spell of a nearby wizard appearing close while his bar is full
             // is the attack outcome
             CollectCasters(me, DrawingConfig.UnlockCastRange);
@@ -326,9 +320,7 @@ namespace SpellyZombie
             {
                 _potTouch += dt;
                 _potLastTouch = now;
-                float t = NetGame.IsAuthority ? pot.Greenness
-                    : Mathf.Clamp01(_potTouch / DrawingConfig.PotCorruptSeconds);
-                UnlockMark.Show(KeyPot, pot.transform, PotUp, t);
+                UnlockMark.Show(KeyPot, pot.transform, PotUp, pot.Greenness); // synced by PotMsg on clients
             }
             else if (_potTouch > 0f && now - _potLastTouch > DrawingConfig.UnlockPotLeaveDebounceSeconds)
             {

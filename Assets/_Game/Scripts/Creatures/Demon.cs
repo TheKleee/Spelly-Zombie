@@ -15,6 +15,9 @@ namespace SpellyZombie
         Renderer[] _skin;
         Rigidbody _rb;
 
+        /// A hot or bright form wears the additive shade; the zombie snapshot ships it.
+        public bool Glows => _glows;
+
         // grand demon: unkillable (expires only with time), summons random
         // calamities, feared by every zombie
         bool _grand;
@@ -103,17 +106,7 @@ namespace SpellyZombie
                 demon._rb.mass = demon._baseMass;
             }
 
-            // horns
-            for (int side = -1; side <= 1; side += 2)
-            {
-                var horn = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                horn.name = "Horn";
-                Destroy(horn.GetComponent<Collider>());
-                horn.transform.SetParent(z.transform, false);
-                horn.transform.localPosition = new Vector3(0.14f * side, 0.98f, 0f);
-                horn.transform.localRotation = Quaternion.Euler(0f, 0f, -28f * side);
-                horn.transform.localScale = new Vector3(0.07f, 0.3f, 0.07f);
-            }
+            AddHorns(z.transform);
             demon._skin = z.GetComponentsInChildren<Renderer>(); // horns included
 
             z.gameObject.AddComponent<ShadowFeral>(); // hates everyone equally
@@ -192,12 +185,31 @@ namespace SpellyZombie
             }
         }
 
+        /// The two horns; the zombie stand-ins grow the same pair.
+        public static void AddHorns(Transform body)
+        {
+            for (int side = -1; side <= 1; side += 2)
+            {
+                var horn = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                horn.name = "Horn";
+                Destroy(horn.GetComponent<Collider>());
+                horn.transform.SetParent(body, false);
+                horn.transform.localPosition = new Vector3(0.14f * side, 0.98f, 0f);
+                horn.transform.localRotation = Quaternion.Euler(0f, 0f, -28f * side);
+                horn.transform.localScale = new Vector3(0.07f, 0.3f, 0.07f);
+            }
+        }
+
         void Retint()
         {
             if (_skin == null) return;
             var mat = MatterFX.Get(_tint, _glows ? MoteShade.Additive : MoteShade.Opaque);
             foreach (var r in _skin)
                 if (r != null) r.sharedMaterial = mat;
+            // the same colour on the StateView, which is what the zombie snapshot ships
+            var view = GetComponent<StateView>() ?? gameObject.AddComponent<StateView>();
+            view.DriveTint = true;
+            view.Tint = _tint;
         }
 
         // ---------------------------------------------------------- rampage --

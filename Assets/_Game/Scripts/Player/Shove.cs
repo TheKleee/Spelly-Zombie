@@ -88,6 +88,25 @@ namespace SpellyZombie
                     cause, by, viaMinion);
             }
 
+            // friends' puppets (host only): the same falloff, shipped to the
+            // body that can move; the wound lands on the puppet's Element
+            if (NetGame.IsAuthority)
+                foreach (var av in NetAvatar.All)
+                {
+                    if (av == null || av.Downed) continue;
+                    Vector3 away = av.transform.position - at;
+                    away.y = 0f;
+                    float dist = away.magnitude;
+                    if (dist > radius) continue;
+                    if (away.sqrMagnitude < 0.01f) away = Random.insideUnitSphere;
+                    float t = 1f - Mathf.Clamp01(dist / Mathf.Max(0.1f, radius));
+                    int owner = NetSync.OwnerIdOf(av.Id);
+                    Vector3 impulse = away.normalized * power * t + Vector3.up * power * 0.3f * t;
+                    NetSync.SendKick(owner, impulse, false); // their own TakeHit decides the fall
+                    if (baseDamage > 0f && Sides.Of(owner) != Side.Acolyte)
+                        av.GetComponent<Element>()?.TakeDamage(baseDamage * t, cause, by, viaMinion);
+                }
+
             int n = Physics.OverlapSphereNonAlloc(at, radius, _blastHits,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < n; i++)

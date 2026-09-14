@@ -188,6 +188,9 @@ namespace SpellyZombie
         /// Record the point the host gave this owner.
         public static void TakeAssigned(int owner, Vector3 at) => _assigned[owner] = at;
 
+        /// The point this owner was handed, if any: a puppet built later is stamped there.
+        public static bool AssignedFor(int owner, out Vector3 at) => _assigned.TryGetValue(owner, out at);
+
         static bool TooClose(Vector3 at)
         {
             float elbow = DrawingConfig.SpawnApartMeters;

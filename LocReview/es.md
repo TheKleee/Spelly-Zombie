@@ -84,10 +84,8 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | stand.hostpublic | CREATE PUBLIC LOBBY | CREAR SALA PÚBLICA | CREATE PUBLIC ROOM | |
 | stand.pw | password (optional) | contraseña (opcional) | password (optional) | |
 | stand.code | entry code (optional) | código de entrada (opcional) | entry code (optional) | |
-| stand.botmatch | test match vs a bot | partida de prueba contra un bot | test match against a bot | |
 | stand.hint | walk away to close | aléjate para cerrar | move away to close | |
 | stand.map | change map | cambiar mapa | change map | |
-| stand.seed | seed | semilla | seed | |
 | stand.share | acolytes at least {0}% | acólitos al menos {0}% | acolytes at least {0}% | |
 | stand.setcode | set code | poner código | put code | |
 | stand.readycall | ready check | ¿listos? | ready? | |
@@ -160,3 +158,43 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | opt.on | On | Activado | activated |  |
 | opt.music | Music: {0}% | Música: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | Sonidos: {0}% | sounds: {0}% |  |
+| seal.norune | no rune here to seal. aim at one of your runes | aquí no hay runa que sellar. apunta a una de tus runas | here there is no rune to seal. aim at one of your runes |  |
+| seal.noink | not enough ink for the seal | no hay tinta suficiente para el sello | there is not enough ink for the seal |  |
+| rune.noink | not enough ink to finish the rune | no hay tinta suficiente para terminar la runa | there is not enough ink to finish the rune |  |
+| round.safe | THE LOBBY IS SAFE GROUND | LA SALA ES TERRENO SEGURO | the room is safe ground | sala = lobby, as in the rest of the file |
+| round.versus | WIZARDS vs ACOLYTES | MAGOS contra ACÓLITOS | wizards against acolytes |  |
+| round.wizards | WIZARDS WIN | GANAN LOS MAGOS | win the wizards | verb first, the Spanish headline order |
+| round.acolytes | ACOLYTES WIN | GANAN LOS ACÓLITOS | win the acolytes |  |
+| round.home | {0}. back to the lobby in {1} | {0}. vuelta a la sala en {1} | {0}. return to the room in {1} | {1} is seconds |
+| round.pot |  · pot {0}% |  · caldero {0}% | cauldron {0}% |  |
+| round.green |  · the pot is GREEN |  · el caldero está VERDE | the cauldron is GREEN |  |
+| gate.accepts | THE GATE ACCEPTS | LA PUERTA ACEPTA | the gate accepts |  |
+| net.hostleft | THE HOST LEFT | EL ANFITRIÓN SE HA IDO | the host has gone | anfitrión = host |
+| net.hosting | ● HOSTING, {0} player(s) | ● ANFITRIÓN, {0} jugador(es) | host, {0} player(s) |  |
+| net.connected | ● CONNECTED, {0} player(s) | ● CONECTADO, {0} jugador(es) | connected, {0} player(s) |  |
+| net.map | MAP: {0} | MAPA: {0} | map: {0} |  |
+| net.maplikes | MAP: {0} · ♥{1} | MAPA: {0} · ♥{1} | map: {0} · ♥{1} |  |
+| steam.offline | Steam not running, offline & LAN only | Steam no está abierto, solo sin conexión y LAN | Steam not is open, only without connection and LAN |  |
+| steam.ready | Steam ready: {0} | Steam listo: {0} | Steam ready: {0} | {0} is the Steam name |
+| steam.leavefirst | leave your lobby first | sal primero de tu sala | leave first from your room |  |
+| steam.ping | your ping to that host is {0}ms, lobby allows {1} | tu ping con ese anfitrión es {0} ms, la sala permite {1} | your ping with that host is {0} ms, the room allows {1} |  |
+| steam.joining | joining… | entrando… | entering… |  |
+| steam.deleted | lobby deleted | sala borrada | room deleted |  |
+| steam.notrunning | Steam not running | Steam no está abierto | Steam not is open |  |
+| steam.creating | creating lobby… | creando la sala… | creating the room… |  |
+| steam.failed | lobby failed: {0} | la sala ha fallado: {0} | the room has failed: {0} | {0} is a Steam error code |
+| steam.noenter | couldn't enter the lobby | no se pudo entrar en la sala | not could enter in the room |  |
+| steam.nohost | lobby has no host, try again | la sala no tiene anfitrión, prueba otra vez | the room not has host, try another time |  |
+| steam.connecting | joined, connecting… | dentro, conectando… | inside, connecting… |  |
+| steam.private | PRIVATE LOBBY, invite friends | SALA PRIVADA, invita a tus amigos | private room, invite your friends |  |
+| steam.public | PUBLIC LOBBY, listed | SALA PÚBLICA, en la lista | public room, in the list |  |
+| menu.tagline | draw fast. die funny. | dibuja rápido. muere con gracia. | draw fast. die with grace. | con gracia = funnily, the natural Spanish |
+| menu.close | Close | Cerrar | close |  |
+| chip.pages | turn the pages | pasar páginas | turn pages | the mouse wheel turns the grimoire pages |
+| round.potopens |  · pot opens in {0} |  · el caldero abre en {0} | the cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · ink in flight {0} |  · tinta en vuelo {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| stand.lanhost | LAN host | crear LAN | create LAN | book stand, the LAN row: host over the local network |
+| stand.lanjoin | LAN join | unirse LAN | join LAN | book stand, the LAN row: join the address in the field |
+| opt.uiscale | UI size: {0}% | Tamaño de la interfaz: {0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
+| stand.nocap | no cap | sin límite | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | your connection carries everyone | tu conexión carga con todos | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |

@@ -130,7 +130,7 @@ namespace SpellyZombie
             var center = _col != null ? _col.bounds.center : transform.position;
             Juice.Boom(center, 0.7f);
             Juice.Shake(0.35f);
-            ComboBanner.Show("THE GATE ACCEPTS", new Color(1f, 0.7f, 0.3f));
+            ComboBanner.Show(Loc.T("gate.accepts"), new Color(1f, 0.7f, 0.3f));
             StartCoroutine(Sink());
         }
 

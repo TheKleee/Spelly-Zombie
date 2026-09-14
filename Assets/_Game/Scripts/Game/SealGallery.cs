@@ -25,12 +25,7 @@ namespace SpellyZombie
         public static void Capture(Seal seal, string comboName)
         {
             // gather boundary + payload points, projected into the seal plane
-            Vector3 n = seal.PlaneNormal;
-            Vector3 right = Vector3.ProjectOnPlane(
-                Camera.main != null ? Camera.main.transform.right : Vector3.right, n);
-            if (right.sqrMagnitude < 1e-4f) right = Vector3.ProjectOnPlane(Vector3.forward, n);
-            right.Normalize();
-            Vector3 up = Vector3.Cross(right, n).normalized;
+            PlaneAxes(seal.PlaneNormal, out var right, out var up);
             Vector3 origin = seal.PlaneOrigin;
 
             var boundary = new List<List<Vector2>>();
@@ -46,6 +41,59 @@ namespace SpellyZombie
                     runes.Add(ProjectStroke(m, origin, right, up));
             }
 
+            Add(boundary, runes, comboName, recognized, fizzles);
+        }
+
+        /// A seal that closed on another machine, from this machine's copies of
+        /// its ink (SealLookMsg): boundary centroid and averaged node normal
+        /// stand in for the seal plane; `read` = 1 per payload stroke read as a rune.
+        public static void CaptureCopy(List<Stroke> boundaryStrokes, List<Stroke> payload, List<byte> read)
+        {
+            Vector3 origin = Vector3.zero, n = Vector3.zero;
+            int count = 0;
+            foreach (var s in boundaryStrokes)
+            {
+                if (s == null) continue;
+                foreach (var node in s.Nodes)
+                {
+                    if (node == null) continue;
+                    origin += node.transform.position;
+                    n += node.SurfaceNormal;
+                    count++;
+                }
+            }
+            if (count == 0) return;
+            origin /= count;
+            n = n.sqrMagnitude > 1e-6f ? n.normalized : Vector3.up;
+            PlaneAxes(n, out var right, out var up);
+
+            var boundary = new List<List<Vector2>>();
+            foreach (var s in boundaryStrokes)
+                boundary.Add(ProjectStroke(s, origin, right, up));
+
+            var runes = new List<List<Vector2>>();
+            int recognized = 0, fizzles = 0;
+            for (int i = 0; i < payload.Count; i++)
+            {
+                if (i < read.Count && read[i] == 1) recognized++; else fizzles++;
+                runes.Add(ProjectStroke(payload[i], origin, right, up));
+            }
+
+            Add(boundary, runes, null, recognized, fizzles);
+        }
+
+        static void PlaneAxes(Vector3 n, out Vector3 right, out Vector3 up)
+        {
+            right = Vector3.ProjectOnPlane(
+                Camera.main != null ? Camera.main.transform.right : Vector3.right, n);
+            if (right.sqrMagnitude < 1e-4f) right = Vector3.ProjectOnPlane(Vector3.forward, n);
+            right.Normalize();
+            up = Vector3.Cross(right, n).normalized;
+        }
+
+        static void Add(List<List<Vector2>> boundary, List<List<Vector2>> runes, string comboName,
+            int recognized, int fizzles)
+        {
             // degenerate (no points): skip
             Vector2 min = new Vector2(float.MaxValue, float.MaxValue);
             Vector2 max = new Vector2(float.MinValue, float.MinValue);

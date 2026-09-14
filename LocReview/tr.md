@@ -85,10 +85,8 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | stand.hostpublic | CREATE PUBLIC LOBBY | AÇIK LOBİ KUR | OPEN LOBBY SET UP | |
 | stand.pw | password (optional) | şifre (isteğe bağlı) | password (optional) | |
 | stand.code | entry code (optional) | giriş kodu (isteğe bağlı) | entry code (optional) | |
-| stand.botmatch | test match vs a bot | bota karşı deneme maçı | against a bot, trial match | |
 | stand.hint | walk away to close | kapatmak için uzaklaş | to close, move away | |
 | stand.map | change map | haritayı değiştir | the map, change | |
-| stand.seed | seed | tohum | seed | |
 | stand.share | acolytes at least {0}% | en az %{0} mürit | at least %{0} disciples | mürit = disciple, follower; a native word kids know, "akolit" is not Turkish |
 | stand.setcode | set code | kod belirle | code set | |
 | stand.readycall | ready check | hazır mısınız? | are you all ready? | |
@@ -161,3 +159,43 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | opt.on | On | Açık | open |  |
 | opt.music | Music: {0}% | Müzik: %{0} | music: %{0} | percent sign before the number |
 | opt.sfx | Sounds: {0}% | Sesler: %{0} | sounds: %{0} | percent sign before the number |
+| seal.norune | no rune here to seal. aim at one of your runes | burada mühürlenecek rün yok. kendi rünlerinden birine nişan al | here there is no rune to be sealed. take aim at one of your own runes |  |
+| seal.noink | not enough ink for the seal | mühür için mürekkep yetmiyor | for the seal the ink does not suffice |  |
+| rune.noink | not enough ink to finish the rune | rünü bitirmek için mürekkep yetmiyor | to finish the rune the ink does not suffice |  |
+| round.safe | THE LOBBY IS SAFE GROUND | LOBİ GÜVENLİ BÖLGE | lobby safe zone |  |
+| round.versus | WIZARDS vs ACOLYTES | BÜYÜCÜLER MÜRİTLERE KARŞI | wizards against acolytes | mürit = acolyte, as in the rest of the file |
+| round.wizards | WIZARDS WIN | BÜYÜCÜLER KAZANDI | wizards won |  |
+| round.acolytes | ACOLYTES WIN | MÜRİTLER KAZANDI | acolytes won |  |
+| round.home | {0}. back to the lobby in {1} | {0}. {1} sonra lobiye dönüş | {0}. {1} later return to lobby | {1} is seconds |
+| round.pot |  · pot {0}% |  · kazan %{0} | cauldron %{0} | percent sign before the number, Turkish order |
+| round.green |  · the pot is GREEN |  · kazan YEŞİL | cauldron GREEN |  |
+| gate.accepts | THE GATE ACCEPTS | KAPI KABUL ETTİ | gate accepted |  |
+| net.hostleft | THE HOST LEFT | HOST GİTTİ | host went | host is the word Turkish players use |
+| net.hosting | ● HOSTING, {0} player(s) | ● HOST SENSİN, {0} oyuncu | host is you, {0} player | Turkish needs no plural after a number |
+| net.connected | ● CONNECTED, {0} player(s) | ● BAĞLANDIN, {0} oyuncu | you connected, {0} player |  |
+| net.map | MAP: {0} | HARİTA: {0} | map: {0} |  |
+| net.maplikes | MAP: {0} · ♥{1} | HARİTA: {0} · ♥{1} | map: {0} · ♥{1} |  |
+| steam.offline | Steam not running, offline & LAN only | Steam açık değil, sadece çevrimdışı ve LAN | Steam open not, only offline and LAN |  |
+| steam.ready | Steam ready: {0} | Steam hazır: {0} | Steam ready: {0} | {0} is the Steam name |
+| steam.leavefirst | leave your lobby first | önce kendi lobinden ayrıl | first from own lobby leave |  |
+| steam.ping | your ping to that host is {0}ms, lobby allows {1} | o hosta pingin {0} ms, lobi izni {1} | to that host your ping {0} ms, lobby permission {1} |  |
+| steam.joining | joining… | giriliyor… | being entered… |  |
+| steam.deleted | lobby deleted | lobi silindi | lobby deleted |  |
+| steam.notrunning | Steam not running | Steam açık değil | Steam open not |  |
+| steam.creating | creating lobby… | lobi kuruluyor… | lobby being set up… |  |
+| steam.failed | lobby failed: {0} | lobi kurulamadı: {0} | lobby could not be set up: {0} | {0} is a Steam error code |
+| steam.noenter | couldn't enter the lobby | lobiye girilemedi | into lobby could not be entered |  |
+| steam.nohost | lobby has no host, try again | lobinin hostu yok, bir daha dene | lobby's host there is none, once more try |  |
+| steam.connecting | joined, connecting… | girdin, bağlanıyor… | you entered, connecting… |  |
+| steam.private | PRIVATE LOBBY, invite friends | ÖZEL LOBİ, arkadaşlarını çağır | private lobby, call your friends |  |
+| steam.public | PUBLIC LOBBY, listed | AÇIK LOBİ, listede | open lobby, in the list |  |
+| menu.tagline | draw fast. die funny. | hızlı çiz. komik öl. | fast draw. funny die. |  |
+| menu.close | Close | Kapat | close |  |
+| chip.pages | turn the pages | sayfaları çevir | the pages turn | the mouse wheel turns the grimoire pages |
+| round.potopens |  · pot opens in {0} |  · kazan {0} içinde açılır | cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · ink in flight {0} |  · mürekkep uçuşta {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| stand.lanhost | LAN host | LAN kur | set up LAN | book stand, the LAN row: host over the local network |
+| stand.lanjoin | LAN join | LAN'a katıl | join LAN | book stand, the LAN row: join the address in the field |
+| opt.uiscale | UI size: {0}% | Arayüz boyutu: %{0} | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
+| stand.nocap | no cap | sınırsız | unlimited | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | your connection carries everyone | bağlantın herkesi taşır | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |
