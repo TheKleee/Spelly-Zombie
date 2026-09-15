@@ -191,6 +191,11 @@
     {"key": "stand.lanjoin", "value": "rejoindre en LAN"},
     {"key": "opt.uiscale", "value": "Taille de l'interface : {0}%"},
     {"key": "stand.nocap", "value": "sans limite"},
-    {"key": "stand.heavy", "value": "ta connexion porte tout le monde"}
+    {"key": "stand.heavy", "value": "ta connexion porte tout le monde"},
+    {"key": "menu.quit.game", "value": "Quitter le jeu ?"},
+    {"key": "menu.quit.lobby", "value": "Quitter le salon et revenir au menu principal ?"},
+    {"key": "menu.quit.match", "value": "Quitter la partie ? Tu te retrouves dans un salon vide."},
+    {"key": "menu.quit.host", "value": "Tu es l'hôte. Tous les autres rentrent aussi chez eux."},
+    {"key": "menu.cancel", "value": "Annuler"}
   ]
 }

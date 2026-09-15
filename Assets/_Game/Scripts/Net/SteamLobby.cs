@@ -239,6 +239,19 @@ namespace SpellyZombie
             Status = Loc.T("steam.deleted");
         }
 
+        /// A guest walks out: off the Steam lobby and the connection, quietly.
+        public static void LeaveJoined()
+        {
+            if (I != null && I._lobby.IsValid())
+            {
+                SteamMatchmaking.LeaveLobby(I._lobby);
+                I._lobby = default;
+            }
+            if (InstanceFinder.ClientManager != null && InstanceFinder.ClientManager.Started)
+                InstanceFinder.ClientManager.StopConnection();
+            Status = "";
+        }
+
         /// Steam's own invite dialog for the current lobby (host presses this).
         public static void OpenInviteOverlay()
         {

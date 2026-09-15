@@ -165,6 +165,48 @@ namespace SpellyZombie
 
         bool Blocked(Vector3 eye, Vector3 at) => BlockedFor(eye, transform, at);
 
+        static readonly RaycastHit[] _hits = new RaycastHit[16];
+
+        /// Just past the back of the thing nearest the body on the line from
+        /// the eye to this point, along the lens; 0 when nothing is in the way.
+        float OccluderBack(Vector3 eye, Vector3 at, Vector3 fwd)
+        {
+            Vector3 d = eye - at;
+            float len = d.magnitude;
+            if (len < 0.01f) return 0f;
+            int n = Physics.RaycastNonAlloc(at, d / len, _hits, len, ~0, QueryTriggerInteraction.Ignore);
+            float nearest = float.MaxValue, back = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                var h = _hits[i];
+                if (h.transform.IsChildOf(transform) || h.distance >= nearest) continue;
+                nearest = h.distance;
+                back = Vector3.Dot(h.point - eye, fwd) + 0.02f;
+            }
+            return back;
+        }
+
+        /// Just past the front face of the last collider between the eye and
+        /// this point, along the lens; 0 when nothing is in the way. Anything
+        /// whose front lies beyond the body's nearest point is in front of the
+        /// body's visible part, not hiding it, and is left alone.
+        float LastOccluderFront(Vector3 eye, Vector3 at, Vector3 fwd, float bodyNearest)
+        {
+            Vector3 d = at - eye;
+            float len = d.magnitude;
+            if (len < 0.01f) return 0f;
+            int n = Physics.RaycastNonAlloc(eye, d / len, _hits, len, ~0, QueryTriggerInteraction.Ignore);
+            float best = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                var h = _hits[i];
+                if (h.transform.IsChildOf(transform)) continue;
+                float front = Vector3.Dot(h.point - eye, fwd);
+                if (front < bodyNearest) best = Mathf.Max(best, front + 0.02f);
+            }
+            return best;
+        }
+
         void LateUpdate()
         {
             if (_main == null)
@@ -202,7 +244,15 @@ namespace SpellyZombie
                 hi = Vector2.Max(hi, vp);
                 seen++;
             }
-            float near = axialMin - NearGap;
+            // ...and always past the front face of the last thing hiding it: a
+            // prop flush behind a thin wall, or poking into one, kept the wall
+            // inside that gap. Never into the body's own visible front.
+            float cut = Mathf.Max(
+                Mathf.Max(LastOccluderFront(eye, mid, fwd, axialMin), LastOccluderFront(eye, head, fwd, axialMin)),
+                Mathf.Max(OccluderBack(eye, mid, fwd), OccluderBack(eye, head, fwd)));
+            // the cut clears what hides the body and stops there: running it to
+            // the body cut the ground in front of a far corpse away too
+            float near = cut > 0f ? Mathf.Min(cut, axialMin) : axialMin - NearGap;
             // right on top of the body there is nothing to cut away
             if (seen == 0 || near < _main.nearClipPlane + 0.1f) { Off(); return; }
 
@@ -214,9 +264,11 @@ namespace SpellyZombie
             _cam.cullingMask = _main.cullingMask & ~(1 << 5); // never the UI
             _cam.nearClipPlane = near;
             _cam.farClipPlane = _main.farClipPlane;
-            // the window must only differ where something was cut away, so
-            // empty regions show the same sky the scene shows, never black
-            _cam.clearFlags = CameraClearFlags.Skybox;
+            // the window must only differ where something was cut away: what
+            // the reveal leaves empty is see-through (the circle shader reads
+            // its alpha), so the main view shows there, never a hole of sky
+            _cam.clearFlags = CameraClearFlags.SolidColor;
+            _cam.backgroundColor = new Color(0.55f, 0.75f, 0.95f, 0f);
 
             // at least a hand's width around the body, never most of the screen
             Vector3 vpMid = _main.WorldToViewportPoint(mid);

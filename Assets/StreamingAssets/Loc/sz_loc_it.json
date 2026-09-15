@@ -191,6 +191,11 @@
     {"key": "stand.lanjoin", "value": "entra in LAN"},
     {"key": "opt.uiscale", "value": "Dimensione interfaccia: {0}%"},
     {"key": "stand.nocap", "value": "senza limite"},
-    {"key": "stand.heavy", "value": "la tua connessione regge tutti"}
+    {"key": "stand.heavy", "value": "la tua connessione regge tutti"},
+    {"key": "menu.quit.game", "value": "Uscire dal gioco?"},
+    {"key": "menu.quit.lobby", "value": "Tornare al menu principale?"},
+    {"key": "menu.quit.match", "value": "Lasciare la partita? Finisci in una stanza vuota."},
+    {"key": "menu.quit.host", "value": "Sei l'host. Anche tutti gli altri tornano a casa."},
+    {"key": "menu.cancel", "value": "Annulla"}
   ]
 }

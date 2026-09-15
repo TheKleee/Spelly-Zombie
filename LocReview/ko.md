@@ -198,3 +198,8 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | opt.uiscale | UI size: {0}% | UI 크기: {0}% | UI size: {0}% | options, game tab: the slider that scales every panel and chip |
 | stand.nocap | no cap | 제한 없음 | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
 | stand.heavy | your connection carries everyone | 모두의 연결을 당신이 감당합니다 | you carry everyone's connection | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| menu.quit.game | Quit the game? | 게임을 종료할까? | shall I quit the game? | the Quit check on the main menu: Quit closes the game |
+| menu.quit.lobby | Back to the main menu? | 메인 메뉴로 돌아갈까? | shall I go back to the main menu? | the Quit check in the lobby: Quit goes to the main menu |
+| menu.quit.match | Leave the match for an empty lobby? | 매치에서 나가서 텅 빈 내 로비로 갈까? | from the match go out and, to my totally empty lobby, shall I go? | the Quit check on a map: Quit leaves the match for your own empty lobby |
+| menu.quit.host | You are the host. Everyone else goes home too. | 네가 호스트야. 다른 사람들도 다 집에 가게 돼. | you are the host. the others all end up going home too. | under the Quit check when you host other players: they are sent back to their own lobby |
+| menu.cancel | Cancel | 취소 | cancel | the grey button of the Quit check. Cancel, not Back: under 'Back to the main menu?' a Back button read like the yes |

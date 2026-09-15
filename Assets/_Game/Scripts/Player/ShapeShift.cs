@@ -115,32 +115,50 @@ namespace SpellyZombie
         /// nothing that acts. The local disguise and a remote one both use it.
         public static GameObject CloneShape(Transform source, Transform parent)
         {
-            var worn = Instantiate(source.gameObject, parent);
+            // copied under a switched-off holder and stripped at once, so no
+            // script on the copy ever wakes: one that ran even for a frame (the
+            // cauldron spawning its bowl collider) left things the strip never reached
+            var hold = new GameObject("CloneHold");
+            hold.SetActive(false);
+            var worn = Instantiate(source.gameObject, hold.transform, false);
             worn.name = "WornShape";
+            Strip(worn);
+            worn.transform.SetParent(parent, false);
+            Destroy(hold);
+            return worn;
+        }
 
-            // strip lights. UniversalAdditionalLightData depends on Light, so
-            // destroy the rider first or Unity refuses
+        static readonly List<Component> _strip = new List<Component>();
+
+        /// Everything that acts goes. Renderers, meshes and particles stay, and
+        /// the look driver too - without it a StateView-painted thing (absorbable
+        /// motes included) wears back to bare white and the disguise gives itself
+        /// away; Instantiate froze its values at scan time, which is exactly what
+        /// a disguise should show.
+        static void Strip(GameObject worn)
+        {
+            // UniversalAdditionalLightData depends on Light: the rider goes first
             foreach (var l in worn.GetComponentsInChildren<Light>(true))
             {
                 var rider = l.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>();
-                if (rider != null) Destroy(rider);
-                Destroy(l);
+                if (rider != null) DestroyImmediate(rider);
+                DestroyImmediate(l);
             }
-
-            foreach (var c in worn.GetComponentsInChildren<Component>(true))
+            // what depends on something goes before it: scripts, joints, colliders, bodies, the rest
+            for (int pass = 0; pass < 5; pass++)
             {
-                if (c is Transform || c is Renderer || c is MeshFilter) continue;
-                if (c is Light) continue; // handled above, in dependency order
-                if (c is UnityEngine.Rendering.Universal.UniversalAdditionalLightData) continue;
-                // the look driver stays - without it a StateView-painted thing
-                // (absorbable motes included) wears back to bare white and the
-                // disguise gives itself away. Instantiate froze its values at
-                // scan time, which is exactly what a disguise should show.
-                if (c is StateView) continue;
-                Destroy(c);
+                _strip.Clear();
+                worn.GetComponentsInChildren(true, _strip);
+                foreach (var c in _strip)
+                    if (c != null && !Keeps(c) && StripPass(c) == pass) DestroyImmediate(c);
             }
-            return worn;
         }
+
+        static bool Keeps(Component c) => c is Transform || c is Renderer || c is MeshFilter
+            || c is ParticleSystem || c is StateView;
+
+        static int StripPass(Component c) => c is MonoBehaviour ? 0 : c is Joint ? 1
+            : c is Collider ? 2 : c is Rigidbody ? 3 : 4;
         Quaternion _wornRot = Quaternion.identity; // WORLD rotation - a barrel must not spin when you strafe
         readonly Quaternion[] _slots = new Quaternion[10];
         readonly bool[] _slotUsed = new bool[10];

@@ -81,6 +81,7 @@ namespace SpellyZombie
         WeaponSlots _slots;
         EmotePlayer _emotes;
         Animator _anim;
+        HandIK _ik;
         Transform _clavL, _clavR;
         Quaternion _clavLRest, _clavRRest, _armLRest, _armRRest;
         Quaternion _armLWritten, _armRWritten; // what WE last wrote - held poses must not re-redistribute
@@ -356,6 +357,8 @@ namespace SpellyZombie
                 if (ik == null) ik = model.AddComponent<HandIK>(); // rebuilds reuse, never stack
                 ik.Slots = _slots;
                 ik.Pivot = _pilot.CameraPivot; // pen/grimoire hands hang off the view
+                ik.RestCaptured = _propsBuilt; // rest is read in the first LateUpdate: the IK waits for it
+                _ik = ik;
             }
             else
             {
@@ -910,6 +913,7 @@ namespace SpellyZombie
                     // load - re-read rest here (post-animator) or body paint
                     // relaxes into a T-pose
                     GetComponent<EmoteRig>()?.CaptureRest();
+                    if (_ik != null) _ik.RestCaptured = true;
                     _teamShown = MatchLobby.LocalTeam;
                     _costume = Wardrobe.DressPlayer(_sockets, TeamColor(_teamShown), null);
                     // the wardrobe's hat arrives unpainted: the pillar colour goes on now

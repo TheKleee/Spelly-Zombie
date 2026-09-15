@@ -191,6 +191,11 @@
     {"key": "stand.lanjoin", "value": "LAN'a katıl"},
     {"key": "opt.uiscale", "value": "Arayüz boyutu: %{0}"},
     {"key": "stand.nocap", "value": "sınırsız"},
-    {"key": "stand.heavy", "value": "bağlantın herkesi taşır"}
+    {"key": "stand.heavy", "value": "bağlantın herkesi taşır"},
+    {"key": "menu.quit.game", "value": "Oyundan çıkıyor musun?"},
+    {"key": "menu.quit.lobby", "value": "Ana menüye dönüyor musun?"},
+    {"key": "menu.quit.match", "value": "Maçtan çıkıyor musun? Kendi boş lobine düşersin."},
+    {"key": "menu.quit.host", "value": "Host sensin. Diğer herkes de eve döner."},
+    {"key": "menu.cancel", "value": "Vazgeç"}
   ]
 }

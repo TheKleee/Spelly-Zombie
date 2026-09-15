@@ -200,3 +200,8 @@ lines lose their emphasis on purpose.
 | opt.uiscale | UI size: {0}% | UIサイズ: {0}% | UI size: {0}% | options, game tab: the slider that scales every panel and chip |
 | stand.nocap | no cap | 上限なし | no upper limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
 | stand.heavy | your connection carries everyone | 全員の通信をあなたが担います | you carry everyone's connection | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| menu.quit.game | Quit the game? | ゲームをやめる？ | quit the game? | the Quit check on the main menu: Quit closes the game |
+| menu.quit.lobby | Back to the main menu? | ここでやめて、メインメニューへ？ | here quit, and to the main menu? | the Quit check in the lobby: Quit goes to the main menu. Uses the red button's verb, so the red button reads as the yes |
+| menu.quit.match | Leave the match for an empty lobby? | マッチをやめて、からっぽのロビーへ？ | the match quit, and to the empty lobby? | the Quit check on a map: Quit leaves the match for your own empty lobby |
+| menu.quit.host | You are the host. Everyone else goes home too. | あなたがホストだ。ほかのみんなも帰ることになる。 | you are the host. everyone else ends up going home too. | under the Quit check when you host other players: they are sent back to their own lobby |
+| menu.cancel | Cancel | キャンセル | cancel | the grey button of the Quit check. Cancel, not Back: under 'Back to the main menu?' a Back button read like the yes |

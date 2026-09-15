@@ -198,3 +198,8 @@ lobby.
 | opt.uiscale | UI size: {0}% | Dimensione interfaccia: {0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
 | stand.nocap | no cap | senza limite | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
 | stand.heavy | your connection carries everyone | la tua connessione regge tutti | your connection holds everyone up | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| menu.quit.game | Quit the game? | Uscire dal gioco? | exit from the game? | the Quit check on the main menu: Quit closes the game |
+| menu.quit.lobby | Back to the main menu? | Tornare al menu principale? | go back to the main menu? | the Quit check in the lobby: Quit goes to the main menu |
+| menu.quit.match | Leave the match for an empty lobby? | Lasciare la partita? Finisci in una stanza vuota. | leave the match? you end up in an empty room. | the Quit check on a map: Quit leaves the match for your own empty lobby |
+| menu.quit.host | You are the host. Everyone else goes home too. | Sei l'host. Anche tutti gli altri tornano a casa. | you are the host. all the others go home too. | under the Quit check when you host other players: they are sent back to their own lobby |
+| menu.cancel | Cancel | Annulla | cancel | the grey button of the Quit check. Cancel, not Back: under 'Back to the main menu?' a Back button read like the yes |

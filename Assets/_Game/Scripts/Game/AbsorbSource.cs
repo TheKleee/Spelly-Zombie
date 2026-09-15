@@ -56,7 +56,7 @@ namespace SpellyZombie
                 if (vals[ax] != 0) yield return RuneFor(ax, vals[ax]);
         }
 
-        [Tooltip("ON: a training element — absorb it forever, it never vanishes. OFF: one absorb consumes the object (the wizard trail).")]
+        [Tooltip("ON: in the lobby the mote regrows after RegrowSeconds; on a map one absorb spends the source for good. OFF: one absorb destroys the object (the wizard trail).")]
         public bool Infinite = true;
 
         [Tooltip("How close the wizard must stand for the absorb to work, meters.")]
@@ -66,17 +66,69 @@ namespace SpellyZombie
         [Tooltip("The visible glowing part (blob + light + trail) that flies to the winner's book. Empty = an invisible legacy source, data only.")]
         public Transform Mote;
 
-        [Tooltip("Seconds after a mote is taken before this source grows a new one for the next wizard.")]
+        [Tooltip("LOBBY ONLY: seconds after a mote is taken before this source grows a new one. On a map a taken source stays spent.")]
         public float RegrowSeconds = 8f;
 
         /// Whether there is a mote to take right now. Legacy sources with no
-        /// mote are always ready.
-        public bool Ready => Mote == null || Mote.gameObject.activeSelf;
+        /// mote are ready until a map absorb spends them.
+        public bool Ready => !_spent && (Mote == null || Mote.gameObject.activeSelf);
+
+        bool _spent;
+        static bool InLobby => ActiveScene.Name == "Lobby";
 
         static readonly System.Collections.Generic.List<AbsorbSource> _all =
             new System.Collections.Generic.List<AbsorbSource>();
-        void OnEnable() { _all.Add(this); }
+        void OnEnable()
+        {
+            _all.Add(this);
+            // a rider revealed after the host's list of taken sources arrived
+            for (int i = _takenEarlier.Count - 1; i >= 0; i--)
+                if ((transform.position - _takenEarlier[i]).sqrMagnitude < 2.25f)
+                {
+                    _takenEarlier.RemoveAt(i);
+                    TakeQuiet();
+                }
+        }
         void OnDisable() { _all.Remove(this); }
+
+        // this map's taken sources: the host replays them to a joiner, who
+        // holds the ones not revealed yet until they switch on
+        static readonly System.Collections.Generic.List<Vector3> _taken =
+            new System.Collections.Generic.List<Vector3>();
+        static readonly System.Collections.Generic.List<Vector3> _takenEarlier =
+            new System.Collections.Generic.List<Vector3>();
+        public static System.Collections.Generic.IReadOnlyList<Vector3> TakenOnThisMap => _taken;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void HookScenes() => UnityEngine.SceneManagement.SceneManager.activeSceneChanged +=
+            (_, __) => { _taken.Clear(); _takenEarlier.Clear(); };
+
+        /// The host says this source was taken before we arrived.
+        public static void TakenBeforeJoin(Vector3 at)
+        {
+            var s = Near(at);
+            if (s == null) { _takenEarlier.Add(at); return; }
+            if (!s._spent) s.TakeQuiet();
+        }
+
+        /// Gone without a flight or a chime: it was taken before this machine came.
+        void TakeQuiet()
+        {
+            if (Mote != null) Mote.gameObject.SetActive(false);
+            MarkTaken();
+        }
+
+        /// On a map a taken source stays taken - finding them is the game. The
+        /// lobby is the training yard, where motes regrow.
+        void MarkTaken()
+        {
+            if (!InLobby)
+            {
+                _spent = true;
+                _taken.Add(transform.position);
+            }
+            if (!Infinite) Destroy(gameObject, 0.1f);
+        }
 
         /// The source nearest a broadcast point - authored positions match on
         /// every machine, so a small radius is identity enough.
@@ -120,7 +172,7 @@ namespace SpellyZombie
                 f.Source = transform;
                 f.Rune = owner == Grimoire.LocalPlayerId ? NextFor(owner) : RuneType.None;
                 Mote.gameObject.SetActive(false);
-                if (Infinite) StartCoroutine(Regrow());
+                if (Infinite && InLobby) StartCoroutine(Regrow());
             }
             else
             {
@@ -141,7 +193,7 @@ namespace SpellyZombie
                     FxLibrary.Spawn(FxLibrary.I.AbsorbBurst,
                         transform.position + Vector3.up * 0.4f);
             }
-            if (!Infinite) Destroy(gameObject, 0.1f);
+            MarkTaken();
         }
 
         /// A new mote grows IN (never shrinks out - his law) after the wait.

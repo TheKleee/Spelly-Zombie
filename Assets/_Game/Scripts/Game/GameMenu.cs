@@ -18,14 +18,14 @@ namespace SpellyZombie
         }
     }
 
-    /// ESC = pause: Resume / Restart / Options (persisted) / Wishlist / Quit - zero scene setup needed.
+    /// ESC = pause: Resume / Restart / Options (persisted) / Wishlist / Quit (asks first) - zero scene setup needed.
     public class GameMenu : MonoBehaviour
     {
         public static bool IsOpen { get; private set; }
 
         const string WishlistUrl = "https://store.steampowered.com/"; // real page URL once it exists
 
-        bool _options, _langPick, _micPick, _resPick;
+        bool _options, _langPick, _micPick, _resPick, _quitCheck;
         bool _fromMainMenu;   // opened by the main menu's Options: no pause, Back closes
         int _tab; // 0 game, 1 video, 2 audio
         float _sens;
@@ -39,6 +39,17 @@ namespace SpellyZombie
             Time.timeScale = 1f;
             _i._fromMainMenu = true;
             _i._options = true;
+            _i.BuildUI();
+        }
+
+        /// The main menu's Quit: the same check as in play.
+        public static void OpenQuitCheck()
+        {
+            if (_i == null || IsOpen) return;
+            _i.Open();
+            Time.timeScale = 1f;
+            _i._fromMainMenu = true;
+            _i._quitCheck = true;
             _i.BuildUI();
         }
 
@@ -96,6 +107,7 @@ namespace SpellyZombie
             _langPick = false;
             _micPick = false;
             _resPick = false;
+            _quitCheck = false;
             // never pause a connected game: the world runs on while you read
             Time.timeScale = NetGame.Connected ? 1f : 0f;
             _wasLocked = Cursor.lockState == CursorLockMode.Locked;
@@ -135,7 +147,7 @@ namespace SpellyZombie
             UIKit.Stretch((RectTransform)dim.transform);
 
             float top = 250f;
-            if (!_options)
+            if (!_options && !_quitCheck)
             {
                 var title = UIKit.Label(_ui, "SPELLY ZOMBIE", 44, UIKit.Parchment, TextAnchor.MiddleCenter, true);
                 UIKit.Place((RectTransform)title.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, 230f), new Vector2(800f, 60f));
@@ -151,6 +163,27 @@ namespace SpellyZombie
             if (!UIKit.WasAdopted(pr)) pr.pivot = new Vector2(0.5f, 1f);
             UIKit.Stack(pr, 40, 18, 8);
             Sprite grey = skin != null ? skin.ButtonGrey : null;
+
+            if (_quitCheck)
+            {
+                // the question names where Quit takes you from here
+                string here = ActiveScene.Name;
+                string ask = here == "Menu" ? "menu.quit.game" : here == "Lobby" ? "menu.quit.lobby" : "menu.quit.match";
+                var q = UIKit.Label(pr, Loc.T(ask), 20, UIKit.Ink, TextAnchor.MiddleCenter, true);
+                q.resizeTextForBestFit = false;
+                UIKit.Row(q, 300f, -1f);
+                if (here != "Menu" && NetGame.IsHost && NetSync.RemoteCount > 0)
+                {
+                    var host = UIKit.Label(pr, Loc.T("menu.quit.host"), 14, new Color(0.35f, 0.28f, 0.2f), TextAnchor.MiddleCenter, true);
+                    host.resizeTextForBestFit = false;
+                    UIKit.Row(host, 300f, -1f);
+                }
+                UIKit.Gap(pr, 6f);
+                UIKit.Row(UIKit.Button(pr, Loc.T("menu.quit"), QuitHere, skin != null ? skin.ButtonRed : null), 300f, 50f);
+                UIKit.Row(UIKit.Button(pr, Loc.T("menu.cancel"),
+                    () => { if (_fromMainMenu) Close(); else { _quitCheck = false; BuildUI(); } }, grey), 300f, 44f);
+                return;
+            }
 
             if (_options && _micPick)
             {
@@ -394,10 +427,22 @@ namespace SpellyZombie
                     Close();
                 }, grey);
             MenuButton(Loc.T("menu.wishlist"), () => Application.OpenURL(WishlistUrl), grey);
-            MenuButton(Loc.T("menu.quit"), QuitGame, skin != null ? skin.ButtonRed : null);
+            MenuButton(Loc.T("menu.quit"), () => { _quitCheck = true; BuildUI(); }, skin != null ? skin.ButtonRed : null);
         }
 
-        /// Editor-aware quit - the one copy (MainMenu's Quit button calls it too).
+        /// Quit from where you are: the main menu closes the game, the lobby
+        /// goes to the main menu, a match to an empty lobby of your own.
+        void QuitHere()
+        {
+            string here = ActiveScene.Name;
+            if (here == "Menu") { QuitGame(); return; }
+            if (here != "Lobby") RoundDirector.Abandon(); // dropped, not decided
+            NetSync.LeaveSession();
+            Close();
+            LoadEgg.Travel(here == "Lobby" ? "Menu" : "Lobby");
+        }
+
+        /// Editor-aware quit - the one copy.
         public static void QuitGame()
         {
 #if UNITY_EDITOR

@@ -199,7 +199,7 @@ namespace SpellyZombie
             public Vector3 At;
         }
 
-        public struct AbsorbGiveMsg : IBroadcast // host → all: the mote flies to the winner
+        public struct AbsorbGiveMsg : IBroadcast // host → all: the mote flies to the winner (Owner -1: taken before you came)
         {
             public int Owner;
             public Vector3 At;
@@ -4531,6 +4531,9 @@ namespace SpellyZombie
         /// host never hears its own broadcast come back.
         void OnSpawnAskServer(NetworkConnection conn, SpawnAskMsg msg, Channel channel)
         {
+            // the asker is on the map now: sources taken here stay taken for them too
+            foreach (var taken in AbsorbSource.TakenOnThisMap)
+                InstanceFinder.ServerManager.Broadcast(conn, new AbsorbGiveMsg { Owner = -1, At = taken });
             if (!SpawnPlan.IssueFor(msg.Owner, out var at)) return; // asker picks its own
             SpawnPlan.TakeAssigned(msg.Owner, at);
             // their puppet's home biome is the tile they were handed, as a pilot's is
@@ -4550,7 +4553,7 @@ namespace SpellyZombie
         /// wins a mote - a later ask finds the source not Ready and whiffs.
         public static void AbsorbCast(AbsorbSource src, int owner)
         {
-            if (src == null) return;
+            if (src == null || !src.Ready) return;
             if (!NetGame.Connected) { src.Grant(owner); return; }
             if (InstanceFinder.ServerManager.Started)
             {
@@ -4574,6 +4577,7 @@ namespace SpellyZombie
         void OnAbsorbGiveClient(AbsorbGiveMsg msg, Channel channel)
         {
             if (InstanceFinder.ServerManager.Started) return;
+            if (msg.Owner < 0) { AbsorbSource.TakenBeforeJoin(msg.At); return; }
             AbsorbSource.Near(msg.At)?.Grant(msg.Owner);
         }
 
@@ -5014,6 +5018,7 @@ namespace SpellyZombie
                 return;
             }
             if (args.ConnectionState != FishNet.Transporting.LocalConnectionState.Started) return;
+            _leaving = false;
             _wasClient = !InstanceFinder.ServerManager.Started;
             if (InstanceFinder.ServerManager.Started) return; // the host trusts itself
             InstanceFinder.ClientManager.Broadcast(new JoinAuthMsg
@@ -5021,6 +5026,17 @@ namespace SpellyZombie
         }
 
         bool _wasClient;   // we were a guest, not the host running its own client
+        bool _leaving;     // the local player walked out (Quit): no banner, no trip home
+
+        /// The local player walks out on purpose (the Quit button): the same
+        /// teardown as a lost host, without the banner or the trip home.
+        public static void LeaveSession()
+        {
+            if (!NetGame.Connected) return;
+            if (_instance != null) _instance._leaving = true;
+            if (NetGame.IsHost) SteamLobby.DeleteLobby();
+            else SteamLobby.LeaveJoined();
+        }
 
         /// THE HOST WENT AWAY. Nothing used to catch this: every orphan kept
         /// its dead proxies standing, and `IsAuthority` (!Connected || IsHost)
@@ -5028,6 +5044,8 @@ namespace SpellyZombie
         /// existed. Tear the borrowed world down and go home.
         void HostGone()
         {
+            bool walkedOut = _leaving;
+            _leaving = false;
             if (!_wasClient) return;   // the host stopping its own server is not this
             _wasClient = false;
 
@@ -5042,6 +5060,7 @@ namespace SpellyZombie
             _rings.Clear();
             HasRound = false;
 
+            if (walkedOut) return;   // the Quit button travels on its own
             DrawingWorld.Instance?.LogEvent("the host left. back to the lobby");
             ComboBanner.Show(Loc.T("net.hostleft"), new Color(1f, 0.6f, 0.5f));
 
@@ -5438,6 +5457,7 @@ namespace SpellyZombie
         GooglyEyes _eyes;
         bool _moodHeld, _pupilsRed, _swelling;
         bool _restCaptured, _doll;
+        HandIK _ik;
         Element _el;
         byte _bookState;
         sbyte _emote = -1;
@@ -5586,6 +5606,7 @@ namespace SpellyZombie
                     anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
                     ik = body.GetComponent<HandIK>();
                     if (ik == null) ik = body.AddComponent<HandIK>();
+                    ik.RestCaptured = false; // rest is read in the first LateUpdate, as on the owner
                 }
                 else anim = null;
 
@@ -5699,7 +5720,7 @@ namespace SpellyZombie
                 a._emotes = go.AddComponent<EmotePlayer>();
                 a._emotes.Remote = true;
             }
-            if (ik != null) ik.Puppet = a;
+            if (ik != null) { ik.Puppet = a; a._ik = ik; }
             a.RefreshLook();
             return a;
         }
@@ -6253,6 +6274,7 @@ namespace SpellyZombie
             {
                 _restCaptured = true;
                 _emoteRig?.CaptureRest(); // post-animator, like the local rig
+                if (_ik != null) _ik.RestCaptured = true;
             }
 
             // composed over the animator's pose each frame, so it never accumulates

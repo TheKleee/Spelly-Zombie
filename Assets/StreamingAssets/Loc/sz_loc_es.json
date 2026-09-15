@@ -191,6 +191,11 @@
     {"key": "stand.lanjoin", "value": "unirse LAN"},
     {"key": "opt.uiscale", "value": "Tamaño de la interfaz: {0}%"},
     {"key": "stand.nocap", "value": "sin límite"},
-    {"key": "stand.heavy", "value": "tu conexión carga con todos"}
+    {"key": "stand.heavy", "value": "tu conexión carga con todos"},
+    {"key": "menu.quit.game", "value": "¿Salir del juego?"},
+    {"key": "menu.quit.lobby", "value": "¿Salir al menú principal?"},
+    {"key": "menu.quit.match", "value": "¿Dejar la partida? Acabas en una sala vacía."},
+    {"key": "menu.quit.host", "value": "Eres el anfitrión. Los demás también se van a casa."},
+    {"key": "menu.cancel", "value": "Cancelar"}
   ]
 }

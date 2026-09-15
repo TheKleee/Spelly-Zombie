@@ -49,7 +49,7 @@ Shader "SpellyZombie/XRayCircle"
                 d.y /= max(_RadY, 0.0001);
                 float a = 1.0 - smoothstep(1.0 - _Soft, 1.0, length(d));
                 fixed4 col = tex2D(_MainTex, i.uv);
-                return fixed4(col.rgb, a);
+                return fixed4(col.rgb, a * col.a); // what the reveal left empty shows the scene
             }
             ENDCG
         }

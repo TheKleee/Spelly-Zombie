@@ -191,6 +191,11 @@
     {"key": "stand.lanjoin", "value": "加入區域網路"},
     {"key": "opt.uiscale", "value": "介面大小：{0}%"},
     {"key": "stand.nocap", "value": "無上限"},
-    {"key": "stand.heavy", "value": "所有人的連線都由你承擔"}
+    {"key": "stand.heavy", "value": "所有人的連線都由你承擔"},
+    {"key": "menu.quit.game", "value": "結束遊戲？"},
+    {"key": "menu.quit.lobby", "value": "回到主選單？"},
+    {"key": "menu.quit.match", "value": "離開對局，回到只有你的房間？"},
+    {"key": "menu.quit.host", "value": "你是房主。其他人也都會回家。"},
+    {"key": "menu.cancel", "value": "取消"}
   ]
 }

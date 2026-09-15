@@ -199,3 +199,8 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | opt.uiscale | UI size: {0}% | Arayüz boyutu: %{0} | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
 | stand.nocap | no cap | sınırsız | unlimited | book stand, the size row at Steam's ceiling of 250: the host set no cap |
 | stand.heavy | your connection carries everyone | bağlantın herkesi taşır | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| menu.quit.game | Quit the game? | Oyundan çıkıyor musun? | are you quitting the game? | the Quit check on the main menu: Quit closes the game |
+| menu.quit.lobby | Back to the main menu? | Ana menüye dönüyor musun? | are you going back to the main menu? | the Quit check in the lobby: Quit goes to the main menu |
+| menu.quit.match | Leave the match for an empty lobby? | Maçtan çıkıyor musun? Kendi boş lobine düşersin. | are you leaving the match? you land in your own empty lobby. | the Quit check on a map: Quit leaves the match for your own empty lobby |
+| menu.quit.host | You are the host. Everyone else goes home too. | Host sensin. Diğer herkes de eve döner. | the host is you. everyone else goes home too. | under the Quit check when you host other players: they are sent back to their own lobby |
+| menu.cancel | Cancel | Vazgeç | never mind | the grey button of the Quit check. Cancel, not Back: under 'Back to the main menu?' a Back button read like the yes |

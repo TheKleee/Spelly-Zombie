@@ -191,6 +191,11 @@
     {"key": "stand.lanjoin", "value": "LAN 참가"},
     {"key": "opt.uiscale", "value": "UI 크기: {0}%"},
     {"key": "stand.nocap", "value": "제한 없음"},
-    {"key": "stand.heavy", "value": "모두의 연결을 당신이 감당합니다"}
+    {"key": "stand.heavy", "value": "모두의 연결을 당신이 감당합니다"},
+    {"key": "menu.quit.game", "value": "게임을 종료할까?"},
+    {"key": "menu.quit.lobby", "value": "메인 메뉴로 돌아갈까?"},
+    {"key": "menu.quit.match", "value": "매치에서 나가서 텅 빈 내 로비로 갈까?"},
+    {"key": "menu.quit.host", "value": "네가 호스트야. 다른 사람들도 다 집에 가게 돼."},
+    {"key": "menu.cancel", "value": "취소"}
   ]
 }

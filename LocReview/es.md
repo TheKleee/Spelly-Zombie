@@ -198,3 +198,8 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | opt.uiscale | UI size: {0}% | Tamaño de la interfaz: {0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
 | stand.nocap | no cap | sin límite | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
 | stand.heavy | your connection carries everyone | tu conexión carga con todos | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| menu.quit.game | Quit the game? | ¿Salir del juego? | leave the game? | the Quit check on the main menu: Quit closes the game |
+| menu.quit.lobby | Back to the main menu? | ¿Salir al menú principal? | exit to-the menu main? | the Quit check in the lobby: Quit goes to the main menu. Uses the red button's verb, so the red button reads as the yes |
+| menu.quit.match | Leave the match for an empty lobby? | ¿Dejar la partida? Acabas en una sala vacía. | leave the match? you end up in an empty room. | the Quit check on a map: Quit leaves the match for your own empty lobby |
+| menu.quit.host | You are the host. Everyone else goes home too. | Eres el anfitrión. Los demás también se van a casa. | you are the host. the others also go home. | under the Quit check when you host other players: they are sent back to their own lobby |
+| menu.cancel | Cancel | Cancelar | cancel | the grey button of the Quit check. Cancel, not Back: under 'Back to the main menu?' a Back button read like the yes |

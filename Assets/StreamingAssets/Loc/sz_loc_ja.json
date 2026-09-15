@@ -191,6 +191,11 @@
     {"key": "stand.lanjoin", "value": "LANに参加"},
     {"key": "opt.uiscale", "value": "UIサイズ: {0}%"},
     {"key": "stand.nocap", "value": "上限なし"},
-    {"key": "stand.heavy", "value": "全員の通信をあなたが担います"}
+    {"key": "stand.heavy", "value": "全員の通信をあなたが担います"},
+    {"key": "menu.quit.game", "value": "ゲームをやめる？"},
+    {"key": "menu.quit.lobby", "value": "ここでやめて、メインメニューへ？"},
+    {"key": "menu.quit.match", "value": "マッチをやめて、からっぽのロビーへ？"},
+    {"key": "menu.quit.host", "value": "あなたがホストだ。ほかのみんなも帰ることになる。"},
+    {"key": "menu.cancel", "value": "キャンセル"}
   ]
 }

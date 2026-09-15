@@ -13,6 +13,9 @@ namespace SpellyZombie
         /// Set on a friend's puppet: stances come from their presence, never
         /// from the local statics (whose hands would otherwise reach for OUR load).
         [System.NonSerialized] public NetAvatar Puppet;
+        /// Lifted by the rig once it has read rest off the animator's first
+        /// frame: IK landing in that frame would be read as rest.
+        [System.NonSerialized] public bool RestCaptured = true;
 
         Animator _anim;
         float _weight;
@@ -113,6 +116,12 @@ namespace SpellyZombie
         void OnAnimatorIK(int layerIndex)
         {
             if (_anim == null) return;
+            if (!RestCaptured)
+            {
+                _anim.SetIKPositionWeight(AvatarIKGoal.RightHand, 0f);
+                _anim.SetIKPositionWeight(AvatarIKGoal.LeftHand, 0f);
+                return;
+            }
             if (Puppet != null) { PuppetIK(); return; }
             var weapon = Slots != null ? Slots.CurrentWeapon : null;
             bool weaponHold = weapon != null && weapon.gameObject.activeInHierarchy;

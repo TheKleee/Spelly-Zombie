@@ -60,7 +60,7 @@ namespace SpellyZombie
                 LoadEgg.Travel("Lobby");
             });
             MenuButton(Loc.T("menu.options"), GameMenu.OpenOptions, skin != null ? skin.ButtonGrey : null);
-            MenuButton(Loc.T("menu.quit"), GameMenu.QuitGame, skin != null ? skin.ButtonRed : null);
+            MenuButton(Loc.T("menu.quit"), GameMenu.OpenQuitCheck, skin != null ? skin.ButtonRed : null);
 
             _statusLabel = UIKit.Label(_ui, _status, 15, UIKit.Parchment, TextAnchor.UpperLeft);
             _statusLabel.horizontalOverflow = HorizontalWrapMode.Wrap;

@@ -191,6 +191,11 @@
     {"key": "stand.lanjoin", "value": "LAN beitreten"},
     {"key": "opt.uiscale", "value": "UI-Größe: {0}%"},
     {"key": "stand.nocap", "value": "keine Grenze"},
-    {"key": "stand.heavy", "value": "deine Verbindung trägt alle"}
+    {"key": "stand.heavy", "value": "deine Verbindung trägt alle"},
+    {"key": "menu.quit.game", "value": "Spiel beenden?"},
+    {"key": "menu.quit.lobby", "value": "Lobby verlassen und ins Hauptmenü?"},
+    {"key": "menu.quit.match", "value": "Match verlassen? Du landest in einer leeren Lobby."},
+    {"key": "menu.quit.host", "value": "Du bist der Host. Alle anderen gehen auch nach Hause."},
+    {"key": "menu.cancel", "value": "Abbrechen"}
   ]
 }

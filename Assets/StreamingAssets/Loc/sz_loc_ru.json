@@ -191,6 +191,11 @@
     {"key": "stand.lanjoin", "value": "войти по LAN"},
     {"key": "opt.uiscale", "value": "Размер интерфейса: {0}%"},
     {"key": "stand.nocap", "value": "без ограничения"},
-    {"key": "stand.heavy", "value": "твоё соединение тянет всех"}
+    {"key": "stand.heavy", "value": "твоё соединение тянет всех"},
+    {"key": "menu.quit.game", "value": "Выйти из игры?"},
+    {"key": "menu.quit.lobby", "value": "Выйти в главное меню?"},
+    {"key": "menu.quit.match", "value": "Покинуть матч? Окажешься в пустом лобби."},
+    {"key": "menu.quit.host", "value": "Ты хост. Все остальные тоже уйдут домой."},
+    {"key": "menu.cancel", "value": "Отмена"}
   ]
 }

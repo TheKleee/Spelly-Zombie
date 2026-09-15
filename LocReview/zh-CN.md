@@ -199,3 +199,8 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | opt.uiscale | UI size: {0}% | 界面大小：{0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
 | stand.nocap | no cap | 无上限 | no upper limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
 | stand.heavy | your connection carries everyone | 所有人的连接都由你承担 | everyone's connection is borne by you | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| menu.quit.game | Quit the game? | 退出游戏？ | quit game? | the Quit check on the main menu: Quit closes the game |
+| menu.quit.lobby | Back to the main menu? | 退出到主菜单？ | exit to main menu? | the Quit check in the lobby: Quit goes to the main menu. Uses the red button's verb, so the red button reads as the yes |
+| menu.quit.match | Leave the match for an empty lobby? | 离开对局，去自己的空房间？ | leave the match, go to your own empty room? | the Quit check on a map: Quit leaves the match for your own empty lobby |
+| menu.quit.host | You are the host. Everyone else goes home too. | 你是房主。其他人也都会回家。 | you are the host. the others will all go home too. | under the Quit check when you host other players: they are sent back to their own lobby |
+| menu.cancel | Cancel | 取消 | cancel | the grey button of the Quit check. Cancel, not Back: under 'Back to the main menu?' a Back button read like the yes |

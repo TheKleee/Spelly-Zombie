@@ -40,6 +40,17 @@ namespace SpellyZombie
             Instance.StartRun();
         }
 
+        /// The Quit button on a map: the match is dropped, not decided. No
+        /// ending, no stats, and the lobby that loads next starts idle.
+        public static void Abandon()
+        {
+            if (Instance == null) return;
+            Instance._phase = Phase.Idle;
+            Instance._winner = 0;
+            Instance._ending = Achievements.Ending.None;
+            _startOnLoad = false;
+        }
+
         Phase _phase = Phase.Idle;
         float _clock;        // seconds left on the match timer
         int _kills;
