@@ -158,7 +158,11 @@ namespace SpellyZombie
                 }
                 SpellParticle.GiveHeatTo(c, 200f * power); // combinations heat harder than single runes
                 var rb = c.attachedRigidbody;
-                if (rb != null) rb.AddForce((rb.worldCenterOfMass - at).normalized * 9f, ForceMode.VelocityChange);
+                if (rb != null)
+                {
+                    Element.TrackLoose(rb); // the clients see the flight
+                    rb.AddForce((rb.worldCenterOfMass - at).normalized * 9f, ForceMode.VelocityChange);
+                }
             }
             FireBloom(at, 10, 4f, 2f);
         }

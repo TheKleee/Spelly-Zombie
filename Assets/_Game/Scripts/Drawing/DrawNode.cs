@@ -35,6 +35,7 @@ namespace SpellyZombie
             transform.SetParent(newParent, true);
             _parentRotAtDraw = newParent.rotation;
             _hasParentRot = true;
+            Stroke?.MarkRebased(); // its cached box rode the old carrier
         }
 
         /// True when the surface is a character or weapon (PersistentInkSurface in

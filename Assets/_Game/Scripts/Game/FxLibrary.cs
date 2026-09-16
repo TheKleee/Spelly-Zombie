@@ -265,8 +265,12 @@ namespace SpellyZombie
             fx.transform.SetParent(null, false);
             if (!_pool.TryGetValue(prefab, out var stack))
                 _pool[prefab] = stack = new Stack<GameObject>();
-            if (stack.Count < 12) stack.Push(fx); else Destroy(fx);
+            if (stack.Count < 12) stack.Push(fx);
+            else { _origin.Remove(fx); Destroy(fx); }
         }
+
+        /// An effect gone for good (destroyed with its parent) leaves the origin map.
+        public static void Forget(GameObject fx) => _origin.Remove(fx);
 
         /// Build effects at load - first spawn compiles shader variants, and mid-fight that's the hitch you can feel.
         public void Prewarm(int each = 2)
@@ -299,6 +303,7 @@ namespace SpellyZombie
         float _due;
         int _armedFrame;
         public void Arm(float life) { _due = Time.time + life; _armedFrame = Time.frameCount; enabled = true; }
+        void OnDestroy() => FxLibrary.Forget(gameObject);
         void Update()
         {
             if (Relay && Time.frameCount > _armedFrame)

@@ -669,7 +669,8 @@ namespace SpellyZombie
                 TargetCenterWorld() - _worn.transform.TransformPoint(_wornCenterLocal);
             Wear(poof: true);
             if (FxLibrary.I != null)
-                FxLibrary.Spawn(FxLibrary.I.Poof, transform.position + Vector3.up * 0.5f);
+                FxLibrary.Spawn(FxLibrary.I.Poof, transform.position + Vector3.up * 0.5f,
+                    null, 0f, false); // the puppets poof from the DisguiseMsg
         }
 
         /// poof: a fresh clone went on - the swap burst shows on every machine.

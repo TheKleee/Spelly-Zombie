@@ -247,7 +247,8 @@ namespace SpellyZombie
                 SteamMatchmaking.LeaveLobby(I._lobby);
                 I._lobby = default;
             }
-            if (InstanceFinder.ClientManager != null && InstanceFinder.ClientManager.Started)
+            // a client still connecting stops too; no manager = nothing to stop
+            if (NetGame.HasManager && InstanceFinder.ClientManager != null)
                 InstanceFinder.ClientManager.StopConnection();
             Status = "";
         }

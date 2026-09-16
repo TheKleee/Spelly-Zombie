@@ -337,12 +337,14 @@ namespace SpellyZombie
                 Creature.SpawnFlame(transform);
             }
 
-            if (_tranced) return; // pinned where the ink found it
+            // tranced it still follows the host (the grave climb, a knock);
+            // only the stride waits, so the paused clip stays paused
             if (_glide.Sample(out var pos, out var rot))
             {
                 transform.position = pos;
                 transform.rotation = rot;
             }
+            if (_tranced) return;
             if (_anim != null && _anim.isActiveAndEnabled)
             {
                 Vector3 v = _glide.Velocity; v.y = 0f;

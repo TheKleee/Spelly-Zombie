@@ -210,11 +210,16 @@ namespace SpellyZombie
 
         /// Heat + chill meeting: the one gas substance. A scalding steam blob.
         /// The team chain rides it - your water stays yours as steam.
-        public static void Steam(Vector3 at, float power, int owner = -1)
+        public static void Steam(Vector3 at, float power, int owner = -1, Vector3 vel = default)
         {
             var m = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Gas,
                 0.35f * Mathf.Max(0.5f, power), at + Vector3.up * 0.3f);
-            if (m != null) { m.Temperature = 130f; m.StampOwner(owner); m.SpellBorn = true; }
+            if (m != null)
+            {
+                m.Temperature = 130f; m.StampOwner(owner); m.SpellBorn = true;
+                // the cloud carries the motes' momentum; gas drag bleeds it off
+                if (m.TryGetComponent<Rigidbody>(out var rb)) rb.linearVelocity = vel;
+            }
             DrawingWorld.Instance?.LogEvent("fire and frost make SCALDING STEAM");
         }
 

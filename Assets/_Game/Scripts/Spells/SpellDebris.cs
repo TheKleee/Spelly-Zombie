@@ -54,6 +54,7 @@ namespace SpellyZombie
             float dmg = Mathf.Clamp(_size * 30f, 4f, 22f) * (0.5f + force * 1.5f);
             var seen = new System.Collections.Generic.HashSet<Element>();
             var seenAv = new System.Collections.Generic.HashSet<NetAvatar>();
+            bool kickedPilot = false;
             foreach (var c in Physics.OverlapSphere(at, r))
             {
                 var el = c.GetComponentInParent<Element>();
@@ -68,10 +69,21 @@ namespace SpellyZombie
                             * (3f + _size * 6f) * (1f + force * 2f), force > 0.5f);
                     continue;
                 }
+                // this machine's own body takes the same kick, once
+                var pl = kickedPilot ? null : c.GetComponentInParent<SimpleFPSController>();
+                if (pl != null)
+                {
+                    kickedPilot = true;
+                    NetSync.SendKick(Grimoire.LocalPlayerId, (pl.transform.position - at).normalized
+                        * (3f + _size * 6f) * (1f + force * 2f), force > 0.5f);
+                }
                 var rb = c.attachedRigidbody;
                 if (rb != null && rb.gameObject != gameObject)
+                {
+                    Element.TrackLoose(rb); // the clients see the shove
                     rb.AddForce((rb.worldCenterOfMass - at).normalized
                         * (3f + _size * 6f) * (1f + force * 2f), ForceMode.VelocityChange);
+                }
             }
             if (force > 0.05f)
             {

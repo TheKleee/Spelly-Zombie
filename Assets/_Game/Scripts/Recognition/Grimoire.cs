@@ -26,7 +26,9 @@ namespace SpellyZombie
         /// ★ THE ONE GATE. Unlock ONE rune: records it, stamps its family,
         /// seeds the writing meter, replicates, toasts once.
         /// at: where the deed happened; every other machine poofs there.
-        public static void UnlockRune(int owner, RuneType rune, Vector3? at = null)
+        /// quiet: a starting kit, no toast and no book flip. Every machine
+        /// sets kits itself, so a quiet grant is never relayed.
+        public static void UnlockRune(int owner, RuneType rune, Vector3? at = null, bool quiet = false)
         {
             if (!_runesByOwner.TryGetValue(owner, out var set))
                 _runesByOwner[owner] = set = new HashSet<RuneType>();
@@ -40,14 +42,14 @@ namespace SpellyZombie
                 NetSync.PushUnlock(owner, -1, (int)rune, fresh ? at : null);
                 if (fresh)
                 {
-                    RuneToast.Show(rune);
+                    if (!quiet) RuneToast.Show(rune);
                     Achievements.RuneLearned(RuneCount(owner));
-                    Unlocked?.Invoke(owner, rune);
+                    if (!quiet) Unlocked?.Invoke(owner, rune);
                 }
             }
             // a HOST-side grant for a remote owner (summon deeds run in host
             // code): relay it, or the earner never learns what they earned
-            else if (fresh)
+            else if (fresh && !quiet)
             {
                 NetSync.PushUnlockFor(owner, (int)rune, at);
                 if (at.HasValue) UnlockMark.PoofAt(at.Value); // this machine is a bystander here
@@ -172,7 +174,7 @@ namespace SpellyZombie
             _byOwner.Remove(owner);
             _runesByOwner.Remove(owner);
             if (runes != null)
-                foreach (var r in runes) UnlockRune(owner, r);
+                foreach (var r in runes) UnlockRune(owner, r, quiet: true);
         }
 
         /// A match starts every player's book over: each keeps only the kit

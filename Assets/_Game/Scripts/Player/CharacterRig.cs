@@ -87,11 +87,11 @@ namespace SpellyZombie
         Quaternion _armLWritten, _armRWritten; // what WE last wrote - held poses must not re-redistribute
         float _crouchYawW; // crouch yaw-fix blend weight (0 standing, 1 crouched)
 
-        /// The clavicle takes ClavicleFollow of the arm's pose rotation, the
-        /// arm keeps the remainder. Only acts when something new wrote the arm
-        /// (a held pose must not be re-eaten frame after frame).
-        void FollowClavicle(Transform clav, Quaternion clavRest, Transform arm,
-            Quaternion armRest, ref Quaternion lastWritten)
+        /// The clavicle takes `follow` (ClavicleFollow) of the arm's pose rotation,
+        /// the arm keeps the remainder. Only acts when something new wrote the arm
+        /// (a held pose must not be re-eaten frame after frame). Shared with the puppets.
+        public static void FollowClavicle(Transform clav, Quaternion clavRest, Transform arm,
+            Quaternion armRest, ref Quaternion lastWritten, float follow)
         {
             if (clav == null || arm == null) return;
             Quaternion full = arm.localRotation;
@@ -101,8 +101,31 @@ namespace SpellyZombie
             // what the pose system wrote - deriving is repeatable, so
             // save/load/save can't drift
             clav.localRotation = clavRest
-                * Quaternion.Slerp(Quaternion.identity, delta, ClavicleFollow);
+                * Quaternion.Slerp(Quaternion.identity, delta, follow);
             lastWritten = full;
+        }
+
+        /// The noodle walk on Spine1 + Head from the body's local velocity `lv`
+        /// (`speed` = its size): lean, roll, a breath `steady` scales, a side
+        /// waggle while moving. Over the animation when it runs, over the bind
+        /// pose when it doesn't. Shared with the puppets.
+        public static void Wobble(ref float phase, Vector3 lv, float speed, float steady,
+            Transform spine1, Transform head, bool animated, Quaternion bindSpine1, Quaternion bindHead)
+        {
+            phase += Time.deltaTime * (2f + speed * 1.1f);
+            float lean = Mathf.Clamp(lv.z * 3.4f, -16f, 16f);
+            float roll = Mathf.Clamp(-lv.x * 2.8f, -13f, 13f);
+            float movement = Mathf.Clamp01(speed / 2f);
+            float calm = Mathf.Lerp(0.3f, 1f, movement);
+            calm *= steady;
+            float bob = Mathf.Sin(phase * 2f) * 2.8f * calm;
+            // side-to-side waggle only while moving - the drunk-noodle walk
+            float sway = Mathf.Sin(phase * 1.3f) * Mathf.Min(speed * 1.4f, 7f);
+            var spineWobble = Quaternion.Euler(lean + bob * 0.5f, sway, roll);
+            var headWobble = Quaternion.Euler(-lean * 0.6f + bob * 1.4f, -sway * 0.7f, -roll * 0.8f);
+            if (spine1 != null)
+                spine1.localRotation = (animated ? spine1.localRotation : bindSpine1) * spineWobble;
+            head.localRotation = (animated ? head.localRotation : bindHead) * headWobble;
         }
         float _airTime;    // seconds of continuous no-ground (slope-flicker filter)
         bool _airChecked, _hasAirParams, _hasCrouch; // which params the controller actually has
@@ -1121,8 +1144,8 @@ namespace SpellyZombie
                 || (_emotes != null && _emotes.IsPosing);
             if (posing && ClavicleFollow > 0.001f)
             {
-                FollowClavicle(_clavL, _clavLRest, _armL, _armLRest, ref _armLWritten);
-                FollowClavicle(_clavR, _clavRRest, _armR, _armRRest, ref _armRWritten);
+                FollowClavicle(_clavL, _clavLRest, _armL, _armLRest, ref _armLWritten, ClavicleFollow);
+                FollowClavicle(_clavR, _clavRRest, _armR, _armRRest, ref _armRWritten, ClavicleFollow);
             }
 
             // ---- wobble on bones the emotes don't own (Spine1 + Head):
@@ -1130,24 +1153,13 @@ namespace SpellyZombie
             // so the multiply never accumulates), over the bind pose when it
             // doesn't. Not while the doll is frozen.
             if (doll) return;
-            _bob += Time.deltaTime * (2f + vel.magnitude * 1.1f);
-            float lean = Mathf.Clamp(lv.z * 3.4f, -16f, 16f);
-            float roll = Mathf.Clamp(-lv.x * 2.8f, -13f, 13f);
             // the camera rides the head bone, so head bob = view shake: idle
             // keeps a gentle breath, movement brings the full wobble, drawing
             // steadies it to a tremble
-            float movement = Mathf.Clamp01(vel.magnitude / 2f);
-            float calm = Mathf.Lerp(0.3f, 1f, movement);
+            float steady = 1f;
             if (HeldWeapon.DrawMode || SelfPaint.IsActive)
-                calm *= SurfaceDrawer.IsPenActive ? 0.25f : 0.5f;
-            float bob = Mathf.Sin(_bob * 2f) * 2.8f * calm;
-            // side-to-side waggle only while moving - the drunk-noodle walk
-            float sway = Mathf.Sin(_bob * 1.3f) * Mathf.Min(vel.magnitude * 1.4f, 7f);
-            var spineWobble = Quaternion.Euler(lean + bob * 0.5f, sway, roll);
-            var headWobble = Quaternion.Euler(-lean * 0.6f + bob * 1.4f, -sway * 0.7f, -roll * 0.8f);
-            if (_spine1 != null)
-                _spine1.localRotation = (animated ? _spine1.localRotation : _bindSpine1) * spineWobble;
-            _head.localRotation = (animated ? _head.localRotation : _bindHead) * headWobble;
+                steady = SurfaceDrawer.IsPenActive ? 0.25f : 0.5f;
+            Wobble(ref _bob, lv, vel.magnitude, steady, _spine1, _head, animated, _bindSpine1, _bindHead);
 
             // ---- the head follows the aim; composed after the animator so
             // it never accumulates. NetSync ships the pitch. Eased toward

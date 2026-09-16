@@ -12,7 +12,7 @@ namespace SpellyZombie
     /// as one bright volume.
     public static class MatterFX
     {
-        static readonly Dictionary<long, Material> _cache = new Dictionary<long, Material>();
+        static readonly Dictionary<(Color, int), Material> _cache = new Dictionary<(Color, int), Material>();
         static readonly Dictionary<(Color, int, int, int), Material> _pcache
             = new Dictionary<(Color, int, int, int), Material>();
 
@@ -31,9 +31,16 @@ namespace SpellyZombie
             }
         }
 
+        /// Channels to 1/32, alpha to 1/16: near colours share one material
+        /// instead of every random or blended tint minting its own.
+        static Color Quantize(Color c) => new Color(
+            Mathf.Round(c.r * 32f) / 32f, Mathf.Round(c.g * 32f) / 32f,
+            Mathf.Round(c.b * 32f) / 32f, Mathf.Round(c.a * 16f) / 16f);
+
         public static Material Get(Color c, MoteShade shade)
         {
-            long key = ((long)shade << 40) ^ (uint)c.GetHashCode();
+            c = Quantize(c);
+            var key = (c, (int)shade); // the exact colour: a hash key let two colours share one material
             if (_cache.TryGetValue(key, out var cached) && cached != null) return cached;
 
             var shader = Shader.Find("Universal Render Pipeline/Unlit");
@@ -62,6 +69,7 @@ namespace SpellyZombie
             var sh = ParticleShader;
             if (sh == null) return Get(c, shade);
 
+            c = Quantize(c);
             var key = (c, (int)shade, Mathf.RoundToInt(wobble * 1000f), Mathf.RoundToInt(rim * 100f));
             if (_pcache.TryGetValue(key, out var cached) && cached != null) return cached;
 

@@ -234,6 +234,8 @@ namespace SpellyZombie
                 foreach (var s in world.Strokes)
                 {
                     if (!Mine(s)) continue;
+                    // a box outside the pointing cone holds no node NearestNodeToRay would take
+                    if (!BoxInCone(s.NodeBounds(), eye, look, 0.05f, reach, PointingCone)) continue;
                     if ((s.Centroid() - eye).sqrMagnitude > prefilter) continue; // cheap prefilter, generous
                     if (NearestNodeToRay(s, eye, look, 0.05f, reach, PointingCone, out var p, out float miss))
                         _cands.Add((s, p, miss));
@@ -448,6 +450,21 @@ namespace SpellyZombie
                 if (d < miss) { miss = d; point = p; }
             }
             return miss < float.MaxValue;
+        }
+
+        /// False only when no point of `box` can pass NearestNodeToRay's range
+        /// and cone tests, so a stroke it rejects was never a candidate.
+        static bool BoxInCone(Bounds box, Vector3 origin, Vector3 dir,
+                              float minAlong, float maxAlong, float coneSlope)
+        {
+            const float slack = 0.001f; // float rounding room; the node test stays exact
+            Vector3 c = box.center, e = box.extents;
+            float mid = Vector3.Dot(c - origin, dir);
+            float half = Mathf.Abs(e.x * dir.x) + Mathf.Abs(e.y * dir.y) + Mathf.Abs(e.z * dir.z);
+            if (mid + half < minAlong - slack || mid - half > maxAlong + slack) return false;
+            // the nearest any box point can sit to the ray line
+            float off = Vector3.Distance(c, origin + dir * mid) - e.magnitude;
+            return off <= Mathf.Min(mid + half, maxAlong) * coneSlope + slack;
         }
 
         /// Tints the ink F will act on. Runs every frame: allocates nothing,

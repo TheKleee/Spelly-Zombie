@@ -184,6 +184,13 @@ namespace SpellyZombie
             skin.GetComponent<Renderer>().sharedMaterial = _mat;
         }
 
+        // the private skin mesh and material are not freed with the GameObject
+        void OnDestroy()
+        {
+            if (_mesh != null) Destroy(_mesh);
+            if (_mat != null) Destroy(_mat);
+        }
+
         /// Each D_ bone gets a small SphereCollider + Rigidbody and springs
         /// home; the weighted skin follows.
         void SetupJiggleBones()

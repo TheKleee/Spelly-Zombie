@@ -875,6 +875,16 @@ namespace SpellyZombie
             return root;
         }
 
+        NetMatterProxy _net;
+        bool _netChecked;
+
+        /// The client stand-in this shell rides; null on the host.
+        NetMatterProxy NetOf()
+        {
+            if (!_netChecked) { _net = Owner.GetComponent<NetMatterProxy>(); _netChecked = true; }
+            return _net;
+        }
+
         void OnTriggerEnter(Collider other)
         {
             if (Owner == null || Owner.Core == null || other.isTrigger) return;
@@ -888,11 +898,13 @@ namespace SpellyZombie
             if (Owner == null || other.isTrigger) return;
 
             float dt = Time.fixedDeltaTime;
-            var flow = Owner.Body != null ? Owner.Body.linearVelocity : Vector3.zero;
-            bool flowing = flow.sqrMagnitude > 0.2f;
-
             var root = RootOf(other);
             var pilot = root as SimpleFPSController;
+            // a client's stand-in is kinematic: its local wader reads the host's blob
+            var net = pilot != null ? NetOf() : null;
+            var flow = net != null ? net.Flow : Owner.Body != null ? Owner.Body.linearVelocity : Vector3.zero;
+            bool flowing = flow.sqrMagnitude > 0.2f;
+
             if (pilot != null)
             {
                 // gas never slows a wader; its temperature still applies
@@ -918,7 +930,7 @@ namespace SpellyZombie
                 Vector3 v = pilot.Velocity; v.y *= 0.3f;
                 pilot.AddSpellForce(-v * 2.2f, dt);
                 if (flowing) pilot.AddSpellForce(flow * 2.5f, dt);
-                if (Owner.Stickiness < -0.3f && Random.value < 0.02f)
+                if ((net != null ? net.Stickiness : Owner.Stickiness) < -0.3f && Random.value < 0.02f)
                     pilot.KnockDown(1f); // the slick pool takes your feet eventually
                 // burn gate is 100°C: steam is born around 130° and must scald
                 if (Owner.Temperature > 100f && Tick(0.5f))

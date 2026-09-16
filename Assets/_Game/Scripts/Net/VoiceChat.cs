@@ -92,6 +92,7 @@ namespace SpellyZombie
         GooglyEyes _localEyes;
         float _localEyesAt;
         static bool _saidNoMic;
+        float _retryAt;       // no mic: when to look again
 
         void OnDestroy() { StopMic(); }
 
@@ -104,6 +105,7 @@ namespace SpellyZombie
             _readPos = 0;
             _frameFill = 0;
             _resamplePos = 0f;
+            _retryAt = 0f;    // a newly picked mic is tried at once
         }
 
         bool StartMic()
@@ -131,7 +133,12 @@ namespace SpellyZombie
 
         void Update()
         {
-            if (!_micOn && !StartMic()) return;
+            if (!_micOn)
+            {
+                // no mic: look again every few seconds, not every frame
+                if (Time.unscaledTime < _retryAt) return;
+                if (!StartMic()) { _retryAt = Time.unscaledTime + 3f; return; }
+            }
 
             var kb = Keyboard.current;
             var mode = Mode;
@@ -142,25 +149,31 @@ namespace SpellyZombie
             bool send = (want || Time.time < _tailUntil) && Time.time >= GagUntil;
             LocalTalking = false;
 
+            // mic off: nothing is read, and nothing stale waits for later. The
+            // open menu still reads, so its meter shows the mic working; offline
+            // still reads, so your own eyes swell with your voice.
+            if (mode == MicMode.Off && !GameMenu.IsOpen)
+            {
+                int now = Microphone.GetPosition(_micDevice);
+                if (now >= 0) _readPos = now;
+                _frameFill = 0;
+                _resamplePos = 0f;
+                return;
+            }
+
             // everything the mic captured since last frame, in order
             int pos = Microphone.GetPosition(_micDevice);
             if (pos < 0 || pos == _readPos) return;
             int total = _mic.samples;
             int count = pos > _readPos ? pos - _readPos : total - _readPos + pos;
             if (count > _grab.Length) { _readPos = pos; return; } // fell too far behind: skip
-            if (pos > _readPos) _mic.GetData(_grab, _readPos);
+            // only the new samples, into the one reused buffer
+            if (pos > _readPos) _mic.GetData(new System.Span<float>(_grab, 0, count), _readPos);
             else
             {
                 int first = total - _readPos;
-                var head = new float[first];
-                _mic.GetData(head, _readPos);
-                System.Array.Copy(head, 0, _grab, 0, first);
-                if (pos > 0)
-                {
-                    var tail = new float[pos];
-                    _mic.GetData(tail, 0);
-                    System.Array.Copy(tail, 0, _grab, first, pos);
-                }
+                _mic.GetData(new System.Span<float>(_grab, 0, first), _readPos);
+                if (pos > 0) _mic.GetData(new System.Span<float>(_grab, first, pos), 0);
             }
             _readPos = pos;
 
@@ -269,9 +282,10 @@ namespace SpellyZombie
             if (IsMuted(owner)) return;
             var me = Instance;
 
-            var at = NetSync.AvatarTransformOf(owner);
+            // a flying spirit talks from its NetGhost, from the body again once revived
+            var at = NetSync.VoiceTransformOf(owner);
             if (at == null) return;
-            if (!me._speakers.TryGetValue(owner, out var sp) || sp == null)
+            if (!me._speakers.TryGetValue(owner, out var sp) || sp == null || !sp.transform.IsChildOf(at))
             {
                 sp = at.GetComponentInChildren<VoiceSpeaker>();
                 if (sp == null) sp = at.gameObject.AddComponent<VoiceSpeaker>();

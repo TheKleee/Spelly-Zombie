@@ -34,6 +34,7 @@ namespace SpellyZombie
         readonly HashSet<string> _castKeys = new HashSet<string>();
         float _detectTimer;
         float _evapTimer;
+        readonly Dictionary<int, Vector3> _ownerAt = new Dictionary<int, Vector3>();
         readonly List<Stroke> _eligibleCache = new List<Stroke>();
         string _lastNearMissShown;
         bool _forceDetect;
@@ -41,6 +42,25 @@ namespace SpellyZombie
         // (see Detect) compares against this before paying for the detectors
         readonly List<Vector3> _detectSnap = new List<Vector3>();
         int _detectSnapSig;
+        // each stroke's ink as the last scan that looked at it saw it: a scan hands
+        // the detectors only what changed since, plus all ink it reaches (ScanSet)
+        class ScanRef
+        {
+            public int Nodes;
+            public bool AllNodes; // nodes ride several carriers: every node is compared
+            public readonly List<Vector3> Pts = new List<Vector3>();
+            public Bounds Reach;  // node box grown by the detectors' reach
+            public int Tick;
+        }
+        readonly Dictionary<Stroke, ScanRef> _scanRefs = new Dictionary<Stroke, ScanRef>();
+        readonly Stack<ScanRef> _scanRefPool = new Stack<ScanRef>();
+        readonly List<Stroke> _scanSet = new List<Stroke>();
+        readonly List<Stroke> _scanGone = new List<Stroke>();
+        readonly List<int> _scanFlood = new List<int>();
+        bool[] _inScan = new bool[64];
+        Bounds[] _scanReach = new Bounds[64];
+        int _scanTick;
+        bool _fullScanNext; // a scan sealed: the next covers all ink, so chains of seals close as before
         bool _inkDebug; // F12: show what the detector sees (stroke endpoints)
 
         void Awake()
@@ -94,9 +114,12 @@ namespace SpellyZombie
                 InkMark.For(s.Surface, true)?.Add(s.OwnerId,
                     s.PathLength() * DrawingConfig.InkCostPerMeter);
 
-            RuneGlyph.Precognize(s, Strokes); // recognition at pen-up; seal close reads the cache
+            // one touching-cluster flood per pen-up: the reading, the net send
+            // and the preview all use it
+            var cluster = new List<Stroke>();
+            RuneGlyph.Precognize(s, Strokes, cluster); // recognition at pen-up; seal close reads the cache
 
-            NetSync.OnLocalStrokeFinished(s); // co-op: friends see your ink
+            NetSync.OnLocalStrokeFinished(s, cluster); // co-op: friends see your ink
 
             // self-closure first (a circle grazing a Y seals on itself); clients
             // close body loops only - the host closes world loops (netcode §2);
@@ -105,7 +128,7 @@ namespace SpellyZombie
                 && (TryCloseOntoSelf(s) || TryCloseOntoInk(s))) return;
 
             LastInk = s;
-            if (preview) PreviewRune(s);
+            if (preview) PreviewRune(s, cluster: cluster);
         }
 
         /// Read the connected drawing and float a fading label over it showing
@@ -134,15 +157,20 @@ namespace SpellyZombie
 
         /// `net` = the verdict is a re-read (erase lifted): the copies wear it too.
         /// Pen-up verdicts already ride the StrokeMsg.
-        void PreviewRune(Stroke seed, bool net = false)
+        /// `cluster` = the pen-up's flood, reused while it still stands.
+        void PreviewRune(Stroke seed, bool net = false, List<Stroke> cluster = null)
         {
             if (seed == null || !seed.Alive || seed.State != StrokeState.Open) return;
             if (seed.OwnerId != Grimoire.LocalPlayerId) return; // your pen only
             if (seed.Hidden()) return;
 
             // same touch-cluster flood the seal recognizer uses
-            var members = new List<Stroke> { seed };
-            RuneGlyph.GrowTouchingCluster(members, Strokes);
+            var members = cluster;
+            if (!RuneGlyph.FloodedFor(cluster, seed))
+            {
+                members = new List<Stroke> { seed };
+                RuneGlyph.GrowTouchingCluster(members, Strokes);
+            }
 
             // guarded read (cache + foreign-ink fizzle) - same verdict a seal gets (netcode §1)
             var (type, score) = RuneGlyph.ReadVerdict(members, seed.OwnerId);
@@ -210,13 +238,19 @@ namespace SpellyZombie
             var bFirst = b.First;
             var bLast = b.Last;
             if (bFirst == null || bLast == null) return false;
+            Vector3 penLast = bLast.transform.position, penFirst = bFirst.transform.position;
 
             foreach (var a in Strokes)
             {
                 if (a == b || !a.Alive || a.State != StrokeState.Open || a.OnPuppet) continue;
                 // clients close BODY loops only - never split a world stroke the host owns (netcode §2)
                 if (!NetGame.IsAuthority && !a.Persistent) continue;
-                if (a.Nodes.Count < 3 || !a.ChainIntact() || a.Hidden()) continue;
+                if (a.Nodes.Count < 3) continue;
+                // far ink costs one box test: both pen ends need a node within CloseThreshold
+                var near = a.NodeBounds();
+                near.Expand(DrawingConfig.CloseThreshold * 2f + 0.001f);
+                if (!near.Contains(penLast) || !near.Contains(penFirst)) continue;
+                if (!a.ChainIntact() || a.Hidden()) continue;
 
                 int i = NearestNodeIndex(a, bLast.transform.position, DrawingConfig.CloseThreshold);
                 if (i < 0) continue;
@@ -426,6 +460,7 @@ namespace SpellyZombie
             }
 
             Register(piece);
+            piece.BornAt = src.BornAt; // cut ink dries when the uncut line would have
             piece.SetColor(src.Color); // a rune tint survives the split on every machine
             piece.State = StrokeState.Open;
             piece.CachePersistence();
@@ -498,13 +533,24 @@ namespace SpellyZombie
             if (_evapTimer <= 0f)
             {
                 _evapTimer = 1f;
+                GatherOwnerSpots();
                 for (int i = Strokes.Count - 1; i >= 0; i--)
                 {
                     var s = Strokes[i];
                     if (s == null || !s.Alive) { Strokes.RemoveAt(i); continue; }
-                    if (s.State != StrokeState.Open || s.Persistent) continue;
+                    if (s.State != StrokeState.Open) continue;
                     // rune-wall ink IS the saved sample pool - it never dries
                     if (s.Surface != null && s.Surface.GetComponentInParent<RuneWall>() != null) continue;
+                    // left behind: the HOST decides, every machine burns it and the
+                    // owner's wand gets it back there. Ink nobody else holds
+                    // (NetId 0) keeps the local rule.
+                    if ((NetGame.IsAuthority || s.NetId == 0) && LeftBehind(s))
+                    {
+                        ReturnToWand(s);
+                        NetSync.PushLeashBurn(s);
+                        s.Burn(); Strokes.RemoveAt(i); continue;
+                    }
+                    if (s.Persistent) continue;
                     float over = (Time.time - s.BornAt) - DrawingConfig.InkEvaporateSeconds;
                     if (over <= 0f) continue;
                     float k = 1f - over / Mathf.Max(0.5f, DrawingConfig.InkEvaporateFadeSeconds);
@@ -554,25 +600,34 @@ namespace SpellyZombie
             // held-still gate: skip the detectors unless sampled ink moved beyond
             // sway, the stroke set changed, or a caller forced the scan
             if (!_forceDetect && InkHeldStill()) return;
+            bool forced = _forceDetect;
             _forceDetect = false;
             SnapshotInk();
+
+            // the detectors see only ink that changed since they last saw it, plus
+            // all ink it reaches; null = ink only went away, which closes nothing
+            var scan = ScanSet(_fullScanNext, forced);
+            _fullScanNext = false;
+            if (scan == null) return;
 
             // both detectors always run and the largest seal wins - a small
             // sub-loop must never steal the intended boundary
             SealDetector.LastNearMiss = null;
-            var loop = SealDetector.FindLoop(_eligibleCache);
+            var loop = SealDetector.FindLoop(scan);
             float loopPerim = loop != null ? SealDetector.LoopPerimeter(loop) : -1f;
 
-            var cross = CrossingFinder.Find(_eligibleCache);
+            var cross = CrossingFinder.Find(scan);
             float crossPerim = cross.Valid ? cross.Perimeter : -1f;
 
             if (loop != null && loopPerim >= crossPerim)
             {
+                _fullScanNext = true;
                 CreateSeal(loop, loop.Count == 1 ? "endpoints met" : $"{loop.Count} strokes linked");
                 return;
             }
             if (cross.Valid)
             {
+                _fullScanNext = true;
                 ApplyCrossingLoop(cross);
                 return;
             }
@@ -641,6 +696,115 @@ namespace SpellyZombie
                 if ((lp - _detectSnap[k++]).sqrMagnitude > j2) return false;
             }
             return k == _detectSnap.Count;
+        }
+
+        /// What the detectors scan: strokes new, split or moved since the last scan
+        /// that saw them, flooded through every stroke whose reach box meets one
+        /// already in (whole connected ink, never part of it). Untouched ink was
+        /// scanned as it is; ink that left may have blocked a ring, so what it
+        /// touched is scanned. Null = nothing to scan.
+        IReadOnlyList<Stroke> ScanSet(bool full, bool forced)
+        {
+            int n = _eligibleCache.Count;
+            if (_inScan.Length < n)
+            {
+                int cap = Mathf.NextPowerOfTwo(n);
+                _inScan = new bool[cap];
+                _scanReach = new Bounds[cap];
+            }
+            _scanTick++;
+            _scanFlood.Clear();
+            for (int i = 0; i < n; i++)
+            {
+                var s = _eligibleCache[i];
+                bool changed = !_scanRefs.TryGetValue(s, out var r) || !SameInk(s, r);
+                if (changed)
+                {
+                    if (r == null)
+                    {
+                        r = _scanRefPool.Count > 0 ? _scanRefPool.Pop() : new ScanRef();
+                        _scanRefs[s] = r;
+                    }
+                    RememberInk(s, r); // every changed stroke is scanned this tick
+                    _scanFlood.Add(i);
+                }
+                r.Tick = _scanTick;
+                _inScan[i] = changed;
+                _scanReach[i] = r.Reach;
+            }
+            // ink that left the set counts as new if it comes back
+            _scanGone.Clear();
+            foreach (var kv in _scanRefs)
+                if (kv.Value.Tick != _scanTick) _scanGone.Add(kv.Key);
+            foreach (var s in _scanGone)
+            {
+                var gone = _scanRefs[s];
+                for (int i = 0; i < n; i++)
+                    if (!_inScan[i] && gone.Reach.Intersects(_scanReach[i]))
+                    {
+                        _inScan[i] = true;
+                        _scanFlood.Add(i);
+                    }
+                _scanRefPool.Push(gone);
+                _scanRefs.Remove(s);
+            }
+
+            if (full) return _eligibleCache;
+            // a forced scan with nothing changed runs whole, as it always did
+            if (_scanFlood.Count == 0) return forced ? _eligibleCache : null;
+            for (int k = 0; k < _scanFlood.Count && _scanFlood.Count < n; k++)
+            {
+                Bounds m = _scanReach[_scanFlood[k]];
+                for (int i = 0; i < n; i++)
+                    if (!_inScan[i] && m.Intersects(_scanReach[i]))
+                    {
+                        _inScan[i] = true;
+                        _scanFlood.Add(i);
+                    }
+            }
+            if (_scanFlood.Count == n) return _eligibleCache;
+            _scanSet.Clear();
+            for (int i = 0; i < n; i++)
+                if (_inScan[i]) _scanSet.Add(_eligibleCache[i]); // registry order, as a full scan sees it
+            return _scanSet;
+        }
+
+        /// Record a stroke's ink as the detectors are about to see it.
+        static void RememberInk(Stroke s, ScanRef r)
+        {
+            var nodes = s.Nodes;
+            r.Nodes = nodes.Count;
+            var carrier = nodes[0].transform.parent;
+            var box = new Bounds(nodes[0].transform.position, Vector3.zero);
+            bool many = false;
+            for (int i = 1; i < nodes.Count; i++)
+            {
+                var t = nodes[i].transform;
+                box.Encapsulate(t.position);
+                if (t.parent != carrier) many = true;
+            }
+            r.AllNodes = many;
+            r.Pts.Clear();
+            int step = many ? 1 : SampleStep(s);
+            for (int i = 0; i < nodes.Count; i += step) r.Pts.Add(nodes[i].transform.position);
+            r.Pts.Add(nodes[nodes.Count - 1].transform.position);
+            // two reach boxes meet whenever either detector could join their ink:
+            // crossings weld within 3 touch widths, open ends are named within
+            // 3 x CloseThreshold (Expand grows each face by half)
+            box.Expand(Mathf.Max(DrawingConfig.InkTouchDistance, DrawingConfig.CloseThreshold) * 3f + 0.001f);
+            r.Reach = box;
+        }
+
+        /// True when the stroke's ink sits exactly where its last scan saw it.
+        static bool SameInk(Stroke s, ScanRef r)
+        {
+            var nodes = s.Nodes;
+            if (r.Nodes != nodes.Count) return false;
+            int step = r.AllNodes ? 1 : SampleStep(s);
+            int k = 0;
+            for (int i = 0; i < nodes.Count; i += step)
+                if (!nodes[i].transform.position.Equals(r.Pts[k++])) return false;
+            return nodes[nodes.Count - 1].transform.position.Equals(r.Pts[k]);
         }
 
         /// Turn a detected crossing cycle into a seal: split every crossed stroke
@@ -934,6 +1098,61 @@ namespace SpellyZombie
 
         /// Perf guard: characters/weapons carry bounded ink, but the environment
         /// doesn't - fade the oldest unsealed world scribbles beyond the cap.
+        /// Where each player's body stands on this machine: the local pilot and
+        /// every friend's puppet. Their ink is measured from there.
+        void GatherOwnerSpots()
+        {
+            _ownerAt.Clear();
+            foreach (var p in SimpleFPSController.All)
+                if (p != null && p.IsLocalViewer) { _ownerAt[Grimoire.LocalPlayerId] = p.transform.position; break; }
+            foreach (var a in NetAvatar.All)
+                if (a != null) _ownerAt[NetSync.OwnerIdOf(a.Id)] = a.transform.position;
+        }
+
+        /// Loose ink farther than InkLeashMeters from its owner's body. Ink on a
+        /// body rides that body and is never left behind. The pieces an erase
+        /// left share one wire id, so they go together or not at all.
+        bool LeftBehind(Stroke s)
+        {
+            if (!FarFromOwner(s)) return false;
+            if (s.NetId == 0) return true;
+            _leashBuf.Clear();
+            NetSync.PiecesOf(s.OwnerId, s.NetId, _leashBuf);
+            foreach (var p in _leashBuf)
+                if (p != s && !FarFromOwner(p)) return false;
+            return true;
+        }
+        static readonly List<Stroke> _leashBuf = new List<Stroke>();
+
+        bool FarFromOwner(Stroke s)
+        {
+            float leash = DrawingConfig.InkLeashMeters;
+            if (leash <= 0f || s.Nodes.Count == 0 || !_ownerAt.TryGetValue(s.OwnerId, out var at)) return false;
+            if (s.Surface != null && (s.Surface.GetComponentInParent<SimpleFPSController>() != null
+                || s.Surface.GetComponentInParent<NetAvatar>() != null)) return false;
+            float r2 = leash * leash;
+            foreach (var n in s.Nodes)
+                if (n != null && (n.transform.position - at).sqrMagnitude <= r2) return false;
+            return true;
+        }
+
+        /// The owner's own machine takes the ink back at the share it was paid;
+        /// a disguised acolyte's waits in the reserve, as a scan does, a wizard's
+        /// wand takes it at once (only acolytes drain the reserve).
+        public static void ReturnToWand(Stroke s)
+        {
+            if (s.OwnerId != Grimoire.LocalPlayerId) return;
+            foreach (var ink in PlayerInk.All)
+            {
+                var pilot = ink != null ? ink.GetComponent<SimpleFPSController>() : null;
+                if (pilot == null || !pilot.IsLocalViewer) continue;
+                float worth = s.PathLength() * DrawingConfig.InkCostPerMeter * ink.DrawRate;
+                if (ShapeShift.LocalIsShaped && Sides.IsAcolyte(Grimoire.LocalPlayerId)) ink.Store(worth);
+                else ink.Award(worth);
+                return;
+            }
+        }
+
         void EnforceInkBudget()
         {
             // the census filter must match the burn loop's filter, or the cap can never be satisfied

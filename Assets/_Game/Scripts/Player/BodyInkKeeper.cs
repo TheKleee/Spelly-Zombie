@@ -107,10 +107,11 @@ namespace SpellyZombie
                 for (int i = 0; i < saved.Pts.Length; i++)
                     s.AddNode(DrawNode.Create(s, i,
                         bone.TransformPoint(saved.Pts[i]), normal, bone));
-                // completes like any local pen-up - which is what makes the
-                // netcode broadcast it to everyone, unprompted
+                // silent skips the reading, the claim and the net send - it
+                // ships here like a fresh body stroke (a no-op offline)
                 DrawingWorld.Instance.CompleteStroke(s,
                     allowCloseOntoInk: false, silent: true, preview: false);
+                NetSync.OnLocalStrokeFinished(s);
             }
             _restored = true;
         }

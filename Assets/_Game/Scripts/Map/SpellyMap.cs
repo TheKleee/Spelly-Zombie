@@ -126,8 +126,10 @@ namespace SpellyZombie
             var root = new GameObject(GeneratedName);
             root.transform.SetParent(transform, false);
 
-            // highest layer first: the first box containing a point wins
-            System.Array.Sort(biomes, (a, b) => b.Layer.CompareTo(a.Layer));
+            // highest layer first: the first box containing a point wins;
+            // equal layers fall to SceneOrder, the same on every machine
+            System.Array.Sort(biomes, (a, b) =>
+                a.Layer != b.Layer ? b.Layer.CompareTo(a.Layer) : SceneOrder(a, b));
 
             // the vertical range the terrain must be able to express
             float baseY = float.MaxValue, topY = float.MinValue;
@@ -309,6 +311,35 @@ namespace SpellyZombie
             Element.GroundReady();
         }
 
+        /// An order every machine agrees on: name, then position, then place
+        /// in the scene hierarchy. FindObjectsByType's own order is not.
+        static int SceneOrder(Component a, Component b)
+        {
+            if (a == b) return 0;
+            int c = string.CompareOrdinal(a.name, b.name);
+            if (c != 0) return c;
+            Vector3 pa = a.transform.position, pb = b.transform.position;
+            if ((c = pa.x.CompareTo(pb.x)) != 0) return c;
+            if ((c = pa.y.CompareTo(pb.y)) != 0) return c;
+            if ((c = pa.z.CompareTo(pb.z)) != 0) return c;
+            // same name on the same spot: the scene file's order decides
+            if ((c = string.CompareOrdinal(a.gameObject.scene.name, b.gameObject.scene.name)) != 0) return c;
+            var ia = SiblingPath(a.transform);
+            var ib = SiblingPath(b.transform);
+            for (int i = 0; i < ia.Count && i < ib.Count; i++)
+                if (ia[i] != ib[i]) return ia[i].CompareTo(ib[i]);
+            if (ia.Count != ib.Count) return ia.Count.CompareTo(ib.Count);
+            var comps = a.GetComponents<Component>(); // two on one GameObject
+            return System.Array.IndexOf(comps, a).CompareTo(System.Array.IndexOf(comps, b));
+        }
+
+        static List<int> SiblingPath(Transform t)
+        {
+            var path = new List<int>();
+            for (; t != null; t = t.parent) path.Insert(0, t.GetSiblingIndex());
+            return path;
+        }
+
         /// Highest layer containing the point wins. Each face waves by
         /// zero-mean noise; faces at the same coordinate share the wave, so
         /// snapped neighbours stay seamless.
@@ -443,11 +474,11 @@ namespace SpellyZombie
 
             if (Randomized)
             {
-                // deterministic rng order: ascending layer, then name
+                // deterministic rng order: ascending layer, then SceneOrder (name first)
                 var asc = (Biome[])biomes.Clone();
                 System.Array.Sort(asc, (a, b) =>
                     a.Layer != b.Layer ? a.Layer.CompareTo(b.Layer)
-                                       : string.CompareOrdinal(a.name, b.name));
+                                       : SceneOrder(a, b));
                 var containers = FindObjectsByType<BiomeContainer>(FindObjectsSortMode.None);
 
                 foreach (var b in asc)
@@ -1603,6 +1634,8 @@ namespace SpellyZombie
             // authored PathNodes first: a biome containing any gets no auto
             // nodes; nodes ride their biome's shuffle
             var authored = FindObjectsByType<PathNode>(FindObjectsSortMode.None);
+            // the same order on every machine: it sets indices, links and the tree root
+            System.Array.Sort(authored, (a, b) => SceneOrder(a, b));
             var authoredIdx = new Dictionary<PathNode, int>();
             var authoredBiomes = new HashSet<Biome>();
             foreach (var mk in authored)

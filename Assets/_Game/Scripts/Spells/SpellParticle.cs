@@ -184,7 +184,20 @@ namespace SpellyZombie
             if (_dead) return;
             if (Dormant) Wake();       // areas flush on wake - a meteor still falls
             if (_dead) return;         // the wake verb may already have spent it
+            // heat and chill carried to the impact: the steam forms here, nothing else
+            if (_hasPending && _pendingSteam) { MakePendingSteam(); return; }
             if (_areasDeferred) FlushAreas(); // a thrown spell's areas raise HERE, at the impact
+            // a biome a thrown lvl3 owes opens where it lands
+            if (_biomeOwed)
+            {
+                _biomeOwed = false;
+                if (GrammarLevel < 3 && OutPowers(SpellLaw.Here(this)))
+                {
+                    GrammarLevel = 3;
+                    BecomeBiome();
+                    return;
+                }
+            }
             ImpactFx();
 
             // ★ THE BLAST IS THE PAYLOAD LANDING: every body in reach takes
@@ -402,15 +415,19 @@ namespace SpellyZombie
         float _dormantLeft;
         float _dormantScan;
         bool _wakeOnLand;   // thrown conjure ghost: fly the full arc, fire at impact
+        /// Asleep but moving: a release or a body cast put it on a wake timer.
+        bool FlyingAsleep => _wakeAt > 0f || _wakeOnLand;
 
         /// The real conjure waits inside this preview and fires where the
         /// ghost wakes - carry it, throw it, or leave it as a trap.
         public System.Action<Vector3> PendingConjure;
 
-        // a fused-but-unmade PAIR: one ghost holds both halves; waking
-        // re-births the partner live on the spot and nature runs the recipe
-        ParticleKind _pendingKind;
-        float _pendingPower, _pendingSrc;
+        // a fused-but-unmade PAIR: one ghost holds both halves. Waking joins
+        // them on the spot; a thrown steam pair waits for its impact
+        ParticleKind _pendingKind; // the ghost's tint shows the partner
+        float _pendingPower;
+        int _pendingLevel;
+        bool _pendingSteam;
         ulong _pendingLin;
         SpellPayload _pendingData; // the partner's POOLED axes - losing them
                                    // meant a figured-out recipe came up short
@@ -439,12 +456,13 @@ namespace SpellyZombie
 
         /// Object-product combinations (steam, white hole, tornado, lvl3
         /// areas, exotics) sleep as one ghost holding both halves; waking
-        /// re-births the partner and the recipe runs.
+        /// joins them on the spot, a thrown steam pair waits for its impact.
         static void StorePendingPair(SpellParticle a, SpellParticle b)
         {
             a._pendingKind = b.Kind;
             a._pendingPower = b.Power;
-            a._pendingSrc = b.SrcSize;
+            a._pendingLevel = EffLevel(b);
+            a._pendingSteam = SpellTable.IsSteam(a.PayloadNow, b.PayloadNow);
             a._pendingLin = b.Lineage;
             a._pendingData = b.Data;
             a._hasPending = true;
@@ -452,7 +470,8 @@ namespace SpellyZombie
             a.SrcSize = FuseSize(a.SrcSize, b.SrcSize);
             a.GrowToSize(aWasSrc); // same curve as every other merge
             a.InheritAnchor(b);
-            a.Vel = Vector3.zero;
+            // momentum adds: a pair merging in flight flies on, a hovering one stays
+            a.Vel = a.FlyingAsleep ? a.Vel + b.Vel : Vector3.zero;
             a.GhostLook();
             b.Die();
         }
@@ -465,7 +484,7 @@ namespace SpellyZombie
             var live = a._dead ? b : a;
             if (live._dead) return;
             live.InheritAnchor(live == a ? b : a);
-            live.Vel = Vector3.zero;
+            if (!live.FlyingAsleep) live.Vel = Vector3.zero; // a merge in flight keeps the summed momentum
             if (!live.Dormant) return;
             // scale is already state-correct: merges grow by the curve
             // ratio (GrowToSize) - re-applying the preview shrink here
@@ -590,24 +609,41 @@ namespace SpellyZombie
                 c(at);
                 return;
             }
-            // a carried partner is re-born live beside it; contact runs the
-            // recipe (tornado, exotic, paradox)
+            // a carried partner: the two become ONE here, no contact race. A
+            // thrown steam pair keeps waiting - its steam forms where it lands.
             if (_hasPending)
             {
-                _hasPending = false;
-                var mate = Emit(_pendingKind,
-                    transform.position + Random.insideUnitSphere * 0.15f,
-                    Vector3.up, Mathf.Max(0.2f, _pendingPower));
-                if (mate != null)
-                {
-                    mate.SrcSize = _pendingSrc;
-                    mate.Lineage = _pendingLin;
-                    mate.OwnerId = OwnerId;
-                    mate.FromMinion = FromMinion;
-                    mate.Data = _pendingData;   // the carried half returns WHOLE
-                    mate.JoinSeal(SealId);      // still family for the pool count
-                }
+                if (_pendingSteam) { if (!_primed) MakePendingSteam(); }
+                else FoldPending();
             }
+        }
+
+        /// Heat and chill carried as one ghost: the steam forms here and the
+        /// ghost is spent, as when two live motes meet.
+        void MakePendingSteam()
+        {
+            _hasPending = false;
+            ImpactFx();
+            Vector3 at = transform.position;
+            RuneGrammar.TryDemon(Lineage | _pendingLin, at, SrcSize);
+            SpellEffects.Steam(at, (Power + _pendingPower) * 0.5f, OwnerId, Vel);
+            Die();
+        }
+
+        /// The carried half joins this mote: the pooling two live motes do in
+        /// LevelMerge, on one body (the size was fused when they slept).
+        void FoldPending()
+        {
+            _hasPending = false;
+            ImpactFx();
+            int la = EffLevel(this), lb = _pendingLevel;
+            Lineage |= _pendingLin;
+            Data = (Data + _pendingData).Clamped();
+            Power = la != lb
+                ? Mathf.Min(3f, Mathf.Min(Power, _pendingPower) * 1.25f)
+                : Mathf.Min(3f, Power + _pendingPower * 0.5f);
+            RuneGrammar.TryDemon(Lineage, transform.position, SrcSize);
+            SettlePooled();
         }
 
         /// The reach the spell will have live - the preview's visible area,
@@ -787,7 +823,16 @@ namespace SpellyZombie
                 if (lpEnemy)
                 {
                     if (lpD2 <= r2) { Wake(); return; }
-                    if (lpD2 < best) foe = lp.transform;
+                    if (lpD2 < best) { best = lpD2; foe = lp.transform; }
+                }
+                // a remote player's puppet, seen the way LockOn sees it
+                foreach (var a in NetAvatar.All)
+                {
+                    if (a == null || a.Downed || a.Disguised) continue;
+                    if (Sides.IsAcolyte(NetSync.OwnerIdOf(a.Id)) == ownerAcolyte) continue;
+                    float d2a = (a.transform.position - transform.position).sqrMagnitude;
+                    if (d2a <= r2) { Wake(); return; }
+                    if (d2a < best) { best = d2a; foe = a.transform; }
                 }
                 if (foe != null) { _dormantSeek = foe; _seekLift = 0.5f; return; }
             }
@@ -795,18 +840,33 @@ namespace SpellyZombie
             // ---- 2. allies missing what it carries: need inside the area
             // wakes it, need inside seek range draws it over; no need = stay.
             // heal-wake waits for an identifiable heal lineage (phase 2).
+            bool NeedsMe(float bodyTemp) =>
+                (bodyTemp < BodyState.TempBandLow + 3f && Temp > 30f)   // freezing + I am warm
+                || (bodyTemp > BodyState.TempBandHigh - 3f && Temp < 8f); // burning + I am chill
+            Transform ally = null;
+            float allyBest = seek2;
             if (lp != null && !lpEnemy)
             {
                 var board = BodyState.Of(lp);
                 if (board != null)
                 {
-                    bool needsMe =
-                        (board.Temp < BodyState.TempBandLow + 3f && Temp > 30f)   // freezing + I am warm
-                        || (board.Temp > BodyState.TempBandHigh - 3f && Temp < 8f); // burning + I am chill
+                    bool needsMe = NeedsMe(board.Temp);
                     if (needsMe && lpD2 <= r2) { Wake(); return; }
-                    if (needsMe && lpD2 <= seek2) { _dormantSeek = lp.transform; _seekLift = 0.5f; return; }
+                    if (needsMe && lpD2 <= seek2) { allyBest = lpD2; ally = lp.transform; }
                 }
             }
+            // a puppet's temperature is its Element's, which StateMsg keeps current
+            foreach (var a in NetAvatar.All)
+            {
+                if (a == null || a.Downed) continue;
+                if (Sides.IsAcolyte(NetSync.OwnerIdOf(a.Id)) != ownerAcolyte) continue;
+                var el = a.GetComponent<Element>();
+                if (el == null || !NeedsMe(el.Data.Temp)) continue;
+                float d2a = (a.transform.position - transform.position).sqrMagnitude;
+                if (d2a <= r2) { Wake(); return; }
+                if (d2a <= allyBest) { allyBest = d2a; ally = a.transform; }
+            }
+            if (ally != null) { _dormantSeek = ally; _seekLift = 0.5f; return; }
 
             // ---- 3. SLEEPING KIN it can pool with (same kind - the fusions
             // that would TRANSFORM wait for their phase-2 preview forms).
@@ -1292,6 +1352,7 @@ namespace SpellyZombie
 
         void Die()
         {
+            LeaveBiomes(); // a lvl3 cut short stops imposing too
             if (_dead) return;
             _dead = true;
             All.Remove(this);
@@ -1323,8 +1384,9 @@ namespace SpellyZombie
 
             // held-back verdicts land once the last mate is in, or once the
             // merging has gone quiet: areas first, then the biome question
-            if (_areasDeferred && PoolSettled) FlushAreas();
-            if (_biomeOwed && PoolSettled)
+            // a thrown (primed) mote answers both at its impact
+            if (_areasDeferred && PoolSettled && !_primed) FlushAreas();
+            if (_biomeOwed && PoolSettled && !_primed)
             {
                 _biomeOwed = false;
                 if (GrammarLevel < 3 && OutPowers(SpellLaw.Here(this)))
@@ -1805,6 +1867,10 @@ namespace SpellyZombie
             // absorbed by it.
             if (a.Attached || b.Attached) return;
 
+            // HOLDING IS STASIS (his rule): a spell in someone's hand combines
+            // with nothing - it leaves the hand as it was made
+            if (a.Holder != null || b.Holder != null) return;
+
             // a live particle wakes a sleeper on contact - EXCEPT its own
             // seal-mates: the utterance stays asleep (his rule), so the live
             // spare joining the sleeping drawing goes to sleep itself
@@ -1863,7 +1929,7 @@ namespace SpellyZombie
                 Vector3 sat = (a.transform.position + b.transform.position) * 0.5f;
                 RuneGrammar.TryDemon(a.Lineage | b.Lineage, sat, FuseSize(a.SrcSize, b.SrcSize));
                 SpellEffects.Steam(sat, (a.Power + b.Power) * 0.5f,
-                    a.OwnerId >= 0 ? a.OwnerId : b.OwnerId);
+                    a.OwnerId >= 0 ? a.OwnerId : b.OwnerId, a.Vel + b.Vel); // momentum adds
                 a.Die(); b.Die();
                 return;
             }
@@ -1922,6 +1988,7 @@ namespace SpellyZombie
             // pool payload + ancestry into the survivor
             hi.Lineage |= lo.Lineage;
             hi._primed |= lo._primed; // a thrown ingredient keeps the fuse lit
+            if (hi._thrownBy == null && lo._thrownBy != null) { hi._thrownBy = lo._thrownBy; hi._thrownAt = lo._thrownAt; } // and its thrower's grace
             hi.Data = (hi.Data + lo.Data).Clamped();   // tops out, then drift pulls it back
             // mismatched levels: the weaker half rules the product (law 6);
             // equals pool their power instead
@@ -1949,9 +2016,16 @@ namespace SpellyZombie
             lo.BecameObj = hi; // sustain law: lo's rune waits on the survivor
             lo.Die();
             RuneGrammar.TryDemon(hi.Lineage, at, hi.SrcSize);
+            hi.SettlePooled();
+        }
 
+        /// Payload just pooled into this mote: the table decides what it is
+        /// now, then level, biome and areas follow. A thrown (primed) mote
+        /// keeps its biome and areas for the impact.
+        void SettlePooled()
+        {
             // the sum may have crossed into a named region - the table decides
-            hi.RefreshIdentity();
+            RefreshIdentity();
 
             // ★ ONE PARTICLE, ONE LOOK (his rule): combining pools the data
             // and ONE survivor keeps ONE look, changing only when the summed
@@ -1959,26 +2033,26 @@ namespace SpellyZombie
             // read. Level is the matched region's own, never a count of how
             // many motes met (the two-lvl1s-make-a-lvl2 ladder was pre-V2).
             int lvl = 1;
-            for (int i = 0; i < hi.Fusions.Count; i++)
-                lvl = Mathf.Max(lvl, hi.Fusions[i].Level);
+            for (int i = 0; i < Fusions.Count; i++)
+                lvl = Mathf.Max(lvl, Fusions[i].Level);
 
             // ★ A BIOME MUST OUT-POWER THE GROUND IT STANDS IN (his rule) -
             // falling short parks it at area strength until it eats more.
             // And never mid-pool: two heats of a four-rune seal crossing the
             // biome line must not end the utterance before the rest join.
-            if (lvl >= 3 && hi.PoolingDone && hi.OutPowers(SpellLaw.Here(hi)))
+            if (lvl >= 3 && PoolingDone && !_primed && OutPowers(SpellLaw.Here(this)))
             {
-                hi.GrammarLevel = 3;
-                hi.BecomeBiome();
+                GrammarLevel = 3;
+                BecomeBiome();
             }
             else
             {
-                hi.GrammarLevel = Mathf.Min(lvl, 2);
-                hi._biomeOwed = lvl >= 3; // judged again when the pool settles
+                GrammarLevel = Mathf.Min(lvl, 2);
+                _biomeOwed = lvl >= 3; // judged again when the pool settles
             }
 
-            hi._mergeQuietAt = Time.time + 0.6f; // the utterance is still speaking
-            if (hi._areasDeferred && !hi.Dormant && hi.PoolingDone) hi.FlushAreas();
+            _mergeQuietAt = Time.time + 0.6f; // the utterance is still speaking
+            if (_areasDeferred && !Dormant && PoolingDone && !_primed) FlushAreas();
         }
 
         /// ★ IS THIS AXIS AT BIOME STRENGTH? Read off the numbers every time,
@@ -2219,7 +2293,10 @@ namespace SpellyZombie
                 if (p != null && p != this) { p.Pull(transform.position, dt); continue; }
                 var rb = c.attachedRigidbody;
                 if (rb != null && !rb.isKinematic)
+                {
+                    Element.TrackLoose(rb); // the clients see it drawn in
                     rb.AddForce((transform.position - rb.worldCenterOfMass).normalized * 8f, ForceMode.Acceleration);
+                }
             }
         }
 
@@ -2430,7 +2507,10 @@ namespace SpellyZombie
                         {
                             var prb = c.attachedRigidbody;
                             if (prb != null && !prb.isKinematic)
+                            {
+                                Element.TrackLoose(prb); // the clients see it fly
                                 prb.AddForce(dir * kick, ForceMode.VelocityChange);
+                            }
                         }
                     }
                 }
@@ -2510,7 +2590,11 @@ namespace SpellyZombie
                 return;
             }
             var rb = c.attachedRigidbody;
-            if (rb != null && !rb.isKinematic) rb.AddForce(dv, ForceMode.VelocityChange);
+            if (rb != null && !rb.isKinematic)
+            {
+                Element.TrackLoose(rb); // the clients see the pull
+                rb.AddForce(dv, ForceMode.VelocityChange);
+            }
             else
                 // AddSpellForce integrates accel x dt - feed this frame's
                 // worth so dv lands as written
@@ -2569,7 +2653,11 @@ namespace SpellyZombie
                 back += AffinityPair(c, self.position, aff, w, selfMass);
             }
             if (back == Vector3.zero) return;
-            if (selfRb != null && !selfRb.isKinematic) selfRb.AddForce(back, ForceMode.VelocityChange);
+            if (selfRb != null && !selfRb.isKinematic)
+            {
+                Element.TrackLoose(selfRb); // the carrier's recoil shows too
+                selfRb.AddForce(back, ForceMode.VelocityChange);
+            }
             else selfPl?.AddSpellForce(back / Mathf.Max(0.001f, Time.deltaTime), Time.deltaTime);
         }
 
@@ -2695,7 +2783,11 @@ namespace SpellyZombie
             if (d != null) d.TakeDamage(50f * Power, "struck by lightning", OwnerId, FromMinion);
             GiveHeat(best, 150f); // a strike IGNITES what it hits
             var rb = best.attachedRigidbody;
-            if (rb != null) rb.AddForce(Vector3.down * 7f, ForceMode.VelocityChange);
+            if (rb != null)
+            {
+                Element.TrackLoose(rb); // the clients see the knock
+                rb.AddForce(Vector3.down * 7f, ForceMode.VelocityChange);
+            }
         }
 
         /// The lightning line; the host ships it (FxMsg).
@@ -2968,7 +3060,7 @@ namespace SpellyZombie
                     // is banked, because drift can bleed the payload back under
                     // the line before the pool completes - the meteor was worn
                     // for one second and owed its sky-fall anyway
-                    if (Dormant || !PoolSettled)
+                    if (Dormant || !PoolSettled || _primed) // a thrown mote's areas raise where it lands
                     {
                         _areasDeferred = true;
                         _mergeQuietAt = Time.time + 0.6f;
@@ -3324,7 +3416,10 @@ namespace SpellyZombie
             // damage through the one damage door. HP IS HP, no conversion.
             if (give.Strength > 0.5f)
             {
-                if (bodyEl != null && bodyEl.Heal(give.Strength))
+                // a remote player mends on their own machine; the host's stand-in follows them
+                bool shipped = board == null && owner >= 0 && bodyEl != null && !bodyEl.DeadStill
+                    && NetSync.PushPlayerFx(owner, 1, give.Strength);
+                if (shipped || (bodyEl != null && bodyEl.Heal(give.Strength)))
                     GrammarFX.PuffBurst(at + Vector3.up * 1.2f,
                         new Color(0.45f, 1f, 0.55f), 4);
             }
@@ -3390,8 +3485,11 @@ namespace SpellyZombie
             if (Kind == ParticleKind.Push)
             {
                 if (rb != null && !rb.isKinematic)
+                {
+                    Element.TrackLoose(rb); // the clients see the shove
                     rb.AddForce(VectorImpulse(rb.linearVelocity, rb.position)
                         / Mathf.Max(0.2f, rb.mass * 0.1f), ForceMode.VelocityChange);
+                }
                 else if (creature != null)
                 {
                     var crb = creature.GetComponent<Rigidbody>();
@@ -3431,6 +3529,7 @@ namespace SpellyZombie
                 if (rb != null)
                 {
                     rb.linearDamping = 0f;
+                    Element.TrackLoose(rb); // the clients see it skid
                     rb.AddForce((c.transform.position - transform.position).normalized * 5f * -Stick,
                         ForceMode.VelocityChange);
                 }

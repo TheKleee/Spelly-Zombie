@@ -101,8 +101,11 @@ namespace SpellyZombie
                     alive.TakeDamage(30f, "meteor impact");
                 var rb2 = c.attachedRigidbody;
                 if (rb2 != null && rb2.gameObject != gameObject)
+                {
+                    Element.TrackLoose(rb2); // the clients see the flight
                     rb2.AddForce((rb2.worldCenterOfMass - at).normalized * 9f,
                         ForceMode.VelocityChange);
+                }
             }
 
             // the rock shatters into hot solid chunks that ignite what they land on

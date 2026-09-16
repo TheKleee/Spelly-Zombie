@@ -12,6 +12,10 @@ namespace SpellyZombie
         public SurfaceMaterialType Mat;
         public MatterPhase Phase;
         public byte Edges;
+        /// The host blob's velocity and stickiness from the snapshot: this body
+        /// is kinematic and its Matter never changes, so the local wader reads these.
+        public Vector3 Flow;
+        public float Stickiness;
 
         Matter _matter;   // disabled - fields feed LiquidVolume, Update never runs
         Renderer _rend;
@@ -75,6 +79,7 @@ namespace SpellyZombie
             proxy.Phase = phase;
             proxy.Edges = edges;
             proxy._matter = m;
+            proxy.Stickiness = m.Stickiness;
             proxy._authored = authored;
             proxy._info = SurfaceMaterialDB.Info(mat);
             proxy._rend = authored ? go.GetComponentInChildren<Renderer>() : go.GetComponent<Renderer>();
@@ -331,11 +336,19 @@ namespace SpellyZombie
             var art = CollectionManager.ParticleShapeAt(Shape);
             var row = art == null ? null : SpellTable.ByName(art.name) ?? SpellTable.ByName(StripLevel(art.name));
 
-            if (row != null && row.TrailWidth > 0f)
+            // the trail is the AOE's, as on the host: an area child's own area, else the
+            // named row's; the legacy table only when no book row is known
+            var aoes = SpellBook.Live.aoes;
+            bool booked = _area != 255 || def != null;
+            var aoe = _area != 255 ? (aoes != null && _area < aoes.Count ? aoes[_area] : null)
+                : def != null ? SpellBook.Live.Aoe(def.Aoe) : null;
+            float trailWidth = booked ? (aoe != null ? aoe.TrailWidth : 0f) : row != null ? row.TrailWidth : 0f;
+            float trailSeconds = booked ? (aoe != null ? aoe.TrailSeconds : 0f) : row != null ? row.TrailSeconds : 0f;
+            if (trailWidth > 0f)
             {
                 if (_tail == null) _tail = gameObject.AddComponent<TrailRenderer>();
-                _tail.time = Mathf.Max(0.05f, row.TrailSeconds);
-                _tail.widthMultiplier = row.TrailWidth;
+                _tail.time = Mathf.Max(0.05f, trailSeconds);
+                _tail.widthMultiplier = trailWidth;
                 _tail.minVertexDistance = 0.08f;
                 _tail.sharedMaterial = MatterFX.Get(_tint, MoteShade.Additive);
             }
@@ -481,6 +494,19 @@ namespace SpellyZombie
             return ring;
         }
 
+        Transform _body; // a body seal: no loop, its zones ride this body
+
+        /// A body seal's zone looks: no ring, riding the caster's body.
+        public static NetSealRing OnBody(Transform body, float duration)
+        {
+            var go = new GameObject("NetBodySeal");
+            go.transform.SetPositionAndRotation(body.position, body.rotation);
+            var ring = go.AddComponent<NetSealRing>();
+            ring._die = duration + 2f;
+            ring._body = body;
+            return ring;
+        }
+
         // the zones' looks, built by Spell.BuildZoneVisual like the host's own
         readonly List<(GameObject go, Light light, float phase, float intensity)> _zones
             = new List<(GameObject, Light, float, float)>();
@@ -504,6 +530,7 @@ namespace SpellyZombie
                 if (z.light != null && z.intensity > 0f)
                     z.light.intensity = (0.2f + Mathf.PerlinNoise(Time.time * 9f, z.phase) * 0.3f) * z.intensity;
             }
+            if (_body != null) transform.SetPositionAndRotation(_body.position, _body.rotation);
             if (_anchor == null || _local == null) return;
             for (int i = 0; i < _local.Length; i++) _lr.SetPosition(i, _anchor.TransformPoint(_local[i]));
         }

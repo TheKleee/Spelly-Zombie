@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -18,6 +19,7 @@ namespace SpellyZombie
         Vector3 _lastHitPoint;   // raw world fallback, for surface-jump detection
         Transform _lastHitSurface; // the surface that hit landed on...
         Vector3 _lastHitLocal;     // ...and where, in ITS space - so its motion cancels
+        Vector3 _smoothedLocal, _lastNormalLocal; // the pen's smoothed point and normal in that space, for the tail
         Vector3 _smoothedPoint;  // jitter-filtered, nodes are placed here
         bool _suppressUntilRelease;
         bool _erasing;           // crosshair feedback
@@ -198,6 +200,7 @@ namespace SpellyZombie
             }
             else
             {
+                if (!penHeld) LayTail(); // released: the line ends where the pen was
                 EndStroke();
             }
 
@@ -319,16 +322,6 @@ namespace SpellyZombie
                 if (proxy != null) surface = proxy.transform;
             }
 
-            // one stroke, one surface - crossing a joint ends it; a seam-weld node
-            // at the crossing keeps both sides touching in every pose
-            if (_current != null && _current.Surface != null && surface != _current.Surface)
-            {
-                var weld = DrawNode.Create(_current, _current.Nodes.Count,
-                    hit.point, hit.normal, _current.Surface);
-                _current.AddNode(weld);
-                EndStroke(penLifted: false); // still drawing - don't re-read yet
-            }
-
             // jump tolerance grows with distance: a small mouse flick sweeps a lot
             // of wall at 8m, and silent stroke splits break closing shapes
             float allowedJump = Mathf.Max(DrawingConfig.MaxStrokeJump, hit.distance * DrawingConfig.MaxStrokeJumpPerMeter);
@@ -339,16 +332,23 @@ namespace SpellyZombie
             Vector3 lastPoint = _lastHitSurface != null
                 ? _lastHitSurface.TransformPoint(_lastHitLocal)
                 : _lastHitPoint;
-            if (_current != null && Vector3.Distance(hit.point, lastPoint) > allowedJump)
+            bool jumped = _current != null && Vector3.Distance(hit.point, lastPoint) > allowedJump;
+
+            // one stroke, one surface - crossing a joint ends it; a seam-weld node
+            // at the crossing keeps both sides touching in every pose. A far jump
+            // gets no weld: the ink separates and the pen draws on where it is.
+            if (_current != null && _current.Surface != null && surface != _current.Surface)
             {
-                // a shove or a flick jumped the aim: the stroke ends where it was
-                // and nothing more is drawn until the pen comes up - no dashed
-                // line, no stroke dragged across the drawing
-                Debug.Log($"[SpellyZombie] stroke stopped: aim jumped {Vector3.Distance(hit.point, lastPoint) * 100f:0}cm (limit {allowedJump * 100f:0}cm)");
-                EndStroke();
-                _suppressUntilRelease = true;
-                return;
+                if (!jumped)
+                {
+                    var weld = DrawNode.Create(_current, _current.Nodes.Count,
+                        hit.point, hit.normal, _current.Surface);
+                    _current.AddNode(weld);
+                }
+                EndStroke(penLifted: false); // still drawing - don't re-read yet
             }
+            else if (jumped)
+                EndStroke(penLifted: false); // a shove or a flick: this line ends, the next starts here
 
             if (_current == null)
             {
@@ -376,33 +376,251 @@ namespace SpellyZombie
             // memory with it (null-safe: the surface can die mid-stroke)
             _lastHitSurface = surface;
             _lastHitLocal = surface != null ? surface.InverseTransformPoint(hit.point) : hit.point;
+            _smoothedLocal = surface != null ? surface.InverseTransformPoint(_smoothedPoint) : _smoothedPoint;
+            _lastNormalLocal = surface != null ? surface.InverseTransformDirection(hit.normal) : hit.normal;
             WorldEvents.Report(WorldEventKind.Ink, _smoothedPoint, 0.5f); // eyes follow the pen - ink is a decoy
             NetSync.OnLocalStrokeGrow(_current); // the line grows on every screen (10 Hz inside)
 
+            // spacing is measured on the surface: a node floats SurfaceOffset
+            // above it, and a still pen must lay nothing
             var last = _current.Last;
-            if (last != null && Vector3.Distance(_smoothedPoint, last.transform.position) < DrawingConfig.NodeSpacing)
+            if (last != null && Vector3.Distance(_smoothedPoint, OnSurface(last)) < DrawingConfig.NodeSpacing)
                 return;
 
             // ink economy: every centimetre of line costs; kills refill.
             if (_ink == null) _ink = GetComponentInParent<PlayerInk>();
             if (_ink == null && _pilot != null) _ink = _pilot.GetComponent<PlayerInk>();
-            if (_ink != null && last != null)
+
+            // a fast hand between two slow frames covered a curve, not a straight
+            // hop: lay that whole curve, node by node, so the same hand draws the
+            // same line at any frame rate. Anything it can't do falls through to
+            // the single node below.
+            if (last != null && PlanFill(last, hit, surface))
             {
-                float cost = Vector3.Distance(_smoothedPoint, last.transform.position)
-                    * DrawingConfig.InkCostPerMeter * _ink.DrawRate;
-                if (!_ink.TrySpend(cost))
-                {
-                    DrawingWorld.Instance.LogEvent("OUT OF INK. kills refill the well");
-                    EndStroke();
-                    _suppressUntilRelease = true;
-                    return;
-                }
+                LayFill(hit, surface);
+                return;
             }
+
+            if (last != null && !Pay(OnSurface(last), _smoothedPoint)) return;
 
             var node = DrawNode.Create(_current, _current.Nodes.Count, _smoothedPoint, hit.normal, surface);
             _current.AddNode(node);
 
             TryCloseMidDraw(node);
+        }
+
+        // the gap curve and the nodes planned along it, reused every frame
+        static readonly List<Vector3> _curve = new List<Vector3>();
+        static readonly List<Vector3> _fillPoints = new List<Vector3>();
+        static readonly List<Vector3> _fillNormals = new List<Vector3>();
+        const int CurveSamples = 24; // measuring steps along the gap curve
+
+        /// Charges the wand for one piece of line. False = the well ran dry, so
+        /// the stroke ends where it was and nothing draws until the pen lifts.
+        bool Pay(Vector3 from, Vector3 to)
+        {
+            if (_ink == null) return true;
+            float cost = Vector3.Distance(from, to) * DrawingConfig.InkCostPerMeter * _ink.DrawRate;
+            if (_ink.TrySpend(cost)) return true;
+            DrawingWorld.Instance.LogEvent("OUT OF INK. kills refill the well");
+            EndStroke();
+            _suppressUntilRelease = true;
+            return false;
+        }
+
+        /// A node's point ON its surface - DrawNode.Create lifts every node clear
+        /// of it, and the gap curve is measured in surface points.
+        static Vector3 OnSurface(DrawNode n) =>
+            n.transform.position - n.SurfaceNormal * DrawingConfig.SurfaceOffset;
+
+        /// Plans the nodes that fill the gap the pen left this frame: one every
+        /// NodeSpacing of arc along a curve from the last node to the smoothed
+        /// point, each one put back on the surface being drawn on. False = there
+        /// is no gap, or it cannot be filled here - the caller lays its one node.
+        bool PlanFill(DrawNode last, RaycastHit hit, Transform surface)
+        {
+            _fillPoints.Clear();
+            _fillNormals.Clear();
+            Vector3 a = OnSurface(last);
+            Vector3 b = _smoothedPoint;
+            float chord = Vector3.Distance(a, b);
+            if (chord < DrawingConfig.NodeSpacing * 2f) return false; // one node covers this, as always
+
+            Vector3 startDir = StartTangent(a);
+            if (startDir.sqrMagnitude < 0.5f) startDir = (b - a).normalized; // no line behind it yet
+            Vector3 endDir = (b - a).normalized;
+            int back = BackNode(_current.Nodes.Count - 1, a, chord);
+            if (back >= 0)
+            {
+                Vector3 p = OnSurface(_current.Nodes[back]);
+                if (Vector3.Distance(p, a) >= DrawingConfig.NodeSpacing * 0.5f)
+                {
+                    Vector3 arced = ArcTangent(p, a, b);
+                    if (arced.sqrMagnitude > 0.5f) endDir = arced;
+                }
+            }
+
+            // one Hermite piece: it leaves along the line's own direction and
+            // arrives along the pen's, so a curve fills as a curve
+            Vector3 m1 = startDir * chord, m2 = endDir * chord;
+            _curve.Clear();
+            _curve.Add(a);
+            float arc = 0f;
+            Vector3 prev = a;
+            for (int i = 1; i <= CurveSamples; i++)
+            {
+                float t = i / (float)CurveSamples;
+                float t2 = t * t, t3 = t2 * t;
+                Vector3 p = a * (2f * t3 - 3f * t2 + 1f) + m1 * (t3 - 2f * t2 + t)
+                    + b * (-2f * t3 + 3f * t2) + m2 * (t3 - t2);
+                arc += Vector3.Distance(prev, p);
+                prev = p;
+                _curve.Add(p);
+            }
+
+            int pieces = Mathf.FloorToInt(arc / DrawingConfig.NodeSpacing);
+            if (pieces < 2) return false; // still one node's worth of line
+
+            float tolerance = Mathf.Min(chord * 0.5f, 0.05f);
+            float step = arc / pieces;
+            int seg = 1;
+            float walked = 0f;
+            float segLen = Vector3.Distance(_curve[0], _curve[1]);
+            for (int i = 1; i < pieces; i++)
+            {
+                float want = step * i;
+                while (seg < _curve.Count - 1 && walked + segLen < want)
+                {
+                    walked += segLen;
+                    seg++;
+                    segLen = Vector3.Distance(_curve[seg - 1], _curve[seg]);
+                }
+                Vector3 p = Vector3.Lerp(_curve[seg - 1], _curve[seg],
+                    segLen > 1e-6f ? Mathf.Clamp01((want - walked) / segLen) : 0f);
+                if (!OnSameSurface(p, hit, surface, tolerance, out var onSurf, out var normal))
+                    return false; // not on this canvas: the frame lays its one node
+                _fillPoints.Add(onSurf);
+                _fillNormals.Add(normal);
+            }
+            return _fillPoints.Count > 0;
+        }
+
+        /// Lays the planned nodes, paying for each piece as it goes, and stops
+        /// the moment the stroke ends or closes under it.
+        void LayFill(RaycastHit hit, Transform surface)
+        {
+            var stroke = _current;
+            Vector3 from = OnSurface(stroke.Last);
+            for (int i = 0; i < _fillPoints.Count; i++)
+            {
+                if (!Pay(from, _fillPoints[i])) return;
+                var filled = DrawNode.Create(stroke, stroke.Nodes.Count, _fillPoints[i], _fillNormals[i], surface);
+                stroke.AddNode(filled);
+                from = _fillPoints[i];
+                TryCloseMidDraw(filled);
+                if (_current != stroke) return; // it closed (or split) under the pen
+            }
+            if (!Pay(from, _smoothedPoint)) return;
+            var node = DrawNode.Create(stroke, stroke.Nodes.Count, _smoothedPoint, hit.normal, surface);
+            stroke.AddNode(node);
+            TryCloseMidDraw(node);
+        }
+
+        /// Nodes land every NodeSpacing, so the last one can sit short of the
+        /// pen when it comes up: one more puts the end where the pen was.
+        void LayTail()
+        {
+            var stroke = _current;
+            var last = stroke?.Last;
+            if (last == null || _lastHitSurface == null) return;
+            if (stroke.Nodes.Count < DrawingConfig.MinStrokeNodes) return; // a tap stays a tap
+            // the release frame ran no raycast: the pen's last point rides the surface
+            Vector3 tip = _lastHitSurface.TransformPoint(_smoothedLocal);
+            Vector3 normal = _lastHitSurface.TransformDirection(_lastNormalLocal);
+            Vector3 from = OnSurface(last);
+            // no shorter than one node's scoop refund: erasing it must not pay back more than it cost
+            if (Vector3.Distance(from, tip) < DrawingConfig.NodeSpacing * DrawingConfig.ScoopRefund) return;
+            if (!Pay(from, tip)) return;
+            var node = DrawNode.Create(stroke, stroke.Nodes.Count, tip, normal, _lastHitSurface);
+            stroke.AddNode(node);
+            TryCloseMidDraw(node);
+        }
+
+        /// Puts a planned point back on the surface with the pen's own ray, from
+        /// the eye through the point: only a hit on the same collider, close to
+        /// where the curve wanted it, counts as ink on this canvas.
+        bool OnSameSurface(Vector3 point, RaycastHit hit, Transform surface, float tolerance,
+            out Vector3 onSurface, out Vector3 normal)
+        {
+            onSurface = point;
+            normal = hit.normal;
+            Vector3 eye = Cam.transform.position;
+            Vector3 dir = point - eye;
+            if (dir.sqrMagnitude < 1e-8f) return false;
+            if (!AimHit(new Ray(eye, dir.normalized), out var probe)) return false;
+            if (probe.collider != hit.collider) return false;
+            if (Vector3.Distance(probe.point, point) > tolerance) return false;
+            // body paint: ink belongs to the limb nearest it, so a fill that
+            // reached across a joint waits for the frame that aims there
+            if (hit.collider.transform.name == "PaintShell" && SelfPaint.ActiveRoot != null)
+            {
+                var rig = SelfPaint.ActiveRoot.GetComponent<CharacterRig>();
+                var limb = rig != null ? rig.NearestLimbSurface(probe.point) : null;
+                if (limb != null && limb != surface) return false;
+            }
+            onSurface = probe.point;
+            normal = probe.normal;
+            return true;
+        }
+
+        /// Index of the newest node before `before` at least `minDist` from
+        /// `from`; the oldest one when none is that far, -1 when there are none.
+        int BackNode(int before, Vector3 from, float minDist)
+        {
+            var nodes = _current.Nodes;
+            int oldest = -1;
+            for (int i = before - 1; i >= 0; i--)
+            {
+                var n = nodes[i];
+                if (n == null) continue;
+                oldest = i;
+                if (Vector3.Distance(OnSurface(n), from) >= minDist) return i;
+            }
+            return oldest;
+        }
+
+        /// The direction the line was already heading at its last node, read off
+        /// the nodes behind it. Zero = too little line behind it to tell.
+        Vector3 StartTangent(Vector3 a)
+        {
+            var nodes = _current.Nodes;
+            int mid = BackNode(nodes.Count - 1, a, DrawingConfig.NodeSpacing);
+            if (mid < 0) return Vector3.zero;
+            Vector3 m = OnSurface(nodes[mid]);
+            if (Vector3.Distance(m, a) < DrawingConfig.NodeSpacing * 0.5f) return Vector3.zero;
+            int back = BackNode(mid, m, DrawingConfig.NodeSpacing);
+            if (back < 0) return (a - m).normalized;
+            Vector3 p = OnSurface(nodes[back]);
+            if (Vector3.Distance(p, m) < DrawingConfig.NodeSpacing * 0.5f) return (a - m).normalized;
+            return ArcTangent(p, m, a);
+        }
+
+        /// Tangent at `c` of the circle through the three points - a turning line
+        /// keeps turning. Straight (or degenerate) input gives the plain chord.
+        static Vector3 ArcTangent(Vector3 a, Vector3 b, Vector3 c)
+        {
+            Vector3 chord = (c - b).normalized;
+            Vector3 u = a - c, v = b - c;
+            Vector3 n = Vector3.Cross(u, v);
+            float n2 = n.sqrMagnitude;
+            if (n2 < 1e-10f * u.sqrMagnitude * v.sqrMagnitude) return chord; // straight enough
+            // circumcentre of the three, measured from c
+            Vector3 centre = (Vector3.Cross(v, n) * u.sqrMagnitude
+                + Vector3.Cross(n, u) * v.sqrMagnitude) / (2f * n2);
+            Vector3 t = Vector3.Cross(n / Mathf.Sqrt(n2), -centre); // .normalized zeroes a small n
+            if (t.sqrMagnitude < 1e-12f) return chord;
+            t.Normalize();
+            return Vector3.Dot(t, chord) < 0f ? -t : t;
         }
 
         /// Closing while drawing: returning to the start closes the whole loop;

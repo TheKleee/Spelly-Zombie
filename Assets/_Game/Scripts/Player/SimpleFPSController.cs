@@ -186,7 +186,8 @@ namespace SpellyZombie
             _soulFled = true;
             if (_heartFx != null) { Destroy(_heartFx); _heartFx = null; }
             if (FxLibrary.I != null) // the soul leaves the body
-                FxLibrary.Spawn(FxLibrary.I.SoulsOut, transform.position + Vector3.up * 1.2f);
+                FxLibrary.Spawn(FxLibrary.I.SoulsOut, transform.position + Vector3.up * 1.2f,
+                    null, 0f, false); // puppets show it from the downed flag
 
             // a corrupt body gasses off like a detonated zombie, shove and
             // all - poison damages only wizards, the push throws everyone.
@@ -343,8 +344,9 @@ namespace SpellyZombie
             if (Time.time < nextAt || t <= 0f) return;
             nextAt = Time.time + Mathf.Lerp(1.3f, 0.4f, t); // a few wisps, then a storm
             int n = Mathf.RoundToInt(Mathf.Lerp(1f, 4f, t));
-            if (cour > 0f) GrammarFX.PuffBurst(head, new Color(1f, 0.98f, 0.85f), n);
-            else GrammarFX.PuffBurst(head, new Color(0.12f, 0.08f, 0.18f), n);
+            // every machine puffs its own from the courage it knows: never relayed
+            if (cour > 0f) GrammarFX.PuffBurst(head, new Color(1f, 0.98f, 0.85f), n, false);
+            else GrammarFX.PuffBurst(head, new Color(0.12f, 0.08f, 0.18f), n, false);
         }
 
         /// ★ THE ICE GROWS ON THE BONES (his fix): one small chunk of the
@@ -386,8 +388,7 @@ namespace SpellyZombie
         void ThawIce()
         {
             _frozenUntil = 0f;
-            ThawIce(transform, _iceChunks);
-            NetSync.PushBodyFx(5, transform.position + Vector3.up * 0.8f);
+            ThawIce(transform, _iceChunks); // every puppet melts on the frozen flag's edge
         }
 
         public static void ThawIce(Transform root, System.Collections.Generic.List<GameObject> chunks)
@@ -395,7 +396,7 @@ namespace SpellyZombie
             foreach (var c in chunks) if (c != null) Destroy(c);
             chunks.Clear();
             GrammarFX.PuffBurst(root.position + Vector3.up * 0.8f,
-                new Color(0.85f, 0.95f, 1f), 5); // the melt
+                new Color(0.85f, 0.95f, 1f), 5, false); // the melt, drawn by each machine
         }
 
         // the axis deviations the movement laws read, refreshed each frame
@@ -452,10 +453,14 @@ namespace SpellyZombie
                 foreach (var h in Physics.OverlapSphere(transform.position + Vector3.up * 0.5f, 1.5f))
                 {
                     var hrb = h.attachedRigidbody;
+                    Vector3 shove = ((hrb != null ? hrb.worldCenterOfMass : h.bounds.center)
+                        - transform.position).normalized * 2f + Vector3.up * 0.5f;
+                    // a client's props move on the host: the shove goes there
+                    if (NetSync.SendPushIntent(h, shove, true)) continue;
                     if (hrb == null || hrb.isKinematic || hrb.transform == transform) continue;
                     if (h.GetComponentInParent<SimpleFPSController>() != null) continue;
-                    hrb.AddForce((hrb.worldCenterOfMass - transform.position).normalized * 2f
-                        + Vector3.up * 0.5f, ForceMode.VelocityChange);
+                    hrb.AddForce(shove, ForceMode.VelocityChange);
+                    Element.TrackLoose(hrb); // the clients see the shove
                 }
             }
 
@@ -473,8 +478,7 @@ namespace SpellyZombie
             {
                 _frozenUntil = Time.time + 1f; // a minimum moment of statue
                 FreezeOntoBones();
-                Juice.Thud(transform.position);
-                NetSync.PushBodyFx(0, transform.position);
+                NetSync.PlayAndPushBodyFx(0, transform.position); // thud
                 return Vector2.zero;
             }
 
@@ -522,8 +526,7 @@ namespace SpellyZombie
             if (damage >= 5f && Time.time - _lastFeelShake > 0.6f)
             {
                 _lastFeelShake = Time.time;
-                Juice.Thud(transform.position);
-                NetSync.PushBodyFx(0, transform.position);
+                NetSync.PlayAndPushBodyFx(0, transform.position); // thud
                 Juice.Shake(SurfaceDrawer.IsPenActive ? 0.18f : 0.35f, 0.25f);
                 Debug.Log($"[SpellyZombie] Player hit! {Mathf.Max(0, Health):0} hp");
             }
@@ -585,9 +588,11 @@ namespace SpellyZombie
             Juice.Shake(0.8f, 0.5f);
             Juice.HitStop(0.2f, 0.25f);
             // a broken heart floats over the crawling body - readable at range, no HUD
+            // (the puppets raise their own from the downed flag)
             _soulFled = false;
             if (_heartFx == null && FxLibrary.I != null)
-                _heartFx = FxLibrary.Spawn(FxLibrary.I.BrokenHeart, transform.position + Vector3.up * 2.1f, transform);
+                _heartFx = FxLibrary.Spawn(FxLibrary.I.BrokenHeart, transform.position + Vector3.up * 2.1f,
+                    transform, 0f, false);
             Debug.Log("[SpellyZombie] Player DOWNED");
             Downed?.Invoke(this);
         }
@@ -775,9 +780,7 @@ namespace SpellyZombie
                 && Sides.RestfulHere(Grimoire.LocalPlayerId) > 1f)
             {
                 _mendFxAt = Time.time + 0.8f;
-                GrammarFX.PuffBurst(transform.position + Vector3.up * 1.1f,
-                    new Color(0.45f, 1f, 0.55f), 2);
-                NetSync.PushBodyFx(6, transform.position + Vector3.up * 1.1f);
+                NetSync.PlayAndPushBodyFx(6, transform.position + Vector3.up * 1.1f); // green puff
             }
 
             // F9: the body's temperature picture at this exact spot - the
@@ -997,9 +1000,7 @@ namespace SpellyZombie
                     Vector3 skid = transform.TransformDirection(
                         new Vector3(_glideMv.x, 0f, _glideMv.y)).normalized;
                     TakeHit(skid * (4f + 6f * slick) + Vector3.up * 1.2f, 0f);
-                    GrammarFX.PuffBurst(transform.position + Vector3.up * 0.1f,
-                        new Color(0.7f, 0.9f, 1f), 4);
-                    NetSync.PushBodyFx(7, transform.position + Vector3.up * 0.1f);
+                    NetSync.PlayAndPushBodyFx(7, transform.position + Vector3.up * 0.1f); // slip puff
                 }
             }
             // ★ PLANTED GRIPS THE GROUND (his rule, cranked): past real glue
@@ -1013,9 +1014,7 @@ namespace SpellyZombie
                 // the stickier, the sooner and the longer the boots refuse
                 _stickPulseAt = Time.time + Mathf.Lerp(3.2f, 1.2f, glue);
                 _feetStuckUntil = Time.time + Mathf.Lerp(0.15f, 0.6f, glue);
-                GrammarFX.PuffBurst(transform.position + Vector3.up * 0.05f,
-                    new Color(0.85f, 0.65f, 0.2f), 4);
-                NetSync.PushBodyFx(8, transform.position + Vector3.up * 0.05f);
+                NetSync.PlayAndPushBodyFx(8, transform.position + Vector3.up * 0.05f); // glue puff
             }
             _glideMv = Vector2.Lerp(_glideMv, mv, Time.deltaTime * (onGround // skating needs a floor
                 ? Mathf.Lerp(22f, 1.6f, Mathf.InverseLerp(-0.05f, -0.5f, _balDev)) : 22f));
@@ -1065,8 +1064,7 @@ namespace SpellyZombie
                     dmg = Mathf.Min(dmg, Mathf.Max(0f, Health - 1f));
                     if (dmg > 0f) TakeHit(Vector3.zero, dmg);
                     else KnockDown(1.1f); // already scraping 1 hp: just the pratfall
-                    Juice.Thud(transform.position);
-                    NetSync.PushBodyFx(0, transform.position);
+                    NetSync.PlayAndPushBodyFx(0, transform.position); // thud
                     Juice.Shake(Mathf.Min(0.5f, landing * 0.02f));
                 }
                 _wasGrounded = true;
@@ -1143,8 +1141,7 @@ namespace SpellyZombie
                     // dead mid-air while the ragdoll flies on without it
                     _spellVel.x += planar.x;
                     _spellVel.z += planar.z;
-                    Juice.Whoosh(transform.position); // the "uh oh" cue
-                    NetSync.PushBodyFx(2, transform.position);
+                    NetSync.PlayAndPushBodyFx(2, transform.position); // whoosh, the "uh oh" cue
                 }
             }
 
@@ -1287,18 +1284,19 @@ namespace SpellyZombie
                     if (IsLocalViewer) Achievements.Unlock(Achievements.FatBounce);
                     float k = Mathf.Clamp(fat, 0.15f, 1.2f);
                     TakeHit(hit.normal * into * (0.8f + k * 1.2f) + Vector3.up * (1.5f * k), 0f);
-                    Juice.Pop(hit.point);
-                    GrammarFX.PuffBurst(hit.point, new Color(1f, 0.9f, 0.6f), 4);
-                    NetSync.PushBodyFx(9, hit.point);
+                    NetSync.PlayAndPushBodyFx(9, hit.point); // pop and puff
                 }
             }
-            var body = hit.collider.attachedRigidbody;
-            if (body == null || body.isKinematic) return;
             if (hit.moveDirection.y < -0.3f) return; // don't push things we stand on
 
             Vector3 dir = new Vector3(hit.moveDirection.x, 0f, hit.moveDirection.z);
 
+            // a client's props move on the host: the push goes there
+            if (NetSync.SendPushIntent(hit.collider, dir * PushStrength, false)) return;
+            var body = hit.collider.attachedRigidbody;
+            if (body == null || body.isKinematic) return;
             body.linearVelocity = new Vector3(dir.x * PushStrength, body.linearVelocity.y, dir.z * PushStrength);
+            Element.TrackLoose(body); // the clients see it slide
         }
     }
 }

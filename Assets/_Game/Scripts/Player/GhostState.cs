@@ -545,8 +545,9 @@ namespace SpellyZombie
             if (Time.time >= _remoteShine && FxLibrary.I != null)
             {
                 _remoteShine = Time.time + 0.9f;
+                // the target and the others shine it from the tick
                 FxLibrary.Spawn(FxLibrary.I.HealShine, av.transform.position + Vector3.up * 0.35f,
-                    av.transform, 1.1f);
+                    av.transform, 1.1f, false);
             }
             if (_remoteHold >= 0.15f)
             {
@@ -566,7 +567,7 @@ namespace SpellyZombie
                 if (!g.AtHome) return;
                 g._revive += dt / Mathf.Max(0.5f, DrawingConfig.ReviveSeconds);
                 g._lastRescuer = rescuer;
-                g.Shine();
+                g.Shine(false); // the others shine its puppet from the tick
                 return;
             }
         }
@@ -758,12 +759,13 @@ namespace SpellyZombie
         float _shineUntil;
 
         /// The revive has no UI. This VFX off the body is the only signal.
-        void Shine()
+        /// relay: false where the others already shine it from the ReviveTickMsg.
+        void Shine(bool relay = true)
         {
             if (Time.time < _shineUntil || FxLibrary.I == null) return;
             _shineUntil = Time.time + 0.9f;
             FxLibrary.Spawn(FxLibrary.I.HealShine, BodyAt + Vector3.up * 0.35f,
-                transform, 1.1f);
+                transform, 1.1f, relay);
         }
 
         void Land()

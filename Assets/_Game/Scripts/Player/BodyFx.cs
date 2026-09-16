@@ -140,6 +140,7 @@ namespace SpellyZombie
         }
 
         /// One pass of the looks from the given severities (0..1) and hurt (0..1).
+        /// Every machine draws them itself, so nothing here is relayed.
         public void Tick(float burn, float darkness, float bloom, float freeze, float hurt, bool alive)
         {
             var lib = FxLibrary.I;
@@ -190,7 +191,7 @@ namespace SpellyZombie
                     {
                         var s = _bleedS[Random.Range(0, _bleedS.Count)];
                         if (s == null) continue;
-                        Fit(FxLibrary.Spawn(lib.Blood, s.position, s, 2.5f),
+                        Fit(FxLibrary.Spawn(lib.Blood, s.position, s, 2.5f, false),
                             Mathf.Lerp(0.12f, 0.2f, hurt)); // small smears - count+pace tell the story
                     }
                 }
@@ -208,7 +209,7 @@ namespace SpellyZombie
                     {
                         var s = _freezeS[Random.Range(0, _freezeS.Count)];
                         if (s != null)
-                            Fit(FxLibrary.Spawn(lib.IceHit, s.position, s, 2f),
+                            Fit(FxLibrary.Spawn(lib.IceHit, s.position, s, 2f, false),
                                 Mathf.Lerp(0.12f, 0.24f, freeze)); // crystals ON the skin
                     }
                 }

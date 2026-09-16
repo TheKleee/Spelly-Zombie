@@ -34,6 +34,7 @@ namespace SpellyZombie
             public byte HeldKind; // 0 none, 1 tracked prop, 2 matter, 3 mote
             public int Held;      // the host-side id of what the hands carry
             public byte Hp;       // strength fraction 0..255: what this body's health lets it lift and throw
+            public ushort Health10; // their health in tenths: the host's stand-in follows their own mending
             public byte Eyes;     // their googly eyes as EyeBits: mood, red pupils, the wide moment
             public Vector3 Gaze;  // where their pupils point: the pen tip while drawing, what scared them
         }
@@ -82,6 +83,7 @@ namespace SpellyZombie
             public byte Kind;       // 0 impulse, 1 held acceleration for Seconds
             public float Seconds;
             public float Lum;       // Kind 1: a body-light push, once
+            public bool Blast;      // Kind 0: a radial blast - lands through Shove.Hit, so it breaks modes
         }
 
         public struct CurseMsg : IBroadcast // host -> all: an acolyte's mischief on a player (every machine keeps the book, the owner runs the rest)
@@ -184,6 +186,7 @@ namespace SpellyZombie
         public struct SpawnAskMsg : IBroadcast // client → host: where do I stand?
         {
             public int Owner;
+            public string Scene; // the asker's active scene: a joiner's map replay waits for the host's
         }
 
         public struct VoiceMsg : IBroadcast // any → host → all: a slice of compressed voice
@@ -317,6 +320,7 @@ namespace SpellyZombie
         {
             public int Owner;
             public int[] Ids;
+            public bool Leash; // the host's leash took it: the owner's machine burns AND refunds
         }
 
         // ---- the BOOK STAND lobby ----
@@ -588,6 +592,9 @@ namespace SpellyZombie
             public float[] Intensities;
             public Vector3[] PushDirs;
             public float DarkSpread;
+            // a body seal: no ring, Centers and PushDirs in the caster's body space
+            public bool Body;
+            public int Owner; // that caster: the zones ride their pilot or puppet
         }
 
         public struct SealEndMsg : IBroadcast // host  clients: ring down; resolved burns the ink
@@ -618,6 +625,8 @@ namespace SpellyZombie
             public byte[] Phases;
             public byte[] Looks;
             public byte[] Edges;  // the seal's line count: picks the ShapeLibrary skin
+            public Vector3[] Vels;  // the blob's velocity: the current a client wades in
+            public float[] Sticks;  // Matter.Stickiness: a client's slick pool
         }
 
         public struct ParticleSnap : IBroadcast // host  clients, 10 Hz unreliable
@@ -686,7 +695,14 @@ namespace SpellyZombie
             public Vector3 Dir;
         }
 
-        public struct DropIntent : IBroadcast { public byte Pad; } // client  host: F while holding
+        public struct DropIntent : IBroadcast { public bool Wake; } // client -> host: let go; Wake = F, wake it in the hand
+
+        public struct PushIntent : IBroadcast // client -> host, unreliable: walked into or shoved a loose prop
+        {
+            public string Path; // the prop's scene path
+            public Vector3 Vel; // the flat velocity it set, or the change it added (Add)
+            public bool Add;
+        }
 
         public struct ClaimIntent : IBroadcast // client  host: grab a spell particle
         {
@@ -720,6 +736,7 @@ namespace SpellyZombie
         {
             public bool Ok;
             public string Note;
+            public float Mass; // the held body's mass on an Ok grab: the lifter's carried weight
         }
 
         // ------------------------------------------------------------ state --
@@ -1017,6 +1034,11 @@ namespace SpellyZombie
         static readonly List<Rigidbody> _trackedProps = new List<Rigidbody>();
         static readonly List<int> _trackedPropIds = new List<int>();
         static int _nextPropId = 1;
+        // host: every prop tracked on this map, its newest id and the path it first
+        // registered by, replayed to joiners at the pose it has then
+        static readonly List<Rigidbody> _everProps = new List<Rigidbody>();
+        static readonly List<int> _everPropIds = new List<int>();
+        static readonly List<string> _everPropPaths = new List<string>();
         static readonly List<int> _burnOwnersBuf = new List<int>();
         static readonly List<int> _burnIdsBuf = new List<int>();
 
@@ -1080,8 +1102,33 @@ namespace SpellyZombie
         // host: scan counts per prop path, replayed to joiners
         static readonly Dictionary<string, int> _scans = new Dictionary<string, int>();
 
+        // host: ids this map destroyed for good, in order, replayed to joiners
+        static readonly List<int> _goneForGood = new List<int>();
+
+        // host: chests this map opened and the seed each rolled, replayed to joiners
+        static readonly Dictionary<int, int> _chestSeeds = new Dictionary<int, int>();
+
+        // host: world sources this map consumed, by scene path, replayed to joiners
+        static readonly List<string> _spentSources = new List<string>();
+
+        // host: joiners still owed the map-bound replay (broken props, ink, scans)
+        static readonly HashSet<int> _owedMapWelcome = new HashSet<int>();
+
         static void OnSceneSwapped(UnityEngine.SceneManagement.Scene a, UnityEngine.SceneManagement.Scene b)
-            => _scans.Clear(); // paths belong to the map that was
+        {
+            _scans.Clear(); // paths belong to the map that was
+            _goneForGood.Clear();
+            _everProps.Clear(); _everPropIds.Clear(); _everPropPaths.Clear();
+            _chestSeeds.Clear();
+            _spentSources.Clear();
+            _owedMapWelcome.Clear();
+        }
+
+        /// HOST: an element every machine names the same way died for good here.
+        public static void NoteGone(int netId)
+        {
+            if (NetGame.IsHost) _goneForGood.Add(netId);
+        }
 
         // host: each acolyte's newest scan - what the transformation ink turns a target into
         static readonly Dictionary<int, string> _lastScanOf = new Dictionary<int, string>();
@@ -1160,6 +1207,14 @@ namespace SpellyZombie
             else InstanceFinder.ClientManager.Broadcast(msg);
         }
 
+        /// This machine's own body sound or puff: played here under FxQuiet
+        /// (BodyFxMsg is the one copy the others get) and sent.
+        public static void PlayAndPushBodyFx(byte kind, Vector3 at)
+        {
+            PlayBodyFx(kind, at);
+            PushBodyFx(kind, at);
+        }
+
         /// HOST: a zombie mumbled - its stand-ins show the same bubble.
         public static void PushMumble(int zombieId, string text, float seconds)
         {
@@ -1193,10 +1248,11 @@ namespace SpellyZombie
             f.Mirror = mirror;
             if (kind == 0)
             {
-                // the clients open the same field from FieldMsg: its thud is theirs
+                // the clients open the same field from FieldMsg: its thud and
+                // its shove on their own body are theirs, so no kicks ship
                 bool quiet = FxQuiet;
                 FxQuiet = true;
-                try { Shove.Blast(at, radius, DrawingConfig.DetonateShove, 0f, "a dying acolyte burst"); }
+                try { Shove.Blast(at, radius, DrawingConfig.DetonateShove, 0f, "a dying acolyte burst", shipKicks: false); }
                 finally { FxQuiet = quiet; }
             }
         }
@@ -1324,6 +1380,7 @@ namespace SpellyZombie
             {
                 _outfitSent = false; // re-announce the look on the next session
                 _identityAdopted = false;
+                _owedMapWelcome.Clear();
                 return;
             }
 
@@ -1581,7 +1638,9 @@ namespace SpellyZombie
 
         void SendGolemSnap()
         {
-            int n = Golem.All.Count;
+            // a carried golem is disabled (out of All) but still on the field
+            int free = Golem.All.Count;
+            int n = free + Golem.Carried.Count;
             if (_gIds.Length != n) // receivers read Ids.Length - size must match exactly
             {
                 _gIds = new int[n];
@@ -1601,7 +1660,7 @@ namespace SpellyZombie
             }
             for (int i = 0; i < n; i++)
             {
-                var g = Golem.All[i];
+                var g = i < free ? Golem.All[i] : Golem.Carried[i - free];
                 if (g == null) // zero the slot - a reused buffer would leak a stale golem
                 {
                     _gIds[i] = 0; _gPos[i] = default; _gRot[i] = Quaternion.identity; _gVel[i] = default;
@@ -1644,6 +1703,8 @@ namespace SpellyZombie
         byte[] _mPhases = System.Array.Empty<byte>();
         byte[] _mLooks = System.Array.Empty<byte>();
         byte[] _mEdges = System.Array.Empty<byte>();
+        Vector3[] _mVels = System.Array.Empty<Vector3>();
+        float[] _mSticks = System.Array.Empty<float>();
 
         void SendMatterSnap()
         {
@@ -1659,6 +1720,8 @@ namespace SpellyZombie
                 _mPhases = new byte[n];
                 _mLooks = new byte[n];
                 _mEdges = new byte[n];
+                _mVels = new Vector3[n];
+                _mSticks = new float[n];
             }
             for (int i = 0; i < n; i++)
             {
@@ -1676,11 +1739,14 @@ namespace SpellyZombie
                 _mPhases[i] = (byte)m.Phase;
                 _mLooks[i] = m.NetLook;
                 _mEdges[i] = (byte)Mathf.Clamp(m.Edges, 0, 255);
+                _mVels[i] = m.Body != null ? m.Body.linearVelocity : Vector3.zero; // what LiquidVolume reads
+                _mSticks[i] = m.Stickiness;
             }
             InstanceFinder.ServerManager.Broadcast(new MatterSnap
             {
                 Ids = _mIds, Pos = _mPos, Rot = _mRot, Scale = _mScale,
-                Mats = _mMats, Phases = _mPhases, Looks = _mLooks, Edges = _mEdges
+                Mats = _mMats, Phases = _mPhases, Looks = _mLooks, Edges = _mEdges,
+                Vels = _mVels, Sticks = _mSticks
             }, true, Channel.Unreliable);
         }
 
@@ -1797,7 +1863,11 @@ namespace SpellyZombie
             int id = _nextPropId++;
             _trackedProps.Add(rb);
             _trackedPropIds.Add(id);
-            InstanceFinder.ServerManager.Broadcast(new PropReg { Id = id, Path = FullPath(rb.transform) });
+            string path = FullPath(rb.transform);
+            int k = _everProps.IndexOf(rb);
+            if (k >= 0) _everPropIds[k] = id;
+            else { _everProps.Add(rb); _everPropIds.Add(id); _everPropPaths.Add(path); }
+            InstanceFinder.ServerManager.Broadcast(new PropReg { Id = id, Path = path });
         }
 
         /// TrackProp next frame: a piece born inside a death must reach the
@@ -1893,7 +1963,7 @@ namespace SpellyZombie
                 Ack(conn, false, why);
         }
 
-        void ReleaseHold(int clientId, Vector3 impulse)
+        void ReleaseHold(int clientId, Vector3 impulse, bool wake = false)
         {
             if (!_holds.TryGetValue(clientId, out var h)) return;
             _holds.Remove(clientId);
@@ -1902,15 +1972,24 @@ namespace SpellyZombie
             {
                 if (!h.Mote.Dead && h.Mote.Claimed)
                 {
-                    // ★ SAME LAW AS THE LOCAL HAND (parity): a throw primes
-                    // (detonate on impact, thrower briefly immune) and every
-                    // release wakes INSTANTLY - a remote friend's rune must
-                    // behave exactly like the host's own
+                    // ★ SAME LAW AS THE LOCAL HAND (parity): E primes (detonate
+                    // on impact, thrower briefly immune), gusts and wakes at
+                    // once; F wakes in the hand and gusts; a plain drop only
+                    // lets go, and it wakes on its own timer where it lies
+                    bool thrown = impulse.sqrMagnitude > 1f;
+                    int owner = OwnerIdOf(clientId);
                     h.Mote.ReleaseHeld(impulse);
-                    if (impulse.sqrMagnitude > 1f) h.Mote.PrimeToBlow(thrower);
-                    // same as the local hand: the awakening gust, then it wakes for real
-                    SpellKick.Apply(h.Mote, impulse.sqrMagnitude > 1f ? impulse : Vector3.zero, thrower, OwnerIdOf(clientId));
-                    h.Mote.Wake();
+                    if (thrown)
+                    {
+                        h.Mote.PrimeToBlow(thrower);
+                        SpellKick.Apply(h.Mote, impulse, thrower, owner);
+                        h.Mote.Wake();
+                    }
+                    else if (wake)
+                    {
+                        h.Mote.Wake();
+                        SpellKick.Apply(h.Mote, Vector3.zero, thrower, owner);
+                    }
                 }
                 return;
             }
@@ -1920,12 +1999,12 @@ namespace SpellyZombie
         // ------------------------------------------------ the kick over the wire --
         /// A spell's kick on a player: this machine's own body takes it here,
         /// a friend's body takes it on theirs (the host hands it out).
-        public static void SendKick(int owner, Vector3 impulse, bool knock)
+        public static void SendKick(int owner, Vector3 impulse, bool knock, bool blast = false)
         {
             if (owner < 0) return;
-            if (owner == Grimoire.LocalPlayerId) { ApplyKickLocal(impulse, knock); return; }
+            if (owner == Grimoire.LocalPlayerId) { ApplyKickLocal(impulse, knock, blast); return; }
             if (_instance == null || !NetGame.Connected || !NetGame.IsHost) return;
-            InstanceFinder.ServerManager.Broadcast(new KickMsg { Owner = owner, Impulse = impulse, Knock = knock });
+            InstanceFinder.ServerManager.Broadcast(new KickMsg { Owner = owner, Impulse = impulse, Knock = knock, Blast = blast });
         }
 
         /// HOST: an acolyte's curse landed on a wizard. Every machine keeps what
@@ -2012,7 +2091,7 @@ namespace SpellyZombie
             if (InstanceFinder.ServerManager.Started) return;
             if (msg.Owner != Grimoire.LocalPlayerId) return;
             if (msg.Kind == 1) HoldForce(msg.Impulse, msg.Seconds, msg.Lum);
-            else ApplyKickLocal(msg.Impulse, msg.Knock);
+            else ApplyKickLocal(msg.Impulse, msg.Knock, msg.Blast);
         }
 
         static SimpleFPSController LocalPilot()
@@ -2022,11 +2101,12 @@ namespace SpellyZombie
             return null;
         }
 
-        static void ApplyKickLocal(Vector3 impulse, bool knock)
+        static void ApplyKickLocal(Vector3 impulse, bool knock, bool blast = false)
         {
             var p = LocalPilot();
             if (p == null || p.IsDowned) return;
-            p.TakeHit(impulse, 0f, "kick");
+            if (blast) Shove.Hit(p, impulse, 0f, "kick"); // a big blast breaks modes here too, as on the host
+            else p.TakeHit(impulse, 0f, "kick");
             if (knock) p.KnockDown(1.1f);
         }
 
@@ -2194,11 +2274,9 @@ namespace SpellyZombie
         void RouteReviveTick(ReviveTickMsg msg)
         {
             if (msg.Target == Grimoire.LocalPlayerId) GhostState.ApplyRemoteRevive(msg.Dt, msg.Rescuer);
-            else
-            {
-                ShinePuppet(msg);
-                InstanceFinder.ServerManager.Broadcast(msg);
-            }
+            else ShinePuppet(msg);
+            // the target counts it, every other client shines its puppet
+            InstanceFinder.ServerManager.Broadcast(msg);
         }
 
         void OnReviveTickClient(ReviveTickMsg msg, Channel channel)
@@ -2500,10 +2578,12 @@ namespace SpellyZombie
             InstanceFinder.ServerManager.RegisterBroadcast<LiftAim>(OnLiftAimServer);
             InstanceFinder.ServerManager.RegisterBroadcast<ThrowIntent>(OnThrowIntentServer);
             InstanceFinder.ServerManager.RegisterBroadcast<DropIntent>(OnDropIntentServer);
+            InstanceFinder.ServerManager.RegisterBroadcast<PushIntent>(OnPushIntentServer);
             InstanceFinder.ServerManager.RegisterBroadcast<ClaimIntent>(OnClaimIntentServer);
             InstanceFinder.ClientManager.RegisterBroadcast<GrabAck>(OnGrabAckClient);
 
             InstanceFinder.ServerManager.OnRemoteConnectionState += OnRemoteConnection;
+            InstanceFinder.ServerManager.OnAuthenticationResult += OnAuthenticated;
         }
 
         // ---------------------------------------------------------- outgoing --
@@ -2571,6 +2651,7 @@ namespace SpellyZombie
                 HeldKind = heldKind,
                 Held = heldId,
                 Hp = (byte)Mathf.RoundToInt(Sides.StrengthFraction(Grimoire.LocalPlayerId, player.Health) * 255f),
+                Health10 = (ushort)Mathf.Clamp(Mathf.RoundToInt(player.Health * 10f), 0, 65535),
                 Eyes = EyeBits(player.Eyes),
                 Gaze = player.Eyes != null ? player.Eyes.LookTarget : Vector3.zero
             }, Channel.Unreliable);
@@ -2578,13 +2659,14 @@ namespace SpellyZombie
 
         /// DrawingWorld calls this whenever a local stroke finishes - replicate
         /// it if it lives on world geometry or the local player's body.
-        public static void OnLocalStrokeFinished(Stroke s)
+        /// `cluster` = the pen-up's touching-cluster flood, reused instead of flooding again.
+        public static void OnLocalStrokeFinished(Stroke s, List<Stroke> cluster = null)
         {
             if (_instance == null || !NetGame.Connected || ApplyingRemote) return;
             if (s == null || !s.Alive) return;
             // your own pen - and, on the HOST, the zombie scribes too (their ink is host truth)
             if (s.OwnerId != Grimoire.LocalPlayerId && !NetGame.IsHost) return;
-            if (!TryEncode(s, out var msg)) return;
+            if (!TryEncode(s, out var msg, cluster)) return;
             InstanceFinder.ClientManager.Broadcast(msg);
         }
 
@@ -2650,7 +2732,7 @@ namespace SpellyZombie
 
         /// Encode a finished stroke as its StrokeMsg; names it (owner, id) when
         /// it has no name yet. False = this ink stays on this machine.
-        static bool TryEncode(Stroke s, out StrokeMsg msg)
+        static bool TryEncode(Stroke s, out StrokeMsg msg, List<Stroke> cluster = null)
         {
             msg = default;
             if (s == null || !s.Alive) return false;
@@ -2681,19 +2763,24 @@ namespace SpellyZombie
             if (s.DeclaredRune == RuneType.None && s.OwnerId == Grimoire.LocalPlayerId
                 && DrawingWorld.Instance != null)
             {
-                _clusterBuf.Clear();
-                _clusterBuf.Add(s);
-                RuneGlyph.GrowTouchingCluster(_clusterBuf, DrawingWorld.Instance.Strokes);
-                if (RuneGlyph.CachedVerdict(_clusterBuf, s.OwnerId, out var vr, out var vs))
+                var members = _clusterBuf;
+                if (RuneGlyph.FloodedFor(cluster, s)) members = cluster; // the pen-up already flooded it
+                else
+                {
+                    _clusterBuf.Clear();
+                    _clusterBuf.Add(s);
+                    RuneGlyph.GrowTouchingCluster(_clusterBuf, DrawingWorld.Instance.Strokes);
+                }
+                if (RuneGlyph.CachedVerdict(members, s.OwnerId, out var vr, out var vs))
                 {
                     readRune = (int)vr;
                     readScore = vs;
-                    clOwners = new int[_clusterBuf.Count];
-                    clIds = new int[_clusterBuf.Count];
-                    for (int i = 0; i < _clusterBuf.Count; i++)
+                    clOwners = new int[members.Count];
+                    clIds = new int[members.Count];
+                    for (int i = 0; i < members.Count; i++)
                     {
-                        clOwners[i] = _clusterBuf[i].OwnerId;
-                        clIds[i] = _clusterBuf[i].NetId;
+                        clOwners[i] = members[i].OwnerId;
+                        clIds[i] = members[i].NetId;
                     }
                 }
             }
@@ -2815,6 +2902,18 @@ namespace SpellyZombie
                 { Owner = Grimoire.LocalPlayerId, Ids = _drinkBuf.ToArray() });
         }
 
+        /// HOST: the leash took a stroke - every machine burns it, the owner's
+        /// wand gets it back on their machine (netcode §2).
+        public static void PushLeashBurn(Stroke s)
+        {
+            if (_instance == null || !NetGame.IsHost || s == null || s.NetId == 0) return;
+            InstanceFinder.ServerManager.Broadcast(new InkBurnMsg
+                { Owner = s.OwnerId, Ids = new[] { s.NetId }, Leash = true });
+        }
+
+        /// Every living piece of a replicated stroke, by its wire id.
+        public static void PiecesOf(int owner, int id, List<Stroke> into) => FindNetStrokes(owner, id, into);
+
         static string FullPath(Transform t) => ScenePath.Of(t);
 
         // ---------------------------------------------- outgoing helpers --
@@ -2882,7 +2981,7 @@ namespace SpellyZombie
         public static void AskSpawn(int owner)
         {
             if (_instance == null || !NetGame.Connected) return;
-            InstanceFinder.ClientManager.Broadcast(new SpawnAskMsg { Owner = owner });
+            InstanceFinder.ClientManager.Broadcast(new SpawnAskMsg { Owner = owner, Scene = ActiveScene.Name });
         }
 
         public static void PushStandOpen(bool open)
@@ -3113,7 +3212,21 @@ namespace SpellyZombie
             bool body = seal.Boundary.Count > 0;
             foreach (var e in seal.Boundary)
                 if (e.Stroke == null || !e.Stroke.Persistent) { body = false; break; }
-            if (body) return;
+            if (body)
+            {
+                // no ring, but its zones' looks ride the caster's body on every screen
+                var bodyAt = SealBody(seal.OwnerId);
+                var bodySpell = seal.Spell;
+                if (bodyAt == null || bodySpell == null || bodySpell.Zones.Count == 0) return;
+                var look = new SealMsg
+                {
+                    SealId = seal.Id, Loop = System.Array.Empty<Vector3>(), Duration = seal.Duration,
+                    SurfacePath = "", Body = true, Owner = seal.OwnerId
+                };
+                PutZones(ref look, bodySpell, bodyAt);
+                InstanceFinder.ServerManager.Broadcast(look);
+                return;
+            }
             var nodes = seal.LoopNodes;
             var pts = new Vector3[nodes.Count]; // one-shot per seal close, not per frame
             Transform carrier = null;
@@ -3130,27 +3243,42 @@ namespace SpellyZombie
             // the spell's zones: a dark sphere, a light, an ember - the same
             // look here and there, from the same numbers
             var spell = seal.Spell;
-            var zones = spell != null ? spell.Zones : null;
-            if (zones != null && zones.Count > 0)
-            {
-                int zn = zones.Count;
-                msg.Runes = new int[zn];
-                msg.Centers = new Vector3[zn];
-                msg.Radii = new float[zn];
-                msg.Intensities = new float[zn];
-                msg.PushDirs = new Vector3[zn];
-                msg.DarkSpread = spell.DarkSpread;
-                for (int i = 0; i < zn; i++)
-                {
-                    var z = zones[i];
-                    msg.Runes[i] = (int)z.Rune;
-                    msg.Centers[i] = z.Center;
-                    msg.Radii[i] = z.Radius;
-                    msg.Intensities[i] = z.Intensity;
-                    msg.PushDirs[i] = z.PushDir;
-                }
-            }
+            if (spell != null && spell.Zones.Count > 0) PutZones(ref msg, spell, null);
             InstanceFinder.ServerManager.Broadcast(msg);
+        }
+
+        /// A spell's zones into a seal message: world space, or a body's space when given one.
+        static void PutZones(ref SealMsg msg, Spell spell, Transform space)
+        {
+            var zones = spell.Zones;
+            int zn = zones.Count;
+            msg.Runes = new int[zn];
+            msg.Centers = new Vector3[zn];
+            msg.Radii = new float[zn];
+            msg.Intensities = new float[zn];
+            msg.PushDirs = new Vector3[zn];
+            msg.DarkSpread = spell.DarkSpread;
+            for (int i = 0; i < zn; i++)
+            {
+                var z = zones[i];
+                msg.Runes[i] = (int)z.Rune;
+                msg.Centers[i] = space != null ? space.InverseTransformPoint(z.Center) : z.Center;
+                msg.Radii[i] = z.Radius;
+                msg.Intensities[i] = z.Intensity;
+                msg.PushDirs[i] = space != null ? space.InverseTransformDirection(z.PushDir) : z.PushDir;
+            }
+        }
+
+        /// The body a body seal's zones ride: our own pilot, else that player's puppet.
+        static Transform SealBody(int owner)
+        {
+            if (owner == Grimoire.LocalPlayerId)
+            {
+                var p = LocalPilot();
+                return p != null ? p.transform : null;
+            }
+            return _instance != null && _instance._avatars.TryGetValue(owner - 1, out var av) && av != null
+                ? av.transform : null;
         }
 
         /// Host seal ended - ring down; resolved also burns the matching client ink (netcode §2).
@@ -3171,6 +3299,22 @@ namespace SpellyZombie
                 Owner = seal.OwnerId,
                 BurnOwners = _burnOwnersBuf.ToArray(),
                 BurnIds = _burnIdsBuf.ToArray()
+            });
+        }
+
+        // a client's body seal has no Seal here: its looks go out under negative ids
+        static int _bodySealIds;
+
+        /// A client's body seal ran out on the host: its zone looks go down on every screen.
+        public static void PushBodySealEnd(int sealId, int owner)
+        {
+            if (_instance == null || !NetGame.IsHost || !NetGame.Connected) return;
+            InstanceFinder.ServerManager.Broadcast(new SealEndMsg
+            {
+                SealId = sealId,
+                Owner = owner,
+                BurnOwners = System.Array.Empty<int>(),
+                BurnIds = System.Array.Empty<int>()
             });
         }
 
@@ -3231,10 +3375,40 @@ namespace SpellyZombie
             InstanceFinder.ClientManager.Broadcast(new ThrowIntent { Dir = dir });
         }
 
-        public static void SendDropIntent()
+        public static void SendDropIntent(bool wake = false)
         {
             if (_instance == null || !NetGame.Connected || NetGame.IsHost) return;
-            InstanceFinder.ClientManager.Broadcast(new DropIntent());
+            InstanceFinder.ClientManager.Broadcast(new DropIntent { Wake = wake });
+        }
+
+        static readonly Dictionary<Transform, float> _pushNext = new Dictionary<Transform, float>();
+
+        /// CLIENT: this body walked into (add false) or shoved (add true) a
+        /// loose prop. Props move on the host, so the push goes there. False
+        /// when the collider is no prop the host drives: push it here as before.
+        public static bool SendPushIntent(Collider c, Vector3 vel, bool add)
+        {
+            if (_instance == null || c == null || !NetGame.Connected || NetGame.IsHost) return false;
+            Transform prop = null;
+            var ghost = c.GetComponentInParent<NetPropGhost>();
+            if (ghost != null) prop = ghost.transform;
+            else
+            {
+                // a loose prop the host has not moved yet is still dynamic here
+                var rb = c.attachedRigidbody;
+                if (rb != null && !rb.isKinematic && rb.GetComponent<Liftable>() != null) prop = rb.transform;
+            }
+            if (prop == null) return false;
+            if (!add)
+            {
+                // a walk push streams every frame: 10 Hz per prop, like LiftAim
+                if (_pushNext.TryGetValue(prop, out float next) && Time.time < next) return true;
+                if (_pushNext.Count > 32) _pushNext.Clear();
+                _pushNext[prop] = Time.time + 0.1f;
+            }
+            InstanceFinder.ClientManager.Broadcast(new PushIntent
+                { Path = FullPath(prop), Vel = vel, Add = add }, Channel.Unreliable);
+            return true;
         }
 
         public static void SendClaimIntent(int particleId)
@@ -3613,8 +3787,19 @@ namespace SpellyZombie
 
         void OnAbsorbServer(NetworkConnection conn, AbsorbMsg msg, Channel channel)
         {
+            NoteSpent(msg.Path);
             ApplyAbsorb(msg);
             InstanceFinder.ServerManager.BroadcastExcept(conn, msg, true);
+        }
+
+        /// HOST: a source consumed on a map stays gone for joiners; the lobby's come back.
+        static void NoteSpent(string path)
+        {
+            if (string.IsNullOrEmpty(path) || ActiveScene.Name == "Lobby" || _spentSources.Contains(path)) return;
+            var go = ScenePath.Find(path);
+            var a = go != null ? go.GetComponent<Analyzable>() : null;
+            if (a != null && !a.Consume) return; // a teaching object everyone can read
+            _spentSources.Add(path);
         }
 
         void OnAbsorbClient(AbsorbMsg msg, Channel channel)
@@ -3643,6 +3828,7 @@ namespace SpellyZombie
                 FxQuiet = true; // the clients open theirs from ChestMsg
                 try { lid.Reveal(seed); }
                 finally { FxQuiet = quiet; }
+                _chestSeeds[lid.Id] = seed;
                 InstanceFinder.ServerManager.Broadcast(new ChestMsg { Id = lid.Id, Seed = seed });
             }
             else InstanceFinder.ClientManager.Broadcast(new ChestAskMsg { Id = lid.Id });
@@ -3651,12 +3837,20 @@ namespace SpellyZombie
         void OnChestAskServer(NetworkConnection conn, ChestAskMsg msg, Channel channel)
         {
             var lid = ChestLid.Find(msg.Id);
-            if (lid == null || lid.Open) return; // beaten to it
+            if (lid == null) return;
+            if (lid.Open)
+            {
+                // beaten to it, or opened before they joined: theirs rolls the same seed
+                if (_chestSeeds.TryGetValue(msg.Id, out int rolled))
+                    InstanceFinder.ServerManager.Broadcast(conn, new ChestMsg { Id = msg.Id, Seed = rolled });
+                return;
+            }
             int seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
             bool quiet = FxQuiet;
             FxQuiet = true; // the clients open theirs from ChestMsg
             try { lid.Reveal(seed); }
             finally { FxQuiet = quiet; }
+            _chestSeeds[msg.Id] = seed;
             InstanceFinder.ServerManager.Broadcast(new ChestMsg { Id = msg.Id, Seed = seed });
         }
 
@@ -3719,62 +3913,11 @@ namespace SpellyZombie
                     conn.Disconnect(true);
                     return;
                 }
-                // ★ the joiner plays by the HOST's book, from the first frame
-                InstanceFinder.ServerManager.Broadcast(conn,
-                    new BookMsg { Json = SpellBook.LiveJson() });
-                // and grows the host's island: the lobby tick only runs in the lobby scene
-                InstanceFinder.ServerManager.Broadcast(conn, new LobbyMsg
-                {
-                    Ready = (byte)MatchLobby.ReadyCount, Total = (byte)(1 + RemoteCount), Countdown = -1f,
-                    Map = MatchLobby.SelectedMap, Seed = MatchLobby.Seed,
-                    AcolytePct = (byte)MatchLobby.AcolytePercent, DurationMin = (byte)MatchLobby.DurationMin
-                });
-                // and the sides as the match dealt them (in the lobby presence carries the pillar picks)
-                if (MatchLobby.LastAcolytes != null && !RoundDirector.InLobby)
-                    InstanceFinder.ServerManager.Broadcast(conn, new SideAssignMsg { AcolyteOwners = MatchLobby.LastAcolytes });
-                SendInkSnapshot(conn);
-                // and sees everyone's outfit and hat as they already are
-                foreach (var kv in _outfits)
-                {
-                    if (kv.Key == conn.ClientId) continue;
-                    bool hasHat = _hats.TryGetValue(kv.Key, out var hat);
-                    InstanceFinder.ServerManager.Broadcast(conn, new OutfitMsg
-                        { Id = kv.Key, Code = kv.Value, HasHat = hasHat, Hat = hasHat ? hat : Color.white });
-                }
-                // and every disguise still worn, quietly: no exit cloud, no swap burst
-                foreach (var kv in _disguises)
-                {
-                    if (kv.Key == conn.ClientId || !kv.Value.Worn) continue;
-                    var worn = kv.Value; worn.Puff = false; worn.Poof = false;
-                    InstanceFinder.ServerManager.Broadcast(conn, worn);
-                }
-                // and the green every scanned prop already wears
-                foreach (var kv in _scans)
-                    for (int i = 0; i < kv.Value; i++)
-                        InstanceFinder.ServerManager.Broadcast(conn, new ScanMsg { Owner = -1, Path = kv.Key });
-                // and everyone's body ink and custom poses as they stand today
-                int joiner = OwnerIdOf(conn.ClientId);
-                foreach (var kv in _bodyInk)
-                {
-                    if (kv.Key == joiner) continue;
-                    PruneBodyInk(kv.Value);
-                    foreach (var m in kv.Value) InstanceFinder.ServerManager.Broadcast(conn, m);
-                }
-                foreach (var kv in _emoteDefs)
-                {
-                    int owner = (int)(kv.Key >> 8);
-                    if (owner == joiner || kv.Value == null) continue;
-                    InstanceFinder.ServerManager.Broadcast(conn, new EmoteMsg
-                    {
-                        Owner = owner,
-                        Slot = (sbyte)(byte)(kv.Key & 0xff),
-                        Json = JsonUtility.ToJson(kv.Value)
-                    });
-                }
-                return;
+                return; // the welcome waits for authentication (OnAuthenticated): FishNet drops sends before it
             }
             if (args.ConnectionState != RemoteConnectionState.Stopped) return;
             RemoveAvatar(conn.ClientId);
+            _owedMapWelcome.Remove(conn.ClientId);
             _latest.Remove(conn.ClientId); _latestSeq.Remove(conn.ClientId);
             _fan.Remove(conn.ClientId); _zombieNextAt.Remove(conn.ClientId);
             foreach (var kv in _fan) kv.Value.Remove(conn.ClientId);
@@ -3782,6 +3925,94 @@ namespace SpellyZombie
             ReleaseHold(conn.ClientId, Vector3.zero); // leavers let go (netcode §4)
             MatchLobby.SetRemoteReady(conn.ClientId, false); // leavers aren't ready
             InstanceFinder.ServerManager.Broadcast(new PlayerLeft { Id = conn.ClientId });
+        }
+
+        /// The joiner's welcome, sent once FishNet has authenticated them.
+        void OnAuthenticated(NetworkConnection conn, bool authenticated)
+        {
+            if (!authenticated || !conn.IsActive) return;
+            // ★ the joiner plays by the HOST's book, from the first frame
+            InstanceFinder.ServerManager.Broadcast(conn,
+                new BookMsg { Json = SpellBook.LiveJson() });
+            // and grows the host's island: the lobby tick only runs in the lobby scene
+            InstanceFinder.ServerManager.Broadcast(conn, new LobbyMsg
+            {
+                Ready = (byte)MatchLobby.ReadyCount, Total = (byte)(1 + RemoteCount), Countdown = -1f,
+                Map = MatchLobby.SelectedMap, Seed = MatchLobby.Seed,
+                AcolytePct = (byte)MatchLobby.AcolytePercent, DurationMin = (byte)MatchLobby.DurationMin
+            });
+            // and the sides as the match dealt them (in the lobby presence carries the pillar picks)
+            if (MatchLobby.LastAcolytes != null && !RoundDirector.InLobby)
+                InstanceFinder.ServerManager.Broadcast(conn, new SideAssignMsg { AcolyteOwners = MatchLobby.LastAcolytes });
+            // joiners arrive in the lobby: on a map the map-bound part waits for their spawn ask from it
+            if (ActiveScene.Name == "Lobby") SendMapWelcome(conn);
+            else _owedMapWelcome.Add(conn.ClientId);
+            // and sees everyone's outfit and hat as they already are
+            foreach (var kv in _outfits)
+            {
+                if (kv.Key == conn.ClientId) continue;
+                bool hasHat = _hats.TryGetValue(kv.Key, out var hat);
+                InstanceFinder.ServerManager.Broadcast(conn, new OutfitMsg
+                    { Id = kv.Key, Code = kv.Value, HasHat = hasHat, Hat = hasHat ? hat : Color.white });
+            }
+            // and every disguise still worn, quietly: no exit cloud, no swap burst
+            foreach (var kv in _disguises)
+            {
+                if (kv.Key == conn.ClientId || !kv.Value.Worn) continue;
+                var worn = kv.Value; worn.Puff = false; worn.Poof = false;
+                InstanceFinder.ServerManager.Broadcast(conn, worn);
+            }
+            // and everyone's body ink and custom poses as they stand today
+            int joiner = OwnerIdOf(conn.ClientId);
+            foreach (var kv in _bodyInk)
+            {
+                if (kv.Key == joiner) continue;
+                PruneBodyInk(kv.Value);
+                foreach (var m in kv.Value) InstanceFinder.ServerManager.Broadcast(conn, m);
+            }
+            foreach (var kv in _emoteDefs)
+            {
+                int owner = (int)(kv.Key >> 8);
+                if (owner == joiner || kv.Value == null) continue;
+                InstanceFinder.ServerManager.Broadcast(conn, new EmoteMsg
+                {
+                    Owner = owner,
+                    Slot = (sbyte)(byte)(kv.Key & 0xff),
+                    Json = JsonUtility.ToJson(kv.Value)
+                });
+            }
+        }
+
+        /// What is named by map id or scene path, once the joiner shares the
+        /// host's scene: props already broken (the same seeded Shatter), chests
+        /// already open (the same seed), sources consumed, props moved, the
+        /// ink, and the green every scanned prop already wears.
+        void SendMapWelcome(NetworkConnection conn)
+        {
+            // chests first: an item lifted out of one is named inside it, and
+            // one broken after the chest opened must exist before it can die
+            foreach (var kv in _chestSeeds)
+                InstanceFinder.ServerManager.Broadcast(conn, new ChestMsg { Id = kv.Key, Seed = kv.Value });
+            foreach (int id in _goneForGood)
+                InstanceFinder.ServerManager.Broadcast(conn, new HealthMsg { NetId = id, Health = 0f, By = -1, Cause = 3 });
+            foreach (string path in _spentSources)
+                InstanceFinder.ServerManager.Broadcast(conn, new AbsorbMsg { Path = path });
+            for (int i = 0; i < _everProps.Count; i++)
+            {
+                var rb = _everProps[i];
+                if (rb == null) continue; // gone on the host
+                InstanceFinder.ServerManager.Broadcast(conn, new PropReg { Id = _everPropIds[i], Path = _everPropPaths[i] });
+                InstanceFinder.ServerManager.Broadcast(conn, new PropSnap
+                {
+                    Ids = new[] { _everPropIds[i] },
+                    Pos = new[] { rb.transform.position },
+                    Rot = new[] { rb.transform.rotation },
+                });
+            }
+            SendInkSnapshot(conn);
+            foreach (var kv in _scans)
+                for (int i = 0; i < kv.Value; i++)
+                    InstanceFinder.ServerManager.Broadcast(conn, new ScanMsg { Owner = -1, Path = kv.Key });
         }
 
         // ---------------------- server handlers: seals/ink/lifting (netcode §1-§4) --
@@ -3866,15 +4097,27 @@ namespace SpellyZombie
                 || msg.PushDirs.Length != n || msg.Sizes.Length != n) return;
             Transform caster = _avatars.TryGetValue(conn.ClientId, out var av) && av != null
                 ? av.transform : null;
-            Spell.CreateRemote(OwnerIdOf(conn.ClientId), msg.Origin, msg.Normal,
-                Mathf.Clamp(msg.Edges, 1, 10),
-                Mathf.Clamp(msg.Duration, 0.5f, DrawingConfig.SealProduceSeconds),
+            float duration = Mathf.Clamp(msg.Duration, 0.5f, DrawingConfig.SealProduceSeconds);
+            var spell = Spell.CreateRemote(OwnerIdOf(conn.ClientId), msg.Origin, msg.Normal,
+                Mathf.Clamp(msg.Edges, 1, 10), duration,
                 msg.Runes, msg.Strengths, msg.Centers, msg.PushDirs, msg.Sizes, caster,
                 Mathf.Clamp(msg.SealRadius, 0.05f, 10f));
+            // its zones' looks on every client, the caster's own included (it builds no spell)
+            if (spell == null || caster == null || spell.Zones.Count == 0) return;
+            var look = new SealMsg
+            {
+                SealId = --_bodySealIds, Loop = System.Array.Empty<Vector3>(), Duration = duration,
+                SurfacePath = "", Body = true, Owner = OwnerIdOf(conn.ClientId)
+            };
+            PutZones(ref look, spell, caster);
+            spell.NetSealId = look.SealId;
+            InstanceFinder.ServerManager.Broadcast(look);
         }
 
         void OnEraseServer(NetworkConnection conn, EraseMsg msg, Channel channel)
         {
+            // a player's eraser is capped; the host's own erases (evaporation) go out whole
+            if (conn != null && !conn.IsLocalClient) msg.Radius = Mathf.Min(msg.Radius, 0.5f);
             ApplyErase(msg);
             InstanceFinder.ServerManager.BroadcastExcept(conn, msg);
         }
@@ -3900,7 +4143,7 @@ namespace SpellyZombie
             ApplyingRemoteErase = true;
             try
             {
-                DrawingWorld.Instance.EraseAlong(from, to, Mathf.Min(msg.Radius, 0.5f), null);
+                DrawingWorld.Instance.EraseAlong(from, to, msg.Radius, null); // the host capped a player's eraser on arrival
             }
             finally
             {
@@ -3971,7 +4214,7 @@ namespace SpellyZombie
                 RelRot = Quaternion.Inverse(Quaternion.Euler(0f, lifterYaw, 0f)) * rb.rotation
             };
             if (rb.GetComponent<Matter>() == null) TrackProp(rb); // matter rides MatterSnap
-            Ack(conn, true, "");
+            Ack(conn, true, "", rb.mass); // read after BeCarried, as the local grab reads it
         }
 
         void OnLiftAimServer(NetworkConnection conn, LiftAim msg, Channel channel)
@@ -3992,7 +4235,18 @@ namespace SpellyZombie
         }
 
         void OnDropIntentServer(NetworkConnection conn, DropIntent msg, Channel channel)
-            => ReleaseHold(conn.ClientId, Vector3.zero);
+            => ReleaseHold(conn.ClientId, Vector3.zero, msg.Wake);
+
+        void OnPushIntentServer(NetworkConnection conn, PushIntent msg, Channel channel)
+        {
+            var go = ScenePath.Find(msg.Path);
+            var rb = go != null ? go.GetComponent<Rigidbody>() : null;
+            if (rb == null || rb.isKinematic) return;
+            // the push the host's own body gives (SimpleFPSController)
+            if (msg.Add) rb.AddForce(msg.Vel, ForceMode.VelocityChange);
+            else rb.linearVelocity = new Vector3(msg.Vel.x, rb.linearVelocity.y, msg.Vel.z);
+            Element.TrackLoose(rb);
+        }
 
         void OnClaimIntentServer(NetworkConnection conn, ClaimIntent msg, Channel channel)
         {
@@ -4012,13 +4266,14 @@ namespace SpellyZombie
             Ack(conn, true, "");
         }
 
-        void Ack(NetworkConnection conn, bool ok, string note)
-            => InstanceFinder.ServerManager.Broadcast(conn, new GrabAck { Ok = ok, Note = note });
+        void Ack(NetworkConnection conn, bool ok, string note, float mass = 0f)
+            => InstanceFinder.ServerManager.Broadcast(conn, new GrabAck { Ok = ok, Note = note, Mass = mass });
 
         void OnGrabAckClient(GrabAck msg, Channel channel)
         {
             if (InstanceFinder.ServerManager.Started) return;
             if (!msg.Ok) HandGrab.RemoteHoldRefused(msg.Note);
+            else HandGrab.RemoteHoldTaken(msg.Mass);
         }
 
         // -------------------------------------------------- client applying --
@@ -4275,8 +4530,8 @@ namespace SpellyZombie
 
                 _stIds.Add(e.NetId);
                 _stTemp.Add((short)Mathf.Clamp(Mathf.RoundToInt(d.Temp), -30000, 30000));
-                _stState.Add((sbyte)Mathf.Clamp(Mathf.RoundToInt(d.State * 100f), -100, 100));
-                _stLum.Add((sbyte)Mathf.Clamp(Mathf.RoundToInt(d.Lum * 100f), -100, 100));
+                _stState.Add(Pack(d.State));
+                _stLum.Add(Pack(d.Lum));
                 _stPress.Add(Pack(d.Pressure));
                 _stBal.Add(Pack(d.Balance));
                 _stAff.Add(Pack(d.Affinity));
@@ -4301,6 +4556,7 @@ namespace SpellyZombie
         /// element beat does not run, so these numbers are the only ones it has.
         void OnElementStateClient(StateMsg msg, Channel channel)
         {
+            if (InstanceFinder.ServerManager.Started) return; // the host has the real boards
             if (msg.Ids == null) return;
             for (int i = 0; i < msg.Ids.Length; i++)
             {
@@ -4308,8 +4564,8 @@ namespace SpellyZombie
                 if (e == null) continue;
                 var d = e.Data;
                 d.Temp = msg.Temp[i];
-                d.State = msg.State[i] / 100f;
-                d.Lum = msg.Lum[i] / 100f;
+                d.State = msg.State[i] * DrawingConfig.AxisCap / 100f;
+                d.Lum = msg.Lum[i] * DrawingConfig.AxisCap / 100f;
                 // the whole board (older hosts ship without these arrays)
                 if (msg.Press != null && i < msg.Press.Length)
                 {
@@ -4377,12 +4633,13 @@ namespace SpellyZombie
             });
         }
 
-        /// The kinds that are only a look: a friend's puppet wears them too.
+        /// The kinds every copy applies: the looks, and the heal the store must carry.
         static void PuppetFx(NetAvatar av, byte kind, float amount, Vector3 point,
             MatterPhase phase = MatterPhase.Solid)
         {
             switch (kind)
             {
+                case 1: av.TakeHeal(amount); break;
                 case 3: av.GetComponentInChildren<StateView>()?.Set(phase); break;
                 case 4: Juice.Chime(point); break; // the snap itself rides the next presence sample
                 case 5: TrailMark.Wear(av.transform, amount); break;
@@ -4449,8 +4706,8 @@ namespace SpellyZombie
             if (InstanceFinder.ServerManager.Started) return;
             PlayerInk.AwardAll(DrawingConfig.InkPerKill); // shared economy, client side
             SealAutopsy.OnKill();
-            // your own zombie fell: the whistle the host's summoner hears
-            if (msg.Owner >= 0 && msg.Owner == Grimoire.LocalPlayerId) Zombie.WhistleOwner(msg.Owner);
+            // a summoner's zombie fell: the whistle plays at the summoner here too
+            if (msg.Owner >= 0) Zombie.WhistleOwner(msg.Owner);
             ZombieKilled?.Invoke(msg.Pos, msg.Owner, msg.KilledBy, msg.Via == 1);
         }
 
@@ -4531,9 +4788,12 @@ namespace SpellyZombie
         /// host never hears its own broadcast come back.
         void OnSpawnAskServer(NetworkConnection conn, SpawnAskMsg msg, Channel channel)
         {
-            // the asker is on the map now: sources taken here stay taken for them too
-            foreach (var taken in AbsorbSource.TakenOnThisMap)
-                InstanceFinder.ServerManager.Broadcast(conn, new AbsorbGiveMsg { Owner = -1, At = taken });
+            // an asker in the host's scene: sources taken here stay taken for them too
+            if (msg.Scene == ActiveScene.Name)
+                foreach (var taken in AbsorbSource.TakenOnThisMap)
+                    InstanceFinder.ServerManager.Broadcast(conn, new AbsorbGiveMsg { Owner = -1, At = taken });
+            // a joiner who came mid-match gets the map-bound replay once, asked from the host's scene
+            if (msg.Scene == ActiveScene.Name && _owedMapWelcome.Remove(conn.ClientId)) SendMapWelcome(conn);
             if (!SpawnPlan.IssueFor(msg.Owner, out var at)) return; // asker picks its own
             SpawnPlan.TakeAssigned(msg.Owner, at);
             // their puppet's home biome is the tile they were handed, as a pilot's is
@@ -4591,14 +4851,36 @@ namespace SpellyZombie
             return null;
         }
 
+        /// Where this owner is heard from: their spirit while it flies, their body otherwise.
+        public static Transform VoiceTransformOf(int owner)
+        {
+            if (_instance == null) return null;
+            foreach (var kv in _instance._avatars)
+                if (OwnerIdOf(kv.Key) == owner && kv.Value != null)
+                    return kv.Value.Ghost != null ? kv.Value.Ghost : kv.Value.transform;
+            return null;
+        }
+
         // ------------------- client applying: seals/matter/particles (netcode §2/§3) --
         void OnSealClient(SealMsg msg, Channel channel)
         {
             if (InstanceFinder.ServerManager.Started) return;
-            if (msg.Loop == null || msg.Loop.Length < 3) return;
+            Transform body = null;
+            if (msg.Body)
+            {
+                // a body seal: no ring, its zones ride the caster (our own pilot, else their puppet)
+                body = SealBody(msg.Owner);
+                if (body == null) return;
+            }
+            else if (msg.Loop == null || msg.Loop.Length < 3) return;
             if (_rings.TryGetValue(msg.SealId, out var old) && old != null) Destroy(old.gameObject);
-            var carrier = string.IsNullOrEmpty(msg.SurfacePath) ? null : ScenePath.Find(msg.SurfacePath);
-            var ring = NetSealRing.Show(msg.Loop, msg.Duration, carrier != null ? carrier.transform : null);
+            NetSealRing ring;
+            if (body != null) ring = NetSealRing.OnBody(body, msg.Duration);
+            else
+            {
+                var carrier = string.IsNullOrEmpty(msg.SurfacePath) ? null : ScenePath.Find(msg.SurfacePath);
+                ring = NetSealRing.Show(msg.Loop, msg.Duration, carrier != null ? carrier.transform : null);
+            }
             _rings[msg.SealId] = ring;
             // the zones' looks, built by the same code the host's Spell uses
             if (msg.Runes != null && msg.Centers != null && msg.Radii != null
@@ -4607,8 +4889,10 @@ namespace SpellyZombie
                 int n = Mathf.Min(msg.Runes.Length, msg.Centers.Length, msg.Radii.Length);
                 n = Mathf.Min(n, Mathf.Min(msg.Intensities.Length, msg.PushDirs.Length));
                 for (int i = 0; i < n; i++)
-                    ring.AddZone((RuneType)msg.Runes[i], msg.Centers[i], msg.Radii[i], msg.Intensities[i],
-                        msg.PushDirs[i], msg.DarkSpread);
+                    ring.AddZone((RuneType)msg.Runes[i],
+                        body != null ? body.TransformPoint(msg.Centers[i]) : msg.Centers[i],
+                        msg.Radii[i], msg.Intensities[i],
+                        body != null ? body.TransformDirection(msg.PushDirs[i]) : msg.PushDirs[i], msg.DarkSpread);
             }
         }
 
@@ -4656,6 +4940,8 @@ namespace SpellyZombie
                     _matterProxies[id] = proxy;
                 }
                 proxy.Target(msg.Pos[i], msg.Rot[i], msg.Scale[i], msg.Looks[i]);
+                proxy.Flow = msg.Vels != null && i < msg.Vels.Length ? msg.Vels[i] : Vector3.zero;
+                if (msg.Sticks != null && i < msg.Sticks.Length) proxy.Stickiness = msg.Sticks[i];
             }
 
             _gone.Clear();
@@ -4763,6 +5049,7 @@ namespace SpellyZombie
             // a puppet built after its spawn point was issued is born there, not at the origin
             if (built && SpawnPlan.AssignedFor(owner, out var home)) avatar.StampHome(home);
             avatar.Target(msg.Pos, msg.Yaw, msg.Flags, msg.Team, msg.Pitch, msg.Move);
+            avatar.FollowHealth(msg.Health10 / 10f); // the host's store and every other machine's copy
             avatar.TargetGhost((msg.Flags & 4) != 0, msg.GhostPos, msg.GhostYaw, msg.Acolyte);
             avatar.TargetHands(msg.Book, msg.Ink, msg.Emote, msg.HeldKind, msg.Held);
             avatar.TargetEyes(msg.Eyes, msg.Gaze);
@@ -5032,8 +5319,8 @@ namespace SpellyZombie
         /// teardown as a lost host, without the banner or the trip home.
         public static void LeaveSession()
         {
-            if (!NetGame.Connected) return;
-            if (_instance != null) _instance._leaving = true;
+            // the Steam lobby is joined before FishNet connects: leave it even mid-handshake
+            if (NetGame.Connected && _instance != null) _instance._leaving = true;
             if (NetGame.IsHost) SteamLobby.DeleteLobby();
             else SteamLobby.LeaveJoined();
         }
@@ -5150,13 +5437,18 @@ namespace SpellyZombie
         {
             if (msg.Ids == null) return;
             foreach (var id in msg.Ids) ForgetBodyInk(msg.Owner, id);
-            if (msg.Owner == Grimoire.LocalPlayerId) return;
+            bool mine = msg.Owner == Grimoire.LocalPlayerId;
+            if (mine && !msg.Leash) return; // a drink: the owner burned its own already
             int burned = 0;
             _pieceBuf.Clear();
             foreach (var id in msg.Ids) FindNetStrokes(msg.Owner, id, _pieceBuf); // every piece an erase left
-            foreach (var s in _pieceBuf) { s.Burn(); burned++; } // the sweep culls the dead entry
+            foreach (var s in _pieceBuf)
+            {
+                if (mine) DrawingWorld.ReturnToWand(s); // the host's leash: the ink comes home here
+                s.Burn(); burned++; // the sweep culls the dead entry
+            }
             // the drink's chime at their body, as the owner hears it at theirs
-            if (burned > 0 && _avatars.TryGetValue(msg.Owner - 1, out var av) && av != null)
+            if (!msg.Leash && burned > 0 && _avatars.TryGetValue(msg.Owner - 1, out var av) && av != null)
                 Juice.Chime(av.transform.position);
         }
 
@@ -5440,6 +5732,12 @@ namespace SpellyZombie
         /// How they move, from the last two states: creatures read a friend closing in.
         public Vector3 Velocity { get; private set; }
         Transform _head, _spine1; // bend with their look pitch, after the animator
+        // the owner's rig on the puppet: crouch yaw fix, noodle walk, posing shoulders
+        Quaternion _modelRot = Quaternion.identity; // the body after FaceForward
+        float _crouchYawW, _bob;
+        Quaternion _bindSpine1, _bindHead;
+        Transform _clavL, _clavR, _armL, _armR;
+        Quaternion _clavLRest, _clavRRest, _armLRest, _armRRest, _armLWritten, _armRWritten;
 
         // the body: animator, bones, book, wand, hands
         Animator _anim;
@@ -5459,6 +5757,8 @@ namespace SpellyZombie
         bool _restCaptured, _doll;
         HandIK _ik;
         Element _el;
+        float _hostHurtAt = -10f; // the last hit this machine gave or saw on this body
+        float _hostHealAt = -10f; // the last heal shipped to this body
         byte _bookState;
         sbyte _emote = -1;
         byte _heldKind;
@@ -5487,6 +5787,9 @@ namespace SpellyZombie
                 if (_head == null && t.name.EndsWith(":Head")) _head = t;
                 else if (_spine1 == null && t.name.EndsWith(":Spine1")) _spine1 = t;
             }
+            // the wobble's ground when no animator writes these bones
+            if (_spine1 != null) _bindSpine1 = _spine1.localRotation;
+            if (_head != null) _bindHead = _head.localRotation;
             _el = GetComponent<Element>();
         }
 
@@ -5543,6 +5846,10 @@ namespace SpellyZombie
             EmoteRig emoteRig = null;
             GooglyEyes puppetEyes = null;
             var bones = new System.Collections.Generic.List<Rigidbody>();
+            Quaternion modelRot = Quaternion.identity;
+            Transform clavL = null, clavR = null, upL = null, upR = null;
+            Quaternion clavLRest = Quaternion.identity, clavRRest = Quaternion.identity;
+            Quaternion upLRest = Quaternion.identity, upRRest = Quaternion.identity;
             // the SAME body the local player wears - what exists in the game
             // exists for everyone, so a friend is never a different model
             var prefab = CollectionManager.PlayerBody;
@@ -5592,9 +5899,19 @@ namespace SpellyZombie
                 // and a rig built after the yaw bends nothing the owner bent
                 LowerArm(armL, handL);
                 LowerArm(armR, handR);
+                // the shoulders' rest beside the arms' rest, as the owner's rig reads them
+                clavL = SocketSet.FindBone(allBones, "LeftShoulder");
+                clavR = SocketSet.FindBone(allBones, "RightShoulder");
+                if (clavL != null) clavLRest = clavL.localRotation;
+                if (clavR != null) clavRRest = clavR.localRotation;
+                upL = armL;
+                upR = armR;
+                if (upL != null) upLRest = upL.localRotation;
+                if (upR != null) upRRest = upR.localRotation;
                 emoteRig = go.AddComponent<EmoteRig>();
                 EmoteRig.Populate(emoteRig, allBones, go.transform);
                 CharacterRig.FaceForward(body.transform, footL, toeL, go.transform.forward);
+                modelRot = body.transform.localRotation; // the crouch yaw fix turns from here
 
                 // the same locomotion clips the local rig plays; the animator
                 // faces the model, the presence feeds it
@@ -5703,6 +6020,7 @@ namespace SpellyZombie
 
             var a = go.AddComponent<NetAvatar>();
             a.Id = id;
+            hurtBox.OnDamaged += (_, __) => a._hostHurtAt = Time.time;
             a._targetPos = go.transform.position;
             a._costume = costume;
             a._sockets = sockets;
@@ -5712,6 +6030,15 @@ namespace SpellyZombie
             a._wandGo = wandGo;
             a._emoteRig = emoteRig;
             a._eyes = puppetEyes;
+            a._modelRot = modelRot;
+            a._clavL = clavL;
+            a._clavR = clavR;
+            a._armL = upL;
+            a._armR = upR;
+            a._clavLRest = clavLRest;
+            a._clavRRest = clavRRest;
+            a._armLRest = a._armLWritten = upLRest;
+            a._armRRest = a._armRWritten = upRRest;
             a._bones.AddRange(bones);
             foreach (var rb in bones)
                 a._bind.Add((rb.transform, rb.transform.localPosition, rb.transform.localRotation));
@@ -5730,6 +6057,8 @@ namespace SpellyZombie
 
         // ---- their ghost ----
         Transform _ghost;
+        /// Their spirit (the NetGhost) while it flies, else null.
+        public Transform Ghost => _ghost;
         Vector3 _ghostTarget;
         float _ghostYaw;
 
@@ -6097,6 +6426,29 @@ namespace SpellyZombie
             }
         }
 
+        /// Their health as their own machine keeps it (the player heal runs
+        /// there). The host's store and every other copy follow: down at once,
+        /// up only when no hit has landed here since, so an older report never
+        /// undoes a hit.
+        public void FollowHealth(float health)
+        {
+            var el = _el != null ? _el : GetComponent<Element>();
+            if (el == null || el.DeadStill || health <= 0f) return;
+            // a report from before a shipped heal must not undo it
+            if (health < el.Health - 0.05f) { if (Time.time - _hostHealAt > 0.5f) el.Health = health; }
+            else if (health > el.Health + 0.05f && Time.time - _hostHurtAt > 1f) el.Health = health;
+        }
+
+        /// A heal shipped to their machine lands in this copy too, or the next
+        /// HealthMsg after a hit would carry the unhealed value back to them.
+        public void TakeHeal(float amount)
+        {
+            var el = _el != null ? _el : GetComponent<Element>();
+            if (el == null || el.DeadStill || amount <= 0f) return;
+            el.Health = Mathf.Min(Sides.MaxHealthFor(NetSync.OwnerIdOf(Id)), el.Health + amount);
+            _hostHealAt = Time.time;
+        }
+
         /// The keyframes they are posing with arrived: play exactly those.
         public void ReplayEmote(sbyte slot, EmoteDef def)
         {
@@ -6263,6 +6615,11 @@ namespace SpellyZombie
                 _anim.SetBool("Airborne", air);
                 _anim.SetFloat("AirSpeed", speed2d, 0.1f, Time.deltaTime);
             }
+
+            // the crouch clip's baked lean turned back, faded with the crouch (CharacterRig)
+            float yawFix = rig != null ? rig.CrouchYawFix : 38f;
+            _crouchYawW = Mathf.MoveTowards(_crouchYawW, crouch ? 1f : 0f, Time.deltaTime * 5f);
+            _anim.transform.localRotation = _modelRot * Quaternion.Euler(0f, yawFix * _crouchYawW, 0f);
         }
 
         /// After the animator: the head follows their look, a disguised body
@@ -6275,6 +6632,29 @@ namespace SpellyZombie
                 _restCaptured = true;
                 _emoteRig?.CaptureRest(); // post-animator, like the local rig
                 if (_ik != null) _ik.RestCaptured = true;
+            }
+
+            // the owner's noodle walk and posing shoulders (CharacterRig), from their
+            // movement and pose; the engraving calm is not on the wire
+            if (!_ragdolling && _head != null)
+            {
+                if (_emotes != null && _emotes.IsPosing)
+                {
+                    var pilot = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
+                    var rig = pilot != null ? pilot.GetComponent<CharacterRig>() : null;
+                    float follow = rig != null ? rig.ClavicleFollow : 0.3f;
+                    if (follow > 0.001f)
+                    {
+                        CharacterRig.FollowClavicle(_clavL, _clavLRest, _armL, _armLRest, ref _armLWritten, follow);
+                        CharacterRig.FollowClavicle(_clavR, _clavRRest, _armR, _armRRest, ref _armRWritten, follow);
+                    }
+                }
+                else if (!_doll)
+                {
+                    var lv = new Vector3(_move.x, Velocity.y, _move.y);
+                    CharacterRig.Wobble(ref _bob, lv, lv.magnitude, 1f, _spine1, _head,
+                        _anim != null && _anim.enabled, _bindSpine1, _bindHead);
+                }
             }
 
             // composed over the animator's pose each frame, so it never accumulates

@@ -330,14 +330,27 @@ namespace SpellyZombie
 
         /// Pen-up warm-up: classify the touching cluster around a finished
         /// stroke NOW, so the seal close pays nothing for recognition.
-        public static void Precognize(Stroke seed, IReadOnlyList<Stroke> all)
+        /// `cluster` receives the flood so the rest of the pen-up reuses it.
+        public static void Precognize(Stroke seed, IReadOnlyList<Stroke> all, List<Stroke> cluster = null)
         {
             if (seed == null || !seed.Alive || seed.DeclaredRune != RuneType.None) return;
             // remote ink is read by ITS owner and the verdict shipped - never here (netcode §1)
             if (NetGame.Connected && seed.OwnerId != Grimoire.LocalPlayerId) return;
-            var members = new List<Stroke> { seed };
+            var members = cluster ?? new List<Stroke>();
+            members.Clear();
+            members.Add(seed);
             GrowTouchingCluster(members, all);
             Recognize(members, seed.OwnerId);
+        }
+
+        /// True when `cluster` is a pen-up flood that still stands for `seed`:
+        /// it starts at the seed and every member is still open ink.
+        public static bool FloodedFor(List<Stroke> cluster, Stroke seed)
+        {
+            if (cluster == null || cluster.Count == 0 || cluster[0] != seed) return false;
+            foreach (var m in cluster)
+                if (m == null || !m.Alive || m.State != StrokeState.Open) return false;
+            return true;
         }
 
         /// Owner's pen-up verdict, straight from the cache - what ships on the wire (netcode §1).
@@ -435,7 +448,7 @@ namespace SpellyZombie
                 if (NetGame.Connected)
                     foreach (var m in members)
                         if (m != null && m.OwnerId != Grimoire.LocalPlayerId) { foreign = true; break; }
-                r = foreign ? (RuneType.None, 0f)
+                r = foreign || TooBigForRune(members) ? (RuneType.None, 0f)
                     : RuneLibrary.Classify(ownerId, RawStrokesOf(members));
                 if (_recogCache.Count > 128) _recogCache.Clear(); // tiny, self-pruning
                 _recogCache[key] = r;
@@ -445,19 +458,23 @@ namespace SpellyZombie
             return glyph;
         }
 
-        /// Public so the erase sweep in DrawingWorld can cull by it too.
-        public static Bounds StrokeBounds(Stroke s)
+        /// A touching cluster past MaxRuneStrokes or MaxRunePoints is a
+        /// tangle, not a rune: it reads as no rune without being classified.
+        static bool TooBigForRune(List<Stroke> members)
         {
-            var b = new Bounds();
-            bool any = false;
-            foreach (var n in s.Nodes)
+            int strokes = 0, points = 0;
+            foreach (var m in members)
             {
-                if (n == null) continue;
-                if (!any) { b = new Bounds(n.transform.position, Vector3.zero); any = true; }
-                else b.Encapsulate(n.transform.position);
+                if (m == null || !m.Alive) continue;
+                strokes++;
+                points += m.Nodes.Count;
             }
-            return b;
+            return strokes > DrawingConfig.MaxRuneStrokes || points > DrawingConfig.MaxRunePoints;
         }
+
+        /// Public so the erase sweep in DrawingWorld can cull by it too.
+        /// Cached on the stroke (Stroke.NodeBounds).
+        public static Bounds StrokeBounds(Stroke s) => s.NodeBounds();
 
         /// Touching = node-to-LINE, never node-to-node (node-to-node sampling
         /// error would force a visibly loose threshold). Run both ways round
@@ -475,19 +492,32 @@ namespace SpellyZombie
             return NodesTouchLine(a, b, m2) || NodesTouchLine(b, a, m2);
         }
 
+        // `onto`'s node positions, read once per NodesTouchLine call
+        static readonly List<Vector3> _ontoPts = new List<Vector3>();
+        static readonly List<bool> _ontoHole = new List<bool>();
+
         /// Any node of `from` within `m2` (squared) of the polyline of `onto`.
         static bool NodesTouchLine(Stroke from, Stroke onto, float m2)
         {
+            _ontoPts.Clear();
+            _ontoHole.Clear();
+            foreach (var nb in onto.Nodes)
+            {
+                bool hole = nb == null;
+                _ontoHole.Add(hole);
+                _ontoPts.Add(hole ? default : nb.transform.position);
+            }
+            int count = _ontoPts.Count;
             foreach (var na in from.Nodes)
             {
                 if (na == null) continue;
                 Vector3 p = na.transform.position;
                 Vector3 prev = default;
                 bool has = false;
-                foreach (var nb in onto.Nodes)
+                for (int j = 0; j < count; j++)
                 {
-                    if (nb == null) { has = false; continue; } // erased hole: no segment across it
-                    Vector3 q = nb.transform.position;
+                    if (_ontoHole[j]) { has = false; continue; } // erased hole: no segment across it
+                    Vector3 q = _ontoPts[j];
                     if ((p - q).sqrMagnitude <= m2) return true;
                     if (has)
                     {

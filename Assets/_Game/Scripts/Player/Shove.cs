@@ -65,9 +65,11 @@ namespace SpellyZombie
         /// shoved but never damaged - poison is corruption, blasts are
         /// physics), loose props thrown. One implementation for the zombie
         /// detonation and the acolyte death burst.
+        /// `shipKicks` false: every client runs this same blast on its own
+        /// body (the FieldMsg mirror), so puppets get no kick from here.
         public static void Blast(Vector3 at, float radius, float power,
             float baseDamage, string cause, Rigidbody except = null,
-            int by = -1, bool viaMinion = false)
+            int by = -1, bool viaMinion = false, bool shipKicks = true)
         {
             Juice.Thud(at);
 
@@ -102,7 +104,8 @@ namespace SpellyZombie
                     float t = 1f - Mathf.Clamp01(dist / Mathf.Max(0.1f, radius));
                     int owner = NetSync.OwnerIdOf(av.Id);
                     Vector3 impulse = away.normalized * power * t + Vector3.up * power * 0.3f * t;
-                    NetSync.SendKick(owner, impulse, false); // their own TakeHit decides the fall
+                    if (shipKicks) // their own Shove.Hit breaks their modes, TakeHit decides the fall
+                        NetSync.SendKick(owner, impulse, false, true);
                     if (baseDamage > 0f && Sides.Of(owner) != Side.Acolyte)
                         av.GetComponent<Element>()?.TakeDamage(baseDamage * t, cause, by, viaMinion);
                 }
@@ -114,7 +117,10 @@ namespace SpellyZombie
                 if (_blastHits[i] == null) continue;
                 var rb = _blastHits[i].attachedRigidbody;
                 if (rb != null && !rb.isKinematic && rb != except)
+                {
+                    Element.TrackLoose(rb); // the clients see it fly
                     rb.AddExplosionForce(power * 18f, at, radius, 0.4f, ForceMode.Impulse);
+                }
             }
         }
     }

@@ -58,7 +58,11 @@ namespace SpellyZombie
                     continue;
                 }
                 var rb = c.attachedRigidbody;
-                if (rb != null && !rb.isKinematic && _seen.Add(rb)) rb.AddForce(push, ForceMode.VelocityChange);
+                if (rb != null && !rb.isKinematic && _seen.Add(rb))
+                {
+                    Element.TrackLoose(rb); // the clients see it kicked
+                    rb.AddForce(push, ForceMode.VelocityChange);
+                }
             }
         }
 

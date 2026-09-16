@@ -118,8 +118,20 @@ namespace SpellyZombie
             _effects = PlayerPrefs.GetInt("sz_effects", -1);
             _motionBlur = PlayerPrefs.GetInt("sz_motionblur", -1);
             _aa = PlayerPrefs.GetInt("sz_aa", -1);
-            _fps = Mathf.Clamp(PlayerPrefs.GetInt("sz_fps", 0), 0, FpsCaps.Length - 1);
+            _fps = Mathf.Clamp(PlayerPrefs.GetInt("sz_fps", MonitorCap()), 0, FpsCaps.Length - 1);
             _vsync = PlayerPrefs.GetInt("sz_vsync", QualitySettings.vSyncCount > 0 ? 1 : 0) == 1;
+        }
+
+        /// The cap for a player who never picked one: the highest the monitor
+        /// can show, so the GPU draws no frames nobody sees. Every higher cap
+        /// and uncapped stay one click away.
+        static int MonitorCap()
+        {
+            int hz = Mathf.RoundToInt((float)Screen.currentResolution.refreshRateRatio.value);
+            int pick = 0;
+            for (int i = 1; i < FpsCaps.Length; i++)
+                if (FpsCaps[i] <= hz) pick = i;
+            return pick;
         }
 
         static Display ModeOf(FullScreenMode m) => m == FullScreenMode.Windowed ? Display.Windowed

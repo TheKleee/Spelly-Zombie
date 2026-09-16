@@ -17,7 +17,7 @@ namespace SpellyZombie
         }
 
         float _sweep;
-        bool _kitGiven;
+        int _kitGivenTo; // the local owner id that got the starting pair
 
         void OnEnable() => Sides.Changed += OnSideChanged;
         void OnDisable() => Sides.Changed -= OnSideChanged;
@@ -57,7 +57,7 @@ namespace SpellyZombie
         void GrantStartingKit(int owner)
         {
             if (Sides.Of(owner) == Side.Acolyte) return;
-            foreach (var r in WizardKit) Grimoire.UnlockRune(owner, r);
+            foreach (var r in WizardKit) Grimoire.UnlockRune(owner, r, quiet: true);
         }
 
         void Update()
@@ -77,6 +77,15 @@ namespace SpellyZombie
             // scattered ground in the lobby.
             PlayerSpawner.Tick();
             SpawnPlan.PlaceLocals();
+
+            // push and pull are in a wizard's book the frame a local player
+            // appears. Offline every scene's body is a new owner id.
+            int me = Grimoire.LocalPlayerId;
+            if (me != 0 && me != _kitGivenTo && Sides.Of(me) != Side.Acolyte)
+            {
+                _kitGivenTo = me;
+                GrantStartingKit(me);
+            }
 
             // keep every player wearing the side components
             _sweep -= Time.deltaTime;
@@ -113,15 +122,6 @@ namespace SpellyZombie
                             p.Health = Mathf.MoveTowards(p.Health, cap,
                                 DrawingConfig.StrengthSettlePerSec * Time.deltaTime);
                     }
-                }
-
-                // push and pull, before anyone has absorbed anything. Re-armed
-                // on a side change: switching to wizard must still hand them over.
-                if (!_kitGiven && Grimoire.LocalPlayerId != 0
-                    && Sides.Of(Grimoire.LocalPlayerId) != Side.Acolyte)
-                {
-                    _kitGiven = true;
-                    GrantStartingKit(Grimoire.LocalPlayerId);
                 }
             }
 

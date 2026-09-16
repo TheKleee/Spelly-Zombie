@@ -1055,7 +1055,7 @@ namespace SpellyZombie
         }
 
         /// The summoner's whistle at their own position. The host calls it on
-        /// a death; a client owner calls it from the KillFeed.
+        /// a death; every client calls it from the KillFeed.
         public static void WhistleOwner(int ownerId)
         {
             if (ownerId < 0) return;

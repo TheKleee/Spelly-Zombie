@@ -235,9 +235,12 @@ namespace SpellyZombie
             float dmg = (speed - DrawingConfig.ImpactDamageSpeed) * DrawingConfig.ImpactDamagePerSpeed;
 
             // a flung zombie is a projectile: whoever it lands on feels it too;
-            // a wild golem's charge hands the player its own flat hit instead
+            // a wild golem's charge hands the player its own flat hit instead,
+            // and a summoned golem never slams its own side
             var pilot = col.collider.GetComponent<SimpleFPSController>();
-            if (pilot != null && !(TryGetComponent<Golem>(out var wild) && wild.OwnerId < 0))
+            bool spared = pilot != null && TryGetComponent<Golem>(out var g)
+                && (g.OwnerId < 0 || Teams.OfOwner(g.OwnerId) == Teams.Of(pilot));
+            if (pilot != null && !spared)
                 pilot.TakeHit(col.relativeVelocity * 0.25f, dmg * 0.6f);
 
             if (TryShatter(dmg)) return; // frozen = brittle, triple payout

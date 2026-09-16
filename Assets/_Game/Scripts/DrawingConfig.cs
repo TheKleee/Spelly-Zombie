@@ -111,6 +111,7 @@ namespace SpellyZombie
         public static readonly float RuneIconLift = O(nameof(RuneIconLift), 0f);     // em above the baseline. 0 = no tag emitted; the sprite asset's own metrics do the aligning
         public static readonly float RuneIconScale = O(nameof(RuneIconScale), 100f); // % of the surrounding text size. 100 = no tag emitted
         public static readonly float InkEvaporateSeconds = O(nameof(InkEvaporateSeconds), 60f);    // loose world ink lives this long
+        public static readonly float InkLeashMeters = O(nameof(InkLeashMeters), 10f);              // loose ink farther than this from its owner's body goes back to their wand; 0 = off
         /// Rubbed-out ink refills the wand at a loss so casting is never free.
         public static readonly float ScoopRefund = O(nameof(ScoopRefund), 0.5f);
         /// How long a world seal lives after casting before its ink is consumed.
@@ -374,6 +375,11 @@ namespace SpellyZombie
         // One drawing = ink that touches, measured node-to-segment (RuneGlyph).
         // This distance and the segment math must move together.
         public static readonly float RuneTouchDistance = O(nameof(RuneTouchDistance), 0.014f); // = InkTouchDistance; same law as seals
+        // A touching cluster past either cap is a tangle and reads as no rune,
+        // unclassified. Largest saved sample: 3 strokes, 277 points (0.63 m
+        // across); a full tank of line is about 1300 nodes.
+        public static readonly int MaxRuneStrokes = Oi(nameof(MaxRuneStrokes), 24);
+        public static readonly int MaxRunePoints = Oi(nameof(MaxRunePoints), 1500);
         public static readonly float BodyCastThrowSpeed = O(nameof(BodyCastThrowSpeed), 7f); // body/weapon seals THROW their particles outward at this speed
         // The hand throw (E).
         public static readonly float ThrowSpeed = O(nameof(ThrowSpeed), 33f);

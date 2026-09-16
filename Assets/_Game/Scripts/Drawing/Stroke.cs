@@ -114,6 +114,7 @@ namespace SpellyZombie
                     Vector3.Distance(Nodes[Nodes.Count - 1].transform.position, node.transform.position));
             Nodes.Add(node);
             _dirty = true;
+            _boxStale = true;
         }
 
         /// Path length between two node indices (drawing-time only).
@@ -137,6 +138,7 @@ namespace SpellyZombie
                     Vector3.Distance(Nodes[i - 1].transform.position, Nodes[i].transform.position));
             }
             _dirty = true;
+            _boxStale = true;
             return removed;
         }
 
@@ -147,7 +149,10 @@ namespace SpellyZombie
             _dirty = true; // the ring only closes visually when nothing is stretched apart
         }
 
-        public void MarkDirty() => _dirty = true;
+        public void MarkDirty() { _dirty = true; _boxStale = true; }
+
+        /// A node changed carrier (DrawNode.Rebase): the cached box is walked again.
+        public void MarkRebased() => _boxStale = true;
 
         /// Call once the node list is final (stroke completed or closed into a seal).
         /// Persistence is a majority vote of nodes on persistent surfaces.
@@ -222,6 +227,59 @@ namespace SpellyZombie
                 count++;
             }
             return count > 0 ? sum / count : Vector3.zero;
+        }
+
+        // node box cache (RuneGlyph.StrokeBounds): walked again after the node
+        // set changes or a node changes carrier, and whenever its one carrier moved
+        Bounds _box;
+        bool _boxStale = true;
+        bool _boxOneCarrier;   // every live node sat on _boxCarrier
+        bool _boxRooted;       // ...and that carrier is the world root
+        Transform _boxCarrier;
+        Matrix4x4 _boxCarrierAt;
+
+        /// Box of the live nodes' world positions - the same box a fresh walk
+        /// gives, kept while the ink and its carrier hold still.
+        public Bounds NodeBounds()
+        {
+            if (!_boxStale && _boxOneCarrier)
+            {
+                if (_boxRooted) return _box;
+                if (_boxCarrier == null) _boxStale = true; // carrier died under ink that never woke
+                else if (_boxCarrier.localToWorldMatrix.Equals(_boxCarrierAt)) return _box;
+            }
+            bool walkCarriers = _boxStale;
+            Transform carrier = null;
+            bool one = true;
+            var b = new Bounds();
+            bool any = false;
+            foreach (var n in Nodes)
+            {
+                if (n == null) continue;
+                var t = n.transform;
+                Vector3 p = t.position;
+                if (!any)
+                {
+                    b = new Bounds(p, Vector3.zero);
+                    any = true;
+                    if (walkCarriers) carrier = t.parent;
+                }
+                else
+                {
+                    b.Encapsulate(p);
+                    if (walkCarriers && one && t.parent != carrier) one = false;
+                }
+            }
+            _box = b;
+            if (walkCarriers)
+            {
+                _boxStale = false;
+                _boxOneCarrier = one;
+                _boxCarrier = carrier;
+                _boxRooted = ReferenceEquals(carrier, null);
+            }
+            if (_boxOneCarrier && !_boxRooted) _boxCarrierAt = _boxCarrier.localToWorldMatrix;
+            return b;
         }
 
         /// Flatten node positions into the stroke's start-of-draw view plane.
@@ -364,6 +422,7 @@ namespace SpellyZombie
             float avg = (Mathf.Abs(s.x) + Mathf.Abs(s.y) + Mathf.Abs(s.z)) / 3f;
             _widthFix = avg > 0.0001f ? 1f / avg : 1f;
             _line.positionCount = 0; // the ribbon takes over rendering
+            _line.enabled = false;   // idle while the ribbon draws
             foreach (var lr in _extra)
                 if (lr != null) lr.positionCount = 0;
             _dirty = true;
@@ -373,7 +432,9 @@ namespace SpellyZombie
         {
             _anchor = null;
             _widthFix = 1f;
+            _line.enabled = true;
             if (_ribbonGo != null) Object.Destroy(_ribbonGo);
+            if (_ribbon != null) Object.Destroy(_ribbon);
             _ribbonGo = null;
             _ribbon = null;
             _dirty = true;
@@ -538,9 +599,12 @@ namespace SpellyZombie
                 return;
             }
             lr.positionCount = count;
-            for (int i = 0; i < count; i++)
-                lr.SetPosition(i, _pts[start + i]);
+            if (_fill.Length < count) _fill = new Vector3[Mathf.NextPowerOfTwo(count)];
+            _pts.CopyTo(start, _fill, 0, count);
+            lr.SetPositions(_fill); // one call; entries past positionCount are ignored
         }
+
+        static Vector3[] _fill = new Vector3[64]; // FillRun scratch, shared by every stroke
 
         LineRenderer ExtraLine(int idx)
         {
@@ -590,6 +654,7 @@ namespace SpellyZombie
                 if (n != null) Object.Destroy(n.gameObject);
             if (_lineGo != null) Object.Destroy(_lineGo); // parts are children - they go too
             if (_ribbonGo != null) Object.Destroy(_ribbonGo);
+            if (_ribbon != null) Object.Destroy(_ribbon);
             _ribbonGo = null;
             _ribbon = null;
             _line = null;
@@ -603,9 +668,11 @@ namespace SpellyZombie
         {
             State = StrokeState.Burned;
             Nodes.Clear();
+            _boxStale = true;
             _runningLength.Clear();
             if (_lineGo != null) Object.Destroy(_lineGo);
             if (_ribbonGo != null) Object.Destroy(_ribbonGo);
+            if (_ribbon != null) Object.Destroy(_ribbon);
             _ribbonGo = null;
             _ribbon = null;
             _line = null;

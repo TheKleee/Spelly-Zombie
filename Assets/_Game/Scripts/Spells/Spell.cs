@@ -21,6 +21,8 @@ namespace SpellyZombie
             public Light Light;
             public float Phase;
             public RuneGlyph Glyph;   // live ink anchor - the zone RIDES its glyph
+            public Vector3 CasterLocal; // no glyph (a client's body seal): the center in its caster's space
+            public Vector3 CasterNormal, CasterPushDir; // and its normal and push, turning with the caster
             public GameObject Visual; // zone root (light/arrow), follows the ink
             public float GlyphSize;   // UNCLAMPED drawn half-extent - matter sizing
                                       // uses this, not Radius (0.9-floored for effect areas)
@@ -39,7 +41,9 @@ namespace SpellyZombie
         float _remaining;
         bool _ended;
         bool _bodyThrow;      // remote body seal: no live glyph, but it's still a body cast (netcode §2)
-        Transform _netCaster; // the remote caster's avatar - throws spare it briefly
+        Transform _netCaster; // the remote caster's avatar - its zones ride it
+        /// A client's body seal on the host: the id its zone looks went out under, 0 none.
+        public int NetSealId;
 
         // pressure (density confined by rigid walls builds until it bursts)
         float _gasIntensity;
@@ -589,6 +593,12 @@ namespace SpellyZombie
                     Phase = Random.value * 6.28f,
                     PushDir = pushDirs[i].sqrMagnitude > 0.01f ? pushDirs[i].normalized : normal
                 };
+                if (caster != null)
+                {
+                    z.CasterLocal = caster.InverseTransformPoint(z.Center);
+                    z.CasterNormal = caster.InverseTransformDirection(z.Normal);
+                    z.CasterPushDir = caster.InverseTransformDirection(z.PushDir);
+                }
                 spell.BuildVisual(z);
                 spell._zones.Add(z);
             }
@@ -655,6 +665,7 @@ namespace SpellyZombie
         {
             if (_ended) return;
             _ended = true;
+            if (NetSealId != 0) NetSync.PushBodySealEnd(NetSealId, _ownerId); // its looks go down on every screen
             if (this != null) Destroy(gameObject);
         }
 
@@ -739,6 +750,7 @@ namespace SpellyZombie
                 if (rb == null) continue;
                 Vector3 away = (rb.worldCenterOfMass - _pressureCenter);
                 Vector3 push = (dir * 2f + away.normalized).normalized;
+                Element.TrackLoose(rb); // the clients see it fly
                 rb.AddForce(push * kick, ForceMode.VelocityChange);
             }
 
@@ -851,6 +863,13 @@ namespace SpellyZombie
                     if (z.Rune == RuneType.Attract || z.Rune == RuneType.Repel)
                         z.PushDir = ArrowDirection(z.Glyph, z.Normal, z.Rune);
                 }
+            }
+            else if (_netCaster != null)
+            {
+                // a client's body seal rides their puppet; like the host's own,
+                // the push turns with the body and the normal stays as cast
+                z.Center = _netCaster.TransformPoint(z.CasterLocal);
+                z.PushDir = _netCaster.TransformDirection(z.CasterPushDir);
             }
             if (z.Visual != null)
             {

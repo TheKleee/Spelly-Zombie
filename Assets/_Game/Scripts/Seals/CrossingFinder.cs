@@ -49,6 +49,7 @@ namespace SpellyZombie
 
         const int MaxCrossings = 400;
         const int MaxNearMisses = 256;
+        const int RunSegs = 16; // segments per run box (CollectCrossings prefilter)
 
         // pooled scratch: Find runs at 8 Hz, never reentrant; nothing pooled
         // escapes (Result carries only Arc structs)
@@ -56,6 +57,7 @@ namespace SpellyZombie
         static Vector3[] _norms = new Vector3[16];
         static float[][] _arc = new float[16][];
         static Bounds[] _bounds = new Bounds[16];
+        static List<Bounds>[] _runs = new List<Bounds>[16]; // per-stroke run boxes (RunBoxes)
         static List<Appearance>[] _appear = new List<Appearance>[16];
         static readonly List<Xing> _xings = new List<Xing>();
         static readonly List<Xing> _xingPool = new List<Xing>();
@@ -69,7 +71,9 @@ namespace SpellyZombie
         static readonly Dictionary<int, float> _spDist = new Dictionary<int, float>();
         static readonly Dictionary<int, int> _spPrev = new Dictionary<int, int>();
         static readonly HashSet<int> _spVisited = new HashSet<int>();
-        static readonly List<int> _spFrontier = new List<int>();
+        static readonly List<Pop> _spFrontier = new List<Pop>(); // binary min-heap (PushFrontier/PopNearest)
+        static readonly Dictionary<int, int> _spSeq = new Dictionary<int, int>(); // vertex -> order it first joined the frontier
+        static readonly List<bool> _runNear = new List<bool>();
 
         static void EnsureScratch(int n)
         {
@@ -80,11 +84,13 @@ namespace SpellyZombie
                 System.Array.Resize(ref _norms, cap);
                 System.Array.Resize(ref _arc, cap);
                 System.Array.Resize(ref _bounds, cap);
+                System.Array.Resize(ref _runs, cap);
                 System.Array.Resize(ref _appear, cap);
             }
             for (int i = 0; i < n; i++)
             {
                 if (_pts[i] == null) _pts[i] = new List<Vector3>();
+                if (_runs[i] == null) _runs[i] = new List<Bounds>();
                 if (_appear[i] == null) _appear[i] = new List<Appearance>();
                 _appear[i].Clear();
             }
@@ -168,6 +174,7 @@ namespace SpellyZombie
                 // Bounds.Expand grows each face by half the amount, so x2 = one full
                 // InkTouchDistance per face; with both boxes expanded no touching pair is culled
                 bounds[i].Expand(DrawingConfig.InkTouchDistance * 2f);
+                RunBoxes(pts[i], _runs[i]);
             }
 
             // 1) every junction: ink crossing ink and ink ending on ink (pairwise + self)
@@ -298,33 +305,59 @@ namespace SpellyZombie
             Project(a, b, i == j, norms[i] + norms[j], out var pa, out var pb);
 
             // world-distance guard below; generous by one extra ink width for rough surfaces
-            float maxSep = DrawingConfig.InkTouchDistance * 2f;
+            float maxSep = MaxSep;
             float maxSep2 = maxSep * maxSep;
 
-            for (int s = 0; s < pa.Count - 1; s++)
+            // run boxes that miss each other hold no segment pair within maxSep, so
+            // those pairs are skipped whole; the rest are tested in the same s-then-t order
+            var runsA = _runs[i];
+            var runsB = _runs[j];
+            var near = _runNear;
+            int segA = pa.Count - 1, segB = pb.Count - 1;
+            for (int ra = 0; ra < runsA.Count; ra++)
             {
-                int tStart = (i == j) ? s + 2 : 0; // self: skip adjacent segments
-                for (int t = tStart; t < pb.Count - 1; t++)
+                near.Clear();
+                bool any = false;
+                for (int rb = 0; rb < runsB.Count; rb++)
                 {
-                    if (i == j && s == 0 && t == pb.Count - 2) continue; // the two endpoints: endpoint-closure, not a cross
-                    if (GeometryUtil.SegmentsIntersect(pa[s], pa[s + 1], pb[t], pb[t + 1], out float ts, out float tt))
+                    bool meet = runsA[ra].Intersects(runsB[rb]);
+                    near.Add(meet);
+                    any |= meet;
+                }
+                if (!any) continue;
+
+                int sEnd = Mathf.Min((ra + 1) * RunSegs, segA);
+                for (int s = ra * RunSegs; s < sEnd; s++)
+                {
+                    int tStart = (i == j) ? s + 2 : 0; // self: skip adjacent segments
+                    for (int t = tStart; t < segB;)
                     {
-                        // world meeting points, for welding and the 3D separation guard
-                        Vector3 pA = a[s] + (a[s + 1] - a[s]) * ts;
-                        Vector3 pB = b[t] + (b[t + 1] - b[t]) * tt;
+                        int tr = t / RunSegs;
+                        int tEnd = Mathf.Min((tr + 1) * RunSegs, segB);
+                        if (!near[tr]) { t = tEnd; continue; }
+                        for (; t < tEnd; t++)
+                        {
+                            if (i == j && s == 0 && t == pb.Count - 2) continue; // the two endpoints: endpoint-closure, not a cross
+                            if (GeometryUtil.SegmentsIntersect(pa[s], pa[s + 1], pb[t], pb[t + 1], out float ts, out float tt))
+                            {
+                                // world meeting points, for welding and the 3D separation guard
+                                Vector3 pA = a[s] + (a[s + 1] - a[s]) * ts;
+                                Vector3 pB = b[t] + (b[t + 1] - b[t]) * tt;
 
-                        // the 2D test alone lets strokes on opposite sides of an
-                        // object "cross" through it - require 3D proximity too
-                        if ((pA - pB).sqrMagnitude > maxSep2) continue;
+                                // the 2D test alone lets strokes on opposite sides of an
+                                // object "cross" through it - require 3D proximity too
+                                if ((pA - pB).sqrMagnitude > maxSep2) continue;
 
-                        var x = TakeXing();
-                        x.Id = 0;
-                        x.SA = i; x.PosA = s + ts;
-                        x.SB = j; x.PosB = t + tt;
-                        x.P = (pA + pB) * 0.5f;
-                        x.Crossing = true;
-                        xings.Add(x);
-                        if (xings.Count >= MaxCrossings) return;
+                                var x = TakeXing();
+                                x.Id = 0;
+                                x.SA = i; x.PosA = s + ts;
+                                x.SB = j; x.PosB = t + tt;
+                                x.P = (pA + pB) * 0.5f;
+                                x.Crossing = true;
+                                xings.Add(x);
+                                if (xings.Count >= MaxCrossings) return;
+                            }
+                        }
                     }
                 }
             }
@@ -517,6 +550,46 @@ namespace SpellyZombie
             return diag < DrawingConfig.GlyphCellMax; // small = star cell; large = a seal
         }
 
+        /// A frontier entry, ordered by distance and on a tie by when its vertex first
+        /// joined the frontier - the same pick a front-to-back scan of the list makes.
+        struct Pop { public float Dist; public int Seq; public int Vert; }
+
+        static bool Before(Pop a, Pop b) => a.Dist < b.Dist || (a.Dist == b.Dist && a.Seq < b.Seq);
+
+        static void PushFrontier(Pop p)
+        {
+            var h = _spFrontier;
+            h.Add(p);
+            int k = h.Count - 1;
+            while (k > 0)
+            {
+                int up = (k - 1) >> 1;
+                if (!Before(h[k], h[up])) break;
+                var tmp = h[k]; h[k] = h[up]; h[up] = tmp;
+                k = up;
+            }
+        }
+
+        static int PopNearest()
+        {
+            var h = _spFrontier;
+            int top = h[0].Vert;
+            int last = h.Count - 1;
+            h[0] = h[last];
+            h.RemoveAt(last);
+            int k = 0;
+            while (true)
+            {
+                int l = 2 * k + 1;
+                if (l >= h.Count) break;
+                int m = l + 1 < h.Count && Before(h[l + 1], h[l]) ? l + 1 : l;
+                if (!Before(h[m], h[k])) break;
+                var tmp = h[k]; h[k] = h[m]; h[m] = tmp;
+                k = m;
+            }
+            return top;
+        }
+
         static List<int> ShortestPath(List<Edge> edges, Dictionary<int, List<int>> adj,
                                       int start, int goal, int excludeEdge)
         {
@@ -525,17 +598,16 @@ namespace SpellyZombie
             _spPrev.Clear();
             _spVisited.Clear();
             _spFrontier.Clear();
+            _spSeq.Clear();
             _spDist[start] = 0f;
-            _spFrontier.Add(start);
+            _spSeq[start] = 0;
+            PushFrontier(new Pop { Dist = 0f, Seq = 0, Vert = start });
 
             while (_spFrontier.Count > 0)
             {
-                // pop nearest
-                int bi = 0;
-                for (int k = 1; k < _spFrontier.Count; k++)
-                    if (_spDist[_spFrontier[k]] < _spDist[_spFrontier[bi]]) bi = k;
-                int cur = _spFrontier[bi];
-                _spFrontier.RemoveAt(bi);
+                // pop nearest; a tie goes to the vertex that joined the frontier first.
+                // A re-queued vertex keeps its first place, and stale entries pop as visited
+                int cur = PopNearest();
                 if (!_spVisited.Add(cur)) continue;
                 if (cur == goal) break;
 
@@ -551,7 +623,8 @@ namespace SpellyZombie
                     {
                         _spDist[other] = nd;
                         _spPrev[other] = e;
-                        _spFrontier.Add(other);
+                        if (!_spSeq.TryGetValue(other, out int seq)) { seq = _spSeq.Count; _spSeq[other] = seq; }
+                        PushFrontier(new Pop { Dist = nd, Seq = seq, Vert = other });
                     }
                 }
             }
@@ -713,6 +786,26 @@ namespace SpellyZombie
             for (int i = 1; i < pts.Count; i++)
                 buf[i] = buf[i - 1] + Vector3.Distance(pts[i - 1], pts[i]);
             return buf;
+        }
+
+        /// The 3D separation a 2D crossing must also pass (see CollectCrossings).
+        static float MaxSep => DrawingConfig.InkTouchDistance * 2f;
+
+        /// One box per RunSegs segments, grown so two boxes that miss each other
+        /// hold no segment pair within MaxSep (Expand grows each face by half;
+        /// the extra millimetre covers float rounding far from the origin).
+        static void RunBoxes(List<Vector3> pts, List<Bounds> into)
+        {
+            into.Clear();
+            float grow = MaxSep + 0.001f;
+            for (int s0 = 0; s0 + 1 < pts.Count; s0 += RunSegs)
+            {
+                int last = Mathf.Min(s0 + RunSegs, pts.Count - 1);
+                var box = new Bounds(pts[s0], Vector3.zero);
+                for (int p = s0 + 1; p <= last; p++) box.Encapsulate(pts[p]);
+                box.Expand(grow);
+                into.Add(box);
+            }
         }
 
         static Bounds BoundsOf(List<Vector3> pts)

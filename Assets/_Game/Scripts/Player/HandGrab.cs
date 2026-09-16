@@ -304,7 +304,7 @@ namespace SpellyZombie
                     p.Wake();
                     SpellKick.Apply(p, Vector3.zero, _pilot.transform, Grimoire.LocalPlayerId); // it wakes in your hand: it pushes you off
                 }
-                else DropHeld(Vector3.zero);
+                else DropHeld(Vector3.zero, wake: true); // a friend's hand: the host wakes it there
                 return;
             }
 
@@ -480,7 +480,7 @@ namespace SpellyZombie
 
             // floating cargo barely weighs on the carrier
             var board = _pilot != null ? _pilot.GetComponent<BodyState>() : null;
-            if (board != null) board.CarriedWeight = bestB.mass / 420f;
+            if (board != null) board.CarriedWeight = CarryWeight(bestB.mass);
 
             float auth0 = AuthorityOver(bestB, _heldMarks, out _);
             float needInk = bestB.mass * DrawingConfig.LiftInkPerKg;
@@ -709,7 +709,24 @@ namespace SpellyZombie
             if (_localGrab == null || !_localGrab._remoteHolding) return;
             _localGrab._remoteHolding = false;
             _localGrab._remoteCargo = null;
+            _localGrab.CarryOnBody(0f);
             DrawingWorld.Instance?.LogEvent(string.IsNullOrEmpty(why) ? "the host refused the grab" : why);
+        }
+
+        /// The host took the grab: the cargo weighs on this body as a local lift does.
+        public static void RemoteHoldTaken(float mass)
+        {
+            if (_localGrab == null || !_localGrab._remoteHolding) return;
+            _localGrab.CarryOnBody(CarryWeight(mass));
+        }
+
+        /// Floating cargo barely weighs on the carrier.
+        static float CarryWeight(float mass) => mass / 420f;
+
+        void CarryOnBody(float weight)
+        {
+            var board = _pilot != null ? _pilot.GetComponent<BodyState>() : null;
+            if (board != null) board.CarriedWeight = weight;
         }
 
         // ------------------------------------------------- throwing/dropping --
@@ -721,6 +738,7 @@ namespace SpellyZombie
             {
                 _remoteHolding = false;
                 _remoteCargo = null;
+                CarryOnBody(0f);
                 NetSync.SendThrowIntent(dir); // the host does the physics (netcode §4)
                 return;
             }
@@ -748,13 +766,14 @@ namespace SpellyZombie
             }
         }
 
-        void DropHeld(Vector3 extra)
+        void DropHeld(Vector3 extra, bool wake = false)
         {
             if (_remoteHolding)
             {
                 _remoteHolding = false;
                 _remoteCargo = null;
-                NetSync.SendDropIntent(); // the host lets go (netcode §4)
+                CarryOnBody(0f);
+                NetSync.SendDropIntent(wake); // the host lets go, or wakes it in the hand on F (netcode §4)
                 return;
             }
             if (_heldParticle != null)
@@ -775,6 +794,7 @@ namespace SpellyZombie
         {
             if (_heldBody != null)
             {
+                _heldBody.GetComponentInParent<Golem>()?.BeReleased(); // wakes back up on release (as ReleaseHeldBody)
                 // it must not rocket off on release - the hold drives
                 // velocity directly, so hand it back to physics calm
                 if (!_heldBody.isKinematic)

@@ -88,6 +88,11 @@ namespace SpellyZombie
         public static readonly System.Collections.Generic.List<Golem> All
             = new System.Collections.Generic.List<Golem>();
 
+        /// Golems in someone's hands: disabled, so out of All, but the
+        /// snapshot still streams them.
+        public static readonly System.Collections.Generic.List<Golem> Carried
+            = new System.Collections.Generic.List<Golem>();
+
         void OnEnable()
         {
             if (_dmg == null) _dmg = GetComponent<Element>();
@@ -95,6 +100,8 @@ namespace SpellyZombie
         }
 
         void OnDisable() => All.Remove(this);
+
+        void OnDestroy() => Carried.Remove(this);
 
         /// What colour it came out of the ground: clients paint their copy with
         /// this rather than re-deriving a biome they cannot see.
@@ -168,6 +175,7 @@ namespace SpellyZombie
         float _carriedMass = -1f;
         public void BeCarried()
         {
+            if (!Carried.Contains(this)) Carried.Add(this);
             enabled = false;
             var ch = GetComponent<ChargeAttack>();
             if (ch != null) ch.enabled = false;
@@ -181,6 +189,7 @@ namespace SpellyZombie
         }
         public void BeReleased()
         {
+            Carried.Remove(this);
             enabled = true;
             var ch = GetComponent<ChargeAttack>();
             if (ch != null) ch.enabled = true;

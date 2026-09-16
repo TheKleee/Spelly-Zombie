@@ -86,7 +86,6 @@ namespace SpellyZombie
 
         bool _customBody; // the prefab is dressing this zombie - hands off
         bool _inPlace;    // the body IS the zombie: no rig to follow, no wardrobe
-        float _diagIn;    // temporary walk diagnostic beat
 
         /// True when a custom prefab body is worn; code must not recolour it.
         public bool IsCustomBody => _customBody;
@@ -438,21 +437,6 @@ namespace SpellyZombie
                 bool gettingUp = _creature.GettingUp;
                 if (gettingUp && !_wasGettingUp) { _anim.SetTrigger("StandUp"); Tell(AnimStandUp); }
                 _wasGettingUp = gettingUp;
-            }
-
-            // TEMPORARY walk diagnostic: one line a second names the failing
-            // leg - state, drive, velocity, height. Delete once walking is right.
-            if (_inPlace && (_diagIn -= Time.deltaTime) <= 0f)
-            {
-                _diagIn = 1f;
-                var info = _anim.GetCurrentAnimatorStateInfo(0);
-                string stName = info.shortNameHash == HashWalk ? "Walk"
-                    : info.shortNameHash == HashRun ? "Run" : "other";
-                var hips = _anim.isHuman ? _anim.GetBoneTransform(HumanBodyBones.Hips) : null;
-                Debug.Log($"[SpellyZombie] walk diag: state={stName} speedFloat={_anim.GetFloat("Speed"):0.00} " +
-                    $"vel={(_rb != null ? _rb.linearVelocity.magnitude : 0f):0.00} animSpeed={_anim.speed:0.00} " +
-                    $"rootY={transform.position.y:0.00} hipsY={(hips != null ? hips.position.y - transform.position.y : 0f):0.00} " +
-                    $"canMove={(_creature == null || _creature.CanMove)} human={_anim.isHuman}");
             }
 
             // idle fidget timer

@@ -155,9 +155,16 @@ namespace SpellyZombie
             // nothing sent. Runtime spawns take the host's instance id, which
             // is what the creature snapshots already carry, and a client's
             // stand-in is stamped with it when it is built.
-            if (NetId == 0) NetId = _authored ? PathId(transform) : GetInstanceID();
+            if (NetId == 0)
+            {
+                NetId = _authored ? PathId(transform) : GetInstanceID();
+                PathNamed = _authored;
+            }
             _byId[NetId] = this;
         }
+
+        /// Named by scene path, the same on every machine.
+        [System.NonSerialized] public bool PathNamed;
 
         SpellPayload _authoredNat;
         bool _snapped;
@@ -723,7 +730,7 @@ namespace SpellyZombie
         {
             if (_dead) return;
             SpellLaw.Drift(this, span);
-            Bear(span);
+            if (!PlayerBody) Bear(span); // players mend by the player heal alone
             ApplyPhysicalAxes();
 
             // a thing carrying Affinity is its own gravity until it drifts home
@@ -849,6 +856,20 @@ namespace SpellyZombie
             if (Health >= ceiling) return false;
             Health = Mathf.Min(ceiling, Health + amount);
             return true;
+        }
+
+        int _playerBody = -1;
+        /// A player's own body or the host's stand-in for one: its mending and
+        /// its ground cap are the player heal's (controller + side settle).
+        bool PlayerBody
+        {
+            get
+            {
+                if (_playerBody < 0)
+                    _playerBody = GetComponent<SimpleFPSController>() != null
+                        || GetComponent<NetAvatar>() != null ? 1 : 0;
+                return _playerBody == 1;
+            }
         }
 
         void Bear(float span)
@@ -1015,6 +1036,7 @@ namespace SpellyZombie
             foreach (var e in root.GetComponentsInChildren<Element>(true))
             {
                 int id = PathId(e.transform);
+                e.PathNamed = true;
                 if (e.NetId == 0) e.NetId = id; // not awake yet: Awake files it
                 else e.Rename(id);
             }
@@ -1068,9 +1090,9 @@ namespace SpellyZombie
 
         /// A loose prop that just moved on the host moves on the clients too
         /// (netcode §4). Bodies with their own snapshots are not props.
-        static void TrackLoose(Rigidbody rb)
+        public static void TrackLoose(Rigidbody rb)
         {
-            if (rb == null || rb.isKinematic) return;
+            if (rb == null || rb.isKinematic || !NetGame.IsHost) return;
             if (rb.GetComponentInParent<Creature>() != null
                 || rb.GetComponentInParent<SimpleFPSController>() != null
                 || rb.GetComponentInParent<NetAvatar>() != null
@@ -1117,10 +1139,21 @@ namespace SpellyZombie
         }
         bool _shaking;
 
-        /// A wild golem's body slam on a player is the charge's business, not this law's.
-        bool WildGolemBody => TryGetComponent<Golem>(out var g) && g.OwnerId < 0;
+        /// A golem's body slam spares players by its law: a wild one every
+        /// player (the charge is its hit), a summoned one its own side.
+        bool GolemSpares(Element other)
+        {
+            if (!TryGetComponent<Golem>(out var g) || !IsPlayer(other)) return false;
+            return g.OwnerId < 0 || Teams.OfOwner(g.OwnerId) == PlayerTeam(other);
+        }
         static bool IsPlayer(Element e) =>
             e.GetComponentInParent<SimpleFPSController>() != null || e.GetComponentInParent<NetAvatar>() != null;
+        /// A player's side, pilot or puppet.
+        static Team PlayerTeam(Component c)
+        {
+            var av = c.GetComponentInParent<NetAvatar>();
+            return av != null ? Teams.OfOwner(NetSync.OwnerIdOf(av.Id)) : Teams.Of(c);
+        }
 
         void OnCollisionEnter(Collision col)
         {
@@ -1216,7 +1249,7 @@ namespace SpellyZombie
             // what it hit takes damage too
             var other = col.collider != null
                 ? col.collider.GetComponentInParent<Element>() : null;
-            if (other != null && other != this && !(WildGolemBody && IsPlayer(other)))
+            if (other != null && other != this && !GolemSpares(other))
                 other.TakeDamage(dmg * 0.7f, $"hit by {name}");
         }
 
@@ -1362,7 +1395,11 @@ namespace SpellyZombie
                     && GetComponent<SimpleFPSController>() == null)
                     LobbyRespawn.Take(gameObject, DrawingConfig.LobbyRespawnSeconds);
                 else
+                {
+                    // a shared id (its path, not an instance id): a late joiner's map loses it too
+                    if (PathNamed) NetSync.NoteGone(NetId);
                     Destroy(gameObject);
+                }
             }
         }
     }
