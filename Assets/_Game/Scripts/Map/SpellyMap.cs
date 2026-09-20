@@ -69,7 +69,10 @@ namespace SpellyZombie
 
         void Start()
         {
-            Generate(MatchLobby.Seed != 0 ? MatchLobby.Seed : PreviewSeed);
+            // a custom map brings its own biomes; with none yet there is only sky
+            if (MapDef.PrepareScene()) Generate(MatchLobby.Seed != 0 ? MatchLobby.Seed : PreviewSeed);
+            else ClearGenerated();
+            MapDef.ApplyActive(); // its pieces, on every machine from the same JSON
 
             var cam = Camera.main;
             if (cam != null && cam.GetComponent<LiquidSense>() == null)
@@ -345,19 +348,33 @@ namespace SpellyZombie
         /// snapped neighbours stay seamless.
         Biome WinnerRaw(float wx, float wz)
         {
-            // a box lifted over the cores (EnsureGround) wins inside its own rect
-            if (_top != null && _top.Length == _sorted.Length)
-                for (int i = 0; i < _sorted.Length; i++)
-                    if (_top[i] && wx >= _minX[i] && wx <= _maxX[i] && wz >= _minZ[i] && wz <= _maxZ[i])
-                        return _sorted[i];
+            int n = _sorted.Length;
+            // a box lifted over another (EnsureGround) takes its own plain rect
+            // back from it: there that box counts as absent, core and all
+            bool lifts = _isLifted != null && _isLifted.Length == n && _absent != null && _absent.Length == n
+                && _over != null && _over.GetLength(0) == n;
+            if (lifts)
+            {
+                System.Array.Clear(_absent, 0, n);
+                for (int a = 0; a < n; a++)
+                    if (_isLifted[a] && InRect(a, wx, wz))
+                        for (int k = 0; k < n; k++)
+                            if (_over[a, k]) _absent[k] = true;
+            }
 
             // a protected core wins outright
-            for (int i = 0; i < _sorted.Length; i++)
-                if (CoreHas(i, wx, wz)) return _sorted[i];
+            for (int i = 0; i < n; i++)
+                if (!(lifts && _absent[i]) && CoreHas(i, wx, wz)) return _sorted[i];
 
             float s = Mathf.Max(2f, WobbleScale);
-            for (int i = 0; i < _sorted.Length; i++)
+            for (int i = 0; i < n; i++)
             {
+                if (lifts && _absent[i]) continue;
+                if (lifts && _isLifted[i])
+                {
+                    if (InRect(i, wx, wz)) return _sorted[i]; // a lifted box keeps its plain rect
+                    continue;
+                }
                 // wobble capped at a quarter of the box
                 float wob = Mathf.Min(CoastWobble,
                     Mathf.Min(_maxX[i] - _minX[i], _maxZ[i] - _minZ[i]) * 0.25f);
@@ -387,26 +404,35 @@ namespace SpellyZombie
         }
 
         float AreaOf(int i) => (_maxX[i] - _minX[i]) * (_maxZ[i] - _minZ[i]);
+        bool InRect(int i, float wx, float wz) => wx >= _minX[i] && wx <= _maxX[i] && wz >= _minZ[i] && wz <= _maxZ[i];
 
-        bool[] _top; // lifted over the protected cores by EnsureGround, _sorted order
+        // EnsureGround's lifts, _sorted order: _over[a, k] = box a was lifted over box k
+        bool[,] _over;
+        bool[] _isLifted;
+        bool[] _absent; // WinnerRaw's scratch
 
-        /// Every biome owns ground. A box that bigger boxes cover completely is
-        /// lifted above them, over their protected cores too; a box covered by
-        /// one no bigger than itself stays where it is and says so.
+        /// Every biome owns ground. A box that owns none is lifted over the
+        /// bigger box that took most of it, and only over that one: inside its
+        /// own rect that box counts as absent, while every other box keeps its
+        /// layer and core against it (a box inside it or a higher layer across
+        /// it still shows). Repeated until nothing changes. A box covered only
+        /// by boxes no bigger than itself stays where it is and says so.
         void EnsureGround()
         {
             int n = _sorted.Length;
-            _top = new bool[n];
+            _over = new bool[n, n];
+            _isLifted = new bool[n];
+            _absent = new bool[n];
+            var warned = new bool[n];
+            var took = new int[n];
             const int grid = 13;
             for (int pass = 0; pass < 2 * n; pass++)
             {
-                int lift = -1, to = 0;
-                bool overCore = false;
+                int lift = -1, over = -1;
                 for (int i = 0; i < n && lift < 0; i++)
                 {
-                    int cut = i;
-                    bool owns = false, covered = false, core = false;
-                    float smallest = float.MaxValue;
+                    bool owns = false, covered = false;
+                    System.Array.Clear(took, 0, n);
                     for (int g = 0; g < grid * grid && !owns; g++)
                     {
                         float wx = Mathf.Lerp(_minX[i], _maxX[i], g % grid / (grid - 1f));
@@ -415,35 +441,28 @@ namespace SpellyZombie
                         if (w == _sorted[i]) { owns = true; continue; }
                         int wi = System.Array.IndexOf(_sorted, w);
                         if (wi < 0) continue;
-                        bool byCore = _top[wi] || CoreHas(wi, wx, wz);
-                        if (wi > i && !byCore) continue; // its own wavy edge, not a cover
+                        if (wi > i && !CoreHas(wi, wx, wz) && !_over[wi, i]) continue; // its own wavy edge, not a cover
                         covered = true;
-                        core |= byCore;
-                        cut = Mathf.Min(cut, wi);
-                        smallest = Mathf.Min(smallest, AreaOf(wi));
+                        if (AreaOf(wi) > AreaOf(i) && !_over[i, wi]) took[wi]++;
                     }
                     if (owns || !covered) continue;
-                    if (AreaOf(i) >= smallest)
+                    int best = -1;
+                    for (int k = 0; k < n; k++)
+                        if (took[k] > 0 && (best < 0 || took[k] > took[best])) best = k;
+                    if (best < 0)
                     {
-                        if (pass == 0)
-                            Debug.LogWarning($"[SpellyZombie] '{_sorted[i].name}' has no ground: a box no bigger than it covers all of it. Move it or make it smaller.", _sorted[i]);
+                        if (!warned[i])
+                            Debug.LogWarning($"[SpellyZombie] '{_sorted[i].name}' has no ground: boxes no bigger than it cover all of it. Move it or make it smaller.", _sorted[i]);
+                        warned[i] = true;
                         continue;
                     }
-                    lift = i; to = cut; overCore = core;
+                    lift = i; over = best;
                 }
                 if (lift < 0) return;
-                Debug.Log($"[SpellyZombie] '{_sorted[lift].name}' was covered completely, so it now sits on top of what covered it.", _sorted[lift]);
-                MoveBox(lift, to);
-                _top[to] |= overCore;
+                Debug.Log($"[SpellyZombie] '{_sorted[lift].name}' was covered completely, so it now sits on top of '{_sorted[over].name}'.", _sorted[lift]);
+                _over[lift, over] = true;
+                _isLifted[lift] = true;
             }
-        }
-
-        /// Moves box 'from' up to index 'to' in every _sorted-order array.
-        void MoveBox(int from, int to)
-        {
-            if (to >= from) return;
-            void Up<T>(T[] a) { T v = a[from]; System.Array.Copy(a, to, a, to + 1, from - to); a[to] = v; }
-            Up(_sorted); Up(_minX); Up(_maxX); Up(_minZ); Up(_maxZ); Up(_top);
         }
 
         static float Wave(float a, float t) => (Mathf.PerlinNoise(a, t) - 0.5f) * 2f;

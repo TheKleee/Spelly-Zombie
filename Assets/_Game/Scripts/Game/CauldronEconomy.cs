@@ -143,13 +143,28 @@ namespace SpellyZombie
             // the same pot as last push: the host's cues play here on the edge
             bool samePot = Active != null && (grounded ? _syncPrevGrounded
                 : !string.IsNullOrEmpty(pot) && pot == _syncPrevPot);
-            if (samePot && _syncPrevPrep > 0f && prep <= 0f) Juice.Chime(Active.transform.position);
+            if (samePot && _syncPrevPrep > 0f && prep <= 0f) OpenCue(Active.transform.position);
             // black again after a defuse (a broken or dry pot also drops corrupt, with no ink left)
-            if (samePot && _syncPrevCorrupt && !corrupt && fill01 > 0.01f) Juice.Chime(Active.transform.position);
+            if (samePot && _syncPrevCorrupt && !corrupt && fill01 > 0.01f) TurnCue(false, Active.transform.position);
+            // green: the host's placeholder thud rides the wire, his clip plays here on the edge
+            if (samePot && !_syncPrevCorrupt && corrupt) Juice.Sound(Sfx.PotTurningAcolyte, Active.transform.position);
             _syncPrevPrep = prep;
             _syncPrevCorrupt = corrupt;
             _syncPrevPot = pot;
             _syncPrevGrounded = grounded;
+        }
+
+        /// The pot opens with its ink: the same splash as ink landing in it.
+        static void OpenCue(Vector3 at)
+        {
+            if (!Juice.Sound(Sfx.PotFromTheSky, at)) Juice.Chime(at);
+        }
+
+        /// The pot changes hands: green for the acolytes, black again for the wizards.
+        static void TurnCue(bool green, Vector3 at)
+        {
+            if (Juice.Sound(green ? Sfx.PotTurningAcolyte : Sfx.PotTurningWizard, at)) return;
+            if (green) Juice.Thud(at); else Juice.Chime(at);
         }
 
         /// Seconds since the last PotMsg; client countdowns keep moving between pushes.
@@ -166,6 +181,8 @@ namespace SpellyZombie
         public static bool HasInk => NetGame.IsAuthority ? Active != null || _fleeing : _syncFill >= 0f;
         public static float PrepRemaining => Active == null ? 0f
             : NetGame.IsAuthority ? Active._prep : Mathf.Max(0f, _syncPrep - SyncAge);
+        /// The ink shows in a pot: not closed at the start, not flying between pots.
+        public static bool InkShows => HasInk && PrepRemaining <= 0f && VacuumRemaining < 0f;
 
         Vector3 _surfaceScale0;
         MaterialPropertyBlock _blk;
@@ -292,7 +309,7 @@ namespace SpellyZombie
             if (FxLibrary.I != null)
                 FxLibrary.SpawnTinted(FxLibrary.I.Splash, next.transform.position + Vector3.up * 0.6f,
                     next._corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor);
-            Juice.Chime(next.transform.position);
+            if (!Juice.Sound(Sfx.PotFromTheSky, next.transform.position)) Juice.Chime(next.transform.position);
         }
 
         /// Lobby comet arrival: the ink appears. A broken or already-open pot resets the cycle.
@@ -320,7 +337,7 @@ namespace SpellyZombie
             if (FxLibrary.I != null)
                 FxLibrary.SpawnTinted(FxLibrary.I.Splash, transform.position + Vector3.up * 0.6f,
                     DrawingConfig.InkColor);
-            Juice.Chime(transform.position);
+            if (!Juice.Sound(Sfx.PotFromTheSky, transform.position)) Juice.Chime(transform.position);
         }
 
         static float _gapPush;
@@ -387,7 +404,7 @@ namespace SpellyZombie
             Color c = corrupt ? DrawingConfig.CorruptInkColor : DrawingConfig.InkColor;
             SkyBeam.Down(at, c);
             if (FxLibrary.I != null) FxLibrary.SpawnTinted(FxLibrary.I.Splash, at + Vector3.up * 0.3f, c);
-            Juice.Thud(at);
+            if (!Juice.Sound(Sfx.PotFromTheSky, at)) Juice.Thud(at);
             DrawingWorld.Instance?.LogEvent("no cauldron left. the ink pools at the heart of the map");
             return pool;
         }
@@ -503,7 +520,7 @@ namespace SpellyZombie
                             z.GetComponent<Element>()?.TakeDamage(99999f, "the cauldron awakens");
                     }
 
-                    Juice.Chime(transform.position);
+                    OpenCue(transform.position);
                     DrawingWorld.Instance?.LogEvent("the cauldron opens");
                 }
                 PushNet();
@@ -543,7 +560,7 @@ namespace SpellyZombie
                     {
                         _corrupt = false;
                         _defuse = 0f;
-                        Juice.Chime(transform.position);
+                        TurnCue(false, transform.position);
                         DrawingWorld.Instance?.LogEvent("the cauldron is BLACK again");
                     }
                 }
@@ -581,7 +598,7 @@ namespace SpellyZombie
                     _corrupt = true;
                     _corruptTouch = 0f;
                     _defuse = 0f;
-                    Juice.Thud(transform.position);
+                    TurnCue(true, transform.position);
                     DrawingWorld.Instance?.LogEvent("the cauldron turns GREEN");
                 }
 

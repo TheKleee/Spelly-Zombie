@@ -17,12 +17,13 @@ namespace SpellyZombie
         /// The embedding panel rebuilds through this when a chip flips.
         public static System.Action Changed;
 
-        public static int Stamp => SteamLobby.ListStamp;
+        public static int Stamp => SteamLobby.ListStamp * 100000 + LanLobby.Stamp;
 
-        static readonly Color ChipOff = new Color(0.10f, 0.11f, 0.15f, 0.92f);
-        static readonly Color ChipOn = new Color(0.72f, 0.48f, 0.18f, 0.96f);
-        static readonly Color RowBack = new Color(0.07f, 0.08f, 0.11f, 0.90f);
-        static readonly Color HeadInk = new Color(1f, 0.92f, 0.75f);
+        // the stand's look, shared with the map picker beside it
+        public static readonly Color ChipOff = new Color(0.10f, 0.11f, 0.15f, 0.92f);
+        public static readonly Color ChipOn = new Color(0.72f, 0.48f, 0.18f, 0.96f);
+        public static readonly Color RowBack = new Color(0.07f, 0.08f, 0.11f, 0.90f);
+        public static readonly Color HeadInk = new Color(1f, 0.92f, 0.75f);
 
         // ------------------------------------------------------- widgets --
         public static void Chip(RectTransform parent, float x, float y, float w, string label,
@@ -60,13 +61,16 @@ namespace SpellyZombie
         }
 
         // ---------------------------------------------------- JOIN view --
-        static bool Matches(SteamLobby.PublicLobby l)
+        static bool Matches(SteamLobby.PublicLobby l) => Matches(l.Region, l.Lang, l.Tags, l.Name);
+        static bool Matches(LanLobby.Found l) => Matches(l.Region, l.Lang, l.Tags, l.Name);
+
+        static bool Matches(string region, string lang, int tags, string name)
         {
-            if (!string.IsNullOrEmpty(FilterRegion) && l.Region != FilterRegion) return false;
-            if (!string.IsNullOrEmpty(FilterLang) && l.Lang != FilterLang) return false;
-            if ((l.Tags & FilterTags) != FilterTags) return false;
+            if (!string.IsNullOrEmpty(FilterRegion) && region != FilterRegion) return false;
+            if (!string.IsNullOrEmpty(FilterLang) && lang != FilterLang) return false;
+            if ((tags & FilterTags) != FilterTags) return false;
             if (string.IsNullOrEmpty(Search)) return true;
-            return l.Name.IndexOf(Search, System.StringComparison.OrdinalIgnoreCase) >= 0;
+            return (name ?? "").IndexOf(Search, System.StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         public static void BuildJoinView(RectTransform parent, float left, float top,
@@ -103,8 +107,40 @@ namespace SpellyZombie
                 bool locked = l.Locked;
                 Chip(parent, left + width - 84f, ry - 6f, 76f, Loc.T("browse.join"), true, () =>
                 {
-                    if (locked) OpenPasswordPrompt(id);
+                    if (locked) OpenPasswordPrompt(pw => SteamLobby.JoinListed(id, pw));
                     else SteamLobby.JoinListed(id, "");
+                });
+
+                ry -= 46f;
+                shown++;
+            }
+
+            // lobbies on this network (no Steam), marked LH
+            foreach (var l in LanLobby.Lobbies)
+            {
+                if (shown >= maxRows) break;
+                if (!Matches(l)) continue;
+
+                var back = UIKit.Panel(parent, null, RowBack);
+                UIKit.Place((RectTransform)back.transform, new Vector2(0f, 1f), new Vector2(rx, ry), new Vector2(width - 190f, 40f));
+                var mark = UIKit.Panel(parent, null, ChipOn);
+                UIKit.Place((RectTransform)mark.transform, new Vector2(0f, 1f), new Vector2(rx + 8f, ry - 9f), new Vector2(30f, 22f));
+                var lh = UIKit.Label(parent, "LH", 12, Color.white, TextAnchor.MiddleCenter, true);
+                UIKit.Place((RectTransform)lh.transform, new Vector2(0f, 1f), new Vector2(rx + 8f, ry - 9f), new Vector2(30f, 22f));
+
+                string line = $"{l.Name}   {l.Players}" + (l.Max < SteamLobby.MaxPlayers ? $"/{l.Max}" : "")
+                    + (l.Locked ? "   " + Loc.T("browse.locked") : "");
+                var name = UIKit.Label(parent, line, 14, Color.white, TextAnchor.MiddleLeft, true);
+                UIKit.Place((RectTransform)name.transform, new Vector2(0f, 1f), new Vector2(rx + 46f, ry - 2f), new Vector2(width - 338f, 18f));
+                var sub = UIKit.Label(parent, TagLine(l.Region, l.Lang, l.Tags), 11, new Color(0.75f, 0.82f, 0.75f), TextAnchor.MiddleLeft);
+                UIKit.Place((RectTransform)sub.transform, new Vector2(0f, 1f), new Vector2(rx + 46f, ry - 21f), new Vector2(width - 338f, 14f));
+
+                string address = l.Address;
+                bool locked = l.Locked;
+                Chip(parent, left + width - 84f, ry - 6f, 76f, Loc.T("browse.join"), true, () =>
+                {
+                    if (locked) OpenPasswordPrompt(pw => NetGame.JoinLocal(address, pw));
+                    else NetGame.JoinLocal(address, "");
                 });
 
                 ry -= 46f;
@@ -123,7 +159,7 @@ namespace SpellyZombie
         static RectTransform _pwPrompt;
         static string _pwTyped = "";
 
-        static void OpenPasswordPrompt(Steamworks.CSteamID lobby)
+        static void OpenPasswordPrompt(System.Action<string> join)
         {
             ClosePasswordPrompt();
             _pwTyped = "";
@@ -141,7 +177,7 @@ namespace SpellyZombie
 
             Chip(_pwPrompt, 20f, -78f, 130f, Loc.T("browse.join"), true, () =>
             {
-                SteamLobby.JoinListed(lobby, _pwTyped);
+                join(_pwTyped);
                 ClosePasswordPrompt();
             });
             Chip(_pwPrompt, 170f, -78f, 130f, Loc.T("browse.cancel"), false, ClosePasswordPrompt);
@@ -153,17 +189,19 @@ namespace SpellyZombie
             _pwPrompt = null;
         }
 
-        public static string TagLine(SteamLobby.PublicLobby l)
+        public static string TagLine(SteamLobby.PublicLobby l) => TagLine(l.Region, l.Lang, l.Tags);
+
+        public static string TagLine(string region, string lang, int tags)
         {
             var sb = new System.Text.StringBuilder();
-            if (!string.IsNullOrEmpty(l.Region)) sb.Append(Loc.T("region." + l.Region));
-            if (!string.IsNullOrEmpty(l.Lang))
+            if (!string.IsNullOrEmpty(region)) sb.Append(Loc.T("region." + region));
+            if (!string.IsNullOrEmpty(lang))
             {
                 if (sb.Length > 0) sb.Append(" · ");
-                sb.Append(Loc.NativeName(l.Lang));
+                sb.Append(Loc.NativeName(lang));
             }
             for (int i = 0; i < SteamLobby.TagKeys.Length; i++)
-                if ((l.Tags & (1 << i)) != 0)
+                if ((tags & (1 << i)) != 0)
                 {
                     if (sb.Length > 0) sb.Append(" · ");
                     sb.Append(Loc.T(SteamLobby.TagKeys[i]));
@@ -207,8 +245,9 @@ namespace SpellyZombie
                 MatchLobby.DurationMin > 5, MatchLobby.DurationMin < 15);
             ry -= 30f;
 
-            ArrowRow(parent, rx, ry, width - 190f, Loc.F("net.map", MatchLobby.SelectedMap),
-                () => MatchLobby.CycleMap(-1), () => MatchLobby.CycleMap(1));
+            // the map opens the picker: every map at once, the picked one described
+            Chip(parent, rx, ry, width - 190f, Loc.F("net.map", MatchLobby.SelectedMap), MapPicker.IsOpen,
+                () => MapPicker.Open(() => Changed?.Invoke()));
             ry -= 30f;
 
             ArrowRow(parent, rx, ry, width - 190f, Loc.F("stand.share", MatchLobby.AcolytePercent),
@@ -247,13 +286,12 @@ namespace SpellyZombie
         static readonly System.Collections.Generic.HashSet<string> _noPicture =
             new System.Collections.Generic.HashSet<string>();
 
-        /// The picture of the picked map under its MAP row: the Collection
-        /// Manager's Map Pictures, keyed by scene name. No picture = one
-        /// warning and no card.
+        /// The picture of the picked map under its MAP row (MapLibrary.PictureOf).
+        /// No picture = one warning and no card.
         public static void MapPicture(RectTransform parent, float x, float y, float width)
         {
             string map = MatchLobby.SelectedMap;
-            var tex = CollectionManager.MapPicture(map);
+            var tex = MapLibrary.PictureOf(map, MapDef.Active);
             if (tex == null)
             {
                 if (_noPicture.Add(map))

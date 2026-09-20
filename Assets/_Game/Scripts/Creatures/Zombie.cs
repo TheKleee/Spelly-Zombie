@@ -18,34 +18,40 @@ namespace SpellyZombie
 
         public const string Charge = "charge";
 
-        /// ★ WEAR A BODY DEFINITION. Its natural state is what this zombie is
-        /// born as - stamped onto the Element the way a biome stamps anything
-        /// - and its abilities are what it can do. Its colour shades the green,
-        /// its movement rides the body.
-        public void Wear(SpellDef def)
+        /// ★ WEAR A CREATURE. Its natural state is what this zombie is born as -
+        /// stamped onto the Element the way a biome stamps anything - and its
+        /// abilities are what it can do. Its colour shades the green, its
+        /// movement rides the body, its height, width, head, arms and legs
+        /// shape it.
+        public void Wear(CreatureDef def)
         {
             if (def == null) return;
             Abilities.Clear();
             Abilities.AddRange(def.Abilities);
 
             var el = GetComponent<Element>();
-            if (el != null)
-            {
-                var born = def.Payload;
-                var n = el.Natural;
-                for (int i = 0; i < SpellPayload.AxisCount; i++)
-                    if (i != 6 && Mathf.Abs(born[i]) > 0.001f) n[i] = born[i];   // strength is the body's own
-                if (born.Strength > 0f) n.Strength = born.Strength;
-                if (n.Int <= 0f) n.Int = 1f;           // a zombie has a mind, whatever else it is
-                if (n.Courage <= 0f) n.Courage = 1f;
-                el.Natural = n;
-                el.Data = n;
-            }
+            if (el != null) el.WearBorn(def.Payload);
 
             // refresh the cache: Awake ran at Spawn, before the summon
             // component was added, so OwnerId and the move clips read nothing
             _summon = GetComponent<SummonedZombie>();
-            if (_summon != null) _summon.Spell = def;
+            if (_summon != null) _summon.Creature = def;
+
+            var brain = GetComponent<ZombieBrain>();
+            if (brain != null)
+            {
+                brain.Behaviour = def.Behaviour;
+                brain.GuardRange = def.GuardRange;
+            }
+            if (def.Boss)
+            {
+                var mark = GetComponent<BossMark>();
+                if (mark == null) mark = gameObject.AddComponent<BossMark>();
+                mark.Name = def.Name;
+            }
+            _boss = GetComponent<BossMark>();
+            CreatureLook.Proportion(transform, def);
+            CreatureLook.Shape(gameObject, def);
         }
 
         public float WalkSpeed = 1.3f;
@@ -102,6 +108,7 @@ namespace SpellyZombie
 
         // scribbler state
         float _castLeft, _castCooldown;
+        BossMark _boss;
         LineRenderer _castRing;
 
         public static Zombie Spawn(Vector3 pos, float speedMul = 1f)
@@ -258,7 +265,10 @@ namespace SpellyZombie
                 {
                     burst = true;
                     if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.GroundHit, surface);
-                    Juice.Thud(surface);
+                    // the ground gives way, and what climbs out says so
+                    if (!Juice.Sound(Sfx.BreakStone, surface, 0.45f)) Juice.Thud(surface);
+                    Juice.Sound(Sfx.ZombieGrowl, surface + Vector3.up,
+                        0.55f, Mathf.Clamp(1f / Mathf.Sqrt(Mathf.Max(0.3f, transform.localScale.y)), 0.6f, 1.35f));
                     _dress?.Hit();
                 }
                 transform.position = surface - Vector3.up * (depth * (1f - k));
@@ -486,11 +496,11 @@ namespace SpellyZombie
                     r.enabled = !on;
         }
 
-        /// The move's authored animation if the worn spell linked one,
+        /// The move's authored animation if its creature linked one,
         /// otherwise the body's built-in tell.
         void PlayMove(string move, System.Action builtIn)
         {
-            var def = _summon != null ? _summon.Spell : null;
+            var def = _summon != null ? _summon.Creature : null;
             var clip = def != null ? def.MoveClip(move) : null;
             if (clip == null || !OneShotClip.Play(gameObject, clip)) builtIn?.Invoke();
             else Tell(ZombieDress.AnimScream); // the stand-ins play the same clip off their worn spell
@@ -504,11 +514,13 @@ namespace SpellyZombie
             if (aimDir.sqrMagnitude < 0.01f) aimDir = transform.forward;
             aimDir.Normalize();
 
-            var castName = FirstCastable();
+            var castName = NextCast();
             if (castName != null)
             {
                 if (_castCooldown > 0f) return false;
-                _castCooldown = 1.4f;
+                // a ghost throws fast; raising a creature waits like it does for the zombie itself
+                var castDef = SpellBook.Live.Spell(castName);
+                _castCooldown = castDef != null && castDef.IsSummon ? DrawingConfig.CreatureSummonCooldown : 1.4f;
                 ClearCastRing();
                 _dress?.Attack();
                 // the FULL look, pitch included - where you aim is where it
@@ -528,49 +540,25 @@ namespace SpellyZombie
             _charging = true;
             _chargeLeft = 2.2f;
             _chargeDir = flat;
-            _brain.Mumble("RRAAH!", 1.5f);
+            _brain.Mumble("RRAAH!", 1.5f, false);
+            Juice.Sound(Sfx.ZombieAttack, transform.position + Vector3.up * transform.localScale.y, 1f, VoicePitch());
             return true;
         }
 
-        /// The first ability that is a castable spell in the book. Charge is
-        /// the one MOVE; everything else a body does is a cast.
-        string FirstCastable()
-        {
-            foreach (var a in Abilities)
-            {
-                if (a == Charge) continue;
-                var def = SpellBook.Live.Spell(a);
-                if (def != null && !def.IsBody) return a;
-            }
-            return null;
-        }
+        int _castTurn;
+
+        /// The spell whose turn it is. Charge is the one MOVE; everything else
+        /// a body does is a cast, taken in turn.
+        string NextCast() => CreatureCasts.Pick(Abilities, _castTurn);
 
         /// ★ A BODY CASTS FROM THE BOOK (data summons, code moves): the
-        /// authored particle is emitted with the zombie as caster. Numbers,
-        /// area, colour, splash - all the spell's own. Nothing hard-coded.
+        /// authored particle leaves along the aim with the zombie as caster, a
+        /// summoning spell raises its creature in front. Then the next one's turn.
         void CastNamed(string spellName, Vector3 aim)
         {
-            var def = SpellBook.Live.Spell(spellName);
-            if (def == null)
-            {
-                Debug.LogWarning($"[SpellyZombie] '{name}' wants to cast '{spellName}' " +
-                    "but the book has no such spell.");
-                return;
-            }
-            var p = SpellParticle.Emit(ParticleKind.Push,
-                HeadAt + aim * 0.4f, aim, 1.4f);   // the muzzle is along the AIM,
-                                                   // not wherever the body faces
-            if (p == null) return;
-            // NOT Clamped(): the clamp floors Strength at 0, which stripped
-            // the goo's -9 bite and stopped it ever fusing into Goo at all
-            p.Data = def.Payload;
-            p.OwnerId = OwnerId;
-            p.FromMinion = true;
-            p.SrcSize = DrawingConfig.RuneSizeMin * 2f;
-            p.GrammarLevel = def.Level;   // a lvl2 hit lands on its whole area
-            p.Vel = aim * 16f;
-            p.Wake();
-            p.RefreshIdentity_Public();
+            _castTurn++;
+            CreatureCasts.Cast(spellName, OwnerId, HeadAt + aim * 0.4f, aim, transform.position,
+                CreatureCasts.ClearReach(transform), transform);
         }
 
         /// Steer with limited grip instead of hard-setting velocity, so external forces still win.
@@ -661,7 +649,8 @@ namespace SpellyZombie
 
             ScanHostiles();
             var target = _brain.AttackTarget;
-            string casts = FirstCastable();
+            // a boss at full health fights with its body only (BossMark phases)
+            string casts = _boss != null && !_boss.Casts ? null : NextCast();
             if (target == null && casts != null) target = DistantMark();
             if (target == null) { TickIdleKind(); AutoSwipe(); return; }
             float dist = Vector3.Distance(transform.position, target.position);
@@ -683,9 +672,11 @@ namespace SpellyZombie
             _hostileScan = 1f;
             float best = _brain.SightRange * _brain.SightRange;
             Transform found = null;
+            var mine = Teams.Of(this);
             foreach (var g in Golem.All)
             {
-                if (g == null) continue;
+                // every golem is a foe; a map with its own teams spares its own team's
+                if (g == null || (MapRules.Custom && !Teams.Enemies(mine, Teams.OfOwner(g.OwnerId)))) continue;
                 Vector3 to = g.transform.position - transform.position;
                 float d = to.sqrMagnitude;
                 if (d >= best) continue;
@@ -718,14 +709,16 @@ namespace SpellyZombie
                     && Vector3.Dot(transform.forward, to.normalized) < 0.35f) return;
                 best = d; found = t;
             }
-            foreach (var g in Golem.All) if (g != null) Consider(g.transform);
+            var mine = Teams.Of(this);
+            foreach (var g in Golem.All)
+                if (g != null && (!MapRules.Custom || Teams.Enemies(mine, Teams.OfOwner(g.OwnerId)))) Consider(g.transform);
             foreach (var p in SimpleFPSController.All)
-                if (p != null && Sides.SideOfThing(p.gameObject) == Side.Wizard)
+                if (p != null && Teams.Enemies(mine, Teams.Of(p)) && !ShapeShift.Disguised(p))
                     Consider(p.transform);
-            // friends' puppets: a wizard on another machine is a mark too
+            // friends' puppets: an enemy on another machine is a mark too
             foreach (var a in NetAvatar.All)
                 if (a != null && !a.Downed && !a.Disguised
-                    && Sides.Of(NetSync.OwnerIdOf(a.Id)) == Side.Wizard)
+                    && Teams.Enemies(mine, Teams.OfOwner(NetSync.OwnerIdOf(a.Id))))
                     Consider(a.transform);
             if (CauldronEconomy.Active != null) Consider(CauldronEconomy.Active.transform);
             return found;
@@ -738,6 +731,11 @@ namespace SpellyZombie
         {
             if (Transformed) return;
             _castCooldown -= Time.fixedDeltaTime;
+            if (_boss != null && _boss.NewPhase(CreatureCasts.CastableCount(Abilities)))
+            {
+                _castCooldown = 0f; // a new phase opens with a volley
+                _dress?.Scream();
+            }
 
             bool itChases = target.GetComponentInParent<CauldronEconomy>() == null;
             if (itChases && dist < DrawingConfig.GooKiteRange)
@@ -767,7 +765,8 @@ namespace SpellyZombie
                 return;   // not looking yet - no cast
             }
 
-            _castCooldown = DrawingConfig.GooThrowCooldown;
+            float wait = CreatureCasts.Cooldown(spellName);
+            _castCooldown = _boss != null ? _boss.WaitAfterCast(wait) : wait;
             _dress?.Attack();
             CastNamed(spellName, transform.forward);
             _brain.Mumble("PTOO!", 1.5f);
@@ -850,6 +849,7 @@ namespace SpellyZombie
             if (dist > AttackRange || _attackTimer > 0f) return;
             _attackTimer = AttackCooldown;
             _dress?.Attack();
+            Juice.Sound(Sfx.ZombieBite, transform.position + Vector3.up * transform.localScale.y, 0.9f, VoicePitch());
 
             var player = target.GetComponent<SimpleFPSController>();
             if (player != null)
@@ -891,7 +891,10 @@ namespace SpellyZombie
             {
                 if (_windup < 0.1f)
                 {
-                    _brain.Mumble("HRRNK!!", 1.5f);
+                    // the roar is its voice for this bubble, once, on the first beat of the wind-up
+                    if (_windup <= Time.fixedDeltaTime * 1.5f)
+                        Juice.Sound(Sfx.ZombieAttack, transform.position + Vector3.up * transform.localScale.y, 1f, VoicePitch());
+                    _brain.Mumble("HRRNK!!", 1.5f, false);
                     _brain.Eyes?.SetMood(EyeMood.Mad, 1.5f);
                     PlayMove(Charge, () => _dress?.Scream());
                 }
@@ -1035,6 +1038,10 @@ namespace SpellyZombie
             // wiped the acolyte's own earned book every time a zombie died.
         }
 
+        /// A bigger body speaks lower.
+        float VoicePitch() =>
+            Mathf.Clamp(1f / Mathf.Sqrt(Mathf.Max(0.3f, transform.localScale.y)), 0.6f, 1.35f) * Random.Range(0.94f, 1.06f);
+
         /// It never just vanishes: a burst in its own colour, a thud, and a
         /// line naming what did it - killed or timed out, the same tell.
         public void DeathPoof(string cause)
@@ -1046,8 +1053,12 @@ namespace SpellyZombie
             Vector3 at = transform.position + Vector3.up * transform.localScale.y * 0.4f;
             GrammarFX.PuffBurst(at, c, 7);
             if (FxLibrary.I != null) FxLibrary.SpawnTinted(FxLibrary.I.Poof, at, c);
-            Juice.Pop(transform.position);
-            Juice.Thud(transform.position);
+            // it falls apart: bones
+            if (!Juice.Sound(Sfx.BreakBone, transform.position, 0.9f, Random.Range(0.9f, 1.1f)))
+            {
+                Juice.Pop(transform.position);
+                Juice.Thud(transform.position);
+            }
 
             DrawingWorld.Instance?.LogEvent(string.IsNullOrEmpty(cause)
                 ? $"{name} falls apart"
@@ -1078,9 +1089,7 @@ namespace SpellyZombie
                 at = owner.transform.position;
             }
             at += Vector3.up * 1.4f;
-            var clip = AudioLibrary.I != null ? AudioLibrary.I.AcolyteWhistle : null;
-            if (clip != null) Juice.PlayClip(clip, at, 0.85f, Random.Range(0.95f, 1.05f));
-            else Juice.Whistle(at);
+            if (!Juice.Sound(Sfx.Whistle, at, 0.85f, Random.Range(0.95f, 1.05f))) Juice.Whistle(at);
         }
     }
 }

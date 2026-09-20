@@ -13,19 +13,29 @@ namespace SpellyZombie
     {
         const float NearGap = 0.12f;   // the cut stops this short of the body's nearest point
         const float MaxRange = 10f;    // window off beyond this camera-to-body distance
-        const float HalfWidth = 0.7f;  // minimum world half width of the window
+        const float MinRange = 2.5f;   // right on top of the body there is nothing to find
+        const float Wake = 0.25f;      // blocked this long before the window opens
+        const float Dwell = 0.6f;      // and it may not turn over again for this long
+        const float TubeRadius = 1.3f; // ★ HIS CALL: a cylinder this wide runs from the
+                                       // camera to the body and whatever stands in it is
+                                       // cut away, so the wizard and the room show, never
+                                       // a wall in the face. The window IS that tube seen
+                                       // from the camera, so it holds still instead of
+                                       // breathing with the body's own size.
         const float Soft = 0.3f;       // window edge softness
         const int Downscale = 1;       // full resolution, must match the scene
         const float Hold = 0.3f;       // the window outlives the last blocked frame by this
         const float Ease = 0.08f;      // seconds for the window to follow the body
-        const float MaxRad = 0.45f;    // viewport half size cap: never most of the screen
+        const float MaxRad = 1f;       // the tube may take the whole screen when the cut is at the lens
+        const float Huge = 30f;        // a collider this big (the ground, a cliff) is only sliced, never left out
 
         Camera _main, _cam;
         RenderTexture _rt;
         RawImage _img;
         Material _mask;
         GameObject _canvasGo;
-        float _hold;
+        float _hold, _blocked, _flipAt;
+        bool _on;
         Vector2 _center;
         float _rx, _ry;
         bool _shown;
@@ -47,6 +57,8 @@ namespace SpellyZombie
         }
 
         readonly List<Renderer> _hidden = new List<Renderer>();
+        readonly List<Renderer> _inTube = new List<Renderer>();
+        readonly Dictionary<Collider, Renderer[]> _rendsOf = new Dictionary<Collider, Renderer[]>();
 
         void OnEnable()
         {
@@ -71,6 +83,9 @@ namespace SpellyZombie
         void OnBeginReveal(ScriptableRenderContext ctx, Camera cam)
         {
             if (cam != _cam || _main == null) return;
+            // what stands in the tube sits out the window's picture
+            foreach (var r in _inTube)
+                if (r != null && r.enabled) { r.enabled = false; _hidden.Add(r); }
             Vector3 eye = _main.transform.position;
             foreach (var a in NetAvatar.All)
             {
@@ -166,6 +181,7 @@ namespace SpellyZombie
         bool Blocked(Vector3 eye, Vector3 at) => BlockedFor(eye, transform, at);
 
         static readonly RaycastHit[] _hits = new RaycastHit[16];
+        readonly Vector3[] _probes = new Vector3[6];   // the tube's middle, its top, and its four sides
 
         /// Just past the back of the thing nearest the body on the line from
         /// the eye to this point, along the lens; 0 when nothing is in the way.
@@ -207,8 +223,50 @@ namespace SpellyZombie
             return best;
         }
 
+        /// ★ EVERYTHING IN THE TUBE (his call): whatever stands between the lens
+        /// and the body is left out of the window's picture outright, however
+        /// close to the body it stands. The cut alone may never pass the body's
+        /// own front, so a wall flush against the wizard stayed in the way.
+        /// Rays run both ways, so a wall the camera stands in is found too.
+        /// Floors and huge things are left to the cut, or the ground under the
+        /// wizard would vanish with them.
+        void GatherTube(Vector3 eye)
+        {
+            _inTube.Clear();
+            for (int p = 0; p < _probes.Length; p++)
+            {
+                Vector3 d = _probes[p] - eye;
+                float len = d.magnitude;
+                if (len < 0.01f) continue;
+                Gather(Physics.RaycastNonAlloc(eye, d / len, _hits, len, ~0, QueryTriggerInteraction.Ignore));
+                Gather(Physics.RaycastNonAlloc(_probes[p], -d / len, _hits, len, ~0, QueryTriggerInteraction.Ignore));
+            }
+            if (_rendsOf.Count > 256) _rendsOf.Clear(); // colliders come and go
+        }
+
+        void Gather(int n)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                var h = _hits[i];
+                var col = h.collider;
+                if (col == null || h.transform.IsChildOf(transform)) continue;
+                if (Mathf.Abs(h.normal.y) > 0.7f) continue; // a floor or a ceiling, not a wall
+                if (col is TerrainCollider || col.bounds.size.magnitude > Huge) continue;
+                if (!_rendsOf.TryGetValue(col, out var rends))
+                {
+                    rends = col.GetComponentsInChildren<Renderer>(false);
+                    _rendsOf[col] = rends;
+                }
+                foreach (var r in rends)
+                    if (r != null && !_inTube.Contains(r)) _inTube.Add(r);
+            }
+        }
+
         void LateUpdate()
         {
+            if (EndingShot.Playing) { Off(); return; } // the ending camera has the screen
+            if (GhostState.LocalIsGhost) { Off(); return; } // never while a ghost, whoever switched it on
             if (_main == null)
             {
                 _main = Camera.main;
@@ -220,10 +278,8 @@ namespace SpellyZombie
             Vector3 mid = body.center;
             Vector3 head = new Vector3(mid.x, body.max.y, mid.z);
             Vector3 eye = _main.transform.position;
-            if (Vector3.Distance(eye, mid) > MaxRange) { _hold = 0f; Off(); return; }
-            bool occluded = Blocked(eye, mid) || Blocked(eye, head);
-            _hold = occluded ? Hold : _hold - Time.deltaTime;
-            if (_hold <= 0f) { Off(); return; }
+            float span = Vector3.Distance(eye, mid);
+            bool inReach = span <= MaxRange && span >= MinRange;
 
             // the cut runs along the LENS AXIS, like a tube from the camera to
             // the body, and stops just short of the body's NEAREST point. A
@@ -244,17 +300,51 @@ namespace SpellyZombie
                 hi = Vector2.Max(hi, vp);
                 seen++;
             }
-            // ...and always past the front face of the last thing hiding it: a
-            // prop flush behind a thin wall, or poking into one, kept the wall
-            // inside that gap. Never into the body's own visible front.
-            float cut = Mathf.Max(
-                Mathf.Max(LastOccluderFront(eye, mid, fwd, axialMin), LastOccluderFront(eye, head, fwd, axialMin)),
-                Mathf.Max(OccluderBack(eye, mid, fwd), OccluderBack(eye, head, fwd)));
-            // the cut clears what hides the body and stops there: running it to
-            // the body cut the ground in front of a far corpse away too
+
+            // ★ THE WHOLE TUBE IS SWEPT, not just the line to the body: the
+            // sides of the cylinder are probed too, so a wall the camera sits
+            // in goes as readily as one straight in front of the wizard. The
+            // cut always lands past the front face of the LAST thing in the
+            // way and never into the body's own visible front.
+            float ring = TubeRadius * 0.7f;
+            Vector3 right = _main.transform.right, up = _main.transform.up;
+            _probes[0] = mid;
+            _probes[1] = head;
+            _probes[2] = mid + right * ring;
+            _probes[3] = mid - right * ring;
+            _probes[4] = mid + up * ring;
+            _probes[5] = mid - up * ring;
+            float cut = 0f;
+            if (inReach)
+                for (int i = 0; i < _probes.Length; i++)
+                {
+                    cut = Mathf.Max(cut, LastOccluderFront(eye, _probes[i], fwd, axialMin));
+                    cut = Mathf.Max(cut, OccluderBack(eye, _probes[i], fwd));
+                }
+
+            // NEVER A STROBE: the window opens only after the tube has held
+            // something for a moment, never right on top of the body - a ghost
+            // hovers at its own corpse, where the cut had nothing to cut and
+            // flicked on and off every frame - and once it turns over it holds.
+            bool occluded = inReach && (cut > 0f || Blocked(eye, mid) || Blocked(eye, head));
+            _blocked = occluded ? _blocked + Time.deltaTime : 0f;
+            _hold = occluded ? Hold : _hold - Time.deltaTime;
+            bool want = occluded ? _blocked >= Wake : _hold > 0f;
+            if (want != _on && Time.unscaledTime >= _flipAt)
+            {
+                _on = want;
+                _flipAt = Time.unscaledTime + Dwell;
+            }
+            if (!_on) { Off(); return; }
+            GatherTube(eye);
+
+            // the cut clears what stands in the tube and stops there: running it
+            // to the body cut the ground in front of a far corpse away too
             float near = cut > 0f ? Mathf.Min(cut, axialMin) : axialMin - NearGap;
-            // right on top of the body there is nothing to cut away
-            if (seen == 0 || near < _main.nearClipPlane + 0.1f) { Off(); return; }
+            // with nothing to cut away the window renders the plain view and
+            // reads as nothing at all, which is what it should do rather than
+            // blink out and back
+            near = Mathf.Max(near, _main.nearClipPlane + 0.1f);
 
             SetActive(true);
             EnsureRT();
@@ -270,15 +360,22 @@ namespace SpellyZombie
             _cam.clearFlags = CameraClearFlags.SolidColor;
             _cam.backgroundColor = new Color(0.55f, 0.75f, 0.95f, 0f);
 
-            // at least a hand's width around the body, never most of the screen
-            Vector3 vpMid = _main.WorldToViewportPoint(mid);
-            Vector3 vpSide = _main.WorldToViewportPoint(mid + _main.transform.right * HalfWidth);
-            float minR = Mathf.Abs(vpSide.x - vpMid.x);
+            // ★ THE TUBE'S OWN WIDTH WHERE IT IS CUT. A cylinder is fat on the
+            // screen close to the lens and slim far away, so the window is
+            // measured at the CUT: a wall the camera stands in clears the whole
+            // screen, the way a ghost sees one from inside, while a wall out at
+            // the wizard clears only the run of tube around him - never the map.
+            Vector3 atCut = eye + fwd * Mathf.Max(near, 0.05f);
+            Vector3 vpCut = _main.WorldToViewportPoint(atCut);
+            Vector3 vpCutSide = _main.WorldToViewportPoint(atCut + _main.transform.right * TubeRadius);
+            float minR = Mathf.Abs(vpCutSide.x - vpCut.x);
             Vector2 center = (lo + hi) * 0.5f;
             float rx = Mathf.Clamp(Mathf.Max((hi.x - lo.x) * 0.5f * 1.15f, minR), 0.05f, MaxRad);
             float ry = Mathf.Clamp(Mathf.Max((hi.y - lo.y) * 0.5f * 1.15f, minR * _main.aspect), 0.05f, MaxRad);
-            // eased, so a ragdoll twitch never shows as a pulse
-            if (!_shown) { _center = center; _rx = rx; _ry = ry; _shown = true; }
+            // eased, so a ragdoll twitch never shows as a pulse; a body gone
+            // off the edge of the screen keeps the circle it had
+            if (seen == 0) { }
+            else if (!_shown) { _center = center; _rx = rx; _ry = ry; _shown = true; }
             else
             {
                 float k = 1f - Mathf.Exp(-Time.deltaTime / Ease);
@@ -296,6 +393,7 @@ namespace SpellyZombie
         {
             SetActive(false);
             _shown = false;
+            _inTube.Clear();
         }
 
         /// The body's own skin as it lies, plus what it wears; nothing that

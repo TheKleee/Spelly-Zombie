@@ -14,6 +14,10 @@ namespace SpellyZombie
         /// The body's real eye height - the fallback anchor when a model has
         /// no FX sockets at all (the graybox bean).
         [System.NonSerialized] public float EyeHeight = 1.5f;
+        /// Creatures keep their own fire and ice; this then shows only eyes and blood.
+        [System.NonSerialized] public bool SkipTemperature;
+        /// A stand-in's hurt as the host reports it (0..1); negative = read the Element.
+        [System.NonSerialized] public float HurtOverride = -1f;
 
         Element _el;
 
@@ -24,9 +28,22 @@ namespace SpellyZombie
             if (_el == null) return;
             float temp = _el.Data.Temp;
             float lum = BodyState.NaturalLum + (_el.Data.Lum - _el.Natural.Lum);
-            float hurt = _el.MaxStrength > 0f ? 1f - Mathf.Clamp01(_el.Health / _el.MaxStrength) : 0f;
-            Tick(BodyState.BurnOf(temp), BodyState.DarknessOf(lum), BodyState.BloomOf(lum),
-                BodyState.FreezeOf(temp), hurt, !_el.DeadStill);
+            float hurt = HurtOverride >= 0f ? HurtOverride
+                : _el.MaxStrength > 0f ? 1f - Mathf.Clamp01(_el.Health / _el.MaxStrength) : 0f;
+            Tick(SkipTemperature ? 0f : BodyState.BurnOf(temp), BodyState.DarknessOf(lum), BodyState.BloomOf(lum),
+                SkipTemperature ? 0f : BodyState.FreezeOf(temp), hurt, !_el.DeadStill);
+        }
+
+        /// The looks a creature wears, host body or stand-in: blood as the HP
+        /// readout, eye wisps and glares; fire and ice stay the creature's own.
+        public static BodyFx DressCreature(GameObject go)
+        {
+            var fx = go.GetComponent<BodyFx>();
+            if (fx == null) fx = go.AddComponent<BodyFx>();
+            fx.SkipTemperature = true;
+            var rend = go.GetComponentInChildren<Renderer>();
+            if (rend != null) fx.EyeHeight = Mathf.Max(0.3f, rend.bounds.size.y * 0.85f);
+            return fx;
         }
 
         readonly GameObject[] _bodyFlames = new GameObject[3];

@@ -211,6 +211,38 @@ namespace SpellyZombie
             _moodHold = seconds;
         }
 
+        static float Dilation(EyeMood mood) =>
+            mood == EyeMood.Wowed ? 1.8f :
+            mood == EyeMood.Scared ? 0.45f :
+            mood == EyeMood.Mad ? 0.7f : 1f;
+
+        /// A photo's eyes (the Photo Booth): the pupils rest at once where they
+        /// settle, looking at `lookAt` with this mood. Dizzy eyes cross, so a
+        /// still picture reads as dizzy.
+        public void Settle(EyeMood mood, Vector3 lookAt)
+        {
+            if (!IsAlive) WireEyeballs(out _);
+            if (!IsAlive) return;
+            Mood = mood;
+            _moodHold = float.MaxValue;
+            LookTarget = lookAt;
+            float dilate = Dilation(mood);
+            _lPos = RestingPupil(_leftEye, mood, 0f);
+            _rPos = RestingPupil(_rightEye, mood, Mathf.PI);
+            _lVel = _rVel = Vector3.zero;
+            _leftPupil.localPosition = new Vector3(_lPos.x, _lPos.y, _pupilDepth);
+            _rightPupil.localPosition = new Vector3(_rPos.x, _rPos.y, _pupilDepth);
+            _leftPupil.localScale = _rightPupil.localScale = Vector3.one * (_pupilBase * dilate);
+        }
+
+        Vector3 RestingPupil(Transform eye, EyeMood mood, float phase)
+        {
+            if (mood == EyeMood.Dizzy)
+                return new Vector3(Mathf.Cos(_dizzyPhase + phase), Mathf.Sin(_dizzyPhase + phase), 0f) * 0.3f;
+            Vector3 dirLocal = eye.InverseTransformDirection((LookTarget - eye.position).normalized);
+            return Vector3.ClampMagnitude(new Vector3(dirLocal.x, dirLocal.y, 0f) * 0.32f, 0.34f);
+        }
+
         /// Local first-person players hide their own eyes (they'd float in view);
         /// the rig keeps simulating so remote players/clips still see them.
         public void SetVisible(bool visible)
@@ -248,9 +280,7 @@ namespace SpellyZombie
             else AutoWatch();
 
             // ---- pupil target: where inside the eye should the pupil sit ----
-            float dilate = Mood == EyeMood.Wowed ? 1.8f :
-                           Mood == EyeMood.Scared ? 0.45f :
-                           Mood == EyeMood.Mad ? 0.7f : 1f;
+            float dilate = Dilation(Mood);
 
             // head jiggle: pupils get kicked opposite to head movement
             Vector3 headDelta = transform.position - _lastHeadPos;

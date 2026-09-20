@@ -194,6 +194,14 @@ namespace SpellyZombie
                 if (SimpleFPSController.ThirdPersonActive) _pilot.ToggleThirdPerson();
             }
 
+            // the hat pillar shows YOU: no shape while its panel is open (no
+            // puff, no deed); closing in third person puts the shape back on
+            if (HatPillar.PanelOpen)
+            {
+                if (LocalIsShaped) Unwear(puff: false);
+                return;
+            }
+
             // the book in hand decides: the Life curse hands a wizard the acolyte's
             bool acolyte = Grimoires.HeldBy(Grimoire.LocalPlayerId) == BookKind.Acolyte;
             if (!acolyte)
@@ -688,6 +696,7 @@ namespace SpellyZombie
             _worn.SetActive(true);
             LocalIsShaped = true;
             GroundOn(true);
+            Juice.Sound(Sfx.AcolyteTransform, transform.position + Vector3.up * 0.5f); // the puppets sound theirs from the DisguiseMsg
             PushDisguise(true, poof: poof);
         }
 
@@ -705,6 +714,7 @@ namespace SpellyZombie
             if (wasShaped)
             {
                 GroundOn(false);
+                if (puff) Juice.Sound(Sfx.AcolyteBack, transform.position + Vector3.up * 0.9f);
                 PushDisguise(false, puff);
             }
 

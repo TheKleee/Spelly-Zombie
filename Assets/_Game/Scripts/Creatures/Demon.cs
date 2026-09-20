@@ -50,7 +50,7 @@ namespace SpellyZombie
             var brain = d.GetComponent<ZombieBrain>();
             if (brain != null) brain.AlwaysFearless = true;
             DrawingWorld.Instance?.LogEvent("ALL TWELVE ANSWERED. RUN.");
-            Juice.Boom(pos, 1.4f);
+            Juice.Boom(pos, 1.4f, true);
             Juice.Shake(1f, 0.8f);
             return d;
         }

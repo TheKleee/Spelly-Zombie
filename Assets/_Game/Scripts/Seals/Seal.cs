@@ -39,9 +39,14 @@ namespace SpellyZombie
         public float Remaining { get; private set; }
         public float Area { get; private set; }
 
-        /// Whoever drew on the loop last owns the cast - the runes inside are
-        /// read against this owner's grimoire.
+        /// Whoever drew on the loop last owns the cast. Each rune inside is
+        /// read against the grimoire of the player who drew it.
         public int OwnerId { get; private set; }
+
+        /// ★ COMBINED CASTING (his call): the other players of the owner's
+        /// side whose ink made this seal, ring or a rune that fired. They
+        /// share its kills (CoCast).
+        public readonly List<int> CoCasters = new List<int>();
 
         public Seal(List<SealDetector.LoopEntry> boundary)
         {
@@ -51,6 +56,9 @@ namespace SpellyZombie
             float newest = float.MinValue;
             foreach (var e in boundary)
                 if (e.Stroke.LastInkTime > newest) { newest = e.Stroke.LastInkTime; OwnerId = e.Stroke.OwnerId; }
+            foreach (var e in boundary)
+                if (SameSide(e.Stroke.OwnerId) && e.Stroke.OwnerId != OwnerId && !CoCasters.Contains(e.Stroke.OwnerId))
+                    CoCasters.Add(e.Stroke.OwnerId);
 
             // rest gaps: a seal breaks when a gap grows past its drawn length,
             // not past a fixed distance
@@ -121,22 +129,33 @@ namespace SpellyZombie
 
         public void CapturePayload(IReadOnlyList<Stroke> allStrokes)
         {
-            // 1) gather enclosed, non-boundary ink
-            var enclosed = new List<Stroke>();
+            // 1) gather enclosed, non-boundary ink, grouped by who drew it; the
+            //    other side's ink stays plain ink (his call: same side only)
+            var drawers = new List<int>();
+            var byDrawer = new Dictionary<int, List<Stroke>>();
             foreach (var s in allStrokes)
             {
-                if (!Eligible(s)) continue;
+                if (!Eligible(s) || !SameSide(s.OwnerId)) continue;
                 Vector2 c = GeometryUtil.ProjectPoint(s.Centroid(), PlaneOrigin, _u, _v);
                 if (!GeometryUtil.PointInPolygon(c, _polygon2D)) continue;
-                enclosed.Add(s);
+                if (!byDrawer.TryGetValue(s.OwnerId, out var mine))
+                {
+                    byDrawer[s.OwnerId] = mine = new List<Stroke>();
+                    if (s.OwnerId == OwnerId) drawers.Insert(0, s.OwnerId); // the owner's runes read first
+                    else drawers.Add(s.OwnerId);
+                }
+                mine.Add(s);
             }
 
             // seal size, for scaling rune power by how big the rune is drawn
             float sealSize = Mathf.Max(0.01f, SealDiagonal());
 
-            // 2) segment the enclosed ink into runes BY RECOGNITION - stacked/nested
-            //    distinct runes stay separate, multi-line runes group as one
-            foreach (var glyph in RuneGlyph.Segment(enclosed, OwnerId))
+            // 2) segment each drawer's ink into runes BY RECOGNITION, read
+            //    against THEIR grimoire (a friend's rune works in your seal
+            //    even if you never found it) - stacked/nested distinct runes
+            //    stay separate, multi-line runes group as one
+            foreach (int drawer in drawers)
+            foreach (var glyph in RuneGlyph.Segment(byDrawer[drawer], drawer))
             {
                 // strength = match quality x size: match floors at 0.45 once past
                 // the gate, and size saturates around 1/3 of the seal
@@ -160,12 +179,14 @@ namespace SpellyZombie
                 glyph.Strength = glyph.Rune != RuneType.None
                     ? Mathf.Clamp01(match) * sizePower * Mathf.Lerp(1f, DrawingConfig.AutoCompletePowerMul, autoShare) : 0f;
                 Runes.Add(glyph);
-                if (glyph.Rune != RuneType.None && OwnerId == Grimoire.LocalPlayerId)
+                if (glyph.Rune != RuneType.None && drawer != OwnerId && !CoCasters.Contains(drawer))
+                    CoCasters.Add(drawer);
+                if (glyph.Rune != RuneType.None && drawer == Grimoire.LocalPlayerId)
                     RuneHabits.NoteCast(glyph.Rune, !autoDrawn);
 
                 // a clean cast of your own joins your handwriting pool (throttled);
                 // sloppy and declared/stamped casts never teach
-                if (glyph.Rune != RuneType.None && OwnerId == Grimoire.LocalPlayerId
+                if (glyph.Rune != RuneType.None && drawer == Grimoire.LocalPlayerId
                     && (glyph.Members.Count == 0 || glyph.Members[0].DeclaredRune == RuneType.None)
                     && glyph.Score >= DrawingConfig.HandLearnMinScore
                     && Time.time >= _nextHandLearn)
@@ -212,6 +233,9 @@ namespace SpellyZombie
             }
         }
 
+        /// Ink of the owner's side: only that joins the seal.
+        bool SameSide(int drawer) => drawer == OwnerId || Sides.Of(drawer) == Sides.Of(OwnerId);
+
         /// Bounding diagonal of the boundary - the seal's characteristic size.
         float SealDiagonal()
         {
@@ -247,6 +271,7 @@ namespace SpellyZombie
                     ? $"fizzle({g.Score:0.00})"
                     : $"{g.Rune}{strokes} str {g.Strength:0.00} (match {g.Score:0.00}, size {g.SizeRatio:0.00})");
             }
+            if (CoCasters.Count > 0) sb.Append($", cast together with {string.Join(", ", CoCasters)}");
             return sb.ToString();
         }
 

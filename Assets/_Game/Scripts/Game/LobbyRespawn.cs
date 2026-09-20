@@ -20,6 +20,14 @@ namespace SpellyZombie
         /// so anything timing itself against the comeback must ask this.
         public bool Hidden => _back > 0f;
 
+        /// To a hand, a prop waiting in the graveyard is as gone as a destroyed one.
+        public static bool IsHidden(Component part)
+        {
+            if (part == null) return false;
+            var grave = part.GetComponentInParent<LobbyRespawn>();
+            return grave != null && grave.Hidden;
+        }
+
         readonly List<Renderer> _hidden = new List<Renderer>();
         readonly List<Collider> _off = new List<Collider>();
 

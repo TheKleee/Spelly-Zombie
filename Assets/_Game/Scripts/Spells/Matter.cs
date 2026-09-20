@@ -194,7 +194,7 @@ namespace SpellyZombie
             Temperature = Mathf.MoveTowards(Temperature, 18f, DrawingConfig.AmbientDriftPerSec * 0.4f * dt);
 
             // gas gets no gravity
-            if (_rb != null) _rb.useGravity = Phase != MatterPhase.Gas;
+            if (_rb != null && _rb.useGravity != (Phase != MatterPhase.Gas)) _rb.useGravity = Phase != MatterPhase.Gas;
 
             // spell-phase blobs seek each other; liquids/gasses keep merging as world objects
             if (Phase != MatterPhase.Solid || !Touched)
@@ -455,15 +455,19 @@ namespace SpellyZombie
         void ApplyPhysics()
         {
             if (_rb == null) return;
-            _rb.mass = Mathf.Max(0.02f, 0.6f * _baseSize * Density);
+            // written only when they move: every write crosses into the physics engine, for every piece, every frame
+            float mass = Mathf.Max(0.02f, 0.6f * _baseSize * Density);
+            if (!Mathf.Approximately(_rb.mass, mass)) _rb.mass = mass;
             // BALANCE IS FRICTION (his rule): planted matter drags only while it
             // touches something, and only by what was added past its nature.
             // In the air nothing holds it, so it falls like a rock.
             float glue = Mathf.Clamp01(Stickiness - _info.BaseStickiness);
             bool touching = Time.time < _touchUntil;
-            _rb.linearDamping = (touching ? Mathf.Lerp(0.02f, 9f, glue) : 0.02f)
+            float damp = (touching ? Mathf.Lerp(0.02f, 9f, glue) : 0.02f)
                 + (Phase == MatterPhase.Gas ? 0.6f : 0f);
-            if (Phase == MatterPhase.Liquid) _rb.constraints = RigidbodyConstraints.FreezeRotation; // puddles don't tumble
+            if (!Mathf.Approximately(_rb.linearDamping, damp)) _rb.linearDamping = damp;
+            if (Phase == MatterPhase.Liquid && _rb.constraints != RigidbodyConstraints.FreezeRotation)
+                _rb.constraints = RigidbodyConstraints.FreezeRotation; // puddles don't tumble
         }
 
         /// Density-down tore this solid apart: replace it with smaller blocks of
@@ -697,6 +701,9 @@ namespace SpellyZombie
             bool melted = Phase != o.Phase;
             float merged = Mathf.Pow(
                 Mathf.Pow(transform.localScale.x, 3f) + Mathf.Pow(o.transform.localScale.x, 3f), 1f / 3f);
+            // bigger is louder and lower
+            float big = Mathf.InverseLerp(0.2f, 1.5f, merged);
+            Juice.Sound(Sfx.CombineSpells, transform.position, Mathf.Lerp(0.4f, 1f, big), Mathf.Lerp(1.12f, 0.88f, big));
             Lineage |= o.Lineage;
             SpellBorn = SpellBorn && o.SpellBorn; // mixed with world rubble it is nobody's
             // absorbing a family member joins the family, else a stranger bridges the shed grace

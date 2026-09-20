@@ -98,6 +98,27 @@ namespace SpellyZombie
         /// Set by things that are simply never afraid - the demon, and a
         /// zombie under the aggression rune. Courage can also earn it.
         public bool AlwaysFearless;
+
+        /// ★ HOW IT LIVES, from its definition (Zombie.Wear). Roams is a zombie's
+        /// own way: it runs from wands and hunts the wandless. Hunters and guards
+        /// never run; a skittish one is never brave on its own; a guard keeps
+        /// within GuardRange of where it stood up.
+        public CreatureBehaviour Behaviour = CreatureBehaviour.Roams;
+        public float GuardRange = 10f;
+        Vector3 _home;
+        bool _hasHome;
+        public void SetHome(Vector3 at) { _home = at; _hasHome = true; }
+        public void CopyHomeFrom(ZombieBrain other)
+        {
+            if (other == null) return;
+            Behaviour = other.Behaviour;
+            GuardRange = other.GuardRange;
+            _home = other._home;
+            _hasHome = other._hasHome;
+        }
+        bool Steady => Behaviour == CreatureBehaviour.Hunts || Behaviour == CreatureBehaviour.Guards;
+        bool Guarding => Behaviour == CreatureBehaviour.Guards && _hasHome;
+        bool OutsidePost(Vector3 at) => Guarding && (at - _home).sqrMagnitude > GuardRange * GuardRange;
         /// The aggression rune's minute: nothing scares it either. ZombieBuff sets and clears it.
         public bool BuffFearless;
         /// Under a decoy: every wizard is a terror, wand or not, until this time.
@@ -123,7 +144,8 @@ namespace SpellyZombie
         }
         Element _el;
 
-        public bool Fearless => AlwaysFearless || BuffFearless || Courage >= DrawingConfig.FearlessAt;
+        public bool Fearless => AlwaysFearless || BuffFearless
+            || (Behaviour != CreatureBehaviour.Skittish && (Steady || Courage >= DrawingConfig.FearlessAt));
 
         /// How readily it takes fright at all. A coward panics at things a
         /// braver one walks past.
@@ -304,11 +326,12 @@ namespace SpellyZombie
             }
 
             // seeing the player: FOV + line of sight; downed players don't register
+            var mine = Teams.Of(this);
             foreach (var p in SimpleFPSController.All)
             {
                 if (p == null || p.IsDowned) continue;
-                // acolytes are never prey
-                if (Sides.IsAcolytePlayer(p)) continue;
+                // only an enemy team is prey (a summoned zombie never hunts acolytes); a disguise fools it
+                if (!Teams.Enemies(mine, Teams.Of(p)) || ShapeShift.Disguised(p)) continue;
                 Vector3 to = p.transform.position - transform.position;
                 if (to.sqrMagnitude > SightRange * SightRange) continue;
                 if (Vector3.Angle(transform.forward, to) > 70f) continue; // outside the FOV cone
@@ -332,7 +355,7 @@ namespace SpellyZombie
             foreach (var a in NetAvatar.All)
             {
                 if (a == null || a.Downed || a.Disguised) continue;
-                if (Sides.Of(NetSync.OwnerIdOf(a.Id)) == Side.Acolyte) continue;
+                if (!Teams.Enemies(mine, Teams.OfOwner(NetSync.OwnerIdOf(a.Id)))) continue;
                 Vector3 to = a.transform.position - transform.position;
                 if (to.sqrMagnitude > SightRange * SightRange) continue;
                 if (Vector3.Angle(transform.forward, to) > 70f) continue;
@@ -413,7 +436,7 @@ namespace SpellyZombie
                     foreach (var p in SimpleFPSController.All)
                     {
                         if (p == null || p.IsDowned) continue;
-                        if (Sides.IsAcolytePlayer(p)) continue;   // never its master's side
+                        if (!Teams.Enemies(Teams.Of(this), Teams.Of(p))) continue;   // never its own side
                         Vector3 to = p.transform.position - transform.position; to.y = 0f;
                         if (to.sqrMagnitude > 3.2f * 3.2f) continue;
                         if (Vector3.Dot(to.normalized, marchDir) < 0.35f) continue;
@@ -425,7 +448,7 @@ namespace SpellyZombie
                     foreach (var a in NetAvatar.All)
                     {
                         if (a == null || a.Downed || a.Disguised) continue;
-                        if (Sides.Of(NetSync.OwnerIdOf(a.Id)) == Side.Acolyte) continue;
+                        if (!Teams.Enemies(Teams.Of(this), Teams.OfOwner(NetSync.OwnerIdOf(a.Id)))) continue;
                         Vector3 to = a.transform.position - transform.position; to.y = 0f;
                         if (to.sqrMagnitude > 3.2f * 3.2f) continue;
                         if (Vector3.Dot(to.normalized, marchDir) < 0.35f) continue;
@@ -438,7 +461,9 @@ namespace SpellyZombie
                 }
             }
 
-            // 1. grudges first
+            // 1. grudges first; a guard lets one go past its post
+            if (TryGet(MemKind.MadAt, out var madFar) && madFar.Who != null && OutsidePost(madFar.Who.position))
+                Forget(MemKind.MadAt);
             if (TryGet(MemKind.MadAt, out var mad) && mad.Who != null)
             {
                 Head(mad.Who.position, 1.15f);
@@ -461,7 +486,8 @@ namespace SpellyZombie
             }
 
             // 2. flee remembered danger, but only while someone is actually nearby
-            if (TryGet(MemKind.Danger, out var danger2))
+            // (hunters and guards never run)
+            if (!Steady && TryGet(MemKind.Danger, out var danger2))
             {
                 if (NearbyPlayer(out _) == null)
                 {
@@ -486,7 +512,9 @@ namespace SpellyZombie
                 return;
             }
 
-            // 4. hunt (strategy flavored)
+            // 4. hunt (strategy flavored); a guard gives up past its post
+            if (TryGet(MemKind.Player, out var preyFar) && OutsidePost(preyFar.Who != null ? preyFar.Who.position : preyFar.Where))
+                Forget(MemKind.Player);
             if (TryGet(MemKind.Player, out var prey))
             {
                 Vector3 target = prey.Who != null ? prey.Who.position : prey.Where;
@@ -563,7 +591,7 @@ namespace SpellyZombie
             foreach (var p in SimpleFPSController.All)
             {
                 if (p == null || p.IsDowned) continue;
-                if (Sides.IsAcolytePlayer(p)) continue;   // acolytes are our masters
+                if (!Teams.Enemies(Teams.Of(this), Teams.Of(p)) || ShapeShift.Disguised(p)) continue;   // its own side, or hidden
                 Vector3 to = p.transform.position - transform.position;
                 to.y = 0f;
                 float d2 = to.sqrMagnitude;
@@ -582,7 +610,7 @@ namespace SpellyZombie
             foreach (var a in NetAvatar.All)
             {
                 if (a == null || a.Downed || a.Disguised) continue;
-                if (Sides.Of(NetSync.OwnerIdOf(a.Id)) == Side.Acolyte) continue;
+                if (!Teams.Enemies(Teams.Of(this), Teams.OfOwner(NetSync.OwnerIdOf(a.Id)))) continue;
                 Vector3 to = a.transform.position - transform.position;
                 to.y = 0f;
                 float d2 = to.sqrMagnitude;
@@ -750,7 +778,9 @@ namespace SpellyZombie
                 // don't aim straight into a nearby wall
                 if (Physics.Raycast(transform.position + Vector3.up * 1.2f, dir, 3f,
                         Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) continue;
-                _patrolTarget = transform.position + dir * Random.Range(6f, 18f);
+                _patrolTarget = Guarding
+                    ? _home + dir * Random.Range(0.5f, Mathf.Max(1f, GuardRange * 0.4f))   // a guard paces its post
+                    : transform.position + dir * Random.Range(6f, 18f);
                 _hasPatrol = true;
                 _lastPatrolPos = transform.position;
                 _stuckTime = 0f;
@@ -778,12 +808,30 @@ namespace SpellyZombie
             Eyes?.SetMood(EyeMood.Mad, 2f);
         }
 
-        public void Mumble(string text, float seconds)
+        /// voiced false: the bubble has a sound of its own (the attack roar), so no groan goes with it.
+        public void Mumble(string text, float seconds, bool voiced = true)
         {
             if (_mumble == null) return;
+            // a bubble is heard once: the same words again while they still show say nothing new
+            bool fresh = text != _mumble.text || Time.time > _mumbleUntil;
             _mumble.text = text;
             _mumbleUntil = Time.time + seconds;
-            NetSync.PushMumble(gameObject.GetInstanceID(), text, seconds); // the stand-ins say it too
+            if (voiced && fresh) Voice(text, transform);
+            NetSync.PushMumble(gameObject.GetInstanceID(), voiced ? text : Unvoiced + text, seconds); // the stand-ins say it too
+        }
+
+        /// Rides in front of a bubble whose sound the host already sent: the stand-in shows it and stays quiet.
+        public const string Unvoiced = "​";
+
+        /// Every bubble is heard, host body and stand-in alike: a groan, louder
+        /// when the words shout, lower from a bigger body.
+        public static void Voice(string text, Transform body)
+        {
+            if (string.IsNullOrEmpty(text) || body == null) return;
+            bool shout = text.IndexOf('!') >= 0;
+            float size = Mathf.Max(0.3f, body.localScale.y);
+            Juice.Sound(Sfx.ZombieGroan, body.position + Vector3.up * size, shout ? 1f : 0.55f,
+                Mathf.Clamp(1f / Mathf.Sqrt(size), 0.6f, 1.35f) * Random.Range(0.92f, 1.08f), false);
         }
 
         void BuildMumbleText() => _mumble = BuildMumbleText(transform);

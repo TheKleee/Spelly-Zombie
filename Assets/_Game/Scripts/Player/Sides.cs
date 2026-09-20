@@ -171,9 +171,19 @@ namespace SpellyZombie
             if (p != null) return IsAcolytePlayer(p) ? Side.Acolyte : Side.Wizard;
             var puppet = go.GetComponentInParent<NetAvatar>(); // a friend's body: their announced side
             if (puppet != null) return Of(NetSync.OwnerIdOf(puppet.Id));
-            if (go.GetComponentInParent<Zombie>() != null) return Side.Acolyte;
+            var zombie = go.GetComponentInParent<Zombie>();
+            if (zombie != null) return OfZombie(zombie);
             return null;
         }
+
+        /// A zombie serves the acolytes; on a map with its own teams it serves
+        /// whoever raised it, and a wild one serves nobody.
+        public static Side? OfZombie(Zombie z) =>
+            !MapRules.Custom ? Side.Acolyte : z.OwnerId < 0 ? (Side?)null : Of(z.OwnerId);
+
+        /// Friends: the same side, or any two sides on a map that puts every player on one team.
+        public static bool Allied(Side? a, Side? b) =>
+            a.HasValue && b.HasValue && (a.Value == b.Value || MapRules.Together);
 
         public static bool IsAcolytePlayer(SimpleFPSController p)
         {

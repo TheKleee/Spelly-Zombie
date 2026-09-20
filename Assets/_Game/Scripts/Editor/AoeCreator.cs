@@ -75,7 +75,7 @@ namespace SpellyZombie
                         EditorStyles.wordWrappedMiniLabel);
                     var spellNames = new System.Collections.Generic.List<string> { "none" };
                     foreach (var sp in _book.spells)
-                        if (!sp.IsBody) spellNames.Add(sp.Name);
+                        if (!sp.IsSummon) spellNames.Add(sp.Name);
                     int spAt = Mathf.Max(0, spellNames.IndexOf(_aoe.Spell ?? ""));
                     int spNow = EditorGUILayout.Popup("Load spell", spAt, spellNames.ToArray());
                     _aoe.Spell = spNow <= 0 ? "" : spellNames[spNow];

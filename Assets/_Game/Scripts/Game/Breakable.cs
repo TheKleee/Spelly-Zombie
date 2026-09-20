@@ -26,8 +26,10 @@ namespace SpellyZombie
         public GameObject Standing;
         [Tooltip("Code-built splinters, a placeholder. Turn OFF once your own debris looks right.")]
         public bool CodeSplinters = true;
-        [Tooltip("Play the default thud. Off if your effect brings its own sound.")]
+        [Tooltip("Play a break sound. Off if your effect brings its own sound.")]
         public bool DefaultSound = true;
+        [Tooltip("YOUR sound for this object breaking (a bottle, a bell). Empty = picked by what it is made of: wood, stone, bone, ice.")]
+        public AudioClip BreakSound;
         [Tooltip("LOBBY ONLY: seconds before this object rebuilds itself after breaking. 0 = the global LobbyRespawnSeconds.")]
         public float LobbyRespawnOverride = 0f;
 
@@ -84,7 +86,14 @@ namespace SpellyZombie
             // ---- authored effect, or the fallback ----
             if (BreakFx != null) Instantiate(BreakFx, b.center, Quaternion.identity);
             else if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, b.center);
-            if (DefaultSound) Juice.Thud(b.center);
+            if (DefaultSound)
+            {
+                // every machine breaks its own copy, so the sound stays off the wire; bigger is louder and lower
+                float big = Mathf.InverseLerp(0.3f, 4f, maxDim);
+                float volume = Mathf.Lerp(0.6f, 1f, big), pitch = Mathf.Lerp(1.12f, 0.85f, big) * Random.Range(0.95f, 1.05f);
+                if (BreakSound != null) Juice.Clip3D(BreakSound, b.center, volume, pitch);
+                else if (!Juice.Sound(AudioLibrary.BreakOf(mat), b.center, volume, pitch, false)) Juice.Thud(b.center);
+            }
 
             // ---- optional standing piece ----
             if (Standing != null)

@@ -49,7 +49,7 @@ namespace SpellyZombie
             if (Object.FindAnyObjectByType<Demon>() != null) return false;
             _lastDemon = Time.time;
             DrawingWorld.Instance?.LogEvent("ALL TWELVE COMBINED. THE DEMON COMES");
-            Juice.Boom(at, 1.5f);
+            Juice.Boom(at, 1.5f, true);
             Demon.SummonGrand(at + Vector3.up * 0.5f, Mathf.Max(1.5f, srcSize));
             return true;
         }

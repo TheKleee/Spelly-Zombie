@@ -58,7 +58,8 @@ namespace SpellyZombie
             foreach (var c in Physics.OverlapSphere(at, r))
             {
                 var el = c.GetComponentInParent<Element>();
-                if (el != null && el.gameObject != gameObject && seen.Add(el))
+                if (el != null && el.gameObject != gameObject && seen.Add(el)
+                    && !(OwnerId < 0 && el.GetComponent<BossMark>() != null)) // nobody's rubble spares a boss
                     el.TakeDamage(dmg, "flying debris", OwnerId);
                 // a friend's puppet has no body to push: the shove travels to them
                 var av = c.GetComponentInParent<NetAvatar>();

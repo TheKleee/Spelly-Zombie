@@ -30,6 +30,8 @@ namespace SpellyZombie
         {
             if (_builtFor == LocalCount) return;
             if (ActiveScene.Name == "Menu") return;   // the menu has no bodies
+            if (MapCreator.Active) return;             // the creator flies, no body
+            if (PhotoBooth.Active) return;             // so does the booth
 
             int have = 0;
             foreach (var p in SimpleFPSController.All) if (p != null) have++;

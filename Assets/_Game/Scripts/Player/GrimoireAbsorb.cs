@@ -419,8 +419,8 @@ namespace SpellyZombie
                 foreach (var m in _inkMembers) at += m.Centroid();
                 at /= _inkMembers.Count;
                 if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, at);
-                Juice.Chime(at);
-                NetSync.PushInkFx(NetSync.InkFxPoof, at);
+                if (!Juice.Sound(Sfx.RuneComplete, at)) Juice.Chime(at);
+                NetSync.PushInkFx(NetSync.InkFxRunePoof, at);
             }
             _inkMembers.Clear();
             _inkRune = RuneType.None;

@@ -8,7 +8,7 @@ namespace SpellyZombie
 {
     /// Steam lobbies: private (invite-only) or public (browser-listed, optional
     /// password, join-time ping gate). FishySteamworks is swapped onto the
-    /// NetworkManager at connect time (the LAN panel keeps Tugboat); the
+    /// NetworkManager at connect time (lobbies without Steam keep Tugboat); the
     /// NetworkManager lives in the Lobby scene, so menu-started flows connect deferred.
     public class SteamLobby : MonoBehaviour
     {
@@ -75,6 +75,7 @@ namespace SpellyZombie
         /// The host flips this when a match starts/ends; rows show it.
         public static void SetInGame(bool on)
         {
+            LanLobby.InGame = on;
             if (I == null || !I._lobby.IsValid() || !NetGame.IsHost) return;
             SteamMatchmaking.SetLobbyData(I._lobby, "sz_ingame", on ? "1" : "0");
         }
@@ -117,7 +118,7 @@ namespace SpellyZombie
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"[SpellyZombie] Steam unavailable ({e.Message}). LAN panel still works.");
+                Debug.LogWarning($"[SpellyZombie] Steam unavailable ({e.Message}). Lobbies stay on this PC and its local network.");
                 SteamReady = false;
             }
             if (!SteamReady)
@@ -247,9 +248,12 @@ namespace SpellyZombie
                 SteamMatchmaking.LeaveLobby(I._lobby);
                 I._lobby = default;
             }
-            // a client still connecting stops too; no manager = nothing to stop
-            if (NetGame.HasManager && InstanceFinder.ClientManager != null)
+            // a client still connecting stops too; one that never started is left
+            // alone (Multipass errors when stopping a transport nobody set)
+            if (NetGame.HasManager && InstanceFinder.ClientManager != null
+                && (InstanceFinder.ClientManager.Started || NetGame.ClientStarting))
                 InstanceFinder.ClientManager.StopConnection();
+            NetGame.ClientStarting = false;
             Status = "";
         }
 
@@ -263,7 +267,13 @@ namespace SpellyZombie
         // ---------------------------------------------------------- hosting --
         void CreateLobby(bool friendsPrivate, string password)
         {
-            if (!SteamReady) { Status = Loc.T("steam.notrunning"); return; }
+            if (!SteamReady)
+            {
+                // no Steam: the lobby stands on this PC instead; a public one is heard on the local network
+                Status = Loc.T("steam.offline");
+                NetGame.HostLocal(friendsPrivate ? "" : (password ?? "").Trim(), listed: !friendsPrivate);
+                return;
+            }
             if (NetGame.Connected || _pending != Pending.None || _creating) return;
             _creating = true;
             _isPrivate = friendsPrivate;
@@ -402,6 +412,7 @@ namespace SpellyZombie
             {
                 InstanceFinder.ClientManager.StartConnection(_hostAddress);
             }
+            NetGame.ClientStarting = true;
             _pending = Pending.None;
         }
 

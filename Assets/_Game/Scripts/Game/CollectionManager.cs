@@ -84,6 +84,21 @@ namespace SpellyZombie
             public GameObject Look;
         }
 
+        /// Every name an area look answers to, sorted: what a map's area can wear.
+        public static System.Collections.Generic.List<string> AreaLookNames()
+        {
+            var names = new System.Collections.Generic.List<string>();
+            if (I == null || I._areaLooks == null) return names;
+            foreach (var e in I._areaLooks)
+            {
+                if (e.Look == null) continue;
+                string key = string.IsNullOrEmpty(e.Area) ? e.Look.name : e.Area;
+                if (!names.Exists(n => string.Equals(n, key, System.StringComparison.OrdinalIgnoreCase))) names.Add(key);
+            }
+            names.Sort(System.StringComparer.OrdinalIgnoreCase);
+            return names;
+        }
+
         /// The area look under this name, or null.
         public static GameObject AreaLookFor(string name)
         {

@@ -11,7 +11,7 @@ namespace SpellyZombie
     public static class CollectionListTools
     {
         [MenuItem("Spelly Zombie/Grimoire/Add Missing Page Art To Collection Manager")]
-        static void AddPages() => AddMissing("Assets/_Game/Art/2D/Book Pages", "_bookPages", "GrimoirePage_", "page");
+        public static void AddPages() => AddMissing("Assets/_Game/Art/2D/Book Pages", "_bookPages", "GrimoirePage_", "page");
 
         [MenuItem("Spelly Zombie/Maps/Add Missing Map Pictures To Collection Manager")]
         static void AddMapPictures() => AddMissing(MapPictureTools.Folder, "_mapPictures", "", "map picture");

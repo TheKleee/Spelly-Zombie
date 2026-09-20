@@ -50,12 +50,13 @@ namespace SpellyZombie
 
         void FixedUpdate()
         {
+            if (Time.time < _checkAt) return;
             if (_splitting || _rb == null || _rb.isKinematic) return;
+            _checkAt = Time.time + 0.25f;   // a settling frame, not every tick
             // a living thing floats instead - only elements come apart
             if (GetComponent<Creature>() != null && GetComponent<Golem>() == null) return;
             if (GetComponent<SimpleFPSController>() != null) return;
-            if (Time.time < _checkAt) return;
-            _checkAt = Time.time + 0.25f;   // a settling frame, not every tick
+            if (GetComponent<BossMark>() != null) return; // a boss holds together (his call)
 
             float floor = MinDensity > 0f ? MinDensity : DrawingConfig.SplitMinDensity;
             if (Density >= floor)
@@ -89,7 +90,7 @@ namespace SpellyZombie
         /// stable unless something spreads them further.
         public void Split()
         {
-            if (_splitting) return;
+            if (_splitting || GetComponent<BossMark>() != null) return;
             _splitting = true;
 
             int n = Mathf.Max(2, Pieces);

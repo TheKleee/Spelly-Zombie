@@ -18,12 +18,12 @@ namespace SpellyZombie
         }
     }
 
-    /// ESC = pause: Resume / Restart / Options (persisted) / Wishlist / Quit (asks first) - zero scene setup needed.
+    /// ESC = pause: Resume / Restart / Options (persisted) / Share with friends / Quit (asks first) - zero scene setup needed.
     public class GameMenu : MonoBehaviour
     {
         public static bool IsOpen { get; private set; }
 
-        const string WishlistUrl = "https://store.steampowered.com/"; // real page URL once it exists
+        const string StoreUrl = "https://store.steampowered.com/app/5050950/"; // the store page, by app id
 
         bool _options, _langPick, _micPick, _resPick, _quitCheck;
         bool _fromMainMenu;   // opened by the main menu's Options: no pause, Back closes
@@ -91,7 +91,9 @@ namespace SpellyZombie
             }
             if (kb.escapeKey.wasPressedThisFrame)
             {
-                if (IsOpen) Close();
+                if (MapPicker.IsOpen) MapPicker.Close(); // Esc closes the picker first
+                else if (!IsOpen && PhotoBooth.Escape()) { } // the booth's posing, ink or placing ends first
+                else if (IsOpen) Close();
                 else Open();
             }
         }
@@ -168,7 +170,8 @@ namespace SpellyZombie
             {
                 // the question names where Quit takes you from here
                 string here = ActiveScene.Name;
-                string ask = here == "Menu" ? "menu.quit.game" : here == "Lobby" ? "menu.quit.lobby" : "menu.quit.match";
+                string ask = here == "Menu" ? "menu.quit.game"
+                    : here == "Lobby" || MapCreator.Active || PhotoBooth.Active ? "menu.quit.lobby" : "menu.quit.match";
                 var q = UIKit.Label(pr, Loc.T(ask), 20, UIKit.Ink, TextAnchor.MiddleCenter, true);
                 q.resizeTextForBestFit = false;
                 UIKit.Row(q, 300f, -1f);
@@ -407,7 +410,7 @@ namespace SpellyZombie
 
             // a connected game cannot be scene-restarted; the lobby verbs
             // take that slot instead
-            if (!NetGame.Connected)
+            if (!NetGame.Connected && !MapCreator.Active && !PhotoBooth.Active)
                 MenuButton(Loc.T("menu.restart"), () =>
                 {
                     Close();
@@ -426,7 +429,13 @@ namespace SpellyZombie
                     SteamLobby.DeleteLobby();
                     Close();
                 }, grey);
-            MenuButton(Loc.T("menu.wishlist"), () => Application.OpenURL(WishlistUrl), grey);
+            // share: the store link goes on the clipboard and the button says so
+            Text shareLabel = null;
+            shareLabel = UIKit.Row(UIKit.Button(pr, Loc.T("menu.share"), () =>
+            {
+                GUIUtility.systemCopyBuffer = StoreUrl;
+                if (shareLabel != null) shareLabel.text = Loc.T("menu.sharecopied");
+            }, grey), 300f, 50f).GetComponentInChildren<Text>();
             MenuButton(Loc.T("menu.quit"), () => { _quitCheck = true; BuildUI(); }, skin != null ? skin.ButtonRed : null);
         }
 
@@ -436,6 +445,8 @@ namespace SpellyZombie
         {
             string here = ActiveScene.Name;
             if (here == "Menu") { QuitGame(); return; }
+            if (MapCreator.Active) { Close(); MapCreator.ExitToMenu(); return; } // the creator goes back to the maps
+            if (PhotoBooth.Active) { Close(); PhotoBooth.ExitToMenu(); return; }  // the booth goes back to the photos
             if (here != "Lobby") RoundDirector.Abandon(); // dropped, not decided
             NetSync.LeaveSession();
             Close();

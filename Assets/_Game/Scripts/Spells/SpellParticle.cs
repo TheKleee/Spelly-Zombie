@@ -128,7 +128,7 @@ namespace SpellyZombie
 
             // ★ EVERYTHING NEEDS JUICE (his words): a state being born is an
             // EVENT - a bang and a puff, one solid piece, no weak chips
-            Juice.Boom(at, 0.5f);
+            Juice.Boom(at, 0.5f, true);
             GrammarFX.PuffBurst(at, solid ? new Color(0.6f, 0.55f, 0.5f) : new Color(0.55f, 0.75f, 1f), 6);
         }
 
@@ -236,15 +236,15 @@ namespace SpellyZombie
                     QueryTriggerInteraction.Ignore))
                 {
                     if (h.GetComponent<SpellParticle>() != null) continue;
-                    Vector3 p = h.ClosestPoint(lingerAt);
-                    float d = (p - lingerAt).sqrMagnitude;
+                    if (!NearestSurface(h, transform.position, 8f, out Vector3 p)) continue;
+                    float d = (p - transform.position).sqrMagnitude;
                     if (d < best) { best = d; lingerAt = p; cling = true; }
                 }
             }
             if (cling)
                 ArtificialBiome.Open(lingerAt, GiveNow(Data), r,
                     1f, DrawingConfig.LingerSeconds); // full strength - the payload IS the knob
-            Juice.Boom(transform.position, 0.7f);
+            Juice.Boom(transform.position, 0.7f, true);
             // an acolyte's spell spending itself returns a bit of wand
             PlayerInk.CreditWand(OwnerId, DrawingConfig.InkMax * 0.05f);
             Die();
@@ -800,8 +800,9 @@ namespace SpellyZombie
             }
 
             bool ownerAcolyte = Sides.IsAcolyte(OwnerId);
+            bool together = MapRules.Together; // every player on one team
             var lp = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
-            bool lpEnemy = lp != null && Sides.IsAcolytePlayer(lp) != ownerAcolyte;
+            bool lpEnemy = lp != null && Sides.IsAcolytePlayer(lp) != ownerAcolyte && !together;
             float lpD2 = lp != null
                 ? (lp.transform.position - transform.position).sqrMagnitude : float.MaxValue;
 
@@ -812,14 +813,14 @@ namespace SpellyZombie
             {
                 Transform foe = null;
                 float best = seek2;
-                if (!ownerAcolyte)
-                    foreach (var z in Zombie.All) // zombies side with the acolytes
-                    {
-                        if (z == null) continue;
-                        float d2z = (z.transform.position - transform.position).sqrMagnitude;
-                        if (d2z <= r2) { Wake(); return; }
-                        if (d2z < best) { best = d2z; foe = z.transform; }
-                    }
+                var ownerSide = Sides.Of(OwnerId);
+                foreach (var z in Zombie.All) // zombies side with the acolytes
+                {
+                    if (z == null || Sides.Allied(Sides.OfZombie(z), ownerSide)) continue;
+                    float d2z = (z.transform.position - transform.position).sqrMagnitude;
+                    if (d2z <= r2) { Wake(); return; }
+                    if (d2z < best) { best = d2z; foe = z.transform; }
+                }
                 if (lpEnemy)
                 {
                     if (lpD2 <= r2) { Wake(); return; }
@@ -829,7 +830,7 @@ namespace SpellyZombie
                 foreach (var a in NetAvatar.All)
                 {
                     if (a == null || a.Downed || a.Disguised) continue;
-                    if (Sides.IsAcolyte(NetSync.OwnerIdOf(a.Id)) == ownerAcolyte) continue;
+                    if (Sides.IsAcolyte(NetSync.OwnerIdOf(a.Id)) == ownerAcolyte || together) continue;
                     float d2a = (a.transform.position - transform.position).sqrMagnitude;
                     if (d2a <= r2) { Wake(); return; }
                     if (d2a < best) { best = d2a; foe = a.transform; }
@@ -859,7 +860,7 @@ namespace SpellyZombie
             foreach (var a in NetAvatar.All)
             {
                 if (a == null || a.Downed) continue;
-                if (Sides.IsAcolyte(NetSync.OwnerIdOf(a.Id)) != ownerAcolyte) continue;
+                if (Sides.IsAcolyte(NetSync.OwnerIdOf(a.Id)) != ownerAcolyte && !together) continue;
                 var el = a.GetComponent<Element>();
                 if (el == null || !NeedsMe(el.Data.Temp)) continue;
                 float d2a = (a.transform.position - transform.position).sqrMagnitude;
@@ -902,6 +903,7 @@ namespace SpellyZombie
         }
 
         float _impactFxAt; // juice throttle - repeats within the window are noise
+        static readonly float[] _impactHeard = new float[AudioLibrary.SoundAxes];
 
         /// One impact effect per kind at the point of contact, throttled per
         /// particle so chains read as one hit.
@@ -926,6 +928,15 @@ namespace SpellyZombie
                 return Mathf.Clamp(Mathf.Abs(SpellPayload.ToHuman(axis, p[axis])) / SpellPayload.LineFor(axis), 0.3f, 1.25f);
             }
             void Sized(GameObject fx, float s) { if (fx != null) fx.transform.localScale *= s; }
+
+            // the same amounts are heard: each axis has its own sound (Juice.SpellImpact).
+            // An acolyte dart carries no numbers: it sounds like the wizard rune it was cast with.
+            if (Mischief != 0) Juice.Sound(MischiefLaw.SoundOf((MischiefKind)Mischief), at);
+            else
+            {
+                for (int ax = 0; ax < _impactHeard.Length; ax++) _impactHeard[ax] = Amount(ax);
+                Juice.SpellImpact(p, _impactHeard, at);
+            }
 
             float heat = Amount(0);
             if (heat > 0f)
@@ -1110,7 +1121,7 @@ namespace SpellyZombie
             Natural = new SpellPayload();
             LeaveBiomes();
             Attached = false;
-            if (_tail != null) { Destroy(_tail); _tail = null; }
+            HideTail();
             if (_rowFx != null) { Destroy(_rowFx); _rowFx = null; }
             if (_areaLook != null) { Destroy(_areaLook); _areaLook = null; }
             _newest = null;
@@ -2108,6 +2119,7 @@ namespace SpellyZombie
         /// Every particle currently imposing on the world. Only lvl3 ones ever
         /// join, so this stays short.
         static readonly List<SpellParticle> _biomes = new List<SpellParticle>();
+        internal static IReadOnlyList<SpellParticle> Biomes => _biomes;
 
         /// What the particle-biomes impose at a point. Read by SpellLaw.Here,
         /// exactly like a map biome - a lvl3 particle IS a biome, it does not
@@ -2428,6 +2440,35 @@ namespace SpellyZombie
             }
         }
 
+        static readonly Vector3[] _feelers =
+            { Vector3.down, Vector3.up, Vector3.left, Vector3.right, Vector3.forward, Vector3.back };
+
+        /// The point of a collider's surface nearest to a spot. Terrain and hollow meshes refuse
+        /// ClosestPoint (Unity hands the spot itself back, which put lingering areas in mid-air):
+        /// those are felt for with rays, at their middle and along the six axes.
+        static bool NearestSurface(Collider c, Vector3 spot, float reach, out Vector3 point)
+        {
+            point = spot;
+            if (!(c is TerrainCollider) && !(c is MeshCollider mesh && !mesh.convex))
+            {
+                point = c.ClosestPoint(spot);
+                return true;
+            }
+            float best = reach;
+            bool found = false;
+            Vector3 mid = c.bounds.center - spot;
+            for (int i = -1; i < _feelers.Length; i++)
+            {
+                Vector3 dir = i < 0 ? mid.normalized : _feelers[i];
+                if (dir.sqrMagnitude < 0.5f) continue; // standing at its middle
+                if (!c.Raycast(new Ray(spot, dir), out var hit, best)) continue;
+                best = hit.distance;
+                point = hit.point;
+                found = true;
+            }
+            return found;
+        }
+
         /// ★ THE ONLY THING A PARTICLE DOES TO ANYTHING: give away some of its
         /// numbers. Burning, freezing, sticking, slipping, floating, dying are
         /// all consequences the receiver works out for itself from what it now
@@ -2707,7 +2748,7 @@ namespace SpellyZombie
             // the goo's own area rooted the very zombie that spat it - sticky
             // payload, Stuck, canMove=False, the spinning-in-place zombie.
             if (living && OwnerId >= 0
-                && Sides.SideOfThing(el.gameObject) == Sides.Of(OwnerId))
+                && Sides.Allied(Sides.SideOfThing(el.gameObject), Sides.Of(OwnerId)))
                 for (int i = 0; i < Fusions.Count; i++)
                     if (Fusions[i].OnlyLiving) return;
 
@@ -2773,7 +2814,7 @@ namespace SpellyZombie
 
             Vector3 hit = best.bounds.center + Vector3.up * best.bounds.extents.y;
             Bolt(transform.position, hit);
-            Juice.Crackle(hit);
+            if (!Juice.Sound(Sfx.Lightning, hit, 1f, Random.Range(0.94f, 1.06f))) Juice.Crackle(hit);
             var lib = FxLibrary.I;
             if (lib != null) FxLibrary.Spawn(lib.ElectricHit, hit, null, 3f);
 
@@ -2859,7 +2900,7 @@ namespace SpellyZombie
                 case RuneType.DensityDown: return ParticleKind.Spread;
                 case RuneType.StateSolid: return ParticleKind.Solid;
                 case RuneType.StateLiquid: return ParticleKind.Liquid;
-                default: return ParticleKind.Push;
+                default: return KindOf(SpellBook.Live.SeedOf(r)); // a made rune: by what it pushes
             }
         }
 
@@ -2961,9 +3002,15 @@ namespace SpellyZombie
         /// stand-in wears the host's shape without the morph.
         public static void PoseNow(Transform body, ShapeDef pose)
         {
-            if (body == null || pose == null || pose.Bones == null) return;
+            if (pose != null) PoseNow(body, pose.Bones);
+        }
+
+        /// The same from a bone list (a creature's dragged handles).
+        public static void PoseNow(Transform body, List<BonePose> bones)
+        {
+            if (body == null || bones == null) return;
             var want = new Dictionary<string, BonePose>();
-            foreach (var b in pose.Bones)
+            foreach (var b in bones)
                 if (!string.IsNullOrEmpty(b.Bone) && !want.ContainsKey(b.Bone)) want[b.Bone] = b;
             var seen = new HashSet<string>();
             foreach (var t in body.GetComponentsInChildren<Transform>(true))
@@ -3205,7 +3252,7 @@ namespace SpellyZombie
                     var host = c.GetComponentInParent<Element>();
                     if (host != null && host.Data.Alive && host.transform != transform.parent
                         // never rides its own side - poison spares its own
-                        && !(OwnerId >= 0 && Sides.SideOfThing(host.gameObject) == Sides.Of(OwnerId)))
+                        && !(OwnerId >= 0 && Sides.Allied(Sides.SideOfThing(host.gameObject), Sides.Of(OwnerId))))
                     {
                         transform.SetParent(host.transform, true);
                         Attached = true;
@@ -3778,11 +3825,11 @@ namespace SpellyZombie
             if (_rend != null) _rend.enabled = false;
             if (area.TrailWidth > 0f)
             {
-                if (_tail == null) _tail = gameObject.AddComponent<TrailRenderer>();
-                _tail.time = Mathf.Max(0.05f, area.TrailSeconds);
-                _tail.widthMultiplier = area.TrailWidth;
-                _tail.minVertexDistance = 0.08f;
-                _tail.sharedMaterial = MatterFX.Get(PayloadNow.Tint(), MoteShade.Additive);
+                var tail = ShowTail();
+                tail.time = Mathf.Max(0.05f, area.TrailSeconds);
+                tail.widthMultiplier = area.TrailWidth;
+                tail.minVertexDistance = 0.08f;
+                tail.sharedMaterial = MatterFX.Get(PayloadNow.Tint(), MoteShade.Additive);
             }
         }
 
@@ -3997,6 +4044,23 @@ namespace SpellyZombie
 
         TrailRenderer _tail;
 
+        /// The trail stays on the mote for its next life, switched off: a
+        /// destroyed one lingers until the frame ends, so adding a fresh one
+        /// in the same frame failed.
+        TrailRenderer ShowTail()
+        {
+            if (_tail == null) _tail = gameObject.AddComponent<TrailRenderer>();
+            else if (!_tail.enabled) { _tail.Clear(); _tail.enabled = true; }
+            return _tail;
+        }
+
+        void HideTail()
+        {
+            if (_tail == null) return;
+            _tail.Clear();
+            _tail.enabled = false;
+        }
+
         /// The widest trail anything it currently IS asks for. A meteor gets a
         /// fat short one, a tracking mark a thin long one, and a particle that
         /// stops being either drops it.
@@ -4008,16 +4072,12 @@ namespace SpellyZombie
             var area = Area;
             float w = area != null ? area.TrailWidth : 0f;
             float t = area != null ? area.TrailSeconds : 0f;
-            if (w <= 0f)
-            {
-                if (_tail != null) { Destroy(_tail); _tail = null; }
-                return;
-            }
-            if (_tail == null) _tail = gameObject.AddComponent<TrailRenderer>();
-            _tail.time = Mathf.Max(0.05f, t);
-            _tail.widthMultiplier = w;
-            _tail.minVertexDistance = 0.08f;
-            _tail.sharedMaterial = MatterFX.Get(PayloadNow.Tint(), MoteShade.Additive);
+            if (w <= 0f) { HideTail(); return; }
+            var tail = ShowTail();
+            tail.time = Mathf.Max(0.05f, t);
+            tail.widthMultiplier = w;
+            tail.minVertexDistance = 0.08f;
+            tail.sharedMaterial = MatterFX.Get(PayloadNow.Tint(), MoteShade.Additive);
         }
 
         void ReshapeBody()

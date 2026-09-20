@@ -19,6 +19,7 @@ namespace SpellyZombie
         public GameObject Sun;         // Plasma lvl3 - literally a small sun
         public GameObject FireBurst;   // Spark lvl3 flame burst
         public GameObject HealShine;   // healing area sparkle loop
+        public GameObject PotBeacon;   // a pillar of light over the pot holding the ink until someone reaches it (YOUR pick; empty = none)
         public GameObject SoulsOut;    // black hole pull · player death (the soul leaves)
         public GameObject AbsorbBurst; // an object gives its knowledge away (assign YOUR pick; empty = chime only)
         public GameObject Flash;       // white hole ignition
@@ -54,6 +55,28 @@ namespace SpellyZombie
         public GameObject HitThud;     // rock-on-rock, dense thumps
         public GameObject Blood;       // wound drips - the walking HP readout
 
+        [Header("WARM UP")]
+        [Tooltip("Optional. Shader variants recorded in play (Project Settings > Graphics > Shader Loading > " +
+                 "Save to asset, after a session that saw the fights). They compile behind the first " +
+                 "travel egg instead of mid-fight.")]
+        public ShaderVariantCollection WarmShaders;
+
+        [Header("SOUNDS")]
+        [Tooltip("The Audio Library asset (Assets/_Game/Sound/AudioLibrary): every sound of the game, one slot each. " +
+                 "Empty = the game plays its synthesized placeholders.")]
+        public AudioLibrary Sounds;
+
+        /// Every effect this library can spawn: the typed roles and the named ones.
+        public IEnumerable<GameObject> AllPrefabs()
+        {
+            foreach (var f in typeof(FxLibrary).GetFields())
+                if (f.FieldType == typeof(GameObject) && f.GetValue(this) is GameObject go && go != null)
+                    yield return go;
+            if (Named != null)
+                foreach (var go in Named)
+                    if (go != null) yield return go;
+        }
+
         /// The CFXR effect that rides a grammar field, by field class name.
         /// Null = that field keeps its code look. the FX_<FieldClass>
         /// override in Resources/Custom always wins over this.
@@ -80,6 +103,16 @@ namespace SpellyZombie
                         Debug.LogWarning("[SpellyZombie] No FxLibrary asset. Run 'Spelly Zombie → Art/7 - Wire FX Library (JMO)'");
                     else if (_instance.IceHit == null || _instance.HitSpark == null || _instance.TextPow == null)
                         Debug.LogWarning("[SpellyZombie] FxLibrary has EMPTY roles (effects will be invisible). Re-run 'Spelly Zombie → Art/7 - Wire FX Library (JMO)'");
+                    if (_instance != null && _instance.Sounds == null)
+                        Debug.LogError("[SpellyZombie] FxLibrary: the 'Sounds' slot is empty. Drop in the Audio Library " +
+                                       "asset (Assets/_Game/Sound/AudioLibrary), or every sound stays a placeholder.");
+                    else if (_instance != null)
+                    {
+                        var empty = _instance.Sounds.Missing();
+                        if (empty.Count > 0)
+                            Debug.LogWarning($"[SpellyZombie] AudioLibrary: {empty.Count} empty slots play their placeholder " +
+                                             $"or nothing: {string.Join(", ", empty)}");
+                    }
                     // pay the shader-compile cost ONCE, here, not mid-fight
                     if (_instance != null) _instance.Prewarm();
                 }
@@ -99,6 +132,8 @@ namespace SpellyZombie
             FxLantern = 204, FxGlint = 205, FxCometDown = 206;
         public const byte SndBoom = 220, SndPop = 221, SndWhoosh = 222, SndCrackle = 223,
             SndThud = 224, SndChime = 225, SndSting = 226, SndDrum = 227, SndWhistle = 228;
+        /// His clips: SndClips + the Sfx id, for the world sounds (the first AudioLibrary.WorldCount).
+        public const byte SndClips = 229;
         public const byte FxNone = 255;
 
         static List<GameObject> _wire;
@@ -208,7 +243,10 @@ namespace SpellyZombie
         {
             if (prefab == null) return null;
             if (Time.frameCount != _frame) { _frame = Time.frameCount; _spawnedThisFrame = 0; }
-            if (++_spawnedThisFrame > MaxPerFrame) return null; // the budget holds
+            if (!_warming && ++_spawnedThisFrame > MaxPerFrame) return null; // the budget holds (the warm-up is exempt)
+            // a comic WHAM or POW is heard as well as read, on every machine that shows it
+            if (!_warming && I != null && (prefab == I.TextWham || prefab == I.TextPow))
+                Juice.Sound(Sfx.Wham, pos, 1f, Random.Range(0.92f, 1.08f), false);
 
             if (!_pool.TryGetValue(prefab, out var stack))
                 _pool[prefab] = stack = new Stack<GameObject>();
@@ -263,6 +301,7 @@ namespace SpellyZombie
             if (!_origin.TryGetValue(fx, out var prefab)) { Destroy(fx); return; }
             fx.SetActive(false);
             fx.transform.SetParent(null, false);
+            DontDestroyOnLoad(fx); // the shelf outlives the scene: stocked once a session
             if (!_pool.TryGetValue(prefab, out var stack))
                 _pool[prefab] = stack = new Stack<GameObject>();
             if (stack.Count < 12) stack.Push(fx);
@@ -275,18 +314,26 @@ namespace SpellyZombie
         /// Build effects at load - first spawn compiles shader variants, and mid-fight that's the hitch you can feel.
         public void Prewarm(int each = 2)
         {
-            foreach (var f in typeof(FxLibrary).GetFields())
+            _warming = true; // every effect, not just the first frame's worth
+            try
             {
-                if (f.FieldType != typeof(GameObject)) continue;
-                var prefab = f.GetValue(this) as GameObject;
-                if (prefab == null) continue;
-                for (int i = 0; i < each; i++)
+                foreach (var prefab in AllPrefabs())
                 {
-                    var fx = Spawn(prefab, new Vector3(0f, -999f, 0f), null, 0.01f, false);
-                    if (fx != null) Recycle(fx);
+                    // all of one kind out before any goes back, or the shelf hands the same one out again
+                    _stock.Clear();
+                    for (int i = 0; i < each; i++)
+                    {
+                        var fx = Spawn(prefab, new Vector3(0f, -999f, 0f), null, 0.01f, false);
+                        if (fx != null) _stock.Add(fx);
+                    }
+                    foreach (var fx in _stock) Recycle(fx);
                 }
             }
+            finally { _warming = false; }
         }
+
+        static bool _warming;
+        static readonly List<GameObject> _stock = new List<GameObject>();
     }
 
     /// Hands a pooled effect back when its time is up (no Destroy, no garbage).

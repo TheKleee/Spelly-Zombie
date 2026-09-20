@@ -44,6 +44,7 @@ namespace SpellyZombie
             if (b == null) { act?.Invoke(); return; }
             var j = b.GetComponent<ButtonJuice>();
             if (j != null) { j._down = false; j._t = 0f; }
+            Juice.Sound2D(Sfx.UiClick);
             b.interactable = false; // one click per beat
             Runner().StartCoroutine(Fire(b, act));
         }
@@ -69,7 +70,12 @@ namespace SpellyZombie
             return _runner;
         }
 
-        public void OnPointerEnter(PointerEventData e) { _over = true; }
+        public void OnPointerEnter(PointerEventData e)
+        {
+            _over = true;
+            var b = GetComponent<UnityEngine.UI.Selectable>();
+            if (b == null || b.IsInteractable()) Juice.Sound2D(Sfx.UiHover, 0.6f);
+        }
 
         public void OnPointerDown(PointerEventData e) { _down = true; }
 

@@ -14,7 +14,7 @@ namespace SpellyZombie
     {
         PreviewRenderUtility _pr;
         GameObject _shown;
-        Vector2 _orbit = new Vector2(25f, -20f);
+        Vector2 _orbit = new Vector2(25f, 20f); // above the floor, looking down at it
         float _zoom = 3.2f;
         Transform[] _bones = new Transform[0];
         int _grabbed = -1;
@@ -238,7 +238,9 @@ namespace SpellyZombie
             }
 
             if (_shown == null && e.type == EventType.Repaint)
-                EditorGUI.DropShadowLabel(rect, "nothing to show yet");
+                EditorGUI.DropShadowLabel(rect, CollectionManager.I == null
+                    ? "No Collection Manager in the open scene, so no bodies to show.\nOpen a scene that has one (the Lobby)."
+                    : "nothing to show yet");
             return moved;
         }
 
@@ -335,7 +337,7 @@ namespace SpellyZombie
                 if (_bones[i] == null) continue;
                 Vector2 p = ToPane(rect, _bones[i].position);
                 if (!rect.Contains(p)) continue;
-                var c = i == _grabbed ? Color.yellow : BoneColor(_bones[i].name);
+                var c = i == _grabbed ? Color.yellow : PreviewPane.BoneColor(_bones[i].name);
                 EditorGUI.DrawRect(new Rect(p.x - 5f, p.y - 5f, 10f, 10f), c);
                 // a thin dark edge so a pale one still reads against the body
                 Handles.color = new Color(0f, 0f, 0f, 0.6f);
@@ -343,33 +345,6 @@ namespace SpellyZombie
                     new Rect(p.x - 5f, p.y - 5f, 10f, 10f), Color.clear, Handles.color);
             }
             Handles.EndGUI();
-        }
-
-        /// ★ WHICH BONE IS WHICH. The rig names them by the direction they
-        /// push - D_Up, D_Dn, D_Xp, D_Xn, D_Yp, D_Yn - so the colour comes off
-        /// the name, the same way the scene gizmo colours its arrows: the
-        /// positive end wears the full axis colour, the negative end a pale
-        /// version of it, and anything unnamed is grey.
-        ///
-        /// Without this every bone was the same green, and dragging the wrong
-        /// one quietly turned a funnel inside out.
-        static Color BoneColor(string name)
-        {
-            Color Pale(Color c) => Color.Lerp(c, Color.white, 0.55f);
-            var up = new Color(0.35f, 1f, 0.35f);
-            var right = new Color(1f, 0.35f, 0.35f);
-            var fwd = new Color(0.4f, 0.55f, 1f);
-
-            switch (name)
-            {
-                case "D_Up": return up;          // natural up
-                case "D_Dn": return Pale(up);    // its opposite
-                case "D_Xp": return right;       // natural right
-                case "D_Xn": return Pale(right);
-                case "D_Yp": return fwd;         // natural forward (the rig's Y is the blob's depth)
-                case "D_Yn": return Pale(fwd);
-                default:     return new Color(0.6f, 0.6f, 0.6f);
-            }
         }
 
         int NearestBone(Rect rect, Vector2 mouse)

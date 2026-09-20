@@ -217,6 +217,12 @@ namespace SpellyZombie
                 if (board != null) board.CarriedWeight = 0f; // arms free again
                 DrawingWorld.Instance?.LogEvent("what you held is gone, merged or spent");
             }
+            // the lobby hides a broken prop instead of destroying it: the hand opens all the same
+            else if (_heldBody != null && LobbyRespawn.IsHidden(_heldBody))
+            {
+                ClearBodyHold();
+                DrawingWorld.Instance?.LogEvent("what you held is gone, merged or spent");
+            }
 
             bool holding = _heldParticle != null || _heldBody != null || _remoteHolding;
             LocalHolding = holding;
@@ -519,6 +525,7 @@ namespace SpellyZombie
                 || (glm != null && glm.OwnerId == ownerId); // YOUR OWN golem lifts easily
             if (aimedCollider.GetComponentInParent<SimpleFPSController>() != null
                 || (!liftableCreature && aimedCollider.GetComponentInParent<Creature>() != null)
+                || aimedCollider.GetComponentInParent<BossMark>() != null // a boss is never carried (his call)
                 || aimedCollider.GetComponentInParent<HeldWeapon>() != null)
                 return false;
 
@@ -552,7 +559,10 @@ namespace SpellyZombie
                 DrawingWorld.Instance?.LogEvent("the ink only pours. drink it at the pot");
                 return null;
             }
+            // a disabled collider (a build boxes an unreadable mesh and switches the mesh collider off)
+            // reports no body at all: ask the hierarchy, as physics would for an enabled one
             var hitRb = aimedCollider.attachedRigidbody;
+            if (hitRb == null) hitRb = aimedCollider.GetComponentInParent<Rigidbody>();
 
             // never a wizard, creature or held weapon - refuse BEFORE any
             // physics change. Zombies are liftable (draw on one, lift it like
@@ -564,6 +574,7 @@ namespace SpellyZombie
 
             if (aimedCollider.GetComponentInParent<SimpleFPSController>() != null
                 || (!liftableCreature && aimedCollider.GetComponentInParent<Creature>() != null)
+                || aimedCollider.GetComponentInParent<BossMark>() != null // a boss is never carried (his call)
                 || aimedCollider.GetComponentInParent<HeldWeapon>() != null)
             {
                 DrawingWorld.Instance?.LogEvent($"you can't lift {aimedCollider.name}");
@@ -638,11 +649,18 @@ namespace SpellyZombie
                 // same legality pass as Liftable: a concave mesh collider
                 // would make the freed prop fall through the world
                 Liftable.MakePhysicsLegal(host);
-                freed = host.gameObject.AddComponent<Rigidbody>();
-                freed.mass = Mathf.Max(0.2f, InkMark.EstimateMass(host));
+                // a body it already has is the body: adding a second one returns nothing
+                freed = host.GetComponent<Rigidbody>();
+                if (freed == null)
+                {
+                    freed = host.gameObject.AddComponent<Rigidbody>();
+                    freed.mass = Mathf.Max(0.2f, InkMark.EstimateMass(host));
+                }
+                freed.isKinematic = false;
                 freed.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
                 freed.interpolation = RigidbodyInterpolation.Interpolate;
             }
+            if (freed == null) return null;
             DrawingWorld.Instance?.LogEvent("it tears free of the ground");
             WakeRiders(freed);
             return freed;

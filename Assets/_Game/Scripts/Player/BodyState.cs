@@ -172,6 +172,10 @@ namespace SpellyZombie
         void Awake()
         {
             _pilot = GetComponent<SimpleFPSController>();
+            // only a player's board ever draws on the screen: the veil gets its own component,
+            // because Unity runs OnGUI several times a frame on EVERY component that has one,
+            // and golems and zombies carry boards by the hundred
+            if (_pilot != null) gameObject.AddComponent<BodyVeil>().Board = this;
             _creature = GetComponent<Creature>();
             _el = GetComponentInParent<Element>();
             _fx = GetComponent<BodyFx>();
@@ -530,7 +534,7 @@ namespace SpellyZombie
         /// A ghost is not affected by biomes: the body's readings stay on the body.
         bool Ghosting => (_ghost != null || (_ghost = GetComponent<GhostState>()) != null) && _ghost.IsGhost;
 
-        void OnGUI()
+        internal void DrawVeil()
         {
             if (_pilot == null || !_pilot.IsLocalViewer || Ghosting) return;
             if (_white == null)
@@ -566,6 +570,19 @@ namespace SpellyZombie
             GUI.color = c;
             GUI.DrawTexture(r, tex != null ? tex : _white);
             GUI.color = prev;
+        }
+    }
+
+    /// The darkness, glare, frost and burn over a player's screen (BodyState.DrawVeil).
+    class BodyVeil : MonoBehaviour
+    {
+        public BodyState Board;
+
+        void Awake() => useGUILayout = false; // it only paints: no layout pass
+
+        void OnGUI()
+        {
+            if (Board != null && Event.current.type == EventType.Repaint) Board.DrawVeil();
         }
     }
 }

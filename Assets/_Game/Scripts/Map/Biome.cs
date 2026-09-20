@@ -166,7 +166,7 @@ namespace SpellyZombie
         [Tooltip("CAPACITY. How clear-headed things are here. LOW IS A CAPACITY, NOT A CURSE: a mindless place drags a sharp mind down, but a clever one never makes a stupid thing clever. 25 = ordinary, 100 = a genius place.")]
         [Range(0, 100)] public int IntCap = 25;
 
-        [Tooltip("How brave everything living here becomes, both ways, settling in over a few seconds. 0 = terrified (your eyes dart off anything you look at), 25 = ordinary, 50 = bold (your gaze locks onto the nearest thing; zombies stop fleeing), 100 = fearless beyond sense. Light adds to it: +12 light is about +6 courage, -20 light about -10.")]
+        [Tooltip("How brave everything living here becomes, both ways, settling in over a few seconds. 0 = terrified (paranoid: your eyes turn away from one thing after another), 25 = ordinary, 50 = bold (your gaze locks onto the nearest thing; zombies stop fleeing), 100 = fearless beyond sense. Light adds to it: +12 light is about +6 courage, -20 light about -10.")]
         [Range(0, 100)] public int CourageCap = 25;
 
         [Tooltip("CAPACITY. How many copies of itself a thing naturally has here. 0 = ordinary. Anything above needs a body that can HAVE clones, or it gets none.")]
@@ -186,11 +186,15 @@ namespace SpellyZombie
         public MatterPhase NaturalPhase => SpellPayload.PhaseOf(SpellPayload.FromHuman(4, StateOffset));
 
         [Header("SPAWNING")]
-        [Tooltip("Mark ONE biome as the wizards' home - they all start here, scattered inside it. " +
+        [Tooltip("Mark ONE biome as the wizards' home - they all start here, scattered around its middle. " +
                  "Every UNMARKED biome is acolyte ground: they spawn randomly across those, so they " +
                  "usually land apart but may share one. Mark none and a biome is chosen for you; " +
                  "mark them all and one is released back to the acolytes.")]
         public bool WizardSpawn;
+        [Tooltip("Wizards start near the middle of their biome. 0.25 = inside the middle quarter of its width and depth; " +
+                 "when a crowd or a cluttered middle leaves no room, the area opens out to the whole box. 1 = anywhere in the box. " +
+                 "Read only on the biome the wizards spawn in.")]
+        [Range(0.05f, 1f)] public float WizardSpawnSpread = 0.25f;
 
         [Header("STRENGTH (strength IS health)")]
         [Tooltip("CAPACITY. How strong things naturally get here. Everything is pulled toward it, capped by " +

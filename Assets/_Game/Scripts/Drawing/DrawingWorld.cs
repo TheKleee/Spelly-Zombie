@@ -118,6 +118,12 @@ namespace SpellyZombie
             // and the preview all use it
             var cluster = new List<Stroke>();
             RuneGlyph.Precognize(s, Strokes, cluster); // recognition at pen-up; seal close reads the cache
+            if (s.OwnerId == Grimoire.LocalPlayerId && cluster.Count > 0)
+            {
+                // your own hand read as a rune: the first steps and the seal page hear it
+                var (rune, score) = RuneGlyph.ReadVerdict(cluster, s.OwnerId);
+                if (rune != RuneType.None && score >= DrawingConfig.MinRuneScore) FirstSteps.RuneDrawn(cluster);
+            }
 
             NetSync.OnLocalStrokeFinished(s, cluster); // co-op: friends see your ink
 
@@ -899,9 +905,11 @@ namespace SpellyZombie
             ActiveSeals.Add(seal);
             if (key != null) _castKeys.Add(key);
             LogEvent($"SEAL #{seal.Id} ACTIVATED ({how}): {seal.Describe()}");
+            Juice.Sound(Sfx.SealComplete, seal.PlaneOrigin);
             NetSync.PushSealLook(seal, NetSync.InkLookSealed); // gold ring and rune tints on every machine
             if (seal.OwnerId == Grimoire.LocalPlayerId)
             {
+                FirstSteps.SealDrawn();
                 bool body = true;
                 foreach (var e in loop)
                     if (e.Stroke == null || !e.Stroke.Persistent) { body = false; break; }
@@ -921,6 +929,7 @@ namespace SpellyZombie
             var surface = ResolveSealSurface(seal);
             var spell = Spell.Create(seal, surface);
             if (spell != null) seal.AttachSpell(spell);
+            CoCast.Fired(seal.OwnerId, seal.CoCasters, spell == null); // everyone whose ink made it shares its kills
 
             NetSync.PushSeal(seal); // clients see the gold ring (netcode §2)
 
@@ -1293,6 +1302,7 @@ namespace SpellyZombie
                         Destroy(n.gameObject);
                         ErasedTotal++;
                         rubbed = true;
+                        SfxLoops.Rub(n.transform.position);
                     }
                     else if (d2 < radius * 4f * (radius * 4f))
                     {
@@ -1318,7 +1328,10 @@ namespace SpellyZombie
         public static float LastEraseMissDist = float.MaxValue;
         public static float LastEraseMissTime = -999f;
 
-        public void LogEvent(string msg) => Debug.Log($"[SpellyZombie] {msg}");
+        public void LogEvent(string msg)
+        {
+            using (PerfMarkers.Logs.Auto()) Debug.Log($"[SpellyZombie] {msg}");
+        }
 
         void OnGUI()
         {

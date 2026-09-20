@@ -52,34 +52,19 @@ namespace SpellyZombie
         {
             if (relay && NetSync.WantsFxRelay)
                 NetSync.PushFx(FxLibrary.FxPuff, at, Vector3.zero, c, 0, n, 0);
+            // off the shelf (MotePool): a wound puffs, and an army is wounded hundreds of times a second
+            var look = MatterFX.Get(c, MoteShade.Transparent);
             for (int i = 0; i < n; i++)
-            {
-                var puff = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                puff.name = "Puff";
-                Object.Destroy(puff.GetComponent<Collider>());
-                puff.transform.position = at + Random.insideUnitSphere * 0.15f;
-                puff.transform.localScale = Vector3.one * Random.Range(0.08f, 0.18f);
-                puff.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(c, MoteShade.Transparent);
-                var rb = puff.AddComponent<Rigidbody>();
-                rb.useGravity = false;
-                rb.linearVelocity = Vector3.up * Random.Range(0.6f, 1.4f) + Random.insideUnitSphere * 0.35f;
-                Object.Destroy(puff, 0.7f);
-            }
+                MotePool.Spawn(at + Random.insideUnitSphere * 0.15f, Random.Range(0.08f, 0.18f), look,
+                    Vector3.up * Random.Range(0.6f, 1.4f) + Random.insideUnitSphere * 0.35f, false, 0.7f);
         }
 
-        /// Spawns one fire mote sphere.
-        public static GameObject FireMote(Vector3 at, float scale, float life)
+        /// One fire mote sphere, flying at `velocity`; `falls` = gravity pulls it.
+        public static void FireMote(Vector3 at, float scale, float life, Vector3 velocity, bool falls)
         {
-            var f = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            f.name = "Fire";
-            Object.Destroy(f.GetComponent<Collider>());
-            f.transform.position = at;
-            f.transform.localScale = Vector3.one * scale;
-            f.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(
+            MotePool.Spawn(at, scale, MatterFX.Get(
                 Color.Lerp(new Color(1f, 0.75f, 0.15f), new Color(1f, 0.25f, 0.05f), Random.value),
-                MoteShade.Additive);
-            Object.Destroy(f, life);
-            return f;
+                MoteShade.Additive), velocity, falls, life);
         }
 
         /// A gravity-free fling of fire motes - the shared bloom look.
@@ -88,13 +73,8 @@ namespace SpellyZombie
             if (relay && NetSync.WantsFxRelay)
                 NetSync.PushFx(FxLibrary.FxFireBloom, at, new Vector3(upKick, 0f, 0f), Color.white, 0, count, 0, speed);
             for (int i = 0; i < count; i++)
-            {
-                var f = FireMote(at + Random.insideUnitSphere * 0.4f,
-                    Random.Range(0.15f, 0.3f), Random.Range(0.4f, 0.9f));
-                var rb = f.AddComponent<Rigidbody>();
-                rb.useGravity = false;
-                rb.linearVelocity = Random.onUnitSphere * speed + Vector3.up * upKick;
-            }
+                FireMote(at + Random.insideUnitSphere * 0.4f, Random.Range(0.15f, 0.3f), Random.Range(0.4f, 0.9f),
+                    Random.onUnitSphere * speed + Vector3.up * upKick, false);
         }
 
         /// A lamp left on what a Light mote hit; the host ships it (FxMsg).
@@ -441,7 +421,7 @@ namespace SpellyZombie
         float _bornRadius;
 
         protected override bool AffectsPlayer(SimpleFPSController p) =>
-            !(SparesOwnTeam && Team.HasValue && (Sides.SideOfThing(p.gameObject) == Team
+            !(SparesOwnTeam && Team.HasValue && (Sides.Allied(Sides.SideOfThing(p.gameObject), Team)
                 // a wizard under the Life curse holds an acolyte's book and its immunity
                 || (Team == Side.Acolyte && p.IsLocalViewer
                     && Grimoires.HeldBy(Grimoire.LocalPlayerId) == BookKind.Acolyte)));
@@ -467,7 +447,7 @@ namespace SpellyZombie
                 if (av.Downed) return;
                 if (Wearer != null && av.transform == Wearer) return;
                 if (SparesOwnTeam && Team.HasValue
-                    && (Sides.Of(NetSync.OwnerIdOf(av.Id)) == Team
+                    && (Sides.Allied(Sides.Of(NetSync.OwnerIdOf(av.Id)), Team)
                         || (Team == Side.Acolyte && Grimoires.HeldBy(NetSync.OwnerIdOf(av.Id)) == BookKind.Acolyte))) return;
                 Cling(av.transform, dt);
                 return;
@@ -485,7 +465,7 @@ namespace SpellyZombie
             // the same team rule, asked of a zombie or a golem rather than a
             // player - an acolyte's gas must not eat the acolytes' own dead
             if (SparesOwnTeam && Team.HasValue
-                && Sides.SideOfThing(el.gameObject) == Team) return;
+                && Sides.Allied(Sides.SideOfThing(el.gameObject), Team)) return;
             el.TakeDamage(Bite * dt, "the corruption", Owner);
         }
 

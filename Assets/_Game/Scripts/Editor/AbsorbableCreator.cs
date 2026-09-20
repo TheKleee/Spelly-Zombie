@@ -48,11 +48,19 @@ namespace SpellyZombie
         {
             _book = SpellBook.Load();
             _preview.OnNeedsRepaint = Repaint;
-            if (_blob == null) _blob = CollectionManager.ParticleBlob; // his authored slot
+            TakeCollectionBlob();
             RefreshSaved();
         }
         void OnDisable() => _preview.Dispose();
-        void OnFocus() => RefreshSaved();
+        void OnFocus() { TakeCollectionBlob(); RefreshSaved(); }
+
+        /// His authored blob, read only when the open scene has a Collection
+        /// Manager. The window reloads on every compile, often over the Menu
+        /// scene, which has none; the Blob field and the save dialog cover that.
+        void TakeCollectionBlob()
+        {
+            if (_blob == null && CollectionManager.I != null) _blob = CollectionManager.ParticleBlob;
+        }
 
         void RefreshSaved()
         {

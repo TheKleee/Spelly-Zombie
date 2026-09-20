@@ -161,7 +161,7 @@ namespace SpellyZombie
             if (_fill == null) return;
 
             // match maps only; the pot object itself still works everywhere
-            bool hidden = ActiveScene.Name == "Lobby" || ActiveScene.Name == "Menu";
+            bool hidden = ActiveScene.Name == "Lobby" || ActiveScene.Name == "Menu" || MapCreator.Active || PhotoBooth.Active;
             if (_ui != null && _ui.gameObject.activeSelf == hidden) _ui.gameObject.SetActive(!hidden);
             if (hidden) return;
 

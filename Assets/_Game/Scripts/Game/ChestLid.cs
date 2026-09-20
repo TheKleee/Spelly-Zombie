@@ -132,7 +132,7 @@ namespace SpellyZombie
             }
             else if (Holds == Holding.Rune && Inside != null && _rune == null)
                 _rune = Place(Inside.transform);
-            Juice.Chime(transform.position);
+            if (!Juice.Sound(Sfx.Chest, transform.position)) Juice.Chime(transform.position);
             if (FxLibrary.I != null && Lid != null) FxLibrary.Spawn(FxLibrary.I.Poof, Lid.position);
         }
 

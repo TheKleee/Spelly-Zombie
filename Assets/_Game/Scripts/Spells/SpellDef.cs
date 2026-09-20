@@ -5,9 +5,14 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// What body a spell wears. The editor previews it as this and lets you
-    /// move its bones there.
+    /// What body a thing wears: a spell is a particle blob, a creature a
+    /// zombie or a golem. The creators preview it as this.
     public enum SpellBody { Particle, Zombie, Golem }
+
+    /// ★ HOW A CREATURE LIVES (the Creature Creator). Roams is each body's own
+    /// way: a zombie still runs from wands, a golem wanders and fights what it
+    /// sees. Saved as a number, so new ones only ever go at the end.
+    public enum CreatureBehaviour { Roams, Hunts, Guards, Skittish }
 
     /// ★ WHICH BOOK A SPELL LIVES IN. Not which TEAM - which GRIMOIRE. The
     /// two come apart on purpose: an acolyte's curse swaps a wizard's book for
@@ -16,7 +21,8 @@ namespace SpellyZombie
     /// book in your hands, never to your side.
     public enum BookKind { Wizard, Acolyte }
 
-    /// ★ A SPELL. What the player draws, sees and throws.
+    /// ★ A SPELL. What the player draws, sees and throws, or, when it names a
+    /// creature, what a seal of its runes summons.
     ///
     /// It is NOT the area effect it carries - that is an Aoe, authored in its
     /// own window, and this only names one. Two objects, two editors, because
@@ -26,7 +32,6 @@ namespace SpellyZombie
     public class SpellDef
     {
         public string Name = "New Spell";
-        public SpellBody Body = SpellBody.Particle;
 
         /// The book this spell is in. A wizard holding a wizard book sees
         /// wizard spells; cursed into an acolyte book, they see these instead.
@@ -43,30 +48,27 @@ namespace SpellyZombie
         /// stands up.
         public int[] Axis = new int[SpellPayload.AxisCount];
 
-        /// ★ WHICH RUNES SUMMON A BODY. Particles have no such list - they are
-        /// regions, reached however the numbers get there. A body is different:
-        /// Solid raises a melee zombie, Liquid a ranged one, and the demon
-        /// answers to every rune at once. Empty for a particle.
+        /// ★ WHICH RUNES A SUMMONING SPELL NEEDS. Particles have no such list -
+        /// they are regions, reached however the numbers get there. A summon is
+        /// different: Solid raises a melee zombie, Liquid a ranged one, and the
+        /// demon answers to every rune at once. Empty for a particle.
         public List<RuneType> Runes = new List<RuneType>();
 
-        /// ★ WHAT A BODY CAN DO. Zombies have their own: charge, goo. The demon
-        /// has every wizard spell as an ability on top. Empty for a particle,
-        /// which does not act - it is.
+        /// ★ THE CREATURE A SUMMONING SPELL RAISES (the Creature Creator), by
+        /// name. Empty = a spell that is its numbers.
+        public string Creature = "";
+
+        public bool IsSummon => !string.IsNullOrEmpty(Creature);
+
+        // Before creatures were their own (Sep 17) a summoning spell carried its
+        // creature in these. SpellBook.Repair moves them into a CreatureDef once;
+        // nothing else reads them.
+        public SpellBody Body = SpellBody.Particle;
         public List<string> Abilities = new List<string>();
-
-        /// ★ WHICH ANIMATION A MOVE PERFORMS. A body move is an engine verb -
-        /// charge is code - but its face is authorable: each move can name one
-        /// clip to play at its moment. Empty = the body's built-in tell.
         public List<MoveAnim> MoveAnims = new List<MoveAnim>();
-
-        public AnimationClip MoveClip(string move)
-        {
-            foreach (var m in MoveAnims)
-                if (m.Move == move) return m.Clip;
-            return null;
-        }
-
-        public bool IsBody => Body != SpellBody.Particle;
+        public CreatureBehaviour Behaviour = CreatureBehaviour.Roams;
+        public float GuardRange = 10f;
+        public bool Boss;
 
         /// ★ PER AXIS: is this one a biome? A checked axis stops being movable
         /// by biomes or elements and can only be pushed by other spells; drop
@@ -132,13 +134,30 @@ namespace SpellyZombie
             }
         }
 
+        /// What a body looks like before any spell shades it - the same
+        /// greens the game paints, so a creator and the game agree.
+        public static Color BaseSkin(SpellBody b) => b == SpellBody.Zombie
+            ? DrawingConfig.SummonMeleeColor
+            : new Color(0.55f, 0.55f, 0.5f);   // golem: stone
+
+        public static GameObject BodyPrefab(SpellBody b) => b switch
+        {
+            SpellBody.Zombie => CollectionManager.ZombieBody,
+            SpellBody.Golem => CollectionManager.Golem,
+            _ => CollectionManager.ParticleBlob,
+        };
+
+        /// The colour a creator's preview wears: a particle is nothing until
+        /// its numbers colour it.
+        public Color PreviewTint() => Payload.Tint();
+
         /// ★ ARE THESE NUMBERS THIS SPELL? Every axis it names has to be on the
         /// right side and far enough out. Compared in UNITS, or temperature's
         /// degrees would clear any threshold on sight while light had to earn
         /// it - and then a row's "+1" would mean two different sizes.
         public bool Meets(SpellPayload p)
         {
-            if (IsBody) return false;   // a body is summoned, never become
+            if (IsSummon) return false;   // a creature is summoned, never become
             bool said = false;
             for (int i = 0; i < SpellPayload.AxisCount; i++)
             {
@@ -192,6 +211,27 @@ namespace SpellyZombie
             }
             return n == 0 ? 1f : sum / n;
         }
+    }
+
+    /// ★ A RUNE. Its glyph lives in the recognizer's library under Id, its
+    /// page png in Book Pages under its name; here: what drawing it pushes,
+    /// its name and its emoji per side. 1-12 are the built-in twelve, made
+    /// runes count on from 13. The Rune Creator edits these; runes only cast,
+    /// what the numbers become is the spells' business.
+    [Serializable]
+    public class RuneDef
+    {
+        public int Id;
+        public string Name = "New Rune";
+        public string Emoji = "";
+        public string AcolyteEmoji = "";
+        /// What drawing it pushes, in human units per axis (degrees, percent, HP).
+        public int[] Axis = new int[SpellPayload.AxisCount];
+
+        public RuneType Type => (RuneType)Id;
+        public bool BuiltIn => Id >= 1 && Id <= 12;
+        public string EmojiFor(bool acolyte) =>
+            acolyte && !string.IsNullOrEmpty(AcolyteEmoji) ? AcolyteEmoji : Emoji;
     }
 
     /// ★ A SHAPE IS DATA. One bone of a saved pose: where it sits, matched by
@@ -291,15 +331,23 @@ namespace SpellyZombie
         /// carry it; resolved back to the object on load.
         public string PrefabGuid = "";
         public float TrailWidth, TrailSeconds;
+        /// An area made in the game's Map Creator: the name of a look in the
+        /// Collection Manager's Area Looks, since it cannot point at an asset.
+        public string Look = "";
 
         [NonSerialized] GameObject _prefab;
         [NonSerialized] bool _warned;
+
+        /// The look is found again on the next read (its Look changed).
+        public void ForgetPrefab() { _prefab = null; _warned = false; }
+
         public GameObject Prefab
         {
             get
             {
                 // the authored list resolves in builds and on clients; the GUID only in the editor
                 if (_prefab == null) _prefab = CollectionManager.AreaLookFor(Name);
+                if (_prefab == null && !string.IsNullOrEmpty(Look)) _prefab = CollectionManager.AreaLookFor(Look);
 #if UNITY_EDITOR
                 if (_prefab == null && !string.IsNullOrEmpty(PrefabGuid))
                 {
@@ -342,8 +390,10 @@ namespace SpellyZombie
     public class SpellBook
     {
         public List<SpellDef> spells = new List<SpellDef>();
+        public List<CreatureDef> creatures = new List<CreatureDef>();
         public List<AoeDef> aoes = new List<AoeDef>();
         public List<ShapeDef> shapes = new List<ShapeDef>();
+        public List<RuneDef> runes = new List<RuneDef>();
 
         public const string FileName = "sz_spellbook.json";
         public static string Path_ =>
@@ -500,7 +550,7 @@ namespace SpellyZombie
                 b.Repair();
                 _loaded = b;
                 Debug.Log($"[SpellyZombie] adopted the host's spellbook: {b.spells.Count} " +
-                          $"spells, {b.aoes.Count} areas, {b.shapes.Count} shapes.");
+                          $"spells, {b.creatures.Count} creatures, {b.aoes.Count} areas, {b.shapes.Count} shapes.");
             }
             catch (Exception ex)
             {
@@ -514,10 +564,14 @@ namespace SpellyZombie
         public void Repair()
         {
             if (shapes == null) shapes = new List<ShapeDef>();
+            if (creatures == null) creatures = new List<CreatureDef>();
+            MoveBodiesOut();
+            foreach (var c in creatures) c.Repair();
             foreach (var s in spells)
             {
                 s.Axis = Fit(s.Axis);
-                if (s.MoveAnims == null) s.MoveAnims = new List<MoveAnim>();
+                if (s.Runes == null) s.Runes = new List<RuneType>();
+                if (s.Creature == null) s.Creature = "";
                 if (s.BiomeAxis == null || s.BiomeAxis.Length != SpellPayload.AxisCount)
                 {
                     var b = new bool[SpellPayload.AxisCount];
@@ -526,9 +580,124 @@ namespace SpellyZombie
                     s.BiomeAxis = b;
                 }
             }
+            EnsureRunes();
         }
 
-        static int[] Fit(int[] src)
+        /// ★ BODIES BECAME CREATURES (Sep 17). A book from before carries each
+        /// creature inside the spell that summoned it; it moves out once under
+        /// the spell's name, and the spell summons it. A body no rune summoned
+        /// was only ever a creature, so its spell goes.
+        void MoveBodiesOut()
+        {
+            for (int i = spells.Count - 1; i >= 0; i--)
+            {
+                var s = spells[i];
+                if (s == null || s.Body == SpellBody.Particle) continue;
+                if (Creature(s.Name) == null)
+                    creatures.Add(new CreatureDef
+                    {
+                        Name = s.Name, Body = s.Body, Axis = s.Axis,
+                        Abilities = s.Abilities ?? new List<string>(),
+                        MoveAnims = s.MoveAnims ?? new List<MoveAnim>(),
+                        Aoe = s.Aoe ?? "", Skin = s.Skin,
+                        Behaviour = s.Behaviour, GuardRange = s.GuardRange, Boss = s.Boss,
+                    });
+                if (s.Runes == null || s.Runes.Count == 0) { spells.RemoveAt(i); continue; }
+                s.Creature = s.Name;
+                s.Body = SpellBody.Particle;
+                s.Axis = new int[SpellPayload.AxisCount];
+                s.BiomeAxis = new bool[SpellPayload.AxisCount];
+                s.Abilities = new List<string>();
+                s.MoveAnims = new List<MoveAnim>();
+                s.Aoe = "";
+                s.Shape = "";
+                s.Skin = null;
+                s.Behaviour = CreatureBehaviour.Roams;
+                s.GuardRange = 10f;
+                s.Boss = false;
+            }
+        }
+
+        /// The rune with this id, or null.
+        public RuneDef Rune(RuneType t)
+        {
+            if (runes == null) return null;
+            foreach (var r in runes) if (r.Id == (int)t) return r;
+            return null;
+        }
+
+        /// ★ THE BOOK IS THE SOURCE (his model): a recognized rune seeds
+        /// exactly what its def pushes, so rebalancing the book rebalances the
+        /// runes. No def = the built-in push, 25 flat on its axis.
+        public SpellPayload SeedOf(RuneType rune)
+        {
+            var seed = new SpellPayload();
+            var def = Rune(rune);
+            if (def != null)
+            {
+                for (int i = 0; i < SpellPayload.AxisCount; i++)
+                    if (def.Axis[i] != 0) seed[i] = SpellPayload.FromHuman(i, def.Axis[i]);
+                return seed;
+            }
+            var axes = SpellPayload.Of(rune, 1f);
+            for (int i = 0; i < SpellPayload.AxisCount; i++)
+                if (Mathf.Abs(axes[i]) > 0.001f)
+                    seed[i] = SpellPayload.FromHuman(i, 25f * Mathf.Sign(axes[i]));
+            return seed;
+        }
+
+        /// ★ THE TWELVE ALWAYS EXIST. A book from before runes were data gets
+        /// them here: the push copied from the bare spell row each seeded by
+        /// name (else the built-in), the emoji the built-in ones.
+        public void EnsureRunes()
+        {
+            if (runes == null) runes = new List<RuneDef>();
+            for (int id = 1; id <= 12; id++)
+            {
+                var t = (RuneType)id;
+                if (Rune(t) != null) continue;
+                var def = new RuneDef
+                {
+                    Id = id, Name = LegacyBareName(t),
+                    Emoji = RuneLibrary.BuiltInIcon(t), AcolyteEmoji = RuneLibrary.BuiltInAcolyteIcon(t),
+                };
+                var bare = Spell(LegacyBareName(t));
+                if (bare != null && !bare.IsSummon)
+                    for (int i = 0; i < SpellPayload.AxisCount; i++) def.Axis[i] = bare.Axis[i];
+                else
+                {
+                    var axes = SpellPayload.Of(t, 1f);
+                    for (int i = 0; i < SpellPayload.AxisCount; i++)
+                        if (Mathf.Abs(axes[i]) > 0.001f) def.Axis[i] = Mathf.RoundToInt(25f * Mathf.Sign(axes[i]));
+                }
+                runes.Add(def);
+            }
+            foreach (var r in runes) r.Axis = Fit(r.Axis);
+        }
+
+        /// A made rune: the next free id past the twelve.
+        public RuneDef NewRune()
+        {
+            int id = 13;
+            foreach (var r in runes) id = Mathf.Max(id, r.Id + 1);
+            var def = new RuneDef { Id = id };
+            runes.Add(def);
+            return def;
+        }
+
+        /// The names the bare spells carried before runes were data.
+        public static string LegacyBareName(RuneType r) => r switch
+        {
+            RuneType.HeatUp => "Heat", RuneType.HeatDown => "Chill",
+            RuneType.LuminanceUp => "Light", RuneType.LuminanceDown => "Dark",
+            RuneType.DensityUp => "Compress", RuneType.DensityDown => "Spread",
+            RuneType.StickyUp => "Sticky", RuneType.StickyDown => "Slick",
+            RuneType.StateSolid => "Solid", RuneType.StateLiquid => "Liquid",
+            RuneType.Attract => "Attract", RuneType.Repel => "Repel",
+            _ => r.ToString(),
+        };
+
+        internal static int[] Fit(int[] src)
         {
             if (src != null && src.Length == SpellPayload.AxisCount) return src;
             var f = new int[SpellPayload.AxisCount];
@@ -555,6 +724,24 @@ namespace SpellyZombie
 
         public SpellDef At(byte index) =>
             index < spells.Count ? spells[index] : null;
+
+        /// A creature's place in the book, the same way: a byte over the wire. 255 = none.
+        public byte CreatureIndex(CreatureDef creature)
+        {
+            if (creature == null) return 255;
+            int i = creatures.IndexOf(creature);
+            return i >= 0 && i < 255 ? (byte)i : (byte)255;
+        }
+
+        public CreatureDef CreatureAt(byte index) =>
+            index < creatures.Count ? creatures[index] : null;
+
+        public CreatureDef Creature(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            foreach (var c in creatures) if (c.Name == name) return c;
+            return null;
+        }
 
         public ShapeDef Shape(string name)
         {
@@ -588,17 +775,8 @@ namespace SpellyZombie
                     && b.spells[i].Meets(p)) into.Add(b.spells[i]);
         }
 
-        /// The bodies a rune summons. Several can answer one rune - a demon
-        /// answers all of them - and the caller raises each.
-        public void BodiesFor(RuneType rune, List<SpellDef> into)
-        {
-            into.Clear();
-            foreach (var sp in spells)
-                if (sp.IsBody && sp.Runes.Contains(rune) && MapSpells.Allows(sp)) into.Add(sp);
-        }
-
-        /// ★ WHICH BODIES THIS SEAL RAISES, counting runes. A body that asks
-        /// for two Liquids needs two in the seal; one that asks for one is
+        /// ★ WHICH SUMMONING SPELL THIS SEAL CASTS, counting runes. One that
+        /// asks for two Liquids needs two in the seal; one that asks for one is
         /// satisfied by one or more. The most demanding match wins, so a seal
         /// with two Liquids raises the bigger zombie rather than two small
         /// ones - and a demon, asking for all twelve, needs all twelve.
@@ -607,7 +785,7 @@ namespace SpellyZombie
             SpellDef best = null; int bestNeed = 0;
             foreach (var sp in spells)
             {
-                if (!sp.IsBody || sp.Runes.Count == 0 || sp.Book != book) continue;
+                if (!sp.IsSummon || sp.Runes.Count == 0 || sp.Book != book) continue;
                 if (!MapSpells.Allows(sp)) continue;
                 if (!Covers(sealRunes, sp.Runes)) continue;
                 if (sp.Runes.Count > bestNeed) { best = sp; bestNeed = sp.Runes.Count; }

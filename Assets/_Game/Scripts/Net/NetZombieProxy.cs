@@ -150,6 +150,7 @@ namespace SpellyZombie
             dmg.Rename(id);            // the HOST's name for it, so hits find it
             dmg.Health = 100000f;      // the HOST owns real health
             dmg.RemoveOnDeath = false;  // never dies locally - snapshots decide
+            BodyFx.DressCreature(go).HurtOverride = 0f; // blood by the snapshot's Hp, eyes by StateMsg
 
             // the weight you can see: StateMsg feeds the burden, the sag reads it
             if (go.GetComponent<WeightSag>() == null) go.AddComponent<WeightSag>();
@@ -187,10 +188,11 @@ namespace SpellyZombie
         StateView _view;
         Color32 _tint;
         byte _look = 254;
-        SpellDef _worn;
+        CreatureDef _worn;
 
-        /// The tint, the spell look and the phase the snapshot carries; a
-        /// change (demon form, biome drift) re-paints in place.
+        /// The tint, the creature and the phase the snapshot carries; a change
+        /// (demon form, biome drift) re-paints in place. Its height and width
+        /// came with the host's scale; head, arms and legs go on here.
         public void Wear(Color32 tint, byte look, float stateT)
         {
             if (_view == null) return;
@@ -199,8 +201,9 @@ namespace SpellyZombie
             if (look != _look)
             {
                 _look = look;
-                _worn = SpellBook.Live.At(look);
+                _worn = SpellBook.Live.CreatureAt(look);
                 _view.Look = _worn != null ? _worn.Skin : null;
+                CreatureLook.Shape(gameObject, _worn);
                 moved = true;
             }
             _view.StateT = stateT;
@@ -268,6 +271,13 @@ namespace SpellyZombie
         float _flameIn;
         GameObject _iceShell;
 
+        /// The host's health as a byte of full (255 = whole): the blood drips read it.
+        public void SetHurt(byte hp)
+        {
+            var fx = GetComponent<BodyFx>();
+            if (fx != null) fx.HurtOverride = 1f - hp / 255f;
+        }
+
         public void SetCondition(byte bits)
         {
             _burning = (bits & 1) != 0;
@@ -306,8 +316,14 @@ namespace SpellyZombie
         public void Mumble(string text, float seconds)
         {
             if (_mumble == null) _mumble = ZombieBrain.BuildMumbleText(transform);
-            _mumble.text = text ?? "";
+            text = text ?? "";
+            // by the character itself: a culture-aware StartsWith ignores a zero-width space and says yes to everything
+            bool voiced = !(text.Length > 0 && text[0] == ZombieBrain.Unvoiced[0]);
+            if (!voiced) text = text.Substring(1);
+            bool fresh = text != _mumble.text || Time.time > _mumbleUntil;
+            _mumble.text = text;
             _mumbleUntil = Time.time + seconds;
+            if (voiced && fresh) ZombieBrain.Voice(text, transform);
         }
 
         // the host's paint-freeze trance: the body holds still and the clip pauses

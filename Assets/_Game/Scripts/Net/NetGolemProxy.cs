@@ -79,6 +79,7 @@ namespace SpellyZombie
             dmg.Rename(id);            // the HOST's name for it, so hits find it
             dmg.Health = 100000f;      // the HOST owns real strength
             dmg.RemoveOnDeath = false;  // never dies locally - snapshots decide
+            BodyFx.DressCreature(go).HurtOverride = 0f; // blood by the snapshot's Hp, eyes by StateMsg
 
             // the weight you can see: StateMsg feeds the burden, the sag reads it
             if (go.GetComponent<WeightSag>() == null) go.AddComponent<WeightSag>();
@@ -95,9 +96,9 @@ namespace SpellyZombie
 
         StateView _view;
         byte _look = 254;
-        SpellDef _worn;
+        CreatureDef _worn;
 
-        /// The tint, the spell look and the phase the snapshot carries (Golem.Wear).
+        /// The tint, the creature and the phase the snapshot carries (Golem.Wear).
         public void Wear(Color skin, byte look, float stateT)
         {
             if (_view == null) return;
@@ -106,8 +107,9 @@ namespace SpellyZombie
             if (look != _look)
             {
                 _look = look;
-                _worn = SpellBook.Live.At(look);
+                _worn = SpellBook.Live.CreatureAt(look);
                 _view.Look = _worn != null ? _worn.Skin : null;
+                CreatureLook.Shape(gameObject, _worn);
                 moved = true;
             }
             _view.StateT = stateT;
@@ -159,6 +161,13 @@ namespace SpellyZombie
         float _flameIn;
         GameObject _iceShell;
 
+        /// The host's strength as a byte of full (255 = whole): the blood drips read it.
+        public void SetHurt(byte hp)
+        {
+            var fx = GetComponent<BodyFx>();
+            if (fx != null) fx.HurtOverride = 1f - hp / 255f;
+        }
+
         public void SetCondition(byte bits)
         {
             _burning = (bits & 1) != 0;
@@ -198,7 +207,9 @@ namespace SpellyZombie
                 transform.position = pos;
                 transform.rotation = rot;
             }
+            _feet.TickHeavy(transform.position, transform.localScale.y, false, Time.deltaTime);
         }
+        readonly Footfalls _feet = new Footfalls();
 
         /// Snapshot stopped listing it: the host says it came apart. Its burst
         /// and thud already arrived from the host (FxMsg), so nothing plays twice.

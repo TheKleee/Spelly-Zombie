@@ -1,10 +1,9 @@
 # Steam achievements
 
-Twenty-one achievements, wired in code on Sep 4 2026. The game calls Steam by
-API name only; the names, descriptions and icons live on the Steamworks page.
-Nothing unlocks until you create them there under the real app id
-(`steam_appid.txt` still says 480, the test app, so today Steam refuses every
-name with one warning per name in the console).
+Twenty-two achievements, wired in code on Sep 4 2026 (SZ_BEAT_BOSS on Sep 18).
+The game calls Steam by API name only; the names, descriptions and icons live
+on the Steamworks page. Nothing unlocks until you create them there under the
+real app id 5050950; a name Steam does not know logs one warning in the console.
 
 ## Steamworks setup, one row per achievement
 
@@ -38,6 +37,7 @@ has a language selector for the other eleven languages once the English is final
 | 19 | SZ_FAT_BOUNCE | Boing | bounce off a wall while fat | SZ_FAT_BOUNCE.jpg | SZ_FAT_BOUNCE_locked.jpg |
 | 20 | SZ_POISON_POT | Something in the brew | your side turned the pot green | SZ_POISON_POT.jpg | SZ_POISON_POT_locked.jpg |
 | 21 | SZ_CLEAN_POT | Scrubbed | your side cleaned a green pot | SZ_CLEAN_POT.jpg | SZ_CLEAN_POT_locked.jpg |
+| 22 | SZ_BEAT_BOSS | Timber | topple the Golem Lord with your team | SZ_BEAT_BOSS.jpg | SZ_BEAT_BOSS_locked.jpg |
 
 ## After the rows
 
@@ -51,7 +51,9 @@ has a language selector for the other eleven languages once the English is final
 ## Who earns what
 
 Wins and endings go to the winning side only. Team deeds (green pot, clean
-pot) unlock for everyone on that side. Everything else is personal.
+pot) unlock for everyone on that side. Everything else is personal. The boss
+goes to everyone on the winning team, only on a map shipped with the game
+(`Spelly Zombie/Maps/Ship Maps With the Game`) and unchanged since shipping.
 
 ## Where the hooks are
 

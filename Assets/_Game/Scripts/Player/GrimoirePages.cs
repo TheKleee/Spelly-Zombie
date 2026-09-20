@@ -116,6 +116,12 @@ namespace SpellyZombie
             ApplyCover();
         }
 
+        void PageTurnCue()
+        {
+            if (!Juice.Sound(Sfx.PageFlip, transform.position, 1f, Random.Range(0.94f, 1.06f)))
+                Juice.Chime(transform.position); // the page-turn flourish
+        }
+
         /// A friend's copy: their announced open state and page. The cover
         /// swings, the paper flips and THEIR pages show (their unlocks, their side).
         public void RemoteSet(bool open, int page, bool fx = true)
@@ -126,12 +132,12 @@ namespace SpellyZombie
             if (open != wasOpen)
             {
                 SetCoverOpen(open);
-                if (fx) Juice.Chime(transform.position);
+                if (fx && !Juice.Sound(Sfx.BookClose, transform.position)) Juice.Chime(transform.position);
             }
             else if (turned && fx)
             {
                 PageFlipFx.Play(_anchor, Lift, page > _page ? -1 : 1);
-                Juice.Chime(transform.position); // the page-turn flourish
+                PageTurnCue();
             }
             _page = page;
             if (!open) ClearContent();
@@ -237,7 +243,7 @@ namespace SpellyZombie
                 if (_open) _owner = this;
                 _taughtOpen = true;
                 SetCoverOpen(_open);
-                Juice.Chime(transform.position);
+                if (!Juice.Sound(Sfx.BookClose, transform.position)) Juice.Chime(transform.position);
                 if (_open)
                 {
                     _cardsShown = int.MinValue; // force a fresh build below
@@ -299,7 +305,7 @@ namespace SpellyZombie
                 PageFlipFx.Play(_anchor, Lift, -step);
                 _pendingFlip = true;
                 _pendingTimer = 0.12f; // the new page shows as the paper comes down
-                Juice.Chime(transform.position); // the page-turn flourish
+                PageTurnCue();
                 DrawingWorld.Instance?.LogEvent($"Grimoire page {_page + 1}/{pages}");
             }
 
@@ -380,12 +386,27 @@ namespace SpellyZombie
         void OnUnlocked(int owner, RuneType rune)
         {
             if (_remote || !isActiveAndEnabled || owner != Grimoire.LocalPlayerId) return;
-            if (ShapeShift.LocalIsShaped || HandGrab.LocalHolding || SimpleFPSController.ThirdPersonActive) return;
             int target = PageOf(rune);
-            if (target < 0) return;
+            if (target >= 0) Riffle(target);
+        }
+
+        /// The book in hand opens and riffles to a page. A disguised acolyte,
+        /// full hands or a stowed book hold no book at all.
+        void Riffle(int target)
+        {
+            if (ShapeShift.LocalIsShaped || HandGrab.LocalHolding || SimpleFPSController.ThirdPersonActive) return;
             _autoTarget = target;
             if (!_open) { _popRequested = true; _autoNext = Time.time + AutoOpenDelay; }
             else _autoNext = Time.time + AutoFlipEvery;
+        }
+
+        /// Your first rune, read: the book opens on the seal page, the next
+        /// thing to learn (FirstSteps).
+        public static void ShowSealPage()
+        {
+            foreach (var b in FindObjectsByType<GrimoirePages>(FindObjectsSortMode.None))
+                if (b != null && !b._remote && b.isActiveAndEnabled && b.OwnerId == Grimoire.LocalPlayerId)
+                { b.Riffle(1); return; }
         }
 
         /// The page a rune sits on right now, -1 while it has no page.
@@ -502,9 +523,12 @@ namespace SpellyZombie
             foreach (var fam in Families)
             {
                 Pair(fam, out var up, out var down);
-                if (RuneLibrary.IsUnlocked(me, up)) _wizPages.Add(up);
-                if (RuneLibrary.IsUnlocked(me, down)) _wizPages.Add(down);
+                if (up != RuneType.None && RuneLibrary.IsUnlocked(me, up)) _wizPages.Add(up);
+                if (down != RuneType.None && RuneLibrary.IsUnlocked(me, down)) _wizPages.Add(down);
             }
+            // made runes (the Rune Creator's) follow the twelve
+            foreach (var def in SpellBook.Live.runes)
+                if (!def.BuiltIn && RuneLibrary.IsUnlocked(me, def.Type)) _wizPages.Add(def.Type);
             return _wizPages;
         }
 
@@ -601,7 +625,8 @@ namespace SpellyZombie
                 0.003f, owned ? Ink : Locked);
             var tex = Wardrobe.RuneIcon(rune, owned ? Ink : Locked);
             if (tex != null) Quad(tex, new Vector3(0f, 0f, 0.012f), 0.092f);
-            Label(family.ToString().ToUpper(), new Vector3(0f, 0.001f, -0.092f),
+            string chapter = family == RuneCardType.Custom ? RuneLibrary.ShortName(rune) : family.ToString();
+            Label(chapter.ToUpper(), new Vector3(0f, 0.001f, -0.092f),
                 0.0021f, Locked); // the chapter it belongs to, small
             WritingBar(rune);
         }
@@ -644,8 +669,18 @@ namespace SpellyZombie
         {
             RuneType.Attract => "DirectionAway",
             RuneType.Repel => "DirectionToward",
-            _ => rune.ToString()
+            _ => (int)rune > 12 ? MadeKey(rune) : rune.ToString()
         };
+
+        /// A made rune's page is named by its name, letters and digits only.
+        static string MadeKey(RuneType rune)
+        {
+            var def = SpellBook.Live.Rune(rune);
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in def != null ? def.Name : "")
+                if (char.IsLetterOrDigit(c)) sb.Append(c);
+            return sb.Length > 0 ? sb.ToString() : "Rune" + (int)rune;
+        }
 
         /// His acolyte pages carry the other glyph under each file name: the march
         /// page (DirectionAway_Acolyte) draws the arrow = Repel, the scatter page
@@ -692,6 +727,9 @@ namespace SpellyZombie
         public static Texture2D PageImage(string pageName)
         {
             if (string.IsNullOrEmpty(pageName)) return null;
+
+            var painted = MapPages.Find(pageName); // the active map's own page first
+            if (painted != null) return painted;
 
             var mine = CollectionManager.PageNamed(pageName);
             if (mine != null) return mine;
@@ -838,6 +876,7 @@ namespace SpellyZombie
                 case RuneCardType.Luminance: up = RuneType.LuminanceUp; down = RuneType.LuminanceDown; break;
                 case RuneCardType.Sticky: up = RuneType.StickyUp; down = RuneType.StickyDown; break;
                 case RuneCardType.Affinity: up = RuneType.Attract; down = RuneType.Repel; break;
+                case RuneCardType.Custom: up = RuneType.None; down = RuneType.None; break; // listed by the book
                 default: up = RuneType.DensityUp; down = RuneType.DensityDown; break;
             }
         }

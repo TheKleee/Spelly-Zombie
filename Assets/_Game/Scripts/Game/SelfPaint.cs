@@ -99,56 +99,6 @@ namespace SpellyZombie
             // exit and pose keys as one-fact chips
             UIPrompt.Offer("R", Loc.T("paint.done"));
             UIPrompt.Offer("1-9", Loc.T("paint.pose"));
-
-            // I = drink the body ink to regrow the wand; enough ink = full
-            // wand, surplus wasted. Shown after the exit line so the rarer,
-            // more urgent state wins the slot.
-            var wand = GetComponent<WandState>();
-            if (wand != null && !wand.HasWand)
-                UIPrompt.Show("I", "drink body ink to regrow your wand",
-                    new Color(0.85f, 0.8f, 1f));
-            if (kb.iKey.wasPressedThisFrame) DrinkBodyInk();
-        }
-
-        static readonly System.Collections.Generic.List<Stroke> _drunkStrokes =
-            new System.Collections.Generic.List<Stroke>(); // reused buffer (no-alloc law)
-
-        /// Every persistent drawing on this body flows back into the well.
-        /// Worth = line length × cost-per-meter; Award clamps at the ceiling,
-        /// surplus is wasted.
-        void DrinkBodyInk()
-        {
-            var world = DrawingWorld.Instance;
-            if (world == null) return;
-            var ink = GetComponent<PlayerInk>();
-            if (ink == null) return;
-
-            float drunk = 0f;
-            int strokes = 0;
-            _drunkStrokes.Clear();
-            for (int i = world.Strokes.Count - 1; i >= 0; i--)
-            {
-                var s = world.Strokes[i];
-                if (s == null || !s.Alive || !s.Persistent) continue;
-                if (s.OwnerId != Grimoire.LocalPlayerId) continue;
-                var f = s.First;
-                if (f == null || !f.transform.IsChildOf(transform)) continue; // MY body only
-                drunk += s.PathLength() * DrawingConfig.InkCostPerMeter;
-                strokes++;
-                _drunkStrokes.Add(s); // remembered BEFORE Burn - friends' copies must die too
-                s.Burn();
-            }
-            // the copies riding my avatar on every other machine (parity law)
-            NetSync.OnLocalInkBurned(_drunkStrokes);
-            if (strokes == 0)
-            {
-                DrawingWorld.Instance?.LogEvent("no body ink to drink");
-                return;
-            }
-            ink.Award(drunk * ink.DrawRate); // back at the share it was paid
-            Juice.Chime(transform.position);
-            DrawingWorld.Instance?.LogEvent(
-                $"the body ink flows back into the wand ({strokes} drawing(s) drunk)");
         }
 
         /// While painting the body: 1-9 drop into a SAVED POSE so you can draw

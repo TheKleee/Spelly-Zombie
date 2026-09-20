@@ -46,12 +46,51 @@ namespace SpellyZombie
 
         public static void CycleMap(int dir)
         {
-            if (NetGame.Connected && !NetGame.IsHost) return; // host-only pick
             var maps = MapList();
             int i = Mathf.Max(0, maps.IndexOf(SelectedMap));
-            SelectedMap = maps[(i + dir + maps.Count) % maps.Count];
+            PickMap(maps[(i + dir + maps.Count) % maps.Count]);
+        }
+
+        /// Every map the host may pick: the scenes, then the Map Creator's.
+        public static IReadOnlyList<string> Maps => MapList();
+
+        /// The host picks a map by name (the map picker, the cycle).
+        public static void PickMap(string name)
+        {
+            if (NetGame.Connected && !NetGame.IsHost) return; // host-only pick
+            if (string.IsNullOrEmpty(name) || !MapList().Contains(name)) return;
+            SelectedMap = name;
+            PickLayer(clock: true);
             DrawingWorld.Instance?.LogEvent($"map: {SelectedMap}");
         }
+
+        /// A saved map picked here wears its layer and stands on its own seed;
+        /// a scene stands plain on the daily roll. The host tells the clients.
+        static void PickLayer(bool clock)
+        {
+            MapDef.Active = MapLibrary.Exists(SelectedMap) ? MapLibrary.Load(SelectedMap) : null;
+            Seed = SeedForPick();
+            if (clock && MapDef.Active != null) DurationMin = MapDef.Active.TimerMinutes; // the map's clock, the host may still change it
+            MapDef.UseActiveRules(); // its spellbook and rune drawings, or the game's
+            NetSync.PushMapDef(MapDef.Active);
+        }
+
+        static int SeedForPick() =>
+            MapDef.Active != null && MapDef.Active.Seed != 0 ? MapDef.Active.Seed : DailyRoll();
+
+        /// The scene the pick loads: a saved map's base scene, else the scene itself.
+        public static string SelectedScene => MapDef.Active != null ? MapDef.Active.Base : SelectedMap;
+        public static string HostScene => MapDef.Active != null ? MapDef.Active.Base : HostMap;
+
+        /// A client: the host's layer as JSON, empty = a plain scene.
+        public static void NetMapDef(string json)
+        {
+            MapDef.Active = MapDef.FromJson(json);
+            MapDef.UseActiveDrawings(); // the book arrives on its own message
+        }
+
+        /// Saved maps changed: the list is read again on the next pick.
+        public static void ForgetMaps() => _mapCache = null;
 
         static List<string> _mapCache;
 
@@ -67,6 +106,8 @@ namespace SpellyZombie
                 if (sceneName != "Menu" && sceneName != "Lobby") _mapCache.Add(sceneName);
             }
             if (_mapCache.Count == 0) _mapCache.Add("Spelly Island");
+            foreach (var d in MapLibrary.All()) // the Map Creator's, after the scenes
+                if (!_mapCache.Contains(d.Name)) _mapCache.Add(d.Name);
             return _mapCache;
         }
 
@@ -246,7 +287,7 @@ namespace SpellyZombie
                     {
                         _readyLocal = !_readyLocal;
                         if (client) NetSync.SendReady(_readyLocal);
-                        Juice.Chime(player.transform.position);
+                        if (!Juice.Sound2D(Sfx.UiReady)) Juice.Chime(player.transform.position);
                     }
                     if (CallActive && kb.cKey.wasPressedThisFrame)
                     {
@@ -263,6 +304,7 @@ namespace SpellyZombie
                 UIPrompt.Show("B", Loc.T("lobby.readycall"), new Color(0.6f, 1f, 0.65f), priority: 1);
 
             if (client) return;
+            HostSettings.Keep(); // the host's setup comes back next time
 
             if (NetGame.IsHost)
             {
@@ -287,7 +329,13 @@ namespace SpellyZombie
 
             // roll the match seed from the DAILY POOL - authority only;
             // clients mirror the host's roll through PushLobby (no clock skew)
-            if (!NetGame.Connected || NetGame.IsHost) Seed = DailyRoll();
+            if (!NetGame.Connected || NetGame.IsHost)
+            {
+                // the last session's map, the first time round (HostSettings)
+                string kept = HostSettings.TakeMap();
+                if (kept != null && MapList().Contains(kept)) SelectedMap = kept;
+                PickLayer(clock: false); // the picked map again: its seed, book and drawings
+            }
         }
 
         /// Pool base = the UTC date hashed, one of DailySeedPool rolls on top.

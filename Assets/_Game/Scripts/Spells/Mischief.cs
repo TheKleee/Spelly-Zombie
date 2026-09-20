@@ -35,6 +35,22 @@ namespace SpellyZombie
             }
         }
 
+        /// What a mischief spell sounds like: the wizard sound of the rune it is cast with (the table above).
+        public static Sfx SoundOf(MischiefKind k)
+        {
+            switch (k)
+            {
+                case MischiefKind.Decoy: return Sfx.HeatImpact;
+                case MischiefKind.Reveal: return Sfx.ChillImpact;
+                case MischiefKind.DeathNeedle: return Sfx.StickyImpact;
+                case MischiefKind.LifeNeedle: return Sfx.SlickImpact;
+                case MischiefKind.Evaporation: return Sfx.LightImpact;
+                case MischiefKind.Transformation: return Sfx.DarkImpact;
+                case MischiefKind.Aggressive: return Sfx.CompressImpact;
+                default: return Sfx.ExpandImpact;
+            }
+        }
+
         public static bool IsDart(MischiefKind k) => k >= MischiefKind.Decoy && k <= MischiefKind.Transformation;
         public static bool IsBuff(MischiefKind k) => k == MischiefKind.Aggressive || k == MischiefKind.Spreading;
 
@@ -231,11 +247,16 @@ namespace SpellyZombie
     {
         static readonly Dictionary<int, HashSet<int>> _killers = new Dictionary<int, HashSet<int>>();
 
+        static readonly List<int> _partners = new List<int>();
+
         public static void Record(int victimNetId, int by)
         {
             if (by < 0) return;
             if (!_killers.TryGetValue(victimNetId, out var s)) _killers[victimNetId] = s = new HashSet<int>();
             s.Add(by);
+            // a combined seal's kill is everyone's who cast it (his call)
+            CoCast.PartnersOf(by, _partners);
+            foreach (int p in _partners) s.Add(p);
         }
 
         public static bool Killed(int victimNetId, int by) =>
@@ -339,6 +360,7 @@ namespace SpellyZombie
             b.Until = Time.time + seconds;
             b.By = by;
             b.Refresh();
+            Juice.Sound(MischiefLaw.SoundOf(kind), z.transform.position + Vector3.up * z.transform.localScale.y, 0.8f);
         }
 
         void Refresh()

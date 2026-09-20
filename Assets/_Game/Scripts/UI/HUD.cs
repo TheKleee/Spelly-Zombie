@@ -13,6 +13,9 @@ namespace SpellyZombie
         Image _vignette;
         Text _bannerText;
         RectTransform _banner;
+        RectTransform _boss;
+        Text _bossName;
+        UIKit.UIBar _bossFill;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -58,6 +61,16 @@ namespace SpellyZombie
             UIKit.Stretch(btr);
             btr.offsetMin = new Vector2(70f, 20f); // off the tails
             btr.offsetMax = new Vector2(-70f, -16f);
+
+            // the bosses' health under the banner, the same for everyone
+            _boss = UIKit.Group(_group, "BossBar");
+            UIKit.Place(_boss, new Vector2(0.5f, 1f), new Vector2(0f, -104f), new Vector2(440f, 50f));
+            _bossName = UIKit.Label(_boss, "", 17, Color.white, TextAnchor.MiddleCenter, true);
+            UIKit.Place(_bossName.rectTransform, new Vector2(0.5f, 1f), Vector2.zero, new Vector2(440f, 24f));
+            _bossFill = UIKit.Bar(_boss, skin != null ? skin.ProgressRed : null, new Vector2(440f, 22f),
+                skin != null ? (Color?)null : new Color(0.8f, 0.15f, 0.1f));
+            UIKit.Place(_bossFill.Rt, new Vector2(0.5f, 1f), new Vector2(0f, -26f), new Vector2(440f, 22f));
+            _boss.gameObject.SetActive(false);
         }
 
         /// Radial edge texture: clear centre out to `inner` (half-sizes),
@@ -103,6 +116,23 @@ namespace SpellyZombie
                 if (f < 0.2f && !player.IsDowned)
                     a += (Mathf.Sin(Time.time * 6f) * 0.5f + 0.5f) * 0.12f;
                 _vignette.color = new Color(0.55f, 0f, 0f, Mathf.Clamp01(a));
+            }
+
+            // the bosses: the host counts its own, a client reads the referee's word
+            if (_boss != null)
+            {
+                int bosses;
+                float bossHp;
+                string bossName;
+                if (!NetGame.Connected || NetGame.IsHost) BossMark.Summary(out bossHp, out bosses, out bossName);
+                else { bosses = NetSync.NetBosses; bossHp = NetSync.NetBossHp / 255f; bossName = NetSync.NetBossName; }
+                bool showBoss = bosses > 0 && RoundDirector.RunActive && ActiveScene.Name != "Lobby";
+                if (_boss.gameObject.activeSelf != showBoss) _boss.gameObject.SetActive(showBoss);
+                if (showBoss)
+                {
+                    _bossName.text = bosses > 1 ? bossName + "  x" + bosses : bossName;
+                    _bossFill.Set(bossHp);
+                }
             }
 
             // round banner; suppressed in the lobby

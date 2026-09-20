@@ -123,7 +123,7 @@ namespace SpellyZombie
             new System.Collections.Generic.HashSet<Renderer>();
 
         void Tint(Renderer r, Color? colour, float strength)
-            => Tint(r, colour, strength, _block, _mine, HatColor.Saved(), _want == Side.Acolyte, BodyTint);
+            => Tint(r, colour, strength, _block, _mine, HatColor.Worn(), _want == Side.Acolyte, BodyTint);
 
         /// The same paint on a puppet: wand fully green for an acolyte, the
         /// robe a hint, the hat its owner's pillar colour. `skip` = a worn

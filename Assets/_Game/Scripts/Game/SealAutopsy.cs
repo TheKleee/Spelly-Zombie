@@ -1,12 +1,10 @@
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
     /// After a kill burst near a seal (or a wipe), a 5s overlay replays the
-    /// seal being drawn; P saves a PNG.
+    /// seal being drawn.
     public class SealAutopsy : MonoBehaviour
     {
         const int Size = 256;
@@ -114,8 +112,6 @@ namespace SpellyZombie
                 _tex.Apply(false);
             }
 
-            var kb = Keyboard.current;
-            if (kb != null && kb.pKey.wasPressedThisFrame) SavePng();
         }
 
         void DrawNextSegment()
@@ -158,21 +154,6 @@ namespace SpellyZombie
             }
         }
 
-        void SavePng()
-        {
-            try
-            {
-                string dir = Path.Combine(Application.persistentDataPath, "autopsies");
-                Directory.CreateDirectory(dir);
-                string file = Path.Combine(dir, $"seal_{System.DateTime.Now:yyyyMMdd_HHmmss}.png");
-                File.WriteAllBytes(file, _tex.EncodeToPNG());
-                DrawingWorld.Instance?.LogEvent($"Autopsy saved: {file}");
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"[SpellyZombie] Autopsy save failed: {e.Message}");
-            }
-        }
 
         void OnGUI()
         {
@@ -186,11 +167,6 @@ namespace SpellyZombie
             { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
             style.normal.textColor = new Color(1f, 0.85f, 0.4f);
             GUI.Label(new Rect(0, y + w + 4f, Screen.width, 24f), _verdict, style);
-
-            var small = new GUIStyle(GUI.skin.label)
-            { fontSize = 11, alignment = TextAnchor.MiddleCenter };
-            small.normal.textColor = new Color(1f, 1f, 1f, 0.7f);
-            GUI.Label(new Rect(0, y + w + 28f, Screen.width, 18f), "P = save PNG", small);
         }
     }
 }

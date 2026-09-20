@@ -65,6 +65,12 @@ namespace SpellyZombie
             return null;
         }
 
+        static void NoInk(DrawingWorld w, string message)
+        {
+            w.LogEvent(message);
+            Juice.Sound2D(Sfx.UiError);
+        }
+
         // -------------------------------------------------------- rune page --
         /// The rune page: your drawing goes, the named rune is drawn whole where
         /// it was, at its size. True when it starts.
@@ -90,7 +96,7 @@ namespace SpellyZombie
             if (lines.Count == 0) return false;
 
             var purse = new Purse(LocalInk());
-            if (!purse.CanAfford(total)) { w.LogEvent(Loc.T("rune.noink")); return false; }
+            if (!purse.CanAfford(total)) { NoInk(w, Loc.T("rune.noink")); return false; }
             Debug.Log($"[AutoComplete] page: {rune}, {lines.Count} lines ({total * 100f:0} cm), {members.Count} of yours replaced");
 
             _running = true;
@@ -178,7 +184,7 @@ namespace SpellyZombie
                 ring.Add(OnSurface(origin + right * q.x + up * q.y, normal, surface));
             }
             var purse = new Purse(LocalInk());
-            if (!purse.CanAfford(Length(ring))) { w.LogEvent(Loc.T("seal.noink")); return false; }
+            if (!purse.CanAfford(Length(ring))) { NoInk(w, Loc.T("seal.noink")); return false; }
             _running = true;
             w.StartCoroutine(DrawRing(w, ring, surface, normal, purse));
             return true;
@@ -255,6 +261,7 @@ namespace SpellyZombie
             var last = s.Last;
             if (last != null && Vector3.Distance(last.transform.position, p) < SamePoint) return;
             s.AddNode(DrawNode.Create(s, s.Nodes.Count, p, normal, surface));
+            SfxLoops.Pen(p); // the book writes with a pencil too
         }
 
         /// Adds nodes along `path` until `upTo` metres of it exist; returns the new length.
@@ -355,7 +362,7 @@ namespace SpellyZombie
                 }
                 if (li < lines.Count && !dry) yield return null;
             }
-            if (dry) w.LogEvent(Loc.T("rune.noink"));
+            if (dry) NoInk(w, Loc.T("rune.noink"));
 
             if (aborted)
             {
@@ -377,8 +384,8 @@ namespace SpellyZombie
             }
             if (cnt > 0)
             {
-                Juice.Chime(at / cnt);
-                NetSync.PushInkFx(NetSync.InkFxChime, at / cnt);
+                if (!Juice.Sound(Sfx.RuneComplete, at / cnt)) Juice.Chime(at / cnt);
+                NetSync.PushInkFx(NetSync.InkFxRune, at / cnt);
             }
             _running = false;
         }
@@ -412,15 +419,15 @@ namespace SpellyZombie
                 yield break;
             }
             if (!dry && purse.Pay(total - have)) have = Grow(s, normal, surface, ring, have, total);
-            else if (dry) w.LogEvent(Loc.T("seal.noink"));
+            else if (dry) NoInk(w, Loc.T("seal.noink"));
             if (s.Nodes.Count < 3 || s.PathLength() < MinPiece) s.Burn();
             else
             {
                 w.CompleteStroke(s); // self-closure seals it (the host closes world loops)
                 if (s.Alive)
                 {
-                    Juice.Chime(s.Centroid());
-                    NetSync.PushInkFx(NetSync.InkFxChime, s.Centroid());
+                    if (!Juice.Sound(Sfx.RuneComplete, s.Centroid())) Juice.Chime(s.Centroid());
+                    NetSync.PushInkFx(NetSync.InkFxRune, s.Centroid());
                 }
             }
             _running = false;
@@ -429,7 +436,7 @@ namespace SpellyZombie
         // ------------------------------------------------------------ world --
         /// A frame point pressed onto the surface it was drawn on; the plane
         /// point when the ray finds nothing of it.
-        static Vector3 OnSurface(Vector3 p, Vector3 normal, Transform surface)
+        public static Vector3 OnSurface(Vector3 p, Vector3 normal, Transform surface)
         {
             if (surface == null) return p;
             if (Physics.Raycast(p + normal * 0.2f, -normal, out var hit, 0.5f,

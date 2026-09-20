@@ -648,7 +648,7 @@ namespace FishNet.Managing.Client
                 }
                 catch (Exception e)
                 {
-                    NetworkManager.LogError($"Client encountered an error while parsing data for packetId {packetId}. Message: {e.Message}.");
+                    NetworkManager.LogError($"Client encountered an error while parsing data for packetId {packetId}. Message: {e}.");
                 }
                 #endif
             }

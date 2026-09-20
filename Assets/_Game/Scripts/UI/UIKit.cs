@@ -86,7 +86,7 @@ namespace SpellyZombie
         static bool ModalOpen =>
             GameMenu.IsOpen || UIKit.Typing || HatPillar.PanelOpen
             || LobbyStand.PanelOpen || PoseStudio.IsOpen
-            || LobbyInspect.PanelOpen || ActiveScene.Name == "Menu";
+            || ActiveScene.Name == "Menu";
 
         /// Ticked by SideBootstrap, which survives scene loads.
         public static void TickImmersive()
@@ -369,7 +369,13 @@ namespace SpellyZombie
             if (found != null)
             {
                 var ft = found.GetComponent<Text>();
-                if (ft != null) return ft; // adopted text is not overwritten here
+                if (ft != null)
+                {
+                    // the code's words win over the prefab's, so every language shows;
+                    // an empty string keeps the prefab text for the code to fill later
+                    if (!string.IsNullOrEmpty(text)) ft.text = text;
+                    return ft;
+                }
             }
             var go = new GameObject("Label", typeof(RectTransform), typeof(Text));
             MarkNew(go);
@@ -403,7 +409,18 @@ namespace SpellyZombie
                     fb.onClick.RemoveAllListeners(); // lambdas don't serialize - rebind
                     if (fb.GetComponent<ButtonJuice>() == null) fb.gameObject.AddComponent<ButtonJuice>();
                     if (onClick != null) fb.onClick.AddListener(() => ButtonJuice.Press(fb, onClick));
-                    return fb; // adopted caption kept
+                    // the caption is the code's, in the player's language; empty keeps the prefab's
+                    if (!string.IsNullOrEmpty(label))
+                    {
+                        var legacy = fb.GetComponentInChildren<Text>(true);
+                        if (legacy != null) legacy.text = label;
+                        else
+                        {
+                            var tmp = fb.GetComponentInChildren<TMPro.TMP_Text>(true);
+                            if (tmp != null) tmp.text = label;
+                        }
+                    }
+                    return fb;
                 }
             }
             var skin = UISkin.I;
@@ -497,7 +514,9 @@ namespace SpellyZombie
             return g;
         }
 
-        /// A row of equal buttons inside a stack (a three-way switch).
+        /// A row of equal buttons inside a stack (a three-way switch). The
+        /// buttons fill the row's height: left to themselves they shrink to
+        /// their sprite's border.
         public static RectTransform Segments(RectTransform parent, float width, float height, float spacing)
         {
             var g = Group(parent, "Segments");
@@ -509,7 +528,7 @@ namespace SpellyZombie
             lay.childControlWidth = true;
             lay.childControlHeight = true;
             lay.childForceExpandWidth = true;
-            lay.childForceExpandHeight = false;
+            lay.childForceExpandHeight = true;
             return g;
         }
 

@@ -20,8 +20,8 @@ namespace SpellyZombie
         void Start()
         {
             LastDrawTime = -999f;
-            foreach (RuneType rune in System.Enum.GetValues(typeof(RuneType)))
-                if (rune != RuneType.None) Grimoire.UnlockRune(OwnerId, rune);
+            foreach (var def in SpellBook.Live.runes) // the twelve and every made rune
+                Grimoire.UnlockRune(OwnerId, def.Type);
         }
 
         /// Raycast the Canvas collider first (works on curved interiors),

@@ -42,8 +42,8 @@ namespace SpellyZombie
 
         void Update()
         {
-            // the beam shows the exact picked color, no visibility floor
-            Color worn = Color.HSVToRGB(_h, _s, _v);
+            // the beam shows the colour the hat wears (a taken pick turns), no visibility floor
+            Color worn = HatColor.Worn() ?? Color.HSVToRGB(_h, _s, _v);
             PillarBeam.Tint(_beam, worn);
             PillarBeam.Tint(_glow, worn);
 
@@ -242,9 +242,99 @@ namespace SpellyZombie
         public static void Set(Color c)
         {
             PlayerPrefs.SetString(Key, "#" + ColorUtility.ToHtmlStringRGB(c));
+            // the host rules on a taken colour; asked here first, so the hat never shows a colour it will lose
+            Color? free = NetSync.FreeHat(c);
+            _given = free != null && !Same(free.Value, c) ? free : null;
+            DressLocal();
+            NetSync.PushLocalOutfit(); // the pick re-announces: friends' copies wear it too
+        }
+
+        // ---- no two hats alike: a colour somebody in the lobby wears is taken ----
+        /// Closer than this in RGB, two hats read as one colour. The wheel's rim holds 24 that are not.
+        const float SameHat = 0.25f;
+
+        static Color? _given; // worn this session in place of a taken pick; the saved pick is kept
+
+        /// What the local hat wears: the pick, or what the host turned it to.
+        public static Color? Worn() => _given ?? Saved();
+
+        /// The host's answer to the local hat.
+        public static void Given(Color? verdict)
+        {
+            var saved = Saved();
+            Color? given = verdict != null && (saved == null || !Same(verdict.Value, saved.Value)) ? verdict : null;
+            if (given == null ? _given == null : _given != null && Same(given.Value, _given.Value)) return;
+            _given = given;
+            DressLocal();
+        }
+
+        /// Out of the session: the next lobby starts from the saved pick again.
+        public static void Forget() => _given = null;
+
+        static void DressLocal()
+        {
             var p = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             if (p != null) Dress(p);
-            NetSync.PushLocalOutfit(); // the pick re-announces: friends' copies wear it too
+        }
+
+        static bool Same(Color a, Color b)
+        {
+            Color32 x = a, y = b;
+            return x.r == y.r && x.g == y.g && x.b == y.b;
+        }
+
+        /// An unpainted hat shows its material's own colour.
+        static Color Bare()
+        {
+            var p = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
+            var hat = p != null ? HatOf(p) : null;
+            if (hat != null)
+                foreach (var r in hat.GetComponentsInChildren<Renderer>(true))
+                    if (r.sharedMaterial != null && r.sharedMaterial.HasProperty(BaseColorId))
+                        return r.sharedMaterial.GetColor(BaseColorId);
+            return Color.white;
+        }
+
+        static float Gap(Color c, bool bare, System.Collections.Generic.List<Color?> worn, Color bareColor)
+        {
+            float gap = float.MaxValue;
+            foreach (var w in worn)
+            {
+                if (w == null && bare) return 0f; // two unpainted hats are the same hat
+                Color o = w ?? bareColor;
+                gap = Mathf.Min(gap, new Vector3(c.r - o.r, c.g - o.g, c.b - o.b).magnitude);
+            }
+            return gap;
+        }
+
+        /// The wish itself when nobody in `worn` wears it (null = unpainted), else the nearest
+        /// colour nobody wears: around the wheel from the wish, then bolder, paler, darker.
+        /// An unpainted hat that must change starts from a hue of its own (`seed`).
+        public static Color? Free(Color? wish, System.Collections.Generic.List<Color?> worn, int seed)
+        {
+            Color bareColor = Bare();
+            if (Gap(wish ?? bareColor, wish == null, worn, bareColor) >= SameHat) return wish;
+
+            float h, s, v;
+            if (wish != null) Color.RGBToHSV(wish.Value, out h, out s, out v);
+            else { h = Mathf.Repeat(seed * 0.618034f, 1f); s = 1f; v = 1f; }
+            Color best = wish ?? Color.HSVToRGB(h, s, v);
+            float bestGap = -1f;
+            for (int ring = 0; ring < 5; ring++)
+            {
+                float rs = ring == 0 ? Mathf.Max(s, 0.35f) : ring == 1 || ring == 3 ? 1f : 0.5f;
+                float rv = ring == 0 ? Mathf.Max(v, 0.35f) : ring < 3 ? 1f : 0.6f;
+                for (int k = 0; k <= 50; k++)
+                    for (int sign = 1; sign >= -1; sign -= 2)
+                    {
+                        if (k == 0 && sign < 0) continue;
+                        Color c = Color.HSVToRGB(Mathf.Repeat(h + sign * k * 0.01f, 1f), rs, rv);
+                        float gap = Gap(c, false, worn, bareColor);
+                        if (gap >= SameHat) return c;
+                        if (gap > bestGap) { bestGap = gap; best = c; }
+                    }
+            }
+            return best; // a lobby too full for the wheel: the colour furthest from everyone's
         }
 
         /// The socket the wardrobe dresses; every renderer under it is the hat.
@@ -281,7 +371,7 @@ namespace SpellyZombie
         /// Friends' copies get the colour through OutfitMsg; NetAvatar paints it the same way.
         public static void Dress(SimpleFPSController p)
         {
-            var saved = Saved();
+            var saved = Worn();
             if (p == null || saved == null) return;
             var hat = HatOf(p);
             if (hat == null)

@@ -19,6 +19,7 @@ namespace SpellyZombie
         public float Seconds = 10f;
 
         static readonly List<ArtificialBiome> All = new List<ArtificialBiome>();
+        internal static IReadOnlyList<ArtificialBiome> Living => All;
         float _age;
         Transform _dome;
 

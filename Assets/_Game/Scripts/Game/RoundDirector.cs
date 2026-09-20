@@ -54,10 +54,13 @@ namespace SpellyZombie
         Phase _phase = Phase.Idle;
         float _clock;        // seconds left on the match timer
         int _kills;
-        int _winner;         // 0 none, 1 wizards, 2 acolytes
+        int _winner;         // 0 none, 1 wizards, 2 acolytes, 3 everyone together, 4 the environment, 5 nobody
         Achievements.Ending _ending;
         float _overTimer;
-        bool _hadWizards, _hadAcolytes;
+        bool _hadWizards, _hadAcolytes, _hadBoss;
+        Vector3 _causeAt;    // where the ending camera looks (EndingShot)
+        float _downFor;      // every player a ghost for this long
+        const float WipeHoldSeconds = 1.5f;
         float _runStart;
 
         readonly List<SimpleFPSController> _players = new List<SimpleFPSController>();
@@ -113,8 +116,10 @@ namespace SpellyZombie
                 {
                     _netPush = 0.5f;
                     // over: the timer carries the countdown home instead of the match clock
+                    BossMark.Summary(out float bossHp, out int bosses, out string bossName);
                     NetSync.PushRoundState((byte)_phase, _winner, 0,
-                        _phase == Phase.Over ? _overTimer : _clock, _kills, (byte)_ending);
+                        _phase == Phase.Over ? _overTimer : _clock, _kills, (byte)_ending,
+                        (byte)Mathf.RoundToInt(bossHp * 255f), (byte)Mathf.Min(bosses, 255), bossName, _causeAt);
                 }
             }
 
@@ -146,7 +151,7 @@ namespace SpellyZombie
         }
 
         const string LobbySceneName = "Lobby";
-        static string GameSceneName => MatchLobby.SelectedMap; // the host's lobby pick
+        static string GameSceneName => MatchLobby.SelectedScene; // the host's lobby pick, a saved map's base scene
         static bool _startOnLoad;
 
         void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
@@ -198,6 +203,10 @@ namespace SpellyZombie
             _clock = MatchLobby.Endless ? -1f
                 : Mathf.Clamp(MatchLobby.DurationMin, 5, 15) * 60f;
             PlayerInk.RefillAll();
+            BossMark.ResetMatch();
+            _hadBoss = false;
+            _causeAt = Vector3.zero;
+            _downFor = 0f;
             SealGallery.Clear();
             RuneLibrary.ForgetRoundLearning();
             SideBootstrap.ResetBooksForMatch(); // lobby learning stays in the lobby
@@ -208,9 +217,10 @@ namespace SpellyZombie
             _hadAcolytes = AnySide(Side.Acolyte, aliveOnly: false);
 
             _phase = Phase.Live;
-            ComboBanner.Show(Loc.T("round.versus"), new Color(1f, 0.85f, 0.4f));
+            // the start word follows the map's teams; asked of the scene itself, it may have just loaded
+            ComboBanner.Show(MapRules.StartWords(SceneManager.GetActiveScene().name), new Color(1f, 0.85f, 0.4f));
             var p0 = _players.Count > 0 && _players[0] != null ? _players[0].transform.position : Vector3.zero;
-            Juice.Drum(p0);
+            StartCue(p0);
             DrawingWorld.Instance?.LogEvent($"the match is on. {Mathf.RoundToInt(_clock / 60f)} minutes");
         }
 
@@ -226,12 +236,25 @@ namespace SpellyZombie
             // NO TIMER: the rules are identical, the clock simply is not
             // one of the ways a match can end. Everything below still applies.
             // clamped at zero so the bell below rings; negative stays the endless flag
-            if (_clock > 0f) _clock = Mathf.Max(0f, _clock - Time.deltaTime);
+            if (_clock > 0f)
+            {
+                float was = _clock;
+                _clock = Mathf.Max(0f, _clock - Time.deltaTime);
+                if (was > WarnAt && _clock <= WarnAt) WarnCue();
+            }
 
             // a side is fielded the moment anyone of it stands: bodies are
             // built after the scene arrives, so the start snapshot saw none
             _hadWizards |= AnySide(Side.Wizard, aliveOnly: false);
             _hadAcolytes |= AnySide(Side.Acolyte, aliveOnly: false);
+
+            // a map with its own teams decides by them first; the five endings
+            // below only while wizards and acolytes are two counting teams
+            if (MapRules.Custom)
+            {
+                if (TickTeams()) return;
+                if (!MapRules.ClassicEndings) return;
+            }
 
             bool potReady = CauldronEconomy.Active != null
                 && CauldronEconomy.PrepRemaining <= 0f
@@ -262,6 +285,75 @@ namespace SpellyZombie
             }
         }
 
+        /// ★ THE MAP'S OWN TEAMS (MapRules, his WC3 model). Among the teams that
+        /// count, the last one standing wins: a player team stands while anyone
+        /// of it is not a ghost, the environment while a boss lives or has yet to
+        /// stand up. When the last boss falls and no player team counts, the side
+        /// that landed the last blow wins. The clock gives it to a standing
+        /// environment that counts. True when this ended the match.
+        bool TickTeams()
+        {
+            bool together = MapRules.Together;
+            bool envCounts = MapRules.Counts(TeamWho.Environment);
+            bool wizardsCount = !together && MapRules.Counts(TeamWho.Wizards);
+            bool acolytesCount = !together && MapRules.Counts(TeamWho.Acolytes);
+
+            bool pending = CreatureSpawn.BossPending;
+            bool bossUp = BossMark.EnvironmentStands(out bool fielded);
+            _hadBoss |= fielded;
+            bool envUp = pending || bossUp;
+            bool envFell = _hadBoss && !envUp;
+
+            bool wizardsUp = AnySide(Side.Wizard, aliveOnly: true);
+            bool acolytesUp = AnySide(Side.Acolyte, aliveOnly: true);
+            // presence and revives arrive in slices: a wipe has to hold a moment
+            _downFor = (_hadWizards || _hadAcolytes) && !wizardsUp && !acolytesUp ? _downFor + Time.deltaTime : 0f;
+            bool wiped = _downFor >= WipeHoldSeconds;
+
+            if (wiped)
+            {
+                if (envCounts && envUp) { Win(4, "every player is a ghost", Achievements.Ending.EveryoneDown); return true; }
+                if (!MapRules.ClassicEndings) { Win(5, "every player is a ghost", Achievements.Ending.EveryoneDown); return true; }
+            }
+
+            if (envCounts && envFell)
+            {
+                if (together)
+                {
+                    Win(MapRules.Counts(TeamWho.Everyone) ? 3 : 5, "the last boss fell", Achievements.Ending.BossDown);
+                    return true;
+                }
+                if (!wizardsCount && !acolytesCount)
+                {
+                    int side = BossMark.WinningSide(); // the race to the last boss
+                    Win(side == 0 ? 5 : side, "the last boss fell", Achievements.Ending.BossDown);
+                    return true;
+                }
+                if (wizardsCount != acolytesCount)
+                {
+                    bool up = wizardsCount ? wizardsUp : acolytesUp;
+                    Win(up ? (wizardsCount ? 1 : 2) : 5, "the last boss fell", Achievements.Ending.BossDown);
+                    return true;
+                }
+                // both sides count: their own race goes on
+            }
+
+            // the one counting side is gone while the environment stands
+            if (envCounts && envUp && wizardsCount != acolytesCount)
+            {
+                bool had = wizardsCount ? _hadWizards : _hadAcolytes;
+                bool up = wizardsCount ? wizardsUp : acolytesUp;
+                if (had && !up) { Win(4, "the counting side is down", Achievements.Ending.EveryoneDown); return true; }
+            }
+
+            if (_clock >= 0f && _clock <= 0.0001f)
+            {
+                if (envCounts && envUp) { Win(4, "time ran out on the boss", Achievements.Ending.TimeUp); return true; }
+                if (!MapRules.ClassicEndings) { Win(5, "time ran out", Achievements.Ending.TimeUp); return true; }
+            }
+            return false;
+        }
+
         bool AnySide(Side side, bool aliveOnly)
         {
             foreach (var p in _players)
@@ -281,16 +373,114 @@ namespace SpellyZombie
             _phase = Phase.Over;
             _winner = winner;
             _ending = ending;
+            _causeAt = CauseOf(ending);
             _overTimer = 7f;
-            bool wizards = winner == 1;
-            ComboBanner.Show(Loc.T(wizards ? "round.wizards" : "round.acolytes"),
-                wizards ? new Color(0.65f, 0.85f, 1f) : new Color(0.55f, 1f, 0.45f));
+            ComboBanner.Show(WinWords(winner), WinColor(winner));
             DrawingWorld.Instance?.LogEvent(how);
             var at = _players.Count > 0 && _players[0] != null ? _players[0].transform.position : Vector3.zero;
-            bool mine = wizards == (Sides.Of(Grimoire.LocalPlayerId) == Side.Wizard);
-            if (mine) Juice.Chime(at); else Juice.Sting(at);
-            RunStats.Log(wizards ? "wizards" : "acolytes", 0, _kills, Time.time - _runStart);
+            EndCue(WonHere(winner), at);
+            RunStats.Log(WinName(winner), 0, _kills, Time.time - _runStart);
             Achievements.MatchEnded(winner, ending);
+        }
+
+        /// The match is over here: who won, how, and where the ending camera looks.
+        public static bool Ended(out int winner, out Achievements.Ending ending, out Vector3 causeAt)
+        {
+            if (Remote)
+            {
+                winner = NetSync.NetRound;
+                ending = (Achievements.Ending)NetSync.NetEnding;
+                causeAt = NetSync.NetCauseAt;
+                return NetPhase == 2;
+            }
+            var d = Instance;
+            winner = d != null ? d._winner : 0;
+            ending = d != null ? d._ending : Achievements.Ending.None;
+            causeAt = d != null ? d._causeAt : Vector3.zero;
+            return d != null && d._phase == Phase.Over;
+        }
+
+        /// ★ WHAT THE ENDING CAMERA LOOKS AT (EndingShot): the pot for the pot
+        /// endings, a fallen body of the side that went down, where the boss
+        /// fell, the boss that outlasted the clock. Zero = no shot.
+        Vector3 CauseOf(Achievements.Ending ending)
+        {
+            switch (ending)
+            {
+                case Achievements.Ending.NoWizards: return DownedAt(Side.Wizard, true);
+                case Achievements.Ending.Sweep: return DownedAt(Side.Acolyte, true);
+                case Achievements.Ending.EveryoneDown: return DownedAt(Side.Wizard, false);
+                case Achievements.Ending.BossDown: return BossMark.FellAt;
+                case Achievements.Ending.TimeUp:
+                    foreach (var b in BossMark.All) if (b != null && b.Alive) return b.transform.position;
+                    return PotAt();
+                default: return PotAt();
+            }
+        }
+
+        static Vector3 PotAt() => CauldronEconomy.Active != null ? CauldronEconomy.Active.transform.position : Vector3.zero;
+
+        /// A fallen body: of that side when `ofSide`, anyone's otherwise.
+        Vector3 DownedAt(Side side, bool ofSide)
+        {
+            foreach (var p in _players)
+            {
+                if (p == null || !p.IsDowned) continue;
+                if (!ofSide || (Sides.IsAcolytePlayer(p) ? Side.Acolyte : Side.Wizard) == side) return p.transform.position;
+            }
+            foreach (var a in NetAvatar.All)
+            {
+                if (a == null || !a.Downed) continue;
+                if (!ofSide || Sides.Of(NetSync.OwnerIdOf(a.Id)) == side) return a.transform.position;
+            }
+            return Vector3.zero;
+        }
+
+        /// The banner words for a winner code.
+        public static string WinWords(int winner)
+        {
+            switch (winner)
+            {
+                case 1: return Loc.T("round.wizards");
+                case 2: return Loc.T("round.acolytes");
+                case 3: return Loc.T("round.everyone");
+                case 4: return Loc.T("round.bosswins");
+                default: return Loc.T("round.nobody");
+            }
+        }
+
+        static string WinName(int winner) =>
+            winner == 1 ? "wizards" : winner == 2 ? "acolytes" : winner == 3 ? "everyone" : winner == 4 ? "environment" : "nobody";
+
+        static Color WinColor(int winner) =>
+            winner == 1 ? new Color(0.65f, 0.85f, 1f)
+            : winner == 2 ? new Color(0.55f, 1f, 0.45f)
+            : winner == 3 ? new Color(1f, 0.85f, 0.4f)
+            : winner == 4 ? new Color(1f, 0.45f, 0.35f)
+            : new Color(0.8f, 0.8f, 0.8f);
+
+        /// This machine's player is on the winning side.
+        public static bool WonHere(int winner)
+        {
+            if (winner == 3) return true;
+            if (winner != 1 && winner != 2) return false;
+            return (winner == 1) == (Sides.Of(Grimoire.LocalPlayerId) == Side.Wizard);
+        }
+
+        /// The referee cues, on the machine that hears them: the start, and how it ended for this side.
+        public static void StartCue(Vector3 at)
+        {
+            if (!Juice.Sound2D(Sfx.MatchStart)) Juice.Drum(at);
+        }
+
+        /// Seconds left when the warning sounds.
+        public const float WarnAt = 60f;
+        public static void WarnCue() => Juice.Sound2D(Sfx.Warning, 0.8f);
+
+        public static void EndCue(bool won, Vector3 at)
+        {
+            if (Juice.Sound2D(won ? Sfx.YouWin : Sfx.YouLose)) return;
+            if (won) Juice.Chime(at); else Juice.Sting(at);
         }
 
         void ReturnToLobby()
@@ -344,9 +534,8 @@ namespace SpellyZombie
             return $"{s / 60}:{s % 60:00}";
         }
 
-        static string Victory(bool wizards, float secondsHome) =>
-            Loc.F("round.home", Loc.T(wizards ? "round.wizards" : "round.acolytes"),
-                Mathf.Max(1, Mathf.CeilToInt(secondsHome)));
+        static string Victory(int winner, float secondsHome) =>
+            Loc.F("round.home", WinWords(winner), Mathf.Max(1, Mathf.CeilToInt(secondsHome)));
 
         static string PotWord() =>
             !CauldronEconomy.HasInk ? ""
@@ -360,7 +549,7 @@ namespace SpellyZombie
         static string LocalStatus() => Instance._phase switch
         {
             Phase.Live => $"{Clock(Instance._clock)}{PotWord()}",
-            Phase.Over => Victory(Instance._winner == 1, Instance._overTimer),
+            Phase.Over => Victory(Instance._winner, Instance._overTimer),
             _ => "",
         };
 
@@ -369,7 +558,7 @@ namespace SpellyZombie
                 : NetSync.NetPhase switch
                 {
                     1 => $"{Clock(NetSync.NetTimer)}{PotWord()}",
-                    2 => Victory(NetSync.NetRound == 1, NetSync.NetTimer),
+                    2 => Victory(NetSync.NetRound, NetSync.NetTimer),
                     _ => "",
                 };
     }

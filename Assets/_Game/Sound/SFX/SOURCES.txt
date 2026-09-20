@@ -1,0 +1,94 @@
+Spelly Zombie sounds, fixed copies. The originals one folder up are untouched.
+
+Every file: the silence before the sound is cut off (it starts within about 0.02 s), empty tails are cut with a short fade,
+one loudness per kind of sound (impacts and jingles, laughs a little under, steps and UI quieter, loops quietest),
+WAV 44.1 kHz 16-bit, mono (the jingles stay stereo). Loops come from the steadiest part of the recording and their
+two ends are blended, so they repeat without a bump.
+
+fixed file  <-  original file
+Any Wham effect\Wham.wav  <-  Any Wham effect\universfield-punch-impact-hit-567196.mp3
+Book\Book close.wav  <-  Book\freesound_community-book-closing-48311.mp3
+Book\Page flip.wav  <-  Book\freesound_community-one-page-book-flip-101928.mp3
+Book\Idea\Idea.wav  <-  Book\Idea\freesound_community-ding-idea-40142.mp3
+Cauldron\Discovered\Discovered.wav  <-  Cauldron\Discovered\dragon-studio-fireworks-13-419033.mp3
+Cauldron\From the sky\From the sky.wav  <-  Cauldron\From the sky\universfield-water-splash-229315.mp3
+Cauldron\Tunring Acolyte\Turning Acolyte.wav  <-  Cauldron\Tunring Acolyte\freesound_community-evil-laugh-89423.mp3
+Cauldron\Turning Wizard\Turning Wizard.wav  <-  Cauldron\Turning Wizard\universfield-mischievous-laugh-140131.mp3
+Chest\Chest.wav  <-  Chest\freesound_community-metallic-latch-release-43678.mp3
+Combine spells\Combine spells.wav  <-  Combine spells\freesound_gamestudio-combine-394498.mp3
+Death\Death.wav  <-  Death\freesound_community-sad-trumpet-46384.mp3
+Door\Door.wav  <-  Door\freesound_community-door-creek-81067.mp3
+Egg\Egg.wav  <-  Egg\51481822-near-miss-383418.mp3
+Explosion\Explosion.wav  <-  Explosion\audley_fergine-short-explosion-1-405398.mp3
+Explosion\Magic burst.wav  <-  Explosion\humordome-magic-burst-452852.mp3
+Ink\Adding And removing ink\Ink pop 1.wav  <-  Ink\Adding And removing ink\universfield-bubble-pop-02-293341.mp3
+Ink\Adding And removing ink\Ink pop 2.wav  <-  Ink\Adding And removing ink\universfield-bubble-pop-04-323580.mp3
+Jump and Land\Land.wav  <-  Jump and Land\freesound_community-land-81509.mp3
+Jump and Land\Jump.wav  <-  Jump and Land\u_qqkrn9bn55-jumplanding-398256.mp3
+Lobby\Joined lobby.wav  <-  Lobby\JoinedLobby.mp3
+Lobby\Left lobby.wav  <-  Lobby\LeftLobby.mp3
+Match end\You win.wav  <-  Match end\floraphonic-you-win-sequence-1-183948.mp3
+Match end\You lose.wav  <-  Match end\freesound_community-wah-wah-sad-trombone-6347.mp3
+Match start\Match start.wav  <-  Match start\freesound_community-airhorn-6466.mp3
+Revival\Revival.wav  <-  Revival\muzaproduction-happy-logo-13397.mp3
+Seals\Rune complete.wav  <-  Seals\RuneComplete.mp3
+Seals\Seal complete.wav  <-  Seals\SealComplete.mp3
+Steps\Rock\Step rock.wav  <-  Steps\Rock\data_pion-st2-footstep-sfx-323055.mp3
+Steps\Snow\Step snow.wav  <-  Steps\Snow\freesound_community-snow-step-3-81065.mp3
+Steps\Wood\Step wood.wav  <-  Steps\Wood\freesound_community-wood-step-sample-1-47664.mp3
+Steps\Grass\Step grass.wav  <-  Steps\Grass\joentnt-walk-on-grass-2-291985.mp3
+Thrown object hitting\Thrown object hitting.wav  <-  Thrown object hitting\universfield-ground-impact-352053.mp3
+UI\Hover.wav  <-  UI\lesiakower-minimalist-button-hover-sound-effect-399749.mp3
+UI\Ready.wav  <-  UI\ready.mp3
+UI\Error.wav  <-  UI\u_31vnwfmzt6-error-126627.mp3
+UI\Click.wav  <-  UI\u_u4pf5h7zip-click-345983.mp3
+Whistle\Whistle.wav  <-  Whistle\freesound_community-wolf-whistle-6777.mp3
+Spells\Attract\Attract impact.wav  <-  Spells\Attract\freesound_community-yank-sound-effect-101140.mp3
+Spells\Chill\Chill impact.wav  <-  Spells\Chill\spinopel-cracked-ice-456389.mp3
+Spells\Compress\Compress impact.wav  <-  Spells\Compress\soundreality-whoosh-motion-243505.mp3
+Spells\Dark\Dark impact.wav  <-  Spells\Dark\universfield-horror-impact-hit-567238.mp3
+Spells\Expand\Expand impact.wav  <-  Spells\Expand\freesound_community-quick-swhooshing-noise-80898.mp3
+Spells\Heat\Heat impact.wav  <-  Spells\Heat\dragon-studio-fire-spell-impact-393921.mp3
+Spells\Light\Light impact.wav  <-  Spells\Light\coghezzi-sacred-rune-lock-holy-magic-seal-activation-533277.mp3
+Spells\Liquid\Liquid impact.wav  <-  Spells\Liquid\universfield-water-splash-199583.mp3
+Spells\Repel\Repel impact.wav  <-  Spells\Repel\freesound_community-stiff-wooden-tap-42877.mp3
+Spells\Slick\Slick impact.wav  <-  Spells\Slick\floraphonic-cartoon-yoink-1-183915.mp3
+Spells\Solid\Solid impact.wav  <-  Spells\Solid\dragon-studio-boulder-impact-487673.mp3
+Spells\Sticky\Sticky impact.wav  <-  Spells\Sticky\universfield-slime-impact-352473.mp3
+Breaking\Bone.wav  <-  Breaking\dragon-studio-bone-breaking-effect-393836.mp3
+Breaking\Stone.wav  <-  Breaking\floraphonic-rocks-and-gravel-slide-1-204994.mp3
+Breaking\Glass.wav  <-  Breaking\freesound_community-breaking-glass-83809.mp3
+Breaking\Wood.wav  <-  Breaking\freesound_community-log-split-88986.mp3
+Breaking\Bottle.wav  <-  Breaking\universfield-glass-bottle-breaking-351297.mp3
+Ghost\Ghost out.wav  <-  Ghost\dragon-studio-creepy-ghost-sound-487677.mp3
+Ghost\Ghost take.wav  <-  Ghost\dragon-studio-ghost-horror-sound-382709.mp3
+Warning\Warning.wav  <-  Warning\freesound_community-warning-75933.mp3
+Zombie\Groan 1.wav  <-  Zombie\dragon-studio-zombie-sound-357975.mp3
+Zombie\Groan 2.wav  <-  Zombie\dragon-studio-zombie-sound-357975.mp3
+Zombie\Groan 3.wav  <-  Zombie\dragon-studio-zombie-sound-357975.mp3
+Zombie\Growl.wav  <-  Zombie\dragon-studio-zombie-sound-357975.mp3
+Acolyte\Transform.wav  <-  Acolyte\freesound_community-poof-80161.mp3
+Acolyte\Back to self.wav  <-  Acolyte\freesound_community-poof-of-smoke-87381.mp3
+Golem\Golem charge.wav  <-  Golem\dragon-studio-heavy-rock-rolling-515254.mp3
+Golem\Golem hit.wav  <-  Golem\freesound_community-knife-thrust-into-wall-7017.mp3
+Special\Lightning.wav  <-  Special\dragon-studio-lightning-strike-386161.mp3
+Golem\Golem step.wav  <-  elmanghazireyyan-giant-117045.mp3
+Wand\Wand dry.wav  <-  freesound_community-empty-gun-shot-6209.mp3
+Zombie\Attack.wav  <-  freesound_community-zombie-attack-6419.mp3
+Zombie\Bite.wav  <-  freesound_community-zombie-bite-96528.mp3
+Golem\Golem croak.wav  <-  rpgsounds-giant-frog-383181.mp3
+Drawing\Pencil loop.wav  <-  Drawing\freesound_community-pencil-circles-17526.mp3
+Drawing\Erasing loop.wav  <-  Drawing\freesound_community-erasing-28589.mp3
+Spells\Attract\Attract area loop.wav  <-  Spells\Attract\freesound_community-black-hole-55468.mp3
+Spells\Compress\Compress area loop.wav  <-  Spells\Compress\liecio-strong-howling-wind-132281.mp3
+Spells\Dark\Dark area loop.wav  <-  Spells\Dark\jusatti890-scream-horror-sfx-490916.mp3
+Spells\Expand\Expand area loop.wav  <-  Spells\Expand\freesound_community-weak-wind-76066.mp3
+Spells\Heat\Heat area loop.wav  <-  Spells\Heat\soundreality-fire-sound-334130.mp3
+Spells\Liquid\Liquid area loop.wav  <-  Spells\Liquid\soul_serenity_sounds-water-noises-241049.mp3
+Spells\Sticky\Sticky area loop.wav  <-  Spells\Sticky\freesound_community-organic-blurpy-sticky-sound-in-kitchen-01-43763.mp3
+Spells\Chill\Chill area loop.wav  <-  Spells\Chill\tanweraman-ice-freezing-445024.mp3
+Spells\Light\Light area loop.wav  <-  Spells\Light\coghezzi-holy-healing-spell-533279.mp3
+Spells\Repel\Repel area loop.wav  <-  Spells\Repel\freesound_community-boulder-push-40549.mp3
+Spells\Solid\Solid area loop.wav  <-  Spells\Solid\freesound_community-stone-push-37412.mp3
+Spells\Slick\Slick area loop.wav  <-  Spells\Slick\whitecrowsp-wcsp_palm-sliding-on-jeans-110953.mp3
+Ink\Bubbles loop.wav  <-  Ink\krnbeatz-bubble-in-water-422579.mp3

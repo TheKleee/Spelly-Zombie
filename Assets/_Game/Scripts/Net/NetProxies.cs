@@ -213,6 +213,7 @@ namespace SpellyZombie
 
             go.name = "NetMote";
             var p = go.AddComponent<NetMoteProxy>();
+            p.HostId = id;   // the grab names the host's particle by this
             p.Shape = shape;
             p.Target(pos, go.transform.localScale.x);
             p.Wear(tint, 1, 0, 0f, ParticleKind.Flame, 255);

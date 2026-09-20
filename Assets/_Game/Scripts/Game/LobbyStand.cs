@@ -13,6 +13,27 @@ namespace SpellyZombie
         [Tooltip("The stand shrugs off casual spell splash — its Element is raised to at least this.")]
         public float Toughness = 600f;
 
+        [Tooltip("Where the lobby's host (or anyone alone in the lobby) starts: this far from the stand, in world axes, metres. They start turned to the stand, so its controls are the first thing they see. Everyone who joins is scattered as before.")]
+        public Vector3 HostSpawnOffset = new Vector3(0f, 0f, -3f);
+
+        /// The host's start: the ground under the offset point, and the way to face the stand from it.
+        public static bool HostSpot(out Vector3 at, out float yaw)
+        {
+            at = default;
+            yaw = 0f;
+            var stand = FindAnyObjectByType<LobbyStand>();
+            if (stand == null) return false;
+            Vector3 spot = stand.transform.position + stand.HostSpawnOffset;
+            int mask = Physics.DefaultRaycastLayers & ~(1 << InkCanvasLayer.Layer) & ~(1 << VesselShell.Layer);
+            if (Physics.Raycast(spot + Vector3.up * 3f, Vector3.down, out var hit, 12f, mask, QueryTriggerInteraction.Ignore))
+                spot = hit.point;
+            at = spot + Vector3.up * 1.2f; // the height every other start is dropped from
+            Vector3 to = stand.transform.position - spot;
+            to.y = 0f;
+            if (to.sqrMagnitude > 0.001f) yaw = Quaternion.LookRotation(to).eulerAngles.y;
+            return true;
+        }
+
         [Tooltip("Your grimoire's Animator on the stand (same controller as the worn book). Its 'Open' bool follows the host: open while the host is in the stand menu, closed otherwise, visible to everyone.")]
         public Animator Book;
 

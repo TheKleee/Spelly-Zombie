@@ -60,6 +60,7 @@ namespace SpellyZombie
                 PlayerPrefs.DeleteKey(DoneKey + id);
             _done.Clear();
             PlayerPrefs.Save();
+            FirstSteps.ResetAll(); // the ghost hand's lessons start over too
         }
 
         static string KeyFor(Id id)

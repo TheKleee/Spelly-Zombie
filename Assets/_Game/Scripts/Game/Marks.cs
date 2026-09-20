@@ -40,7 +40,7 @@ namespace SpellyZombie
         static readonly Dictionary<Key, int> _marks = new Dictionary<Key, int>(new KeyCompare());
 
         /// Nothing is remembered at the start of a match.
-        public static void Clear() { _marks.Clear(); KillLedger.Clear(); }
+        public static void Clear() { _marks.Clear(); KillLedger.Clear(); CoCast.Clear(); }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Hook()

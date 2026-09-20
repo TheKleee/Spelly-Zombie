@@ -105,6 +105,8 @@ namespace SpellyZombie
             _readPos = 0;
             _frameFill = 0;
             _resamplePos = 0f;
+            _prevSample = 0f;
+            _lpRate = 0;
             _retryAt = 0f;    // a newly picked mic is tried at once
         }
 
@@ -131,9 +133,19 @@ namespace SpellyZombie
             return true;
         }
 
+        // the editor's fake voice (Spelly Zombie/Test/Fake Voice) stands in for the mic
+        static bool Fake =>
+#if UNITY_EDITOR
+            FakeVoice.Me;
+#else
+            false;
+#endif
+
         void Update()
         {
-            if (!_micOn)
+            bool fake = Fake;
+            if (fake && _micOn) StopMic();
+            if (!fake && !_micOn)
             {
                 // no mic: look again every few seconds, not every frame
                 if (Time.unscaledTime < _retryAt) return;
@@ -154,10 +166,18 @@ namespace SpellyZombie
             // still reads, so your own eyes swell with your voice.
             if (mode == MicMode.Off && !GameMenu.IsOpen)
             {
-                int now = Microphone.GetPosition(_micDevice);
+                int now = fake ? -1 : Microphone.GetPosition(_micDevice);
                 if (now >= 0) _readPos = now;
                 _frameFill = 0;
                 _resamplePos = 0f;
+                return;
+            }
+
+            if (fake)
+            {
+                int made = Mathf.Min(_grab.Length, Mathf.RoundToInt(Time.unscaledDeltaTime * Rate));
+                FillFake(_grab, made);
+                Feed(made, Rate, send);
                 return;
             }
 
@@ -176,32 +196,144 @@ namespace SpellyZombie
                 if (pos > 0) _mic.GetData(new System.Span<float>(_grab, first, pos), 0);
             }
             _readPos = pos;
+            Feed(count, _micRate, send);
+        }
 
-            // to 16 kHz frames of 20 ms, sent one by one
-            float step = _micRate / (float)Rate;
-            float i = _resamplePos;
-            for (; i < count; i += step)
+        /// What was captured into _grab, as 16 kHz frames of 20 ms, sent one by one.
+        /// Most mics run at 44.1 or 48 kHz: what they hear above the stream's reach is
+        /// filtered out first (picked every third sample as it was, it folded back into
+        /// the voice as hiss), and the 16 kHz samples are read BETWEEN the mic's own.
+        void Feed(int count, int rate, bool send)
+        {
+            if (count <= 0) return;
+            Clean(count, rate);
+            float step = rate / (float)Rate;
+            float i = _resamplePos; // from -1: the sample before this buffer is kept
+            for (; i < count - 1; i += step)
             {
-                _frame[_frameFill++] = _grab[(int)i];
+                int i0 = Mathf.FloorToInt(i);
+                float a = i0 < 0 ? _prevSample : _grab[i0];
+                _frame[_frameFill++] = a + (_grab[i0 + 1] - a) * (i - i0);
                 if (_frameFill < Frame) continue;
                 _frameFill = 0;
                 SendFrame(send);
             }
+            _prevSample = _grab[count - 1];
             _resamplePos = i - count;
         }
+
+        // ---- the capture, cleaned the way a telephone cleans it ----
+        const float CutHz = 6800f; // speech lives under this; a 16 kHz stream carries nothing past 8000
+
+        struct Biquad
+        {
+            float _b0, _b1, _b2, _a1, _a2, _z1, _z2;
+
+            public float Run(float x)
+            {
+                float y = _b0 * x + _z1;
+                _z1 = _b1 * x - _a1 * y + _z2;
+                _z2 = _b2 * x - _a2 * y;
+                return y;
+            }
+
+            public static Biquad LowPass(float cutoff, float rate, float q)
+            {
+                float w = 2f * Mathf.PI * cutoff / rate;
+                float cos = Mathf.Cos(w), alpha = Mathf.Sin(w) / (2f * q);
+                float a0 = 1f + alpha;
+                return new Biquad
+                {
+                    _b0 = (1f - cos) * 0.5f / a0, _b1 = (1f - cos) / a0, _b2 = (1f - cos) * 0.5f / a0,
+                    _a1 = -2f * cos / a0, _a2 = (1f - alpha) / a0,
+                };
+            }
+        }
+
+        Biquad _lpA, _lpB;   // together a 4th order Butterworth
+        int _lpRate;
+        float _dcX, _dcY, _prevSample;
+
+        void Clean(int count, int rate)
+        {
+            if (rate != _lpRate)
+            {
+                _lpRate = rate;
+                _lpA = Biquad.LowPass(CutHz, rate, 0.5412f);
+                _lpB = Biquad.LowPass(CutHz, rate, 1.3066f);
+                _dcX = _dcY = 0f;
+            }
+            bool faster = rate > Rate + 100;
+            for (int k = 0; k < count; k++)
+            {
+                float x = _grab[k];
+                float y = x - _dcX + 0.995f * _dcY; // the mic's offset and the desk's rumble
+                _dcX = x;
+                _dcY = y;
+                _grab[k] = faster ? _lpB.Run(_lpA.Run(y)) : y;
+            }
+        }
+
+        static void FillFake(float[] buf, int count)
+        {
+#if UNITY_EDITOR
+            FakeVoice.Fill(buf, count, Rate);
+#endif
+        }
+
+        // a word starts quieter than the gate: the frames just before it opened go out first
+        const int PreRoll = 3;
+        readonly float[][] _pre = { new float[Frame], new float[Frame], new float[Frame] };
+        int _preCount, _preAt;
+        bool _gateOpen;
+        readonly float[] _ship = new float[Frame];
+        float _micPeak = 0.2f, _micGain = 1f;
+        int _encIndex;       // the coder's step size carries on from frame to frame
 
         void SendFrame(bool send)
         {
             float level = Rms(_frame, Frame);
             LocalLevel = Mathf.Clamp01(level * DrawingConfig.VoiceGain * 6f);
-            if (!send) return;
+            // nothing is kept from while the mic was closed (push to talk, the gag)
+            if (!send) { _gateOpen = false; _preCount = 0; return; }
             // an open mic sends speech, not the room: a frame quieter than
             // the gate is dropped unless speech just stopped (no clipped ends)
             bool loud = level >= DrawingConfig.VoiceGate;
             if (loud) _speechUntil = Time.time + 0.4f;
-            if (!loud && Time.time >= _speechUntil) return;
+            if (!loud && Time.time >= _speechUntil)
+            {
+                System.Array.Copy(_frame, _pre[_preAt], Frame);
+                _preAt = (_preAt + 1) % PreRoll;
+                if (_preCount < PreRoll) _preCount++;
+                _gateOpen = false;
+                return;
+            }
+            if (!_gateOpen)
+            {
+                _gateOpen = true;
+                for (int k = 0; k < _preCount; k++)
+                    Ship(_pre[(_preAt - _preCount + k + PreRoll * 2) % PreRoll]);
+                _preCount = 0;
+            }
+            Ship(_frame);
+            if (loud)
+            {
+                LocalTalking = true;
+                SwellLocal(level);
+            }
+        }
 
-            var data = Adpcm.Encode(_frame, Frame);
+        void Ship(float[] frame)
+        {
+            // a quiet mic is brought up, never past three times; a loud one is left alone
+            float peak = 0f;
+            for (int k = 0; k < Frame; k++) peak = Mathf.Max(peak, Mathf.Abs(frame[k]));
+            _micPeak = Mathf.Max(peak, _micPeak * 0.985f);
+            float want = Mathf.Clamp(0.5f / Mathf.Max(_micPeak, 0.02f), 1f, 3f);
+            _micGain = want < _micGain ? want : Mathf.MoveTowards(_micGain, want, 0.03f);
+            for (int k = 0; k < Frame; k++) _ship[k] = Mathf.Clamp(frame[k] * _micGain, -1f, 1f);
+
+            var data = Adpcm.Encode(_ship, Frame, ref _encIndex);
             var cm = InstanceFinder.ClientManager;
             if (cm != null && cm.Started)
                 cm.Broadcast(new NetSync.VoiceMsg
@@ -210,11 +342,6 @@ namespace SpellyZombie
                     Ghost = GhostState.LocalIsGhost,
                     Data = data,
                 }, Channel.Unreliable);
-            if (loud)
-            {
-                LocalTalking = true;
-                SwellLocal(level);
-            }
         }
 
         static float Rms(float[] pcm, int count)
@@ -318,9 +445,18 @@ namespace SpellyZombie
 
         public static byte[] Encode(float[] pcm, int count)
         {
+            int index = 0;
+            return Encode(pcm, count, ref index);
+        }
+
+        /// index: the step size the last frame ended on. Starting every 20 ms from the
+        /// smallest step made the coder chase the voice at the top of each frame (a 50 Hz
+        /// rasp); it rides in the frame's header, so a lost packet costs nothing.
+        public static byte[] Encode(float[] pcm, int count, ref int index)
+        {
             var outp = new byte[4 + (count + 1) / 2];
             int predictor = Mathf.RoundToInt(Mathf.Clamp(pcm[0], -1f, 1f) * 32767f);
-            int index = 0;
+            index = Mathf.Clamp(index, 0, 88);
             outp[0] = (byte)(predictor & 0xFF);
             outp[1] = (byte)((predictor >> 8) & 0xFF);
             outp[2] = (byte)index;
@@ -414,10 +550,20 @@ namespace SpellyZombie
             _src.Play();
         }
 
+        // frames arrive in bursts (a game frame, the host's relay, the network): played the
+        // moment they land, every late one left a hole in the middle of a word. A short
+        // wait before an utterance starts pays for the late ones.
+        const float WaitSeconds = 0.08f;   // held back before a voice starts
+        const float GiveUpSeconds = 0.25f; // a lone short sound plays anyway after this
+        bool _waiting = true;
+        double _waitingSince;
+        float _rise, _last;
+
         public void Push(float[] pcm, int n)
         {
             lock (_lock)
             {
+                if (_count == 0) _waitingSince = AudioSettings.dspTime;
                 // a small cushion against jitter, then skip ahead: voice must
                 // stay live, a backlog would play every later word late
                 int cushion = _rate * 3 / 10;
@@ -442,15 +588,31 @@ namespace SpellyZombie
         {
             lock (_lock)
             {
+                if (_waiting && (_count >= (int)(_rate * WaitSeconds)
+                        || (_count > 0 && AudioSettings.dspTime - _waitingSince > GiveUpSeconds)))
+                {
+                    _waiting = false;
+                    _rise = 0f;
+                }
+                float riseStep = 1f / (_rate * 0.005f); // 5 ms in, so a start never clicks
                 for (int i = 0; i < data.Length; i++)
                 {
-                    if (_count > 0)
+                    if (!_waiting && _count > 0)
                     {
-                        data[i] = _ring[_read];
+                        float s = _ring[_read];
                         _read = (_read + 1) % _ring.Length;
                         _count--;
+                        if (_rise < 1f) { s *= _rise; _rise += riseStep; }
+                        _last = s;
+                        data[i] = s;
                     }
-                    else data[i] = 0f;
+                    else
+                    {
+                        // ran dry: the voice stopped, or the next frames are late. Die away, then wait again
+                        if (!_waiting) _waiting = true;
+                        _last *= 0.9f;
+                        data[i] = _last;
+                    }
                 }
             }
         }

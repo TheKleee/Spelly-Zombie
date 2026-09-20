@@ -23,13 +23,14 @@ namespace SpellyZombie
         /// Host-authoritative law: solo and the host simulate; clients ship intents (netcode §0).
         public static bool IsAuthority => !Connected || IsHost;
 
+        /// A client connection was asked for and has not reported back yet.
+        /// Multipass errors when a client that never started is stopped.
+        public static bool ClientStarting;
+
         /// The password this lobby demands (host side; empty = open lobby) and
         /// the one we typed to get in (client side) - NetSync's join handshake reads both.
         public static string HostPassword = "";
         public static string JoinPassword = "";
-
-        string _address = "127.0.0.1";
-        string _password = "";
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -45,7 +46,6 @@ namespace SpellyZombie
         bool _uiConnected;
         bool _uiNear;
         UnityEngine.UI.Text _status, _statusCorner, _mapLabel;
-        UnityEngine.UI.InputField _addrField, _passField;
 
         // status-line cache - rebuild the string only when a shown value changes, not per frame
         int _shownPlayers = -1;
@@ -82,6 +82,8 @@ namespace SpellyZombie
             // ---- the stand panel (control - exists only AT the stand) ----
             if (!near)
             {
+                MapPicker.Close(); // it belongs to the stand
+                LanLobby.Listen = false;
                 if (_ui != null && _ui.gameObject.activeSelf) _ui.gameObject.SetActive(false);
                 LobbyStand.HoldPanel(false);
                 _uiNear = false; // next arrival rebuilds and refreshes the list
@@ -95,6 +97,7 @@ namespace SpellyZombie
             else if (!_ui.gameObject.activeSelf) _ui.gameObject.SetActive(true);
             _uiNear = true;
             LobbyStand.HoldPanel(true); // keeps the cursor free for the mouse
+            LanLobby.Listen = !Connected && !LobbyBrowserUI.TabHost; // the Join list hears lobbies on this network
 
             if (Connected)
             {
@@ -115,19 +118,6 @@ namespace SpellyZombie
                     _rosterStamp = LobbyBrowserUI.Stamp;
                     BuildUI();
                 }
-            }
-
-            // keyboard stays first-class at the stand: H hosts, J joins,
-            // I edits the address (Enter commits)
-            var kb = UnityEngine.InputSystem.Keyboard.current;
-            if (kb == null || Connected || UIKit.Typing) return;
-            if (kb.hKey.wasPressedThisFrame) Host();
-            else if (kb.jKey.wasPressedThisFrame) Join();
-            else if (kb.iKey.wasPressedThisFrame && _addrField != null)
-            {
-                UnityEngine.EventSystems.EventSystem.current?
-                    .SetSelectedGameObject(_addrField.gameObject);
-                _addrField.ActivateInputField();
             }
         }
 
@@ -159,19 +149,27 @@ namespace SpellyZombie
             if (mp != null) mp.SetClientTransport<FishNet.Transporting.Tugboat.Tugboat>();
         }
 
-        void Host()
+        /// ★ A lobby on this PC through Tugboat, for when Steam is not there.
+        /// A listed one calls out on the local network (LanLobby).
+        public static void HostLocal(string password, bool listed)
         {
-            HostPassword = _password ?? "";
+            if (!HasManager || Connected || ClientStarting) return;
+            HostPassword = password ?? "";
             UseLan();
             InstanceFinder.ServerManager.StartConnection();
             InstanceFinder.ClientManager.StartConnection();
+            ClientStarting = true;
+            LanLobby.Call(listed);
         }
 
-        void Join()
+        /// Joins a lobby heard on this network.
+        public static void JoinLocal(string address, string password)
         {
-            JoinPassword = _password ?? "";
+            if (!HasManager || Connected || ClientStarting) return;
+            JoinPassword = password ?? "";
             UseLan();
-            InstanceFinder.ClientManager.StartConnection(_address);
+            InstanceFinder.ClientManager.StartConnection(address);
+            ClientStarting = true;
         }
 
         void BuildCorner()
@@ -244,9 +242,9 @@ namespace SpellyZombie
 
             // right: the match settings and the big verbs
             float rx = 310f, ry = -64f;
-            LobbyBrowserUI.ArrowRow(_ui, rx, ry, 270f, Loc.F("net.map", MatchLobby.SelectedMap),
-                () => { MatchLobby.CycleMap(-1); BuildUI(); },
-                () => { MatchLobby.CycleMap(1); BuildUI(); });
+            // the map opens the picker: every map at once, the picked one described
+            LobbyBrowserUI.Chip(_ui, rx, ry, 270f, Loc.F("net.map", MatchLobby.SelectedMap), MapPicker.IsOpen,
+                () => MapPicker.Open(BuildUI));
             ry -= 30f;
             LobbyBrowserUI.ArrowRow(_ui, rx, ry, 270f, Loc.F("stand.duration", MatchLobby.DurationLabel),
                 () => { MatchLobby.DurationMin = Mathf.Max(0, MatchLobby.DurationMin - 5); BuildUI(); },
@@ -336,14 +334,6 @@ namespace SpellyZombie
                 LobbyBrowserUI.BuildHostView(_ui, 20f, -56f, 560f);
             else
                 LobbyBrowserUI.BuildJoinView(_ui, 20f, -56f, 560f, 6);
-
-            // the LAN road: a second build, a VPN, a port forward - H hosts, J joins
-            _addrField = UIKit.Input(_ui, _address, v => _address = v);
-            UIKit.Place((RectTransform)_addrField.transform, new Vector2(0f, 1f), new Vector2(20f, -590f), new Vector2(140f, 22f));
-            var lanH = UIKit.Button(_ui, Loc.T("stand.lanhost"), Host, skin != null ? skin.ButtonGrey : null, 11);
-            UIKit.Place((RectTransform)lanH.transform, new Vector2(0f, 1f), new Vector2(168f, -588f), new Vector2(84f, 22f));
-            var lanJ = UIKit.Button(_ui, Loc.T("stand.lanjoin"), Join, skin != null ? skin.ButtonGrey : null, 11);
-            UIKit.Place((RectTransform)lanJ.transform, new Vector2(0f, 1f), new Vector2(258f, -588f), new Vector2(84f, 22f));
         }
     }
 }

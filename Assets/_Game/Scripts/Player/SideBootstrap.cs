@@ -69,9 +69,6 @@ namespace SpellyZombie
             // immersive mode: no HUD at all, except screens you opened
             UIKit.TickImmersive();
 
-            // lobby: aim at a player, floating I, name card + Steam add
-            LobbyInspect.Tick();
-
             // players are SPAWNED from the prefab, not assumed to be sitting
             // in the scene - then stood at their start: a biome on a real map,
             // scattered ground in the lobby.

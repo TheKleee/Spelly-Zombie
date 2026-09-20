@@ -1,0 +1,105 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9cc8d57d2cd69834293bfb64a8990967, type: 3}
+  m_Name: AudioLibrary
+  m_EditorClassIdentifier: Assembly-CSharp::SpellyZombie.AudioLibrary
+  Explosion: {fileID: 8300000, guid: c6f3e6482f22091e4d068b15a0a3b924, type: 3}
+  MagicBurst: {fileID: 8300000, guid: 39f4b2efdff8fc60cd848b1332a54d7a, type: 3}
+  Wham: {fileID: 8300000, guid: f82ab6ab6c9873202e4a57ed87d00a53, type: 3}
+  ThrownObjectHitting: {fileID: 8300000, guid: dd7d42bc9f15c18fbc80d34aab48e4ef, type: 3}
+  CombineSpells: {fileID: 8300000, guid: e3d529d0b2f6357abfea25b2b15da236, type: 3}
+  BreakWood: {fileID: 8300000, guid: 5574f3025eb5e1efb5fc36bce1a517aa, type: 3}
+  BreakStone: {fileID: 8300000, guid: 555354559db23774f083a6bfc0348821, type: 3}
+  BreakBone: {fileID: 8300000, guid: 57ef462571a88e904b5514d3308a3154, type: 3}
+  BreakGlass: {fileID: 8300000, guid: 632f0b4303fc42a19be0c8653160a828, type: 3}
+  BreakBottle: {fileID: 8300000, guid: 505023b1cbfe6e980a98f0249fc6d656, type: 3}
+  HeatImpact: {fileID: 8300000, guid: b72329ef7c3205145caf5674024b180a, type: 3}
+  ChillImpact: {fileID: 8300000, guid: 3cf299e5fbe53f360bb816b62079bf97, type: 3}
+  LightImpact: {fileID: 8300000, guid: 1126f21a212c74e4049fc36b1a5950ec, type: 3}
+  DarkImpact: {fileID: 8300000, guid: d6f7ebea89ab907842f192945dfd2d72, type: 3}
+  CompressImpact: {fileID: 8300000, guid: fab2c8168f72e73676b16d6817c74a43, type: 3}
+  ExpandImpact: {fileID: 8300000, guid: b866d46efa8f985a4d6c1f91013ae0ee, type: 3}
+  StickyImpact: {fileID: 8300000, guid: 613ccde7db4cf0a42084a6ec41e3e718, type: 3}
+  SlickImpact: {fileID: 8300000, guid: 18ef10c3b2c1201f51ccc96dd1516efe, type: 3}
+  SolidImpact: {fileID: 8300000, guid: d4387f6ea5013afd0b3d8a487b871b2e, type: 3}
+  LiquidImpact: {fileID: 8300000, guid: 990d1cc12e3c5ded08d56f43fa93eeee, type: 3}
+  AttractImpact: {fileID: 8300000, guid: cb6ab153081e60263724be400b0a7f40, type: 3}
+  RepelImpact: {fileID: 8300000, guid: 826cece24fc67453dfe0f013ba254974, type: 3}
+  HeatArea: {fileID: 8300000, guid: d4c25961d54b963500baa760481cec4c, type: 3}
+  ChillArea: {fileID: 8300000, guid: 631cbd5aece44c73cd77aab0f79f635b, type: 3}
+  LightArea: {fileID: 8300000, guid: 90f16030b2c2d9b4f623b6ec12cd268c, type: 3}
+  DarkArea: {fileID: 8300000, guid: fa86c102d18401bbfb3b43a5f200dd85, type: 3}
+  CompressArea: {fileID: 8300000, guid: 5733df590dbe70c5d6d0c75ce7ea32ad, type: 3}
+  ExpandArea: {fileID: 8300000, guid: d9b098a76deae81a1ab90ceb10512c4f, type: 3}
+  StickyArea: {fileID: 8300000, guid: 815410039a1f52807d81631a53a6dd1a, type: 3}
+  SlickArea: {fileID: 8300000, guid: 6a5a82cf058cec43b11ea5d304cb95ee, type: 3}
+  SolidArea: {fileID: 8300000, guid: 5a47a639876007760eeed28f40f71879, type: 3}
+  LiquidArea: {fileID: 8300000, guid: f9b3761eaa4eadcdb140a4bc16b557de, type: 3}
+  AttractArea: {fileID: 8300000, guid: 20b614e7c2a8164c695bc530f3975e8f, type: 3}
+  RepelArea: {fileID: 8300000, guid: c96756edd144ed3c72e58cccbcab0fde, type: 3}
+  PencilLoop: {fileID: 8300000, guid: c8cef78364dbcd507e629930ce572566, type: 3}
+  ErasingLoop: {fileID: 8300000, guid: 3df0162e973a066e42204fe39bf05a67, type: 3}
+  RuneComplete: {fileID: 8300000, guid: de8eafc2145b00cf7cb7c8e22d19bc63, type: 3}
+  SealComplete: {fileID: 8300000, guid: fb8c77a17dc5302bb5da539b37d2313c, type: 3}
+  InkPop1: {fileID: 8300000, guid: f456b753f991050e75df1e8a83634eb9, type: 3}
+  InkPop2: {fileID: 8300000, guid: a4361726313541fde7a9bf06085a8d7d, type: 3}
+  WandDry: {fileID: 8300000, guid: 9f9446dc3b40ab67a9b600a4c6643c0b, type: 3}
+  BookClose: {fileID: 8300000, guid: ab29921c0fa92688445ad272fd06c422, type: 3}
+  PageFlip: {fileID: 8300000, guid: 3afd8d0e4226fbf24075242b3de433a2, type: 3}
+  Idea: {fileID: 8300000, guid: 54338fb75899be6ecb3fb74c5948202a, type: 3}
+  BubblesLoop: {fileID: 8300000, guid: 6e39cbb11649f174b359acaf5457bbce, type: 3}
+  PotDiscovered: {fileID: 8300000, guid: 44893f6f9d64d52465eb3a956d12740e, type: 3}
+  PotFromTheSky: {fileID: 8300000, guid: 59c1d47197d3d4822842faa23f6fb2f6, type: 3}
+  PotTurningAcolyte: {fileID: 8300000, guid: d8610f3cf5b0ad7d135335b023accb0c, type: 3}
+  PotTurningWizard: {fileID: 8300000, guid: 489cfa8fa53cf3039408b7d534747d62, type: 3}
+  StepRock:
+  - {fileID: 8300000, guid: a937b7064823aaad5343d7a3b1b5e946, type: 3}
+  StepSnow:
+  - {fileID: 8300000, guid: 4320b7b59c49fd03881392acc93535b1, type: 3}
+  StepWood:
+  - {fileID: 8300000, guid: 8e824b5e6c44703159060d17df80ee99, type: 3}
+  StepGrass:
+  - {fileID: 8300000, guid: 22327b74ac1bc42455d508a1679ba89f, type: 3}
+  Jump: {fileID: 8300000, guid: b9e042f208a5a3426ee1b4998d25fec4, type: 3}
+  Land: {fileID: 8300000, guid: eff573d802927f7a88f780aa8e8a487b, type: 3}
+  Death: {fileID: 8300000, guid: 1cf0905b4e9708d3e28bea7abafeaea5, type: 3}
+  Revival: {fileID: 8300000, guid: 4f00c3a5635cca1a6f98469b2b5d8df9, type: 3}
+  Whistle: {fileID: 8300000, guid: 62f6bfee63c0d5aaa8e0a8e8a6b1132b, type: 3}
+  AcolyteTransform: {fileID: 8300000, guid: ef8e5a09a26776ffcdf893ccce941d32, type: 3}
+  AcolyteBack: {fileID: 8300000, guid: c6bdacac1a1bbe4ae0e7557addd6f996, type: 3}
+  GolemCharge: {fileID: 8300000, guid: e1ef9ad814bfe0fc375ff6e0eb838f25, type: 3}
+  GolemHit: {fileID: 8300000, guid: ce606b2f76723e13aa04a3450118ca87, type: 3}
+  GolemCroak: {fileID: 8300000, guid: 3930a5a590564dd285875596e80398e8, type: 3}
+  GolemStep: {fileID: 8300000, guid: 0c5e68fc91678333616d4aa2a6f31595, type: 3}
+  Lightning: {fileID: 8300000, guid: 1391007254ad247570cf3a678893cb39, type: 3}
+  ZombieGroans:
+  - {fileID: 8300000, guid: d27ccd12e29a02586b6199ccfefc6f29, type: 3}
+  - {fileID: 8300000, guid: b8972640d7399e9f1aa54fb113ca1e11, type: 3}
+  - {fileID: 8300000, guid: a1604c08332c17c4aba5670d0a9bf70b, type: 3}
+  ZombieGrowl: {fileID: 8300000, guid: 8b831aab73ca01e10db08ba77b91384d, type: 3}
+  ZombieAttack: {fileID: 8300000, guid: 043c5da05f326447fffe9835d733beb1, type: 3}
+  ZombieBite: {fileID: 8300000, guid: 5ba73a76555f6b0bab280e08b82b784a, type: 3}
+  GhostOut: {fileID: 8300000, guid: 2e05c48f36ec85d6c96532320d06a327, type: 3}
+  GhostTake: {fileID: 8300000, guid: 3f61d8ace07adcce92a4fce46b7dc910, type: 3}
+  Door: {fileID: 8300000, guid: 407ddc517c1bc4bbaed7aad839ee0fd8, type: 3}
+  Chest: {fileID: 8300000, guid: ba97b46fc50140c46e91532821ec96d4, type: 3}
+  Egg: {fileID: 8300000, guid: ffe6435665944dedc8537e8e57b47a16, type: 3}
+  MatchStart: {fileID: 8300000, guid: a403e1b0f7f66b3322f6527d1a47a04a, type: 3}
+  Warning: {fileID: 8300000, guid: 912a1fa7089e993b700fb8e590bd40b1, type: 3}
+  YouWin: {fileID: 8300000, guid: b9da58a70d249a258898b5c8676d6ecc, type: 3}
+  YouLose: {fileID: 8300000, guid: 7bc3f9c760231fc27bc6094fc3c1a1ac, type: 3}
+  JoinedLobby: {fileID: 8300000, guid: 92d0a2d835ec4ee06326f5f42095ce27, type: 3}
+  LeftLobby: {fileID: 8300000, guid: d80af6d066a8cf3b5c93b149795f3f04, type: 3}
+  UiHover: {fileID: 8300000, guid: f91b68cd58a1a747a750c5d64d0e8de6, type: 3}
+  UiClick: {fileID: 8300000, guid: b076ffc3f049db8ee5a0936f960446a3, type: 3}
+  UiReady: {fileID: 8300000, guid: bbb52da749bd900789ef6b0975814135, type: 3}
+  UiError: {fileID: 8300000, guid: 556aa640aa626aa022a4123bde575d9b, type: 3}

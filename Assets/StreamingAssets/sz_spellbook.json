@@ -2,7 +2,6 @@
     "spells": [
         {
             "Name": "Heat",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 25,
@@ -17,8 +16,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -52,7 +56,6 @@
         },
         {
             "Name": "Chill",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 -25,
@@ -67,8 +70,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -102,7 +110,6 @@
         },
         {
             "Name": "Light",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -117,8 +124,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -152,7 +164,6 @@
         },
         {
             "Name": "Dark",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -167,8 +178,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -202,7 +218,6 @@
         },
         {
             "Name": "Compress",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -217,8 +232,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -252,7 +272,6 @@
         },
         {
             "Name": "Spread",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -267,8 +286,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -302,7 +326,6 @@
         },
         {
             "Name": "Sticky",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -317,8 +340,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -352,7 +380,6 @@
         },
         {
             "Name": "Slick",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -367,8 +394,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -402,7 +434,6 @@
         },
         {
             "Name": "Solid",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -417,8 +448,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -452,7 +488,6 @@
         },
         {
             "Name": "Liquid",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -467,8 +502,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -502,7 +542,6 @@
         },
         {
             "Name": "Attract",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -517,8 +556,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -552,7 +596,6 @@
         },
         {
             "Name": "Repel",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -567,8 +610,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -602,7 +650,6 @@
         },
         {
             "Name": "Heat Area",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 50,
@@ -617,8 +664,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -652,7 +704,6 @@
         },
         {
             "Name": "Freeze Area",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 -50,
@@ -667,8 +718,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -702,7 +758,6 @@
         },
         {
             "Name": "Blinding",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -717,8 +772,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -752,7 +812,6 @@
         },
         {
             "Name": "Tornado",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -767,8 +826,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -802,7 +866,6 @@
         },
         {
             "Name": "Flame",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 25,
@@ -817,8 +880,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -852,7 +920,6 @@
         },
         {
             "Name": "Lightning",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -867,8 +934,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -902,7 +974,6 @@
         },
         {
             "Name": "Heal",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 -5,
@@ -917,8 +988,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -952,7 +1028,6 @@
         },
         {
             "Name": "Steam",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 25,
@@ -967,8 +1042,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1002,7 +1082,6 @@
         },
         {
             "Name": "Teleportation",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -1017,8 +1096,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1052,7 +1136,6 @@
         },
         {
             "Name": "Buff",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -1067,8 +1150,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1102,7 +1190,6 @@
         },
         {
             "Name": "Track",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -1117,8 +1204,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1152,7 +1244,6 @@
         },
         {
             "Name": "Transparency",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -1167,8 +1258,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1202,7 +1298,6 @@
         },
         {
             "Name": "Plasma",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 60,
@@ -1217,8 +1312,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1252,7 +1352,6 @@
         },
         {
             "Name": "Cloud",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 -25,
@@ -1267,8 +1366,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1302,7 +1406,6 @@
         },
         {
             "Name": "Explosion",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 0,
@@ -1317,8 +1420,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1352,7 +1460,6 @@
         },
         {
             "Name": "Meteor",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 30,
@@ -1367,8 +1474,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1402,7 +1514,6 @@
         },
         {
             "Name": "Goo",
-            "Body": 0,
             "Book": 1,
             "Axis": [
                 0,
@@ -1417,8 +1528,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1452,7 +1568,6 @@
         },
         {
             "Name": "Fire Biome",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 120,
@@ -1467,8 +1582,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 true,
                 false,
@@ -1502,7 +1622,6 @@
         },
         {
             "Name": "Frost Biome",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 -90,
@@ -1517,8 +1636,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 true,
                 false,
@@ -1552,7 +1676,6 @@
         },
         {
             "Name": "Melee Zombie",
-            "Body": 1,
             "Book": 1,
             "Axis": [
                 0,
@@ -1569,10 +1692,15 @@
             "Runes": [
                 3
             ],
+            "Creature": "",
+            "Body": 1,
             "Abilities": [
                 "charge"
             ],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1606,7 +1734,6 @@
         },
         {
             "Name": "Ranged Zombie",
-            "Body": 1,
             "Book": 1,
             "Axis": [
                 0,
@@ -1623,10 +1750,15 @@
             "Runes": [
                 4
             ],
+            "Creature": "",
+            "Body": 1,
             "Abilities": [
                 "Goo"
             ],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1660,7 +1792,6 @@
         },
         {
             "Name": "Demon",
-            "Body": 2,
             "Book": 0,
             "Axis": [
                 0,
@@ -1688,6 +1819,8 @@
                 11,
                 12
             ],
+            "Creature": "",
+            "Body": 2,
             "Abilities": [
                 "Chill",
                 "Light",
@@ -1718,6 +1851,9 @@
                 "Meteor"
             ],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1751,7 +1887,6 @@
         },
         {
             "Name": "Decoy",
-            "Body": 0,
             "Book": 1,
             "Axis": [
                 25,
@@ -1766,8 +1901,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1801,7 +1941,6 @@
         },
         {
             "Name": "Reveal",
-            "Body": 0,
             "Book": 1,
             "Axis": [
                 -25,
@@ -1816,8 +1955,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1851,7 +1995,6 @@
         },
         {
             "Name": "Death Needle",
-            "Body": 0,
             "Book": 1,
             "Axis": [
                 0,
@@ -1866,8 +2009,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1901,7 +2049,6 @@
         },
         {
             "Name": "Life Needle",
-            "Body": 0,
             "Book": 1,
             "Axis": [
                 0,
@@ -1916,8 +2063,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -1951,7 +2103,6 @@
         },
         {
             "Name": "Evaporation Ink",
-            "Body": 0,
             "Book": 1,
             "Axis": [
                 0,
@@ -1966,8 +2117,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -2001,7 +2157,6 @@
         },
         {
             "Name": "Transformation Ink",
-            "Body": 0,
             "Book": 1,
             "Axis": [
                 0,
@@ -2016,8 +2171,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -2051,7 +2211,6 @@
         },
         {
             "Name": "Aggressive",
-            "Body": 0,
             "Book": 1,
             "Axis": [
                 0,
@@ -2066,8 +2225,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -2101,7 +2265,6 @@
         },
         {
             "Name": "Spreading",
-            "Body": 0,
             "Book": 1,
             "Axis": [
                 0,
@@ -2116,8 +2279,13 @@
                 1
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -2151,7 +2319,6 @@
         },
         {
             "Name": "Solid Golem",
-            "Body": 2,
             "Book": 0,
             "Axis": [
                 0,
@@ -2169,10 +2336,15 @@
                 3,
                 3
             ],
+            "Creature": "",
+            "Body": 2,
             "Abilities": [
                 "charge"
             ],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -2206,7 +2378,6 @@
         },
         {
             "Name": "Liquid Golem",
-            "Body": 2,
             "Book": 0,
             "Axis": [
                 0,
@@ -2224,8 +2395,13 @@
                 4,
                 4
             ],
+            "Creature": "",
+            "Body": 2,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -2259,7 +2435,6 @@
         },
         {
             "Name": "Meteor Area",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 300,
@@ -2274,8 +2449,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -2309,7 +2489,6 @@
         },
         {
             "Name": "Restful",
-            "Body": 0,
             "Book": 0,
             "Axis": [
                 5,
@@ -2324,8 +2503,13 @@
                 0
             ],
             "Runes": [],
+            "Creature": "",
+            "Body": 0,
             "Abilities": [],
             "MoveAnims": [],
+            "Behaviour": 0,
+            "GuardRange": 10.0,
+            "Boss": false,
             "BiomeAxis": [
                 false,
                 false,
@@ -2358,6 +2542,7 @@
             "OnlyLiving": false
         }
     ],
+    "creatures": [],
     "aoes": [
         {
             "Name": "Fire",
@@ -2370,7 +2555,8 @@
             "Spell": "Heat Area",
             "PrefabGuid": "043176b6a68be2b43b073aaaa4782c7d",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Frost",
@@ -2383,7 +2569,8 @@
             "Spell": "",
             "PrefabGuid": "3b7e489cc13dac144b93495cf5b38349",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Lightning",
@@ -2396,7 +2583,8 @@
             "Spell": "",
             "PrefabGuid": "effb650189dc5714e9e9801b1cfb3991",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Poison",
@@ -2409,7 +2597,8 @@
             "Spell": "",
             "PrefabGuid": "bbeeb0ddc21369746aaaae5c5c1c09cf",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Steam",
@@ -2422,7 +2611,8 @@
             "Spell": "",
             "PrefabGuid": "e509867be4f82f246a95eca1ee5a2d61",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Glow",
@@ -2435,7 +2625,8 @@
             "Spell": "",
             "PrefabGuid": "acdb90624a404aa438447006f1026065",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Healing",
@@ -2448,7 +2639,8 @@
             "Spell": "Restful",
             "PrefabGuid": "a71be3e7990efb040a07565c43cbb198",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Sun",
@@ -2461,7 +2653,8 @@
             "Spell": "",
             "PrefabGuid": "af6c1e3f046eecd4d81330aeb285600f",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Meteor",
@@ -2474,7 +2667,8 @@
             "Spell": "Meteor Area",
             "PrefabGuid": "87ee7299dd44ed747af24dbb91bcd33b",
             "TrailWidth": 0.5,
-            "TrailSeconds": 0.699999988079071
+            "TrailSeconds": 0.699999988079071,
+            "Look": ""
         },
         {
             "Name": "Tornado",
@@ -2487,7 +2681,8 @@
             "Spell": "",
             "PrefabGuid": "c248f95ffea8b8543bc7ad0fffe0216d",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Blast",
@@ -2500,7 +2695,8 @@
             "Spell": "",
             "PrefabGuid": "99bc28c0d45f51c4fbac01080b73edc7",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Splash",
@@ -2513,7 +2709,8 @@
             "Spell": "",
             "PrefabGuid": "326e86d5729c54e479798cacab220bb2",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Rocks",
@@ -2526,7 +2723,8 @@
             "Spell": "",
             "PrefabGuid": "87ee7299dd44ed747af24dbb91bcd33b",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Blobs",
@@ -2539,7 +2737,8 @@
             "Spell": "",
             "PrefabGuid": "326e86d5729c54e479798cacab220bb2",
             "TrailWidth": 0.0,
-            "TrailSeconds": 0.0
+            "TrailSeconds": 0.0,
+            "Look": ""
         },
         {
             "Name": "Track area",
@@ -2552,7 +2751,8 @@
             "Spell": "",
             "PrefabGuid": "",
             "TrailWidth": 0.14000000059604646,
-            "TrailSeconds": 12.0
+            "TrailSeconds": 12.0,
+            "Look": ""
         }
     ],
     "shapes": [
@@ -3763,5 +3963,6 @@
             }
         }
     ],
+    "runes": [],
     "shippedHash": ""
 }

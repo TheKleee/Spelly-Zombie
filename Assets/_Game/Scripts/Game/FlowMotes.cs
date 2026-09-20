@@ -57,7 +57,12 @@ namespace SpellyZombie
             float hot = Mathf.Clamp01(mag / Mathf.Max(0.0001f, fullRate));
             float size = Mathf.Lerp(minSize, maxSize, hot);
 
+            float was = _phase;
             _phase += Time.deltaTime / Mathf.Lerp(cycle, cycle * 0.45f, hot);
+            // the flow is heard: three pops a cycle, one sound for ink coming in and one for ink leaving
+            if (Mathf.FloorToInt(_phase * 3f) != Mathf.FloorToInt(was * 3f))
+                Juice.Sound(rate < 0f ? Sfx.InkPop2 : Sfx.InkPop1, origin, Mathf.Lerp(0.35f, 0.7f, hot),
+                    Random.Range(0.88f, 1.15f));
             if (_phase > 1f) _phase -= 1f;
 
             dir = dir.sqrMagnitude < 0.0001f ? Vector3.up : dir.normalized;

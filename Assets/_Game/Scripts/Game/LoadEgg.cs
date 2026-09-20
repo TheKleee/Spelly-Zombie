@@ -13,7 +13,9 @@ namespace SpellyZombie
     /// burns away. Purely local, never replicated.
     public class LoadEgg : MonoBehaviour
     {
-        const float ShellRadius = 2.4f;  // the closed egg, around the camera
+        const float ShellRadius = 2.4f;  // the closed egg at most, around the camera
+        const float FloorGap = 0.3f;     // the closed egg's bottom stays this far above the floor
+        const float MinRadius = 0.6f;
         const float FarRadius = 70f;     // where the opening shell burns out
         const int EggLayer = 31;
         const float RevealSeconds = 2.2f;
@@ -24,6 +26,9 @@ namespace SpellyZombie
 
         /// Shell up and the camera seeing only the egg: the veil may drop.
         public static bool Closed => _live != null && _live._cam != null && _live._opening < 0f && !_live.Forming;
+
+        /// A trip is underway: the shell forming or closed, not yet breaking open.
+        public static bool Leaving => _live != null && _live._opening < 0f;
 
         float _form = -1f;               // 0..1 while the shell closes in
         bool Forming => _form >= 0f && _form < 1f;
@@ -57,6 +62,7 @@ namespace SpellyZombie
                 DontDestroyOnLoad(go);
                 _live = go.AddComponent<LoadEgg>();
                 GhostState.ReviveLocalNow(); // a lobby ghost stands up for the trip
+                Juice.Sound2D(Sfx.Egg);
                 _live.StartCoroutine(_live.FormThen(cam, load));
                 return;
             }
@@ -87,12 +93,49 @@ namespace SpellyZombie
             load();
         }
 
+        /// Closed, the egg stops short of the floor under the eye, so no ground shows
+        /// inside it. Third person stands back, so there it still wraps the body.
         float ClosedRadius()
         {
-            if (_pilot == null || _cam == null) return ShellRadius;
-            Vector3 head = _pilot.transform.position + Vector3.up * 1.6f;
-            return Mathf.Max(ShellRadius, (head - _cam.transform.position).magnitude + 0.9f);
+            if (_cam == null) return ShellRadius;
+            Vector3 eye = _cam.transform.position;
+            if (_pilot != null && SimpleFPSController.ThirdPersonActive)
+            {
+                Vector3 head = _pilot.transform.position + Vector3.up * 1.6f;
+                return Mathf.Max(ShellRadius, (head - eye).magnitude + 0.9f);
+            }
+            // NOBODY RIDES INSIDE (the menu, the Map Creator's arrival): the
+            // shell closes past the nearest thing around the eye in any
+            // direction, or the menu cauldron stands inside it in plain sight
+            if (_pilot == null)
+            {
+                float room = ShellRadius + FloorGap;
+                int near = Physics.OverlapSphereNonAlloc(eye, room, _around,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < near; i++)
+                {
+                    var c = _around[i];
+                    if (c == null) continue;
+                    // terrain and hollow meshes refuse the question and log a warning for it, every frame;
+                    // Unity then answers with the eye itself, so they have always counted as touching
+                    if (c is TerrainCollider || (c is MeshCollider mesh && !mesh.convex)) { room = 0f; break; }
+                    room = Mathf.Min(room, Vector3.Distance(eye, c.ClosestPoint(eye)));
+                }
+                return Mathf.Clamp(room - FloorGap, MinRadius, ShellRadius);
+            }
+            float floor = ShellRadius + FloorGap;
+            int n = Physics.RaycastNonAlloc(eye, Vector3.down, _floorHits, floor, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                if (_pilot != null && _floorHits[i].collider.transform.IsChildOf(_pilot.transform)) continue; // the body rides inside
+                floor = Mathf.Min(floor, _floorHits[i].distance);
+            }
+            return Mathf.Clamp(floor - FloorGap, MinRadius, ShellRadius);
         }
+
+        readonly RaycastHit[] _floorHits = new RaycastHit[8];
+        readonly Collider[] _around = new Collider[16];
+        bool _bodiless; // no body arrives (the menu, the Map Creator): the egg closes around its camera
 
         Transform _shell;
         Material _mat;
@@ -125,6 +168,7 @@ namespace SpellyZombie
         void Awake()
         {
             _bornAt = Time.unscaledTime;
+            _bodiless = Bodiless(SceneManager.GetActiveScene().name);
             SceneManager.sceneLoaded += OnLoaded;
             RenderPipelineManager.beginCameraRendering += OnBeginCamera;
         }
@@ -141,18 +185,23 @@ namespace SpellyZombie
         void OnLoaded(Scene s, LoadSceneMode m)
         {
             _arrivedAt = Time.unscaledTime;
+            _bodiless = Bodiless(s.name);
             Unwrap();  // the old scene's player is gone
             Attach();  // take the new one
+            Warmup.Run(); // what the fight will draw compiles now, behind the closed shell
         }
+
+        /// Scenes nobody's body arrives in: the menu, and the map the creator opens.
+        static bool Bodiless(string scene) => scene == "Menu" || MapCreator.Active || PhotoBooth.Active;
 
         void Attach()
         {
             _pilot = null;
             foreach (var p in SimpleFPSController.All)
                 if (p != null && p.IsLocalViewer) { _pilot = p; break; }
-            if (_pilot == null) return;
+            if (_pilot == null && !_bodiless) return;
 
-            _pilot.StickFeet(600f); // stuck in place until the match opens
+            if (_pilot != null) _pilot.StickFeet(600f); // stuck in place until the match opens
 
             EnsureShell();
 
@@ -192,7 +241,7 @@ namespace SpellyZombie
         {
             if (_shell == null || _cam == null) return;
             _shell.position = _cam.transform.position;
-            if (_opening < 0f && !Forming && _pilot != null) _radius = ClosedRadius();
+            if (_opening < 0f && !Forming && (_pilot != null || _bodiless)) _radius = ClosedRadius();
             _shell.localScale = Vector3.one * (_radius * 2f);
         }
 
@@ -245,7 +294,7 @@ namespace SpellyZombie
                 : Random.value < 0.5f ? ParticleKind.Light : ParticleKind.Dense;
             Vector3 eye = _cam != null ? _cam.transform.position
                 : _pilot.transform.position + Vector3.up * 1.4f;
-            Vector3 at = eye + Random.insideUnitSphere * (ShellRadius * 0.55f);
+            Vector3 at = eye + Random.insideUnitSphere * (_radius * 0.55f);
             var p = SpellParticle.Emit(kind, at, Random.onUnitSphere, 0.7f);
             if (p != null) _toys.Add(p);
         }
@@ -265,7 +314,7 @@ namespace SpellyZombie
             }
             if (Forming) return; // the shell is still closing in
 
-            if (_pilot == null || !_pilot.gameObject.activeInHierarchy || _cam == null) Attach();
+            if (_cam == null || (!_bodiless && (_pilot == null || !_pilot.gameObject.activeInHierarchy))) Attach();
             _relayerIn -= Time.unscaledDeltaTime;
             if (_relayerIn <= 0f)
             {
@@ -278,7 +327,7 @@ namespace SpellyZombie
             if (Time.unscaledTime - _bornAt > 25f) { Reveal(); return; }
             if (_arrivedAt < 0f) return;
 
-            bool lobby = SceneManager.GetActiveScene().name == "Lobby";
+            bool lobby = _bodiless || SceneManager.GetActiveScene().name == "Lobby";
             bool open = lobby
                 ? Time.unscaledTime - _arrivedAt > 1.1f
                 : NetGame.Connected && !NetGame.IsHost
@@ -286,6 +335,12 @@ namespace SpellyZombie
                     : RoundDirector.RunActive;
             // the dark room registers before it burns
             if (open && Time.unscaledTime - _arrivedAt > 1.5f) Reveal();
+        }
+
+        /// A trip with nobody inside (the Map Creator's island): no egg to open.
+        public static void Dismiss()
+        {
+            if (_live != null) Destroy(_live.gameObject);
         }
 
         /// The world comes back: layers and camera first, then the shell

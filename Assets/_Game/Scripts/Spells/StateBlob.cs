@@ -19,7 +19,11 @@ namespace SpellyZombie
         Vector3[] _pos;      // where each bone is right now
         Vector3[] _wander;   // per-bone gas drift phase
         Transform _skinT;
-        Mesh _mesh;
+        MeshFilter _skinFilter;
+        Renderer _skinRend;
+        Color _restColor;
+        bool _atRest = true;   // the skin shows the undeformed sphere: nothing to skin, nothing to upload
+        Mesh _mesh;            // private copy, made the first time the blob softens (a stone never needs one)
         Vector3[] _baseVerts;  // blob-local rest vertices
         Vector3[] _workVerts;  // skin-local output buffer
         float[,] _weights;     // [vertex, bone] - precomputed skinning
@@ -151,9 +155,39 @@ namespace SpellyZombie
             skin.transform.SetParent(transform, false);
             skin.transform.localScale = Vector3.one * SkinScale;
             _skinT = skin.transform;
-            var mf = skin.GetComponent<MeshFilter>();
-            _mesh = Instantiate(mf.sharedMesh); // private instance - safe to bash
-            mf.sharedMesh = _mesh;
+            _skinFilter = skin.GetComponent<MeshFilter>();
+            _skinRend = skin.GetComponent<Renderer>();
+
+            // A STONE IS A STONE: rubble is born rigid and most of it dies rigid, by the hundred.
+            // Rigid, the skin is the plain sphere in one colour, so it wears the shared mesh and a
+            // material shared by colour; its own mesh, weights and material come the first time it softens.
+            _restColor = SurfaceMaterialDB.Info(
+                _matter != null ? _matter.Material : SurfaceMaterialType.Stone).SolidColor;
+            _skinRend.sharedMaterial = RestMaterial(_restColor);
+        }
+
+        static readonly System.Collections.Generic.Dictionary<Color32, Material> _restMats
+            = new System.Collections.Generic.Dictionary<Color32, Material>();
+
+        /// The look of a rigid blob of this colour, one material for all of them.
+        static Material RestMaterial(Color color)
+        {
+            color.a = 1f; // a rigid blob is fully there, whatever the colour table says
+            Color32 key = color;
+            if (_restMats.TryGetValue(key, out var m) && m != null) return m;
+            m = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            m.color = color;
+            SetupTransparent(m);
+            _restMats[key] = m;
+            return m;
+        }
+
+        /// The blob softens for the first time: from here on the skin is its own to bend and fade.
+        void BecomeSoft()
+        {
+            if (_mesh != null) return;
+            _mesh = Instantiate(_skinFilter.sharedMesh); // private instance - safe to bash
+            _skinFilter.sharedMesh = _mesh;
             var raw = _mesh.vertices;
             _baseVerts = new Vector3[raw.Length];
             _workVerts = new Vector3[raw.Length];
@@ -176,12 +210,8 @@ namespace SpellyZombie
                 for (int b = 0; b < Bones; b++) _weights[v, b] /= sum;
             }
 
-            var baseColor = SurfaceMaterialDB.Info(
-                _matter != null ? _matter.Material : SurfaceMaterialType.Stone).SolidColor;
-            _mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            _mat.color = baseColor;
-            SetupTransparent(_mat);
-            skin.GetComponent<Renderer>().sharedMaterial = _mat;
+            _mat = new Material(RestMaterial(_restColor)); // its own, so its fade is its own
+            _skinRend.sharedMaterial = _mat;
         }
 
         // the private skin mesh and material are not freed with the GameObject
@@ -311,9 +341,18 @@ namespace SpellyZombie
                 return;
             }
 
-            if (_mesh == null) return;
+            if (_skinFilter == null) return;
+
+            // when the phase says solid and it is not mud, the bones pin to home exactly
+            bool rigid = !Muddy && _stateT > 0.9f
+                && (_matter == null || _matter.Phase == MatterPhase.Solid);
+
+            // fully solid, never softened (or settled back): the sphere as it stands, nothing to do
+            if (rigid && _atRest && _stateT >= 1f) return;
+            BecomeSoft();
 
             // fluids slump along world down, never the body's tilt; only true solids keep the lean
+            bool level = true;
             if (_skinT != null)
             {
                 if (_stateT < 0.85f)
@@ -321,6 +360,7 @@ namespace SpellyZombie
                 else
                     _skinT.localRotation = Quaternion.Slerp(_skinT.localRotation, Quaternion.identity,
                         3f * Time.deltaTime);
+                level = Quaternion.Angle(_skinT.localRotation, Quaternion.identity) < 0.05f;
             }
 
             // ---- transparency: solid opaque · liquid half · gas barely there ----
@@ -335,10 +375,6 @@ namespace SpellyZombie
             float dt = Time.deltaTime;
             float liquidness = 1f - Mathf.InverseLerp(0.5f, 1f, _stateT);
             float gasness = 1f - Mathf.InverseLerp(0.1f, 0.5f, _stateT);
-
-            // when the phase says solid and it is not mud, the bones pin to home exactly
-            bool rigid = !Muddy && _stateT > 0.9f
-                && (_matter == null || _matter.Phase == MatterPhase.Solid);
 
             for (int i = 0; i < Bones; i++)
             {
@@ -376,6 +412,8 @@ namespace SpellyZombie
             _mesh.vertices = _workVerts;
             _mesh.RecalculateNormals();
             _mesh.RecalculateBounds();
+            // pinned, upright and fully opaque again: this frame drew the plain sphere, the next ones can rest
+            _atRest = rigid && level && _stateT >= 1f;
         }
 
         static void SetupTransparent(Material m)

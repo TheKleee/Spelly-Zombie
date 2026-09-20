@@ -48,6 +48,18 @@ namespace SpellyZombie
         public void SetRagdollFollow(Rigidbody hips) => _ragdollFollow = hips;
         bool _wasPrecision;
         Vector3 _shove; // external impulse (zombie swipes, explosions) - decays fast
+        /// How fast a shove dies away, m/s per second.
+        public const float ShoveDecay = 18f;
+        /// The drunk sway's pace (radians per second of Time.time); the music wobbles on it too.
+        public const float DrunkSwayRate = 2.3f;
+
+        /// How scared (0..1) and how bold (0..1) this body is now, on the ramps its eyes use.
+        public float Fear => Mathf.InverseLerp(-8f, -45f, CourageDev);
+        public float Bravado => Mathf.InverseLerp(8f, 45f, CourageDev);
+        float CourageDev => _dmg != null ? SpellPayload.ToHuman(8, _dmg.Data.Courage - _dmg.Natural.Courage) : 0f;
+        /// How drunk a low mind makes this body (0..1), the number its legs sway by.
+        public float Drunk => _dmg != null
+            ? Mathf.InverseLerp(-0.05f, -0.6f, SpellPayload.ToHuman(7, _dmg.Data.Int - _dmg.Natural.Int) / 100f) : 0f;
 
         // ---- crouch: hold LeftCtrl (gamepad East). Crouch-jump springs a
         // bit higher - enough to clear a window sill.
@@ -117,6 +129,7 @@ namespace SpellyZombie
         /// Raw ground contact - the animation rig smooths its own airborne
         /// signal from this (slope flicker is the caller's problem).
         public bool IsGrounded => _cc != null && _cc.isGrounded;
+        readonly Footfalls _feet = new Footfalls();
 
         /// E takes what you are looking at within reach. Returns how centred
         /// the point is (1 = dead centre), or -1 when out of range, outside
@@ -226,26 +239,29 @@ namespace SpellyZombie
 
         // ★ COURAGE OWNS YOUR EYES + FIRE WON'T LET YOU STAND (his designs):
         // blinded by LIGHT you are too brave - your gaze locks onto whatever
-        // is near, anything at all. Under DARK you are terrified - your eyes
-        // dart off anything you look at. Legs that walk on their own would
-        // stop you drawing, so courage never touches them. BURNING, you
-        // cannot stay in place. And frozen deep enough, you are an ICE CUBE
-        // sliding on momentum.
+        // is near, anything at all. Under DARK you are paranoid - your eyes
+        // pick one thing to fear, turn away from it, calm down, then find the
+        // next. Legs that walk on their own would stop you drawing, so
+        // courage never touches them. BURNING, you cannot stay in place. And
+        // frozen deep enough, you are an ICE CUBE sliding on momentum.
         float _legsRepickAt;
         Vector3 _legsDir;
         float _lastBurnAt = -99f;
         float _eyesScanAt, _eyesHintAt;
         Collider _eyesThing;
         float _avertSide = 1f;
+        float _flinchUntil, _calmUntil;
+        readonly Collider[] _feared = new Collider[3]; // things just fled
+        readonly float[] _fearedAt = new float[3];
+        int _fearedNext;
 
-        /// The bravado magnet and the fear flinch, on the view. The mouse
+        /// The bravado magnet and the paranoid flinch, on the view. The mouse
         /// always wins a contest; it just has to keep winning.
         void CourageEyes()
         {
             if (IsDowned || IsDead || IsFrozenCube || CameraPivot == null || _dmg == null) return;
-            float cour = SpellPayload.ToHuman(8, _dmg.Data.Courage - _dmg.Natural.Courage);
-            float fear = Mathf.InverseLerp(-8f, -45f, cour);
-            float brave = Mathf.InverseLerp(8f, 45f, cour);
+            float fear = Fear;
+            float brave = Bravado;
             bool scared = fear > 0f;
             if (!scared && brave <= 0f) { _eyesThing = null; return; }
             // the pen is precise work: bravado leaves a stroke alone. Terror
@@ -254,52 +270,90 @@ namespace SpellyZombie
 
             Vector3 eye = CameraPivot.position;
             Vector3 fwd = CameraPivot.forward;
+            if (scared) Flinch(eye, fwd, fear);
+            else Focus(eye, fwd, brave);
+        }
+
+        void Focus(Vector3 eye, Vector3 fwd, float brave)
+        {
             if (Time.time >= _eyesScanAt)
             {
                 _eyesScanAt = Time.time + 0.2f;
-                _eyesThing = NearestThingInView(eye, fwd,
-                    scared ? DrawingConfig.CourageAvertCone : DrawingConfig.CourageFocusCone);
+                _eyesThing = NearestThingInView(eye, fwd, DrawingConfig.CourageFocusCone);
             }
             if (_eyesThing == null) return;
 
             Vector3 to = _eyesThing.bounds.center - eye;
             if (to.sqrMagnitude < 0.01f) return;
             float yaw = Vector3.SignedAngle(new Vector3(fwd.x, 0f, fwd.z), new Vector3(to.x, 0f, to.z), Vector3.up);
-            float step = Time.deltaTime * (scared
-                ? Mathf.Lerp(DrawingConfig.CourageAvertDegPerSecMin, DrawingConfig.CourageAvertDegPerSecMax, fear)
-                : Mathf.Lerp(DrawingConfig.CourageFocusDegPerSecMin, DrawingConfig.CourageFocusDegPerSecMax, brave));
-
-            if (scared)
+            float step = Time.deltaTime * Mathf.Lerp(DrawingConfig.CourageFocusDegPerSecMin, DrawingConfig.CourageFocusDegPerSecMax, brave);
+            transform.Rotate(0f, Mathf.Clamp(yaw, -step, step), 0f);
+            if (!ThirdPersonActive)
             {
-                // turn away, the same way until the thing leaves the cone
-                if (Mathf.Abs(yaw) > 1f) _avertSide = -Mathf.Sign(yaw);
-                transform.Rotate(0f, _avertSide * step, 0f);
+                // pivot pitch is negative looking up
+                float pitchTo = -Mathf.Asin(Mathf.Clamp(to.normalized.y, -1f, 1f)) * Mathf.Rad2Deg;
+                _pitch = Mathf.Clamp(Mathf.MoveTowards(_pitch, pitchTo, step), -85f, 85f);
+                CameraPivot.localEulerAngles = new Vector3(_pitch, 0f, 0f);
             }
-            else
+            EyesHint(false);
+        }
+
+        /// Paranoia: one frightening thing at a time. The view turns away from
+        /// it, always the same way, until it leaves the cone or the flinch runs
+        /// out; then calm, then the next thing, never one just fled.
+        void Flinch(Vector3 eye, Vector3 fwd, float fear)
+        {
+            float cone = DrawingConfig.CourageAvertCone;
+            if (_eyesThing != null)
             {
-                transform.Rotate(0f, Mathf.Clamp(yaw, -step, step), 0f);
-                if (!ThirdPersonActive)
+                Vector3 to = _eyesThing.bounds.center - eye;
+                float reach = DrawingConfig.CourageEyesReach;
+                if (!_eyesThing.gameObject.activeInHierarchy || to.sqrMagnitude > reach * reach
+                    || Vector3.Angle(fwd, to) > cone || Time.time >= _flinchUntil)
                 {
-                    // pivot pitch is negative looking up
-                    float pitchTo = -Mathf.Asin(Mathf.Clamp(to.normalized.y, -1f, 1f)) * Mathf.Rad2Deg;
-                    _pitch = Mathf.Clamp(Mathf.MoveTowards(_pitch, pitchTo, step), -85f, 85f);
-                    CameraPivot.localEulerAngles = new Vector3(_pitch, 0f, 0f);
+                    _feared[_fearedNext] = _eyesThing;
+                    _fearedAt[_fearedNext] = Time.time;
+                    _fearedNext = (_fearedNext + 1) % _feared.Length;
+                    _eyesThing = null;
+                    _calmUntil = Time.time + Mathf.Lerp(DrawingConfig.CourageCalmSecondsMax, DrawingConfig.CourageCalmSecondsMin, fear);
+                    return;
                 }
+                float step = Time.deltaTime * Mathf.Lerp(DrawingConfig.CourageAvertDegPerSecMin, DrawingConfig.CourageAvertDegPerSecMax, fear);
+                transform.Rotate(0f, _avertSide * step, 0f);
+                EyesHint(true);
+                return;
             }
+            if (Time.time < _calmUntil || Time.time < _eyesScanAt) return;
+            _eyesScanAt = Time.time + 0.2f;
+            var thing = NearestThingInView(eye, fwd, cone, skipFeared: true);
+            if (thing == null) return;
+            _eyesThing = thing;
+            Vector3 at = thing.bounds.center - eye;
+            float side = Vector3.SignedAngle(new Vector3(fwd.x, 0f, fwd.z), new Vector3(at.x, 0f, at.z), Vector3.up);
+            if (Mathf.Abs(side) > 1f) _avertSide = -Mathf.Sign(side);
+            _flinchUntil = Time.time + DrawingConfig.CourageFlinchSecondsMax;
+        }
 
-            if (Time.time >= _eyesHintAt)
-            {
-                _eyesHintAt = Time.time + 10f;
-                DrawingWorld.Instance?.LogEvent(scared
-                    ? "eyes too scared, they run away from it"
-                    : "eyes too brave, they lock on it");
-            }
+        bool FearedLately(Collider c)
+        {
+            for (int i = 0; i < _feared.Length; i++)
+                if (_feared[i] == c && Time.time - _fearedAt[i] < DrawingConfig.CourageFearMemorySeconds) return true;
+            return false;
+        }
+
+        void EyesHint(bool scared)
+        {
+            if (Time.time < _eyesHintAt) return;
+            _eyesHintAt = Time.time + 10f;
+            DrawingWorld.Instance?.LogEvent(scared
+                ? "eyes too scared, they run away from it"
+                : "eyes too brave, they lock on it");
         }
 
         /// The thing nearest the middle of the view: creatures, other players
         /// (a disguise counts as the prop it wears) and loose props. The
         /// world itself - ground, houses, trees - is nothing to look at.
-        Collider NearestThingInView(Vector3 eye, Vector3 fwd, float coneDeg)
+        Collider NearestThingInView(Vector3 eye, Vector3 fwd, float coneDeg, bool skipFeared = false)
         {
             Collider best = null;
             float bestAng = coneDeg;
@@ -311,6 +365,7 @@ namespace SpellyZombie
                 if (held != null && h.attachedRigidbody == held) continue;
                 if (h.GetComponent<TerrainCollider>() != null) continue;
                 if (h.GetComponentInParent<SpellParticle>() != null) continue;
+                if (skipFeared && FearedLately(h)) continue;
                 var av = h.GetComponentInParent<NetAvatar>();
                 if (av != null)
                 {
@@ -436,10 +491,10 @@ namespace SpellyZombie
 
             // ★ LOW MIND = DRUNK LEGS (his rule: the brain power must matter):
             // inputs sway on a wandering angle, and you occasionally trip
-            float drunk = Mathf.InverseLerp(-0.05f, -0.6f, _mindDev);
+            float drunk = Drunk;
             if (drunk > 0f)
             {
-                float sway = Mathf.Sin(Time.time * 2.3f) * 55f * drunk;
+                float sway = Mathf.Sin(Time.time * DrunkSwayRate) * 55f * drunk;
                 mv = Quaternion.Euler(0f, 0f, sway) * mv;
                 if (Random.value < Time.deltaTime * 0.3f * drunk)
                     TakeHit(Random.insideUnitSphere * 2.5f + Vector3.up, 0f);
@@ -478,7 +533,7 @@ namespace SpellyZombie
             {
                 _frozenUntil = Time.time + 1f; // a minimum moment of statue
                 FreezeOntoBones();
-                NetSync.PlayAndPushBodyFx(0, transform.position); // thud
+                NetSync.PlayAndPushBodyFx(11, transform.position); // frozen solid
                 return Vector2.zero;
             }
 
@@ -584,7 +639,7 @@ namespace SpellyZombie
             _bleedOut = 0f;
             OnDeathCrossed();
             WorldEvents.Report(WorldEventKind.Death, transform.position, 2f); // the horde celebrates
-            Juice.Sting(transform.position);
+            if (!Juice.Sound(Sfx.Death, transform.position)) Juice.Sting(transform.position);
             Juice.Shake(0.8f, 0.5f);
             Juice.HitStop(0.2f, 0.25f);
             // a broken heart floats over the crawling body - readable at range, no HUD
@@ -659,6 +714,7 @@ namespace SpellyZombie
                     // switch it off for the run and name it, loudly
                     foreach (var other in Camera.allCameras)
                         if (other != null && other != _cam && other.isActiveAndEnabled
+                            && other.targetTexture == null // one drawing into a texture draws over nothing
                             && other.GetComponentInParent<SimpleFPSController>() == null
                             && other.GetComponentInParent<NetAvatar>() == null)
                         {
@@ -1146,7 +1202,7 @@ namespace SpellyZombie
             }
 
             // external shoves decay quickly but land with punch
-            _shove = Vector3.MoveTowards(_shove, Vector3.zero, 18f * Time.deltaTime);
+            _shove = Vector3.MoveTowards(_shove, Vector3.zero, ShoveDecay * Time.deltaTime);
 
             // flight lasts as long as the spell feeds it; unfed it decays
             // fast (the lift below overwrites gravity outright)
@@ -1202,6 +1258,11 @@ namespace SpellyZombie
             {
                 _cc.Move((planar + _shove + spellPlanar + Vector3.up * _verticalVelocity) * Time.deltaTime);
             }
+
+            // steps, jumps and landings, by the same rule the puppets use
+            _feet.Tick(transform.position, !_cc.isGrounded,
+                IsDowned || IsSprawled || IsAirTumbling || IsFrozenCube || swimIn != null || _ragdollFollow != null,
+                IsCrouched, IsSprinting, Time.deltaTime);
 
             // the world's absolute floor, whatever the map's own slab covers
             if (transform.position.y < FallCatcher.KillY) FallCatcher.Catch(this);

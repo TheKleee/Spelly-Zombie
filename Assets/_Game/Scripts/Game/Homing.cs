@@ -49,6 +49,14 @@ namespace SpellyZombie
             _rb.linearVelocity = v + want / dist * (DrawingConfig.SpellPull * (1f - dist / range) * Time.fixedDeltaTime);
         }
 
-        void OnCollisionEnter(Collision c) => Destroy(this);
+        void OnCollisionEnter(Collision c)
+        {
+            // what was thrown lands: harder = louder
+            float speed = c.relativeVelocity.magnitude;
+            Vector3 at = c.contactCount > 0 ? c.GetContact(0).point : transform.position;
+            Juice.Sound(Sfx.ThrownObjectHitting, at, Mathf.Lerp(0.4f, 1f, Mathf.InverseLerp(3f, 16f, speed)),
+                Random.Range(0.92f, 1.08f));
+            Destroy(this);
+        }
     }
 }

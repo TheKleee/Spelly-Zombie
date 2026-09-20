@@ -77,9 +77,12 @@ namespace SpellyZombie
             }
         }
 
-        /// A point inside the wizards' biome. They all start here, scattered.
-        public static bool WizardPoint(System.Random rng, out Vector3 at) =>
-            PointIn(WizardBiome, rng, out at);
+        /// A point inside the wizards' biome, near its middle (the biome's
+        /// Wizard Spawn Spread). Widen 0..1 opens the area toward the whole
+        /// box, for a crowd the middle cannot hold.
+        public static bool WizardPoint(System.Random rng, out Vector3 at, float widen = 0f) =>
+            PointIn(WizardBiome, rng, out at,
+                WizardBiome != null ? Mathf.Lerp(WizardBiome.WizardSpawnSpread, 1f, widen) : 1f);
 
         /// A point for one acolyte: a biome picked at random, then a spot in it.
         /// Random per acolyte, so they usually separate without being placed.
@@ -102,6 +105,17 @@ namespace SpellyZombie
             {
                 if (p == null || _placed.Contains(p)) continue;
                 Vector3 at;
+
+                // the lobby's host, and anyone alone in it, starts at the book stand and turned to it:
+                // the stand is where a lobby is run. Whoever joins is scattered below, as ever.
+                if (scene == "Lobby" && (!NetGame.Connected || NetGame.IsHost) && LobbyStand.HostSpot(out at, out float yaw))
+                {
+                    FallCatcher.Teleport(p, at);
+                    p.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                    BiomeStamp.Apply(p.gameObject, at);
+                    _placed.Add(p);
+                    continue;
+                }
 
                 // THE HOST DIVIDES THE GROUND. Left to themselves, two clients
                 // loading in the same second pick from the same empty scene and
@@ -177,7 +191,8 @@ namespace SpellyZombie
                 ^ ActiveScene.Name.GetHashCode() ^ Environment.TickCount);
             for (int tries = 0; tries < 12; tries++)
             {
-                if (!PointFor(Sides.Of(owner), rng, out at)) continue;
+                // each retry opens the wizards' middle wider; the last takes the whole box
+                if (!PointFor(Sides.Of(owner), rng, out at, tries / 11f)) continue;
                 if (TooClose(at)) continue;
                 _issued.Add(at);
                 return true;
@@ -225,12 +240,12 @@ namespace SpellyZombie
         /// a map with none - the lobby - scatters instead. The lobby stays
         /// biome-free on purpose: it is where you stand BEFORE a home biome is
         /// decided, and a biome there would stamp everyone early.
-        public static bool PointFor(Side side, System.Random rng, out Vector3 at)
+        public static bool PointFor(Side side, System.Random rng, out Vector3 at, float widen = 0f)
         {
             if (WizardBiome != null || _acolyte.Count > 0)
             {
                 bool got = side == Side.Acolyte
-                    ? AcolytePoint(rng, out at) : WizardPoint(rng, out at);
+                    ? AcolytePoint(rng, out at) : WizardPoint(rng, out at, widen);
                 if (got) return true;
             }
             return ScatterPoint(rng, out at);
@@ -283,16 +298,20 @@ namespace SpellyZombie
             return false;
         }
 
-        /// Drops a ray inside the box and takes the ground it finds.
-        static bool PointIn(Biome b, System.Random rng, out Vector3 at)
+        /// Drops a ray inside the box and takes the ground it finds. The first
+        /// half of the tries keep to Spread, a share of the box around its
+        /// middle; the rest open out to the whole box, so a cluttered middle
+        /// still gives ground. 1 = the whole box.
+        static bool PointIn(Biome b, System.Random rng, out Vector3 at, float spread = 1f)
         {
             at = default;
             if (b == null) return false;
             var area = b.Area;
             for (int tries = 0; tries < 24; tries++)
             {
-                float x = Mathf.Lerp(area.min.x, area.max.x, (float)rng.NextDouble());
-                float z = Mathf.Lerp(area.min.z, area.max.z, (float)rng.NextDouble());
+                float s = Mathf.Lerp(Mathf.Clamp01(spread), 1f, Mathf.Clamp01((tries - 11) / 12f));
+                float x = area.center.x + ((float)rng.NextDouble() * 2f - 1f) * area.extents.x * s;
+                float z = area.center.z + ((float)rng.NextDouble() * 2f - 1f) * area.extents.z * s;
                 if (SpellyMap.BiomeAt(new Vector3(x, 0f, z)) != b) continue; // layers cut
                 var from = new Vector3(x, area.max.y + 2f, z);
                 if (!Physics.Raycast(from, Vector3.down, out var hit, area.size.y + 6f,

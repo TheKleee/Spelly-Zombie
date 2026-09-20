@@ -15,8 +15,10 @@ namespace SpellyZombie
         static MusicDirector _instance;
 
         AudioSource _chill, _action;
+        AudioLowPassFilter _chillMuffle, _actionMuffle;
         float _chillMix, _actionMix;     // the crossfade, before the egg's duck
         float _duck = 1f;                // follows LoadEgg.MusicLevel
+        float _pitch = 1f, _muffle;      // the mood: your own fear, bravado and mind
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Bootstrap()
@@ -29,8 +31,8 @@ namespace SpellyZombie
             var go = new GameObject("SZ_Music");
             Object.DontDestroyOnLoad(go);
             _instance = go.AddComponent<MusicDirector>();
-            _instance._chill = Source(go, chillClip);
-            _instance._action = Source(go, actionClip);
+            _instance._chill = Source(go, "Chill", chillClip, out _instance._chillMuffle);
+            _instance._action = Source(go, "Action", actionClip, out _instance._actionMuffle);
             // scheduled start keeps both clips sample-locked
             double at = AudioSettings.dspTime + 0.1;
             _instance._chillMix = Vol;
@@ -38,10 +40,17 @@ namespace SpellyZombie
             if (_instance._action != null) { _instance._action.volume = 0f; _instance._action.PlayScheduled(at); }
         }
 
-        static AudioSource Source(GameObject holder, AudioClip clip)
+        static AudioSource Source(GameObject holder, string name, AudioClip clip, out AudioLowPassFilter muffle)
         {
+            muffle = null;
             if (clip == null) return null;
-            var src = holder.AddComponent<AudioSource>();
+            // each track on its own object: a filter works on the source beside it
+            var track = new GameObject(name);
+            track.transform.SetParent(holder.transform, false);
+            var src = track.AddComponent<AudioSource>();
+            muffle = track.AddComponent<AudioLowPassFilter>();
+            muffle.cutoffFrequency = 22000f;
+            muffle.enabled = false;
             src.clip = clip;
             src.loop = true;
             src.playOnAwake = false;
@@ -103,6 +112,39 @@ namespace SpellyZombie
             return false;
         }
 
+        /// ★ THE MUSIC FEELS WHAT YOU FEEL: scared plays lower and muffled,
+        /// bold a touch higher, a low mind wobbles like a warped tape in time
+        /// with the legs. Only your own living body; ghosts hear it plain.
+        /// Both tracks always share one pitch so the loops stay locked.
+        void Mood()
+        {
+            float fear = 0f, brave = 0f, drunk = 0f;
+            if (ActiveScene.Name != "Menu" && !GhostState.LocalIsGhost)
+                foreach (var p in SimpleFPSController.All)
+                    if (p != null && p.IsLocalViewer)
+                    {
+                        if (!p.IsDead) { fear = p.Fear; brave = p.Bravado; drunk = p.Drunk; }
+                        break;
+                    }
+            float want = 1f - DrawingConfig.MusicFearPitch * fear + DrawingConfig.MusicBravePitch * brave
+                + DrawingConfig.MusicDrunkWobble * drunk * Mathf.Sin(Time.time * SimpleFPSController.DrunkSwayRate);
+            _pitch = Mathf.MoveTowards(_pitch, want, Time.unscaledDeltaTime * 0.5f);
+            _muffle = Mathf.MoveTowards(_muffle, fear, Time.unscaledDeltaTime * 0.5f);
+            if (_chill != null) _chill.pitch = _pitch;
+            if (_action != null) _action.pitch = _pitch;
+            // muffling by ear, not by hertz: each step of fear halves the same share of the highs
+            float cutoff = 22000f * Mathf.Pow(DrawingConfig.MusicFearCutoff / 22000f, _muffle);
+            Muffle(_chillMuffle, cutoff);
+            Muffle(_actionMuffle, cutoff);
+        }
+
+        static void Muffle(AudioLowPassFilter f, float cutoff)
+        {
+            if (f == null) return;
+            f.enabled = cutoff < 21000f;
+            f.cutoffFrequency = cutoff;
+        }
+
         void Update()
         {
             // hold after the last contact so the mix does not flutter at the range boundary
@@ -117,6 +159,7 @@ namespace SpellyZombie
             _duck = Mathf.MoveTowards(_duck, LoadEgg.MusicLevel, Time.unscaledDeltaTime * 3f);
             if (_chill != null) _chill.volume = _chillMix * _duck;
             if (_action != null) _action.volume = _actionMix * _duck;
+            Mood();
 
             // pin the silent clip to the other's sample clock so the loops never drift
             if (_chill != null && _action != null

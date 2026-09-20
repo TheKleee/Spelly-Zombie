@@ -1,0 +1,180 @@
+{
+    "controllers": [
+        {
+            "name": "GrimoireController",
+            "clips": [
+                {
+                    "name": "BookClosed",
+                    "length": 0.0
+                },
+                {
+                    "name": "BookOpen",
+                    "length": 0.0
+                }
+            ]
+        },
+        {
+            "name": "SZ_Wizard",
+            "clips": [
+                {
+                    "name": "Locomotion 1",
+                    "length": 8.333333969116211
+                },
+                {
+                    "name": "Locomotion 2",
+                    "length": 1.033333420753479
+                },
+                {
+                    "name": "Locomotion 3",
+                    "length": 1.2000000476837159
+                },
+                {
+                    "name": "Locomotion 4",
+                    "length": 1.033333420753479
+                },
+                {
+                    "name": "Locomotion 5",
+                    "length": 1.033333420753479
+                },
+                {
+                    "name": "Locomotion 6",
+                    "length": 0.6000000238418579
+                },
+                {
+                    "name": "Locomotion 7",
+                    "length": 0.6333333849906921
+                },
+                {
+                    "name": "Locomotion 8",
+                    "length": 0.6666666865348816
+                },
+                {
+                    "name": "Locomotion 9",
+                    "length": 0.6666666865348816
+                },
+                {
+                    "name": "Locomotion 1",
+                    "length": 8.333333969116211
+                },
+                {
+                    "name": "Crouch 2",
+                    "length": 1.033333420753479
+                },
+                {
+                    "name": "Crouch 3",
+                    "length": 1.2333333492279053
+                },
+                {
+                    "name": "Crouch 4",
+                    "length": 1.1666667461395264
+                },
+                {
+                    "name": "Crouch 5",
+                    "length": 1.1666667461395264
+                },
+                {
+                    "name": "Air",
+                    "length": 1.9000000953674317
+                }
+            ]
+        },
+        {
+            "name": "SZ_ZombieAnim.bak-20260810-1625",
+            "clips": [
+                {
+                    "name": "Shamble 1",
+                    "length": 5.766666889190674
+                },
+                {
+                    "name": "Shamble 2",
+                    "length": 1.5000001192092896
+                },
+                {
+                    "name": "Shamble 3",
+                    "length": 0.8000000715255737
+                },
+                {
+                    "name": "Attack 1",
+                    "length": 4.433333396911621
+                },
+                {
+                    "name": "Attack 2",
+                    "length": 1.033333420753479
+                },
+                {
+                    "name": "Attack 3",
+                    "length": 3.133333444595337
+                },
+                {
+                    "name": "Attack 4",
+                    "length": 2.3000001907348635
+                },
+                {
+                    "name": "Hit",
+                    "length": 1.7333334684371949
+                },
+                {
+                    "name": "Scream",
+                    "length": 11.366666793823243
+                },
+                {
+                    "name": "StandUp",
+                    "length": 3.1000001430511476
+                },
+                {
+                    "name": "Fidget",
+                    "length": 4.266666889190674
+                }
+            ]
+        },
+        {
+            "name": "SZ_ZombieAnim",
+            "clips": [
+                {
+                    "name": "Idle",
+                    "length": 5.766666889190674
+                },
+                {
+                    "name": "Walk",
+                    "length": 1.5000001192092896
+                },
+                {
+                    "name": "Run",
+                    "length": 0.8000000715255737
+                },
+                {
+                    "name": "Attack0",
+                    "length": 4.433333396911621
+                },
+                {
+                    "name": "Attack1",
+                    "length": 1.033333420753479
+                },
+                {
+                    "name": "Attack2",
+                    "length": 3.133333444595337
+                },
+                {
+                    "name": "Attack3",
+                    "length": 2.3000001907348635
+                },
+                {
+                    "name": "Hit",
+                    "length": 1.7333334684371949
+                },
+                {
+                    "name": "Scream",
+                    "length": 11.366666793823243
+                },
+                {
+                    "name": "StandUp",
+                    "length": 3.1000001430511476
+                },
+                {
+                    "name": "Fidget",
+                    "length": 4.266666889190674
+                }
+            ]
+        }
+    ]
+}

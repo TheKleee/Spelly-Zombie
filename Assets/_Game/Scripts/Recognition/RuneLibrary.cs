@@ -26,7 +26,8 @@ namespace SpellyZombie
     /// teaches heat-up AND heat-down at once).
     public enum RuneCardType
     {
-        Heat, State, Luminance, Sticky, Affinity, Density
+        Heat, State, Luminance, Sticky, Affinity, Density,
+        Custom // made runes, the Rune Creator's
     }
 
     /// One turn-sequence descriptor per rune (see RuneGraph): a rune reads
@@ -276,7 +277,7 @@ namespace SpellyZombie
         /// Public: the rune chooser and grimoire display follow the same rule.
         public static bool RestrictedArena =>
             RoundDirector.RunActive
-            || UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == MatchLobby.SelectedMap;
+            || UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == MatchLobby.SelectedScene;
 
         /// The acolyte kit, the one canonical copy; pages and recognition both
         /// read this.
@@ -323,7 +324,9 @@ namespace SpellyZombie
                 case RuneType.StickyDown: return RuneCardType.Sticky;
                 case RuneType.Attract:
                 case RuneType.Repel: return RuneCardType.Affinity;
-                default: return RuneCardType.Density;
+                case RuneType.DensityUp:
+                case RuneType.DensityDown: return RuneCardType.Density;
+                default: return (int)type > 12 ? RuneCardType.Custom : RuneCardType.Density;
             }
         }
 
@@ -337,6 +340,7 @@ namespace SpellyZombie
                 case RuneCardType.Luminance: return "Luminance: the star brightens; the collapsed star darkens.";
                 case RuneCardType.Sticky: return "Sticky: the slope-hook grips; its mirror slides.";
                 case RuneCardType.Affinity: return "Affinity: the arrow pushes the way you drew it; the hook pulls.";
+                case RuneCardType.Custom: return "Made runes: drawn in the Rune Creator.";
                 default: return "Density: small bracket open-down compresses; open-up spreads.";
             }
         }
@@ -462,8 +466,15 @@ namespace SpellyZombie
         }
 
         /// Player-facing name is the emoji; ShortName's English words are for
-        /// dev console logs only.
+        /// dev console logs only. The book's rune row may set it (the Spell
+        /// Creator's RUNES tab); the built-in one stands until it does.
         public static string Icon(RuneType r)
+        {
+            var def = SpellBook.Live.Rune(r);
+            return def != null && !string.IsNullOrEmpty(def.Emoji) ? def.Emoji : BuiltInIcon(r);
+        }
+
+        public static string BuiltInIcon(RuneType r)
         {
             switch (r)
             {
@@ -493,6 +504,15 @@ namespace SpellyZombie
         public static string IconFor(RuneType r, int owner)
         {
             if (!Sides.IsAcolyte(owner)) return Icon(r);
+            var def = SpellBook.Live.Rune(r);
+            if (def != null && !string.IsNullOrEmpty(def.AcolyteEmoji)) return def.AcolyteEmoji;
+            string built = BuiltInAcolyteIcon(r);
+            return string.IsNullOrEmpty(built) ? Icon(r) : built;
+        }
+
+        /// The acolyte's built-in emoji, empty where it is the wizard's.
+        public static string BuiltInAcolyteIcon(RuneType r)
+        {
             switch (r)
             {
                 case RuneType.StateSolid: return "🧟";   // U+1F9DF
@@ -505,7 +525,7 @@ namespace SpellyZombie
                 case RuneType.LuminanceDown: return "\U0001F98B"; // transformation ink
                 case RuneType.DensityUp: return "\U0001F621";     // aggressive zombie
                 case RuneType.DensityDown: return "\U0001F9A0";   // zombie spreading
-                default: return Icon(r);
+                default: return "";
             }
         }
 
@@ -555,7 +575,9 @@ namespace SpellyZombie
                 case RuneType.Repel: return "REPEL";
                 case RuneType.DensityUp: return "COMPRESS";
                 case RuneType.DensityDown: return "SPREAD";
-                default: return "?";
+                default:
+                    var def = (int)r > 12 ? SpellBook.Live.Rune(r) : null; // a made rune goes by its name
+                    return def != null ? def.Name : "?";
             }
         }
 
@@ -667,7 +689,36 @@ namespace SpellyZombie
             else
                 AuditTemplates(); // library or matcher changed (or first run) - pay it once
 
+            // a custom map's drawings join after the file's, never into it
+            foreach (var (type, sample) in _mapSamples)
+                if (sample != null && PointCount(sample) >= MinTemplatePoints)
+                    SetTemplateInternal(type, sample, append: _entries.Exists(e => e.Type == type));
+
             PoolGeneration++; // the pool is new: stale recognition caches must drop
+        }
+
+        static readonly List<(RuneType type, List<List<Vector2>> sample)> _mapSamples =
+            new List<(RuneType, List<List<Vector2>>)>();
+
+        /// ★ A CUSTOM MAP'S DRAWINGS: they join the matcher while that map is
+        /// the one in play and never touch the file; every rebuild takes them
+        /// again. Null or empty = none.
+        public static void UseMapSamples(List<(RuneType type, List<List<Vector2>> sample)> samples)
+        {
+            if ((samples == null || samples.Count == 0) && _mapSamples.Count == 0) return; // nothing joins, nothing leaves
+            _mapSamples.Clear();
+            if (samples != null) _mapSamples.AddRange(samples);
+            _entries = null; // a clean rebuild; the map's drawings join at its end
+            Init();
+        }
+
+        /// One more drawing for the map in the creator, without a rebuild.
+        public static void AddMapSample(RuneType type, List<List<Vector2>> sample)
+        {
+            Init();
+            if (type == RuneType.None || sample == null || PointCount(sample) < MinTemplatePoints) return;
+            _mapSamples.Add((type, sample));
+            SetTemplateInternal(type, sample, append: _entries.Exists(e => e.Type == type));
         }
 
         /// Total recorded samples across every rune - the cache's staleness key.

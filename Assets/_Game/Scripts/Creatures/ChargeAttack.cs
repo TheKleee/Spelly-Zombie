@@ -15,6 +15,9 @@ namespace SpellyZombie
         public float Cooldown = 4f;
         public float Damage = 12f;
 
+        /// Range and run speed times this: a boss golem's grows with its size.
+        public float Reach { get; set; } = 1f;
+
         /// Authored animation for the tell, from the worn spell. Empty = the
         /// built-in hop is the whole tell. The hop and eyes stay either way -
         /// the dodge window is law, the clip is its face.
@@ -38,6 +41,19 @@ namespace SpellyZombie
         /// Dazed after a hit: it stands, then walks, before lining up another.
         public bool Recovering => _beat == Beat.Recover;
 
+        /// Driving its locked line right now, and the line.
+        public bool Running => _beat == Beat.Run;
+        public Vector3 Heading => _dir;
+
+        /// Ends the run on the spot; the daze and the cooldown follow as after any charge.
+        public void Halt()
+        {
+            if (_beat != Beat.Run) return;
+            Stop();
+            if (_rb != null && !_rb.isKinematic)
+                _rb.linearVelocity = new Vector3(0f, _rb.linearVelocity.y, 0f);
+        }
+
         /// The beat as the golem snapshot carries it: 0 idle, 1 tell, 2 run, 3 recover.
         public byte BeatWire => (byte)_beat;
 
@@ -57,14 +73,17 @@ namespace SpellyZombie
 
             Vector3 flat = targetPos - transform.position;
             flat.y = 0f;
-            if (flat.sqrMagnitude < 0.04f || flat.magnitude > Range) return false;
+            if (flat.sqrMagnitude < 0.04f || flat.magnitude > Range * Reach) return false;
 
             _dir = flat.normalized;   // LOCKED HERE - where you were, not where you go
             _beat = Beat.Tell;
             LendStrength();
             _until = Time.time + DrawingConfig.ChargeTellSeconds;
 
-            // the tell: a hop in place and wide angry eyes
+            // the tell: a hop in place and wide angry eyes; a golem says so too, lower the bigger it is
+            if (GetComponentInParent<Golem>() != null)
+                Juice.Sound(Sfx.GolemCroak, transform.position + Vector3.up * transform.localScale.y, 1f,
+                    Mathf.Lerp(1.2f, 0.6f, Mathf.InverseLerp(0.5f, 3f, transform.localScale.y)));
             if (TellClip != null) OneShotClip.Play(gameObject, TellClip);
             if (_rb != null && !_rb.isKinematic)
                 _rb.AddForce(Vector3.up * DrawingConfig.ChargeTellHop, ForceMode.VelocityChange);
@@ -89,6 +108,11 @@ namespace SpellyZombie
                 {
                     _beat = Beat.Run;
                     _until = Time.time + DrawingConfig.ChargeRunSeconds;
+                    // a golem's run is heard coming, and the sound runs with it; bigger is lower
+                    var golem = GetComponentInParent<Golem>();
+                    if (golem != null)
+                        Juice.Sound(Sfx.GolemCharge, transform.position, 1f,
+                            Mathf.Lerp(1.12f, 0.8f, Mathf.InverseLerp(0.5f, 3f, transform.localScale.y)), true, transform);
                 }
                 else if (_beat == Beat.Recover) { _beat = Beat.Idle; TakeStrengthBack(); return; }
                 else { Stop(); return; }
@@ -98,7 +122,7 @@ namespace SpellyZombie
 
             // strength IS health: a hurt charger hits softer and slower
             float mul = _me != null ? _me.StrengthMul : 1f;
-            Vector3 want = _dir * (DrawingConfig.ChargeSpeed * mul);
+            Vector3 want = _dir * (DrawingConfig.ChargeSpeed * Reach * mul);
             var v = _rb.linearVelocity;
             _rb.linearVelocity = new Vector3(want.x, v.y, want.z);
             transform.rotation = Quaternion.LookRotation(_dir, Vector3.up);
@@ -189,13 +213,16 @@ namespace SpellyZombie
             // a wild golem is a nuisance, not an executioner: a hit that grows
             // with its size from a trip to a real blow, and it pays for landing it
             bool wild = go != null && go.OwnerId < 0;
+            bool pays = wild && go.GetComponent<BossMark>() == null; // a boss never cracks on you (his call)
             if (wild)
                 hit = DrawingConfig.WildGolemChargeDamage
                     * Mathf.Pow(Mathf.Max(0.05f, go.SizeMul), DrawingConfig.WildGolemChargeSizePower) * mul;
             if (FxLibrary.I != null)
                 FxLibrary.Spawn(FxLibrary.I.GroundHit, spot);
             GrammarFX.PuffBurst(spot, new Color(0.9f, 0.85f, 0.7f), 4);
-            Juice.Thud(spot);
+            // a golem lands with its own hit; a zombie with the plain thump
+            if (!(go != null && Juice.Sound(Sfx.GolemHit, spot, 1f, Random.Range(0.92f, 1.06f)))
+                && !Juice.Sound(Sfx.ThrownObjectHitting, spot, 0.9f, Random.Range(0.9f, 1.05f))) Juice.Thud(spot);
 
             // ★ BALANCE IS A BARRIER (his design): a planted wizard takes
             // the damage but not the tumble - the charger BOUNCES off
@@ -231,7 +258,7 @@ namespace SpellyZombie
             {
                 player.TakeHit(ShoveFor(player.GetComponent<Element>()), hit, $"{name} charge", chOwner, true);
                 if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.TextPow, spot + Vector3.up * 1.2f);
-                if (wild) OweRecoil();
+                if (pays) OweRecoil();
             }
             else
             {
@@ -246,7 +273,7 @@ namespace SpellyZombie
                     {
                         NetSync.SendKick(NetSync.OwnerIdOf(av.Id), ShoveFor(dmg), false);
                         if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.TextPow, spot + Vector3.up * 1.2f);
-                        if (wild) OweRecoil();
+                        if (pays) OweRecoil();
                     }
                 }
                 var orb = c.collider.attachedRigidbody;

@@ -236,7 +236,9 @@ namespace SpellyZombie
                             ? OpenSpeed : ShutSpeed;
                         float was = _angle;
                         _angle = Mathf.MoveTowards(_angle, target, speed * Time.deltaTime);
-                        if (was == 0f && _angle != 0f) Juice.Thud(_leafAt);
+                        // every machine swings its own doors, so his clip stays off the wire
+                        if (was == 0f && _angle != 0f && !Juice.Sound(Sfx.Door, _leafAt, 1f, Random.Range(0.93f, 1.07f)))
+                            Juice.Thud(_leafAt);
                     }
                 }
 

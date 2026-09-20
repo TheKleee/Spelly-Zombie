@@ -41,6 +41,7 @@ namespace SpellyZombie
             _dmg = GetComponent<Element>();
             _thermal = GetComponent<Thermal>(); // late-added Thermals bind themselves (BindThermal)
             if (_rb != null) _normalConstraints = _rb.constraints;
+            if (_dmg != null) BodyFx.DressCreature(gameObject); // blood by HP, eyes by its numbers
         }
 
         /// Thermal is added on demand - it hands itself over in its Awake, so Update needn't poll GetComponent every frame.
@@ -82,6 +83,7 @@ namespace SpellyZombie
         public bool TryShatter(float impactDamage)
         {
             if (!Frozen) return false;
+            Juice.Sound(Sfx.BreakGlass, transform.position, 1f, Random.Range(0.92f, 1.08f)); // the ice goes
             Unfreeze();
             if (_dmg != null) _dmg.TakeDamage(impactDamage * 3f, "shattered");
             return true;
@@ -125,7 +127,7 @@ namespace SpellyZombie
             {
                 _burnLeft = 5f;
                 GetComponent<ZombieBrain>()?.Mumble("AAAAGH!!", 2f);
-                Juice.Whoosh(transform.position);
+                if (!Juice.Sound(Sfx.HeatImpact, transform.position)) Juice.Whoosh(transform.position);
             }
 
             if (!Frozen && _thermal.Temperature < DrawingConfig.FreezeThreshold) Freeze();
@@ -168,19 +170,11 @@ namespace SpellyZombie
         /// One flame blob boiling off a body. The stand-ins burn with the same.
         public static void SpawnFlame(Transform body)
         {
-            var flame = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            flame.name = "Flame";
-            Destroy(flame.GetComponent<Collider>());
-            flame.transform.position = body.position + Vector3.up * Random.Range(0.2f, 1.6f)
-                + Random.insideUnitSphere * 0.35f;
-            flame.transform.localScale = Vector3.one * Random.Range(0.15f, 0.3f);
-            flame.GetComponent<Renderer>().sharedMaterial = MatterFX.Get(
-                Color.Lerp(new Color(1f, 0.75f, 0.15f, 0.95f), new Color(1f, 0.3f, 0.05f, 0.95f), Random.value),
-                MoteShade.Additive);
-            var rise = flame.AddComponent<Rigidbody>();
-            rise.useGravity = false;
-            rise.linearVelocity = Vector3.up * Random.Range(0.8f, 1.6f);
-            Destroy(flame, Random.Range(0.35f, 0.6f));
+            MotePool.Spawn(body.position + Vector3.up * Random.Range(0.2f, 1.6f) + Random.insideUnitSphere * 0.35f,
+                Random.Range(0.15f, 0.3f),
+                MatterFX.Get(Color.Lerp(new Color(1f, 0.75f, 0.15f, 0.95f), new Color(1f, 0.3f, 0.05f, 0.95f), Random.value),
+                    MoteShade.Additive),
+                Vector3.up * Random.Range(0.8f, 1.6f), false, Random.Range(0.35f, 0.6f));
         }
 
         /// The ice cube a frozen body wears. The stand-ins wear the same.
@@ -200,7 +194,7 @@ namespace SpellyZombie
         void Freeze()
         {
             Frozen = true;
-            Juice.Crackle(transform.position);
+            if (!Juice.Sound(Sfx.ChillImpact, transform.position)) Juice.Crackle(transform.position);
             if (_rb != null) _rb.constraints = RigidbodyConstraints.FreezeAll; // statue
             _iceShell = BuildIceShell(transform);
         }
@@ -244,7 +238,8 @@ namespace SpellyZombie
                 pilot.TakeHit(col.relativeVelocity * 0.25f, dmg * 0.6f);
 
             if (TryShatter(dmg)) return; // frozen = brittle, triple payout
-            if (_dmg != null) _dmg.TakeDamage(dmg, "impact");
+            // a boss never breaks itself on its own crashes (his call); every other creature pays
+            if (_dmg != null && GetComponent<BossMark>() == null) _dmg.TakeDamage(dmg, "impact");
             if (dmg > 8f) Juice.Thud(transform.position);
         }
     }

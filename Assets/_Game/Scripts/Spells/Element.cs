@@ -313,6 +313,23 @@ namespace SpellyZombie
             _wearing = false;
         }
 
+        /// A creature's Born as, over what the ground made it. Heat reads like a
+        /// biome's heat, so Heat 30 is at home where the ground is 30; an axis
+        /// left at 0 keeps the ground's. Strength replaces the body's own when set.
+        public void WearBorn(SpellPayload born)
+        {
+            var n = Natural;
+            for (int i = 0; i < SpellPayload.AxisCount; i++)
+                if (i != 6 && Mathf.Abs(born[i]) > 0.001f) n[i] = born[i];
+            if (born.Strength > 0f) n.Strength = born.Strength;
+            if (n.Int <= 0f) n.Int = 1f;           // a creature has a mind, whatever else it is
+            if (n.Courage <= 0f) n.Courage = 1f;
+            // a body's Temp is its whole warmth: room and flesh on top of the heat
+            if (Mathf.Abs(born.Temp) > 0.001f) n.Temp = born.Temp + RoomTemp + BodyWarmth;
+            Natural = n;
+            Data = n;
+        }
+
         void OnDestroy()
         {
             if (_byId.TryGetValue(NetId, out var d) && d == this) _byId.Remove(NetId);
@@ -334,6 +351,8 @@ namespace SpellyZombie
         public static IReadOnlyList<Element> Live => _live;
         long _beat = -1;
         StateView _view;
+        float _viewLookAt;
+        byte _bodyKind; // 0 not asked, 1 a player or creature body, 2 a prop
 
         /// How often an element answers to the world. Fine enough that fire
         /// feels immediate, coarse enough that a full map is cheap.
@@ -380,13 +399,57 @@ namespace SpellyZombie
             if (WorldClock.IsBeat(DrawingConfig.StateSyncSeconds, 0, ref _pushBeat))
                 NetSync.PushElementState();
 
-            for (int i = _live.Count - 1; i >= 0; i--)
+            using (PerfMarkers.ElementTurns.Auto())
             {
-                var e = _live[i];
-                if (e == null) { _live.RemoveAt(i); continue; }
-                if (!WorldClock.IsBeat(BeatSeconds, e.NetId, ref e._beat)) continue;
-                e.Beat(BeatSeconds);
+                GatherWatchers();
+                for (int i = _live.Count - 1; i >= 0; i--)
+                {
+                    var e = _live[i];
+                    if (e == null) { _live.RemoveAt(i); continue; }
+                    // what nobody stands near takes its turn less often; each turn
+                    // carries the time that really passed, so heat, drift, wounds
+                    // and spreading add up the same, only coarser out of sight
+                    float period = e._far ? DrawingConfig.ElementFarBeatSeconds : BeatSeconds;
+                    if (!WorldClock.IsBeat(period, e.NetId, ref e._beat)) continue;
+                    double now = WorldClock.Now;
+                    float span = e._beatAt < 0.0 ? period
+                        : Mathf.Min((float)(now - e._beatAt), DrawingConfig.ElementFarBeatSeconds * 2f);
+                    e._beatAt = now;
+                    e._far = !NearWatcher(e.transform.position);
+                    e.Beat(span);
+                }
             }
+        }
+
+        double _beatAt = -1.0;
+        bool _far;
+
+        // where the players are, and what they look through, this frame
+        static readonly List<Vector3> _watchers = new List<Vector3>();
+
+        static void GatherWatchers()
+        {
+            _watchers.Clear();
+            var cam = Camera.main;
+            if (cam != null) _watchers.Add(cam.transform.position);
+            foreach (var p in SimpleFPSController.All)
+                if (p != null) _watchers.Add(p.transform.position);
+            foreach (var a in NetAvatar.All)
+            {
+                if (a == null) continue;
+                _watchers.Add(a.transform.position);
+                var at = NetSync.VoiceTransformOf(NetSync.OwnerIdOf(a.Id)); // a flying spirit looks from there
+                if (at != null) _watchers.Add(at.position);
+            }
+        }
+
+        static bool NearWatcher(Vector3 at)
+        {
+            if (_watchers.Count == 0) return true;
+            float near = DrawingConfig.ElementNearMeters * DrawingConfig.ElementNearMeters;
+            for (int i = 0; i < _watchers.Count; i++)
+                if ((_watchers[i] - at).sqrMagnitude <= near) return true;
+            return false;
         }
 
         /// WHERE IT STANDS CHANGES WHAT IT IS, and what it is decides what
@@ -629,9 +692,11 @@ namespace SpellyZombie
             // ★ LIVING THINGS NEVER BODY-TINT (his ruling): tints cannot
             // stack when several effects ride one body - PARTICLES are the
             // tell on the living. The goo layer is for objects only.
-            if (GetComponentInParent<SimpleFPSController>() != null
-                || GetComponentInParent<Creature>() != null
-                || GetComponentInParent<NetAvatar>() != null) return;
+            if (_bodyKind == 0)
+                _bodyKind = (byte)(GetComponentInParent<SimpleFPSController>() != null
+                    || GetComponentInParent<Creature>() != null
+                    || GetComponentInParent<NetAvatar>() != null ? 1 : 2); // asked once: a prop never becomes a body
+            if (_bodyKind == 1) return;
             bool wants = Mathf.Abs(press) > 0.2f || Mathf.Abs(bal) > 0.12f;
             if (!wants && !_tinted) return;
             if (GetComponentInChildren<StateView>() != null) return;
@@ -771,7 +836,7 @@ namespace SpellyZombie
             // State axis down IS turning something invisible - no effect, no
             // timer, and it comes back on its own as the number drifts home.
             ShowState();
-            Spread();
+            Spread(span);
         }
 
         /// ★ WHAT THE PLACE LETS YOU BEAR. Strength is a CAPACITY, so the
@@ -790,7 +855,12 @@ namespace SpellyZombie
         /// out what to put in it.
         public void ShowState()
         {
-            if (_view == null) _view = GetComponentInChildren<StateView>();
+            // a prop without a state view looks again now and then, not every turn
+            if (_view == null && Time.time >= _viewLookAt)
+            {
+                _viewLookAt = Time.time + 2f;
+                _view = GetComponentInChildren<StateView>();
+            }
             if (_view != null)
                 _view.StateT = SpellPayload.StateT01(Data.State);
             // a client draws the axes it was sent, the same look as the host
@@ -909,7 +979,7 @@ namespace SpellyZombie
         /// so it dies out on its own rather than eating the map.
         static readonly List<SpellDef> _spreadBuf = new List<SpellDef>();
 
-        void Spread()
+        void Spread(float span)
         {
             // ★ SPREADING IS THE BOOK'S WORD, not the dead table's: a thing
             // spreads when its numbers are a spell whose AREA spreads. House
@@ -947,7 +1017,8 @@ namespace SpellyZombie
             // neighbour takes. Blanket copying compounded houses into
             // quintillions; blanket deduction gutted living things' minds
             // and hp along with the fire.
-            float share = DrawingConfig.SpreadTransferShare;
+            // the share is per turn of BeatSeconds; a longer turn hands on more, never past half
+            float share = Mathf.Min(0.5f, DrawingConfig.SpreadTransferShare * span / BeatSeconds);
             var taken = nearest.Data;
             for (int i = 0; i < SpellPayload.AxisCount; i++)
             {
@@ -1141,6 +1212,16 @@ namespace SpellyZombie
 
         /// A golem's body slam spares players by its law: a wild one every
         /// player (the charge is its hit), a summoned one its own side.
+        /// A boss is not worn down by its own side (his call): a creature of its
+        /// team, or rubble nobody owns, bumping into it does nothing to it.
+        /// Whatever players throw or cast still lands.
+        bool SparesBoss(Element boss)
+        {
+            if (boss.GetComponent<BossMark>() == null) return false;
+            if (GetComponentInParent<Creature>() != null) return Teams.Of(this) == Teams.Of(boss);
+            return Owner < 0 && GetComponent<Matter>() != null;
+        }
+
         bool GolemSpares(Element other)
         {
             if (!TryGetComponent<Golem>(out var g) || !IsPlayer(other)) return false;
@@ -1156,6 +1237,11 @@ namespace SpellyZombie
         }
 
         void OnCollisionEnter(Collision col)
+        {
+            using (PerfMarkers.Impacts.Auto()) Impact(col);
+        }
+
+        void Impact(Collision col)
         {
             if (_dead) return;
             // rooted props gain their body after Awake when torn loose - re-check
@@ -1244,12 +1330,13 @@ namespace SpellyZombie
             if (dmg < 1f) return;
 
             string what = col.collider != null ? col.collider.name : "the ground";
-            TakeDamage(dmg, $"slammed into {what}");
+            // a boss never breaks itself on what it bumps into (his call): it hits, it is not hit back
+            if (GetComponent<BossMark>() == null) TakeDamage(dmg, $"slammed into {what}");
 
             // what it hit takes damage too
             var other = col.collider != null
                 ? col.collider.GetComponentInParent<Element>() : null;
-            if (other != null && other != this && !GolemSpares(other))
+            if (other != null && other != this && !GolemSpares(other) && !SparesBoss(other))
                 other.TakeDamage(dmg * 0.7f, $"hit by {name}");
         }
 
@@ -1276,6 +1363,7 @@ namespace SpellyZombie
             float strength = Mathf.Max(1f, Health > 0f ? Health : MaxStrength);
             float load = carried / strength;
             if (load < DrawingConfig.PropCrushLoad) return;
+            if (GetComponent<BossMark>() != null) return; // a boss never breaks itself (his call)
 
             _crushCarry += (load - DrawingConfig.PropCrushLoad)
                 * DrawingConfig.PropCrushPerSec * Time.fixedDeltaTime;
@@ -1300,7 +1388,7 @@ namespace SpellyZombie
             // acolyte destruction pays the wand back (his rule) - spells and
             // zombies alike, but never by hitting your own side
             if (by >= 0 && amount > 0f && Sides.IsAcolyte(by)
-                && Teams.OfOwner(by) != Teams.Of(this))
+                && Teams.Enemies(Teams.OfOwner(by), Teams.Of(this)))
                 PlayerInk.CreditWand(by, amount * 0.12f);
             if (amount <= 0f || _dead) return;
 
@@ -1324,6 +1412,10 @@ namespace SpellyZombie
                 NetSync.AskHurt(NetId, amount, by, viaMinion);
                 return;
             }
+
+            // a boss has learned what hurts it: less of the same, more of the opposite
+            var boss = GetComponent<BossMark>();
+            if (boss != null) amount = boss.Resist(amount, cause);
 
             // the world's short memory: who hurt me, and who finished me.
             // The kill marks land before Apply so OnDeath listeners can read them.
@@ -1379,14 +1471,16 @@ namespace SpellyZombie
             _logAccum += amount;
             if (_logAccum >= 30f)
             {
-                Debug.Log($"[SpellyZombie] {name}: {cause}, {Mathf.Max(0, Health):0} hp left{TempReport(cause)}");
+                using (PerfMarkers.Logs.Auto())
+                    Debug.Log($"[SpellyZombie] {name}: {cause}, {Mathf.Max(0, Health):0} hp left{TempReport(cause)}");
                 _logAccum = 0f;
             }
             if (Health <= 0f)
             {
                 _dead = true;
             StandDown();
-                Debug.Log($"[SpellyZombie] {name} destroyed by {cause}");
+                using (PerfMarkers.Logs.Auto())
+                    Debug.Log($"[SpellyZombie] {name} destroyed by {cause}");
                 OnDeath?.Invoke(cause);
                 if (!RemoveOnDeath) return;
                 // in the lobby, authored props respawn; creatures and runtime spawns die for real

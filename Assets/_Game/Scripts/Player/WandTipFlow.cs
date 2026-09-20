@@ -119,10 +119,15 @@ namespace SpellyZombie
 
             // cycle speeds up with flow strength
             _phase += Time.deltaTime / Mathf.Lerp(Cycle, Cycle * 0.45f, hot);
-            if (_phase > 1f) _phase -= 1f;
+            bool lap = _phase > 1f;
+            if (lap) _phase -= 1f;
 
             // read purely as a pose - where the point is and which way it faces
             Vector3 origin = _tip.position;
+            // the wand is heard like the pot: a pop a lap, one sound for ink coming in (it grows), one for ink leaving (it shrinks)
+            if (lap)
+                Juice.Sound(_shown < 0f ? Sfx.InkPop2 : Sfx.InkPop1, origin, Mathf.Lerp(0.3f, 0.6f, hot),
+                    Random.Range(1.05f, 1.3f));
             Vector3 fwd = _tip.forward, right = _tip.right, up = _tip.up;
 
             for (int i = 0; i < Motes; i++)

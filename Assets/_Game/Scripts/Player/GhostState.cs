@@ -40,8 +40,7 @@ namespace SpellyZombie
         /// A possession or release chime: the others hear it too (Chime is not a WorldSound).
         static void GhostChime(Vector3 at)
         {
-            Juice.Chime(at);
-            NetSync.PushBodyFx(4, at);
+            NetSync.PlayAndPushBodyFx(10, at);
         }
 
         SimpleFPSController _pilot;
@@ -583,6 +582,7 @@ namespace SpellyZombie
             bool local = _pilot.IsLocalViewer;
             _ghost = BuildSpirit(local);
             if (_ghost == null) { IsGhost = false; return; }
+            Juice.Sound(Sfx.GhostOut, _ghost.position); // the puppets sound theirs where their spirit appears
             if (local)
             {
                 LocalIsGhost = true;
@@ -602,7 +602,7 @@ namespace SpellyZombie
 
                 // stops the downed body reading the same WASD the ghost flies with
                 _pilot.enabled = false;
-                XRayGlow.Show(gameObject); // the corpse stays findable through walls
+                XRayGlow.Hide(gameObject); // a ghost gets no see-through window on its body (third person may have left one on)
             }
             DrawingWorld.Instance?.LogEvent("you are a ghost. fly home to your body to be revived");
         }
@@ -631,7 +631,7 @@ namespace SpellyZombie
             {
                 if (Named(r.transform, "eye")) continue;
                 PillarBeam.Tint(r, Named(r.transform, "hat")
-                    ? (HatColor.Saved() ?? SideColor()) : SideColor());
+                    ? (HatColor.Worn() ?? SideColor()) : SideColor());
             }
 
             _third = false;
@@ -704,6 +704,13 @@ namespace SpellyZombie
                 _ghost.position += move.normalized * (GhostSpeed * Time.deltaTime);
         }
 
+        /// Back on your feet, heard where the body stands (the puppets play theirs off the downed flag).
+        void ReviveHeard()
+        {
+            _pilot.Revive();
+            Juice.Sound(Sfx.Revival, _pilot.transform.position);
+        }
+
         static float _forceReviveAt = -1f;
         /// The death needle: dead now, back on your feet by yourself after `seconds`.
         public static void ReviveIn(float seconds) => _forceReviveAt = Time.time + seconds;
@@ -713,7 +720,7 @@ namespace SpellyZombie
             if (_forceReviveAt > 0f && Time.time >= _forceReviveAt && _pilot != null && _pilot.IsLocalViewer)
             {
                 _forceReviveAt = -1f;
-                _pilot.Revive();
+                ReviveHeard();
                 Land();
                 return;
             }
@@ -726,7 +733,7 @@ namespace SpellyZombie
                 {
                     _homeTime += Time.deltaTime;
                     Shine();
-                    if (_homeTime >= LobbySeconds) { _pilot.Revive(); Land(); }
+                    if (_homeTime >= LobbySeconds) { ReviveHeard(); Land(); }
                 }
                 else _homeTime = 0f;
                 return;
@@ -739,7 +746,7 @@ namespace SpellyZombie
                 // a rescuer on another machine earns it too
                 if (_lastRescuer >= 0 && _lastRescuer != Grimoire.LocalPlayerId) NetSync.SendReviveDone(_lastRescuer);
                 _lastRescuer = -1;
-                _pilot.Revive();
+                ReviveHeard();
                 Land();
             }
         }
@@ -781,7 +788,12 @@ namespace SpellyZombie
             LeaveProxy(true);
             _visual = null;
             _third = false;
-            if (!SimpleFPSController.ThirdPersonActive) XRayGlow.Hide(gameObject);
+            // back in the body: third person gets its window back, first person never had one
+            if (_ghostCam != null)
+            {
+                if (SimpleFPSController.ThirdPersonActive) XRayGlow.Show(gameObject);
+                else XRayGlow.Hide(gameObject);
+            }
             if (_ghostCam != null) LocalIsGhost = false;
             // the camera needs no restoring: it never left its parent, and the
             // controller's eye lerp takes it back once this stops writing it
@@ -832,7 +844,7 @@ namespace SpellyZombie
             foreach (var g in All)
             {
                 if (g == null || !g.AtHome) continue;
-                if (Sides.Of(g.OwnerId) != side) continue;
+                if (Sides.Of(g.OwnerId) != side && !MapRules.Together) continue; // a together map: any player
                 float d = (g.BodyAt - at).sqrMagnitude;
                 if (d < bestSqr) { bestSqr = d; best = g; }
             }

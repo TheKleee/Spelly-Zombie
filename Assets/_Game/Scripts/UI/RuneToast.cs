@@ -73,7 +73,9 @@ namespace SpellyZombie
             float h = rt.sizeDelta.y;
 
             _cards.Add(new Card { Rt = rt, Cg = cg, Height = h });
-            Juice.Chime(Camera.main != null ? Camera.main.transform.position : Vector3.zero);
+            // an unlock sounds like a seal closing; the idea ding stands in while that slot is empty
+            if (!Juice.Sound2D(Sfx.SealComplete) && !Juice.Sound2D(Sfx.Idea))
+                Juice.Chime(Camera.main != null ? Camera.main.transform.position : Vector3.zero);
         }
 
         void Update()

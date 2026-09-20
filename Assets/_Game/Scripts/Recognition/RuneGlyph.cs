@@ -103,6 +103,8 @@ namespace SpellyZombie
         {
             var result = new List<List<Vector2>>();
             if (!Frame(members, out var origin, out var right, out var up, out var normal)) return result;
+            // ink that wraps an arm or a trunk: the shape the drawer saw
+            if (Curved(members, normal) && AsSeen(members, origin, result)) return result;
 
             // unroll the surface: every pen step, pen-up jumps included, is
             // measured in a parallel-transported local tangent frame and laid
@@ -148,6 +150,56 @@ namespace SpellyZombie
                 if (pts.Count >= 2) if (HasExtent(pts)) result.Add(pts); // a stroke with no length is a point, not ink
             }
             return result;
+        }
+
+        /// Ink bending more than CurvedInkDeg off its mean normal. The pen
+        /// draws in the drawer's view; on a curved surface the ink lands
+        /// stretched (an arm's edge takes centimetres of skin per screen
+        /// millimetre), so the unroll reads a wider shape than the hand made.
+        static bool Curved(IReadOnlyList<Stroke> members, Vector3 meanNormal)
+        {
+            float cosMin = Mathf.Cos(DrawingConfig.CurvedInkDeg * Mathf.Deg2Rad);
+            foreach (var m in members)
+            {
+                if (m == null || !m.Alive) continue;
+                foreach (var n in m.Nodes)
+                {
+                    if (n == null) continue;
+                    Vector3 ln = n.SurfaceNormal;
+                    if (ln.sqrMagnitude < 1e-6f) continue;
+                    if (Vector3.Dot(ln.normalized, meanNormal) < cosMin) return true;
+                }
+            }
+            return false;
+        }
+
+        /// The drawer's view of the ink: node positions on the lead stroke's
+        /// start-of-draw view plane, carried along with its surface since
+        /// (the one-stroke frame of Stroke.ComputeRawShape, for the cluster).
+        /// Same handedness as Frame: right x up faces away from the drawer.
+        static bool AsSeen(IReadOnlyList<Stroke> members, Vector3 origin, List<List<Vector2>> into)
+        {
+            Stroke lead = null;
+            foreach (var m in members)
+                if (m != null && m.Alive && m.First != null) { lead = m; break; }
+            if (lead == null) return false;
+            var delta = lead.First.SurfaceDelta;
+            Vector3 right = delta * lead.BasisRight, up = delta * lead.BasisUp;
+            if (right.sqrMagnitude < 1e-6f || up.sqrMagnitude < 1e-6f) return false; // no view recorded: unroll
+            right.Normalize(); up.Normalize();
+            foreach (var m in members)
+            {
+                if (m == null || !m.Alive) continue;
+                var pts = new List<Vector2>();
+                foreach (var n in m.Nodes)
+                {
+                    if (n == null) continue;
+                    Vector3 d = n.transform.position - origin;
+                    pts.Add(new Vector2(Vector3.Dot(d, right), Vector3.Dot(d, up)));
+                }
+                if (pts.Count >= 2 && HasExtent(pts)) into.Add(pts);
+            }
+            return into.Count > 0;
         }
 
         /// Group strokes into glyphs by spatial proximity - touching only,

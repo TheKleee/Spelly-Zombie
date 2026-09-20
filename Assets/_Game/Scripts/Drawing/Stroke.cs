@@ -76,6 +76,8 @@ namespace SpellyZombie
 
         LineRenderer _line;
         GameObject _lineGo;
+        LineRenderer _halo; // the pale edge under your own ink while the pen is down
+        float _haloAlpha;
         readonly List<LineRenderer> _extra = new List<LineRenderer>(); // runs after visual breaks
         bool _loop;
         Color _color = InkColor;
@@ -352,6 +354,7 @@ namespace SpellyZombie
             bool hidden = Hidden();
             if (_lineGo != null && _lineGo.activeSelf == hidden) _lineGo.SetActive(!hidden);
             if (hidden) return;
+            if (_halo != null && State != StrokeState.Drawing) TickHalo(); // fading after the pen lifted
 
             // one rigid carrier: parent the ribbon under the surface and rebuild
             // only when the ink changes. Ink on ONE limb rides that bone the same
@@ -407,6 +410,47 @@ namespace SpellyZombie
             }
             for (int r = runCount - 1; r < _extra.Count; r++) // park unused pieces
                 if (r >= 0 && _extra[r] != null) _extra[r].positionCount = 0;
+            if (State == StrokeState.Drawing) TickHalo();
+        }
+
+        /// Dark ink vanishes on dark ground: your own stroke wears a pale edge
+        /// while the pen is down, and it fades once the pen lifts.
+        void TickHalo()
+        {
+            bool drawing = State == StrokeState.Drawing;
+            if (_halo == null)
+            {
+                if (!drawing || OwnerId != Grimoire.LocalPlayerId || _lineGo == null) return;
+                var go = new GameObject("InkHalo");
+                go.transform.SetParent(_lineGo.transform, false); // hides and dies with the stroke
+                _halo = go.AddComponent<LineRenderer>();
+                _halo.sharedMaterial = _line.sharedMaterial;
+                _halo.useWorldSpace = true;
+                _halo.numCapVertices = 4;
+                _halo.numCornerVertices = 2;
+                _halo.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                _halo.sortingOrder = _line.sortingOrder - 1; // under the ink
+                _halo.widthMultiplier = DrawingConfig.InkWidth * DrawingConfig.InkHaloWidth;
+                _haloAlpha = 1f;
+            }
+            if (drawing)
+            {
+                int n = _line.positionCount;
+                if (_fill.Length < n) _fill = new Vector3[Mathf.NextPowerOfTwo(n)];
+                _line.GetPositions(_fill);
+                _halo.positionCount = n;
+                _halo.SetPositions(_fill); // entries past positionCount are ignored
+                _halo.loop = _line.loop;
+            }
+            else
+            {
+                _haloAlpha -= Time.deltaTime / Mathf.Max(0.01f, DrawingConfig.InkHaloFadeSeconds);
+                if (_haloAlpha <= 0f) { Object.Destroy(_halo.gameObject); _halo = null; return; }
+            }
+            Color c = DrawingConfig.InkHaloColor;
+            c.a *= _haloAlpha;
+            _halo.startColor = c;
+            _halo.endColor = c;
         }
 
         Transform _anchor;

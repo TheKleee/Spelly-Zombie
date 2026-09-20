@@ -159,7 +159,8 @@ namespace SpellyZombie
             return s;
         }
 
-        /// One rune's push. THE ONLY rune-to-payload mapping in the game.
+        /// One rune's BUILT-IN push: seeds a book that has no row for the rune
+        /// (SpellBook.EnsureRuneRows). The pen itself reads the book's rune rows.
         public static SpellPayload Of(RuneType rune, float power = 1f)
         {
             var p = new SpellPayload();

@@ -7,6 +7,8 @@ and out/_sheet.png, one contact sheet to eyeball the set.
 
 Emoji files are looked up as emoji_u<code>.png in the "sources" folders
 (the project's sz-emoji folder first, then downloads/ next to this file).
+An entry with "hat" wears that second emoji on its head, tilted by
+"hat_tilt" degrees (the Golem Lord's crown).
 Missing files are listed at the end; nothing else stops.
 """
 import json
@@ -28,17 +30,47 @@ def find(code, sources):
     return None
 
 
-def tile(size, rgb, emoji, emoji_px):
-    """Solid card with a soft inner border and the emoji centred."""
+def card(size, rgb):
+    """Solid card with a soft inner border."""
     img = Image.new("RGB", (size, size), tuple(rgb))
     d = ImageDraw.Draw(img)
     dark = tuple(max(0, c - 60) for c in rgb)
     d.rectangle([4, 4, size - 5, size - 5], outline=dark, width=6)
+    return img
+
+
+def tile(size, rgb, emoji, emoji_px):
+    """The card with the emoji centred."""
+    img = card(size, rgb)
     em = Image.open(emoji).convert("RGBA")
     em.thumbnail((emoji_px, emoji_px), Image.LANCZOS)
     x = (size - em.width) // 2
     y = (size - em.height) // 2
     img.paste(em, (x, y), em)
+    return img
+
+
+def fit(path, px):
+    """The emoji cropped to its drawing and scaled to fit px."""
+    em = Image.open(path).convert("RGBA")
+    em = em.crop(em.split()[3].getbbox())
+    em.thumbnail((px, px), Image.LANCZOS)
+    return em
+
+
+def worn(size, rgb, emoji, hat, emoji_px, tilt):
+    """The card with the emoji wearing a second one on its head."""
+    img = card(size, rgb)
+    body = fit(emoji, int(emoji_px * 0.83))
+    hat_px = int(emoji_px * 0.55)
+    top = fit(hat, hat_px)
+    if tilt:
+        top = top.rotate(tilt, resample=Image.BICUBIC, expand=True)
+    overlap = int(hat_px * 0.315)
+    y = (size - (body.height + top.height - overlap)) // 2
+    x = (size - body.width) // 2
+    img.paste(body, (x, y + top.height - overlap), body)
+    img.paste(top, (x + int(body.width * 0.52) - top.width // 2, y), top)
     return img
 
 
@@ -59,8 +91,13 @@ def main():
         if path is None:
             missing.append((e["api"], "emoji_u%s.png" % e["emoji"]))
             continue
+        hat = find(e["hat"], spec["sources"]) if e.get("hat") else None
+        if e.get("hat") and hat is None:
+            missing.append((e["api"], "emoji_u%s.png" % e["hat"]))
+            continue
         rgb = spec["backgrounds"][e.get("side", "both")]
-        on = tile(size, rgb, path, emoji_px)
+        on = (worn(size, rgb, path, hat, emoji_px, float(e.get("hat_tilt", 0))) if hat
+              else tile(size, rgb, path, emoji_px))
         off = locked(on)
         on.save(os.path.join(OUT, e["api"] + ".jpg"), quality=92)
         off.save(os.path.join(OUT, e["api"] + "_locked.jpg"), quality=92)
@@ -86,7 +123,7 @@ def main():
         print("missing emoji files (drop them in sz-emoji or downloads/):")
         for api, name in missing:
             print("  %s  %s" % (name, api))
-        print("source: https://github.com/googlefonts/noto-emoji/tree/main/png/512")
+        print("source: https://github.com/googlefonts/noto-emoji/tree/main/2D/png/512")
     return 0 if not missing else 1
 
 

@@ -104,6 +104,8 @@ namespace SpellyZombie
         public static readonly float MaxStrokeJumpPerMeter = O(nameof(MaxStrokeJumpPerMeter), 0.02f); // tiny distance allowance (fast flicks split; forgiving seals reconnect what should connect)
         public static readonly int MinStrokeNodes = Oi(nameof(MinStrokeNodes), 2); // 2 is the minimum that can form a line; arrowhead barbs are that short
         public static readonly float InkWidth = O(nameof(InkWidth), 0.007f); // line renderer width
+        public static readonly float InkHaloWidth = O(nameof(InkHaloWidth), 3f); // your own live stroke's pale edge, x InkWidth: dark ink shows on dark ground
+        public static readonly float InkHaloFadeSeconds = O(nameof(InkHaloFadeSeconds), 0.6f); // the edge fades once the pen lifts
         public static readonly float DrawSmoothingTime = O(nameof(DrawSmoothingTime), 0.025f); // hand-jitter smoothing time constant, seconds (0 = raw input)
         public static readonly float DrawLookSensitivityScale = O(nameof(DrawLookSensitivityScale), 0.35f); // camera sensitivity multiplier while the pen is down
         public static readonly float EraseRadius = O(nameof(EraseRadius), 0.02f);
@@ -180,6 +182,8 @@ namespace SpellyZombie
 
         // A summoned zombie is a spell and expires; not the seal's production clock.
         public static readonly float SummonedZombieLife = O(nameof(SummonedZombieLife), 75f);
+        // A combined seal's partners share the closer's kills this long after a spell (summons: SummonedZombieLife).
+        public static readonly float CoCastShareSeconds = O(nameof(CoCastShareSeconds), 20f);
 
         /// Pupil color of a zombie somebody else is steering.
         public static readonly Color MindControlEyeColor = new Color(0.85f, 0.10f, 0.10f, 1f);
@@ -375,6 +379,7 @@ namespace SpellyZombie
         // One drawing = ink that touches, measured node-to-segment (RuneGlyph).
         // This distance and the segment math must move together.
         public static readonly float RuneTouchDistance = O(nameof(RuneTouchDistance), 0.014f); // = InkTouchDistance; same law as seals
+        public static readonly float CurvedInkDeg = O(nameof(CurvedInkDeg), 30f); // ink bending past this off its mean normal (an arm) is read as the drawer saw it, not unrolled
         // A touching cluster past either cap is a tangle and reads as no rune,
         // unclassified. Largest saved sample: 3 strokes, 277 points (0.63 m
         // across); a full tank of line is about 1300 nodes.
@@ -389,12 +394,16 @@ namespace SpellyZombie
         public static readonly float SpellKick = O(nameof(SpellKick), 2.5f);            // m/s per unit of power at the smallest rune size
         public static readonly float SpellKickRadius = O(nameof(SpellKickRadius), 2.5f); // metres: what else gets its share
         public static readonly float SpellKickKnock = O(nameof(SpellKickKnock), 7f);    // m/s of kick that floors a player
+        // a summon pushes its caster this far past the body's edge, never faster than the cap (m/s)
+        public static readonly float SummonClearMargin = O(nameof(SummonClearMargin), 1.5f);
+        public static readonly float SummonClearSpeedMax = O(nameof(SummonClearSpeedMax), 14f);
 
         // ---- proximity voice ----
         public static readonly float VoiceRangeMeters = O(nameof(VoiceRangeMeters), 22f); // silent past this
         public static readonly float VoiceGain = O(nameof(VoiceGain), 1f);                 // the eye tell's sensitivity
         public static readonly float VoiceEyeSwell = O(nameof(VoiceEyeSwell), 0.35f);      // how wide the eyes go at full voice
         public static readonly float VoiceRelayMargin = O(nameof(VoiceRelayMargin), 1.5f);   // the host relays a voice only to listeners within range x this
+
 
         // ---- what the host sends whom (netcode: presence and hordes by distance) ----
         public static readonly float PresenceNearMeters = O(nameof(PresenceNearMeters), 30f); // within this every state is relayed as it comes (20 Hz)
@@ -464,6 +473,13 @@ namespace SpellyZombie
         public static readonly float VectorPull = O(nameof(VectorPull), 15f);      // the drag/shove along the drawn heading
         public static readonly float VectorReverse = O(nameof(VectorReverse), 1.8f); // how hard Y flips existing momentum
         public static readonly float MusicDangerRange = O(nameof(MusicDangerRange), 14f); // meters: enemy inside this = action music
+        // THE MUSIC FEELS WHAT YOU FEEL, your own body only, on the eyes' and legs' own ramps:
+        // full terror plays this much lower and muffles down to the cutoff, full bravado this much higher,
+        // full drunk wobbles the pitch this much either way in time with the leg sway
+        public static readonly float MusicFearPitch = O(nameof(MusicFearPitch), 0.06f);
+        public static readonly float MusicFearCutoff = O(nameof(MusicFearCutoff), 1500f);
+        public static readonly float MusicBravePitch = O(nameof(MusicBravePitch), 0.04f);
+        public static readonly float MusicDrunkWobble = O(nameof(MusicDrunkWobble), 0.03f);
         // (matter spawning is one block per State zone per activation - size and
         // behaviour live in SurfaceMaterialDB / Matter, not here)
         public static readonly float MaxThermalObjectSize = O(nameof(MaxThermalObjectSize), 3f); // don't cook colliders bigger than this unless they're dynamic (walls/ground)
@@ -493,6 +509,8 @@ namespace SpellyZombie
         public static readonly float PropMassKg = O(nameof(PropMassKg), 4f); // weight of any prop you haven't authored a Mass on
         /// Ink is black; wand, line and ore share it.
         public static readonly Color InkColor = new Color(0.06f, 0.06f, 0.08f, 1f);
+        /// The pale edge under your own ink while the pen is down.
+        public static readonly Color InkHaloColor = new Color(1f, 0.96f, 0.85f, 0.45f);
         /// Corrupt ink is green. An acolyte's wand is green outright; a
         /// corrupting wizard's greens from the tip down.
         public static readonly Color CorruptInkColor = new Color(0.25f, 0.62f, 0.16f, 1f);
@@ -743,9 +761,20 @@ namespace SpellyZombie
         public static readonly float WildGolemChargeDamage = O(nameof(WildGolemChargeDamage), 20f);
         public static readonly float WildGolemChargeSizePower = O(nameof(WildGolemChargeSizePower), 1.5f);
         public static readonly float WildGolemChargeRecoilShare = O(nameof(WildGolemChargeRecoilShare), 0.2f);
+        // a boss learns what hurts it: after this share of its health from one kind (fire, cold,
+        // hits, other magic) that kind does BossResistMax less; heat and cold are one balance, so
+        // resisting one opens it to the other by the same; it forgets over BossResistForgetSeconds
+        public static readonly float BossResistLearnShare = O(nameof(BossResistLearnShare), 0.1f);
+        public static readonly float BossResistMax = O(nameof(BossResistMax), 0.75f);
+        public static readonly float BossResistForgetSeconds = O(nameof(BossResistForgetSeconds), 20f);
         // eyes, not ears: prey must be in front and in view, or this close, or have hurt it lately
         public static readonly float GolemSightAngle = O(nameof(GolemSightAngle), 120f);   // full cone, degrees
         public static readonly float GolemFeelRange = O(nameof(GolemFeelRange), 2.5f);     // metres, any direction
+        public static readonly float GolemLookSeconds = O(nameof(GolemLookSeconds), 0.1f); // how often a golem searches for prey and spells; it steps every physics step
+        public static readonly float LogLinesPerSecond = O(nameof(LogLinesPerSecond), 40f); // "[SpellyZombie]" console lines written a second; the rest of that second is counted in one line (Game/LogBudget.cs)
+        public static readonly float ElementNearMeters = O(nameof(ElementNearMeters), 30f);       // elements this close to a player take their turn every 0.2 s...
+        public static readonly float ElementFarBeatSeconds = O(nameof(ElementFarBeatSeconds), 1f); // ...farther ones this often, carrying the time that passed
+        public static readonly float GolemSweepBelow = O(nameof(GolemSweepBelow), 1f);     // smaller golems sweep for collisions (they outrun their width), bigger ones use the cheaper speculative test
         public static readonly float GolemAlertSeconds = O(nameof(GolemAlertSeconds), 4f); // after a hit: all directions
         // the wand is a keep-away: a wild golem never closes on a working wand, it backs off to this and circles
         public static readonly float GolemRespectRange = O(nameof(GolemRespectRange), 6f);
@@ -858,6 +887,14 @@ namespace SpellyZombie
         public static readonly float CourageFocusDegPerSecMax = O(nameof(CourageFocusDegPerSecMax), 12f);
         public static readonly float CourageAvertDegPerSecMin = O(nameof(CourageAvertDegPerSecMin), 4f);
         public static readonly float CourageAvertDegPerSecMax = O(nameof(CourageAvertDegPerSecMax), 12f);
+        // fear is paranoia, one thing at a time: a flinch turns away until the
+        // thing leaves the avert cone or these seconds run out, then calm (long
+        // at the first flicker of fear, short in full terror) before the next;
+        // a thing just fled is not feared again for a while
+        public static readonly float CourageFlinchSecondsMax = O(nameof(CourageFlinchSecondsMax), 3f);
+        public static readonly float CourageCalmSecondsMin = O(nameof(CourageCalmSecondsMin), 0.8f);
+        public static readonly float CourageCalmSecondsMax = O(nameof(CourageCalmSecondsMax), 2.5f);
+        public static readonly float CourageFearMemorySeconds = O(nameof(CourageFearMemorySeconds), 6f);
 
         // SPREADING: how far a spreading thing reaches for its next victim,
         // and what share of its own numbers it hands over. Under 1 so a fire
@@ -888,6 +925,10 @@ namespace SpellyZombie
         public static readonly float GooThrowRange = O(nameof(GooThrowRange), 10f);
         public static readonly float GooThrowCooldown = O(nameof(GooThrowCooldown), 4f);
         public static readonly float GooKiteRange = O(nameof(GooKiteRange), 8f);
+        // a creature casting a summoning spell: seconds between raises, and how
+        // many creature-raised bodies the whole map holds at once
+        public static readonly float CreatureSummonCooldown = O(nameof(CreatureSummonCooldown), 10f);
+        public static readonly int CreatureSummonBudget = Oi(nameof(CreatureSummonBudget), 12);
 
         // THE DEMON: it wanders and it throws spells, and it does neither on a
         // schedule anyone can read.

@@ -252,7 +252,7 @@ namespace SpellyZombie
                 if (k.Mine) { UnlockMark.Show(k.Key, k.T, HeadUp, -1f); continue; }
                 // the blame arrives on the host's word, a moment after the fall
                 int by = Marks.Get(k.NetId, Mark.KilledBy);
-                if (by == Me)
+                if (by == Me || CoCast.Shares(by, Me)) // a combined seal's kill is everyone's
                 {
                     bool viaZombie = Marks.Get(k.NetId, Mark.KilledVia) == 1;
                     if (viaZombie)

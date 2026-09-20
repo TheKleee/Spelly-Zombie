@@ -18,7 +18,8 @@ namespace SpellyZombie
             && ActiveScene.Name != "Lobby" && ActiveScene.Name != "Menu"
             && NetGame.Connected && NetSync.RemoteCount > 0;
 
-        public enum Ending : byte { None = 0, PotDry = 1, NoWizards = 2, Sweep = 3, GreenBell = 4, CleanBell = 5 }
+        public enum Ending : byte { None = 0, PotDry = 1, NoWizards = 2, Sweep = 3, GreenBell = 4, CleanBell = 5,
+            BossDown = 6, EveryoneDown = 7, TimeUp = 8 }
 
         // ways to win
         public const string WinWizards = "SZ_WIN_WIZARDS";
@@ -45,11 +46,14 @@ namespace SpellyZombie
         public const string PoisonPot = "SZ_POISON_POT";
         public const string CleanPot = "SZ_CLEAN_POT";
 
+        // the boss of the map that comes with the game
+        public const string BeatBoss = "SZ_BEAT_BOSS";
+
         public static readonly string[] All =
         {
             WinWizards, WinAcolytes, EndPotDry, EndNoWizards, EndGreenBell, EndCleanBell, EndSweep, TenWins,
             FirstRune, AllRunes, FirstSpell, BodyCast, Disguise, RideZombie, RideGolem, GolemBorn,
-            ReviveFriend, CameBack, FatBounce, PoisonPot, CleanPot,
+            ReviveFriend, CameBack, FatBounce, PoisonPot, CleanPot, BeatBoss,
         };
 
         static readonly HashSet<string> _done = new HashSet<string>();
@@ -121,6 +125,10 @@ namespace SpellyZombie
         /// Host and clients both call this once per match with the referee's ending.
         public static void MatchEnded(int winner, Ending ending)
         {
+            // ★ THE OFFICIAL BOSS (his call): everyone on the team that brought it
+            // down, ghosts included, on the map that came with the game, untouched
+            if (ending == Ending.BossDown && RoundDirector.WonHere(winner) && MapLibrary.IsOfficial(MapDef.Active))
+                Unlock(BeatBoss);
             if (winner != 1 && winner != 2) return;
             bool acolyte = Sides.Local == Side.Acolyte;
             if (acolyte != (winner == 2)) return; // the losing side earns nothing

@@ -22,9 +22,9 @@ namespace SpellyZombie
         float _left, _paintRetry;
         bool _painted;
 
-        /// The spell that raised it, if any - its material sliders go onto the
-        /// body, and its colour shades the zombie's own green.
-        public SpellDef Spell;
+        /// The creature it is, if any - its material sliders go onto the body,
+        /// and its colour shades the zombie's own green.
+        public CreatureDef Creature;
 
         /// Seconds of life left: the smallest is the oldest.
         public float Left => _left;
@@ -44,7 +44,7 @@ namespace SpellyZombie
                 var z = Zombie.Spawn(spot);
                 if (z == null) return;
                 var half = z.gameObject.AddComponent<SummonedZombie>(); // before Wear (the law)
-                if (Spell != null) z.Wear(Spell);
+                if (Creature != null) z.Wear(Creature);
                 else z.Abilities.Add(Ranged ? "Goo" : Zombie.Charge);
                 z.transform.localScale = transform.localScale * scaleMul;
                 var rb = z.GetComponent<Rigidbody>();
@@ -60,7 +60,11 @@ namespace SpellyZombie
                 half.Begin(SummonedBy, Ranged, Mathf.Max(5f, _left), GasRadius * scaleMul);
                 BiomeStamp.Apply(z.gameObject, spot);
                 var brain = z.GetComponent<ZombieBrain>();
-                if (brain != null) brain.StrikesTurnedBacks = true;
+                if (brain != null)
+                {
+                    brain.StrikesTurnedBacks = true;
+                    brain.CopyHomeFrom(GetComponent<ZombieBrain>());
+                }
             }
         }
 
@@ -97,6 +101,9 @@ namespace SpellyZombie
             float auraRadius = Mathf.Min(bodyHeight * DrawingConfig.PoisonAuraBodyMul, 0.88f);
             _gas = PoisonField.Open(transform.position + Vector3.up * bodyHeight * 0.35f,
                 auraRadius, seconds + 1f, transform);
+            // the aura serves the summoner's side: a wizard's demon must not gas its wizard; no summoner, no side
+            _gas.Team = owner < 0 ? (Side?)null : Sides.Of(owner);
+            _gas.Owner = owner;
             // clients ride the same aura on this zombie's stand-in
             NetSync.PushField(2, _gas.transform.position, auraRadius, seconds + 1f,
                 gameObject.GetInstanceID());
@@ -119,12 +126,12 @@ namespace SpellyZombie
             // melee/ranged read survives
             var stamp = GetComponent<BiomeStamp>();
             if (stamp != null) c = stamp.Shift(c);
-            if (Spell != null) c = Color.Lerp(c, Spell.Payload.Tint(), DrawingConfig.BiomeTintStrength);
+            if (Creature != null) c = Color.Lerp(c, Creature.Payload.Tint(), DrawingConfig.BiomeTintStrength);
 
             var view = GetComponent<StateView>() ?? gameObject.AddComponent<StateView>();
             view.Tint = c;
             view.DriveTint = true;
-            if (Spell != null) view.Look = Spell.Skin;
+            if (Creature != null) view.Look = Creature.Skin;
             _painted = true;
         }
 

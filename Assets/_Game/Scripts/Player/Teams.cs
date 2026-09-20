@@ -7,8 +7,9 @@ namespace SpellyZombie
     public enum Team { Neutral, Wizard, Acolyte }
 
     /// THE ONE LABEL. Who belongs where: players by their side, zombies with
-    /// the acolytes, golems/particles/matter by whoever made them, untouched
-    /// world things Neutral. Every friend-or-foe question routes here.
+    /// the acolytes (by whoever raised them on a map with its own teams),
+    /// golems/particles/matter by whoever made them, untouched world things
+    /// Neutral. Every friend-or-foe question routes here.
     public static class Teams
     {
         public static Team OfOwner(int ownerId) =>
@@ -23,7 +24,8 @@ namespace SpellyZombie
             if (pilot != null)
                 return Sides.IsAcolytePlayer(pilot) ? Team.Acolyte : Team.Wizard;
 
-            if (thing.GetComponentInParent<Zombie>() != null) return Team.Acolyte;
+            var zombie = thing.GetComponentInParent<Zombie>();
+            if (zombie != null) return MapRules.Custom ? OfOwner(zombie.OwnerId) : Team.Acolyte;
 
             var golem = thing.GetComponentInParent<Golem>();
             if (golem != null) return OfOwner(golem.OwnerId);
@@ -40,8 +42,10 @@ namespace SpellyZombie
             return Team.Neutral;
         }
 
-        /// Three teams, all against each other - different team = enemy.
-        public static bool Enemies(Team a, Team b) => a != b;
+        /// Three teams, all against each other - different team = enemy. A map
+        /// that puts wizards and acolytes together (MapRules) makes them one.
+        public static bool Enemies(Team a, Team b) =>
+            a != b && !(MapRules.Together && a != Team.Neutral && b != Team.Neutral);
         public static bool SameTeam(Component a, Component b) => Of(a) == Of(b);
     }
 }

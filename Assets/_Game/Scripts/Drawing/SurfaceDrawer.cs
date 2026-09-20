@@ -117,8 +117,7 @@ namespace SpellyZombie
 
             // any open menu owns the mouse - no drawing through panels
             if (GameMenu.IsOpen || HatPillar.PanelOpen || LobbyStand.PanelOpen
-                || PoseStudio.IsOpen || UIKit.Typing
-                || LobbyInspect.PanelOpen)
+                || PoseStudio.IsOpen || UIKit.Typing)
             {
                 EndStroke();
                 _hasEraseTrack = false;
@@ -127,7 +126,8 @@ namespace SpellyZombie
                 return;
             }
 
-            // no wand (or dry) = no drawing
+            // no wand (or dry) = no drawing, and the press says so
+            if (mouse.leftButton.wasPressedThisFrame && !WandState.LocalCanDraw) Juice.Sound2D(Sfx.WandDry);
             bool penHeld = (mouse.leftButton.isPressed || gpDraw) && WandState.LocalCanDraw;
             bool erasing = mouse.rightButton.isPressed || gpErase;
             // eraser lifted: the ink changed - re-read what's left (preview)
@@ -405,6 +405,7 @@ namespace SpellyZombie
 
             var node = DrawNode.Create(_current, _current.Nodes.Count, _smoothedPoint, hit.normal, surface);
             _current.AddNode(node);
+            SfxLoops.Pen(_smoothedPoint);
 
             TryCloseMidDraw(node);
         }
