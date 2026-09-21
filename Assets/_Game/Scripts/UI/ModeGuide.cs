@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace SpellyZombie
 {
@@ -10,6 +11,8 @@ namespace SpellyZombie
     {
         SimpleFPSController _pilot;
         EmotePlayer _emotes;
+        GhostState _ghost;
+        static bool _ghostUpTaught, _ghostDownTaught; // the two flying keys retire once each was used
 
         void Update()
         {
@@ -17,6 +20,9 @@ namespace SpellyZombie
             if (_pilot == null || !_pilot.IsLocalViewer) return;
             if (GameMenu.IsOpen || PoseStudio.IsOpen || LobbyStand.PanelOpen
                 || HatPillar.PanelOpen) return;
+            // the book, the body paint and the view keys are the living's: a body on the ground or a ghost has none of them
+            if (GhostState.LocalIsGhost) { GhostKeys(); return; }
+            if (_pilot.IsDowned || _pilot.IsDead) return;
 
             // an open mode's own prompts take priority; the guide only covers
             // the crossroads. A held pose counts as a mode.
@@ -66,6 +72,26 @@ namespace SpellyZombie
                 if (dead) UIPrompt.Offer("R", Loc.T("chip.watch"));
                 else UIPrompt.Offer("G", Loc.T("chip.grimoire"));
             }
+        }
+
+        /// A ghost's row: how to let go of what it rides, shown only while it rides something;
+        /// flying free, the two keys nobody guesses (up and down), each until it was used once.
+        void GhostKeys()
+        {
+            if (_ghost == null) _ghost = GetComponent<GhostState>();
+            if (_ghost != null && _ghost.Driving)
+            {
+                UIPrompt.Offer("F", Loc.T("chip.release"));
+                return;
+            }
+            var kb = Keyboard.current;
+            if (kb != null)
+            {
+                if (kb.spaceKey.isPressed) _ghostUpTaught = true;
+                if (kb.leftCtrlKey.isPressed) _ghostDownTaught = true;
+            }
+            if (!_ghostUpTaught) UIPrompt.Offer("SPACE", Loc.T("chip.up"));
+            if (!_ghostDownTaught) UIPrompt.Offer("CTRL", Loc.T("chip.down"));
         }
 
         bool OwnsAZombie()

@@ -78,6 +78,8 @@ namespace SpellyZombie
         const int MaxAlive = 90;               // world matter cap (multiplayer grief-proofing)
 
         static readonly System.Collections.Generic.List<Matter> All = new System.Collections.Generic.List<Matter>();
+        /// How many more pieces the world holds before a new one deletes the oldest.
+        public static int Room => Mathf.Max(0, MaxAlive - All.Count);
         /// List, not IReadOnlyList: foreach over the interface boxes the enumerator.
         public static System.Collections.Generic.List<Matter> Living => All;
 
@@ -187,7 +189,9 @@ namespace SpellyZombie
         // full [-1, 1] range: negative stickiness is the slick payload; Clamp01 would erase it
         public void AddStickiness(float d) => Stickiness = Mathf.Clamp(Stickiness + d, -1f, 1f);
 
-        void Update()
+        void Update() { using (PerfMarkers.UpdMatter.Auto()) Turn(); }
+
+        void Turn()
         {
             float dt = Time.deltaTime;
             _age += dt;
@@ -783,6 +787,11 @@ namespace SpellyZombie
         /// per material per line count); an empty slot falls back to a primitive.
         public static Matter Spawn(SurfaceMaterialType mat, MatterPhase phase, float size,
             Vector3 pos, int edges = 0)
+        {
+            using (PerfMarkers.NewMatter.Auto()) return Make(mat, phase, size, pos, edges);
+        }
+
+        static Matter Make(SurfaceMaterialType mat, MatterPhase phase, float size, Vector3 pos, int edges)
         {
             GameObject go = null;
             bool authored = false;

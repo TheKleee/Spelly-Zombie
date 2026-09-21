@@ -361,6 +361,10 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Dibujos guardados. Elige uno para retocarlo, el más empieza uno nuevo, X quita uno | drawings kept. choose one to retouch-it, the plus starts one new, X removes one | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | Se lee como {0} | is-read as {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Todavía no se lee | still not is-read | the pad's drawing matches no rune well enough |
+| menu.extras | Extras | Extras | extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
+| chip.release | release | soltar | to let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | up | subir | to go up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | down | bajar | to go down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | La grabación no funcionó en este PC | the recording did not work on this PC | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | No hay espacio libre suficiente en el disco para grabar | there is not enough free space on the disk to record | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | Color | color | section on a creature in the photo booth: its color sliders |

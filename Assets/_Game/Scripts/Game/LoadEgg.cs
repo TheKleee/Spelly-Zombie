@@ -165,8 +165,23 @@ namespace SpellyZombie
             _live.Attach();
         }
 
+        // The trip belongs to the egg: what is on the screen (buttons, chips, meters) steps aside
+        // from the moment the shell starts closing in until it breaks open again. The loading text
+        // is the egg's own and stays (LoadingHints sets its group to ignore this one).
+        static void ScreenStepsAside(bool aside)
+        {
+            var root = UIKit.Root;
+            if (root == null) return;
+            var group = root.GetComponent<CanvasGroup>();
+            if (group == null) group = root.gameObject.AddComponent<CanvasGroup>();
+            group.alpha = aside ? 0f : 1f;
+            group.blocksRaycasts = !aside;
+            group.interactable = !aside;
+        }
+
         void Awake()
         {
+            ScreenStepsAside(true);
             _bornAt = Time.unscaledTime;
             _bodiless = Bodiless(SceneManager.GetActiveScene().name);
             SceneManager.sceneLoaded += OnLoaded;
@@ -179,7 +194,7 @@ namespace SpellyZombie
             RenderPipelineManager.beginCameraRendering -= OnBeginCamera;
             Unwrap();
             if (_shell != null) Destroy(_shell.gameObject);
-            if (_live == this) _live = null;
+            if (_live == this) { _live = null; ScreenStepsAside(false); }
         }
 
         void OnLoaded(Scene s, LoadSceneMode m)
@@ -347,6 +362,7 @@ namespace SpellyZombie
         /// grows away from the eye until it burns out at the horizon.
         void Reveal()
         {
+            ScreenStepsAside(false);
             Unwrap();
             _openFrom = _radius;
             _opening = 0f;

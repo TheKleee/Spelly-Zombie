@@ -175,7 +175,7 @@ namespace SpellyZombie
             GrammarFX.FireBloom(at, 2, 1.3f, 1.5f);
             foreach (var h in Physics.OverlapSphere(at, 1.6f))
                 SpellParticle.GiveHeatTo(h, 90f);
-            Juice.Thud(at);
+            Juice.Sound(Sfx.BreakStone, at, 0.8f, Random.Range(0.92f, 1.06f));
             // destroy immediately; a delay lets physics touch a half-destroyed Rigidbody
             Destroy(gameObject);
         }

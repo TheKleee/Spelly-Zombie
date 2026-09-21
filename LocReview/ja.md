@@ -363,6 +363,10 @@ lines lose their emphasis on purpose.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | 残した絵。選ぶとその絵を直せる。＋で新しい絵、Xで消す | left drawings. choosing lets you fix that drawing. with + a new drawing, with X erase | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | 読みとり: {0} | reading: {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | まだ読みとれない | can't read yet | the pad's drawing matches no rune well enough |
+| menu.extras | Extras | おまけ | bonus extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
+| chip.release | release | 放す | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | up | 上へ | upward | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | down | 下へ | downward | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | このPCでは録画できなかった | could not record on this PC | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | 録画するにはディスクの空きが足りない | not enough free disk to record | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | 色 | color | section on a creature in the photo booth: its color sliders |

@@ -284,13 +284,32 @@ namespace SpellyZombie
             return null;
         }
 
+        static GameObject _ownEvents;
+        static bool _watchingScenes;
+
         static void EnsureEventSystem()
         {
+            if (!_watchingScenes)
+            {
+                _watchingScenes = true;
+                UnityEngine.SceneManagement.SceneManager.sceneLoaded += (_, __) => OneEventSystem();
+            }
             if (UnityEngine.Object.FindAnyObjectByType<EventSystem>() != null) return;
-            var es = new GameObject("SZ_EventSystem");
-            UnityEngine.Object.DontDestroyOnLoad(es);
-            es.AddComponent<EventSystem>();
-            es.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+            _ownEvents = new GameObject("SZ_EventSystem");
+            UnityEngine.Object.DontDestroyOnLoad(_ownEvents);
+            _ownEvents.AddComponent<EventSystem>();
+            _ownEvents.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+        }
+
+        /// One event system, whatever scene arrives. The one made in the menu travels on and stays
+        /// the one Unity listens to, so a scene's own (the Lobby has one) never did anything there
+        /// but make Unity warn about it every frame: it is switched off. A scene that arrives with
+        /// none (the Lobby's own left behind) gets ours.
+        static void OneEventSystem()
+        {
+            if (_ownEvents == null) { EnsureEventSystem(); return; }
+            foreach (var es in UnityEngine.Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None))
+                if (es.gameObject != _ownEvents) es.enabled = false;
         }
 
         // ------------------------------------------------------- primitives --

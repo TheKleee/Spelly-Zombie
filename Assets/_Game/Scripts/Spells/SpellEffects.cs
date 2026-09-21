@@ -204,7 +204,7 @@ namespace SpellyZombie
             if (cc != null) cc.enabled = false;      // CC must be off to teleport
             root.position = to + Vector3.up * 0.3f;
             if (cc != null) cc.enabled = true;
-            Juice.Chime(to);
+            Juice.Sound(Sfx.MagicBurst, to, 0.8f, 1.1f, false); // the others hear it from the message below
             NetSync.PushBodyFx(4, to); // chime is not a WorldSound: the others hear it from here
         }
 

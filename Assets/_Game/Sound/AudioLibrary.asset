@@ -76,6 +76,7 @@ MonoBehaviour:
   Whistle: {fileID: 8300000, guid: 62f6bfee63c0d5aaa8e0a8e8a6b1132b, type: 3}
   AcolyteTransform: {fileID: 8300000, guid: ef8e5a09a26776ffcdf893ccce941d32, type: 3}
   AcolyteBack: {fileID: 8300000, guid: c6bdacac1a1bbe4ae0e7557addd6f996, type: 3}
+  Scan: {fileID: 8300000, guid: f64e1ce5c8a279a0815ef93941f9c8e0, type: 3}
   GolemCharge: {fileID: 8300000, guid: e1ef9ad814bfe0fc375ff6e0eb838f25, type: 3}
   GolemHit: {fileID: 8300000, guid: ce606b2f76723e13aa04a3450118ca87, type: 3}
   GolemCroak: {fileID: 8300000, guid: 3930a5a590564dd285875596e80398e8, type: 3}

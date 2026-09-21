@@ -256,7 +256,7 @@ namespace SpellyZombie
             while (stack.Count > 0 && fx == null) fx = stack.Pop(); // skip any destroyed
             if (fx == null)
             {
-                fx = Instantiate(prefab, pos, Quaternion.identity, parent);
+                using (PerfMarkers.NewEffect.Auto()) fx = Instantiate(prefab, pos, Quaternion.identity, parent);
                 _origin[fx] = prefab;
                 keeper = fx.AddComponent<FxReturn>();
                 keeper.Systems = fx.GetComponentsInChildren<ParticleSystem>(true); // cached ONCE - reuse spawns stay alloc-free

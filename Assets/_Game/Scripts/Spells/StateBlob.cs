@@ -299,7 +299,9 @@ namespace SpellyZombie
             }
         }
 
-        void Update()
+        void Update() { using (PerfMarkers.UpdBlobs.Auto()) Turn(); }
+
+        void Turn()
         {
             if (_matter == null) return;
 

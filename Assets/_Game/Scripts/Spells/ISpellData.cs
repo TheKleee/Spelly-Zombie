@@ -85,8 +85,14 @@ namespace SpellyZombie
         /// the only thing that knows the difference.
         public static void Drift(ISpellData thing, float dt)
         {
-            var natural = thing.Natural;
             var here = Here(thing, out var spell);
+            Drift(thing, dt, here, spell);
+        }
+
+        /// The same, for a caller that has already asked what the place is like this turn.
+        public static void Drift(ISpellData thing, float dt, SpellPayload here, SpellPayload spell)
+        {
+            var natural = thing.Natural;
             var d = thing.Data;
             // ★ COUPLING IS FOR THE ENVIRONMENT'S ELEMENTS, not for runes
             // (his rule): a spell mote's carried data never breeds effect

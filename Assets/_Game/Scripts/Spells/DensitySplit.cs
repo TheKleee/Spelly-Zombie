@@ -105,7 +105,8 @@ namespace SpellyZombie
                 float a = (i / (float)n) * Mathf.PI * 2f;
                 Vector3 spot = at + new Vector3(Mathf.Cos(a), 0.1f, Mathf.Sin(a)) * radius;
 
-                var copy = Instantiate(gameObject, spot, transform.rotation);
+                GameObject copy;
+                using (PerfMarkers.NewSplit.Auto()) copy = Instantiate(gameObject, spot, transform.rotation);
                 copy.name = gameObject.name;
                 copy.transform.localScale = transform.localScale * shrink;
 

@@ -362,6 +362,10 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Saklanan çizimler. Düzenlemek için birini seç, artı yenisini başlatır, X birini kaldırır | kept drawings. to-edit for one choose, plus new-one starts, X one removes | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | {0} olarak okunuyor | {0} as is-being-read | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Henüz okunamıyor | yet cannot-be-read | the pad's drawing matches no rune well enough |
+| menu.extras | Extras | Ekstralar | extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
+| chip.release | release | bırak | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | up | yukarı | up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | down | aşağı | down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | Kayıt bu bilgisayarda olmadı | the recording did not happen on this computer | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | Kayıt için diskte yeterli boş alan yok | there is not enough free space on the disk for recording | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | Renk | color | section on a creature in the photo booth: its color sliders |

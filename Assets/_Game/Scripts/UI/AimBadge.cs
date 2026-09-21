@@ -77,6 +77,15 @@ namespace SpellyZombie
         Component _stableCand;  // anti-flicker debounce
         float _stableSince;
 
+        /// The local player is down, dead or flying as a ghost.
+        static bool HandsGone()
+        {
+            if (GhostState.LocalIsGhost) return true;
+            foreach (var p in SimpleFPSController.All)
+                if (p != null && p.IsLocalViewer) return p.IsDowned || p.IsDead;
+            return false;
+        }
+
         void LateUpdate()
         {
             Aimed = null;
@@ -88,7 +97,8 @@ namespace SpellyZombie
             bool danger = false;
             var cam = Camera.main;
             bool uiBusy = GameMenu.IsOpen || PoseStudio.IsOpen || LobbyStand.PanelOpen
-                || ActiveScene.Name == "Menu"; // nothing to aim at from the main menu
+                || ActiveScene.Name == "Menu" // nothing to aim at from the main menu
+                || HandsGone();               // a body on the ground or a ghost has no hands: no E on anything
 
             if (cam != null && !uiBusy && HandGrab.LocalHolding)
             {

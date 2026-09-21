@@ -512,7 +512,7 @@ namespace SpellyZombie
                 // a scan fills the RESERVE, invisible until you are yourself
                 // again - the wand you had is the wand you keep wearing
                 ink.Store(DrawingConfig.InkMax);
-                Juice.Chime(transform.position);
+                if (!Juice.Sound(Sfx.Scan, transform.position)) Juice.Chime(transform.position);
                 DrawingWorld.Instance?.LogEvent("the shape fills your wand");
             }
 

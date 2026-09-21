@@ -483,8 +483,9 @@ namespace SpellyZombie
             // smaller than seekers) - their natural body is 70%, full speed,
             // full jump. Composes with the balloon law below.
             float sideMul = 1f;
+            KnowBody();
             {
-                var pilot = GetComponent<SimpleFPSController>();
+                var pilot = _lookPilot;
                 if (pilot != null && Sides.IsAcolytePlayer(pilot))
                 {
                     // ★ THE DISGUISE IS TRUE SIZE (his rule): the small body
@@ -495,7 +496,7 @@ namespace SpellyZombie
                         sideMul = DrawingConfig.AcolyteBodyScale;
                 }
                 // a friend's puppet: the same small body, the same true-size disguise
-                var puppet = GetComponent<NetAvatar>();
+                var puppet = _lookPuppet;
                 if (puppet != null && puppet.Acolyte && !puppet.Disguised)
                     sideMul = DrawingConfig.AcolyteBodyScale;
             }
@@ -504,11 +505,7 @@ namespace SpellyZombie
             // balloons anything. Bodies get FAT or THIN (his fix: spread is
             // a fatter you, compress a thinner and slightly smaller you);
             // props keep the uniform balloon.
-            bool shaped = GetComponent<SimpleFPSController>() != null
-                       || GetComponent<Creature>() != null
-                       || GetComponent<NetAvatar>() != null
-                       || GetComponent<NetZombieProxy>() != null
-                       || GetComponent<NetGolemProxy>() != null;
+            bool shaped = _lookShaped;
             Vector3 target;
             if (shaped)
             {
@@ -535,18 +532,48 @@ namespace SpellyZombie
             if (_sv != null) _sv.ExtraWobble = bal * 0.9f;
         }
 
+        // what this element sits on never changes while it lives (a prop never becomes a body):
+        // asked once, not seven times a turn
+        bool _lookShaped;
+        int _bodyAsks;
+        float _bodyAskAt, _bodyLookAt;
+        SimpleFPSController _lookPilot;
+        NetAvatar _lookPuppet;
+        Rigidbody _physBody;
+
+        void KnowBody()
+        {
+            // asked at the first turn and once more a second later, in case a builder was still adding parts
+            if (_bodyAsks >= 2 || (_bodyAsks == 1 && (_lookShaped || Time.time < _bodyAskAt))) return;
+            _bodyAsks++;
+            _bodyAskAt = Time.time + 1f;
+            _lookPilot = GetComponent<SimpleFPSController>();
+            _lookPuppet = GetComponent<NetAvatar>();
+            _lookShaped = _lookPilot != null || _lookPuppet != null
+                       || GetComponent<Creature>() != null
+                       || GetComponent<NetZombieProxy>() != null
+                       || GetComponent<NetGolemProxy>() != null;
+        }
+
         void ApplyPhysicalAxes()
         {
             float press = SpellPayload.ToHuman(2, Data.Pressure - Natural.Pressure) / 100f;
             float bal = SpellPayload.ToHuman(3, Data.Balance - Natural.Balance) / 100f;
             LookAxes(press, bal);
 
-            var rb = GetComponent<Rigidbody>();
+            // a rooted prop gains its body when it is torn loose: one without looks again once a second
+            if (_physBody == null && Time.time >= _bodyLookAt)
+            {
+                _bodyLookAt = Time.time + 1f;
+                _physBody = GetComponent<Rigidbody>();
+            }
+            var rb = _physBody;
             if (rb == null || rb.isKinematic) return;
-            if (GetComponent<SimpleFPSController>() != null) return; // pilots: BodyState owns the feel
+            if (_lookPilot != null) return; // pilots: BodyState owns the feel
 
             if (_baseMass < 0f) { _baseMass = rb.mass; _baseDamp = rb.linearDamping; }
-            rb.mass = _baseMass * Mathf.Clamp(1f + press * 1.5f, 0.25f, 4f);
+            float mass = _baseMass * Mathf.Clamp(1f + press * 1.5f, 0.25f, 4f);
+            if (!Mathf.Approximately(rb.mass, mass)) rb.mass = mass;
             _balNow = bal;
 
             // ★ SLICK THINGS GLIDE ON THEIR OWN (his rule): frictionless AND
@@ -568,7 +595,7 @@ namespace SpellyZombie
                 rb.AddForce(Vector3.up * Random.Range(4f, 8f)
                     + Random.insideUnitSphere * 2f, ForceMode.VelocityChange);
                 rb.AddTorque(Random.onUnitSphere * 6f, ForceMode.VelocityChange);
-                Juice.Thud(transform.position);
+                Juice.Sound(Sfx.HeatImpact, transform.position, 0.7f, Random.Range(1f, 1.15f));
                 GrammarFX.PuffBurst(transform.position, new Color(1f, 0.55f, 0.15f), 6);
             }
 
@@ -794,15 +821,25 @@ namespace SpellyZombie
         void Beat(float span)
         {
             if (_dead) return;
-            SpellLaw.Drift(this, span);
-            if (!PlayerBody) Bear(span); // players mend by the player heal alone
-            ApplyPhysicalAxes();
+            float groundStrength;
+            using (PerfMarkers.TurnDrift.Auto())
+            {
+                // what the place is like, asked once a turn: the drift and the mending both go by it
+                var here = SpellLaw.Here(this, out var spell);
+                groundStrength = here.Strength;
+                SpellLaw.Drift(this, span, here, spell);
+            }
+            using (PerfMarkers.TurnBody.Auto())
+            {
+                if (!PlayerBody) Bear(span, groundStrength); // players mend by the player heal alone
+                ApplyPhysicalAxes();
+            }
 
             // a thing carrying Affinity is its own gravity until it drifts home
             if (Mathf.Abs(Data.Affinity) > 0.05f)
                 SpellParticle.AffinityField(transform, Data.Affinity, span);
 
-            TickInfluence(span);
+            using (PerfMarkers.TurnInfluence.Auto()) TickInfluence(span);
 
             // THINGS BURN WHEN THEY ARE HOT. His sentence, and the whole law -
             // nothing asks what set it on fire, or whether it is a creature.
@@ -835,8 +872,8 @@ namespace SpellyZombie
             // already fades a thing out as it goes toward gas, so pushing the
             // State axis down IS turning something invisible - no effect, no
             // timer, and it comes back on its own as the number drifts home.
-            ShowState();
-            Spread(span);
+            using (PerfMarkers.TurnLook.Auto()) ShowState();
+            using (PerfMarkers.TurnSpread.Auto()) Spread(span);
         }
 
         /// ★ WHAT THE PLACE LETS YOU BEAR. Strength is a CAPACITY, so the
@@ -900,7 +937,7 @@ namespace SpellyZombie
             {
                 var lib = FxLibrary.I;
                 if (lib == null || lib.Fire == null) return;
-                _flames = Instantiate(lib.Fire, transform);
+                using (PerfMarkers.NewFlames.Auto()) _flames = Instantiate(lib.Fire, transform);
                 _flames.name = "Flames";
                 _flames.transform.localPosition = Vector3.zero;
                 // undo the parent's scale so the flame keeps its authored size (Thermal's rule)
@@ -942,9 +979,8 @@ namespace SpellyZombie
             }
         }
 
-        void Bear(float span)
+        void Bear(float span, float ground)
         {
-            float ground = SpellLaw.Here(this).Strength;
             float ceiling = ground > 0f ? Mathf.Min(Natural.Strength, ground)
                                         : Natural.Strength;
 
@@ -1304,9 +1340,14 @@ namespace SpellyZombie
             // brittle - a hard knock cracks it and throws BONUS ice debris
             // from the ice itself, cold enough to chill what it lands on
             float frostDev = SpellPayload.ToHuman(0, Data.Temp - Natural.Temp);
-            if (frostDev < -60f && speed > ImpactFloor + 2f)
+            // one crack a knock: a frozen crowd rams its statues dozens of times a second, and every
+            // crack threw three chunks and six puffs. And the world holds only so much matter: past
+            // that a new chunk only deletes an older one, so the crack throws what there is room for.
+            if (frostDev < -60f && speed > ImpactFloor + 2f && Time.time >= _crackAt)
             {
-                for (int i = 0; i < 3; i++)
+                _crackAt = Time.time + 0.25f;
+                int chunks = Mathf.Min(3, Matter.Room);
+                for (int i = 0; i < chunks; i++)
                 {
                     Vector3 d = (Random.onUnitSphere + Vector3.up * 0.7f).normalized;
                     var ice = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Solid,
@@ -1321,7 +1362,7 @@ namespace SpellyZombie
                         irb.linearVelocity = d * 6f;
                 }
                 GrammarFX.PuffBurst(transform.position, new Color(0.85f, 0.95f, 1f), 6);
-                Juice.Thud(transform.position);
+                Juice.Sound(Sfx.BreakGlass, transform.position, 0.8f, Random.Range(0.95f, 1.1f));
             }
 
             // heavier things carry more into the hit, and both sides feel it
@@ -1464,6 +1505,8 @@ namespace SpellyZombie
                 Destroy(gameObject);
         }
 
+        float _crackAt;
+
         void Apply(float amount, string cause)
         {
             Health -= amount;
@@ -1471,8 +1514,9 @@ namespace SpellyZombie
             _logAccum += amount;
             if (_logAccum >= 30f)
             {
+                // the heat story costs a physics query and a long sentence: told only while the console still writes
                 using (PerfMarkers.Logs.Auto())
-                    Debug.Log($"[SpellyZombie] {name}: {cause}, {Mathf.Max(0, Health):0} hp left{TempReport(cause)}");
+                    Debug.Log($"[SpellyZombie] {name}: {cause}, {Mathf.Max(0, Health):0} hp left{(LogBudget.HasRoom ? TempReport(cause) : "")}");
                 _logAccum = 0f;
             }
             if (Health <= 0f)

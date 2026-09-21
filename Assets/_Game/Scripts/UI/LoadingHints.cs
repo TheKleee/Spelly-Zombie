@@ -86,6 +86,11 @@ namespace SpellyZombie
             _bornAt = Time.unscaledTime;
             _ui = UIKit.Group(UIKit.Root, "LoadingScreen");
             UIKit.Stretch(_ui);
+            // the egg hides the rest of the screen for the trip; its own text stays
+            var own = _ui.GetComponent<CanvasGroup>();
+            if (own == null) own = _ui.gameObject.AddComponent<CanvasGroup>();
+            own.ignoreParentGroups = true;
+            own.blocksRaycasts = false;
             // opaque until the egg closes around the camera: the unloaded
             // scene must never show through, and neither must a frame of the
             // new one before the egg has it

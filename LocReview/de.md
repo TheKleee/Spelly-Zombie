@@ -361,6 +361,10 @@ grammar needs, even in lowercase lines. Lobby is the word German players use.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Behaltene Zeichnungen. Wähl eine, um sie zu bearbeiten, das Plus fängt eine neue an, X entfernt eine | kept drawings. choose one to it to edit, the plus starts a new on, X removes one | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | Wird gelesen als {0} | is read as {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Noch nicht lesbar | still not readable | the pad's drawing matches no rune well enough |
+| menu.extras | Extras | Extras | extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
+| chip.release | release | loslassen | to let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | up | nach oben | upward | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | down | nach unten | downward | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | Die Aufnahme hat auf diesem PC nicht geklappt | the recording did not work out on this PC | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | Nicht genug freier Speicherplatz für die Aufnahme | not enough free storage space for the recording | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | Farbe | color | section on a creature in the photo booth: its color sliders |

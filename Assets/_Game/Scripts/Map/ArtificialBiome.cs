@@ -82,7 +82,8 @@ namespace SpellyZombie
                 if (u < 0.15f) continue;
                 var fx = CollectionManager.AreaFxFor(ax, offsets[ax] > 0f);
                 if (fx == null) continue;
-                var v = Object.Instantiate(fx, at, Quaternion.identity, go.transform);
+                GameObject v;
+                using (PerfMarkers.NewAreaLook.Auto()) v = Object.Instantiate(fx, at, Quaternion.identity, go.transform);
                 v.transform.localScale *= Mathf.Max(0.4f, b.Radius * 0.5f * u);
                 b._customFx = true;
             }
@@ -195,15 +196,44 @@ namespace SpellyZombie
 
         /// The summed offsets of every artificial biome covering a point -
         /// ADDITIVE by ruling, on top of whatever the map biome says.
-        public static SpellPayload SampleAt(Vector3 at)
+        // Every element turn and every spell asks this, thousands of times a second, and a meteor
+        // storm leaves hundreds of areas alive: where each one is and how far it reaches is read from
+        // the engine once a frame, and the question itself is plain arithmetic.
+        static Vector3[] _at = new Vector3[64];
+        static float[] _reachSqr = new float[64];
+        static ArtificialBiome[] _who = new ArtificialBiome[64];
+        static int _known, _knownFrame = -1;
+
+        static void KnowAreas()
         {
-            var sum = new SpellPayload();
+            _knownFrame = Time.frameCount;
+            _known = 0;
+            if (_at.Length < All.Count)
+            {
+                int room = Mathf.NextPowerOfTwo(All.Count);
+                _at = new Vector3[room];
+                _reachSqr = new float[room];
+                _who = new ArtificialBiome[room];
+            }
             for (int i = 0; i < All.Count; i++)
             {
                 var b = All[i];
                 if (b == null) continue;
-                if ((b.transform.position - at).sqrMagnitude > b.Radius * b.Radius) continue;
-                sum += b.Offsets;
+                _at[_known] = b.transform.position;
+                _reachSqr[_known] = b.Radius * b.Radius;
+                _who[_known++] = b;
+            }
+        }
+
+        public static SpellPayload SampleAt(Vector3 at)
+        {
+            if (_knownFrame != Time.frameCount || !Application.isPlaying) KnowAreas(); // an editor preview has no frames to go by
+            var sum = new SpellPayload();
+            for (int i = 0; i < _known; i++)
+            {
+                if ((_at[i] - at).sqrMagnitude > _reachSqr[i]) continue;
+                var b = _who[i];
+                if (b != null) sum += b.Offsets; // what it imposes is read as it is now
             }
             return sum;
         }

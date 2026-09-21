@@ -393,7 +393,7 @@ namespace SpellyZombie
             AutoComplete.GatherGroup(group, world.Strokes);
             if (AutoComplete.SealGroup(group))
             {
-                Juice.Chime(_pilot.transform.position);
+                Juice.Sound(Sfx.SealComplete, _pilot.transform.position);
                 NetSync.PushInkFx(NetSync.InkFxChime, _pilot.transform.position);
                 Grimoire.BumpWriting(Grimoire.LocalPlayerId, RuneType.None, DrawingConfig.WritingPerDeclare);
             }

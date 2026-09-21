@@ -46,6 +46,19 @@ namespace SpellyZombie
         /// While ragdolling the capsule chases the doll, so the camera follows
         /// the body and the get-up happens where it actually landed.
         public void SetRagdollFollow(Rigidbody hips) => _ragdollFollow = hips;
+
+        /// The capsule keeps up with its doll while this component is switched off (a ghost's body):
+        /// the chase lives in Update, so a corpse shoved about by a crowd left its capsule behind,
+        /// and everything that goes by the capsule (the way home, a rescuer's reach, where it stands
+        /// up again) pointed at an empty spot. Same law as the living chase: only a travelling doll.
+        public void ChaseDoll()
+        {
+            if (_ragdollFollow == null || _cc == null || !_cc.enabled) return;
+            float dollSpeed = _ragdollFollow.linearVelocity.magnitude;
+            if (dollSpeed <= 0.2f) return;
+            Vector3 gap = _ragdollFollow.worldCenterOfMass - (transform.position + _cc.center);
+            _cc.Move(Vector3.ClampMagnitude(gap * (dollSpeed > 4f ? 60f : 12f), 250f) * Time.deltaTime);
+        }
         bool _wasPrecision;
         Vector3 _shove; // external impulse (zombie swipes, explosions) - decays fast
         /// How fast a shove dies away, m/s per second.

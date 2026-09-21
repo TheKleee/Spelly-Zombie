@@ -401,7 +401,9 @@ namespace SpellyZombie
             }
         }
 
-        void Update()
+        void Update() { using (PerfMarkers.UpdBodies.Auto()) Turn(); }
+
+        void Turn()
         {
             float dt = Time.deltaTime;
 

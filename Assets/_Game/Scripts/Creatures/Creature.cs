@@ -90,7 +90,9 @@ namespace SpellyZombie
         }
 
 
-        void Update()
+        void Update() { using (PerfMarkers.UpdCreatures.Auto()) Turn(); }
+
+        void Turn()
         {
             float dt = Time.deltaTime;
             if (_stuckLeft > 0f) _stuckLeft -= dt;

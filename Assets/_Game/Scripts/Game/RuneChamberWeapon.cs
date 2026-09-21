@@ -199,7 +199,7 @@ namespace SpellyZombie
                 DrawingWorld.Instance?.RequestDetect();
                 if (closed)
                 {
-                    Juice.Crackle(transform.position); // the hammer drops
+                    Juice.Sound(Sfx.WandDry, transform.position); // the hammer drops
                     NetSync.PushInkFx(NetSync.InkFxCrackle, transform.position);
                 }
                 else
@@ -208,7 +208,7 @@ namespace SpellyZombie
                     _slot = (_slot + 1) % Slots;
                     if (_slot == 0)
                     {
-                        Juice.Chime(transform.position); // carriage return
+                        Juice.Sound(Sfx.SealComplete, transform.position); // carriage return
                         NetSync.PushInkFx(NetSync.InkFxChime, transform.position);
                     }
                 }

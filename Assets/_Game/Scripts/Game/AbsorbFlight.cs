@@ -43,7 +43,7 @@ namespace SpellyZombie
             }
             if (FxLibrary.I != null && FxLibrary.I.AbsorbBurst != null)
                 FxLibrary.Spawn(FxLibrary.I.AbsorbBurst, at);
-            Juice.Chime(at);
+            Juice.Sound(Sfx.SealComplete, at); // the unlock lands (the winner's own toast plays the same file, and one of the two is dropped)
             Destroy(gameObject);
         }
 

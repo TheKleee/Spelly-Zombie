@@ -250,7 +250,9 @@ namespace SpellyZombie
             foreach (var r in GetComponentsInChildren<Renderer>()) r.enabled = visible;
         }
 
-        void Update()
+        void Update() { using (PerfMarkers.UpdEyes.Auto()) Turn(); }
+
+        void Turn()
         {
             float dt = Time.deltaTime;
             if (dt <= 0f) return;

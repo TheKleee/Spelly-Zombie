@@ -68,8 +68,20 @@ namespace SpellyZombie
         float _askUntil;
 
         public bool IsGhost { get; private set; }
-        /// Live corpse position, not where the death happened.
-        public Vector3 BodyAt => transform.position;
+        /// Riding something right now: a spell, conjured matter, a zombie, a golem, or the host's stand-in for one.
+        public bool Driving => _ridden != null || _rbRidden != null || _zombie != null || _golem != null || _proxy != null;
+        /// Live corpse position, not where the death happened: the body you can SEE. A downed body is
+        /// a doll, and a crowd shoves it metres away from the root it fell from; home, a rescuer's
+        /// reach and the spirit's start all mean the doll.
+        public Vector3 BodyAt
+        {
+            get
+            {
+                if (_rig == null) _rig = GetComponentInChildren<CharacterRig>();
+                return _rig != null ? _rig.BodyCenter : transform.position;
+            }
+        }
+        CharacterRig _rig;
         public bool AtHome => IsGhost
             && (_ghost.position - BodyAt).sqrMagnitude <= HomeRange * HomeRange;
 
@@ -79,7 +91,7 @@ namespace SpellyZombie
             All.Add(this);
             if (GhostPrefab != null) SharedPrefab = GhostPrefab;
         }
-        void OnDestroy() { All.Remove(this); if (IsGhost) Land(); }
+        void OnDestroy() { All.Remove(this); HideEyes(null); if (IsGhost) Land(); }
 
         void Update()
         {
@@ -102,6 +114,7 @@ namespace SpellyZombie
                 return;
             }
 
+            if (_ghostCam != null) _pilot.ChaseDoll(); // the pilot is switched off while we fly: its capsule still follows its body
             FlyGhost();
             TickPossession();
             TickRevive();
@@ -161,6 +174,7 @@ namespace SpellyZombie
                 {
                     if (kbD.fKey.wasPressedThisFrame)
                     {
+                        _ridden.Coast(); // it flies on at the speed it was given, it does not glide to a stop
                         _ridden = null;
                         _third = false;
                         _noGrabUntil = Time.time + 0.8f;
@@ -806,9 +820,25 @@ namespace SpellyZombie
         /// Writes the ghost view last, after the controller and rig.
         /// World space, because the prefab is scaled and a local offset
         /// would shrink the third person distance with it.
+        // The rider looks out from between the golem's eyes. They sit beside the camera, and on a
+        // big golem they are as big as the screen: for the rider alone they are not drawn.
+        readonly System.Collections.Generic.List<Renderer> _eyesOff = new System.Collections.Generic.List<Renderer>();
+        Transform _eyesOffFor;
+
+        void HideEyes(Transform eyes)
+        {
+            if (eyes == _eyesOffFor) return;
+            foreach (var r in _eyesOff) if (r != null) r.enabled = true;
+            _eyesOff.Clear();
+            _eyesOffFor = eyes;
+            if (eyes == null) return;
+            foreach (var r in eyes.GetComponentsInChildren<Renderer>(true))
+                if (r.enabled) { r.enabled = false; _eyesOff.Add(r); }
+        }
+
         void LateUpdate()
         {
-            if (!IsGhost || _ghostCam == null || _ghost == null) return;
+            if (!IsGhost || _ghostCam == null || _ghost == null) { HideEyes(null); return; }
             Quaternion look = Quaternion.Euler(_pitch, _yaw, 0f);
 
             // the offset glides so the view never snaps between the views;
@@ -826,11 +856,18 @@ namespace SpellyZombie
             // riding a golem the ghost sits in the body but SEES from the eyes
             bool inGolem = !ReferenceEquals(_golem, null) && _golem != null;
             Vector3 viewFrom = inGolem ? _golem.HeadAt : _ghost.position;
+            Transform eyes = inGolem && _golem.Eyes != null ? _golem.Eyes.transform : null;
             if (_proxyKind == 2 && !ReferenceEquals(_proxy, null) && _proxy != null)
             {
                 var gp = _proxy.GetComponent<NetGolemProxy>();
-                if (gp != null) viewFrom = gp.HeadAt;
+                if (gp != null)
+                {
+                    viewFrom = gp.HeadAt;
+                    var gpEyes = gp.GetComponentInChildren<GooglyEyes>(true);
+                    if (gpEyes != null) eyes = gpEyes.transform;
+                }
             }
+            HideEyes(eyes);
             _ghostCam.transform.SetPositionAndRotation(viewFrom + look * _camOffset, look);
         }
 

@@ -232,7 +232,7 @@ namespace SpellyZombie
                 _handLocalPos = transform.localPosition;
                 _handLocalRot = transform.localRotation;
             }
-            Juice.Chime(transform.position);
+            Juice.Sound(Sfx.SealComplete, transform.position);
             NetSync.PushInkFx(NetSync.InkFxChime, transform.position);
         }
 

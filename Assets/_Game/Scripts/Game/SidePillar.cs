@@ -55,7 +55,7 @@ namespace SpellyZombie
             p.Health = Sides.MaxHealthFor(Sides.LocalPlayerId);
             DrawingWorld.Instance?.LogEvent(Sides.LocalIsAcolyte
                 ? "you are an acolyte now" : "you are a wizard now");
-            Juice.Chime(p.transform.position);
+            Juice.Sound(Sides.LocalIsAcolyte ? Sfx.PotTurningAcolyte : Sfx.PotTurningWizard, p.transform.position, 0.7f);
         }
     }
 }

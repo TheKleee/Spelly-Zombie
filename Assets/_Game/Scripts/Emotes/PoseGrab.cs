@@ -35,7 +35,7 @@ namespace SpellyZombie
             var def = new EmoteDef { name = $"Pose {slot}", loop = false };
             def.frames.Add(_rig.CapturePose());
             EmoteLibrary.AssignSlot(slot, EmoteLibrary.AddPose(def));
-            Juice.Chime(transform.position);
+            Juice.Sound2D(Sfx.UiReady);
             DrawingWorld.Instance?.LogEvent($"Pose saved to key {slot}");
         }
 

@@ -1194,7 +1194,7 @@ namespace SpellyZombie
             var t = ShapeShift.ResolveShape(msg.Path, out _);
             if (t == null) return;
             ShapeShift.TintScanGreen(t);
-            if (msg.Owner >= 0) Juice.Chime(t.position);
+            if (msg.Owner >= 0 && !Juice.Sound(Sfx.Scan, t.position)) Juice.Chime(t.position);
         }
 
         /// The local player started a pose on a slot: the whole keyframe set
@@ -1349,7 +1349,7 @@ namespace SpellyZombie
                 case 1: Juice.Sting(at); break;
                 case 2: Juice.Whoosh(at); break;
                 case 3: Juice.Pop(at); break;
-                case 4: Juice.Chime(at); break;
+                case 4: Juice.Sound(Sfx.MagicBurst, at, 0.8f, 1.1f, false); break; // somebody arrives out of thin air
                 case 5: GrammarFX.PuffBurst(at, new Color(0.85f, 0.95f, 1f), 5); break;
                 case 6: GrammarFX.PuffBurst(at, new Color(0.45f, 1f, 0.55f), 2); break;
                 case 7: GrammarFX.PuffBurst(at, new Color(0.7f, 0.9f, 1f), 4); break;
@@ -1420,7 +1420,9 @@ namespace SpellyZombie
 
         void Awake() => _instance = this;
 
-        void Update()
+        void Update() { using (PerfMarkers.UpdNet.Auto()) Turn(); }
+
+        void Turn()
         {
             if (!NetGame.HasManager) return;
             RegisterOnce();
@@ -4777,7 +4779,7 @@ namespace SpellyZombie
             {
                 case 1: av.TakeHeal(amount); break;
                 case 3: av.GetComponentInChildren<StateView>()?.Set(phase); break;
-                case 4: Juice.Chime(point); break; // the snap itself rides the next presence sample
+                case 4: Juice.Sound(Sfx.MagicBurst, point, 0.8f, 1.1f, false); break; // the snap itself rides the next presence sample
                 case 5: TrailMark.Wear(av.transform, amount); break;
                 case 6: av.GetComponentInChildren<StateView>()?.Fade(point.x, amount); break;
             }
@@ -4810,7 +4812,7 @@ namespace SpellyZombie
                 case 3: BodyState.Of(me.transform)?.SetPhase((MatterPhase)msg.Phase, msg.Amount); break;
                 case 4:
                     FallCatcher.Teleport(me, msg.Point + Vector3.up * 0.3f);
-                    Juice.Chime(msg.Point);
+                    Juice.Sound(Sfx.MagicBurst, msg.Point, 0.8f, 1.1f, false);
                     break;
                 case 5: TrailMark.Wear(me.transform, msg.Amount); break;
                 case 6:
@@ -5609,7 +5611,7 @@ namespace SpellyZombie
             }
             // the drink's chime at their body, as the owner hears it at theirs
             if (!msg.Leash && burned > 0 && _avatars.TryGetValue(msg.Owner - 1, out var av) && av != null)
-                Juice.Chime(av.transform.position);
+                Juice.Sound(Sfx.InkPop2, av.transform.position);
         }
 
         void OnInkBurnServer(NetworkConnection conn, InkBurnMsg msg, Channel channel)
@@ -5733,7 +5735,7 @@ namespace SpellyZombie
                     }
                     return;
                 case InkFxChime:
-                    Juice.Chime(msg.At);
+                    Juice.Sound(Sfx.SealComplete, msg.At);
                     return;
                 case InkFxPoof:
                     if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.Poof, msg.At);
@@ -5747,7 +5749,7 @@ namespace SpellyZombie
                     if (!Juice.Sound(Sfx.RuneComplete, msg.At)) Juice.Chime(msg.At);
                     return;
                 case InkFxCrackle:
-                    Juice.Crackle(msg.At);
+                    Juice.Sound(Sfx.WandDry, msg.At);
                     return;
             }
         }

@@ -363,6 +363,10 @@ Steam box says.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Desenhos guardados. Escolha um para mexer nele, o mais começa um novo, X tira um | drawings kept. choose one to work in-it, the plus starts a new, X removes one | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | Lido como {0} | read as {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Ainda não dá para ler | still not gives to read | the pad's drawing matches no rune well enough |
+| menu.extras | Extras | Extras | extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
+| chip.release | release | soltar | to let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | up | subir | to go up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | down | descer | to go down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | A gravação não funcionou neste PC | the recording did not work on this PC | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | Não tem espaço livre suficiente no disco para gravar | there is not enough free space on the disk to record | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | Cor | color | section on a creature in the photo booth: its color sliders |

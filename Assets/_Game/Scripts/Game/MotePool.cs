@@ -73,7 +73,9 @@ namespace SpellyZombie
             return new Mote { T = go.transform, R = go.GetComponent<Renderer>() };
         }
 
-        void Update()
+        void Update() { using (PerfMarkers.UpdMotes.Auto()) Turn(); }
+
+        void Turn()
         {
             float dt = Time.deltaTime, now = Time.time;
             Vector3 fall = Physics.gravity * dt;

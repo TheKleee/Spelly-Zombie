@@ -171,6 +171,11 @@ namespace SpellyZombie
         /// belongs to the player, not the side.
         public static void SetKit(int owner, params RuneType[] runes)
         {
+            // on the record when it costs the local player something: who asked for the book to start over
+            // (a client's book was seen starting over after a revive, and nothing in the log said why)
+            if (owner == LocalPlayerId && RuneCount(owner) > (runes != null ? runes.Length : 0))
+                Debug.Log($"[SpellyZombie] your book starts over: {RuneCount(owner)} runes down to the kit of {(runes != null ? runes.Length : 0)}. Asked by:\n"
+                    + new System.Diagnostics.StackTrace(1, false));
             _byOwner.Remove(owner);
             _runesByOwner.Remove(owner);
             if (runes != null)

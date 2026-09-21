@@ -358,8 +358,19 @@ namespace SpellyZombie
         {
             if (_dead) return;
             _settled = false;
+            _coasting = false;
             Vel = Vector3.MoveTowards(Vel, dir * speed, 26f * Time.deltaTime);
         }
+
+        /// Let go by the ghost that drove it: it keeps the speed it was given (a free mote glides
+        /// to a stop in about a second) until it touches something, is steered again or runs out.
+        public void Coast()
+        {
+            if (_dead || Vel.sqrMagnitude < 0.25f) return;
+            _settled = false;
+            _coasting = true;
+        }
+        bool _coasting;
 
         public void ThrowFrom(Vector3 velocity)
         {
@@ -1308,6 +1319,7 @@ namespace SpellyZombie
             p.SrcSize = DrawingConfig.RuneSizeMin;  // callers that know better overwrite it
             p._generation = generation;
             p._owned = 0;               // a fresh life: it owns only what it is seeded with
+            p._coasting = false;
             p._appetite = Random.value; // personality: some motes stalk, some are lazy
 
             // stamped once from the ground it was cast on. Every carrier
@@ -1366,6 +1378,7 @@ namespace SpellyZombie
             LeaveBiomes(); // a lvl3 cut short stops imposing too
             if (_dead) return;
             _dead = true;
+            ListenForStays();
             All.Remove(this);
             // pooled, keeping its kind-specific look for the next cast
             var stack = PoolFor(_poolKind);
@@ -1379,11 +1392,14 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------------------ living --
-        void Update()
+        void Update() { using (PerfMarkers.UpdSpells.Auto()) Turn(); }
+
+        void Turn()
         {
             if (_dead) return;
             float dt = Time.deltaTime;
             _age += dt;
+            ListenForStays();
 
             // dormant: everything below (auras, strikes, lures, fear,
             // chemistry, decay) is frozen, held or free alike - and that
@@ -1412,15 +1428,15 @@ namespace SpellyZombie
             // biome heats until it is no longer a chill mote; a liquid one
             // heated far enough crosses into gas. Nothing casts that - it is
             // just the numbers moving.
-            TickShape(dt);
-            TickDrift(dt);
+            using (PerfMarkers.SpShape.Auto()) TickShape(dt);
+            using (PerfMarkers.SpDrift.Auto()) TickDrift(dt);
 
             // claimed: no lure; held, the hand drives the position (HandGrab),
             // free, plain physics. Auras keep burning everyone else, and the
             // lifetime clock keeps running.
             if (Claimed)
             {
-                if (GrammarLevel >= 2 || Kind == ParticleKind.Flame) TickAura(dt);
+                if (GrammarLevel >= 2 || Kind == ParticleKind.Flame) using (PerfMarkers.SpAura.Auto()) TickAura(dt);
                 // ★ AN AREA CHASES ITS LIVING SPELL and parks where it died -
                 // the one-shot homing aimed at the BIRTH spot, which left
                 // every poison puddle at the zombie's mouth.
@@ -1466,7 +1482,7 @@ namespace SpellyZombie
                 {
                     Vel += Vector3.down * (EffDensity() - AirDensity) * 2.5f * dt;
                     Vel *= Mathf.Max(0f, 1f - 0.6f * dt);
-                    Pull(dt);
+                    using (PerfMarkers.SpPull.Auto()) Pull(dt);
                     if (_dead) return;
                     transform.position += Vel * dt;
                 }
@@ -1496,7 +1512,7 @@ namespace SpellyZombie
 
             // GRAMMAR v4: lvl2 particles radiate; flames burn where they sit;
             // chaos-grip products jitter uncontrollably
-            if (GrammarLevel >= 2 || Kind == ParticleKind.Flame) TickAura(dt);
+            if (GrammarLevel >= 2 || Kind == ParticleKind.Flame) using (PerfMarkers.SpAura.Auto()) TickAura(dt);
             if (_chaosLeft > 0f)
             {
                 _chaosLeft -= dt;
@@ -1662,7 +1678,7 @@ namespace SpellyZombie
                         if (mNear != null)
                             Vel += (mNear.transform.position + Vector3.up * 0.15f - transform.position)
                                 .normalized * (2.4f * dt);
-                        else TickLure(dt); // nothing magical around - stalk something ALIVE
+                        else using (PerfMarkers.SpLure.Auto()) TickLure(dt); // nothing magical around - stalk something ALIVE
                     }
                 }
                 // condensed movers integrate their own motion in Tick* - moving
@@ -1672,8 +1688,8 @@ namespace SpellyZombie
                     // ballistic debris arcs under gravity, undamped - it flies
                     // heavy and it LANDS; everything else glides mote-style
                     if (_ballistic) Vel += Physics.gravity * 0.85f * dt;
-                    else Vel *= Mathf.Max(0f, 1f - (Kind == ParticleKind.Push ? 0.25f : 1.4f) * dt);
-                    Pull(dt); // precision: the flight bends to the nearest enemy ahead
+                    else if (!_coasting) Vel *= Mathf.Max(0f, 1f - (Kind == ParticleKind.Push ? 0.25f : 1.4f) * dt);
+                    using (PerfMarkers.SpPull.Auto()) Pull(dt); // precision: the flight bends to the nearest enemy ahead
                     if (_dead) return;
                     // ★ RUNES HIT THE FLOOR (his fix): a ray down the flight
                     // direction - if something stands inside this frame's
@@ -1725,7 +1741,7 @@ namespace SpellyZombie
             {
                 // a SETTLED ember still watches: prey wandering close wakes it
                 // (TickLure clears _settled, and next frame it moves again)
-                TickLure(dt);
+                using (PerfMarkers.SpLure.Auto()) TickLure(dt);
             }
 
             // FEAR IS VISUAL: nearby zombies that can SEE a dangerous particle
@@ -1846,13 +1862,36 @@ namespace SpellyZombie
 
         /// Persistent particles deliver to whatever stays in them; Enter
         /// alone fires only once.
-        void OnTriggerStay(Collider other)
+        internal void Stay(Collider other)
         {
             if (_dead || other.isTrigger) return;
             if (Dormant) return; // a preview touches NOTHING - physics
                                  // callbacks bypass Update's gate, not this one
+            if (!Persistent) return;
             if (other.GetComponent<SpellParticle>() != null) return;
-            if (Persistent) Touch(other);
+            Touch(other, true);
+        }
+
+        // Unity calls OnTriggerStay for every collider inside a trigger, every physics step, on every
+        // script that has the method (a switched-off one too). In an army that was most of the physics
+        // bill, paid by motes that only ever answer Enter. So the method lives on its own component,
+        // and only an awake particle that delivers to what stays in it carries one.
+        SpellStay _stay;
+
+        void ListenForStays()
+        {
+            bool want = !_dead && !Dormant && Persistent;
+            if (want == (_stay != null)) return;
+            if (want)
+            {
+                _stay = gameObject.AddComponent<SpellStay>();
+                _stay.Mote = this;
+            }
+            else
+            {
+                Destroy(_stay);
+                _stay = null;
+            }
         }
 
 
@@ -2124,15 +2163,44 @@ namespace SpellyZombie
         /// What the particle-biomes impose at a point. Read by SpellLaw.Here,
         /// exactly like a map biome - a lvl3 particle IS a biome, it does not
         /// spawn one and leave.
-        public static SpellPayload SampleAt(Vector3 at)
+        // asked by every element turn and every spell: where each biome particle is and how far it
+        // reaches is read once a frame (they move in Update, once a frame), the rest is arithmetic
+        static Vector3[] _biomeAt = new Vector3[32];
+        static float[] _biomeReachSqr = new float[32];
+        static SpellParticle[] _biomeWho = new SpellParticle[32];
+        static int _biomesKnown, _biomesFrame = -1;
+
+        static void KnowBiomes()
         {
-            var sum = new SpellPayload();
+            _biomesFrame = Time.frameCount;
+            _biomesKnown = 0;
+            if (_biomeAt.Length < _biomes.Count)
+            {
+                int room = Mathf.NextPowerOfTwo(_biomes.Count);
+                _biomeAt = new Vector3[room];
+                _biomeReachSqr = new float[room];
+                _biomeWho = new SpellParticle[room];
+            }
             for (int i = 0; i < _biomes.Count; i++)
             {
                 var b = _biomes[i];
                 if (b == null || b._dead) continue;
                 float r = b.AuraRadius;
-                if ((b.transform.position - at).sqrMagnitude > r * r) continue;
+                _biomeAt[_biomesKnown] = b.transform.position;
+                _biomeReachSqr[_biomesKnown] = r * r;
+                _biomeWho[_biomesKnown++] = b;
+            }
+        }
+
+        public static SpellPayload SampleAt(Vector3 at)
+        {
+            if (_biomesFrame != Time.frameCount || !Application.isPlaying) KnowBiomes();
+            var sum = new SpellPayload();
+            for (int i = 0; i < _biomesKnown; i++)
+            {
+                if ((_biomeAt[i] - at).sqrMagnitude > _biomeReachSqr[i]) continue;
+                var b = _biomeWho[i];
+                if (b == null || b._dead) continue; // it may have died since the frame began
                 var p = b.PayloadNow;
                 for (int k = 0; k < SpellPayload.AxisCount; k++)
                     if (b.BiomeOn(k)) sum[k] += p[k];
@@ -3148,8 +3216,16 @@ namespace SpellyZombie
         }
 
         // ------------------------------------------------- touching the world --
-        void Touch(Collider c)
+        float _areaStep = -1f; // the physics step its area last landed in
+
+        void Touch(Collider c, bool staying = false)
         {
+            _coasting = false; // whatever it met, the free flight is over
+            // A stay arrives once for EVERY collider inside, every physics step, and an area's hit
+            // lands on every body in it: thirty colliders in a sticky patch handed each body thirty
+            // doses a step (scenery counted too). The area lands once a step, whoever reports first;
+            // everything about the one collider itself (players, matter, settling) still runs for each.
+            bool landed = staying && GrammarLevel >= 2 && _areaStep == Time.fixedTime;
             // an acolyte's dart: what it hits decides the spell, no grammar, spent at once
             if (Mischief != 0 && !Dormant)
             {
@@ -3186,8 +3262,10 @@ namespace SpellyZombie
 
                 // ★ A LVL2 HIT LANDS ON EVERYTHING IN ITS AREA - each BODY
                 // once, not once per collider it happens to own.
-                if (GrammarLevel >= 2)
+                if (landed) { }
+                else if (GrammarLevel >= 2)
                 {
+                    _areaStep = Time.fixedTime;
                     float r = AuraRadius;
                     int n = Physics.OverlapSphereNonAlloc(transform.position, r,
                         GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
@@ -3241,7 +3319,7 @@ namespace SpellyZombie
                     if (bio != null)
                         for (int i = 0; i < SpellPayload.AxisCount; i++)
                             if (!(bio.BiomeAxis[i] && bio.Axis[i] != 0)) Data[i] = 0f;
-                    ImpactFx();   // the unmarked axes just detonated; it lives on
+                    if (!landed) ImpactFx();   // the unmarked axes just detonated; it lives on
                 }
 
                 // ★ SPREADING POISON CLINGS (his call): an area whose AoeDef
@@ -3685,7 +3763,7 @@ namespace SpellyZombie
                 return;
             }
             _customFor = Kind;
-            _customLook = Instantiate(skin, transform);
+            using (PerfMarkers.NewSpellLook.Auto()) _customLook = Instantiate(skin, transform);
             _customLook.transform.localPosition = Vector3.zero;
             if (_rend != null) _rend.enabled = false;
         }
@@ -3703,7 +3781,8 @@ namespace SpellyZombie
             var pick = IdleFxFor(Kind, GrammarLevel);
             if (pick == null) return;
             float scale = 3.2f; // motes are ~0.14 scale - children inherit it
-            var fx = Instantiate(pick, transform.position, Quaternion.identity, transform);
+            GameObject fx;
+            using (PerfMarkers.NewSpellLook.Auto()) fx = Instantiate(pick, transform.position, Quaternion.identity, transform);
             fx.name = "IdleFx";
             fx.transform.localScale *= scale; // *= keeps an authored prefab scale
             _idleFxOn = true; // the wire says so (flag 16): clients wear it only when this one does
@@ -3814,7 +3893,7 @@ namespace SpellyZombie
             var prefab = area.Prefab;
             if (prefab != null && _areaLook == null)
             {
-                _areaLook = Instantiate(prefab, transform);
+                using (PerfMarkers.NewSpellLook.Auto()) _areaLook = Instantiate(prefab, transform);
                 _areaLook.transform.localPosition = Vector3.zero;
                 _areaLook.transform.localRotation = Quaternion.identity;
                 foreach (var col in _areaLook.GetComponentsInChildren<Collider>(true)) Destroy(col);
@@ -4119,7 +4198,7 @@ namespace SpellyZombie
             var blob = CollectionManager.ParticleBlob;
             if (blob == null) return;
 
-            _shapeBody = Instantiate(blob, transform);
+            using (PerfMarkers.NewSpellLook.Auto()) _shapeBody = Instantiate(blob, transform);
             _shapeBody.name = "Body";
             _shapeBody.transform.localPosition = Vector3.zero;
             _shapeBody.transform.localRotation = Quaternion.identity;

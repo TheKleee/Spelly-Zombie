@@ -32,6 +32,10 @@ namespace SpellyZombie
             PossessedMove = Vector3.zero;
             PossessedFace = Vector3.zero;
             if (_eyes != null) _eyes.SetMood(on ? EyeMood.Mad : EyeMood.Neutral, 0.6f);
+            // the rider's own face is the golem's face now, and it looks out from between these:
+            // they get out of the lens, as a ridden zombie's do and as the stand-ins on the other machines do
+            if (_eyes != null)
+                foreach (var r in _eyes.GetComponentsInChildren<Renderer>(true)) r.enabled = !on;
         }
 
         /// What the snapshot reads: the eyes and the charge beat.
@@ -40,12 +44,13 @@ namespace SpellyZombie
 
         /// Where a rider looks from: the eyes, else the top of the body.
         public Vector3 HeadAt => _eyes != null ? _eyes.transform.position
-            : transform.position + Vector3.up * (transform.localScale.y * 0.95f);
+            : transform.position + Vector3.up * _top.Above(transform);
 
         /// Where a rider sits: inside the body, high enough that only the
         /// hat shows above the top, the way a ghost sits in a zombie skull.
-        public Vector3 SeatAt => transform.position
-            + Vector3.up * (transform.localScale.y * 0.95f - 0.22f);
+        public Vector3 SeatAt => transform.position + Vector3.up * (_top.Above(transform) - 0.22f);
+
+        readonly BodyTop _top = new BodyTop();
 
         /// The rider's click: the golem's own charge, where the rider looks.
         public bool GhostAbility(Vector3 look)
@@ -429,7 +434,9 @@ namespace SpellyZombie
 
         readonly Footfalls _feet = new Footfalls();
 
-        void Update()
+        void Update() { using (PerfMarkers.UpdGolems.Auto()) Turn(); }
+
+        void Turn()
         {
             // its steps, by the rule its stand-ins on the other machines use
             _feet.TickHeavy(transform.position, transform.localScale.y, false, Time.deltaTime);
@@ -883,15 +890,24 @@ namespace SpellyZombie
                 }
                 float len = to.magnitude;
                 if (len < 0.05f) return true;
-                int n = Physics.RaycastNonAlloc(eye, to / len, _sight, len,
-                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-                float nearest = float.MaxValue;
-                Collider blocker = null;
-                for (int i = 0; i < n; i++)
+                // only the nearest thing on the line matters, so that is what is asked for: every hit
+                // along a line through an army costs many times as much, ten times a second per golem
+                if (!Physics.Raycast(eye, to / len, out var first, len,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return true;
+                Collider blocker = first.collider;
+                if (blocker != null && blocker.transform.IsChildOf(transform))
                 {
-                    var h = _sight[i];
-                    if (h.collider == null || h.collider.transform.IsChildOf(transform)) continue;
-                    if (h.distance < nearest) { nearest = h.distance; blocker = h.collider; }
+                    // its own body was in the way of its own eye: look past it
+                    blocker = null;
+                    int n = Physics.RaycastNonAlloc(eye, to / len, _sight, len,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                    float nearest = float.MaxValue;
+                    for (int i = 0; i < n; i++)
+                    {
+                        var h = _sight[i];
+                        if (h.collider == null || h.collider.transform.IsChildOf(transform)) continue;
+                        if (h.distance < nearest) { nearest = h.distance; blocker = h.collider; }
+                    }
                 }
                 if (blocker == null || blocker.transform.IsChildOf(t)) return true;
                 var shell = ZombieOwner.From(blocker); // a zombie's paint shell sits outside its hierarchy
@@ -945,6 +961,28 @@ namespace SpellyZombie
                 if (d < bestSqr && Notices(g.transform, d)) { bestSqr = d; best = g.transform; }
             }
             return best;
+        }
+    }
+
+    /// How high a blob body really reaches above its root. Its scale does not say (the blob is a
+    /// ball centred on its feet: a golem five times the size stands two and a half metres tall, not
+    /// five, so a rider seated by the scale floated far above it) and the skin's import bounds lie.
+    /// Measured from the posed skin, twice a second, and only while somebody asks.
+    public class BodyTop
+    {
+        SkinnedMeshRenderer _skin;
+        bool _looked;
+        float _above = -1f, _nextAt;
+
+        public float Above(Transform root)
+        {
+            if (_above >= 0f && Time.time < _nextAt) return _above;
+            _nextAt = Time.time + 0.5f;
+            if (!_looked) { _looked = true; _skin = root.GetComponentInChildren<SkinnedMeshRenderer>(); }
+            _above = _skin != null && _skin.sharedMesh != null
+                ? Mathf.Max(0.1f, ShapeShift.SkinBounds(_skin).max.y - root.position.y)
+                : root.localScale.y * 0.95f;
+            return _above;
         }
     }
 }

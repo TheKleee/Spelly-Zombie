@@ -361,6 +361,10 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | 남긴 그림. 고르면 고칠 수 있고, +는 새 그림, X는 지우기 | left drawings. choosing lets you fix it, + is a new drawing, X is erasing | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | 읽힘: {0} | read: {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | 아직 못 읽어 | can't read yet | the pad's drawing matches no rune well enough |
+| menu.extras | Extras | 엑스트라 | extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
+| chip.release | release | 놓아주기 | letting it go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | up | 올라가기 | going up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | down | 내려가기 | going down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | 이 PC에서는 녹화가 안 됐어 | recording did not work on this PC | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | 녹화하기엔 디스크 공간이 모자라 | disk space is short for recording | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | 색 | color | section on a creature in the photo booth: its color sliders |

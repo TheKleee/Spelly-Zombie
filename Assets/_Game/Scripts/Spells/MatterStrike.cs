@@ -52,7 +52,7 @@ namespace SpellyZombie
                 if (chunk.TryGetComponent<Rigidbody>(out var crb))
                     crb.linearVelocity = d * 7f;
             }
-            Juice.Thud(_rb.position);
+            Juice.Sound(AudioLibrary.BreakOf(_mat), _rb.position, 0.8f, Random.Range(0.92f, 1.06f));
             Destroy(gameObject);
         }
 

@@ -115,7 +115,7 @@ namespace SpellyZombie
             if (ore == null) return;
             Fill = Mathf.Min(Capacity, Fill + 1f);
             ore.Blacken();
-            Juice.Chime(transform.position);
+            Juice.Sound(Sfx.InkPop1, transform.position);
             DrawingWorld.Instance?.LogEvent("the cauldron DRINKS");
         }
     }

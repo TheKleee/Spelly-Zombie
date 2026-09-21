@@ -17,6 +17,7 @@ MonoBehaviour:
   PanelGrey: {fileID: 21300000, guid: c617c53dd17a56342b92c0db75a09b18, type: 3}
   PanelGreyDark: {fileID: 21300000, guid: e52fc50153409a746b80070a4f2ae592, type: 3}
   PanelBorderBrown: {fileID: 21300000, guid: 67db2385882273742800100a1f8f2492, type: 3}
+  Arrow: {fileID: 21300000, guid: bc29cbbe3cfc5364181aa9b81736273f, type: 3}
   ButtonBrown: {fileID: 21300000, guid: 92c75382f4a356142b0a625958b11054, type: 3}
   ButtonGrey: {fileID: 21300000, guid: 11ddec9da33a781409872cd27aa58169, type: 3}
   ButtonRed: {fileID: 21300000, guid: 079f8ac41ae341c4e820afdee57725f9, type: 3}

@@ -31,6 +31,7 @@ namespace SpellyZombie
         GhostOut, GhostTake, Warning,
         AcolyteTransform, AcolyteBack,
         GolemStep, WandDry,
+        Scan,
     }
 
     /// ★ HIS SOUNDS, one slot each (Assets/_Game/Sound/AudioLibrary, hooked from
@@ -122,6 +123,7 @@ namespace SpellyZombie
         [Header("ACOLYTES")]
         public AudioClip AcolyteTransform;      // the disguise goes on
         public AudioClip AcolyteBack;           // back to self, with the exit cloud
+        public AudioClip Scan;                  // an acolyte scans a thing: the shape fills the wand
 
         [Header("GOLEMS AND THE SKY")]
         public AudioClip GolemCharge;           // the run of a golem's charge, as long as the run itself
@@ -230,6 +232,7 @@ namespace SpellyZombie
                 case Sfx.Warning: return Warning;
                 case Sfx.AcolyteTransform: return AcolyteTransform;
                 case Sfx.AcolyteBack: return AcolyteBack;
+                case Sfx.Scan: return Scan;
             }
             return null;
         }

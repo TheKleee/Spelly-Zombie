@@ -143,6 +143,8 @@ namespace SpellyZombie
             new List<(Transform, Vector3, Quaternion)>();
         Quaternion _bindSpine1, _bindHead;
         bool _ragdolling;
+        /// Where the body lies: a doll is knocked about on its own, metres from the root it fell from.
+        public Vector3 BodyCenter => _ragdolling && _hips != null ? _hips.position : transform.position;
         bool _customBody;
         float _bob;
         float _pitchShown; // eased head-follows-aim pitch (relaxes in 3rd person)

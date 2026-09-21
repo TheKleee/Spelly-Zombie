@@ -362,6 +362,10 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | 保留的画。选一幅来修改，加号开始新的一幅，X删除 | kept drawings. pick one to modify, plus starts a new one, X deletes | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | 识别为：{0} | recognized as: {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | 还认不出来 | still can't recognize | the pad's drawing matches no rune well enough |
+| menu.extras | Extras | 附加内容 | additional content | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
+| chip.release | release | 放开 | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | up | 上升 | rise | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | down | 下降 | descend | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | 这台电脑没能录像 | this computer did not manage to record video | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | 磁盘空间不够，无法录像 | disk space is not enough, cannot record video | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | 颜色 | color | section on a creature in the photo booth: its color sliders |

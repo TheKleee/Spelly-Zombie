@@ -24,13 +24,14 @@ namespace SpellyZombie
             {
                 var eyes = GetComponentInChildren<GooglyEyes>(true);
                 return eyes != null ? eyes.transform.position
-                    : transform.position + Vector3.up * (transform.localScale.y * 0.95f);
+                    : transform.position + Vector3.up * _top.Above(transform);
             }
         }
 
         /// Where a rider sits: inside the body, hat out the top, same as the host's golem.
-        public Vector3 SeatAt => transform.position
-            + Vector3.up * (transform.localScale.y * 0.95f - 0.22f);
+        public Vector3 SeatAt => transform.position + Vector3.up * (_top.Above(transform) - 0.22f);
+
+        readonly BodyTop _top = new BodyTop();
 
         public void ShowEyes(bool on)
         {

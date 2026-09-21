@@ -55,6 +55,7 @@ namespace SpellyZombie
             _center = Ground(eye + fwd.normalized * Ahead);
             _gc0 = System.GC.CollectionCount(0);
             _timers = new FrameTimers();
+            _timers.Rescan();
             if (SpellBook.Live.Spell(MeteorSpell) == null) Debug.LogWarning($"[Stress] The book has no '{MeteorSpell}' spell: no meteors.");
             if (SpellBook.Live.Spell(SummonSpell) == null) Debug.LogWarning($"[Stress] The book has no '{SummonSpell}' spell: no summons.");
             Debug.Log($"[Stress] start: {Stages.Length} stages of {StageSeconds:0} s, {Ahead:0} m in front of you");
@@ -147,9 +148,13 @@ namespace SpellyZombie
                 $"golem births {Ms("births")}, console lines {Ms("logs")}, late {Ms("late")}, " +
                 $"animation {Ms("animation")}, rendering {Ms("render")}, GPU wait {Ms("gpu")} | " +
                 $"spells {SpellParticle.Living.Count}/{DrawingConfig.ParticleCap}, " +
-                $"golems {Golem.All.Count}, zombies {Zombie.All.Count}, rubble {Matter.Living.Count} | " +
-                $"batches {UnityStats.batches} | GC {gc - _gc0}x, heap {Profiler.GetMonoUsedSizeLong() / 1048576} MB");
+                $"golems {Golem.All.Count}, zombies {Zombie.All.Count}, rubble {Matter.Living.Count}, " +
+                $"spell stays {SpellStay.Calls / Mathf.Max(1, _frames)} a frame | " +
+                $"batches {UnityStats.batches} | GC {gc - _gc0}x, heap {Profiler.GetMonoUsedSizeLong() / 1048576} MB" +
+                (_timers != null ? $" | top scripts: {_timers.Top(true, 8, _frames)} | top engine: {_timers.Top(false, 10, _frames)}" : ""));
+            _timers?.Rescan(); // timers that appeared this second (a first golem, a first meteor) are followed from now on
             _gc0 = gc;
+            SpellStay.Calls = 0;
             _secT = 0f;
             _frames = 0;
             _worst = 0f;
@@ -171,6 +176,9 @@ namespace SpellyZombie
                 $"golems {_peakGolems}, zombies {_peakZombies}, rubble {_peakRubble}");
             _stage++;
             if (_stage < Stages.Length) { BeginStage(); return; }
+            if (_timers != null)
+                Debug.Log("[Stress] whole run, ms a frame\nscripts:\n  " + _timers.TopOfRun(true, 40)
+                    + "\nengine (these contain each other):\n  " + _timers.TopOfRun(false, 50));
             string text = "[Stress] DONE (copied to the clipboard)\n" + _summary;
             Debug.Log(text);
             EditorGUIUtility.systemCopyBuffer = text;

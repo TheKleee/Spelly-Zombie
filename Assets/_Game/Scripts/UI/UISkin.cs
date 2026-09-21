@@ -16,6 +16,8 @@ namespace SpellyZombie
         public Sprite PanelBorderBrown;
 
         [Header("Buttons")]
+        [Tooltip("A small arrow pointing UP. The main menu's Extras box turns it down while it is folded. Empty = a plain triangle made by code.")]
+        public Sprite Arrow;
         public Sprite ButtonBrown;
         public Sprite ButtonGrey;
         public Sprite ButtonRed;
