@@ -23,6 +23,8 @@ namespace SpellyZombie
             public string Name, Region, Lang;
             public int Players, Max, Tags;
             public bool Locked, InGame;
+            public string Proto;         // the messages that host speaks (NetVersion); empty from a build before the gate
+            public int Build;
             public float Seen;
         }
 
@@ -100,7 +102,8 @@ namespace SpellyZombie
                     (NetSync.RemoteCount + 1).ToString(), Mathf.Clamp(SteamLobby.PendingSize, 2, SteamLobby.MaxPlayers).ToString(),
                     string.IsNullOrEmpty(NetGame.HostPassword) ? "0" : "1", InGame ? "1" : "0",
                     Esc(SteamLobby.PendingRegion), Esc(string.IsNullOrEmpty(SteamLobby.PendingLang) ? Loc.LanguageCode : SteamLobby.PendingLang),
-                    SteamLobby.PendingTags.ToString());
+                    SteamLobby.PendingTags.ToString(),
+                    NetVersion.Proto, NetVersion.Build.ToString()); // added at the end: an older listener reads the first ten
                 var bytes = Encoding.UTF8.GetBytes(packet);
                 _sender.Send(bytes, bytes.Length, new IPEndPoint(IPAddress.Loopback, Port)); // a second window on this PC
                 _sender.Send(bytes, bytes.Length, new IPEndPoint(IPAddress.Broadcast, Port));
@@ -153,6 +156,8 @@ namespace SpellyZombie
             int.TryParse(f[3], out int players);
             int.TryParse(f[4], out int max);
             int.TryParse(f[9], out int tags);
+            int build = 0;
+            if (f.Length > 11) int.TryParse(f[11], out build);
             string name = Unesc(f[2]);
             if (name.Length > 40) name = name.Substring(0, 40);
             var lobby = new Found
@@ -161,6 +166,7 @@ namespace SpellyZombie
                 Name = name, Players = players, Max = max,
                 Locked = f[5] == "1", InGame = f[6] == "1",
                 Region = Unesc(f[7]), Lang = Unesc(f[8]), Tags = tags,
+                Proto = f.Length > 10 ? f[10] : "", Build = build,
                 Seen = Time.unscaledTime,
             };
             string body = string.Join("|", f, 2, f.Length - 2);

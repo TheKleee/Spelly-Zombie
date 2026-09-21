@@ -8,7 +8,8 @@ and out/_sheet.png, one contact sheet to eyeball the set.
 Emoji files are looked up as emoji_u<code>.png in the "sources" folders
 (the project's sz-emoji folder first, then downloads/ next to this file).
 An entry with "hat" wears that second emoji on its head, tilted by
-"hat_tilt" degrees (the Golem Lord's crown).
+"hat_tilt" degrees (the Golem Lord's crown). An entry with "crowd" adds up
+to three more emoji and draws them all in two rows (a group of friends).
 Missing files are listed at the end; nothing else stops.
 """
 import json
@@ -74,6 +75,24 @@ def worn(size, rgb, emoji, hat, emoji_px, tilt):
     return img
 
 
+def crowd(size, rgb, emojis, emoji_px):
+    """The card with up to four emoji in two rows, each row standing on one line."""
+    img = card(size, rgb)
+    px = int(emoji_px * 0.5)
+    gap = int(px * 0.08)
+    ems = [fit(p, px) for p in emojis[:4]]
+    rows = [r for r in (ems[:2], ems[2:]) if r]
+    tall = [max(e.height for e in r) for r in rows]
+    y = (size - (sum(tall) + gap * (len(rows) - 1))) // 2
+    for r, h in zip(rows, tall):
+        x = (size - (sum(e.width for e in r) + gap * (len(r) - 1))) // 2
+        for e in r:
+            img.paste(e, (x, y + h - e.height), e)
+            x += e.width + gap
+        y += h + gap
+    return img
+
+
 def locked(img):
     g = ImageOps.grayscale(img)
     g = g.point(lambda v: int(v * 0.55 + 40))  # dim, keep it readable
@@ -95,8 +114,14 @@ def main():
         if e.get("hat") and hat is None:
             missing.append((e["api"], "emoji_u%s.png" % e["hat"]))
             continue
+        group = [find(c, spec["sources"]) for c in e.get("crowd", [])]
+        if None in group:
+            missing.extend((e["api"], "emoji_u%s.png" % c)
+                           for c, p in zip(e["crowd"], group) if p is None)
+            continue
         rgb = spec["backgrounds"][e.get("side", "both")]
-        on = (worn(size, rgb, path, hat, emoji_px, float(e.get("hat_tilt", 0))) if hat
+        on = (crowd(size, rgb, [path] + group, emoji_px) if group
+              else worn(size, rgb, path, hat, emoji_px, float(e.get("hat_tilt", 0))) if hat
               else tile(size, rgb, path, emoji_px))
         off = locked(on)
         on.save(os.path.join(OUT, e["api"] + ".jpg"), quality=92)

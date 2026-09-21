@@ -105,13 +105,13 @@ namespace SpellyZombie
                         Debug.LogWarning("[SpellyZombie] FxLibrary has EMPTY roles (effects will be invisible). Re-run 'Spelly Zombie → Art/7 - Wire FX Library (JMO)'");
                     if (_instance != null && _instance.Sounds == null)
                         Debug.LogError("[SpellyZombie] FxLibrary: the 'Sounds' slot is empty. Drop in the Audio Library " +
-                                       "asset (Assets/_Game/Sound/AudioLibrary), or every sound stays a placeholder.");
+                                       "asset (Assets/_Game/Sound/AudioLibrary), or the game has no sound.");
                     else if (_instance != null)
                     {
                         var empty = _instance.Sounds.Missing();
                         if (empty.Count > 0)
-                            Debug.LogWarning($"[SpellyZombie] AudioLibrary: {empty.Count} empty slots play their placeholder " +
-                                             $"or nothing: {string.Join(", ", empty)}");
+                            Debug.LogWarning($"[SpellyZombie] AudioLibrary: {empty.Count} empty slots are silent: " +
+                                             $"{string.Join(", ", empty)}");
                     }
                     // pay the shader-compile cost ONCE, here, not mid-fight
                     if (_instance != null) _instance.Prewarm();

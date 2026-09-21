@@ -135,10 +135,12 @@ namespace SpellyZombie
                 var sub = UIKit.Label(parent, TagLine(l.Region, l.Lang, l.Tags), 11, new Color(0.75f, 0.82f, 0.75f), TextAnchor.MiddleLeft);
                 UIKit.Place((RectTransform)sub.transform, new Vector2(0f, 1f), new Vector2(rx + 46f, ry - 21f), new Vector2(width - 338f, 14f));
 
-                string address = l.Address;
+                string address = l.Address, proto = l.Proto;
+                int build = l.Build;
                 bool locked = l.Locked;
                 Chip(parent, left + width - 84f, ry - 6f, 76f, Loc.T("browse.join"), true, () =>
                 {
+                    if (!NetVersion.Admit(proto, build)) return;
                     if (locked) OpenPasswordPrompt(pw => NetGame.JoinLocal(address, pw));
                     else NetGame.JoinLocal(address, "");
                 });

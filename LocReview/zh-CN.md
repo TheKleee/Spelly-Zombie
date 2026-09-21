@@ -7,54 +7,54 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 
 | key | English | translation | literal back-translation | notes |
 |---|---|---|---|---|
-| door.open | open the door | 开门 | open door | |
-| door.close | close the door | 关门 | close door | |
-| pickup.weapon | pick up the weapon | 捡起武器 | pick up weapon | |
-| pickup.full | hands full, drop one first | 手里满了，先放下一个 | hands are full, first put down one | |
-| chest.try | try the mystery chest | 试试神秘宝箱 | have a try at the mysterious treasure chest | doubled verb = casual "give it a try" |
-| perk.drink | drink {0} | 喝下{0} | drink down {0} | |
+| door.open | Open the door | 开门 | open door | |
+| door.close | Close the door | 关门 | close door | |
+| pickup.weapon | Pick up the weapon | 捡起武器 | pick up weapon | |
+| pickup.full | Hands full, drop one first | 手里满了，先放下一个 | hands are full, first put down one | |
+| chest.try | Try the mystery chest | 试试神秘宝箱 | have a try at the mysterious treasure chest | doubled verb = casual "give it a try" |
+| perk.drink | Drink {0} | 喝下{0} | drink down {0} | |
 | perk.brewed | {0} is already brewed | {0}已经煮好了 | {0} is already boiled and done | 煮 = boil, how a potion is brewed |
-| grimoire.open | open the grimoire | 打开魔导书 | open the magic guide book | 魔导书 is the word Chinese games use for grimoire |
-| grimoire.close | close the grimoire | 合上魔导书 | close up the magic guide book | 合上 = the verb for closing a book |
-| chip.done | done | 完成 | complete | |
-| carry.down | put it down | 放下 | put down | |
-| scan.aim | scan it, become it | 扫描它，变成它 | scan it, become it | |
-| absorb.aim | absorb it, learn its rune | 吸收它，学会它的符文 | absorb it, learn its rune | |
-| chest.open | open the chest | 打开箱子 | open chest |  |
-| chip.grimoire | grimoire | 魔导书 | magic guide book | |
-| chip.paint | paint your body | 在身上画 | on the body, draw | |
-| chip.first | first person | 第一人称 | first person | |
-| chip.third | third person | 第三人称 | third person | |
-| chip.pose | pose your wizard | 摆姿势 | strike a pose | "your wizard" dropped |
-| chip.watch | watch your dead | 看看死去的队友 | take a look at the dead teammates | 队友 = teammate |
-| chip.become | become it again | 再变成它 | again become it | |
-| chip.melt | melt back to idle | 变回原样 | change back to the original look | "melt" and "idle" dropped |
-| chip.precise | faster drawing | 画得更快 | draw faster | |
-| chip.erase | erase ink | 擦掉墨水 | wipe off ink | |
-| chip.absorb | absorb it | 吸收 | absorb | |
-| hint.alt | hold ALT to draw faster | 按住ALT画得更快 | hold ALT, draw faster | |
-| hint.combine | draw more runes inside of the same seal to combine them | 在同一个法阵里多画几个符文，它们就会合在一起 | inside the same magic array draw a few more runes, they will merge together | 法阵 = magic array, the fantasy word for a drawn seal |
-| hint.lift | draw ink on things and press E to lift them | 在东西上画墨水，按E就能举起来 | draw ink on things, press E and you can lift them | |
-| hint.erase | erasing returns the ink to your wand | 擦掉的墨水会回到魔杖里 | wiped-off ink returns into the magic wand | |
-| hint.body | press R to paint runes on your own body | 按R在自己身上画符文 | press R, draw runes on your own body | |
-| hint.pose | striking a pose can close a body seal and cast it | 摆个姿势可以合上身上的法阵并施放 | striking a pose can close the array on the body and cast it | 施放 = cast a spell, the standard game verb |
-| hint.size | bigger runes make stronger spells | 符文越大，魔法越强 | the bigger the rune, the stronger the magic | |
-| hint.touch | lines count as one drawing only when they touch | 线条只有碰在一起才算一幅画 | lines count as one picture only when touching | |
-| hint.declare | the book can name a drawing that reads wrong | 画歪了？书可以帮它定名字 | drawn crooked? the book can help settle its name | 画歪了 = "drawn crooked", playful for "reads wrong" |
-| hint.trance | fresh ink puts zombies in a trance | 新鲜的墨水会让僵尸发呆 | fresh ink makes zombies zone out | 发呆 = stare blankly, kid word |
-| hint.wake | throw a sleeping spell to wake it | 把睡着的魔法扔出去，它就醒了 | throw the sleeping magic out, then it wakes | |
-| hint.ghost | the dead rise as ghosts. fly home to your body and a friend can revive you | 死了会变成幽灵。飞回自己的身体，朋友就能救活你 | when dead you become a ghost. fly back to your own body, then a friend can save you back to life | |
-| hint.doors | doors open when you walk into them | 走过去撞一下，门就开了 | walk over and bump once, then the door opens | |
-| paint.done | done painting | 画完了 | finished drawing | |
-| paint.pose | strike a pose | 摆个姿势 | strike a pose | |
-| paint.orbit | orbit | 转一转 | give it a turn | |
-| hat.pillar | pick your hat color | 选帽子颜色 | choose hat color | |
-| side.pillar | change your side | 换阵营 | switch faction | 阵营 = camp, the multiplayer word for a side |
-| hat.done | done | 完成 | complete | |
-| shape.back | back to yourself | 变回自己 | change back to yourself | |
-| shape.turn | turns you | 转向 | turn direction | |
-| shape.save | saves | 保存 | save | |
-| shape.recall | recalls | 调出 | call up | |
+| grimoire.open | Open the grimoire | 打开魔导书 | open the magic guide book | 魔导书 is the word Chinese games use for grimoire |
+| grimoire.close | Close the grimoire | 合上魔导书 | close up the magic guide book | 合上 = the verb for closing a book |
+| chip.done | Done | 完成 | complete | |
+| carry.down | Put it down | 放下 | put down | |
+| scan.aim | Scan it, become it | 扫描它，变成它 | scan it, become it | |
+| absorb.aim | Absorb it, learn its rune | 吸收它，学会它的符文 | absorb it, learn its rune | |
+| chest.open | Open the chest | 打开箱子 | open chest |  |
+| chip.grimoire | Grimoire | 魔导书 | magic guide book | |
+| chip.paint | Paint your body | 在身上画 | on the body, draw | |
+| chip.first | First person | 第一人称 | first person | |
+| chip.third | Third person | 第三人称 | third person | |
+| chip.pose | Pose your wizard | 摆姿势 | strike a pose | "your wizard" dropped |
+| chip.watch | Watch your dead | 看看死去的队友 | take a look at the dead teammates | 队友 = teammate |
+| chip.become | Become it again | 再变成它 | again become it | |
+| chip.melt | Melt back to idle | 变回原样 | change back to the original look | "melt" and "idle" dropped |
+| chip.precise | Faster drawing | 画得更快 | draw faster | |
+| chip.erase | Erase ink | 擦掉墨水 | wipe off ink | |
+| chip.absorb | Absorb it | 吸收 | absorb | |
+| hint.alt | Hold ALT to draw faster | 按住ALT画得更快 | hold ALT, draw faster | |
+| hint.combine | Draw more runes inside of the same seal to combine them | 在同一个法阵里多画几个符文，它们就会合在一起 | inside the same magic array draw a few more runes, they will merge together | 法阵 = magic array, the fantasy word for a drawn seal |
+| hint.lift | Draw ink on things and press E to lift them | 在东西上画墨水，按E就能举起来 | draw ink on things, press E and you can lift them | |
+| hint.erase | Erasing returns the ink to your wand | 擦掉的墨水会回到魔杖里 | wiped-off ink returns into the magic wand | |
+| hint.body | Press R to paint runes on your own body | 按R在自己身上画符文 | press R, draw runes on your own body | |
+| hint.pose | Striking a pose can close a body seal and cast it | 摆个姿势可以合上身上的法阵并施放 | striking a pose can close the array on the body and cast it | 施放 = cast a spell, the standard game verb |
+| hint.size | Bigger runes make stronger spells | 符文越大，魔法越强 | the bigger the rune, the stronger the magic | |
+| hint.touch | Lines count as one drawing only when they touch | 线条只有碰在一起才算一幅画 | lines count as one picture only when touching | |
+| hint.declare | The book can name a drawing that reads wrong | 画歪了？书可以帮它定名字 | drawn crooked? the book can help settle its name | 画歪了 = "drawn crooked", playful for "reads wrong" |
+| hint.trance | Fresh ink puts zombies in a trance | 新鲜的墨水会让僵尸发呆 | fresh ink makes zombies zone out | 发呆 = stare blankly, kid word |
+| hint.wake | Throw a sleeping spell to wake it | 把睡着的魔法扔出去，它就醒了 | throw the sleeping magic out, then it wakes | |
+| hint.ghost | The dead rise as ghosts. Fly home to your body and a friend can revive you | 死了会变成幽灵。飞回自己的身体，朋友就能救活你 | when dead you become a ghost. fly back to your own body, then a friend can save you back to life | |
+| hint.doors | Doors open when you walk into them | 走过去撞一下，门就开了 | walk over and bump once, then the door opens | |
+| paint.done | Done painting | 画完了 | finished drawing | |
+| paint.pose | Strike a pose | 摆个姿势 | strike a pose | |
+| paint.orbit | Orbit | 转一转 | give it a turn | |
+| hat.pillar | Pick your hat color | 选帽子颜色 | choose hat color | |
+| side.pillar | Change your side | 换阵营 | switch faction | 阵营 = camp, the multiplayer word for a side |
+| hat.done | Done | 完成 | complete | |
+| shape.back | Back to yourself | 变回自己 | change back to yourself | |
+| shape.turn | Turns you | 转向 | turn direction | |
+| shape.save | Saves | 保存 | save | |
+| shape.recall | Recalls | 调出 | call up | |
 | menu.resume | Resume | 继续 | continue | |
 | menu.restart | Restart run | 重新开始 | start over | "run" dropped |
 | menu.options | Options | 设置 | settings | |
@@ -67,69 +67,69 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | opt.language | Language: {0} | 语言: {0} | language: {0} | |
 | opt.immersive.on | Immersive mode: ON | 沉浸模式: 开 | immersion mode: on | |
 | opt.immersive.off | Immersive mode: OFF | 沉浸模式: 关 | immersion mode: off | |
-| opt.immersive.hint | no HUD at all. for players who know the game | 没有任何界面。给熟悉游戏的人 | no interface at all. for people familiar with the game | |
+| opt.immersive.hint | No HUD at all. For players who know the game | 没有任何界面。给熟悉游戏的人 | no interface at all. for people familiar with the game | |
 | opt.mic | Microphone: {0} | 麦克风: {0} | microphone: {0} | |
-| opt.mic.default | default | 默认 | default | |
+| opt.mic.default | Default | 默认 | default | |
 | opt.mute | {0}: mute | {0}: 静音 | {0}: silence | |
 | opt.unmute | {0}: unmute | {0}: 取消静音 | {0}: cancel silence | |
-| opt.nobody | nobody else here to mute | 这里还没有别人可以静音 | here there is nobody else yet to mute | |
+| opt.nobody | Nobody else here to mute | 这里还没有别人可以静音 | here there is nobody else yet to mute | |
 | menu.leave | Leave lobby | 离开房间 | leave room | 房间 (room) is what Chinese players call a lobby |
 | menu.delete | Delete lobby | 删除房间 | delete room | |
 | menu.play | PLAY | 开始 | start | |
-| lobby.readycall | ready check. B yes, C no | 准备确认。B是，C否 | readiness confirm. B yes, C no | |
+| lobby.readycall | Ready check. B yes, C no | 准备确认。B是，C否 | readiness confirm. B yes, C no | |
 | lobby.ready.on | READY {0}/{1} | 已准备 {0}/{1} | already ready {0}/{1} | |
 | lobby.ready.off | READY {0}/{1}. B when ready | 已准备 {0}/{1}。准备好了按B | already ready {0}/{1}. when ready press B | |
-| stand.title | the book stand | 书架 | book rack | reads like a bookshelf; if the object is a lectern, 讲台 is the alternative |
-| stand.hostprivate | create private lobby (invite only) | 创建私人房间（仅邀请） | create private room (invite only) | |
+| stand.title | The book stand | 书架 | book rack | reads like a bookshelf; if the object is a lectern, 讲台 is the alternative |
+| stand.hostprivate | Create private lobby (invite only) | 创建私人房间（仅邀请） | create private room (invite only) | |
 | stand.hostpublic | CREATE PUBLIC LOBBY | 创建公开房间 | create public room | |
-| stand.pw | password (optional) | 密码（可选） | password (optional) | |
-| stand.code | entry code (optional) | 进入码（可选） | entry code (optional) | |
-| stand.hint | walk away to close | 走开就关闭 | walk away and it closes | |
-| stand.map | change map | 换地图 | change map | |
-| stand.share | acolytes at least {0}% | 侍祭至少{0}% | acolytes at least {0}% | 侍祭 = attendant priest, the dictionary word for acolyte |
-| stand.setcode | set code | 设置进入码 | set entry code | |
-| stand.readycall | ready check | 准备确认 | readiness confirm | |
-| stand.invite | invite friends | 邀请好友 | invite friends | |
+| stand.pw | Password (optional) | 密码（可选） | password (optional) | |
+| stand.code | Entry code (optional) | 进入码（可选） | entry code (optional) | |
+| stand.hint | Walk away to close | 走开就关闭 | walk away and it closes | |
+| stand.map | Change map | 换地图 | change map | |
+| stand.share | Acolytes at least {0}% | 侍祭至少{0}% | acolytes at least {0}% | 侍祭 = attendant priest, the dictionary word for acolyte |
+| stand.setcode | Set code | 设置进入码 | set entry code | |
+| stand.readycall | Ready check | 准备确认 | readiness confirm | |
+| stand.invite | Invite friends | 邀请好友 | invite friends | |
 | stand.start | START | 开始 | start | |
-| stand.waiting | waiting for ready | 等待准备 | waiting for ready | |
-| stand.delete | delete lobby | 删除房间 | delete room | |
-| stand.kick | kick | 踢出 | kick out | |
-| stand.ban | ban | 封禁 | ban | |
-| stand.banned | banned: {0} | 已封禁: {0} | already banned: {0} | |
-| stand.unban | unban | 解封 | unban | |
-| stand.name | lobby name | 房间名 | room name | |
-| stand.size | size {0} | 人数 {0} | number of people {0} | |
-| stand.region | region: {0} | 地区: {0} | region: {0} | |
+| stand.waiting | Waiting for ready | 等待准备 | waiting for ready | |
+| stand.delete | Delete lobby | 删除房间 | delete room | |
+| stand.kick | Kick | 踢出 | kick out | |
+| stand.ban | Ban | 封禁 | ban | |
+| stand.banned | Banned: {0} | 已封禁: {0} | already banned: {0} | |
+| stand.unban | Unban | 解封 | unban | |
+| stand.name | Lobby name | 房间名 | room name | |
+| stand.size | Size {0} | 人数 {0} | number of people {0} | |
+| stand.region | Region: {0} | 地区: {0} | region: {0} | |
 | stand.tab.host | HOST | 创建 | create | |
 | stand.tab.join | JOIN | 加入 | join | |
 | stand.settings | Settings | 设置 | settings | |
 | stand.regions | Regions | 地区 | regions | |
 | stand.langs | Languages | 语言 | languages | |
 | stand.behaviors | Behaviors | 氛围 | atmosphere | the tags under it are moods |
-| stand.duration | time {0} min | 时长 {0}分钟 | duration {0} minutes | |
-| stand.setpw | set password | 设置密码 | set password | |
+| stand.duration | Time {0} min | 时长 {0}分钟 | duration {0} minutes | |
+| stand.setpw | Set password | 设置密码 | set password | |
 | stand.hosting | HOSTING your lobby | 你正在开房间 | you are hosting a room | 开房间 = the gamer phrase for hosting |
 | stand.players | Players | 玩家 | players | |
-| filter.all | all | 全部 | all | |
-| browse.refresh | refresh | 刷新 | refresh | |
+| filter.all | All | 全部 | all | |
+| browse.refresh | Refresh | 刷新 | refresh | |
 | browse.join | JOIN | 加入 | join | |
-| browse.locked | (password) | （有密码） | (has password) | |
-| browse.none | no lobbies found. host one! | 没找到房间。自己开一个吧！ | no room found. open one yourself! | 吧 softens it into a suggestion |
-| browse.needpw | this lobby wants a password | 这个房间需要密码 | this room needs a password | |
-| browse.cancel | cancel | 取消 | cancel | |
-| region. | any region | 所有地区 | all regions | |
+| browse.locked | (Password) | （有密码） | (has password) | |
+| browse.none | No lobbies found. Host one! | 没找到房间。自己开一个吧！ | no room found. open one yourself! | 吧 softens it into a suggestion |
+| browse.needpw | This lobby wants a password | 这个房间需要密码 | this room needs a password | |
+| browse.cancel | Cancel | 取消 | cancel | |
+| region. | Any region | 所有地区 | all regions | |
 | region.eu | Europe | 欧洲 | Europe | |
 | region.na | North America | 北美 | North America | |
 | region.sa | South America | 南美 | South America | |
 | region.asia | Asia | 亚洲 | Asia | |
 | region.oce | Oceania | 大洋洲 | Oceania | |
 | region.mea | Middle East & Africa | 中东和非洲 | Middle East and Africa | |
-| tag.welcome | everyone welcome | 欢迎所有人 | welcome everyone | |
-| tag.beginners | beginners welcome | 欢迎新手 | welcome newbies | |
-| tag.casual | casual fun | 轻松玩 | play relaxed | |
-| tag.tryhard | try hards | 认真打 | play seriously | 打 = play a match, gamer usage |
-| tag.mic | mic on | 开麦 | mic open | gamer slang for mic on |
-| tag.quiet | quiet ok | 不说话也行 | not talking is also fine | |
+| tag.welcome | Everyone welcome | 欢迎所有人 | welcome everyone | |
+| tag.beginners | Beginners welcome | 欢迎新手 | welcome newbies | |
+| tag.casual | Casual fun | 轻松玩 | play relaxed | |
+| tag.tryhard | Try hards | 认真打 | play seriously | 打 = play a match, gamer usage |
+| tag.mic | Mic on | 开麦 | mic open | gamer slang for mic on |
+| tag.quiet | Quiet ok | 不说话也行 | not talking is also fine | |
 | opt.mic.title | Microphone | 麦克风 | microphone |  |
 | opt.mic.open | Open mic | 常开 | always open |  |
 | opt.mic.ptt | Hold V | 按住V说话 | hold V to talk | V is a physical key, kept |
@@ -158,16 +158,16 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | opt.on | On | 开 | on |  |
 | opt.music | Music: {0}% | 音乐: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | 音效: {0}% | sound effects: {0}% |  |
-| seal.norune | no rune here to seal. aim at one of your runes | 这里没有可以画法阵的符文。瞄准你自己的符文 | here there is no rune to draw a magic array around. aim at your own rune | 法阵 for "seal", as in the hints |
-| seal.noink | not enough ink for the seal | 墨水不够画法阵 | ink not enough to draw the magic array |  |
-| rune.noink | not enough ink to finish the rune | 墨水不够画完符文 | ink not enough to finish drawing the rune |  |
+| seal.norune | No rune here to seal. Aim at one of your runes | 这里没有可以画法阵的符文。瞄准你自己的符文 | here there is no rune to draw a magic array around. aim at your own rune | 法阵 for "seal", as in the hints |
+| seal.noink | Not enough ink for the seal | 墨水不够画法阵 | ink not enough to draw the magic array |  |
+| rune.noink | Not enough ink to finish the rune | 墨水不够画完符文 | ink not enough to finish drawing the rune |  |
 | round.safe | THE LOBBY IS SAFE GROUND | 房间是安全区 | room is safe zone | 房间 = lobby, as in the rest of the file |
 | round.versus | WIZARDS vs ACOLYTES | 巫师 对 侍祭 | wizard versus acolyte |  |
 | round.wizards | WIZARDS WIN | 巫师获胜 | wizards win |  |
 | round.acolytes | ACOLYTES WIN | 侍祭获胜 | acolytes win |  |
-| round.home | {0}. back to the lobby in {1} | {0}。{1}秒后回房间 | {0}. after {1} seconds return to room | 秒 (seconds) added, Chinese needs the unit |
-| round.pot |  · pot {0}% |  · 大锅 {0}% | cauldron {0}% |  |
-| round.green |  · the pot is GREEN |  · 大锅变绿了 | cauldron turned green |  |
+| round.home | {0}. Back to the lobby in {1} | {0}。{1}秒后回房间 | {0}. after {1} seconds return to room | 秒 (seconds) added, Chinese needs the unit |
+| round.pot |  · Pot {0}% |  · 大锅 {0}% | cauldron {0}% |  |
+| round.green |  · The pot is GREEN |  · 大锅变绿了 | cauldron turned green |  |
 | gate.accepts | THE GATE ACCEPTS | 大门接受了 | gate accepted |  |
 | net.hostleft | THE HOST LEFT | 房主走了 | room owner left | 房主 = host |
 | net.hosting | ● HOSTING, {0} player(s) | ● 你是房主，{0}人 | you are room owner, {0} people |  |
@@ -176,26 +176,26 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | net.maplikes | MAP: {0} · ♥{1} | 地图: {0} · ♥{1} | map: {0} · ♥{1} |  |
 | steam.offline | Steam not running, offline & LAN only | Steam没开，只能离线和局域网 | Steam not open, only can offline and LAN |  |
 | steam.ready | Steam ready: {0} | Steam就绪: {0} | Steam ready: {0} | {0} is the Steam name |
-| steam.leavefirst | leave your lobby first | 先离开你的房间 | first leave your room |  |
-| steam.ping | your ping to that host is {0}ms, lobby allows {1} | 你到房主的延迟是{0}毫秒，房间上限{1} | your to room owner latency is {0} ms, room limit {1} |  |
-| steam.joining | joining… | 正在加入… | joining… |  |
-| steam.deleted | lobby deleted | 房间已删除 | room deleted |  |
+| steam.leavefirst | Leave your lobby first | 先离开你的房间 | first leave your room |  |
+| steam.ping | Your ping to that host is {0}ms, lobby allows {1} | 你到房主的延迟是{0}毫秒，房间上限{1} | your to room owner latency is {0} ms, room limit {1} |  |
+| steam.joining | Joining… | 正在加入… | joining… |  |
+| steam.deleted | Lobby deleted | 房间已删除 | room deleted |  |
 | steam.notrunning | Steam not running | Steam没开 | Steam not open |  |
-| steam.creating | creating lobby… | 正在开房间… | opening room… |  |
-| steam.failed | lobby failed: {0} | 开房间失败: {0} | open room failed: {0} | {0} is a Steam error code |
-| steam.noenter | couldn't enter the lobby | 进不了房间 | cannot enter room |  |
-| steam.nohost | lobby has no host, try again | 房间没有房主，再试一次 | room has no owner, try once more |  |
-| steam.connecting | joined, connecting… | 进来了，正在连接… | came in, connecting… |  |
+| steam.creating | Creating lobby… | 正在开房间… | opening room… |  |
+| steam.failed | Lobby failed: {0} | 开房间失败: {0} | open room failed: {0} | {0} is a Steam error code |
+| steam.noenter | Couldn't enter the lobby | 进不了房间 | cannot enter room |  |
+| steam.nohost | Lobby has no host, try again | 房间没有房主，再试一次 | room has no owner, try once more |  |
+| steam.connecting | Joined, connecting… | 进来了，正在连接… | came in, connecting… |  |
 | steam.private | PRIVATE LOBBY, invite friends | 私密房间，叫上朋友 | private room, call friends |  |
 | steam.public | PUBLIC LOBBY, listed | 公开房间，已上列表 | public room, already on list |  |
-| menu.tagline | draw fast. die funny. | 画得快。死得搞笑。 | draw fast. die funny. |  |
+| menu.tagline | Draw fast. Die funny. | 画得快。死得搞笑。 | draw fast. die funny. |  |
 | menu.close | Close | 关闭 | close |  |
-| chip.pages | turn the pages | 翻页 | turn page | the mouse wheel turns the grimoire pages |
-| round.potopens |  · pot opens in {0} |  · 大锅 {0} 秒后开启 | cauldron opens after {0} seconds | seconds; banner word while the pot brews / while the ink hops to the next pot |
-| round.inkflight |  · ink in flight {0} |  · 墨水飞行中 {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| chip.pages | Turn the pages | 翻页 | turn page | the mouse wheel turns the grimoire pages |
+| round.potopens |  · Pot opens in {0} |  · 大锅 {0} 秒后开启 | cauldron opens after {0} seconds | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · Ink in flight {0} |  · 墨水飞行中 {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
 | opt.uiscale | UI size: {0}% | 界面大小：{0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
-| stand.nocap | no cap | 无上限 | no upper limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
-| stand.heavy | your connection carries everyone | 所有人的连接都由你承担 | everyone's connection is borne by you | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| stand.nocap | No cap | 无上限 | no upper limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | Your connection carries everyone | 所有人的连接都由你承担 | everyone's connection is borne by you | book stand, under the size row past 32 players: the host's upload carries the lobby |
 | menu.quit.game | Quit the game? | 退出游戏？ | quit game? | the Quit check on the main menu: Quit closes the game |
 | menu.quit.lobby | Back to the main menu? | 退出到主菜单？ | exit to main menu? | the Quit check in the lobby: Quit goes to the main menu. Uses the red button's verb, so the red button reads as the yes |
 | menu.quit.match | Leave the match for an empty lobby? | 离开对局，去自己的空房间？ | leave the match, go to your own empty room? | the Quit check on a map: Quit leaves the match for your own empty lobby |
@@ -362,10 +362,14 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | 保留的画。选一幅来修改，加号开始新的一幅，X删除 | kept drawings. pick one to modify, plus starts a new one, X deletes | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | 识别为：{0} | recognized as: {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | 还认不出来 | still can't recognize | the pad's drawing matches no rune well enough |
+| ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | 那个房间的版本更新。退出游戏，让Steam更新你的游戏 | that room's version is newer. quit the game and let Steam update your game | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
+| ver.theirs | That lobby runs an older version. Its host has to update the game | 那个房间的版本太旧。房主得先更新游戏 | that room's version is too old. the room owner has to update the game first | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
+| ver.differs | That lobby runs a different version of the game | 那个房间的游戏版本不一样 | that room's game version is not the same | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
+| wand.hosed | The pour is too strong. Step back to draw | 墨水流得太猛了。退后一点才能画 | the ink flows too fiercely. step back a bit to be able to draw | a wizard standing right at the clean pot while it fills: the ink pours into the wand too hard to draw; shown behind a ! keycap |
 | menu.extras | Extras | 附加内容 | additional content | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
-| chip.release | release | 放开 | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
-| chip.up | up | 上升 | rise | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
-| chip.down | down | 下降 | descend | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
+| chip.release | Release | 放开 | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | Up | 上升 | rise | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | Down | 下降 | descend | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | 这台电脑没能录像 | this computer did not manage to record video | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | 磁盘空间不够，无法录像 | disk space is not enough, cannot record video | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | 颜色 | color | section on a creature in the photo booth: its color sliders |

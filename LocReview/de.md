@@ -1,59 +1,59 @@
 # German (de) review sheet
 
 File: `Assets/StreamingAssets/Loc/sz_loc_de.json`. Register: du throughout,
-spoken imperatives (drück, leg ab, mach auf). Nouns capitalized as German
-grammar needs, even in lowercase lines. Lobby is the word German players use.
+spoken imperatives (drück, leg ab, mach auf). Every line starts with a capital,
+nouns as German grammar needs. Lobby is the word German players use.
 
 | key | English | translation | literal back-translation | notes |
 |---|---|---|---|---|
-| door.open | open the door | Tür öffnen | door open | infinitive at the end, the German button form |
-| door.close | close the door | Tür schließen | door close | |
-| pickup.weapon | pick up the weapon | Waffe aufheben | weapon pick up | |
-| pickup.full | hands full, drop one first | Hände voll, leg erst was ab | hands full, put something down first | "was" = spoken etwas |
-| chest.try | try the mystery chest | die Rätselkiste probieren | the riddle crate try | Kiste is the casual word for a chest |
-| perk.drink | drink {0} | {0} trinken | {0} drink | |
+| door.open | Open the door | Tür öffnen | door open | infinitive at the end, the German button form |
+| door.close | Close the door | Tür schließen | door close | |
+| pickup.weapon | Pick up the weapon | Waffe aufheben | weapon pick up | |
+| pickup.full | Hands full, drop one first | Hände voll, leg erst was ab | hands full, put something down first | "was" = spoken etwas |
+| chest.try | Try the mystery chest | Die Rätselkiste probieren | the riddle crate try | Kiste is the casual word for a chest |
+| perk.drink | Drink {0} | {0} trinken | {0} drink | |
 | perk.brewed | {0} is already brewed | {0} ist schon gebraut | {0} is already brewed | brauen works for potions in German |
-| grimoire.open | open the grimoire | Grimoire öffnen | grimoire open | |
-| grimoire.close | close the grimoire | Grimoire schließen | grimoire close | |
-| chip.done | done | fertig | done | |
-| carry.down | put it down | absetzen | set down | |
-| scan.aim | scan it, become it | scannen, das werden | scan, become that | |
-| absorb.aim | absorb it, learn its rune | absorbieren, die Rune lernen | absorb, the rune learn | |
-| chest.open | open the chest | Truhe öffnen | chest open | infinitive at the end, the German button form |
-| chip.grimoire | grimoire | Grimoire | grimoire | |
-| chip.paint | paint your body | deinen Körper bemalen | your body paint | |
-| chip.first | first person | Ego-Sicht | ego view | the German gaming term for first person |
-| chip.third | third person | Außensicht | outside view | the German term for third person |
-| chip.pose | pose your wizard | Pose einnehmen | pose take | "your wizard" dropped |
-| chip.watch | watch your dead | deine Toten ansehen | your dead look at | |
-| chip.become | become it again | das wieder werden | that again become | |
-| chip.melt | melt back to idle | zurück zu dir | back to you | "melt" and "idle" dropped |
-| chip.precise | faster drawing | schneller zeichnen | faster draw | |
-| chip.erase | erase ink | Tinte wegwischen | ink wipe away | |
-| chip.absorb | absorb it | absorbieren | absorb | |
-| hint.alt | hold ALT to draw faster | ALT halten, um schneller zu zeichnen | ALT hold, in order to draw faster | |
-| hint.combine | draw more runes inside of the same seal to combine them | zeichne mehr Runen in dasselbe Siegel, um sie zu verbinden | draw more runes into the same seal, in order to connect them | |
-| hint.lift | draw ink on things and press E to lift them | male Tinte auf Dinge und drück E, um sie zu heben | paint ink on things and press E, in order to lift them | drück = spoken imperative of drücken |
-| hint.erase | erasing returns the ink to your wand | Wegwischen gibt die Tinte an deinen Zauberstab zurück | wiping away gives the ink back to your wand | |
-| hint.body | press R to paint runes on your own body | drück R, um Runen auf deinen eigenen Körper zu malen | press R, in order to paint runes on your own body | |
-| hint.pose | striking a pose can close a body seal and cast it | eine Pose kann ein Körpersiegel schließen und wirken | a pose can close a body seal and cast | wirken = cast a spell |
-| hint.size | bigger runes make stronger spells | größere Runen machen stärkere Zauber | bigger runes make stronger spells | |
-| hint.touch | lines count as one drawing only when they touch | Linien zählen nur als eine Zeichnung, wenn sie sich berühren | lines count only as one drawing when they touch each other | |
-| hint.declare | the book can name a drawing that reads wrong | das Buch kann eine falsch gelesene Zeichnung benennen | the book can name a wrongly read drawing | |
-| hint.trance | fresh ink puts zombies in a trance | frische Tinte versetzt Zombies in Trance | fresh ink puts zombies in trance | |
-| hint.wake | throw a sleeping spell to wake it | wirf einen schlafenden Zauber, um ihn zu wecken | throw a sleeping spell, in order to wake it | |
-| hint.ghost | the dead rise as ghosts. fly home to your body and a friend can revive you | die Toten werden zu Geistern. flieg heim zu deinem Körper, dann kann ein Freund dich wiederbeleben | the dead become ghosts. fly home to your body, then a friend can revive you | |
-| hint.doors | doors open when you walk into them | Türen gehen auf, wenn du dagegen läufst | doors go open when you run against them | |
-| paint.done | done painting | fertig gemalt | finished painting | |
-| paint.pose | strike a pose | nimm eine Pose ein | take a pose | |
-| paint.orbit | orbit | drehen | turn | |
-| hat.pillar | pick your hat color | Hutfarbe wählen | hat color choose | |
-| side.pillar | change your side | Seite wechseln | side switch | |
-| hat.done | done | fertig | done | |
-| shape.back | back to yourself | zurück zu dir | back to you | |
-| shape.turn | turns you | dreht dich | turns you | |
-| shape.save | saves | speichert | saves | |
-| shape.recall | recalls | ruft ab | recalls | |
+| grimoire.open | Open the grimoire | Grimoire öffnen | grimoire open | |
+| grimoire.close | Close the grimoire | Grimoire schließen | grimoire close | |
+| chip.done | Done | Fertig | done | |
+| carry.down | Put it down | Absetzen | set down | |
+| scan.aim | Scan it, become it | Scannen, das werden | scan, become that | |
+| absorb.aim | Absorb it, learn its rune | Absorbieren, die Rune lernen | absorb, the rune learn | |
+| chest.open | Open the chest | Truhe öffnen | chest open | infinitive at the end, the German button form |
+| chip.grimoire | Grimoire | Grimoire | grimoire | |
+| chip.paint | Paint your body | Deinen Körper bemalen | your body paint | |
+| chip.first | First person | Ego-Sicht | ego view | the German gaming term for first person |
+| chip.third | Third person | Außensicht | outside view | the German term for third person |
+| chip.pose | Pose your wizard | Pose einnehmen | pose take | "your wizard" dropped |
+| chip.watch | Watch your dead | Deine Toten ansehen | your dead look at | |
+| chip.become | Become it again | Das wieder werden | that again become | |
+| chip.melt | Melt back to idle | Zurück zu dir | back to you | "melt" and "idle" dropped |
+| chip.precise | Faster drawing | Schneller zeichnen | faster draw | |
+| chip.erase | Erase ink | Tinte wegwischen | ink wipe away | |
+| chip.absorb | Absorb it | Absorbieren | absorb | |
+| hint.alt | Hold ALT to draw faster | ALT halten, um schneller zu zeichnen | ALT hold, in order to draw faster | |
+| hint.combine | Draw more runes inside of the same seal to combine them | Zeichne mehr Runen in dasselbe Siegel, um sie zu verbinden | draw more runes into the same seal, in order to connect them | |
+| hint.lift | Draw ink on things and press E to lift them | Male Tinte auf Dinge und drück E, um sie zu heben | paint ink on things and press E, in order to lift them | drück = spoken imperative of drücken |
+| hint.erase | Erasing returns the ink to your wand | Wegwischen gibt die Tinte an deinen Zauberstab zurück | wiping away gives the ink back to your wand | |
+| hint.body | Press R to paint runes on your own body | Drück R, um Runen auf deinen eigenen Körper zu malen | press R, in order to paint runes on your own body | |
+| hint.pose | Striking a pose can close a body seal and cast it | Eine Pose kann ein Körpersiegel schließen und wirken | a pose can close a body seal and cast | wirken = cast a spell |
+| hint.size | Bigger runes make stronger spells | Größere Runen machen stärkere Zauber | bigger runes make stronger spells | |
+| hint.touch | Lines count as one drawing only when they touch | Linien zählen nur als eine Zeichnung, wenn sie sich berühren | lines count only as one drawing when they touch each other | |
+| hint.declare | The book can name a drawing that reads wrong | Das Buch kann eine falsch gelesene Zeichnung benennen | the book can name a wrongly read drawing | |
+| hint.trance | Fresh ink puts zombies in a trance | Frische Tinte versetzt Zombies in Trance | fresh ink puts zombies in trance | |
+| hint.wake | Throw a sleeping spell to wake it | Wirf einen schlafenden Zauber, um ihn zu wecken | throw a sleeping spell, in order to wake it | |
+| hint.ghost | The dead rise as ghosts. Fly home to your body and a friend can revive you | Die Toten werden zu Geistern. Flieg heim zu deinem Körper, dann kann ein Freund dich wiederbeleben | the dead become ghosts. fly home to your body, then a friend can revive you | |
+| hint.doors | Doors open when you walk into them | Türen gehen auf, wenn du dagegen läufst | doors go open when you run against them | |
+| paint.done | Done painting | Fertig gemalt | finished painting | |
+| paint.pose | Strike a pose | Nimm eine Pose ein | take a pose | |
+| paint.orbit | Orbit | Drehen | turn | |
+| hat.pillar | Pick your hat color | Hutfarbe wählen | hat color choose | |
+| side.pillar | Change your side | Seite wechseln | side switch | |
+| hat.done | Done | Fertig | done | |
+| shape.back | Back to yourself | Zurück zu dir | back to you | |
+| shape.turn | Turns you | Dreht dich | turns you | |
+| shape.save | Saves | Speichert | saves | |
+| shape.recall | Recalls | Ruft ab | recalls | |
 | menu.resume | Resume | Weiter | continue | |
 | menu.restart | Restart run | Neu starten | start anew | "run" dropped |
 | menu.options | Options | Optionen | options | |
@@ -66,69 +66,69 @@ grammar needs, even in lowercase lines. Lobby is the word German players use.
 | opt.language | Language: {0} | Sprache: {0} | language: {0} | |
 | opt.immersive.on | Immersive mode: ON | Immersiver Modus: AN | immersive mode: ON | |
 | opt.immersive.off | Immersive mode: OFF | Immersiver Modus: AUS | immersive mode: OFF | |
-| opt.immersive.hint | no HUD at all. for players who know the game | gar keine Anzeige. für Spieler, die das Spiel kennen | no display at all. for players who know the game | |
+| opt.immersive.hint | No HUD at all. For players who know the game | Gar keine Anzeige. Für Spieler, die das Spiel kennen | no display at all. for players who know the game | |
 | opt.mic | Microphone: {0} | Mikrofon: {0} | microphone: {0} | |
-| opt.mic.default | default | Standard | standard | |
+| opt.mic.default | Default | Standard | standard | |
 | opt.mute | {0}: mute | {0}: stumm | {0}: silent | |
 | opt.unmute | {0}: unmute | {0}: wieder hören | {0}: hear again | |
-| opt.nobody | nobody else here to mute | niemand sonst da zum Stummschalten | nobody else there for muting | |
+| opt.nobody | Nobody else here to mute | Niemand sonst da zum Stummschalten | nobody else there for muting | |
 | menu.leave | Leave lobby | Lobby verlassen | lobby leave | |
 | menu.delete | Delete lobby | Lobby löschen | lobby delete | |
 | menu.play | PLAY | SPIELEN | PLAY | |
-| lobby.readycall | ready check. B yes, C no | alle bereit? B ja, C nein | all ready? B yes, C no | |
+| lobby.readycall | Ready check. B yes, C no | Alle bereit? B ja, C nein | all ready? B yes, C no | |
 | lobby.ready.on | READY {0}/{1} | BEREIT {0}/{1} | READY {0}/{1} | |
-| lobby.ready.off | READY {0}/{1}. B when ready | BEREIT {0}/{1}. drück B, wenn du bereit bist | READY {0}/{1}. press B when you are ready | |
-| stand.title | the book stand | das Buchpult | the book desk | Pult = lectern |
-| stand.hostprivate | create private lobby (invite only) | private Lobby erstellen (nur Einladung) | private lobby create (invitation only) | |
+| lobby.ready.off | READY {0}/{1}. B when ready | BEREIT {0}/{1}. Drück B, wenn du bereit bist | READY {0}/{1}. press B when you are ready | |
+| stand.title | The book stand | Das Buchpult | the book desk | Pult = lectern |
+| stand.hostprivate | Create private lobby (invite only) | Private Lobby erstellen (nur Einladung) | private lobby create (invitation only) | |
 | stand.hostpublic | CREATE PUBLIC LOBBY | ÖFFENTLICHE LOBBY ERSTELLEN | PUBLIC LOBBY CREATE | |
-| stand.pw | password (optional) | Passwort (optional) | password (optional) | |
-| stand.code | entry code (optional) | Zugangscode (optional) | access code (optional) | |
-| stand.hint | walk away to close | weggehen zum Schließen | walk away for closing | |
-| stand.map | change map | Karte wechseln | map switch | |
-| stand.share | acolytes at least {0}% | Akolythen mindestens {0}% | acolytes at least {0}% | |
-| stand.setcode | set code | Code festlegen | code set | |
-| stand.readycall | ready check | alle bereit? | all ready? | |
-| stand.invite | invite friends | Freunde einladen | friends invite | |
+| stand.pw | Password (optional) | Passwort (optional) | password (optional) | |
+| stand.code | Entry code (optional) | Zugangscode (optional) | access code (optional) | |
+| stand.hint | Walk away to close | Weggehen zum Schließen | walk away for closing | |
+| stand.map | Change map | Karte wechseln | map switch | |
+| stand.share | Acolytes at least {0}% | Akolythen mindestens {0}% | acolytes at least {0}% | |
+| stand.setcode | Set code | Code festlegen | code set | |
+| stand.readycall | Ready check | Alle bereit? | all ready? | |
+| stand.invite | Invite friends | Freunde einladen | friends invite | |
 | stand.start | START | START | START | |
-| stand.waiting | waiting for ready | warten auf bereit | waiting for ready | |
-| stand.delete | delete lobby | Lobby löschen | lobby delete | |
-| stand.kick | kick | rauswerfen | throw out | |
-| stand.ban | ban | sperren | block | |
-| stand.banned | banned: {0} | gesperrt: {0} | blocked: {0} | |
-| stand.unban | unban | entsperren | unblock | |
-| stand.name | lobby name | Lobbyname | lobby name | |
-| stand.size | size {0} | Größe {0} | size {0} | |
-| stand.region | region: {0} | Region: {0} | region: {0} | |
+| stand.waiting | Waiting for ready | Warten auf bereit | waiting for ready | |
+| stand.delete | Delete lobby | Lobby löschen | lobby delete | |
+| stand.kick | Kick | Rauswerfen | throw out | |
+| stand.ban | Ban | Sperren | block | |
+| stand.banned | Banned: {0} | Gesperrt: {0} | blocked: {0} | |
+| stand.unban | Unban | Entsperren | unblock | |
+| stand.name | Lobby name | Lobbyname | lobby name | |
+| stand.size | Size {0} | Größe {0} | size {0} | |
+| stand.region | Region: {0} | Region: {0} | region: {0} | |
 | stand.tab.host | HOST | ERSTELLEN | CREATE | |
 | stand.tab.join | JOIN | BEITRETEN | JOIN | |
 | stand.settings | Settings | Einstellungen | settings | |
 | stand.regions | Regions | Regionen | regions | |
 | stand.langs | Languages | Sprachen | languages | |
 | stand.behaviors | Behaviors | Stimmung | mood | the tags under it are moods |
-| stand.duration | time {0} min | Zeit {0} min | time {0} min | |
-| stand.setpw | set password | Passwort festlegen | password set | |
+| stand.duration | Time {0} min | Zeit {0} min | time {0} min | |
+| stand.setpw | Set password | Passwort festlegen | password set | |
 | stand.hosting | HOSTING your lobby | DU leitest deine Lobby | YOU run your lobby | |
 | stand.players | Players | Spieler | players | |
-| filter.all | all | alle | all | |
-| browse.refresh | refresh | aktualisieren | refresh | |
+| filter.all | All | Alle | all | |
+| browse.refresh | Refresh | Aktualisieren | refresh | |
 | browse.join | JOIN | BEITRETEN | JOIN | |
-| browse.locked | (password) | (Passwort) | (password) | |
-| browse.none | no lobbies found. host one! | keine Lobby gefunden. mach eine auf! | no lobby found. open one up! | |
-| browse.needpw | this lobby wants a password | diese Lobby will ein Passwort | this lobby wants a password | |
-| browse.cancel | cancel | abbrechen | cancel | |
-| region. | any region | jede Region | every region | |
+| browse.locked | (Password) | (Passwort) | (password) | |
+| browse.none | No lobbies found. Host one! | Keine Lobby gefunden. Mach eine auf! | no lobby found. open one up! | |
+| browse.needpw | This lobby wants a password | Diese Lobby will ein Passwort | this lobby wants a password | |
+| browse.cancel | Cancel | Abbrechen | cancel | |
+| region. | Any region | Jede Region | every region | |
 | region.eu | Europe | Europa | Europe | |
 | region.na | North America | Nordamerika | North America | |
 | region.sa | South America | Südamerika | South America | |
 | region.asia | Asia | Asien | Asia | |
 | region.oce | Oceania | Ozeanien | Oceania | |
 | region.mea | Middle East & Africa | Naher Osten und Afrika | Near East and Africa | Naher Osten is the German name for the Middle East |
-| tag.welcome | everyone welcome | alle willkommen | all welcome | |
-| tag.beginners | beginners welcome | Anfänger willkommen | beginners welcome | |
-| tag.casual | casual fun | zum Spaß | for fun | |
-| tag.tryhard | try hards | ernsthaft | seriously | |
-| tag.mic | mic on | Mikro an | mic on | |
-| tag.quiet | quiet ok | still ist ok | quiet is ok | |
+| tag.welcome | Everyone welcome | Alle willkommen | all welcome | |
+| tag.beginners | Beginners welcome | Anfänger willkommen | beginners welcome | |
+| tag.casual | Casual fun | Zum Spaß | for fun | |
+| tag.tryhard | Try hards | Ernsthaft | seriously | |
+| tag.mic | Mic on | Mikro an | mic on | |
+| tag.quiet | Quiet ok | Still ist ok | quiet is ok | |
 | opt.mic.title | Microphone | Mikrofon | microphone |  |
 | opt.mic.open | Open mic | Immer an | always on |  |
 | opt.mic.ptt | Hold V | V halten | hold V | V is a physical key, kept |
@@ -157,16 +157,16 @@ grammar needs, even in lowercase lines. Lobby is the word German players use.
 | opt.on | On | An | on |  |
 | opt.music | Music: {0}% | Musik: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | Geräusche: {0}% | sounds: {0}% |  |
-| seal.norune | no rune here to seal. aim at one of your runes | hier ist keine Rune zum Versiegeln. ziel auf eine deiner Runen | here is no rune for sealing. aim at one of your runes |  |
-| seal.noink | not enough ink for the seal | nicht genug Tinte für das Siegel | not enough ink for the seal |  |
-| rune.noink | not enough ink to finish the rune | nicht genug Tinte, um die Rune fertig zu zeichnen | not enough ink, in order to draw the rune to the end |  |
+| seal.norune | No rune here to seal. Aim at one of your runes | Hier ist keine Rune zum Versiegeln. Ziel auf eine deiner Runen | here is no rune for sealing. aim at one of your runes |  |
+| seal.noink | Not enough ink for the seal | Nicht genug Tinte für das Siegel | not enough ink for the seal |  |
+| rune.noink | Not enough ink to finish the rune | Nicht genug Tinte, um die Rune fertig zu zeichnen | not enough ink, in order to draw the rune to the end |  |
 | round.safe | THE LOBBY IS SAFE GROUND | DIE LOBBY IST SICHERER BODEN | the lobby is safe ground |  |
 | round.versus | WIZARDS vs ACOLYTES | ZAUBERER gegen AKOLYTHEN | wizards against acolytes | Zauberer and Akolythen as in the rest of the file |
 | round.wizards | WIZARDS WIN | ZAUBERER GEWINNEN | wizards win |  |
 | round.acolytes | ACOLYTES WIN | AKOLYTHEN GEWINNEN | acolytes win |  |
-| round.home | {0}. back to the lobby in {1} | {0}. zurück in die Lobby in {1} | {0}. back into the lobby in {1} | {1} is seconds |
-| round.pot |  · pot {0}% |  · Kessel {0}% | cauldron {0}% | Kessel = the cauldron, the game noun |
-| round.green |  · the pot is GREEN |  · der Kessel ist GRÜN | the cauldron is GREEN |  |
+| round.home | {0}. Back to the lobby in {1} | {0}. Zurück in die Lobby in {1} | {0}. back into the lobby in {1} | {1} is seconds |
+| round.pot |  · Pot {0}% |  · Kessel {0}% | cauldron {0}% | Kessel = the cauldron, the game noun |
+| round.green |  · The pot is GREEN |  · Der Kessel ist GRÜN | the cauldron is GREEN |  |
 | gate.accepts | THE GATE ACCEPTS | DAS TOR NIMMT AN | the gate accepts |  |
 | net.hostleft | THE HOST LEFT | DER HOST IST WEG | the host is gone | Host is the word German players use |
 | net.hosting | ● HOSTING, {0} player(s) | ● DU HOSTEST, {0} Spieler | you host, {0} players | Spieler is the same in singular and plural |
@@ -175,26 +175,26 @@ grammar needs, even in lowercase lines. Lobby is the word German players use.
 | net.maplikes | MAP: {0} · ♥{1} | KARTE: {0} · ♥{1} | map: {0} · ♥{1} |  |
 | steam.offline | Steam not running, offline & LAN only | Steam läuft nicht, nur offline & LAN | Steam runs not, only offline & LAN |  |
 | steam.ready | Steam ready: {0} | Steam bereit: {0} | Steam ready: {0} | {0} is the Steam name |
-| steam.leavefirst | leave your lobby first | verlass erst deine Lobby | leave first your lobby |  |
-| steam.ping | your ping to that host is {0}ms, lobby allows {1} | dein Ping zu dem Host ist {0} ms, die Lobby erlaubt {1} | your ping to that host is {0} ms, the lobby allows {1} |  |
-| steam.joining | joining… | beitreten… | joining… |  |
-| steam.deleted | lobby deleted | Lobby gelöscht | lobby deleted |  |
+| steam.leavefirst | Leave your lobby first | Verlass erst deine Lobby | leave first your lobby |  |
+| steam.ping | Your ping to that host is {0}ms, lobby allows {1} | Dein Ping zu dem Host ist {0} ms, die Lobby erlaubt {1} | your ping to that host is {0} ms, the lobby allows {1} |  |
+| steam.joining | Joining… | Beitreten… | joining… |  |
+| steam.deleted | Lobby deleted | Lobby gelöscht | lobby deleted |  |
 | steam.notrunning | Steam not running | Steam läuft nicht | Steam runs not |  |
-| steam.creating | creating lobby… | Lobby wird erstellt… | lobby is being created… |  |
-| steam.failed | lobby failed: {0} | Lobby fehlgeschlagen: {0} | lobby failed: {0} | {0} is a Steam error code |
-| steam.noenter | couldn't enter the lobby | konnte die Lobby nicht betreten | could the lobby not enter |  |
-| steam.nohost | lobby has no host, try again | die Lobby hat keinen Host, versuch es nochmal | the lobby has no host, try it again |  |
-| steam.connecting | joined, connecting… | drin, verbinde… | in, connecting… | spoken short form |
+| steam.creating | Creating lobby… | Lobby wird erstellt… | lobby is being created… |  |
+| steam.failed | Lobby failed: {0} | Lobby fehlgeschlagen: {0} | lobby failed: {0} | {0} is a Steam error code |
+| steam.noenter | Couldn't enter the lobby | Konnte die Lobby nicht betreten | could the lobby not enter |  |
+| steam.nohost | Lobby has no host, try again | Die Lobby hat keinen Host, versuch es nochmal | the lobby has no host, try it again |  |
+| steam.connecting | Joined, connecting… | Drin, verbinde… | in, connecting… | spoken short form |
 | steam.private | PRIVATE LOBBY, invite friends | PRIVATE LOBBY, lad Freunde ein | private lobby, invite friends |  |
 | steam.public | PUBLIC LOBBY, listed | ÖFFENTLICHE LOBBY, gelistet | public lobby, listed |  |
-| menu.tagline | draw fast. die funny. | schnell zeichnen. lustig sterben. | fast draw. funny die. | the tagline, kept as two blunt commands |
+| menu.tagline | Draw fast. Die funny. | Schnell zeichnen. Lustig sterben. | fast draw. funny die. | the tagline, kept as two blunt commands |
 | menu.close | Close | Schließen | close |  |
-| chip.pages | turn the pages | Seiten umblättern | pages turn over | the mouse wheel turns the grimoire pages |
-| round.potopens |  · pot opens in {0} |  · Kessel öffnet in {0} | cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
-| round.inkflight |  · ink in flight {0} |  · Tinte im Flug {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| chip.pages | Turn the pages | Seiten umblättern | pages turn over | the mouse wheel turns the grimoire pages |
+| round.potopens |  · Pot opens in {0} |  · Kessel öffnet in {0} | cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · Ink in flight {0} |  · Tinte im Flug {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
 | opt.uiscale | UI size: {0}% | UI-Größe: {0}% | UI size: {0}% | options, game tab: the slider that scales every panel and chip |
-| stand.nocap | no cap | keine Grenze | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
-| stand.heavy | your connection carries everyone | deine Verbindung trägt alle | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| stand.nocap | No cap | Keine Grenze | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | Your connection carries everyone | Deine Verbindung trägt alle | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |
 | menu.quit.game | Quit the game? | Spiel beenden? | game end? | the Quit check on the main menu: Quit closes the game |
 | menu.quit.lobby | Back to the main menu? | Lobby verlassen und ins Hauptmenü? | lobby leave and into-the main menu? | the Quit check in the lobby: Quit goes to the main menu. Uses the red button's verb, so the red button reads as the yes |
 | menu.quit.match | Leave the match for an empty lobby? | Match verlassen? Du landest in einer leeren Lobby. | leave match? you land in an empty lobby. | the Quit check on a map: Quit leaves the match for your own empty lobby |
@@ -361,10 +361,14 @@ grammar needs, even in lowercase lines. Lobby is the word German players use.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Behaltene Zeichnungen. Wähl eine, um sie zu bearbeiten, das Plus fängt eine neue an, X entfernt eine | kept drawings. choose one to it to edit, the plus starts a new on, X removes one | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | Wird gelesen als {0} | is read as {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Noch nicht lesbar | still not readable | the pad's drawing matches no rune well enough |
+| ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | Diese Lobby hat eine neuere Version. Beende das Spiel und lass Steam deins aktualisieren | this lobby has a newer version. end the game and let Steam update yours | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
+| ver.theirs | That lobby runs an older version. Its host has to update the game | Diese Lobby hat eine ältere Version. Ihr Host muss das Spiel aktualisieren | this lobby has an older version. its host must update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
+| ver.differs | That lobby runs a different version of the game | Diese Lobby hat eine andere Version des Spiels | this lobby has another version of the game | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
+| wand.hosed | The pour is too strong. Step back to draw | Der Tintenstrahl ist zu stark. Geh ein Stück zurück, um zu zeichnen | the ink jet is too strong. go back a bit to draw | a wizard standing right at the clean pot while it fills: the ink pours into the wand too hard to draw; shown behind a ! keycap |
 | menu.extras | Extras | Extras | extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
-| chip.release | release | loslassen | to let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
-| chip.up | up | nach oben | upward | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
-| chip.down | down | nach unten | downward | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
+| chip.release | Release | Loslassen | to let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | Up | Nach oben | upward | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | Down | Nach unten | downward | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | Die Aufnahme hat auf diesem PC nicht geklappt | the recording did not work out on this PC | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | Nicht genug freier Speicherplatz für die Aufnahme | not enough free storage space for the recording | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | Farbe | color | section on a creature in the photo booth: its color sliders |

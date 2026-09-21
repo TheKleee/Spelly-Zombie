@@ -29,6 +29,7 @@
     {"api": "SZ_FAT_BOUNCE",    "emoji": "1f388",            "side": "both",    "note": "balloon"},
     {"api": "SZ_POISON_POT",    "emoji": "1f922",            "side": "acolyte", "note": "nauseated face"},
     {"api": "SZ_CLEAN_POT",     "emoji": "1f9fc",            "side": "wizard",  "note": "soap"},
-    {"api": "SZ_BEAT_BOSS",     "emoji": "1f5ff", "hat": "1f451", "hat_tilt": 10, "side": "both", "note": "moai wearing a crown: the Golem Lord"}
+    {"api": "SZ_BEAT_BOSS",     "emoji": "1f5ff", "hat": "1f451", "hat_tilt": 10, "side": "both", "note": "moai wearing a crown: the Golem Lord"},
+    {"api": "SZ_WITH_FRIENDS",  "emoji": "1f9d9", "crowd": ["1f47b", "1f9df", "1f5ff"], "side": "both", "note": "mage, ghost, zombie and moai: the four of you"}
   ]
 }

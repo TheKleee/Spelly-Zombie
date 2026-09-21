@@ -49,11 +49,15 @@ namespace SpellyZombie
         // the boss of the map that comes with the game
         public const string BeatBoss = "SZ_BEAT_BOSS";
 
+        // a match finished with three or more Steam friends in it
+        public const string WithFriends = "SZ_WITH_FRIENDS";
+        const int FriendsNeeded = 3;
+
         public static readonly string[] All =
         {
             WinWizards, WinAcolytes, EndPotDry, EndNoWizards, EndGreenBell, EndCleanBell, EndSweep, TenWins,
             FirstRune, AllRunes, FirstSpell, BodyCast, Disguise, RideZombie, RideGolem, GolemBorn,
-            ReviveFriend, CameBack, FatBounce, PoisonPot, CleanPot, BeatBoss,
+            ReviveFriend, CameBack, FatBounce, PoisonPot, CleanPot, BeatBoss, WithFriends,
         };
 
         static readonly HashSet<string> _done = new HashSet<string>();
@@ -125,6 +129,8 @@ namespace SpellyZombie
         /// Host and clients both call this once per match with the referee's ending.
         public static void MatchEnded(int winner, Ending ending)
         {
+            // any ending, won or lost: the match was finished together
+            if (FriendsHere() >= FriendsNeeded) Unlock(WithFriends);
             // ★ THE OFFICIAL BOSS (his call): everyone on the team that brought it
             // down, ghosts included, on the map that came with the game, untouched
             if (ending == Ending.BossDown && RoundDirector.WonHere(winner) && MapLibrary.IsOfficial(MapDef.Active))
@@ -142,6 +148,20 @@ namespace SpellyZombie
                 case Ending.CleanBell: Unlock(EndCleanBell); break;
             }
             if (Bump("wins") >= 10) Unlock(TenWins);
+        }
+
+        /// The other humans in the session who are Steam friends of this account.
+        /// Bots and players without Steam have no Steam id and never count.
+        static int FriendsHere()
+        {
+            if (!SteamManager.Initialized) return 0;
+            int friends = 0;
+            foreach (int id in NetSync.RemoteIds)
+            {
+                if (!NetSync.IdentityOf(id, out _, out ulong sid) || sid == 0UL) continue;
+                if (SteamFriends.HasFriend(new CSteamID(sid), EFriendFlags.k_EFriendFlagImmediate)) friends++;
+            }
+            return friends;
         }
 
         public static void RuneLearned(int known)

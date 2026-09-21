@@ -6,54 +6,54 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 
 | key | English | translation | literal back-translation | notes |
 |---|---|---|---|---|
-| door.open | open the door | 문 열기 | door opening | 기 noun form, the button standard |
-| door.close | close the door | 문 닫기 | door closing | |
-| pickup.weapon | pick up the weapon | 무기 줍기 | weapon picking up | |
-| pickup.full | hands full, drop one first | 두 손이 꽉 찼어. 먼저 하나 내려놔 | both hands are packed full. first put one down | 해체 level, friendly |
-| chest.try | try the mystery chest | 수수께끼 상자 열어보기 | riddle box, try opening | 수수께끼 = riddle, mystery |
-| perk.drink | drink {0} | {0} 마시기 | {0} drinking | |
+| door.open | Open the door | 문 열기 | door opening | 기 noun form, the button standard |
+| door.close | Close the door | 문 닫기 | door closing | |
+| pickup.weapon | Pick up the weapon | 무기 줍기 | weapon picking up | |
+| pickup.full | Hands full, drop one first | 두 손이 꽉 찼어. 먼저 하나 내려놔 | both hands are packed full. first put one down | 해체 level, friendly |
+| chest.try | Try the mystery chest | 수수께끼 상자 열어보기 | riddle box, try opening | 수수께끼 = riddle, mystery |
+| perk.drink | Drink {0} | {0} 마시기 | {0} drinking | |
 | perk.brewed | {0} is already brewed | {0}은(는) 이미 끓여 놨어 | {0} is already boiled and set aside | 은(는) covers both particle forms because {0} is unknown; 끓이다 = brew a potion |
-| grimoire.open | open the grimoire | 마도서 펼치기 | grimoire spreading open | 마도서 = the RPG word for a magic book; 펼치다 is the verb for opening a book |
-| grimoire.close | close the grimoire | 마도서 덮기 | grimoire covering | 덮다 = close a book |
-| chip.done | done | 완료 | complete | |
-| carry.down | put it down | 내려놓기 | putting down | |
-| scan.aim | scan it, become it | 스캔하면 그것이 된다 | if you scan, you become that | |
-| absorb.aim | absorb it, learn its rune | 흡수하면 그 룬을 배운다 | if you absorb, you learn that rune | |
-| chest.open | open the chest | 상자 열기 | chest opening | noun form, like the grimoire lines |
-| chip.grimoire | grimoire | 마도서 | grimoire | |
-| chip.paint | paint your body | 몸에 그리기 | on the body, drawing | |
-| chip.first | first person | 1인칭 | 1st person | |
-| chip.third | third person | 3인칭 | 3rd person | |
-| chip.pose | pose your wizard | 포즈 잡기 | pose taking | "your wizard" dropped |
-| chip.watch | watch your dead | 죽은 친구 보기 | dead friend watching | |
-| chip.become | become it again | 다시 그것이 되기 | again, that, becoming | |
-| chip.melt | melt back to idle | 원래대로 돌아가기 | to the original way, going back | "melt" and "idle" dropped |
-| chip.precise | faster drawing | 더 빨리 그리기 | more quickly drawing | |
-| chip.erase | erase ink | 잉크 지우기 | ink erasing | |
-| chip.absorb | absorb it | 흡수하기 | absorbing | |
-| hint.alt | hold ALT to draw faster | ALT를 누른 채 그리면 더 빠르다 | with ALT held down, if you draw, it is faster | |
-| hint.combine | draw more runes inside of the same seal to combine them | 같은 마법진 안에 룬을 더 그리면 서로 합쳐진다 | inside the same magic circle, if you draw more runes, they merge with each other | 마법진 (magic circle) for "seal" |
-| hint.lift | draw ink on things and press E to lift them | 물건에 잉크를 그리고 E를 누르면 들어 올린다 | on an object draw ink and press E, then it lifts up | |
-| hint.erase | erasing returns the ink to your wand | 지운 잉크는 지팡이로 돌아간다 | erased ink returns to the wand | |
-| hint.body | press R to paint runes on your own body | R을 누르면 내 몸에 룬을 그린다 | if you press R, you draw runes on my body | Korean says "my body" where English says "your own" |
-| hint.pose | striking a pose can close a body seal and cast it | 포즈를 잡으면 몸의 마법진이 닫히고 발동한다 | if you take a pose, the body's magic circle closes and activates | |
-| hint.size | bigger runes make stronger spells | 룬이 클수록 마법이 세다 | the bigger the rune, the stronger the magic | 세다 = strong, colloquial |
-| hint.touch | lines count as one drawing only when they touch | 선은 서로 닿아 있을 때만 하나의 그림이다 | lines are one picture only when touching each other | |
-| hint.declare | the book can name a drawing that reads wrong | 잘못 읽힌 그림은 책이 이름을 정해 준다 | a wrongly read picture, the book decides a name for it | |
-| hint.trance | fresh ink puts zombies in a trance | 갓 그린 잉크는 좀비를 멍하게 만든다 | just-drawn ink makes zombies dazed | 멍하게 = dazed, blank; kid level |
-| hint.wake | throw a sleeping spell to wake it | 잠든 마법은 던지면 깨어난다 | sleeping magic, if thrown, wakes up | |
-| hint.ghost | the dead rise as ghosts. fly home to your body and a friend can revive you | 죽으면 유령이 된다. 내 몸으로 날아가면 친구가 살려 줄 수 있다 | if you die you become a ghost. if you fly to my body, a friend can save you | |
-| hint.doors | doors open when you walk into them | 문은 걸어가서 부딪히면 열린다 | doors, if you walk up and bump into them, open | |
-| paint.done | done painting | 다 그렸다 | all drawn | |
-| paint.pose | strike a pose | 포즈 잡기 | pose taking | |
-| paint.orbit | orbit | 돌리기 | turning | |
-| hat.pillar | pick your hat color | 모자 색 고르기 | hat color choosing | |
-| side.pillar | change your side | 편 바꾸기 | side changing | 편 = the playground word for a team |
-| hat.done | done | 완료 | complete | |
-| shape.back | back to yourself | 내 모습으로 | to my own form | |
-| shape.turn | turns you | 방향 돌리기 | direction turning | |
-| shape.save | saves | 저장 | save | |
-| shape.recall | recalls | 불러오기 | loading | 불러오기 = "load" in every Korean app |
+| grimoire.open | Open the grimoire | 마도서 펼치기 | grimoire spreading open | 마도서 = the RPG word for a magic book; 펼치다 is the verb for opening a book |
+| grimoire.close | Close the grimoire | 마도서 덮기 | grimoire covering | 덮다 = close a book |
+| chip.done | Done | 완료 | complete | |
+| carry.down | Put it down | 내려놓기 | putting down | |
+| scan.aim | Scan it, become it | 스캔하면 그것이 된다 | if you scan, you become that | |
+| absorb.aim | Absorb it, learn its rune | 흡수하면 그 룬을 배운다 | if you absorb, you learn that rune | |
+| chest.open | Open the chest | 상자 열기 | chest opening | noun form, like the grimoire lines |
+| chip.grimoire | Grimoire | 마도서 | grimoire | |
+| chip.paint | Paint your body | 몸에 그리기 | on the body, drawing | |
+| chip.first | First person | 1인칭 | 1st person | |
+| chip.third | Third person | 3인칭 | 3rd person | |
+| chip.pose | Pose your wizard | 포즈 잡기 | pose taking | "your wizard" dropped |
+| chip.watch | Watch your dead | 죽은 친구 보기 | dead friend watching | |
+| chip.become | Become it again | 다시 그것이 되기 | again, that, becoming | |
+| chip.melt | Melt back to idle | 원래대로 돌아가기 | to the original way, going back | "melt" and "idle" dropped |
+| chip.precise | Faster drawing | 더 빨리 그리기 | more quickly drawing | |
+| chip.erase | Erase ink | 잉크 지우기 | ink erasing | |
+| chip.absorb | Absorb it | 흡수하기 | absorbing | |
+| hint.alt | Hold ALT to draw faster | ALT를 누른 채 그리면 더 빠르다 | with ALT held down, if you draw, it is faster | |
+| hint.combine | Draw more runes inside of the same seal to combine them | 같은 마법진 안에 룬을 더 그리면 서로 합쳐진다 | inside the same magic circle, if you draw more runes, they merge with each other | 마법진 (magic circle) for "seal" |
+| hint.lift | Draw ink on things and press E to lift them | 물건에 잉크를 그리고 E를 누르면 들어 올린다 | on an object draw ink and press E, then it lifts up | |
+| hint.erase | Erasing returns the ink to your wand | 지운 잉크는 지팡이로 돌아간다 | erased ink returns to the wand | |
+| hint.body | Press R to paint runes on your own body | R을 누르면 내 몸에 룬을 그린다 | if you press R, you draw runes on my body | Korean says "my body" where English says "your own" |
+| hint.pose | Striking a pose can close a body seal and cast it | 포즈를 잡으면 몸의 마법진이 닫히고 발동한다 | if you take a pose, the body's magic circle closes and activates | |
+| hint.size | Bigger runes make stronger spells | 룬이 클수록 마법이 세다 | the bigger the rune, the stronger the magic | 세다 = strong, colloquial |
+| hint.touch | Lines count as one drawing only when they touch | 선은 서로 닿아 있을 때만 하나의 그림이다 | lines are one picture only when touching each other | |
+| hint.declare | The book can name a drawing that reads wrong | 잘못 읽힌 그림은 책이 이름을 정해 준다 | a wrongly read picture, the book decides a name for it | |
+| hint.trance | Fresh ink puts zombies in a trance | 갓 그린 잉크는 좀비를 멍하게 만든다 | just-drawn ink makes zombies dazed | 멍하게 = dazed, blank; kid level |
+| hint.wake | Throw a sleeping spell to wake it | 잠든 마법은 던지면 깨어난다 | sleeping magic, if thrown, wakes up | |
+| hint.ghost | The dead rise as ghosts. Fly home to your body and a friend can revive you | 죽으면 유령이 된다. 내 몸으로 날아가면 친구가 살려 줄 수 있다 | if you die you become a ghost. if you fly to my body, a friend can save you | |
+| hint.doors | Doors open when you walk into them | 문은 걸어가서 부딪히면 열린다 | doors, if you walk up and bump into them, open | |
+| paint.done | Done painting | 다 그렸다 | all drawn | |
+| paint.pose | Strike a pose | 포즈 잡기 | pose taking | |
+| paint.orbit | Orbit | 돌리기 | turning | |
+| hat.pillar | Pick your hat color | 모자 색 고르기 | hat color choosing | |
+| side.pillar | Change your side | 편 바꾸기 | side changing | 편 = the playground word for a team |
+| hat.done | Done | 완료 | complete | |
+| shape.back | Back to yourself | 내 모습으로 | to my own form | |
+| shape.turn | Turns you | 방향 돌리기 | direction turning | |
+| shape.save | Saves | 저장 | save | |
+| shape.recall | Recalls | 불러오기 | loading | 불러오기 = "load" in every Korean app |
 | menu.resume | Resume | 계속하기 | continuing | |
 | menu.restart | Restart run | 다시 시작 | again start | "run" dropped |
 | menu.options | Options | 설정 | settings | |
@@ -66,69 +66,69 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | opt.language | Language: {0} | 언어: {0} | language: {0} | |
 | opt.immersive.on | Immersive mode: ON | 몰입 모드: 켬 | immersion mode: on | |
 | opt.immersive.off | Immersive mode: OFF | 몰입 모드: 끔 | immersion mode: off | |
-| opt.immersive.hint | no HUD at all. for players who know the game | 화면 표시 없음. 게임을 아는 사람용 | screen display: none. for people who know the game | |
+| opt.immersive.hint | No HUD at all. For players who know the game | 화면 표시 없음. 게임을 아는 사람용 | screen display: none. for people who know the game | |
 | opt.mic | Microphone: {0} | 마이크: {0} | mic: {0} | |
-| opt.mic.default | default | 기본 | basic | the word Korean settings use for default |
+| opt.mic.default | Default | 기본 | basic | the word Korean settings use for default |
 | opt.mute | {0}: mute | {0}: 음소거 | {0}: mute | |
 | opt.unmute | {0}: unmute | {0}: 음소거 해제 | {0}: mute release | |
-| opt.nobody | nobody else here to mute | 아직 음소거할 사람이 없다 | there is nobody to mute yet | |
+| opt.nobody | Nobody else here to mute | 아직 음소거할 사람이 없다 | there is nobody to mute yet | |
 | menu.leave | Leave lobby | 로비 나가기 | lobby exiting | |
 | menu.delete | Delete lobby | 로비 지우기 | lobby erasing | |
 | menu.play | PLAY | 시작 | start | "play" as a verb sounds childish on a Korean menu, games use 시작 |
-| lobby.readycall | ready check. B yes, C no | 준비 확인. B는 예, C는 아니오 | readiness check. B is yes, C is no | |
+| lobby.readycall | Ready check. B yes, C no | 준비 확인. B는 예, C는 아니오 | readiness check. B is yes, C is no | |
 | lobby.ready.on | READY {0}/{1} | 준비 {0}/{1} | ready {0}/{1} | |
 | lobby.ready.off | READY {0}/{1}. B when ready | 준비 {0}/{1}. 준비되면 B | ready {0}/{1}. when ready, B | |
-| stand.title | the book stand | 책 받침대 | book support stand | |
-| stand.hostprivate | create private lobby (invite only) | 비공개 로비 만들기 (초대만) | private lobby making (invitation only) | |
+| stand.title | The book stand | 책 받침대 | book support stand | |
+| stand.hostprivate | Create private lobby (invite only) | 비공개 로비 만들기 (초대만) | private lobby making (invitation only) | |
 | stand.hostpublic | CREATE PUBLIC LOBBY | 공개 로비 만들기 | public lobby making | |
-| stand.pw | password (optional) | 비밀번호 (선택) | password (optional) | |
-| stand.code | entry code (optional) | 입장 코드 (선택) | entry code (optional) | |
-| stand.hint | walk away to close | 멀어지면 닫힌다 | if you get far away, it closes | |
-| stand.map | change map | 맵 바꾸기 | map changing | |
-| stand.share | acolytes at least {0}% | 사도 최소 {0}% | apostles, minimum {0}% | 사도 = apostle, disciple, the closest common word; 시종 (attendant) sounds like a servant |
-| stand.setcode | set code | 코드 정하기 | code deciding | |
-| stand.readycall | ready check | 준비 확인 | readiness check | |
-| stand.invite | invite friends | 친구 초대 | friend invite | |
+| stand.pw | Password (optional) | 비밀번호 (선택) | password (optional) | |
+| stand.code | Entry code (optional) | 입장 코드 (선택) | entry code (optional) | |
+| stand.hint | Walk away to close | 멀어지면 닫힌다 | if you get far away, it closes | |
+| stand.map | Change map | 맵 바꾸기 | map changing | |
+| stand.share | Acolytes at least {0}% | 사도 최소 {0}% | apostles, minimum {0}% | 사도 = apostle, disciple, the closest common word; 시종 (attendant) sounds like a servant |
+| stand.setcode | Set code | 코드 정하기 | code deciding | |
+| stand.readycall | Ready check | 준비 확인 | readiness check | |
+| stand.invite | Invite friends | 친구 초대 | friend invite | |
 | stand.start | START | 시작 | start | |
-| stand.waiting | waiting for ready | 준비 기다리는 중 | ready, waiting in progress | |
-| stand.delete | delete lobby | 로비 지우기 | lobby erasing | |
-| stand.kick | kick | 내보내기 | sending out | |
-| stand.ban | ban | 차단 | block | |
-| stand.banned | banned: {0} | 차단됨: {0} | blocked: {0} | |
-| stand.unban | unban | 차단 풀기 | block undoing | |
-| stand.name | lobby name | 로비 이름 | lobby name | |
-| stand.size | size {0} | 인원 {0} | headcount {0} | |
-| stand.region | region: {0} | 지역: {0} | region: {0} | |
+| stand.waiting | Waiting for ready | 준비 기다리는 중 | ready, waiting in progress | |
+| stand.delete | Delete lobby | 로비 지우기 | lobby erasing | |
+| stand.kick | Kick | 내보내기 | sending out | |
+| stand.ban | Ban | 차단 | block | |
+| stand.banned | Banned: {0} | 차단됨: {0} | blocked: {0} | |
+| stand.unban | Unban | 차단 풀기 | block undoing | |
+| stand.name | Lobby name | 로비 이름 | lobby name | |
+| stand.size | Size {0} | 인원 {0} | headcount {0} | |
+| stand.region | Region: {0} | 지역: {0} | region: {0} | |
 | stand.tab.host | HOST | 만들기 | making | |
 | stand.tab.join | JOIN | 참가 | participate | |
 | stand.settings | Settings | 설정 | settings | |
 | stand.regions | Regions | 지역 | regions | |
 | stand.langs | Languages | 언어 | languages | |
 | stand.behaviors | Behaviors | 분위기 | atmosphere | the tags under it are moods |
-| stand.duration | time {0} min | 시간 {0}분 | time {0} minutes | |
-| stand.setpw | set password | 비밀번호 정하기 | password deciding | |
+| stand.duration | Time {0} min | 시간 {0}분 | time {0} minutes | |
+| stand.setpw | Set password | 비밀번호 정하기 | password deciding | |
 | stand.hosting | HOSTING your lobby | 내 로비를 열고 있다 | I am holding my lobby open | |
 | stand.players | Players | 플레이어 | players | |
-| filter.all | all | 전체 | whole | |
-| browse.refresh | refresh | 새로고침 | refresh | |
+| filter.all | All | 전체 | whole | |
+| browse.refresh | Refresh | 새로고침 | refresh | |
 | browse.join | JOIN | 참가 | participate | |
-| browse.locked | (password) | (비밀번호) | (password) | |
-| browse.none | no lobbies found. host one! | 로비가 없다. 직접 만들자! | there is no lobby. let's make one ourselves! | |
-| browse.needpw | this lobby wants a password | 이 로비는 비밀번호가 필요하다 | this lobby needs a password | |
-| browse.cancel | cancel | 취소 | cancel | |
-| region. | any region | 모든 지역 | all regions | |
+| browse.locked | (Password) | (비밀번호) | (password) | |
+| browse.none | No lobbies found. Host one! | 로비가 없다. 직접 만들자! | there is no lobby. let's make one ourselves! | |
+| browse.needpw | This lobby wants a password | 이 로비는 비밀번호가 필요하다 | this lobby needs a password | |
+| browse.cancel | Cancel | 취소 | cancel | |
+| region. | Any region | 모든 지역 | all regions | |
 | region.eu | Europe | 유럽 | Europe | |
 | region.na | North America | 북아메리카 | North America | |
 | region.sa | South America | 남아메리카 | South America | |
 | region.asia | Asia | 아시아 | Asia | |
 | region.oce | Oceania | 오세아니아 | Oceania | |
 | region.mea | Middle East & Africa | 중동과 아프리카 | Middle East and Africa | |
-| tag.welcome | everyone welcome | 누구나 환영 | anyone welcome | |
-| tag.beginners | beginners welcome | 초보 환영 | beginners welcome | the phrase Korean lobbies use |
-| tag.casual | casual fun | 가볍게 | lightly | |
-| tag.tryhard | try hards | 진지하게 | seriously | |
-| tag.mic | mic on | 마이크 켬 | mic on | |
-| tag.quiet | quiet ok | 조용해도 괜찮음 | even quiet is okay | |
+| tag.welcome | Everyone welcome | 누구나 환영 | anyone welcome | |
+| tag.beginners | Beginners welcome | 초보 환영 | beginners welcome | the phrase Korean lobbies use |
+| tag.casual | Casual fun | 가볍게 | lightly | |
+| tag.tryhard | Try hards | 진지하게 | seriously | |
+| tag.mic | Mic on | 마이크 켬 | mic on | |
+| tag.quiet | Quiet ok | 조용해도 괜찮음 | even quiet is okay | |
 | opt.mic.title | Microphone | 마이크 | mic |  |
 | opt.mic.open | Open mic | 항상 켬 | always on |  |
 | opt.mic.ptt | Hold V | V 눌러 말하기 | press V to talk | V is a physical key, kept |
@@ -157,16 +157,16 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | opt.on | On | 켬 | on |  |
 | opt.music | Music: {0}% | 음악: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | 효과음: {0}% | sound effects: {0}% |  |
-| seal.norune | no rune here to seal. aim at one of your runes | 여기엔 마법진으로 감쌀 룬이 없다. 네 룬을 노려 봐 | here there is no rune to wrap in a magic circle. try aiming at your rune | 마법진 (magic circle) for "seal", as in the hints |
-| seal.noink | not enough ink for the seal | 마법진을 그릴 잉크가 모자란다 | ink to draw the magic circle falls short |  |
-| rune.noink | not enough ink to finish the rune | 룬을 다 그릴 잉크가 모자란다 | ink to draw the rune to the end falls short |  |
+| seal.norune | No rune here to seal. Aim at one of your runes | 여기엔 마법진으로 감쌀 룬이 없다. 네 룬을 노려 봐 | here there is no rune to wrap in a magic circle. try aiming at your rune | 마법진 (magic circle) for "seal", as in the hints |
+| seal.noink | Not enough ink for the seal | 마법진을 그릴 잉크가 모자란다 | ink to draw the magic circle falls short |  |
+| rune.noink | Not enough ink to finish the rune | 룬을 다 그릴 잉크가 모자란다 | ink to draw the rune to the end falls short |  |
 | round.safe | THE LOBBY IS SAFE GROUND | 로비는 안전지대 | lobby is safe zone |  |
 | round.versus | WIZARDS vs ACOLYTES | 마법사 대 사도 | wizard versus acolyte | 사도 = acolyte, as in the rest of the file |
 | round.wizards | WIZARDS WIN | 마법사 승리 | wizard victory |  |
 | round.acolytes | ACOLYTES WIN | 사도 승리 | acolyte victory |  |
-| round.home | {0}. back to the lobby in {1} | {0}. {1}초 뒤 로비로 | {0}. after {1} seconds to lobby | 초 (seconds) added, Korean needs the unit |
-| round.pot |  · pot {0}% |  · 가마솥 {0}% | cauldron {0}% |  |
-| round.green |  · the pot is GREEN |  · 가마솥이 초록이다 | cauldron is green |  |
+| round.home | {0}. Back to the lobby in {1} | {0}. {1}초 뒤 로비로 | {0}. after {1} seconds to lobby | 초 (seconds) added, Korean needs the unit |
+| round.pot |  · Pot {0}% |  · 가마솥 {0}% | cauldron {0}% |  |
+| round.green |  · The pot is GREEN |  · 가마솥이 초록이다 | cauldron is green |  |
 | gate.accepts | THE GATE ACCEPTS | 문이 받아들였다 | gate accepted |  |
 | net.hostleft | THE HOST LEFT | 호스트가 나갔다 | host went out |  |
 | net.hosting | ● HOSTING, {0} player(s) | ● 호스트 중, {0}명 | hosting, {0} people | 명 counts players |
@@ -175,26 +175,26 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | net.maplikes | MAP: {0} · ♥{1} | 맵: {0} · ♥{1} | map: {0} · ♥{1} |  |
 | steam.offline | Steam not running, offline & LAN only | Steam이 꺼져 있다. 오프라인과 LAN만 | Steam is off. offline and LAN only |  |
 | steam.ready | Steam ready: {0} | Steam 준비됨: {0} | Steam readied: {0} | {0} is the Steam name |
-| steam.leavefirst | leave your lobby first | 먼저 네 로비에서 나가 | first from your lobby leave |  |
-| steam.ping | your ping to that host is {0}ms, lobby allows {1} | 그 호스트까지 핑 {0}ms, 로비 허용치 {1} | to that host ping {0}ms, lobby allowance {1} |  |
-| steam.joining | joining… | 들어가는 중… | entering… |  |
-| steam.deleted | lobby deleted | 로비 삭제됨 | lobby deleted |  |
+| steam.leavefirst | Leave your lobby first | 먼저 네 로비에서 나가 | first from your lobby leave |  |
+| steam.ping | Your ping to that host is {0}ms, lobby allows {1} | 그 호스트까지 핑 {0}ms, 로비 허용치 {1} | to that host ping {0}ms, lobby allowance {1} |  |
+| steam.joining | Joining… | 들어가는 중… | entering… |  |
+| steam.deleted | Lobby deleted | 로비 삭제됨 | lobby deleted |  |
 | steam.notrunning | Steam not running | Steam이 꺼져 있다 | Steam is off |  |
-| steam.creating | creating lobby… | 로비 만드는 중… | lobby making… |  |
-| steam.failed | lobby failed: {0} | 로비 실패: {0} | lobby failure: {0} | {0} is a Steam error code |
-| steam.noenter | couldn't enter the lobby | 로비에 못 들어갔다 | into lobby could not enter |  |
-| steam.nohost | lobby has no host, try again | 로비에 호스트가 없다. 다시 해 봐 | in lobby there is no host. try again |  |
-| steam.connecting | joined, connecting… | 들어왔다. 연결 중… | came in. connecting… |  |
+| steam.creating | Creating lobby… | 로비 만드는 중… | lobby making… |  |
+| steam.failed | Lobby failed: {0} | 로비 실패: {0} | lobby failure: {0} | {0} is a Steam error code |
+| steam.noenter | Couldn't enter the lobby | 로비에 못 들어갔다 | into lobby could not enter |  |
+| steam.nohost | Lobby has no host, try again | 로비에 호스트가 없다. 다시 해 봐 | in lobby there is no host. try again |  |
+| steam.connecting | Joined, connecting… | 들어왔다. 연결 중… | came in. connecting… |  |
 | steam.private | PRIVATE LOBBY, invite friends | 비공개 로비, 친구를 불러 | private lobby, call friends |  |
 | steam.public | PUBLIC LOBBY, listed | 공개 로비, 목록에 올렸다 | public lobby, put on list |  |
-| menu.tagline | draw fast. die funny. | 빨리 그려. 웃기게 죽어. | fast draw. funnily die. | blunt imperatives, the game's voice |
+| menu.tagline | Draw fast. Die funny. | 빨리 그려. 웃기게 죽어. | fast draw. funnily die. | blunt imperatives, the game's voice |
 | menu.close | Close | 닫기 | closing | noun form, the Korean button standard |
-| chip.pages | turn the pages | 페이지 넘기기 | page turning | the mouse wheel turns the grimoire pages |
-| round.potopens |  · pot opens in {0} |  · 가마솥 {0}초 뒤 열림 | cauldron opens after {0} seconds | seconds; banner word while the pot brews / while the ink hops to the next pot |
-| round.inkflight |  · ink in flight {0} |  · 잉크 비행 중 {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| chip.pages | Turn the pages | 페이지 넘기기 | page turning | the mouse wheel turns the grimoire pages |
+| round.potopens |  · Pot opens in {0} |  · 가마솥 {0}초 뒤 열림 | cauldron opens after {0} seconds | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · Ink in flight {0} |  · 잉크 비행 중 {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
 | opt.uiscale | UI size: {0}% | UI 크기: {0}% | UI size: {0}% | options, game tab: the slider that scales every panel and chip |
-| stand.nocap | no cap | 제한 없음 | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
-| stand.heavy | your connection carries everyone | 모두의 연결을 당신이 감당합니다 | you carry everyone's connection | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| stand.nocap | No cap | 제한 없음 | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | Your connection carries everyone | 모두의 연결을 당신이 감당합니다 | you carry everyone's connection | book stand, under the size row past 32 players: the host's upload carries the lobby |
 | menu.quit.game | Quit the game? | 게임을 종료할까? | shall I quit the game? | the Quit check on the main menu: Quit closes the game |
 | menu.quit.lobby | Back to the main menu? | 메인 메뉴로 돌아갈까? | shall I go back to the main menu? | the Quit check in the lobby: Quit goes to the main menu |
 | menu.quit.match | Leave the match for an empty lobby? | 매치에서 나가서 텅 빈 내 로비로 갈까? | from the match go out and, to my totally empty lobby, shall I go? | the Quit check on a map: Quit leaves the match for your own empty lobby |
@@ -361,10 +361,14 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | 남긴 그림. 고르면 고칠 수 있고, +는 새 그림, X는 지우기 | left drawings. choosing lets you fix it, + is a new drawing, X is erasing | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | 읽힘: {0} | read: {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | 아직 못 읽어 | can't read yet | the pad's drawing matches no rune well enough |
+| ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | 그 로비는 더 새 버전이다. 게임을 끄고 Steam이 업데이트하게 해 | that lobby is a newer version. turn the game off and let Steam update it | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
+| ver.theirs | That lobby runs an older version. Its host has to update the game | 그 로비는 옛 버전이다. 호스트가 게임을 업데이트해야 한다 | that lobby is an old version. the host has to update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
+| ver.differs | That lobby runs a different version of the game | 그 로비는 게임 버전이 다르다 | that lobby's game version is different | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
+| wand.hosed | The pour is too strong. Step back to draw | 잉크가 너무 세게 쏟아진다. 조금 물러나야 그릴 수 있다 | the ink pours too hard. you have to step back a little to draw | a wizard standing right at the clean pot while it fills: the ink pours into the wand too hard to draw; shown behind a ! keycap |
 | menu.extras | Extras | 엑스트라 | extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
-| chip.release | release | 놓아주기 | letting it go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
-| chip.up | up | 올라가기 | going up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
-| chip.down | down | 내려가기 | going down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
+| chip.release | Release | 놓아주기 | letting it go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | Up | 올라가기 | going up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | Down | 내려가기 | going down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | 이 PC에서는 녹화가 안 됐어 | recording did not work on this PC | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | 녹화하기엔 디스크 공간이 모자라 | disk space is short for recording | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | 색 | color | section on a creature in the photo booth: its color sliders |

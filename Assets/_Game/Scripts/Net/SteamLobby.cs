@@ -190,6 +190,7 @@ namespace SpellyZombie
         {
             if (I == null) return;
             if (NetGame.Connected) { Status = Loc.T("steam.leavefirst"); return; }
+            if (!Fits(lobby)) return;
             if (SteamMatchmaking.GetLobbyData(lobby, "sz_pw") == "1"
                 && Hash(password ?? "") != SteamMatchmaking.GetLobbyData(lobby, "sz_pwh"))
             {
@@ -203,6 +204,15 @@ namespace SpellyZombie
             }
             Status = Loc.T("steam.joining");
             SteamMatchmaking.JoinLobby(lobby);
+        }
+
+        /// The version gate, for a lobby whose data Steam has handed over.
+        static bool Fits(CSteamID lobby)
+        {
+            int.TryParse(SteamMatchmaking.GetLobbyData(lobby, "sz_build"), out int build);
+            if (NetVersion.Admit(SteamMatchmaking.GetLobbyData(lobby, "sz_proto"), build)) return true;
+            Status = NetVersion.Notice;
+            return false;
         }
 
         static int EstimatePingTo(CSteamID lob)
@@ -296,6 +306,9 @@ namespace SpellyZombie
             _lobby = new CSteamID(r.m_ulSteamIDLobby);
             SteamMatchmaking.SetLobbyData(_lobby, "sz_game", "spellyzombie");
             SteamMatchmaking.SetLobbyData(_lobby, "sz_private", _isPrivate ? "1" : "0");
+            // the messages this host speaks (NetVersion): a joiner that speaks others stays out
+            SteamMatchmaking.SetLobbyData(_lobby, "sz_proto", NetVersion.Proto);
+            SteamMatchmaking.SetLobbyData(_lobby, "sz_build", NetVersion.Build.ToString());
             if (!_isPrivate)
             {
                 string lobbyName = string.IsNullOrEmpty(PendingName)
@@ -367,6 +380,13 @@ namespace SpellyZombie
                 return;
             }
             _lobby = new CSteamID(r.m_ulSteamIDLobby);
+            // an invite or the overlay's Join Game lands here without passing the list
+            if (!Fits(_lobby))
+            {
+                SteamMatchmaking.LeaveLobby(_lobby);
+                _lobby = default;
+                return;
+            }
             _hostAddress = SteamMatchmaking.GetLobbyData(_lobby, "sz_host");
             if (string.IsNullOrEmpty(_hostAddress))
             {

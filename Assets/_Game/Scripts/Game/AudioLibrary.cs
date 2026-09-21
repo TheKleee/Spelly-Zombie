@@ -35,9 +35,8 @@ namespace SpellyZombie
     }
 
     /// ★ HIS SOUNDS, one slot each (Assets/_Game/Sound/AudioLibrary, hooked from
-    /// the FX Library's Sounds slot). An empty slot keeps the synthesised
-    /// placeholder Juice had before. A spell sounds like its numbers: each axis
-    /// has an impact and an area loop per direction.
+    /// the FX Library's Sounds slot). An empty slot is silent. A spell sounds
+    /// like its numbers: each axis has an impact and an area loop per direction.
     public class AudioLibrary : ScriptableObject
     {
         public const int WorldCount = 26;

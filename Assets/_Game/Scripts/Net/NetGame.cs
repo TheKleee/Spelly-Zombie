@@ -65,6 +65,7 @@ namespace SpellyZombie
 
         void LateUpdate()
         {
+            RefreshNotice();
             bool sceneOk = HasManager
                 && !GameMenu.IsOpen && !PoseStudio.IsOpen
                 // the MAIN MENU has its own Create/Find Server buttons - this panel belongs to lobby + game
@@ -119,6 +120,30 @@ namespace SpellyZombie
                     BuildUI();
                 }
             }
+        }
+
+        // ---- the version notice: one line on top of the screen, in the menu and the lobby ----
+        RectTransform _uiNotice;
+        UnityEngine.UI.Text _noticeLabel;
+        string _noticeShown;
+
+        void RefreshNotice()
+        {
+            string text = NetVersion.Notice;
+            bool show = text.Length > 0 && (ActiveScene.Name == "Menu" || ActiveScene.Name == "Lobby");
+            if (_uiNotice == null)
+            {
+                if (!show) return;
+                _uiNotice = UIKit.Group(UIKit.Root, "VersionNotice");
+                UIKit.Place(_uiNotice, new Vector2(0.5f, 1f), new Vector2(0f, -10f), new Vector2(980f, 34f));
+                var back = UIKit.Panel(_uiNotice, null, new Color(0.05f, 0.06f, 0.09f, 0.86f));
+                UIKit.Stretch((RectTransform)back.transform);
+                _noticeLabel = UIKit.Label(_uiNotice, "", 17, new Color(1f, 0.78f, 0.4f), TextAnchor.MiddleCenter, true);
+                UIKit.Stretch((RectTransform)_noticeLabel.transform);
+                _noticeShown = null;
+            }
+            if (_uiNotice.gameObject.activeSelf != show) _uiNotice.gameObject.SetActive(show);
+            if (show && text != _noticeShown) { _noticeShown = text; _noticeLabel.text = text; }
         }
 
         void RefreshStatus(UnityEngine.UI.Text into)

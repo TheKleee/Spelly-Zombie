@@ -6,54 +6,54 @@ lobby.
 
 | key | English | translation | literal back-translation | notes |
 |---|---|---|---|---|
-| door.open | open the door | apri la porta | open the door | |
-| door.close | close the door | chiudi la porta | close the door | |
-| pickup.weapon | pick up the weapon | raccogli l'arma | pick up the weapon | |
-| pickup.full | hands full, drop one first | mani piene, posa qualcosa prima | hands full, put something down first | |
-| chest.try | try the mystery chest | prova il baule misterioso | try the mysterious trunk | baule = a big chest |
-| perk.drink | drink {0} | bevi {0} | drink {0} | |
+| door.open | Open the door | Apri la porta | open the door | |
+| door.close | Close the door | Chiudi la porta | close the door | |
+| pickup.weapon | Pick up the weapon | Raccogli l'arma | pick up the weapon | |
+| pickup.full | Hands full, drop one first | Mani piene, posa qualcosa prima | hands full, put something down first | |
+| chest.try | Try the mystery chest | Prova il baule misterioso | try the mysterious trunk | baule = a big chest |
+| perk.drink | Drink {0} | Bevi {0} | drink {0} | |
 | perk.brewed | {0} is already brewed | {0} è già pronto | {0} is already ready | "brewed" dropped |
-| grimoire.open | open the grimoire | apri il grimorio | open the grimoire | |
-| grimoire.close | close the grimoire | chiudi il grimorio | close the grimoire | |
-| chip.done | done | fatto | done | |
-| carry.down | put it down | posa | put down | |
-| scan.aim | scan it, become it | scansiona, diventa quello | scan, become that | |
-| absorb.aim | absorb it, learn its rune | assorbi, impara la sua runa | absorb, learn its rune | |
-| chest.open | open the chest | apri il baule | open the chest |  |
-| chip.grimoire | grimoire | grimorio | grimoire | |
-| chip.paint | paint your body | dipingi il tuo corpo | paint your body | |
-| chip.first | first person | prima persona | first person | |
-| chip.third | third person | terza persona | third person | |
-| chip.pose | pose your wizard | metti in posa il mago | put the wizard in a pose | |
-| chip.watch | watch your dead | guarda i tuoi morti | look at your dead | |
-| chip.become | become it again | diventa di nuovo quello | become that again | |
-| chip.melt | melt back to idle | torna normale | go back to normal | "melt" and "idle" dropped |
-| chip.precise | faster drawing | disegna più veloce | draw faster | |
-| chip.erase | erase ink | cancella l'inchiostro | erase the ink | |
-| chip.absorb | absorb it | assorbi | absorb | |
-| hint.alt | hold ALT to draw faster | tieni ALT per disegnare più veloce | hold ALT to draw faster | |
-| hint.combine | draw more runes inside of the same seal to combine them | disegna più rune dentro lo stesso sigillo per combinarle | draw more runes inside the same seal to combine them | |
-| hint.lift | draw ink on things and press E to lift them | disegna inchiostro sulle cose e premi E per sollevarle | draw ink on things and press E to lift them | |
-| hint.erase | erasing returns the ink to your wand | cancellare riporta l'inchiostro nella bacchetta | erasing brings the ink back into the wand | |
-| hint.body | press R to paint runes on your own body | premi R per dipingere rune sul tuo corpo | press R to paint runes on your body | |
-| hint.pose | striking a pose can close a body seal and cast it | una posa può chiudere un sigillo del corpo e lanciarlo | a pose can close a body seal and cast it | lanciare = cast a spell |
-| hint.size | bigger runes make stronger spells | rune più grandi fanno incantesimi più forti | bigger runes make stronger spells | |
-| hint.touch | lines count as one drawing only when they touch | le linee contano come un solo disegno solo se si toccano | the lines count as a single drawing only if they touch | |
-| hint.declare | the book can name a drawing that reads wrong | il libro può dare un nome a un disegno letto male | the book can give a name to a badly read drawing | |
-| hint.trance | fresh ink puts zombies in a trance | l'inchiostro fresco manda gli zombi in trance | fresh ink sends the zombies into a trance | |
-| hint.wake | throw a sleeping spell to wake it | lancia un incantesimo addormentato per svegliarlo | throw a sleeping spell to wake it | lanciare is both throw and cast |
-| hint.ghost | the dead rise as ghosts. fly home to your body and a friend can revive you | i morti tornano come fantasmi. vola fino al tuo corpo e un amico potrà rianimarti | the dead come back as ghosts. fly to your body and a friend will be able to revive you | |
-| hint.doors | doors open when you walk into them | le porte si aprono quando ci vai contro | the doors open when you go against them | |
-| paint.done | done painting | finito di dipingere | finished painting | |
-| paint.pose | strike a pose | mettiti in posa | put yourself in a pose | |
-| paint.orbit | orbit | ruota | rotate | |
-| hat.pillar | pick your hat color | scegli il colore del cappello | choose the hat's color | |
-| side.pillar | change your side | cambia squadra | change team | |
-| hat.done | done | fatto | done | |
-| shape.back | back to yourself | torna te stesso | become yourself again | |
-| shape.turn | turns you | ti gira | turns you | |
-| shape.save | saves | salva | saves | |
-| shape.recall | recalls | richiama | recalls | |
+| grimoire.open | Open the grimoire | Apri il grimorio | open the grimoire | |
+| grimoire.close | Close the grimoire | Chiudi il grimorio | close the grimoire | |
+| chip.done | Done | Fatto | done | |
+| carry.down | Put it down | Posa | put down | |
+| scan.aim | Scan it, become it | Scansiona, diventa quello | scan, become that | |
+| absorb.aim | Absorb it, learn its rune | Assorbi, impara la sua runa | absorb, learn its rune | |
+| chest.open | Open the chest | Apri il baule | open the chest |  |
+| chip.grimoire | Grimoire | Grimorio | grimoire | |
+| chip.paint | Paint your body | Dipingi il tuo corpo | paint your body | |
+| chip.first | First person | Prima persona | first person | |
+| chip.third | Third person | Terza persona | third person | |
+| chip.pose | Pose your wizard | Metti in posa il mago | put the wizard in a pose | |
+| chip.watch | Watch your dead | Guarda i tuoi morti | look at your dead | |
+| chip.become | Become it again | Diventa di nuovo quello | become that again | |
+| chip.melt | Melt back to idle | Torna normale | go back to normal | "melt" and "idle" dropped |
+| chip.precise | Faster drawing | Disegna più veloce | draw faster | |
+| chip.erase | Erase ink | Cancella l'inchiostro | erase the ink | |
+| chip.absorb | Absorb it | Assorbi | absorb | |
+| hint.alt | Hold ALT to draw faster | Tieni ALT per disegnare più veloce | hold ALT to draw faster | |
+| hint.combine | Draw more runes inside of the same seal to combine them | Disegna più rune dentro lo stesso sigillo per combinarle | draw more runes inside the same seal to combine them | |
+| hint.lift | Draw ink on things and press E to lift them | Disegna inchiostro sulle cose e premi E per sollevarle | draw ink on things and press E to lift them | |
+| hint.erase | Erasing returns the ink to your wand | Cancellare riporta l'inchiostro nella bacchetta | erasing brings the ink back into the wand | |
+| hint.body | Press R to paint runes on your own body | Premi R per dipingere rune sul tuo corpo | press R to paint runes on your body | |
+| hint.pose | Striking a pose can close a body seal and cast it | Una posa può chiudere un sigillo del corpo e lanciarlo | a pose can close a body seal and cast it | lanciare = cast a spell |
+| hint.size | Bigger runes make stronger spells | Rune più grandi fanno incantesimi più forti | bigger runes make stronger spells | |
+| hint.touch | Lines count as one drawing only when they touch | Le linee contano come un solo disegno solo se si toccano | the lines count as a single drawing only if they touch | |
+| hint.declare | The book can name a drawing that reads wrong | Il libro può dare un nome a un disegno letto male | the book can give a name to a badly read drawing | |
+| hint.trance | Fresh ink puts zombies in a trance | L'inchiostro fresco manda gli zombi in trance | fresh ink sends the zombies into a trance | |
+| hint.wake | Throw a sleeping spell to wake it | Lancia un incantesimo addormentato per svegliarlo | throw a sleeping spell to wake it | lanciare is both throw and cast |
+| hint.ghost | The dead rise as ghosts. Fly home to your body and a friend can revive you | I morti tornano come fantasmi. Vola fino al tuo corpo e un amico potrà rianimarti | the dead come back as ghosts. fly to your body and a friend will be able to revive you | |
+| hint.doors | Doors open when you walk into them | Le porte si aprono quando ci vai contro | the doors open when you go against them | |
+| paint.done | Done painting | Finito di dipingere | finished painting | |
+| paint.pose | Strike a pose | Mettiti in posa | put yourself in a pose | |
+| paint.orbit | Orbit | Ruota | rotate | |
+| hat.pillar | Pick your hat color | Scegli il colore del cappello | choose the hat's color | |
+| side.pillar | Change your side | Cambia squadra | change team | |
+| hat.done | Done | Fatto | done | |
+| shape.back | Back to yourself | Torna te stesso | become yourself again | |
+| shape.turn | Turns you | Ti gira | turns you | |
+| shape.save | Saves | Salva | saves | |
+| shape.recall | Recalls | Richiama | recalls | |
 | menu.resume | Resume | Continua | continue | |
 | menu.restart | Restart run | Ricomincia | begin again | "run" dropped |
 | menu.options | Options | Opzioni | options | |
@@ -66,69 +66,69 @@ lobby.
 | opt.language | Language: {0} | Lingua: {0} | language: {0} | |
 | opt.immersive.on | Immersive mode: ON | Modalità immersiva: SÌ | immersive mode: YES | |
 | opt.immersive.off | Immersive mode: OFF | Modalità immersiva: NO | immersive mode: NO | |
-| opt.immersive.hint | no HUD at all. for players who know the game | nessuna interfaccia. per chi conosce già il gioco | no interface. for whoever already knows the game | |
+| opt.immersive.hint | No HUD at all. For players who know the game | Nessuna interfaccia. Per chi conosce già il gioco | no interface. for whoever already knows the game | |
 | opt.mic | Microphone: {0} | Microfono: {0} | microphone: {0} | |
-| opt.mic.default | default | predefinito | predefined | |
+| opt.mic.default | Default | Predefinito | predefined | |
 | opt.mute | {0}: mute | {0}: silenzia | {0}: silence | |
 | opt.unmute | {0}: unmute | {0}: riattiva | {0}: reactivate | |
-| opt.nobody | nobody else here to mute | non c'è nessun altro da silenziare | there is nobody else to silence | |
+| opt.nobody | Nobody else here to mute | Non c'è nessun altro da silenziare | there is nobody else to silence | |
 | menu.leave | Leave lobby | Lascia la stanza | leave the room | |
 | menu.delete | Delete lobby | Elimina la stanza | delete the room | |
 | menu.play | PLAY | GIOCA | PLAY | |
-| lobby.readycall | ready check. B yes, C no | tutti pronti? B sì, C no | all ready? B yes, C no | |
+| lobby.readycall | Ready check. B yes, C no | Tutti pronti? B sì, C no | all ready? B yes, C no | |
 | lobby.ready.on | READY {0}/{1} | PRONTI {0}/{1} | READY {0}/{1} | plural |
-| lobby.ready.off | READY {0}/{1}. B when ready | PRONTI {0}/{1}. premi B quando sei pronto | READY {0}/{1}. press B when you are ready | |
-| stand.title | the book stand | il leggio | the lectern | |
-| stand.hostprivate | create private lobby (invite only) | crea stanza privata (solo su invito) | create private room (only by invitation) | |
+| lobby.ready.off | READY {0}/{1}. B when ready | PRONTI {0}/{1}. Premi B quando sei pronto | READY {0}/{1}. press B when you are ready | |
+| stand.title | The book stand | Il leggio | the lectern | |
+| stand.hostprivate | Create private lobby (invite only) | Crea stanza privata (solo su invito) | create private room (only by invitation) | |
 | stand.hostpublic | CREATE PUBLIC LOBBY | CREA STANZA PUBBLICA | CREATE PUBLIC ROOM | |
-| stand.pw | password (optional) | password (facoltativa) | password (optional) | |
-| stand.code | entry code (optional) | codice d'ingresso (facoltativo) | entry code (optional) | |
-| stand.hint | walk away to close | allontanati per chiudere | move away to close | |
-| stand.map | change map | cambia mappa | change map | |
-| stand.share | acolytes at least {0}% | accoliti almeno {0}% | acolytes at least {0}% | |
-| stand.setcode | set code | imposta codice | set code | |
-| stand.readycall | ready check | tutti pronti? | all ready? | |
-| stand.invite | invite friends | invita amici | invite friends | |
+| stand.pw | Password (optional) | Password (facoltativa) | password (optional) | |
+| stand.code | Entry code (optional) | Codice d'ingresso (facoltativo) | entry code (optional) | |
+| stand.hint | Walk away to close | Allontanati per chiudere | move away to close | |
+| stand.map | Change map | Cambia mappa | change map | |
+| stand.share | Acolytes at least {0}% | Accoliti almeno {0}% | acolytes at least {0}% | |
+| stand.setcode | Set code | Imposta codice | set code | |
+| stand.readycall | Ready check | Tutti pronti? | all ready? | |
+| stand.invite | Invite friends | Invita amici | invite friends | |
 | stand.start | START | VIA | GO | the Italian starting shout |
-| stand.waiting | waiting for ready | in attesa dei pronti | waiting for the readies | |
-| stand.delete | delete lobby | elimina la stanza | delete the room | |
-| stand.kick | kick | espelli | expel | |
-| stand.ban | ban | blocca | block | |
-| stand.banned | banned: {0} | bloccati: {0} | blocked: {0} | |
-| stand.unban | unban | sblocca | unblock | |
-| stand.name | lobby name | nome della stanza | name of the room | |
-| stand.size | size {0} | posti {0} | seats {0} | |
-| stand.region | region: {0} | regione: {0} | region: {0} | |
+| stand.waiting | Waiting for ready | In attesa dei pronti | waiting for the readies | |
+| stand.delete | Delete lobby | Elimina la stanza | delete the room | |
+| stand.kick | Kick | Espelli | expel | |
+| stand.ban | Ban | Blocca | block | |
+| stand.banned | Banned: {0} | Bloccati: {0} | blocked: {0} | |
+| stand.unban | Unban | Sblocca | unblock | |
+| stand.name | Lobby name | Nome della stanza | name of the room | |
+| stand.size | Size {0} | Posti {0} | seats {0} | |
+| stand.region | Region: {0} | Regione: {0} | region: {0} | |
 | stand.tab.host | HOST | CREA | CREATE | |
 | stand.tab.join | JOIN | ENTRA | ENTER | |
 | stand.settings | Settings | Impostazioni | settings | |
 | stand.regions | Regions | Regioni | regions | |
 | stand.langs | Languages | Lingue | languages | |
 | stand.behaviors | Behaviors | Atmosfera | atmosphere | the tags under it are moods |
-| stand.duration | time {0} min | tempo {0} min | time {0} min | |
-| stand.setpw | set password | imposta password | set password | |
+| stand.duration | Time {0} min | Tempo {0} min | time {0} min | |
+| stand.setpw | Set password | Imposta password | set password | |
 | stand.hosting | HOSTING your lobby | SEI tu a gestire la stanza | IT IS you who runs the room | |
 | stand.players | Players | Giocatori | players | |
-| filter.all | all | tutto | all | |
-| browse.refresh | refresh | aggiorna | update | |
+| filter.all | All | Tutto | all | |
+| browse.refresh | Refresh | Aggiorna | update | |
 | browse.join | JOIN | ENTRA | ENTER | |
-| browse.locked | (password) | (password) | (password) | |
-| browse.none | no lobbies found. host one! | nessuna stanza trovata. creane una! | no room found. create one! | |
-| browse.needpw | this lobby wants a password | questa stanza chiede una password | this room asks for a password | |
-| browse.cancel | cancel | annulla | cancel | |
-| region. | any region | qualsiasi regione | any region | |
+| browse.locked | (Password) | (Password) | (password) | |
+| browse.none | No lobbies found. Host one! | Nessuna stanza trovata. Creane una! | no room found. create one! | |
+| browse.needpw | This lobby wants a password | Questa stanza chiede una password | this room asks for a password | |
+| browse.cancel | Cancel | Annulla | cancel | |
+| region. | Any region | Qualsiasi regione | any region | |
 | region.eu | Europe | Europa | Europe | |
 | region.na | North America | Nord America | North America | |
 | region.sa | South America | Sud America | South America | |
 | region.asia | Asia | Asia | Asia | |
 | region.oce | Oceania | Oceania | Oceania | |
 | region.mea | Middle East & Africa | Medio Oriente e Africa | Middle East and Africa | |
-| tag.welcome | everyone welcome | tutti benvenuti | all welcome | |
-| tag.beginners | beginners welcome | principianti benvenuti | beginners welcome | |
-| tag.casual | casual fun | per divertirsi | to have fun | |
-| tag.tryhard | try hards | sul serio | for real | |
-| tag.mic | mic on | microfono acceso | microphone on | |
-| tag.quiet | quiet ok | va bene anche in silenzio | it is fine even in silence | |
+| tag.welcome | Everyone welcome | Tutti benvenuti | all welcome | |
+| tag.beginners | Beginners welcome | Principianti benvenuti | beginners welcome | |
+| tag.casual | Casual fun | Per divertirsi | to have fun | |
+| tag.tryhard | Try hards | Sul serio | for real | |
+| tag.mic | Mic on | Microfono acceso | microphone on | |
+| tag.quiet | Quiet ok | Va bene anche in silenzio | it is fine even in silence | |
 | opt.mic.title | Microphone | Microfono | microphone |  |
 | opt.mic.open | Open mic | Sempre aperto | always open |  |
 | opt.mic.ptt | Hold V | Tieni V | hold V | V is a physical key, kept |
@@ -157,16 +157,16 @@ lobby.
 | opt.on | On | Attivato | activated |  |
 | opt.music | Music: {0}% | Musica: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | Suoni: {0}% | sounds: {0}% |  |
-| seal.norune | no rune here to seal. aim at one of your runes | qui non c'è nessuna runa da sigillare. mira a una delle tue rune | here there is no rune to seal. aim at one of your runes |  |
-| seal.noink | not enough ink for the seal | non c'è abbastanza inchiostro per il sigillo | there is not enough ink for the seal |  |
-| rune.noink | not enough ink to finish the rune | non c'è abbastanza inchiostro per finire la runa | there is not enough ink to finish the rune |  |
+| seal.norune | No rune here to seal. Aim at one of your runes | Qui non c'è nessuna runa da sigillare. Mira a una delle tue rune | here there is no rune to seal. aim at one of your runes |  |
+| seal.noink | Not enough ink for the seal | Non c'è abbastanza inchiostro per il sigillo | there is not enough ink for the seal |  |
+| rune.noink | Not enough ink to finish the rune | Non c'è abbastanza inchiostro per finire la runa | there is not enough ink to finish the rune |  |
 | round.safe | THE LOBBY IS SAFE GROUND | LA STANZA È TERRENO SICURO | the room is safe ground | stanza = lobby, as in the rest of the file |
 | round.versus | WIZARDS vs ACOLYTES | MAGHI contro ACCOLITI | wizards against acolytes |  |
 | round.wizards | WIZARDS WIN | VINCONO I MAGHI | win the wizards | verb first, the Italian headline order |
 | round.acolytes | ACOLYTES WIN | VINCONO GLI ACCOLITI | win the acolytes |  |
-| round.home | {0}. back to the lobby in {1} | {0}. si torna nella stanza tra {1} | {0}. one returns into the room in {1} | {1} is seconds |
-| round.pot |  · pot {0}% |  · calderone {0}% | cauldron {0}% |  |
-| round.green |  · the pot is GREEN |  · il calderone è VERDE | the cauldron is GREEN |  |
+| round.home | {0}. Back to the lobby in {1} | {0}. Si torna nella stanza tra {1} | {0}. one returns into the room in {1} | {1} is seconds |
+| round.pot |  · Pot {0}% |  · Calderone {0}% | cauldron {0}% |  |
+| round.green |  · The pot is GREEN |  · Il calderone è VERDE | the cauldron is GREEN |  |
 | gate.accepts | THE GATE ACCEPTS | IL CANCELLO ACCETTA | the gate accepts |  |
 | net.hostleft | THE HOST LEFT | L'HOST SE N'È ANDATO | the host has gone away | host is the word Italian players use |
 | net.hosting | ● HOSTING, {0} player(s) | ● HOST, {0} giocatore/i | host, {0} player/s |  |
@@ -175,26 +175,26 @@ lobby.
 | net.maplikes | MAP: {0} · ♥{1} | MAPPA: {0} · ♥{1} | map: {0} · ♥{1} |  |
 | steam.offline | Steam not running, offline & LAN only | Steam non è aperto, solo offline e LAN | Steam not is open, only offline and LAN |  |
 | steam.ready | Steam ready: {0} | Steam pronto: {0} | Steam ready: {0} | {0} is the Steam name |
-| steam.leavefirst | leave your lobby first | prima esci dalla tua stanza | first exit from your room |  |
-| steam.ping | your ping to that host is {0}ms, lobby allows {1} | il tuo ping verso quell'host è {0} ms, la stanza permette {1} | your ping toward that host is {0} ms, the room allows {1} |  |
-| steam.joining | joining… | entro… | I enter… |  |
-| steam.deleted | lobby deleted | stanza eliminata | room deleted |  |
+| steam.leavefirst | Leave your lobby first | Prima esci dalla tua stanza | first exit from your room |  |
+| steam.ping | Your ping to that host is {0}ms, lobby allows {1} | Il tuo ping verso quell'host è {0} ms, la stanza permette {1} | your ping toward that host is {0} ms, the room allows {1} |  |
+| steam.joining | Joining… | Entro… | I enter… |  |
+| steam.deleted | Lobby deleted | Stanza eliminata | room deleted |  |
 | steam.notrunning | Steam not running | Steam non è aperto | Steam not is open |  |
-| steam.creating | creating lobby… | creo la stanza… | I create the room… |  |
-| steam.failed | lobby failed: {0} | stanza fallita: {0} | room failed: {0} | {0} is a Steam error code |
-| steam.noenter | couldn't enter the lobby | non si entra nella stanza | not one enters into the room |  |
-| steam.nohost | lobby has no host, try again | la stanza non ha host, riprova | the room not has host, retry |  |
-| steam.connecting | joined, connecting… | dentro, mi collego… | inside, I connect… |  |
+| steam.creating | Creating lobby… | Creo la stanza… | I create the room… |  |
+| steam.failed | Lobby failed: {0} | Stanza fallita: {0} | room failed: {0} | {0} is a Steam error code |
+| steam.noenter | Couldn't enter the lobby | Non si entra nella stanza | not one enters into the room |  |
+| steam.nohost | Lobby has no host, try again | La stanza non ha host, riprova | the room not has host, retry |  |
+| steam.connecting | Joined, connecting… | Dentro, mi collego… | inside, I connect… |  |
 | steam.private | PRIVATE LOBBY, invite friends | STANZA PRIVATA, invita gli amici | private room, invite the friends |  |
 | steam.public | PUBLIC LOBBY, listed | STANZA PUBBLICA, in lista | public room, in list |  |
-| menu.tagline | draw fast. die funny. | disegna in fretta. muori ridendo. | draw in a hurry. die laughing. | die funny becomes die laughing, the Italian idiom |
+| menu.tagline | Draw fast. Die funny. | Disegna in fretta. Muori ridendo. | draw in a hurry. die laughing. | die funny becomes die laughing, the Italian idiom |
 | menu.close | Close | Chiudi | close |  |
-| chip.pages | turn the pages | sfoglia le pagine | leaf through the pages | the mouse wheel turns the grimoire pages |
-| round.potopens |  · pot opens in {0} |  · il calderone si apre tra {0} | the cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
-| round.inkflight |  · ink in flight {0} |  · inchiostro in volo {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| chip.pages | Turn the pages | Sfoglia le pagine | leaf through the pages | the mouse wheel turns the grimoire pages |
+| round.potopens |  · Pot opens in {0} |  · Il calderone si apre tra {0} | the cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · Ink in flight {0} |  · Inchiostro in volo {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
 | opt.uiscale | UI size: {0}% | Dimensione interfaccia: {0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
-| stand.nocap | no cap | senza limite | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
-| stand.heavy | your connection carries everyone | la tua connessione regge tutti | your connection holds everyone up | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| stand.nocap | No cap | Senza limite | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | Your connection carries everyone | La tua connessione regge tutti | your connection holds everyone up | book stand, under the size row past 32 players: the host's upload carries the lobby |
 | menu.quit.game | Quit the game? | Uscire dal gioco? | exit from the game? | the Quit check on the main menu: Quit closes the game |
 | menu.quit.lobby | Back to the main menu? | Tornare al menu principale? | go back to the main menu? | the Quit check in the lobby: Quit goes to the main menu |
 | menu.quit.match | Leave the match for an empty lobby? | Lasciare la partita? Finisci in una stanza vuota. | leave the match? you end up in an empty room. | the Quit check on a map: Quit leaves the match for your own empty lobby |
@@ -361,10 +361,14 @@ lobby.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Disegni tenuti. Scegline uno per ritoccarlo, il più ne inizia uno nuovo, X ne toglie uno | drawings kept. choose-of-them one to retouch-it, the plus of-them starts one new, X of-them removes one | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | Si legge come {0} | is-read as {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Non ancora leggibile | not yet readable | the pad's drawing matches no rune well enough |
+| ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | Quella stanza usa una versione più nuova. Esci dal gioco e lascia che Steam aggiorni il tuo | that room uses a newer version. leave the game and let Steam update yours | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
+| ver.theirs | That lobby runs an older version. Its host has to update the game | Quella stanza usa una versione più vecchia. Il suo host deve aggiornare il gioco | that room uses an older version. its host must update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
+| ver.differs | That lobby runs a different version of the game | Quella stanza usa un'altra versione del gioco | that room uses another version of the game | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
+| wand.hosed | The pour is too strong. Step back to draw | Il getto d'inchiostro è troppo forte. Allontanati per disegnare | the ink jet is too strong. move away to draw | a wizard standing right at the clean pot while it fills: the ink pours into the wand too hard to draw; shown behind a ! keycap |
 | menu.extras | Extras | Extra | extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
-| chip.release | release | lascia andare | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
-| chip.up | up | sali | go up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
-| chip.down | down | scendi | go down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
+| chip.release | Release | Lascia andare | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | Up | Sali | go up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | Down | Scendi | go down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | La registrazione non ha funzionato su questo PC | the recording did not work on this PC | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | Non c'è abbastanza spazio libero su disco per registrare | there is not enough free space on disk to record | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | Colore | color | section on a creature in the photo booth: its color sliders |

@@ -1,6 +1,7 @@
 # Steam achievements
 
-Twenty-two achievements, wired in code on Sep 4 2026 (SZ_BEAT_BOSS on Sep 18).
+Twenty-three achievements, wired in code on Sep 4 2026 (SZ_BEAT_BOSS on Sep 18,
+SZ_WITH_FRIENDS on Sep 21).
 The game calls Steam by API name only; the names, descriptions and icons live
 on the Steamworks page. Nothing unlocks until you create them there under the
 real app id 5050950; a name Steam does not know logs one warning in the console.
@@ -38,6 +39,7 @@ has a language selector for the other eleven languages once the English is final
 | 20 | SZ_POISON_POT | Something in the brew | your side turned the pot green | SZ_POISON_POT.jpg | SZ_POISON_POT_locked.jpg |
 | 21 | SZ_CLEAN_POT | Scrubbed | your side cleaned a green pot | SZ_CLEAN_POT.jpg | SZ_CLEAN_POT_locked.jpg |
 | 22 | SZ_BEAT_BOSS | Timber | topple the Golem Lord with your team | SZ_BEAT_BOSS.jpg | SZ_BEAT_BOSS_locked.jpg |
+| 23 | SZ_WITH_FRIENDS | Same time tomorrow | finish a match with 3 or more Steam friends | SZ_WITH_FRIENDS.jpg | SZ_WITH_FRIENDS_locked.jpg |
 
 ## After the rows
 
@@ -55,6 +57,12 @@ pot) unlock for everyone on that side. Everything else is personal. The boss
 goes to everyone on the winning team, only on a map shipped with the game
 (`Spelly Zombie/Maps/Ship Maps With the Game`) and unchanged since shipping.
 
+Same time tomorrow unlocks when a match ends, by any ending, won or lost,
+while three or more of the other humans in it are on your Steam friends
+list. Whose friends they are is each player's own: the same match can unlock
+it for you and not for somebody else. A friend who left before the end does
+not count; bots and players without Steam never count.
+
 ## Where the hooks are
 
 - Endings: `RoundDirector.Win` (host) and the round state message on clients,
@@ -68,6 +76,9 @@ goes to everyone on the winning team, only on a map shipped with the game
   `SimpleFPSController.OnControllerColliderHit`.
 - Pot and golems: `Achievements.Tick`, polled from `RoundDirector.Update`.
   Golem snapshots now carry the owner so clients know their own golems.
+- A match with friends: first thing in `Achievements.MatchEnded`. The Steam
+  ids are the ones every player announces on joining (`NetSync.IdentityOf`);
+  the friends list is asked on your own machine (`SteamFriends.HasFriend`).
 
 Not in this set: kills. The world only remembers who finished a thing by its
 element id, and mapping that back to an enemy player on every machine needs

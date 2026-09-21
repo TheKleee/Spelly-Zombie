@@ -86,7 +86,7 @@ namespace SpellyZombie
                 hosed = Vector3.Distance(transform.position,
                     CauldronEconomy.Active.transform.position) <= DrawingConfig.PotCloseRadius;
                 if (hosed && HasWand)
-                    UIPrompt.Show("!", "the pour is too strong. step back to draw",
+                    UIPrompt.Show("!", Loc.T("wand.hosed"),
                         new Color(1f, 0.85f, 0.4f));
             }
 

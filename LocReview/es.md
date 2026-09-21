@@ -6,54 +6,54 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 
 | key | English | translation | literal back-translation | notes |
 |---|---|---|---|---|
-| door.open | open the door | abrir la puerta | open the door | |
-| door.close | close the door | cerrar la puerta | close the door | |
-| pickup.weapon | pick up the weapon | coger el arma | take the weapon | coger is normal in Spain; in Latin America it is vulgar, this file is Spain Spanish |
-| pickup.full | hands full, drop one first | manos llenas, suelta algo primero | hands full, let go of something first | |
-| chest.try | try the mystery chest | probar el cofre misterioso | try the mysterious chest | |
-| perk.drink | drink {0} | beber {0} | drink {0} | |
+| door.open | Open the door | Abrir la puerta | open the door | |
+| door.close | Close the door | Cerrar la puerta | close the door | |
+| pickup.weapon | Pick up the weapon | Coger el arma | take the weapon | coger is normal in Spain; in Latin America it is vulgar, this file is Spain Spanish |
+| pickup.full | Hands full, drop one first | Manos llenas, suelta algo primero | hands full, let go of something first | |
+| chest.try | Try the mystery chest | Probar el cofre misterioso | try the mysterious chest | |
+| perk.drink | Drink {0} | Beber {0} | drink {0} | |
 | perk.brewed | {0} is already brewed | {0} ya está preparado | {0} is already prepared | the potion word; "brewed" sounds like beer |
-| grimoire.open | open the grimoire | abrir el grimorio | open the grimoire | |
-| grimoire.close | close the grimoire | cerrar el grimorio | close the grimoire | |
-| chip.done | done | listo | ready | the everyday "done" |
-| carry.down | put it down | soltar | let go | |
-| scan.aim | scan it, become it | escanéalo, conviértete en eso | scan it, turn yourself into that | |
-| absorb.aim | absorb it, learn its rune | absórbelo, aprende su runa | absorb it, learn its rune | |
-| chest.open | open the chest | abrir el cofre | open the chest |  |
-| chip.grimoire | grimoire | grimorio | grimoire | |
-| chip.paint | paint your body | pintar tu cuerpo | paint your body | |
-| chip.first | first person | primera persona | first person | |
-| chip.third | third person | tercera persona | third person | |
-| chip.pose | pose your wizard | posar con tu mago | pose with your wizard | |
-| chip.watch | watch your dead | ver a tus muertos | watch your dead | |
-| chip.become | become it again | volver a ser eso | go back to being that | |
-| chip.melt | melt back to idle | volver a la normalidad | return to normality | "melt" and "idle" dropped |
-| chip.precise | faster drawing | dibujar más rápido | draw faster | |
-| chip.erase | erase ink | borrar tinta | erase ink | |
-| chip.absorb | absorb it | absorber | absorb | |
-| hint.alt | hold ALT to draw faster | mantén ALT para dibujar más rápido | hold ALT to draw faster | |
-| hint.combine | draw more runes inside of the same seal to combine them | dibuja más runas dentro del mismo sello para combinarlas | draw more runes inside the same seal to combine them | |
-| hint.lift | draw ink on things and press E to lift them | dibuja tinta sobre las cosas y pulsa E para levantarlas | draw ink on things and press E to lift them | |
-| hint.erase | erasing returns the ink to your wand | al borrar, la tinta vuelve a tu varita | when erasing, the ink returns to your wand | |
-| hint.body | press R to paint runes on your own body | pulsa R para pintar runas en tu propio cuerpo | press R to paint runes on your own body | |
-| hint.pose | striking a pose can close a body seal and cast it | una pose puede cerrar un sello del cuerpo y lanzarlo | a pose can close a body seal and cast it | lanzar = cast a spell, the Spanish game verb |
-| hint.size | bigger runes make stronger spells | las runas grandes hacen hechizos más fuertes | big runes make stronger spells | |
-| hint.touch | lines count as one drawing only when they touch | las líneas cuentan como un solo dibujo solo si se tocan | lines count as a single drawing only if they touch | |
-| hint.declare | the book can name a drawing that reads wrong | el libro puede ponerle nombre a un dibujo mal leído | the book can put a name on a badly read drawing | |
-| hint.trance | fresh ink puts zombies in a trance | la tinta fresca deja a los zombis en trance | fresh ink leaves zombies in a trance | |
-| hint.wake | throw a sleeping spell to wake it | lanza un hechizo dormido para despertarlo | throw a sleeping spell to wake it | lanzar means both throw and cast, the pun survives |
-| hint.ghost | the dead rise as ghosts. fly home to your body and a friend can revive you | los muertos vuelven como fantasmas. vuela hasta tu cuerpo y un amigo podrá revivirte | the dead come back as ghosts. fly to your body and a friend will be able to revive you | |
-| hint.doors | doors open when you walk into them | las puertas se abren cuando caminas contra ellas | doors open when you walk against them | |
-| paint.done | done painting | pintura lista | painting ready | |
-| paint.pose | strike a pose | haz una pose | make a pose | |
-| paint.orbit | orbit | girar | turn | |
-| hat.pillar | pick your hat color | elige el color del sombrero | choose the hat's color | |
-| side.pillar | change your side | cambiar de bando | change side | bando = side, faction |
-| hat.done | done | listo | ready | |
-| shape.back | back to yourself | volver a ser tú | go back to being you | |
-| shape.turn | turns you | te gira | turns you | |
-| shape.save | saves | guarda | saves | |
-| shape.recall | recalls | recupera | retrieves | |
+| grimoire.open | Open the grimoire | Abrir el grimorio | open the grimoire | |
+| grimoire.close | Close the grimoire | Cerrar el grimorio | close the grimoire | |
+| chip.done | Done | Listo | ready | the everyday "done" |
+| carry.down | Put it down | Soltar | let go | |
+| scan.aim | Scan it, become it | Escanéalo, conviértete en eso | scan it, turn yourself into that | |
+| absorb.aim | Absorb it, learn its rune | Absórbelo, aprende su runa | absorb it, learn its rune | |
+| chest.open | Open the chest | Abrir el cofre | open the chest |  |
+| chip.grimoire | Grimoire | Grimorio | grimoire | |
+| chip.paint | Paint your body | Pintar tu cuerpo | paint your body | |
+| chip.first | First person | Primera persona | first person | |
+| chip.third | Third person | Tercera persona | third person | |
+| chip.pose | Pose your wizard | Posar con tu mago | pose with your wizard | |
+| chip.watch | Watch your dead | Ver a tus muertos | watch your dead | |
+| chip.become | Become it again | Volver a ser eso | go back to being that | |
+| chip.melt | Melt back to idle | Volver a la normalidad | return to normality | "melt" and "idle" dropped |
+| chip.precise | Faster drawing | Dibujar más rápido | draw faster | |
+| chip.erase | Erase ink | Borrar tinta | erase ink | |
+| chip.absorb | Absorb it | Absorber | absorb | |
+| hint.alt | Hold ALT to draw faster | Mantén ALT para dibujar más rápido | hold ALT to draw faster | |
+| hint.combine | Draw more runes inside of the same seal to combine them | Dibuja más runas dentro del mismo sello para combinarlas | draw more runes inside the same seal to combine them | |
+| hint.lift | Draw ink on things and press E to lift them | Dibuja tinta sobre las cosas y pulsa E para levantarlas | draw ink on things and press E to lift them | |
+| hint.erase | Erasing returns the ink to your wand | Al borrar, la tinta vuelve a tu varita | when erasing, the ink returns to your wand | |
+| hint.body | Press R to paint runes on your own body | Pulsa R para pintar runas en tu propio cuerpo | press R to paint runes on your own body | |
+| hint.pose | Striking a pose can close a body seal and cast it | Una pose puede cerrar un sello del cuerpo y lanzarlo | a pose can close a body seal and cast it | lanzar = cast a spell, the Spanish game verb |
+| hint.size | Bigger runes make stronger spells | Las runas grandes hacen hechizos más fuertes | big runes make stronger spells | |
+| hint.touch | Lines count as one drawing only when they touch | Las líneas cuentan como un solo dibujo solo si se tocan | lines count as a single drawing only if they touch | |
+| hint.declare | The book can name a drawing that reads wrong | El libro puede ponerle nombre a un dibujo mal leído | the book can put a name on a badly read drawing | |
+| hint.trance | Fresh ink puts zombies in a trance | La tinta fresca deja a los zombis en trance | fresh ink leaves zombies in a trance | |
+| hint.wake | Throw a sleeping spell to wake it | Lanza un hechizo dormido para despertarlo | throw a sleeping spell to wake it | lanzar means both throw and cast, the pun survives |
+| hint.ghost | The dead rise as ghosts. Fly home to your body and a friend can revive you | Los muertos vuelven como fantasmas. Vuela hasta tu cuerpo y un amigo podrá revivirte | the dead come back as ghosts. fly to your body and a friend will be able to revive you | |
+| hint.doors | Doors open when you walk into them | Las puertas se abren cuando caminas contra ellas | doors open when you walk against them | |
+| paint.done | Done painting | Pintura lista | painting ready | |
+| paint.pose | Strike a pose | Haz una pose | make a pose | |
+| paint.orbit | Orbit | Girar | turn | |
+| hat.pillar | Pick your hat color | Elige el color del sombrero | choose the hat's color | |
+| side.pillar | Change your side | Cambiar de bando | change side | bando = side, faction |
+| hat.done | Done | Listo | ready | |
+| shape.back | Back to yourself | Volver a ser tú | go back to being you | |
+| shape.turn | Turns you | Te gira | turns you | |
+| shape.save | Saves | Guarda | saves | |
+| shape.recall | Recalls | Recupera | retrieves | |
 | menu.resume | Resume | Continuar | continue | |
 | menu.restart | Restart run | Reiniciar partida | restart match | partida = a game or match |
 | menu.options | Options | Opciones | options | |
@@ -66,69 +66,69 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | opt.language | Language: {0} | Idioma: {0} | language: {0} | |
 | opt.immersive.on | Immersive mode: ON | Modo inmersivo: SÍ | immersive mode: YES | Spanish menus say SÍ/NO rather than ON/OFF |
 | opt.immersive.off | Immersive mode: OFF | Modo inmersivo: NO | immersive mode: NO | |
-| opt.immersive.hint | no HUD at all. for players who know the game | sin ninguna interfaz. para quien ya conoce el juego | without any interface. for whoever already knows the game | |
+| opt.immersive.hint | No HUD at all. For players who know the game | Sin ninguna interfaz. Para quien ya conoce el juego | without any interface. for whoever already knows the game | |
 | opt.mic | Microphone: {0} | Micrófono: {0} | microphone: {0} | |
-| opt.mic.default | default | predeterminado | predetermined | the settings word for default |
+| opt.mic.default | Default | Predeterminado | predetermined | the settings word for default |
 | opt.mute | {0}: mute | {0}: silenciar | {0}: silence | |
 | opt.unmute | {0}: unmute | {0}: quitar silencio | {0}: remove silence | |
-| opt.nobody | nobody else here to mute | no hay nadie más a quien silenciar | there is nobody else to silence | |
+| opt.nobody | Nobody else here to mute | No hay nadie más a quien silenciar | there is nobody else to silence | |
 | menu.leave | Leave lobby | Salir de la sala | leave the room | sala = room, the Spanish lobby word |
 | menu.delete | Delete lobby | Borrar la sala | erase the room | |
 | menu.play | PLAY | JUGAR | play | |
-| lobby.readycall | ready check. B yes, C no | ¿listos? B sí, C no | ready? B yes, C no | |
+| lobby.readycall | Ready check. B yes, C no | ¿Listos? B sí, C no | ready? B yes, C no | |
 | lobby.ready.on | READY {0}/{1} | LISTOS {0}/{1} | READY {0}/{1} | plural, counts everyone |
-| lobby.ready.off | READY {0}/{1}. B when ready | LISTOS {0}/{1}. pulsa B cuando estés listo | READY {0}/{1}. press B when you are ready | masculine generic listo |
-| stand.title | the book stand | el atril | the lectern | |
-| stand.hostprivate | create private lobby (invite only) | crear sala privada (solo por invitación) | create private room (only by invitation) | |
+| lobby.ready.off | READY {0}/{1}. B when ready | LISTOS {0}/{1}. Pulsa B cuando estés listo | READY {0}/{1}. press B when you are ready | masculine generic listo |
+| stand.title | The book stand | El atril | the lectern | |
+| stand.hostprivate | Create private lobby (invite only) | Crear sala privada (solo por invitación) | create private room (only by invitation) | |
 | stand.hostpublic | CREATE PUBLIC LOBBY | CREAR SALA PÚBLICA | CREATE PUBLIC ROOM | |
-| stand.pw | password (optional) | contraseña (opcional) | password (optional) | |
-| stand.code | entry code (optional) | código de entrada (opcional) | entry code (optional) | |
-| stand.hint | walk away to close | aléjate para cerrar | move away to close | |
-| stand.map | change map | cambiar mapa | change map | |
-| stand.share | acolytes at least {0}% | acólitos al menos {0}% | acolytes at least {0}% | |
-| stand.setcode | set code | poner código | put code | |
-| stand.readycall | ready check | ¿listos? | ready? | |
-| stand.invite | invite friends | invitar amigos | invite friends | |
+| stand.pw | Password (optional) | Contraseña (opcional) | password (optional) | |
+| stand.code | Entry code (optional) | Código de entrada (opcional) | entry code (optional) | |
+| stand.hint | Walk away to close | Aléjate para cerrar | move away to close | |
+| stand.map | Change map | Cambiar mapa | change map | |
+| stand.share | Acolytes at least {0}% | Acólitos al menos {0}% | acolytes at least {0}% | |
+| stand.setcode | Set code | Poner código | put code | |
+| stand.readycall | Ready check | ¿Listos? | ready? | |
+| stand.invite | Invite friends | Invitar amigos | invite friends | |
 | stand.start | START | EMPEZAR | BEGIN | |
-| stand.waiting | waiting for ready | esperando a que estén listos | waiting for them to be ready | |
-| stand.delete | delete lobby | borrar la sala | erase the room | |
-| stand.kick | kick | expulsar | expel | |
-| stand.ban | ban | vetar | veto | the word Spanish communities use for ban |
-| stand.banned | banned: {0} | vetados: {0} | vetoed: {0} | |
-| stand.unban | unban | quitar veto | remove veto | |
-| stand.name | lobby name | nombre de la sala | name of the room | |
-| stand.size | size {0} | tamaño {0} | size {0} | |
-| stand.region | region: {0} | región: {0} | region: {0} | |
+| stand.waiting | Waiting for ready | Esperando a que estén listos | waiting for them to be ready | |
+| stand.delete | Delete lobby | Borrar la sala | erase the room | |
+| stand.kick | Kick | Expulsar | expel | |
+| stand.ban | Ban | Vetar | veto | the word Spanish communities use for ban |
+| stand.banned | Banned: {0} | Vetados: {0} | vetoed: {0} | |
+| stand.unban | Unban | Quitar veto | remove veto | |
+| stand.name | Lobby name | Nombre de la sala | name of the room | |
+| stand.size | Size {0} | Tamaño {0} | size {0} | |
+| stand.region | Region: {0} | Región: {0} | region: {0} | |
 | stand.tab.host | HOST | CREAR | CREATE | |
 | stand.tab.join | JOIN | UNIRSE | JOIN | |
 | stand.settings | Settings | Ajustes | settings | |
 | stand.regions | Regions | Regiones | regions | |
 | stand.langs | Languages | Idiomas | languages | |
 | stand.behaviors | Behaviors | Ambiente | atmosphere | the tags under it are moods |
-| stand.duration | time {0} min | tiempo {0} min | time {0} min | |
-| stand.setpw | set password | poner contraseña | put password | |
+| stand.duration | Time {0} min | Tiempo {0} min | time {0} min | |
+| stand.setpw | Set password | Poner contraseña | put password | |
 | stand.hosting | HOSTING your lobby | ESTÁS al mando de tu sala | YOU ARE in command of your room | |
 | stand.players | Players | Jugadores | players | |
-| filter.all | all | todo | all | |
-| browse.refresh | refresh | actualizar | update | |
+| filter.all | All | Todo | all | |
+| browse.refresh | Refresh | Actualizar | update | |
 | browse.join | JOIN | UNIRSE | JOIN | |
-| browse.locked | (password) | (contraseña) | (password) | |
-| browse.none | no lobbies found. host one! | no hay salas. ¡crea una! | there are no rooms. create one! | |
-| browse.needpw | this lobby wants a password | esta sala pide contraseña | this room asks for a password | |
-| browse.cancel | cancel | cancelar | cancel | |
-| region. | any region | cualquier región | any region | |
+| browse.locked | (Password) | (Contraseña) | (password) | |
+| browse.none | No lobbies found. Host one! | No hay salas. ¡Crea una! | there are no rooms. create one! | |
+| browse.needpw | This lobby wants a password | Esta sala pide contraseña | this room asks for a password | |
+| browse.cancel | Cancel | Cancelar | cancel | |
+| region. | Any region | Cualquier región | any region | |
 | region.eu | Europe | Europa | Europe | |
 | region.na | North America | Norteamérica | North America | |
 | region.sa | South America | Sudamérica | South America | |
 | region.asia | Asia | Asia | Asia | |
 | region.oce | Oceania | Oceanía | Oceania | |
 | region.mea | Middle East & Africa | Oriente Medio y África | Middle East and Africa | |
-| tag.welcome | everyone welcome | todos bienvenidos | all welcome | |
-| tag.beginners | beginners welcome | novatos bienvenidos | newbies welcome | |
-| tag.casual | casual fun | para pasar el rato | to pass the time | idiom swap, the Spanish way to say "just for fun" |
-| tag.tryhard | try hards | en serio | seriously | |
-| tag.mic | mic on | con micro | with mic | micro is the Spain short form |
-| tag.quiet | quiet ok | sin hablar también vale | without talking also works | vale = ok, very Spain |
+| tag.welcome | Everyone welcome | Todos bienvenidos | all welcome | |
+| tag.beginners | Beginners welcome | Novatos bienvenidos | newbies welcome | |
+| tag.casual | Casual fun | Para pasar el rato | to pass the time | idiom swap, the Spanish way to say "just for fun" |
+| tag.tryhard | Try hards | En serio | seriously | |
+| tag.mic | Mic on | Con micro | with mic | micro is the Spain short form |
+| tag.quiet | Quiet ok | Sin hablar también vale | without talking also works | vale = ok, very Spain |
 | opt.mic.title | Microphone | Micrófono | microphone |  |
 | opt.mic.open | Open mic | Siempre abierto | always open |  |
 | opt.mic.ptt | Hold V | Mantén V | hold V | V is a physical key, kept |
@@ -157,16 +157,16 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | opt.on | On | Activado | activated |  |
 | opt.music | Music: {0}% | Música: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | Sonidos: {0}% | sounds: {0}% |  |
-| seal.norune | no rune here to seal. aim at one of your runes | aquí no hay runa que sellar. apunta a una de tus runas | here there is no rune to seal. aim at one of your runes |  |
-| seal.noink | not enough ink for the seal | no hay tinta suficiente para el sello | there is not enough ink for the seal |  |
-| rune.noink | not enough ink to finish the rune | no hay tinta suficiente para terminar la runa | there is not enough ink to finish the rune |  |
+| seal.norune | No rune here to seal. Aim at one of your runes | Aquí no hay runa que sellar. Apunta a una de tus runas | here there is no rune to seal. aim at one of your runes |  |
+| seal.noink | Not enough ink for the seal | No hay tinta suficiente para el sello | there is not enough ink for the seal |  |
+| rune.noink | Not enough ink to finish the rune | No hay tinta suficiente para terminar la runa | there is not enough ink to finish the rune |  |
 | round.safe | THE LOBBY IS SAFE GROUND | LA SALA ES TERRENO SEGURO | the room is safe ground | sala = lobby, as in the rest of the file |
 | round.versus | WIZARDS vs ACOLYTES | MAGOS contra ACÓLITOS | wizards against acolytes |  |
 | round.wizards | WIZARDS WIN | GANAN LOS MAGOS | win the wizards | verb first, the Spanish headline order |
 | round.acolytes | ACOLYTES WIN | GANAN LOS ACÓLITOS | win the acolytes |  |
-| round.home | {0}. back to the lobby in {1} | {0}. vuelta a la sala en {1} | {0}. return to the room in {1} | {1} is seconds |
-| round.pot |  · pot {0}% |  · caldero {0}% | cauldron {0}% |  |
-| round.green |  · the pot is GREEN |  · el caldero está VERDE | the cauldron is GREEN |  |
+| round.home | {0}. Back to the lobby in {1} | {0}. Vuelta a la sala en {1} | {0}. return to the room in {1} | {1} is seconds |
+| round.pot |  · Pot {0}% |  · Caldero {0}% | cauldron {0}% |  |
+| round.green |  · The pot is GREEN |  · El caldero está VERDE | the cauldron is GREEN |  |
 | gate.accepts | THE GATE ACCEPTS | LA PUERTA ACEPTA | the gate accepts |  |
 | net.hostleft | THE HOST LEFT | EL ANFITRIÓN SE HA IDO | the host has gone | anfitrión = host |
 | net.hosting | ● HOSTING, {0} player(s) | ● ANFITRIÓN, {0} jugador(es) | host, {0} player(s) |  |
@@ -175,26 +175,26 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | net.maplikes | MAP: {0} · ♥{1} | MAPA: {0} · ♥{1} | map: {0} · ♥{1} |  |
 | steam.offline | Steam not running, offline & LAN only | Steam no está abierto, solo sin conexión y LAN | Steam not is open, only without connection and LAN |  |
 | steam.ready | Steam ready: {0} | Steam listo: {0} | Steam ready: {0} | {0} is the Steam name |
-| steam.leavefirst | leave your lobby first | sal primero de tu sala | leave first from your room |  |
-| steam.ping | your ping to that host is {0}ms, lobby allows {1} | tu ping con ese anfitrión es {0} ms, la sala permite {1} | your ping with that host is {0} ms, the room allows {1} |  |
-| steam.joining | joining… | entrando… | entering… |  |
-| steam.deleted | lobby deleted | sala borrada | room deleted |  |
+| steam.leavefirst | Leave your lobby first | Sal primero de tu sala | leave first from your room |  |
+| steam.ping | Your ping to that host is {0}ms, lobby allows {1} | Tu ping con ese anfitrión es {0} ms, la sala permite {1} | your ping with that host is {0} ms, the room allows {1} |  |
+| steam.joining | Joining… | Entrando… | entering… |  |
+| steam.deleted | Lobby deleted | Sala borrada | room deleted |  |
 | steam.notrunning | Steam not running | Steam no está abierto | Steam not is open |  |
-| steam.creating | creating lobby… | creando la sala… | creating the room… |  |
-| steam.failed | lobby failed: {0} | la sala ha fallado: {0} | the room has failed: {0} | {0} is a Steam error code |
-| steam.noenter | couldn't enter the lobby | no se pudo entrar en la sala | not could enter in the room |  |
-| steam.nohost | lobby has no host, try again | la sala no tiene anfitrión, prueba otra vez | the room not has host, try another time |  |
-| steam.connecting | joined, connecting… | dentro, conectando… | inside, connecting… |  |
+| steam.creating | Creating lobby… | Creando la sala… | creating the room… |  |
+| steam.failed | Lobby failed: {0} | La sala ha fallado: {0} | the room has failed: {0} | {0} is a Steam error code |
+| steam.noenter | Couldn't enter the lobby | No se pudo entrar en la sala | not could enter in the room |  |
+| steam.nohost | Lobby has no host, try again | La sala no tiene anfitrión, prueba otra vez | the room not has host, try another time |  |
+| steam.connecting | Joined, connecting… | Dentro, conectando… | inside, connecting… |  |
 | steam.private | PRIVATE LOBBY, invite friends | SALA PRIVADA, invita a tus amigos | private room, invite your friends |  |
 | steam.public | PUBLIC LOBBY, listed | SALA PÚBLICA, en la lista | public room, in the list |  |
-| menu.tagline | draw fast. die funny. | dibuja rápido. muere con gracia. | draw fast. die with grace. | con gracia = funnily, the natural Spanish |
+| menu.tagline | Draw fast. Die funny. | Dibuja rápido. Muere con gracia. | draw fast. die with grace. | con gracia = funnily, the natural Spanish |
 | menu.close | Close | Cerrar | close |  |
-| chip.pages | turn the pages | pasar páginas | turn pages | the mouse wheel turns the grimoire pages |
-| round.potopens |  · pot opens in {0} |  · el caldero abre en {0} | the cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
-| round.inkflight |  · ink in flight {0} |  · tinta en vuelo {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| chip.pages | Turn the pages | Pasar páginas | turn pages | the mouse wheel turns the grimoire pages |
+| round.potopens |  · Pot opens in {0} |  · El caldero abre en {0} | the cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · Ink in flight {0} |  · Tinta en vuelo {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
 | opt.uiscale | UI size: {0}% | Tamaño de la interfaz: {0}% | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
-| stand.nocap | no cap | sin límite | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
-| stand.heavy | your connection carries everyone | tu conexión carga con todos | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| stand.nocap | No cap | Sin límite | no limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | Your connection carries everyone | Tu conexión carga con todos | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |
 | menu.quit.game | Quit the game? | ¿Salir del juego? | leave the game? | the Quit check on the main menu: Quit closes the game |
 | menu.quit.lobby | Back to the main menu? | ¿Salir al menú principal? | exit to-the menu main? | the Quit check in the lobby: Quit goes to the main menu. Uses the red button's verb, so the red button reads as the yes |
 | menu.quit.match | Leave the match for an empty lobby? | ¿Dejar la partida? Acabas en una sala vacía. | leave the match? you end up in an empty room. | the Quit check on a map: Quit leaves the match for your own empty lobby |
@@ -361,10 +361,14 @@ ordenador-style vocabulary. Inverted ¿ ¡ as Spanish needs.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Dibujos guardados. Elige uno para retocarlo, el más empieza uno nuevo, X quita uno | drawings kept. choose one to retouch-it, the plus starts one new, X removes one | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | Se lee como {0} | is-read as {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Todavía no se lee | still not is-read | the pad's drawing matches no rune well enough |
+| ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | Esa sala usa una versión más nueva. Sal del juego y deja que Steam actualice el tuyo | that room uses a newer version. leave the game and let Steam update yours | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
+| ver.theirs | That lobby runs an older version. Its host has to update the game | Esa sala usa una versión más vieja. Su anfitrión tiene que actualizar el juego | that room uses an older version. its host has to update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
+| ver.differs | That lobby runs a different version of the game | Esa sala usa otra versión del juego | that room uses another version of the game | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
+| wand.hosed | The pour is too strong. Step back to draw | El chorro de tinta es demasiado fuerte. Aléjate para dibujar | the ink jet is too strong. move away to draw | a wizard standing right at the clean pot while it fills: the ink pours into the wand too hard to draw; shown behind a ! keycap |
 | menu.extras | Extras | Extras | extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
-| chip.release | release | soltar | to let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
-| chip.up | up | subir | to go up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
-| chip.down | down | bajar | to go down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
+| chip.release | Release | Soltar | to let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | Up | Subir | to go up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | Down | Bajar | to go down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | La grabación no funcionó en este PC | the recording did not work on this PC | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | No hay espacio libre suficiente en el disco para grabar | there is not enough free space on the disk to record | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | Color | color | section on a creature in the photo booth: its color sliders |

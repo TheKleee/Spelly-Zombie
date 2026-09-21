@@ -8,54 +8,54 @@ lines lose their emphasis on purpose.
 
 | key | English | translation | literal back-translation | notes |
 |---|---|---|---|---|
-| door.open | open the door | ドアを開ける | door, open | |
-| door.close | close the door | ドアを閉める | door, close | |
-| pickup.weapon | pick up the weapon | 武器を拾う | weapon, pick up | |
-| pickup.full | hands full, drop one first | 両手がふさがっている。先に何か置いて | both hands are occupied. first, put something (down) | 置いて = casual request form |
-| chest.try | try the mystery chest | なぞの宝箱をためす | the mystery treasure chest, try | なぞ in kana for kids |
-| perk.drink | drink {0} | {0}を飲む | {0}, drink | |
+| door.open | Open the door | ドアを開ける | door, open | |
+| door.close | Close the door | ドアを閉める | door, close | |
+| pickup.weapon | Pick up the weapon | 武器を拾う | weapon, pick up | |
+| pickup.full | Hands full, drop one first | 両手がふさがっている。先に何か置いて | both hands are occupied. first, put something (down) | 置いて = casual request form |
+| chest.try | Try the mystery chest | なぞの宝箱をためす | the mystery treasure chest, try | なぞ in kana for kids |
+| perk.drink | Drink {0} | {0}を飲む | {0}, drink | |
 | perk.brewed | {0} is already brewed | {0}はもう作ってある | {0} is already made and ready | 作ってある = made and sitting ready; "brewed" (醸造) sounds like beer |
-| grimoire.open | open the grimoire | グリモワールを開く | grimoire, open | グリモワール = katakana loan, the word Japanese games use |
-| grimoire.close | close the grimoire | グリモワールを閉じる | grimoire, close | |
-| chip.done | done | 完了 | complete | |
-| carry.down | put it down | 置く | put (down) | |
-| scan.aim | scan it, become it | スキャンして、それになる | scan, and become that | |
-| absorb.aim | absorb it, learn its rune | 吸収して、ルーンをおぼえる | absorb, and the rune, learn | おぼえる in kana |
-| chest.open | open the chest | 宝箱を開ける | treasure-chest open | 宝箱 is the storybook chest word |
-| chip.grimoire | grimoire | グリモワール | grimoire | |
-| chip.paint | paint your body | 体に描く | on the body, draw | 描く (draw with ink) not 塗る (paint with a brush) |
-| chip.first | first person | 一人称 | first person | |
-| chip.third | third person | 三人称 | third person | |
-| chip.pose | pose your wizard | ポーズをとる | take a pose | "your wizard" dropped, Japanese labels state the action only |
-| chip.watch | watch your dead | 死んだ仲間を見る | the dead companions, watch | |
-| chip.become | become it again | もう一度それになる | once more, become that | |
-| chip.melt | melt back to idle | 元にもどる | return to the original | "melt" and "idle" dropped; this is the plain phrase for going back to normal |
-| chip.precise | faster drawing | 速く描く | draw fast | |
-| chip.erase | erase ink | インクを消す | ink, erase | |
-| chip.absorb | absorb it | 吸収する | absorb | |
-| hint.alt | hold ALT to draw faster | ALTを押したまま描くと速い | ALT, while holding, if you draw, it is fast | |
-| hint.combine | draw more runes inside of the same seal to combine them | 同じ魔法陣の中にルーンを重ねて描くと組み合わさる | inside the same magic circle, if you draw runes stacked, they get combined | 魔法陣 (magic circle) for "seal", the JRPG word every player knows |
-| hint.lift | draw ink on things and press E to lift them | 物にインクを描いてEで持ち上げる | on things, draw ink, with E lift up | |
-| hint.erase | erasing returns the ink to your wand | 消したインクは杖にもどる | erased ink returns to the wand | |
-| hint.body | press R to paint runes on your own body | Rで自分の体にルーンを描く | with R, on your own body, draw runes | |
-| hint.pose | striking a pose can close a body seal and cast it | ポーズをとると体の魔法陣が閉じて発動する | when you take a pose, the body's magic circle closes and activates | 発動 = the standard game word for a spell going off |
-| hint.size | bigger runes make stronger spells | 大きいルーンほど強い魔法になる | the bigger the rune, the stronger the magic becomes | |
-| hint.touch | lines count as one drawing only when they touch | 線は触れ合っているときだけ一つの絵になる | lines, only when touching each other, become one picture | |
-| hint.declare | the book can name a drawing that reads wrong | 読みまちがえた絵は、本が名前をつけてくれる | a misread picture, the book gives a name (for you) | つけてくれる = does it as a favor, friendly tone |
-| hint.trance | fresh ink puts zombies in a trance | 描きたてのインクはゾンビをうっとりさせる | freshly drawn ink makes zombies spellbound | うっとり = dreamy, entranced; soft kid word, not 催眠 (hypnosis) |
-| hint.wake | throw a sleeping spell to wake it | 眠っている魔法は投げると目をさます | sleeping magic, if thrown, opens its eyes (wakes) | |
-| hint.ghost | the dead rise as ghosts. fly home to your body and a friend can revive you | 死ぬと幽霊になる。自分の体まで飛んでもどれば、仲間が生き返らせてくれる | when you die you become a ghost. if you fly back to your own body, a companion brings you back to life (for you) | |
-| hint.doors | doors open when you walk into them | ドアは歩いてぶつかると開く | doors, when you walk and bump (into them), open | |
-| paint.done | done painting | 描き終わり | drawing finished | |
-| paint.pose | strike a pose | ポーズをとる | take a pose | |
-| paint.orbit | orbit | まわす | turn it around | "orbit" has no casual Japanese word; まわす = spin it |
-| hat.pillar | pick your hat color | 帽子の色をえらぶ | the hat's color, choose | |
-| side.pillar | change your side | チームをかえる | team, change | 側 (side) reads unclear in Japanese, チーム is what players say |
-| hat.done | done | 完了 | complete | |
-| shape.back | back to yourself | 自分にもどる | to yourself, return | |
-| shape.turn | turns you | 向きをかえる | changes the facing | reads as a control label |
-| shape.save | saves | 保存 | save | |
-| shape.recall | recalls | よび出す | call out | よび出す = summon it out, kana spelling |
+| grimoire.open | Open the grimoire | グリモワールを開く | grimoire, open | グリモワール = katakana loan, the word Japanese games use |
+| grimoire.close | Close the grimoire | グリモワールを閉じる | grimoire, close | |
+| chip.done | Done | 完了 | complete | |
+| carry.down | Put it down | 置く | put (down) | |
+| scan.aim | Scan it, become it | スキャンして、それになる | scan, and become that | |
+| absorb.aim | Absorb it, learn its rune | 吸収して、ルーンをおぼえる | absorb, and the rune, learn | おぼえる in kana |
+| chest.open | Open the chest | 宝箱を開ける | treasure-chest open | 宝箱 is the storybook chest word |
+| chip.grimoire | Grimoire | グリモワール | grimoire | |
+| chip.paint | Paint your body | 体に描く | on the body, draw | 描く (draw with ink) not 塗る (paint with a brush) |
+| chip.first | First person | 一人称 | first person | |
+| chip.third | Third person | 三人称 | third person | |
+| chip.pose | Pose your wizard | ポーズをとる | take a pose | "your wizard" dropped, Japanese labels state the action only |
+| chip.watch | Watch your dead | 死んだ仲間を見る | the dead companions, watch | |
+| chip.become | Become it again | もう一度それになる | once more, become that | |
+| chip.melt | Melt back to idle | 元にもどる | return to the original | "melt" and "idle" dropped; this is the plain phrase for going back to normal |
+| chip.precise | Faster drawing | 速く描く | draw fast | |
+| chip.erase | Erase ink | インクを消す | ink, erase | |
+| chip.absorb | Absorb it | 吸収する | absorb | |
+| hint.alt | Hold ALT to draw faster | ALTを押したまま描くと速い | ALT, while holding, if you draw, it is fast | |
+| hint.combine | Draw more runes inside of the same seal to combine them | 同じ魔法陣の中にルーンを重ねて描くと組み合わさる | inside the same magic circle, if you draw runes stacked, they get combined | 魔法陣 (magic circle) for "seal", the JRPG word every player knows |
+| hint.lift | Draw ink on things and press E to lift them | 物にインクを描いてEで持ち上げる | on things, draw ink, with E lift up | |
+| hint.erase | Erasing returns the ink to your wand | 消したインクは杖にもどる | erased ink returns to the wand | |
+| hint.body | Press R to paint runes on your own body | Rで自分の体にルーンを描く | with R, on your own body, draw runes | |
+| hint.pose | Striking a pose can close a body seal and cast it | ポーズをとると体の魔法陣が閉じて発動する | when you take a pose, the body's magic circle closes and activates | 発動 = the standard game word for a spell going off |
+| hint.size | Bigger runes make stronger spells | 大きいルーンほど強い魔法になる | the bigger the rune, the stronger the magic becomes | |
+| hint.touch | Lines count as one drawing only when they touch | 線は触れ合っているときだけ一つの絵になる | lines, only when touching each other, become one picture | |
+| hint.declare | The book can name a drawing that reads wrong | 読みまちがえた絵は、本が名前をつけてくれる | a misread picture, the book gives a name (for you) | つけてくれる = does it as a favor, friendly tone |
+| hint.trance | Fresh ink puts zombies in a trance | 描きたてのインクはゾンビをうっとりさせる | freshly drawn ink makes zombies spellbound | うっとり = dreamy, entranced; soft kid word, not 催眠 (hypnosis) |
+| hint.wake | Throw a sleeping spell to wake it | 眠っている魔法は投げると目をさます | sleeping magic, if thrown, opens its eyes (wakes) | |
+| hint.ghost | The dead rise as ghosts. Fly home to your body and a friend can revive you | 死ぬと幽霊になる。自分の体まで飛んでもどれば、仲間が生き返らせてくれる | when you die you become a ghost. if you fly back to your own body, a companion brings you back to life (for you) | |
+| hint.doors | Doors open when you walk into them | ドアは歩いてぶつかると開く | doors, when you walk and bump (into them), open | |
+| paint.done | Done painting | 描き終わり | drawing finished | |
+| paint.pose | Strike a pose | ポーズをとる | take a pose | |
+| paint.orbit | Orbit | まわす | turn it around | "orbit" has no casual Japanese word; まわす = spin it |
+| hat.pillar | Pick your hat color | 帽子の色をえらぶ | the hat's color, choose | |
+| side.pillar | Change your side | チームをかえる | team, change | 側 (side) reads unclear in Japanese, チーム is what players say |
+| hat.done | Done | 完了 | complete | |
+| shape.back | Back to yourself | 自分にもどる | to yourself, return | |
+| shape.turn | Turns you | 向きをかえる | changes the facing | reads as a control label |
+| shape.save | Saves | 保存 | save | |
+| shape.recall | Recalls | よび出す | call out | よび出す = summon it out, kana spelling |
 | menu.resume | Resume | つづける | continue | |
 | menu.restart | Restart run | やり直す | do over | "run" dropped; やり直す is what Japanese games use for restart |
 | menu.options | Options | 設定 | settings | |
@@ -68,69 +68,69 @@ lines lose their emphasis on purpose.
 | opt.language | Language: {0} | 言語: {0} | language: {0} | |
 | opt.immersive.on | Immersive mode: ON | 没入モード: オン | immersion mode: on | オン/オフ in katakana, standard in Japanese menus |
 | opt.immersive.off | Immersive mode: OFF | 没入モード: オフ | immersion mode: off | |
-| opt.immersive.hint | no HUD at all. for players who know the game | 画面表示なし。ゲームを知っている人向け | screen display: none. for people who know the game | 画面表示 (on-screen display) instead of the English HUD |
+| opt.immersive.hint | No HUD at all. For players who know the game | 画面表示なし。ゲームを知っている人向け | screen display: none. for people who know the game | 画面表示 (on-screen display) instead of the English HUD |
 | opt.mic | Microphone: {0} | マイク: {0} | mic: {0} | |
-| opt.mic.default | default | 標準 | standard | |
+| opt.mic.default | Default | 標準 | standard | |
 | opt.mute | {0}: mute | {0}: ミュート | {0}: mute | ミュート katakana, every Japanese voice app uses it |
 | opt.unmute | {0}: unmute | {0}: ミュート解除 | {0}: mute release | |
-| opt.nobody | nobody else here to mute | ミュートする相手がまだいない | a partner to mute is not here yet | |
+| opt.nobody | Nobody else here to mute | ミュートする相手がまだいない | a partner to mute is not here yet | |
 | menu.leave | Leave lobby | ロビーを出る | lobby, exit | |
 | menu.delete | Delete lobby | ロビーを消す | lobby, erase | |
 | menu.play | PLAY | あそぶ | play | kana, kid level |
-| lobby.readycall | ready check. B yes, C no | 準備確認。BではいCでいいえ | readiness confirm. with B yes, with C no | |
+| lobby.readycall | Ready check. B yes, C no | 準備確認。BではいCでいいえ | readiness confirm. with B yes, with C no | |
 | lobby.ready.on | READY {0}/{1} | 準備OK {0}/{1} | ready OK {0}/{1} | 準備OK is the common Japanese lobby label |
 | lobby.ready.off | READY {0}/{1}. B when ready | 準備OK {0}/{1}。準備できたらB | ready OK {0}/{1}. when ready, B | |
-| stand.title | the book stand | 本の台 | the book's stand | |
-| stand.hostprivate | create private lobby (invite only) | プライベートロビーを作る（招待のみ） | private lobby, make (invitation only) | |
+| stand.title | The book stand | 本の台 | the book's stand | |
+| stand.hostprivate | Create private lobby (invite only) | プライベートロビーを作る（招待のみ） | private lobby, make (invitation only) | |
 | stand.hostpublic | CREATE PUBLIC LOBBY | 公開ロビーを作る | public lobby, make | |
-| stand.pw | password (optional) | パスワード（任意） | password (optional) | |
-| stand.code | entry code (optional) | 入室コード（任意） | room-entry code (optional) | |
-| stand.hint | walk away to close | 離れると閉じる | when you move away, it closes | |
-| stand.map | change map | マップをかえる | map, change | |
-| stand.share | acolytes at least {0}% | アコライトは最低{0}% | acolytes, at minimum {0}% | アコライト = transliteration of the game noun |
-| stand.setcode | set code | コードを決める | code, decide | |
-| stand.readycall | ready check | 準備確認 | readiness confirm | |
-| stand.invite | invite friends | フレンドを招待 | friends, invite | |
+| stand.pw | Password (optional) | パスワード（任意） | password (optional) | |
+| stand.code | Entry code (optional) | 入室コード（任意） | room-entry code (optional) | |
+| stand.hint | Walk away to close | 離れると閉じる | when you move away, it closes | |
+| stand.map | Change map | マップをかえる | map, change | |
+| stand.share | Acolytes at least {0}% | アコライトは最低{0}% | acolytes, at minimum {0}% | アコライト = transliteration of the game noun |
+| stand.setcode | Set code | コードを決める | code, decide | |
+| stand.readycall | Ready check | 準備確認 | readiness confirm | |
+| stand.invite | Invite friends | フレンドを招待 | friends, invite | |
 | stand.start | START | スタート | start | |
-| stand.waiting | waiting for ready | 準備待ち | readiness wait | |
-| stand.delete | delete lobby | ロビーを消す | lobby, erase | |
-| stand.kick | kick | 追い出す | drive out | |
-| stand.ban | ban | 出入り禁止 | entry forbidden | a real sign word kids know; gamer slang BAN also exists |
-| stand.banned | banned: {0} | 出入り禁止: {0} | entry forbidden: {0} | |
-| stand.unban | unban | 禁止をとく | the ban, undo | |
-| stand.name | lobby name | ロビー名 | lobby name | |
-| stand.size | size {0} | 人数 {0} | number of people {0} | |
-| stand.region | region: {0} | 地域: {0} | region: {0} | |
+| stand.waiting | Waiting for ready | 準備待ち | readiness wait | |
+| stand.delete | Delete lobby | ロビーを消す | lobby, erase | |
+| stand.kick | Kick | 追い出す | drive out | |
+| stand.ban | Ban | 出入り禁止 | entry forbidden | a real sign word kids know; gamer slang BAN also exists |
+| stand.banned | Banned: {0} | 出入り禁止: {0} | entry forbidden: {0} | |
+| stand.unban | Unban | 禁止をとく | the ban, undo | |
+| stand.name | Lobby name | ロビー名 | lobby name | |
+| stand.size | Size {0} | 人数 {0} | number of people {0} | |
+| stand.region | Region: {0} | 地域: {0} | region: {0} | |
 | stand.tab.host | HOST | 作る | make | "host" as a verb has no short Japanese word |
 | stand.tab.join | JOIN | 参加 | join | |
 | stand.settings | Settings | 設定 | settings | |
 | stand.regions | Regions | 地域 | regions | |
 | stand.langs | Languages | 言語 | languages | |
 | stand.behaviors | Behaviors | 雰囲気 | atmosphere | the tags under it are moods, so "mood" fits better than "behavior" |
-| stand.duration | time {0} min | 時間 {0}分 | time {0} minutes | |
-| stand.setpw | set password | パスワードを決める | password, decide | |
+| stand.duration | Time {0} min | 時間 {0}分 | time {0} minutes | |
+| stand.setpw | Set password | パスワードを決める | password, decide | |
 | stand.hosting | HOSTING your lobby | あなたのロビーを開いています | your lobby is being held open | polite ています, fine for a status line |
 | stand.players | Players | プレイヤー | players | |
-| filter.all | all | すべて | all | |
-| browse.refresh | refresh | 更新 | update | |
+| filter.all | All | すべて | all | |
+| browse.refresh | Refresh | 更新 | update | |
 | browse.join | JOIN | 参加 | join | |
-| browse.locked | (password) | （パスワード） | (password) | |
-| browse.none | no lobbies found. host one! | ロビーが見つからない。自分で作ろう！ | lobby not found. let's make one yourself! | |
-| browse.needpw | this lobby wants a password | このロビーにはパスワードがいる | this lobby needs a password | |
-| browse.cancel | cancel | キャンセル | cancel | |
-| region. | any region | すべての地域 | all regions | |
+| browse.locked | (Password) | （パスワード） | (password) | |
+| browse.none | No lobbies found. Host one! | ロビーが見つからない。自分で作ろう！ | lobby not found. let's make one yourself! | |
+| browse.needpw | This lobby wants a password | このロビーにはパスワードがいる | this lobby needs a password | |
+| browse.cancel | Cancel | キャンセル | cancel | |
+| region. | Any region | すべての地域 | all regions | |
 | region.eu | Europe | ヨーロッパ | Europe | |
 | region.na | North America | 北アメリカ | North America | |
 | region.sa | South America | 南アメリカ | South America | |
 | region.asia | Asia | アジア | Asia | |
 | region.oce | Oceania | オセアニア | Oceania | |
 | region.mea | Middle East & Africa | 中東・アフリカ | Middle East, Africa | the middle dot joins list items |
-| tag.welcome | everyone welcome | だれでも歓迎 | anyone welcome | |
-| tag.beginners | beginners welcome | 初心者歓迎 | beginners welcome | the exact phrase Japanese lobbies use |
-| tag.casual | casual fun | 気楽に | take it easy | |
-| tag.tryhard | try hards | ガチ勢 | the serious crowd | gamer slang for people who play for real, same joke as the English |
-| tag.mic | mic on | マイクあり | mic present | |
-| tag.quiet | quiet ok | 無言でもOK | even silent is OK | 無言 = "no talking", the lobby word for mute players |
+| tag.welcome | Everyone welcome | だれでも歓迎 | anyone welcome | |
+| tag.beginners | Beginners welcome | 初心者歓迎 | beginners welcome | the exact phrase Japanese lobbies use |
+| tag.casual | Casual fun | 気楽に | take it easy | |
+| tag.tryhard | Try hards | ガチ勢 | the serious crowd | gamer slang for people who play for real, same joke as the English |
+| tag.mic | Mic on | マイクあり | mic present | |
+| tag.quiet | Quiet ok | 無言でもOK | even silent is OK | 無言 = "no talking", the lobby word for mute players |
 | opt.mic.title | Microphone | マイク | mic |  |
 | opt.mic.open | Open mic | 常時オン | always on |  |
 | opt.mic.ptt | Hold V | Vで話す | talk with V | V is a physical key, kept |
@@ -159,16 +159,16 @@ lines lose their emphasis on purpose.
 | opt.on | On | オン | on |  |
 | opt.music | Music: {0}% | 音楽: {0}% | music: {0}% |  |
 | opt.sfx | Sounds: {0}% | 効果音: {0}% | sound effects: {0}% |  |
-| seal.norune | no rune here to seal. aim at one of your runes | ここに魔法陣で囲むルーンがない。自分のルーンをねらえ | here there is no rune to surround with a magic circle. aim at your own rune | 魔法陣 (magic circle) for "seal", as in the hints |
-| seal.noink | not enough ink for the seal | 魔法陣を描くインクが足りない | ink to draw the magic circle is lacking |  |
-| rune.noink | not enough ink to finish the rune | ルーンを描き終えるインクが足りない | ink to finish drawing the rune is lacking |  |
+| seal.norune | No rune here to seal. Aim at one of your runes | ここに魔法陣で囲むルーンがない。自分のルーンをねらえ | here there is no rune to surround with a magic circle. aim at your own rune | 魔法陣 (magic circle) for "seal", as in the hints |
+| seal.noink | Not enough ink for the seal | 魔法陣を描くインクが足りない | ink to draw the magic circle is lacking |  |
+| rune.noink | Not enough ink to finish the rune | ルーンを描き終えるインクが足りない | ink to finish drawing the rune is lacking |  |
 | round.safe | THE LOBBY IS SAFE GROUND | ロビーは安全地帯 | lobby is safe zone |  |
 | round.versus | WIZARDS vs ACOLYTES | 魔法使い 対 アコライト | wizard versus acolyte | 対 is the match word, as in sports |
 | round.wizards | WIZARDS WIN | 魔法使いの勝ち | wizards' win |  |
 | round.acolytes | ACOLYTES WIN | アコライトの勝ち | acolytes' win |  |
-| round.home | {0}. back to the lobby in {1} | {0}。あと{1}でロビーに戻る | {0}. in {1} more return to lobby | {1} is seconds |
-| round.pot |  · pot {0}% |  · 大釜 {0}% | cauldron {0}% | 大釜 = the big cauldron |
-| round.green |  · the pot is GREEN |  · 大釜が緑になった | cauldron has become green |  |
+| round.home | {0}. Back to the lobby in {1} | {0}。あと{1}でロビーに戻る | {0}. in {1} more return to lobby | {1} is seconds |
+| round.pot |  · Pot {0}% |  · 大釜 {0}% | cauldron {0}% | 大釜 = the big cauldron |
+| round.green |  · The pot is GREEN |  · 大釜が緑になった | cauldron has become green |  |
 | gate.accepts | THE GATE ACCEPTS | 門が受け入れた | gate accepted |  |
 | net.hostleft | THE HOST LEFT | ホストがいなくなった | host went away |  |
 | net.hosting | ● HOSTING, {0} player(s) | ● ホスト中、{0}人 | hosting, {0} people | 人 counts players |
@@ -177,26 +177,26 @@ lines lose their emphasis on purpose.
 | net.maplikes | MAP: {0} · ♥{1} | マップ: {0} · ♥{1} | map: {0} · ♥{1} |  |
 | steam.offline | Steam not running, offline & LAN only | Steamが起動していない。オフラインとLANだけ | Steam is not running. offline and LAN only |  |
 | steam.ready | Steam ready: {0} | Steam準備OK: {0} | Steam ready OK: {0} | {0} is the Steam name |
-| steam.leavefirst | leave your lobby first | 先に自分のロビーを出よう | first own lobby let's leave |  |
-| steam.ping | your ping to that host is {0}ms, lobby allows {1} | そのホストへのピングは{0}ms、ロビーの上限は{1} | ping to that host is {0}ms, lobby's limit is {1} |  |
-| steam.joining | joining… | 参加中… | joining… |  |
-| steam.deleted | lobby deleted | ロビーを消した | lobby erased |  |
+| steam.leavefirst | Leave your lobby first | 先に自分のロビーを出よう | first own lobby let's leave |  |
+| steam.ping | Your ping to that host is {0}ms, lobby allows {1} | そのホストへのピングは{0}ms、ロビーの上限は{1} | ping to that host is {0}ms, lobby's limit is {1} |  |
+| steam.joining | Joining… | 参加中… | joining… |  |
+| steam.deleted | Lobby deleted | ロビーを消した | lobby erased |  |
 | steam.notrunning | Steam not running | Steamが起動していない | Steam is not running |  |
-| steam.creating | creating lobby… | ロビーを作っている… | lobby is being made… |  |
-| steam.failed | lobby failed: {0} | ロビーを作れなかった: {0} | lobby could not be made: {0} | {0} is a Steam error code |
-| steam.noenter | couldn't enter the lobby | ロビーに入れなかった | could not enter lobby |  |
-| steam.nohost | lobby has no host, try again | ロビーにホストがいない。もう一回 | in lobby there is no host. once more |  |
-| steam.connecting | joined, connecting… | 入った。接続中… | entered. connecting… |  |
+| steam.creating | Creating lobby… | ロビーを作っている… | lobby is being made… |  |
+| steam.failed | Lobby failed: {0} | ロビーを作れなかった: {0} | lobby could not be made: {0} | {0} is a Steam error code |
+| steam.noenter | Couldn't enter the lobby | ロビーに入れなかった | could not enter lobby |  |
+| steam.nohost | Lobby has no host, try again | ロビーにホストがいない。もう一回 | in lobby there is no host. once more |  |
+| steam.connecting | Joined, connecting… | 入った。接続中… | entered. connecting… |  |
 | steam.private | PRIVATE LOBBY, invite friends | プライベートロビー、友だちを呼ぼう | private lobby, let's call friends | 友だち in kana, the kid word |
 | steam.public | PUBLIC LOBBY, listed | 公開ロビー、リストに載せた | public lobby, put on the list |  |
-| menu.tagline | draw fast. die funny. | 速く描け。楽しく死ね。 | draw fast. die enjoyably. | blunt imperatives, the game's voice |
+| menu.tagline | Draw fast. Die funny. | 速く描け。楽しく死ね。 | draw fast. die enjoyably. | blunt imperatives, the game's voice |
 | menu.close | Close | 閉じる | close |  |
-| chip.pages | turn the pages | ページをめくる | turn pages | the mouse wheel turns the grimoire pages |
-| round.potopens |  · pot opens in {0} |  · 大釜は{0}秒後に開く | cauldron opens after {0} seconds | seconds; banner word while the pot brews / while the ink hops to the next pot |
-| round.inkflight |  · ink in flight {0} |  · インクが飛行中 {0} | ink is in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| chip.pages | Turn the pages | ページをめくる | turn pages | the mouse wheel turns the grimoire pages |
+| round.potopens |  · Pot opens in {0} |  · 大釜は{0}秒後に開く | cauldron opens after {0} seconds | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · Ink in flight {0} |  · インクが飛行中 {0} | ink is in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
 | opt.uiscale | UI size: {0}% | UIサイズ: {0}% | UI size: {0}% | options, game tab: the slider that scales every panel and chip |
-| stand.nocap | no cap | 上限なし | no upper limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
-| stand.heavy | your connection carries everyone | 全員の通信をあなたが担います | you carry everyone's connection | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| stand.nocap | No cap | 上限なし | no upper limit | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | Your connection carries everyone | 全員の通信をあなたが担います | you carry everyone's connection | book stand, under the size row past 32 players: the host's upload carries the lobby |
 | menu.quit.game | Quit the game? | ゲームをやめる？ | quit the game? | the Quit check on the main menu: Quit closes the game |
 | menu.quit.lobby | Back to the main menu? | ここでやめて、メインメニューへ？ | here quit, and to the main menu? | the Quit check in the lobby: Quit goes to the main menu. Uses the red button's verb, so the red button reads as the yes |
 | menu.quit.match | Leave the match for an empty lobby? | マッチをやめて、からっぽのロビーへ？ | the match quit, and to the empty lobby? | the Quit check on a map: Quit leaves the match for your own empty lobby |
@@ -363,10 +363,14 @@ lines lose their emphasis on purpose.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | 残した絵。選ぶとその絵を直せる。＋で新しい絵、Xで消す | left drawings. choosing lets you fix that drawing. with + a new drawing, with X erase | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | 読みとり: {0} | reading: {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | まだ読みとれない | can't read yet | the pad's drawing matches no rune well enough |
+| ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | そのロビーは新しいバージョン。ゲームを終了してSteamで更新しよう | that lobby is a newer version. quit the game and update it on Steam | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
+| ver.theirs | That lobby runs an older version. Its host has to update the game | そのロビーは古いバージョン。ホストがゲームを更新しないと入れない | that lobby is an older version. unless the host updates the game you cannot get in | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
+| ver.differs | That lobby runs a different version of the game | そのロビーはゲームのバージョンが違う | that lobby's game version is different | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
+| wand.hosed | The pour is too strong. Step back to draw | インクの流れが強すぎる。少し離れれば描ける | the ink's flow is too strong. step away a little and you can draw | a wizard standing right at the clean pot while it fills: the ink pours into the wand too hard to draw; shown behind a ! keycap |
 | menu.extras | Extras | おまけ | bonus extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
-| chip.release | release | 放す | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
-| chip.up | up | 上へ | upward | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
-| chip.down | down | 下へ | downward | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
+| chip.release | Release | 放す | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | Up | 上へ | upward | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | Down | 下へ | downward | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | このPCでは録画できなかった | could not record on this PC | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | 録画するにはディスクの空きが足りない | not enough free disk to record | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | 色 | color | section on a creature in the photo booth: its color sliders |

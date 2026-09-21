@@ -7,54 +7,54 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 
 | key | English | translation | literal back-translation | notes |
 |---|---|---|---|---|
-| door.open | open the door | kapıyı aç | the door, open | |
-| door.close | close the door | kapıyı kapat | the door, close | |
-| pickup.weapon | pick up the weapon | silahı al | the weapon, take | |
-| pickup.full | hands full, drop one first | ellerin dolu, önce bir şey bırak | your hands are full, first drop something | |
-| chest.try | try the mystery chest | gizemli sandığı dene | the mysterious chest, try | |
-| perk.drink | drink {0} | {0} iç | {0} drink | |
+| door.open | Open the door | Kapıyı aç | the door, open | |
+| door.close | Close the door | Kapıyı kapat | the door, close | |
+| pickup.weapon | Pick up the weapon | Silahı al | the weapon, take | |
+| pickup.full | Hands full, drop one first | Ellerin dolu, önce bir şey bırak | your hands are full, first drop something | |
+| chest.try | Try the mystery chest | Gizemli sandığı dene | the mysterious chest, try | |
+| perk.drink | Drink {0} | {0} iç | {0} drink | |
 | perk.brewed | {0} is already brewed | {0} zaten hazır | {0} already ready | "brewed" dropped |
-| grimoire.open | open the grimoire | büyü kitabını aç | the spell book, open | büyü kitabı = spell book; "grimuar" is not a Turkish word |
-| grimoire.close | close the grimoire | büyü kitabını kapat | the spell book, close | |
-| chip.done | done | bitti | finished | |
-| carry.down | put it down | yere bırak | leave on the ground | |
-| scan.aim | scan it, become it | tara, ona dönüş | scan, turn into it | |
-| absorb.aim | absorb it, learn its rune | em, rünü öğren | absorb, learn the rune | em = absorb, suck in |
-| chest.open | open the chest | sandığı aç | the chest open |  |
-| chip.grimoire | grimoire | büyü kitabı | spell book | |
-| chip.paint | paint your body | bedenini boya | your body, paint | |
-| chip.first | first person | birinci şahıs | first person | |
-| chip.third | third person | üçüncü şahıs | third person | |
-| chip.pose | pose your wizard | poz ver | give a pose | "your wizard" dropped |
-| chip.watch | watch your dead | ölülerini izle | your dead, watch | |
-| chip.become | become it again | yine ona dönüş | again turn into it | |
-| chip.melt | melt back to idle | kendine dön | return to yourself | "melt" and "idle" dropped |
-| chip.precise | faster drawing | daha hızlı çiz | draw faster | |
-| chip.erase | erase ink | mürekkebi sil | the ink, erase | |
-| chip.absorb | absorb it | em | absorb | |
-| hint.alt | hold ALT to draw faster | daha hızlı çizmek için ALT tuşunu basılı tut | to draw faster, hold the ALT key pressed | |
-| hint.combine | draw more runes inside of the same seal to combine them | aynı mührün içine daha çok rün çiz, birleşirler | into the same seal draw more runes, they merge | |
-| hint.lift | draw ink on things and press E to lift them | eşyaların üstüne mürekkep çiz ve kaldırmak için E tuşuna bas | draw ink on top of objects and to lift press the E key | |
-| hint.erase | erasing returns the ink to your wand | silmek mürekkebi asana geri verir | erasing gives the ink back to your wand | asa = wand, staff |
-| hint.body | press R to paint runes on your own body | kendi bedenine rün çizmek için R tuşuna bas | to draw runes on your own body press the R key | |
-| hint.pose | striking a pose can close a body seal and cast it | bir poz, bedendeki mührü kapatıp büyüyü atabilir | a pose can close the seal on the body and throw the spell | büyü atmak = cast a spell, literally "throw magic" |
-| hint.size | bigger runes make stronger spells | büyük rünler daha güçlü büyü yapar | big runes make stronger magic | |
-| hint.touch | lines count as one drawing only when they touch | çizgiler ancak birbirine değerse tek çizim sayılır | lines only if touching each other count as one drawing | |
-| hint.declare | the book can name a drawing that reads wrong | yanlış okunan çizime kitap ad verebilir | to a wrongly read drawing the book can give a name | |
-| hint.trance | fresh ink puts zombies in a trance | taze mürekkep zombileri hipnotize eder | fresh ink hypnotizes zombies | "trans" is rare in Turkish, hipnotize is everyday |
-| hint.wake | throw a sleeping spell to wake it | uyuyan bir büyüyü fırlat, uyanır | throw a sleeping spell, it wakes | |
-| hint.ghost | the dead rise as ghosts. fly home to your body and a friend can revive you | ölüler hayalet olur. bedenine geri uç, bir arkadaşın seni diriltebilir | the dead become ghosts. fly back to your body, a friend of yours can revive you | |
-| hint.doors | doors open when you walk into them | kapılar, üstlerine yürüyünce açılır | doors, when you walk onto them, open | |
-| paint.done | done painting | boyama bitti | painting finished | |
-| paint.pose | strike a pose | poz ver | give a pose | |
-| paint.orbit | orbit | döndür | rotate | |
-| hat.pillar | pick your hat color | şapka rengini seç | the hat color, choose | |
-| side.pillar | change your side | taraf değiştir | side change | |
-| hat.done | done | bitti | finished | |
-| shape.back | back to yourself | kendine dön | return to yourself | |
-| shape.turn | turns you | seni döndürür | turns you | |
-| shape.save | saves | kaydeder | saves | |
-| shape.recall | recalls | geri çağırır | calls back | |
+| grimoire.open | Open the grimoire | Büyü kitabını aç | the spell book, open | büyü kitabı = spell book; "grimuar" is not a Turkish word |
+| grimoire.close | Close the grimoire | Büyü kitabını kapat | the spell book, close | |
+| chip.done | Done | Bitti | finished | |
+| carry.down | Put it down | Yere bırak | leave on the ground | |
+| scan.aim | Scan it, become it | Tara, ona dönüş | scan, turn into it | |
+| absorb.aim | Absorb it, learn its rune | Em, rünü öğren | absorb, learn the rune | em = absorb, suck in |
+| chest.open | Open the chest | Sandığı aç | the chest open |  |
+| chip.grimoire | Grimoire | Büyü kitabı | spell book | |
+| chip.paint | Paint your body | Bedenini boya | your body, paint | |
+| chip.first | First person | Birinci şahıs | first person | |
+| chip.third | Third person | Üçüncü şahıs | third person | |
+| chip.pose | Pose your wizard | Poz ver | give a pose | "your wizard" dropped |
+| chip.watch | Watch your dead | Ölülerini izle | your dead, watch | |
+| chip.become | Become it again | Yine ona dönüş | again turn into it | |
+| chip.melt | Melt back to idle | Kendine dön | return to yourself | "melt" and "idle" dropped |
+| chip.precise | Faster drawing | Daha hızlı çiz | draw faster | |
+| chip.erase | Erase ink | Mürekkebi sil | the ink, erase | |
+| chip.absorb | Absorb it | Em | absorb | |
+| hint.alt | Hold ALT to draw faster | Daha hızlı çizmek için ALT tuşunu basılı tut | to draw faster, hold the ALT key pressed | |
+| hint.combine | Draw more runes inside of the same seal to combine them | Aynı mührün içine daha çok rün çiz, birleşirler | into the same seal draw more runes, they merge | |
+| hint.lift | Draw ink on things and press E to lift them | Eşyaların üstüne mürekkep çiz ve kaldırmak için E tuşuna bas | draw ink on top of objects and to lift press the E key | |
+| hint.erase | Erasing returns the ink to your wand | Silmek mürekkebi asana geri verir | erasing gives the ink back to your wand | asa = wand, staff |
+| hint.body | Press R to paint runes on your own body | Kendi bedenine rün çizmek için R tuşuna bas | to draw runes on your own body press the R key | |
+| hint.pose | Striking a pose can close a body seal and cast it | Bir poz, bedendeki mührü kapatıp büyüyü atabilir | a pose can close the seal on the body and throw the spell | büyü atmak = cast a spell, literally "throw magic" |
+| hint.size | Bigger runes make stronger spells | Büyük rünler daha güçlü büyü yapar | big runes make stronger magic | |
+| hint.touch | Lines count as one drawing only when they touch | Çizgiler ancak birbirine değerse tek çizim sayılır | lines only if touching each other count as one drawing | |
+| hint.declare | The book can name a drawing that reads wrong | Yanlış okunan çizime kitap ad verebilir | to a wrongly read drawing the book can give a name | |
+| hint.trance | Fresh ink puts zombies in a trance | Taze mürekkep zombileri hipnotize eder | fresh ink hypnotizes zombies | "trans" is rare in Turkish, hipnotize is everyday |
+| hint.wake | Throw a sleeping spell to wake it | Uyuyan bir büyüyü fırlat, uyanır | throw a sleeping spell, it wakes | |
+| hint.ghost | The dead rise as ghosts. Fly home to your body and a friend can revive you | Ölüler hayalet olur. Bedenine geri uç, bir arkadaşın seni diriltebilir | the dead become ghosts. fly back to your body, a friend of yours can revive you | |
+| hint.doors | Doors open when you walk into them | Kapılar, üstlerine yürüyünce açılır | doors, when you walk onto them, open | |
+| paint.done | Done painting | Boyama bitti | painting finished | |
+| paint.pose | Strike a pose | Poz ver | give a pose | |
+| paint.orbit | Orbit | Döndür | rotate | |
+| hat.pillar | Pick your hat color | Şapka rengini seç | the hat color, choose | |
+| side.pillar | Change your side | Taraf değiştir | side change | |
+| hat.done | Done | Bitti | finished | |
+| shape.back | Back to yourself | Kendine dön | return to yourself | |
+| shape.turn | Turns you | Seni döndürür | turns you | |
+| shape.save | Saves | Kaydeder | saves | |
+| shape.recall | Recalls | Geri çağırır | calls back | |
 | menu.resume | Resume | Devam et | continue | |
 | menu.restart | Restart run | Baştan başla | start from the beginning | "run" dropped |
 | menu.options | Options | Ayarlar | settings | |
@@ -67,69 +67,69 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | opt.language | Language: {0} | Dil: {0} | language: {0} | |
 | opt.immersive.on | Immersive mode: ON | Derin mod: AÇIK | deep mode: OPEN | "immersive" has no everyday Turkish word; derin = deep; AÇIK/KAPALI = on/off |
 | opt.immersive.off | Immersive mode: OFF | Derin mod: KAPALI | deep mode: CLOSED | |
-| opt.immersive.hint | no HUD at all. for players who know the game | hiç arayüz yok. oyunu bilenler için | no interface at all. for those who know the game | |
+| opt.immersive.hint | No HUD at all. For players who know the game | Hiç arayüz yok. Oyunu bilenler için | no interface at all. for those who know the game | |
 | opt.mic | Microphone: {0} | Mikrofon: {0} | microphone: {0} | |
-| opt.mic.default | default | varsayılan | default | |
+| opt.mic.default | Default | Varsayılan | default | |
 | opt.mute | {0}: mute | {0}: sustur | {0}: silence | |
 | opt.unmute | {0}: unmute | {0}: sesi aç | {0}: open the sound | |
-| opt.nobody | nobody else here to mute | burada susturacak başka kimse yok | here there is nobody else to silence | |
+| opt.nobody | Nobody else here to mute | Burada susturacak başka kimse yok | here there is nobody else to silence | |
 | menu.leave | Leave lobby | Lobiden ayrıl | from the lobby leave | |
 | menu.delete | Delete lobby | Lobiyi sil | the lobby delete | |
 | menu.play | PLAY | OYNA | PLAY | |
-| lobby.readycall | ready check. B yes, C no | hazır mısınız? B evet, C hayır | are you all ready? B yes, C no | |
+| lobby.readycall | Ready check. B yes, C no | Hazır mısınız? B evet, C hayır | are you all ready? B yes, C no | |
 | lobby.ready.on | READY {0}/{1} | HAZIR {0}/{1} | READY {0}/{1} | |
-| lobby.ready.off | READY {0}/{1}. B when ready | HAZIR {0}/{1}. hazır olunca B | READY {0}/{1}. when ready, B | |
-| stand.title | the book stand | kitap sehpası | book stand | |
-| stand.hostprivate | create private lobby (invite only) | özel lobi kur (sadece davetle) | private lobby set up (only by invitation) | |
+| lobby.ready.off | READY {0}/{1}. B when ready | HAZIR {0}/{1}. Hazır olunca B | READY {0}/{1}. when ready, B | |
+| stand.title | The book stand | Kitap sehpası | book stand | |
+| stand.hostprivate | Create private lobby (invite only) | Özel lobi kur (sadece davetle) | private lobby set up (only by invitation) | |
 | stand.hostpublic | CREATE PUBLIC LOBBY | AÇIK LOBİ KUR | OPEN LOBBY SET UP | |
-| stand.pw | password (optional) | şifre (isteğe bağlı) | password (optional) | |
-| stand.code | entry code (optional) | giriş kodu (isteğe bağlı) | entry code (optional) | |
-| stand.hint | walk away to close | kapatmak için uzaklaş | to close, move away | |
-| stand.map | change map | haritayı değiştir | the map, change | |
-| stand.share | acolytes at least {0}% | en az %{0} mürit | at least %{0} disciples | mürit = disciple, follower; a native word kids know, "akolit" is not Turkish |
-| stand.setcode | set code | kod belirle | code set | |
-| stand.readycall | ready check | hazır mısınız? | are you all ready? | |
-| stand.invite | invite friends | arkadaşlarını davet et | your friends, invite | |
+| stand.pw | Password (optional) | Şifre (isteğe bağlı) | password (optional) | |
+| stand.code | Entry code (optional) | Giriş kodu (isteğe bağlı) | entry code (optional) | |
+| stand.hint | Walk away to close | Kapatmak için uzaklaş | to close, move away | |
+| stand.map | Change map | Haritayı değiştir | the map, change | |
+| stand.share | Acolytes at least {0}% | En az %{0} mürit | at least %{0} disciples | mürit = disciple, follower; a native word kids know, "akolit" is not Turkish |
+| stand.setcode | Set code | Kod belirle | code set | |
+| stand.readycall | Ready check | Hazır mısınız? | are you all ready? | |
+| stand.invite | Invite friends | Arkadaşlarını davet et | your friends, invite | |
 | stand.start | START | BAŞLA | START | |
-| stand.waiting | waiting for ready | hazır olmaları bekleniyor | their being ready is awaited | |
-| stand.delete | delete lobby | lobiyi sil | the lobby delete | |
-| stand.kick | kick | at | throw (out) | |
-| stand.ban | ban | yasakla | forbid | |
-| stand.banned | banned: {0} | yasaklı: {0} | forbidden: {0} | |
-| stand.unban | unban | yasağı kaldır | lift the ban | |
-| stand.name | lobby name | lobi adı | lobby name | |
-| stand.size | size {0} | kişi {0} | persons {0} | |
-| stand.region | region: {0} | bölge: {0} | region: {0} | |
+| stand.waiting | Waiting for ready | Hazır olmaları bekleniyor | their being ready is awaited | |
+| stand.delete | Delete lobby | Lobiyi sil | the lobby delete | |
+| stand.kick | Kick | At | throw (out) | |
+| stand.ban | Ban | Yasakla | forbid | |
+| stand.banned | Banned: {0} | Yasaklı: {0} | forbidden: {0} | |
+| stand.unban | Unban | Yasağı kaldır | lift the ban | |
+| stand.name | Lobby name | Lobi adı | lobby name | |
+| stand.size | Size {0} | Kişi {0} | persons {0} | |
+| stand.region | Region: {0} | Bölge: {0} | region: {0} | |
 | stand.tab.host | HOST | KUR | SET UP | |
 | stand.tab.join | JOIN | KATIL | JOIN | |
 | stand.settings | Settings | Ayarlar | settings | |
 | stand.regions | Regions | Bölgeler | regions | |
 | stand.langs | Languages | Diller | languages | |
 | stand.behaviors | Behaviors | Hava | air (vibe) | hava is the Turkish idiom for the mood of a group |
-| stand.duration | time {0} min | süre {0} dk | duration {0} min | dk = dakika |
-| stand.setpw | set password | şifre belirle | password set | |
+| stand.duration | Time {0} min | Süre {0} dk | duration {0} min | dk = dakika |
+| stand.setpw | Set password | Şifre belirle | password set | |
 | stand.hosting | HOSTING your lobby | Lobiyi SEN yönetiyorsun | the lobby, YOU are managing | |
 | stand.players | Players | Oyuncular | players | |
-| filter.all | all | hepsi | all of them | |
-| browse.refresh | refresh | yenile | renew | |
+| filter.all | All | Hepsi | all of them | |
+| browse.refresh | Refresh | Yenile | renew | |
 | browse.join | JOIN | KATIL | JOIN | |
-| browse.locked | (password) | (şifreli) | (with password) | |
-| browse.none | no lobbies found. host one! | lobi bulunamadı. sen kur! | lobby not found. you set one up! | |
-| browse.needpw | this lobby wants a password | bu lobi şifre istiyor | this lobby wants a password | |
-| browse.cancel | cancel | iptal | cancel | |
-| region. | any region | her bölge | every region | |
+| browse.locked | (Password) | (Şifreli) | (with password) | |
+| browse.none | No lobbies found. Host one! | Lobi bulunamadı. Sen kur! | lobby not found. you set one up! | |
+| browse.needpw | This lobby wants a password | Bu lobi şifre istiyor | this lobby wants a password | |
+| browse.cancel | Cancel | İptal | cancel | |
+| region. | Any region | Her bölge | every region | |
 | region.eu | Europe | Avrupa | Europe | |
 | region.na | North America | Kuzey Amerika | North America | |
 | region.sa | South America | Güney Amerika | South America | |
 | region.asia | Asia | Asya | Asia | |
 | region.oce | Oceania | Okyanusya | Oceania | |
 | region.mea | Middle East & Africa | Orta Doğu ve Afrika | Middle East and Africa | |
-| tag.welcome | everyone welcome | herkes hoş geldi | everyone has come well (welcome) | |
-| tag.beginners | beginners welcome | yeni başlayanlar hoş geldi | new starters welcome | |
-| tag.casual | casual fun | keyif için | for pleasure | |
-| tag.tryhard | try hards | ciddi | serious | |
-| tag.mic | mic on | mikrofon açık | microphone open (on) | |
-| tag.quiet | quiet ok | sessiz de olur | quiet also works | |
+| tag.welcome | Everyone welcome | Herkes hoş geldi | everyone has come well (welcome) | |
+| tag.beginners | Beginners welcome | Yeni başlayanlar hoş geldi | new starters welcome | |
+| tag.casual | Casual fun | Keyif için | for pleasure | |
+| tag.tryhard | Try hards | Ciddi | serious | |
+| tag.mic | Mic on | Mikrofon açık | microphone open (on) | |
+| tag.quiet | Quiet ok | Sessiz de olur | quiet also works | |
 | opt.mic.title | Microphone | Mikrofon | microphone |  |
 | opt.mic.open | Open mic | Hep açık | always open |  |
 | opt.mic.ptt | Hold V | V basılı | V pressed | V is a physical key, kept |
@@ -158,16 +158,16 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | opt.on | On | Açık | open |  |
 | opt.music | Music: {0}% | Müzik: %{0} | music: %{0} | percent sign before the number |
 | opt.sfx | Sounds: {0}% | Sesler: %{0} | sounds: %{0} | percent sign before the number |
-| seal.norune | no rune here to seal. aim at one of your runes | burada mühürlenecek rün yok. kendi rünlerinden birine nişan al | here there is no rune to be sealed. take aim at one of your own runes |  |
-| seal.noink | not enough ink for the seal | mühür için mürekkep yetmiyor | for the seal the ink does not suffice |  |
-| rune.noink | not enough ink to finish the rune | rünü bitirmek için mürekkep yetmiyor | to finish the rune the ink does not suffice |  |
+| seal.norune | No rune here to seal. Aim at one of your runes | Burada mühürlenecek rün yok. Kendi rünlerinden birine nişan al | here there is no rune to be sealed. take aim at one of your own runes |  |
+| seal.noink | Not enough ink for the seal | Mühür için mürekkep yetmiyor | for the seal the ink does not suffice |  |
+| rune.noink | Not enough ink to finish the rune | Rünü bitirmek için mürekkep yetmiyor | to finish the rune the ink does not suffice |  |
 | round.safe | THE LOBBY IS SAFE GROUND | LOBİ GÜVENLİ BÖLGE | lobby safe zone |  |
 | round.versus | WIZARDS vs ACOLYTES | BÜYÜCÜLER MÜRİTLERE KARŞI | wizards against acolytes | mürit = acolyte, as in the rest of the file |
 | round.wizards | WIZARDS WIN | BÜYÜCÜLER KAZANDI | wizards won |  |
 | round.acolytes | ACOLYTES WIN | MÜRİTLER KAZANDI | acolytes won |  |
-| round.home | {0}. back to the lobby in {1} | {0}. {1} sonra lobiye dönüş | {0}. {1} later return to lobby | {1} is seconds |
-| round.pot |  · pot {0}% |  · kazan %{0} | cauldron %{0} | percent sign before the number, Turkish order |
-| round.green |  · the pot is GREEN |  · kazan YEŞİL | cauldron GREEN |  |
+| round.home | {0}. Back to the lobby in {1} | {0}. {1} sonra lobiye dönüş | {0}. {1} later return to lobby | {1} is seconds |
+| round.pot |  · Pot {0}% |  · Kazan %{0} | cauldron %{0} | percent sign before the number, Turkish order |
+| round.green |  · The pot is GREEN |  · Kazan YEŞİL | cauldron GREEN |  |
 | gate.accepts | THE GATE ACCEPTS | KAPI KABUL ETTİ | gate accepted |  |
 | net.hostleft | THE HOST LEFT | HOST GİTTİ | host went | host is the word Turkish players use |
 | net.hosting | ● HOSTING, {0} player(s) | ● HOST SENSİN, {0} oyuncu | host is you, {0} player | Turkish needs no plural after a number |
@@ -176,26 +176,26 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | net.maplikes | MAP: {0} · ♥{1} | HARİTA: {0} · ♥{1} | map: {0} · ♥{1} |  |
 | steam.offline | Steam not running, offline & LAN only | Steam açık değil, sadece çevrimdışı ve LAN | Steam open not, only offline and LAN |  |
 | steam.ready | Steam ready: {0} | Steam hazır: {0} | Steam ready: {0} | {0} is the Steam name |
-| steam.leavefirst | leave your lobby first | önce kendi lobinden ayrıl | first from own lobby leave |  |
-| steam.ping | your ping to that host is {0}ms, lobby allows {1} | o hosta pingin {0} ms, lobi izni {1} | to that host your ping {0} ms, lobby permission {1} |  |
-| steam.joining | joining… | giriliyor… | being entered… |  |
-| steam.deleted | lobby deleted | lobi silindi | lobby deleted |  |
+| steam.leavefirst | Leave your lobby first | Önce kendi lobinden ayrıl | first from own lobby leave |  |
+| steam.ping | Your ping to that host is {0}ms, lobby allows {1} | O hosta pingin {0} ms, lobi izni {1} | to that host your ping {0} ms, lobby permission {1} |  |
+| steam.joining | Joining… | Giriliyor… | being entered… |  |
+| steam.deleted | Lobby deleted | Lobi silindi | lobby deleted |  |
 | steam.notrunning | Steam not running | Steam açık değil | Steam open not |  |
-| steam.creating | creating lobby… | lobi kuruluyor… | lobby being set up… |  |
-| steam.failed | lobby failed: {0} | lobi kurulamadı: {0} | lobby could not be set up: {0} | {0} is a Steam error code |
-| steam.noenter | couldn't enter the lobby | lobiye girilemedi | into lobby could not be entered |  |
-| steam.nohost | lobby has no host, try again | lobinin hostu yok, bir daha dene | lobby's host there is none, once more try |  |
-| steam.connecting | joined, connecting… | girdin, bağlanıyor… | you entered, connecting… |  |
+| steam.creating | Creating lobby… | Lobi kuruluyor… | lobby being set up… |  |
+| steam.failed | Lobby failed: {0} | Lobi kurulamadı: {0} | lobby could not be set up: {0} | {0} is a Steam error code |
+| steam.noenter | Couldn't enter the lobby | Lobiye girilemedi | into lobby could not be entered |  |
+| steam.nohost | Lobby has no host, try again | Lobinin hostu yok, bir daha dene | lobby's host there is none, once more try |  |
+| steam.connecting | Joined, connecting… | Girdin, bağlanıyor… | you entered, connecting… |  |
 | steam.private | PRIVATE LOBBY, invite friends | ÖZEL LOBİ, arkadaşlarını çağır | private lobby, call your friends |  |
 | steam.public | PUBLIC LOBBY, listed | AÇIK LOBİ, listede | open lobby, in the list |  |
-| menu.tagline | draw fast. die funny. | hızlı çiz. komik öl. | fast draw. funny die. |  |
+| menu.tagline | Draw fast. Die funny. | Hızlı çiz. Komik öl. | fast draw. funny die. |  |
 | menu.close | Close | Kapat | close |  |
-| chip.pages | turn the pages | sayfaları çevir | the pages turn | the mouse wheel turns the grimoire pages |
-| round.potopens |  · pot opens in {0} |  · kazan {0} içinde açılır | cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
-| round.inkflight |  · ink in flight {0} |  · mürekkep uçuşta {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| chip.pages | Turn the pages | Sayfaları çevir | the pages turn | the mouse wheel turns the grimoire pages |
+| round.potopens |  · Pot opens in {0} |  · Kazan {0} içinde açılır | cauldron opens in {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
+| round.inkflight |  · Ink in flight {0} |  · Mürekkep uçuşta {0} | ink in flight {0} | seconds; banner word while the pot brews / while the ink hops to the next pot |
 | opt.uiscale | UI size: {0}% | Arayüz boyutu: %{0} | interface size: {0}% | options, game tab: the slider that scales every panel and chip |
-| stand.nocap | no cap | sınırsız | unlimited | book stand, the size row at Steam's ceiling of 250: the host set no cap |
-| stand.heavy | your connection carries everyone | bağlantın herkesi taşır | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |
+| stand.nocap | No cap | Sınırsız | unlimited | book stand, the size row at Steam's ceiling of 250: the host set no cap |
+| stand.heavy | Your connection carries everyone | Bağlantın herkesi taşır | your connection carries everyone | book stand, under the size row past 32 players: the host's upload carries the lobby |
 | menu.quit.game | Quit the game? | Oyundan çıkıyor musun? | are you quitting the game? | the Quit check on the main menu: Quit closes the game |
 | menu.quit.lobby | Back to the main menu? | Ana menüye dönüyor musun? | are you going back to the main menu? | the Quit check in the lobby: Quit goes to the main menu |
 | menu.quit.match | Leave the match for an empty lobby? | Maçtan çıkıyor musun? Kendi boş lobine düşersin. | are you leaving the match? you land in your own empty lobby. | the Quit check on a map: Quit leaves the match for your own empty lobby |
@@ -362,10 +362,14 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Saklanan çizimler. Düzenlemek için birini seç, artı yenisini başlatır, X birini kaldırır | kept drawings. to-edit for one choose, plus new-one starts, X one removes | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | {0} olarak okunuyor | {0} as is-being-read | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Henüz okunamıyor | yet cannot-be-read | the pad's drawing matches no rune well enough |
+| ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | O lobinin sürümü daha yeni. Oyundan çık ve Steam seninkini güncellesin | that lobby's version is newer. leave the game and let Steam update yours | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
+| ver.theirs | That lobby runs an older version. Its host has to update the game | O lobinin sürümü daha eski. Hostunun oyunu güncellemesi gerek | that lobby's version is older. its host needs to update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
+| ver.differs | That lobby runs a different version of the game | O lobi oyunun başka bir sürümünü kullanıyor | that lobby uses another version of the game | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
+| wand.hosed | The pour is too strong. Step back to draw | Mürekkep akışı çok güçlü. Çizmek için biraz geri çekil | the ink flow is too strong. step back a little to draw | a wizard standing right at the clean pot while it fills: the ink pours into the wand too hard to draw; shown behind a ! keycap |
 | menu.extras | Extras | Ekstralar | extras | main menu button under PLAY: clicking it shows or hides the Map Creator and Photo Booth buttons beneath it |
-| chip.release | release | bırak | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
-| chip.up | up | yukarı | up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
-| chip.down | down | aşağı | down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
+| chip.release | Release | Bırak | let go | chip beside the F key while a ghost rides a spell, a zombie or a golem: pressing it lets go of what it rides |
+| chip.up | Up | Yukarı | up | chip beside the SPACE key for a ghost flying free: fly upward (goes away once the key was used) |
+| chip.down | Down | Aşağı | down | chip beside the CTRL key for a ghost flying free: fly downward (goes away once the key was used) |
 | clip.failed | Recording did not work on this PC | Kayıt bu bilgisayarda olmadı | the recording did not happen on this computer | shown top right when the I key could not start or finish a video (Windows has no video encoder here, or the file could not be written) |
 | clip.disk | Not enough free disk space to record | Kayıt için diskte yeterli boş alan yok | there is not enough free space on the disk for recording | shown top right when the I key is pressed with under 1.5 GB free on the drive videos go to |
 | photo.color | Color | Renk | color | section on a creature in the photo booth: its color sliders |

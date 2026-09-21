@@ -174,7 +174,7 @@ namespace SpellyZombie
             }
             if (best == null) return;
 
-            UIPrompt.Show("E", best.Spent ? "take the dead ore" : "take the ore",
+            UIPrompt.Show("E", best.Spent ? "Take the dead ore" : "Take the ore",
                 new Color(0.95f, 0.95f, 0.8f));
             if (!UnityEngine.InputSystem.Keyboard.current.eKey.wasPressedThisFrame || _actionFrame == Time.frameCount) return;
             _actionFrame = Time.frameCount;
@@ -199,7 +199,7 @@ namespace SpellyZombie
 
             if (pot != null && !Spent)
             {
-                UIPrompt.Show("E", "feed the ore to the cauldron", new Color(1f, 0.85f, 0.4f));
+                UIPrompt.Show("E", "Feed the ore to the cauldron", new Color(1f, 0.85f, 0.4f));
                 if (kb.eKey.wasPressedThisFrame && _actionFrame != Time.frameCount)
                 {
                     _actionFrame = Time.frameCount;
