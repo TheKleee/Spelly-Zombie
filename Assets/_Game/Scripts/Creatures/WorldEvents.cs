@@ -17,6 +17,9 @@ namespace SpellyZombie
         }
 
         const int Cap = 24;
+
+        /// Loud enough to move an eye's mood (AutoWatch): what the host passes on to the clients.
+        public const float Loud = 2f;
         static readonly Evt[] _ring = new Evt[Cap];
         static int _count, _head;
 
@@ -34,6 +37,8 @@ namespace SpellyZombie
             _ring[_head] = new Evt { Kind = kind, Pos = pos, Intensity = intensity, Time = Time.time };
             _head = (_head + 1) % Cap;
             if (_count < Cap) _count++;
+            // clients do not simulate what makes these: they hear the host's, and their own eyes react too
+            if (intensity >= Loud) NetSync.PushWorldEvent(kind, pos, intensity);
         }
 
         /// Loudest event in the last `window` seconds (default weighting favors

@@ -196,6 +196,7 @@ namespace SpellyZombie
         /// The host starts the match (solo: a practice run on the clock).
         /// Fills the acolyte quota first: pillar volunteers keep their side,
         /// the rest is drawn at random, always at least 1 acolyte and 1 wizard.
+        /// On a map with a boss to beat everyone keeps the side they picked.
         public static void StartMatch()
         {
             if (NetGame.Connected)
@@ -213,22 +214,26 @@ namespace SpellyZombie
             foreach (var id in NetSync.RemoteIds) owners.Add(NetSync.OwnerIdOf(id));
 
             int total = owners.Count;
-            int want = Mathf.Clamp(Mathf.RoundToInt(total * AcolytePercent / 100f), 1, total - 1);
-
             var acolytes = new List<int>();
             foreach (var o in owners) if (Sides.IsAcolyte(o)) acolytes.Add(o);
 
-            // volunteers stay (the share is a minimum), but never ALL acolytes
-            while (acolytes.Count >= total && acolytes.Count > 1)
-                acolytes.RemoveAt(Random.Range(0, acolytes.Count));
-
-            var pool = new List<int>();
-            foreach (var o in owners) if (!acolytes.Contains(o)) pool.Add(o);
-            while (acolytes.Count < want && pool.Count > 1)
+            // a boss to beat: the pillars' picks stand as they are
+            if (!MapRules.Counts(MapDef.Active, TeamWho.Environment))
             {
-                int pick = Random.Range(0, pool.Count);
-                acolytes.Add(pool[pick]);
-                pool.RemoveAt(pick);
+                int want = Mathf.Clamp(Mathf.RoundToInt(total * AcolytePercent / 100f), 1, total - 1);
+
+                // volunteers stay (the share is a minimum), but never ALL acolytes
+                while (acolytes.Count >= total && acolytes.Count > 1)
+                    acolytes.RemoveAt(Random.Range(0, acolytes.Count));
+
+                var pool = new List<int>();
+                foreach (var o in owners) if (!acolytes.Contains(o)) pool.Add(o);
+                while (acolytes.Count < want && pool.Count > 1)
+                {
+                    int pick = Random.Range(0, pool.Count);
+                    acolytes.Add(pool[pick]);
+                    pool.RemoveAt(pick);
+                }
             }
 
             ApplySideAssign(acolytes.ToArray());
@@ -283,13 +288,13 @@ namespace SpellyZombie
                 // During a ready call C answers "not ready".
                 if (NetGame.Connected)
                 {
-                    if (kb.bKey.wasPressedThisFrame)
+                    if (Keys.Down(Act.Ready))
                     {
                         _readyLocal = !_readyLocal;
                         if (client) NetSync.SendReady(_readyLocal);
                         if (!Juice.Sound2D(Sfx.UiReady)) Juice.Chime(player.transform.position);
                     }
-                    if (CallActive && kb.cKey.wasPressedThisFrame)
+                    if (CallActive && Keys.Down(Act.NotReady))
                     {
                         _readyLocal = false;
                         if (client) NetSync.SendReady(false);

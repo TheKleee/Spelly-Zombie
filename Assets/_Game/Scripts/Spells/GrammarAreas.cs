@@ -409,6 +409,8 @@ namespace SpellyZombie
         /// Who cast it - carried so a poison kill belongs to somebody, the
         /// same rule spreading obeys.
         public int Owner = -1;
+        /// A summoned creature's cloud: its kills are the creature's deed (Aggressive), not the caster's own.
+        public bool OwnerViaMinion;
 
         /// How hard it bites, from the Goo row rather than a constant, so
         /// tuning the spell tunes the puddle it leaves.
@@ -434,7 +436,7 @@ namespace SpellyZombie
                 if (p.IsDowned) return;
                 if (Wearer != null && p.transform == Wearer) return;  // your own cloud
                 if (!AffectsPlayer(p)) return;   // one predicate, asked here and by the HUD
-                p.TakeHit(Vector3.zero, Bite * dt, "the corruption");
+                p.TakeHit(Vector3.zero, Bite * dt, "the corruption", Owner, OwnerViaMinion);
                 Cling(p.transform, dt);
                 return;
             }
@@ -466,7 +468,7 @@ namespace SpellyZombie
             // player - an acolyte's gas must not eat the acolytes' own dead
             if (SparesOwnTeam && Team.HasValue
                 && Sides.Allied(Sides.SideOfThing(el.gameObject), Team)) return;
-            el.TakeDamage(Bite * dt, "the corruption", Owner);
+            el.TakeDamage(Bite * dt, "the corruption", Owner, OwnerViaMinion);
         }
 
         /// Attaches a small PoisonField to the victim's head; it grows with
@@ -481,8 +483,11 @@ namespace SpellyZombie
                     DrawingConfig.PoisonClingRadius,
                     DrawingConfig.PoisonClingSeconds, victim);
                 cling.Mirror = Mirror; // a mirror's cling bills like its source
+                cling.Owner = Owner;   // and names the same maker
+                cling.OwnerViaMinion = OwnerViaMinion;
                 return;
             }
+            if (Owner >= 0) { worn.Owner = Owner; worn.OwnerViaMinion = OwnerViaMinion; }
             worn.Radius = Mathf.Min(worn.Radius + DrawingConfig.PoisonClingGrow * dt,
                 DrawingConfig.PoisonClingMax);
             worn.Extend(DrawingConfig.PoisonClingSeconds);

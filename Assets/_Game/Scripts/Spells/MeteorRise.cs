@@ -77,12 +77,14 @@ namespace SpellyZombie
             var seen = new System.Collections.Generic.HashSet<Element>();
             var seenAv = new System.Collections.Generic.HashSet<NetAvatar>();
             var hits = Physics.OverlapSphere(at, r);
+            var rock = GetComponent<Matter>();
+            int by = rock != null ? rock.TeamOwner : -1; // the caster its shards keep too
             foreach (var c in hits)
             {
                 var pl = c.GetComponent<SimpleFPSController>();
                 if (pl != null)
                 {
-                    pl.TakeHit((pl.transform.position - at).normalized * 9f, 28f);
+                    pl.TakeHit((pl.transform.position - at).normalized * 9f, 28f, "meteor impact", by);
                     pl.KnockDown(1.2f);
                     continue;
                 }
@@ -92,7 +94,7 @@ namespace SpellyZombie
                 {
                     if (!seenAv.Add(av)) continue;
                     NetSync.SendKick(NetSync.OwnerIdOf(av.Id), (av.transform.position - at).normalized * 9f, true);
-                    av.GetComponent<Element>()?.TakeDamage(28f, "meteor impact");
+                    av.GetComponent<Element>()?.TakeDamage(28f, "meteor impact", by);
                     continue;
                 }
                 SpellParticle.GiveHeatTo(c, 200f); // houses catch, wood burns

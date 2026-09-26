@@ -43,6 +43,7 @@ namespace SpellyZombie
                 brain.Behaviour = def.Behaviour;
                 brain.GuardRange = def.GuardRange;
             }
+            CreatureCasts.MarkRampaging(this, def.Behaviour == CreatureBehaviour.Rampages);
             if (def.Boss)
             {
                 var mark = GetComponent<BossMark>();
@@ -461,9 +462,15 @@ namespace SpellyZombie
                 var d = el.Data; d.Int = 1f; d.Courage = 1f; el.Data = d;
             }
             All.Add(this);
+            // a copy never Wears: it rampages by the copied behaviour
+            if (_brain != null && _brain.Behaviour == CreatureBehaviour.Rampages) CreatureCasts.MarkRampaging(this, true);
         }
 
-        void OnDestroy() => All.Remove(this);
+        void OnDestroy()
+        {
+            All.Remove(this);
+            CreatureCasts.MarkRampaging(this, false);
+        }
 
         // ---- ghost possession ----
 
@@ -546,10 +553,26 @@ namespace SpellyZombie
         }
 
         int _castTurn;
+        bool _fed; // it ate a sleeping spell: a charger keeps charging between its throws
+
+        /// A sleeping spell of its summoner's side touched it (CreatureCasts.TryFeed): eaten, on top
+        /// of what it could already do. Only a summoned one eats.
+        public bool TryEat(SpellParticle meal)
+        {
+            if (_summon == null || !CreatureCasts.CanFeed(OwnerId, meal)) return false;
+            string learned = CreatureCasts.Feed(Abilities, GetComponent<Element>(), GetComponent<StateView>(), meal);
+            _fed = true;
+            _castCooldown = 0f;
+            meal.EatenBy(this);
+            _dress?.Attack();
+            DrawingWorld.Instance?.LogEvent(learned.Length > 0 ? $"the zombie eats it: now it casts {learned}" : "the zombie eats it");
+            return true;
+        }
 
         /// The spell whose turn it is. Charge is the one MOVE; everything else
         /// a body does is a cast, taken in turn.
         string NextCast() => CreatureCasts.Pick(Abilities, _castTurn);
+        float _rampageAt;
 
         /// ★ A BODY CASTS FROM THE BOOK (data summons, code moves): the
         /// authored particle leaves along the aim with the zombie as caster, a
@@ -647,16 +670,22 @@ namespace SpellyZombie
             }
 
 
+            // a rampaging body throws its spells all over the place instead of at anyone
+            bool rampage = _brain.Behaviour == CreatureBehaviour.Rampages;
+            if (rampage) CreatureCasts.Rampage(Abilities, OwnerId, HeadAt, transform, ref _rampageAt);
             ScanHostiles();
             var target = _brain.AttackTarget;
             // a boss at full health fights with its body only (BossMark phases)
-            string casts = _boss != null && !_boss.Casts ? null : NextCast();
+            string casts = rampage || (_boss != null && !_boss.Casts) ? null : NextCast();
             if (target == null && casts != null) target = DistantMark();
             if (target == null) { TickIdleKind(); AutoSwipe(); return; }
             float dist = Vector3.Distance(transform.position, target.position);
 
-            // ABILITIES, NOT KINDS. What it does is what it was given.
-            if (casts != null) TickCaster(casts, target, dist);
+            // ABILITIES, NOT KINDS. What it does is what it was given. A charger that ate a
+            // spell throws it when it can and charges the rest of the time.
+            bool hybrid = _fed && Can(Charge);
+            if (casts != null && TickCaster(casts, target, dist, kite: !hybrid)) { }
+            else if (casts != null && !hybrid) { }
             else if (Can(Charge)) TickChargerWindup(target, dist);
             else TrySwipe(target, dist);
         }
@@ -727,9 +756,10 @@ namespace SpellyZombie
         /// Cast from a distance and KITE whatever can chase: back away when
         /// they close in, cast again once clear. The same cast the ghost
         /// fires, on the zombie's own judgement.
-        void TickCaster(string spellName, Transform target, float dist)
+        /// True while it is aiming or casting this tick (a fed charger charges on a false).
+        bool TickCaster(string spellName, Transform target, float dist, bool kite = true)
         {
-            if (Transformed) return;
+            if (Transformed) return false;
             _castCooldown -= Time.fixedDeltaTime;
             if (_boss != null && _boss.NewPhase(CreatureCasts.CastableCount(Abilities)))
             {
@@ -738,20 +768,20 @@ namespace SpellyZombie
             }
 
             bool itChases = target.GetComponentInParent<CauldronEconomy>() == null;
-            if (itChases && dist < DrawingConfig.GooKiteRange)
+            if (kite && itChases && dist < DrawingConfig.GooKiteRange)
             {
                 _brain.MoveDir = (transform.position - target.position).normalized;
                 _brain.SpeedScale = 1.4f;
             }
 
-            if (_castCooldown > 0f) return;
-            if (dist > DrawingConfig.GooThrowRange) return;
+            if (_castCooldown > 0f) return false;
+            if (dist > DrawingConfig.GooThrowRange) return false;
 
             // ★ TURN TO CAST (his rule): the spit only ever goes FORWARDS, so
             // the body must actually be looking at its mark before it fires.
             Vector3 aim = target.position - transform.position;
             aim.y = 0f;
-            if (aim.sqrMagnitude < 0.01f) return;
+            if (aim.sqrMagnitude < 0.01f) return false;
             aim.Normalize();
             if (Vector3.Dot(transform.forward, aim) < 0.9f)
             {
@@ -762,7 +792,7 @@ namespace SpellyZombie
                 _brain.SpeedScale = 0f;
                 transform.rotation = Quaternion.Slerp(transform.rotation,
                     Quaternion.LookRotation(aim), Time.fixedDeltaTime * 6f);
-                return;   // not looking yet - no cast
+                return true;   // not looking yet - no cast
             }
 
             float wait = CreatureCasts.Cooldown(spellName);
@@ -770,6 +800,7 @@ namespace SpellyZombie
             _dress?.Attack();
             CastNamed(spellName, transform.forward);
             _brain.Mumble("PTOO!", 1.5f);
+            return true;
         }
 
         // ------------------------------------------------- barricade chewing --
@@ -999,8 +1030,9 @@ namespace SpellyZombie
             Vector3 at = transform.position + Vector3.up * bodyHeight * 0.35f;
 
             // leaves one poison field where it stood; the field owns its visuals and lifetime
-            PoisonField.Open(at, radius, DrawingConfig.DetonateFieldSeconds);
-            NetSync.PushField(3, at, radius, DrawingConfig.DetonateFieldSeconds);
+            var blast = PoisonField.Open(at, radius, DrawingConfig.DetonateFieldSeconds);
+            blast.Owner = OwnerId; blast.OwnerViaMinion = OwnerId >= 0; // the summoner's, through the zombie
+            NetSync.PushField(3, at, radius, DrawingConfig.DetonateFieldSeconds, 0, OwnerId, OwnerId >= 0);
 
             // shared blast: players shoved with falloff, acolytes never damaged,
             // own body excluded from the prop throw
@@ -1028,8 +1060,9 @@ namespace SpellyZombie
             Vector3 cloudAt = transform.position + Vector3.up * transform.localScale.y * 0.35f;
             // world zombies (no seal) get the minimum radius
             float cloudRadius = mine != null ? mine.GasRadius : DrawingConfig.SummonGasRadiusMin;
-            PoisonField.Open(cloudAt, cloudRadius, DrawingConfig.ZombieDeathCloudSeconds);
-            NetSync.PushField(3, cloudAt, cloudRadius, DrawingConfig.ZombieDeathCloudSeconds);
+            var cloud = PoisonField.Open(cloudAt, cloudRadius, DrawingConfig.ZombieDeathCloudSeconds);
+            cloud.Owner = OwnerId; cloud.OwnerViaMinion = OwnerId >= 0;
+            NetSync.PushField(3, cloudAt, cloudRadius, DrawingConfig.ZombieDeathCloudSeconds, 0, OwnerId, OwnerId >= 0);
 
             // the summoner whistles at their own position; 3D falloff limits the tell
             if (mine != null) WhistleOwner(mine.SummonedBy);

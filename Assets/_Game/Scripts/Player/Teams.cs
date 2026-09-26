@@ -27,19 +27,35 @@ namespace SpellyZombie
             var zombie = thing.GetComponentInParent<Zombie>();
             if (zombie != null) return MapRules.Custom ? OfOwner(zombie.OwnerId) : Team.Acolyte;
 
+            return OfOwner(OwnerPastZombie(thing, out _));
+        }
+
+        /// Who answers for a thing that is not a player, the owner its team comes from; -1 for the
+        /// world. viaMinion: a zombie's deed, credited to its summoner through the minion. A golem
+        /// stood up from a player's spell is that player's own.
+        public static int OwnerOf(Component thing, out bool viaMinion)
+        {
+            viaMinion = false;
+            if (thing == null) return -1;
+            var zombie = thing.GetComponentInParent<Zombie>();
+            if (zombie != null) { viaMinion = zombie.OwnerId >= 0; return zombie.OwnerId; }
+            return OwnerPastZombie(thing, out viaMinion);
+        }
+
+        static int OwnerPastZombie(Component thing, out bool viaMinion)
+        {
+            viaMinion = false;
             var golem = thing.GetComponentInParent<Golem>();
-            if (golem != null) return OfOwner(golem.OwnerId);
+            if (golem != null) return golem.OwnerId;
 
             var mote = thing.GetComponentInParent<SpellParticle>();
-            if (mote != null) return OfOwner(mote.OwnerId);
+            if (mote != null) { viaMinion = mote.FromMinion; return mote.OwnerId; }
 
             var matter = thing.GetComponentInParent<Matter>();
-            if (matter != null) return OfOwner(matter.TeamOwner);
+            if (matter != null) return matter.TeamOwner;
 
             var el = thing.GetComponentInParent<Element>();
-            if (el != null) return OfOwner(el.Owner);
-
-            return Team.Neutral;
+            return el != null ? el.Owner : -1;
         }
 
         /// Three teams, all against each other - different team = enemy. A map

@@ -31,11 +31,11 @@ Salon is the French word for a game lobby.
 | chip.precise | Faster drawing | Dessiner plus vite | draw faster | |
 | chip.erase | Erase ink | Effacer l'encre | erase the ink | |
 | chip.absorb | Absorb it | Absorber | absorb | |
-| hint.alt | Hold ALT to draw faster | Maintiens ALT pour dessiner plus vite | hold ALT to draw faster | |
+| hint.alt | Hold {0} to draw faster | Maintiens {0} pour dessiner plus vite | hold {0} to draw faster | loading hint; {0} = the key bound to precise drawing (ALT) |
 | hint.combine | Draw more runes inside of the same seal to combine them | Dessine plusieurs runes dans le même sceau pour les combiner | draw several runes in the same seal to combine them | |
-| hint.lift | Draw ink on things and press E to lift them | Dessine de l'encre sur les objets et appuie sur E pour les soulever | draw ink on the objects and press E to lift them | |
+| hint.lift | Draw ink on things and press {0} to lift them | Dessine de l'encre sur les objets et appuie sur {0} pour les soulever | draw ink on the objects and press {0} to lift them | loading hint; {0} = the key or button bound to Use (E) |
 | hint.erase | Erasing returns the ink to your wand | Effacer rend l'encre à ta baguette | erasing gives the ink back to your wand | |
-| hint.body | Press R to paint runes on your own body | Appuie sur R pour peindre des runes sur ton propre corps | press R to paint runes on your own body | |
+| hint.body | Press {0} to paint runes on your own body | Appuie sur {0} pour peindre des runes sur ton propre corps | press {0} to paint runes on your own body | loading hint; {0} = the key or button bound to the body key (R) |
 | hint.pose | Striking a pose can close a body seal and cast it | Une pose peut fermer un sceau du corps et le lancer | a pose can close a body seal and cast it | lancer un sort = cast a spell |
 | hint.size | Bigger runes make stronger spells | Les grandes runes font des sorts plus forts | big runes make stronger spells | |
 | hint.touch | Lines count as one drawing only when they touch | Les traits ne forment un seul dessin que s'ils se touchent | the strokes form a single drawing only if they touch | |
@@ -131,7 +131,7 @@ Salon is the French word for a game lobby.
 | tag.quiet | Quiet ok | Silencieux ok | silent ok | |
 | opt.mic.title | Microphone | Micro | mic |  |
 | opt.mic.open | Open mic | Toujours ouvert | always open |  |
-| opt.mic.ptt | Hold V | Maintiens V | hold V | V is a physical key, kept |
+| opt.mic.ptt | Hold {0} | Maintiens {0} | hold {0} | Options, Audio, microphone mode button: push to talk; {0} = the key bound to talking (V) |
 | opt.mic.off | Muted | Coupé | cut |  |
 | opt.tab.game | Game | Jeu | game |  |
 | opt.tab.video | Video | Vidéo | video |  |
@@ -361,6 +361,53 @@ Salon is the French word for a game lobby.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Dessins gardés. Choisis-en un pour le retoucher, le plus en commence un nouveau, X en retire un | drawings kept. choose-of-them one to it retouch, the plus of-them starts a new, X of-them removes one | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | Se lit comme {0} | is-read as {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Pas encore lisible | not yet readable | the pad's drawing matches no rune well enough |
+| browse.inlobby | In the lobby | Dans le salon | in the lounge | lobby list row, after the tags: the host and friends are in the lobby scene (the sandbox), no match running |
+| browse.inmatch | In a match | En partie | in a game | lobby list row, after the tags: a match is running on a map right now |
+| browse.upmin | Up {0} min | Ouvert depuis {0} min | open for {0} min | lobby list row: how long the lobby has stood; {0} = whole minutes, under an hour |
+| browse.uph | Up {0} h {1} min | Ouvert depuis {0} h {1} min | open for {0} h {1} min | lobby list row: how long the lobby has stood; {0} = hours, {1} = the minutes past the hour |
+| hint.sealshape | A circle is the weakest seal, a triangle the strongest | Un cercle est le sceau le plus faible, un triangle le plus fort | a circle is the weakest seal, a triangle the strongest | loading screen hint; Spell.PowerFor: fewer lines in a seal = stronger, a circle counts as ten |
+| hint.sealline | Draw two sides of a triangle around your runes and {0} closes it | Trace deux côtés d'un triangle autour de tes runes et {0} le ferme | draw two sides of a triangle around your runes and {0} closes it | loading screen hint; {0} = the key bound to F; the book closes two straight lines that meet at a corner with the third side |
+| opt.ghost | Ghost lines | Lignes fantômes | ghost lines | Game tab of the options: the row for the ghost hand (the lobby lessons and the floating F's drawn previews), answered Off / On |
+| side.pillar.acolyte | Become an acolyte | Deviens acolyte | become an acolyte | caption under the floating E on the lobby's side pillar while you are a wizard; same style as chest.open |
+| side.pillar.wizard | Become a wizard | Deviens mage | become a wizard | caption under the floating E on the lobby's side pillar while you are an acolyte |
+| seal.aim | Seal it, the book draws the ring | Scelle, le livre trace l'anneau | seal, the book traces the ring | caption under the floating F on your own rune while the grimoire is open on the seal page; same style as scan.aim and absorb.aim |
+| mc.area.arrive | Arrives in, seconds | Arrive en, secondes | arrives in, seconds | area editor, under Where it starts: how long the area takes from its start point to the spell |
+| mc.note.arrive | 0 lets the game pick the speed. Slower than 5 metres a second it settles in, faster it slams. | Avec 0 le jeu choisit la vitesse. À moins de 5 mètres par seconde ça se pose, plus vite ça s'écrase | with 0 the game chooses the speed. at less than 5 metres per second it settles, faster it crashes | area editor: small note under Arrives in |
+| opt.tab.keys | Controls | Commandes | controls | fourth tab of the Options, after Game, Video, Audio: the key and controller button list |
+| keys.note | Click a key or a button, then press the new one. Escape keeps the old one | Clique sur une touche ou un bouton, puis appuie sur le nouveau. Échap garde l'ancien | click on a key or a button, then press the new one. Escape keeps the old one | Controls tab: small note above the list |
+| keys.press | Press the new key or button now. Escape keeps the old one | Appuie maintenant sur la nouvelle touche ou le nouveau bouton. Échap garde l'ancien | press the new key or the new button now. Escape keeps the old one | Controls tab: the note while a binding waits for its new key |
+| keys.action | Action | Action | action | Controls tab: heading of the first column |
+| keys.keyboard | Keyboard | Clavier | keyboard | Controls tab: heading of the keyboard and mouse column |
+| keys.pad | Controller | Manette | gamepad | Controls tab: heading of the gamepad column |
+| keys.reset | Back to the default keys | Revenir aux touches par défaut | return to the default keys | Controls tab: button that puts every key and button back as shipped |
+| keys.act.forward | Walk forward | Avancer | advance | Controls tab: an action's name |
+| keys.act.back | Walk back | Reculer | move back | Controls tab: an action's name |
+| keys.act.left | Walk left | Aller à gauche | go left | Controls tab: an action's name |
+| keys.act.right | Walk right | Aller à droite | go right | Controls tab: an action's name |
+| keys.act.jump | Jump, fly up | Sauter, voler vers le haut | jump, fly upward | Controls tab: jumping, and rising as a ghost |
+| keys.act.crouch | Crouch, fly down | S'accroupir, voler vers le bas | crouch, fly downward | Controls tab: crouching, and sinking as a ghost |
+| keys.act.sprint | Run | Courir | run | Controls tab: sprinting |
+| keys.act.draw | Draw | Dessiner | draw | Controls tab: drawing ink |
+| keys.act.erase | Erase | Effacer | erase | Controls tab: erasing ink |
+| keys.act.precise | Draw faster | Dessiner plus vite | draw faster | Controls tab: the hold key that frees the cursor for faster drawing |
+| keys.act.use | Grab, throw, use | Attraper, lancer, utiliser | catch, throw, use | Controls tab: the one hand key (E) |
+| keys.act.drop | Drop, let go | Lâcher | let go | Controls tab: the release key (F) |
+| keys.act.body | Paint body, pose, watch | Peindre le corps, poser, regarder | paint the body, pose, watch | Controls tab: the body key (R): wizards paint their body, third person poses, acolytes watch their zombies |
+| keys.act.menu | Menu | Menu | menu | Controls tab: the pause menu key |
+| keys.act.ready | Ready | Prêt | ready | Controls tab: answering the lobby's ready check with yes |
+| keys.act.notready | Not ready | Pas prêt | not ready | Controls tab: answering the lobby's ready check with no |
+| keys.act.talk | Push to talk | Appuyer pour parler | press to talk | Controls tab: holding this opens the microphone in push to talk mode |
+| keys.act.prev | Previous page | Page précédente | previous page | Controls tab: a controller button that turns the grimoire back a page, or steps to the previous pose or zombie |
+| keys.act.next | Next page | Page suivante | next page | Controls tab: a controller button that turns the grimoire forward a page, or steps to the next pose or zombie |
+| watch.many | Watching {0} of {1} · 1-0 picks · Draw a seal on it to blow it | Tu regardes {0} sur {1} · 1-0 choisit · Dessine un sceau dessus pour le faire sauter | you watch {0} out of {1} · 1-0 chooses · draw a seal on it to make it blow | prompt bar while an acolyte looks through one of several zombies of theirs: {0} = which one, {1} = how many; the number keys 1 to 0 pick another; a seal drawn on the zombie makes it explode |
+| watch.one | Draw a seal on it to blow it · R leaves | Dessine un sceau dessus pour le faire sauter · R quitte | draw a seal on it to make it blow · R leaves | prompt bar while an acolyte looks through their only zombie |
+| mc.behaviour.rampages | Rampages | Déchaînée | unleashed | creature behaviour button, after Skittish: a calamity that throws its spells everywhere |
+| mc.note.rampages | Throws random spells from its list all over the place, about one a second, and never runs away. Spells from its own side cannot hurt it. | Lance des sorts au hasard de sa liste partout, environ un par seconde, et ne fuit jamais. Les sorts de son propre camp ne la blessent pas. | throws random spells from its list everywhere, about one per second, and never flees. spells of its own side do not wound it | note under the behaviour buttons when Rampages is picked |
+| opt.keys.title | Videos and photos | Vidéos et photos | videos and photos | pause menu, Game tab: heading over the three recorder keys |
+| opt.key.clip | Start or stop a video | Lancer ou arrêter une vidéo | launch or stop a video | pause menu, Game tab: beside the I keycap; the same key starts and stops the recording |
+| opt.key.photo | Take a photo | Prendre une photo | take a photo | pause menu, Game tab: beside the P keycap |
+| opt.key.folder | Open their folder (in the lobby) | Ouvrir leur dossier (dans le salon) | open their folder (in the lounge) | pause menu, Game tab: beside the O keycap; opens the folder holding the saved videos and photos, and only works in the lobby |
+| opt.keys.note | Saved in your Videos folder, under Spelly Zombie. The interface is never in them | Enregistrés dans ton dossier Vidéos, sous Spelly Zombie. L'interface n'y apparaît jamais | saved in your Videos folder, under Spelly Zombie. the interface never appears there | pause menu, Game tab: small note under the three recorder keys |
 | ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | Ce salon utilise une version plus récente. Quitte le jeu et laisse Steam mettre le tien à jour | this lounge uses a more recent version. quit the game and let Steam update yours | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
 | ver.theirs | That lobby runs an older version. Its host has to update the game | Ce salon utilise une version plus ancienne. Son hôte doit mettre le jeu à jour | this lounge uses an older version. its host must update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
 | ver.differs | That lobby runs a different version of the game | Ce salon utilise une autre version du jeu | this lounge uses another version of the game | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
@@ -626,3 +673,4 @@ Salon is the French word for a game lobby.
 | mc.side.note | The emoji and the page belong to this side. An acolyte with none of its own shows the wizard's. | L'émoji et la page appartiennent à ce camp. Un acolyte sans les siens montre ceux du mage. | the emoji and the page belong to this camp. an acolyte without the his-own shows those of-the wizard | note under the side switch |
 | mc.pushes.note | What drawing this rune adds to the seal's numbers, one axis or several. The spells decide what that becomes. | Ce que dessiner cette rune ajoute aux nombres du sceau, sur un axe ou plusieurs. Les sorts décident de ce que ça devient. | that which drawing this rune adds to-the numbers of-the seal, on one axis or several. the spells decide of that which that becomes | note under Pushes |
 | mc.rune.none | Make a rune or pick one from the list | Crée une rune ou choisis-en une dans la liste | create a rune or choose-of-them one in the list | the Runes creator with nothing picked |
+| opt.stick | Stick sensitivity: {0} | Sensibilité du stick : {0} | sensitivity of-the stick: {0} | space before the colon |

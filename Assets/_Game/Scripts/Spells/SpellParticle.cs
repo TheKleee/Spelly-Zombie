@@ -167,11 +167,58 @@ namespace SpellyZombie
         // ★ HIS LAW (Aug 27): runes BLOW UP on F, and a thrown rune blows up
         // on impact - no more passive releases that do nothing interesting.
         bool _primed;
+        bool _joining;   // woken by a live spell touching it: it joins that spell
+        /// The golem or zombie raised by the same drawing: asleep, this spell flies to it to be eaten.
+        public Transform Feeds;
+        /// The other darts a combined dart carries, a bit per MischiefKind.
+        public int MischiefMore;
         bool _ballistic; // debris flies on gravity and lands - never hovers
         Transform _thrownBy;   // brief self-immunity: in third person the rune
         float _thrownAt;       // exits THROUGH the thrower's own body
         readonly System.Collections.Generic.HashSet<Object> _kickedBodies =
             new System.Collections.Generic.HashSet<Object>();
+        /// What a flying mote sweeps for. A player's body wears layer 2 (Ignore Raycast, the pen's
+        /// own-body rule) and a friend's puppet is the same prefab, so the ordinary mask flew a
+        /// thrown spell straight through every other player; the thrower's own body is handled
+        /// by the half-second grace, not by the layer.
+        static readonly int SweepMask = Physics.DefaultRaycastLayers | (1 << 2);
+
+        /// Thrown out by another spell's landing: debris never throws debris.
+        public bool IsDebris => _generation > 0;
+
+        /// The acolyte darts it carries, a bit per MischiefKind (its own and every joined one).
+        public int DartBits => Mischief != 0 ? (1 << Mischief) | MischiefMore : 0;
+
+        const float DartDebrisShare = 0.35f; // a debris dart carries this much of its dart's might
+
+        /// ★ DEBRIS FOR DARTS (his call): a landing dart throws smaller darts of its own spells, the
+        /// way every spell throws smaller copies of itself. They fly on gravity with half its speed,
+        /// bend toward what is ahead of them (Pull), and each lands as the same spells, weaker.
+        void ThrowDartDebris(Vector3 at, int count)
+        {
+            if (_generation > 0) return;
+            for (int i = 0; i < count; i++)
+            {
+                float ang = (i + Random.value * 0.5f) * (360f / count) * Mathf.Deg2Rad;
+                Vector3 d = new Vector3(Mathf.Cos(ang), 0.9f, Mathf.Sin(ang)).normalized;
+                var bit = Emit(Kind, at + d * 0.3f, d, Power * 0.5f, _generation + 1);
+                if (bit == null) continue;
+                bit.OwnerId = OwnerId;
+                bit.FromMinion = FromMinion;
+                bit.Mischief = Mischief;
+                bit.MischiefMore = MischiefMore;
+                for (int k = 1; k <= (int)MischiefKind.Transformation; k++)
+                    if (k == Mischief || (MischiefMore & (1 << k)) != 0)
+                        bit.AddMight((MischiefKind)k, MightOf((MischiefKind)k) * DartDebrisShare);
+                bit.SrcSize = Mathf.Clamp(SrcSize * 0.4f, 0.1f, 0.5f);
+                bit.ApplySizeRatio(DrawnSizeK(bit.SrcSize));
+                if (WornRow != null) bit.WearRow(WornRow); // the look authored for the spell, smaller
+                bit.Vel = d * 9f + Vel * 0.5f;
+                bit._ballistic = true;
+                bit.PrimeToBlow(); // homed onto a body, its fuse lands it there
+            }
+        }
+
         public void PrimeToBlow(Transform thrower = null)
         {
             _primed = true;
@@ -179,11 +226,40 @@ namespace SpellyZombie
             _thrownAt = Time.time;
         }
 
+        /// A summon ate it: gone without a blast, and whatever waited on it waits on the eater.
+        public void EatenBy(Object eater)
+        {
+            if (_dead) return;
+            ImpactFx();
+            BecameObj = eater;
+            Die();
+        }
+
+        /// The collider a body answers with: its own root one, else the first solid one under it.
+        static Collider BodyCollider(Transform t)
+        {
+            if (t == null) return null;
+            var c = t.GetComponent<Collider>();
+            if (c != null && c.enabled && !c.isTrigger) return c;
+            foreach (var k in t.GetComponentsInChildren<Collider>())
+                if (k.enabled && !k.isTrigger) return k;
+            return null;
+        }
+
         public void DetonateNow()
         {
             if (_dead) return;
             if (Dormant) Wake();       // areas flush on wake - a meteor still falls
             if (_dead) return;         // the wake verb may already have spent it
+            // a dart that met nothing pops as itself: its own burst, never a spell's blast or debris
+            if (Mischief != 0)
+            {
+                FxLibrary.Spawn(MischiefLaw.FxOf((MischiefKind)Mischief), transform.position);
+                ImpactFx();
+                PlayerInk.CreditWand(OwnerId, DrawingConfig.InkMax * 0.05f); // as an unused one does
+                Die();
+                return;
+            }
             // heat and chill carried to the impact: the steam forms here, nothing else
             if (_hasPending && _pendingSteam) { MakePendingSteam(); return; }
             if (_areasDeferred) FlushAreas(); // a thrown spell's areas raise HERE, at the impact
@@ -316,6 +392,25 @@ namespace SpellyZombie
         public bool FromMinion;
         /// An acolyte's dart: a MischiefKind, 0 for every ordinary mote. The hit is the whole spell.
         public byte Mischief;
+        // its power per kind it carries: the rune's match times the seal's shape, one clean rune in a
+        // circle = 1; joined darts add theirs up. Unset = 1 (a zombie's own dart)
+        float[] _might;
+        int _mightSet;
+
+        public void AddMight(MischiefKind k, float m)
+        {
+            int i = (int)k;
+            if (i <= 0 || i > (int)MischiefKind.Restore) return;
+            if (_might == null) _might = new float[(int)MischiefKind.Restore + 1];
+            _might[i] = ((_mightSet & (1 << i)) != 0 ? _might[i] : 0f) + m;
+            _mightSet |= 1 << i;
+        }
+
+        public float MightOf(MischiefKind k)
+        {
+            int i = (int)k;
+            return _might != null && i > 0 && i < _might.Length && (_mightSet & (1 << i)) != 0 ? _might[i] : 1f;
+        }
         /// The spellbook row a dart wears: its authored look, never its numbers.
         public SpellDef WornRow;
         SpellDef _skinRow;
@@ -409,7 +504,10 @@ namespace SpellyZombie
                 if (fuse >= 0.4f && dist < fuse)
                 {
                     Vel = Vector3.zero;
-                    DetonateNow();
+                    // a dart's hit is its spell: it lands on the body it homed onto
+                    var mark = Mischief != 0 ? BodyCollider(_pullTarget) : null;
+                    if (mark != null) { transform.position = mark.bounds.center; Touch(mark); }
+                    else DetonateNow();
                     return;
                 }
             }
@@ -462,6 +560,21 @@ namespace SpellyZombie
             Vel = Vector3.zero;
         }
 
+        /// Where this player's body stands on this machine: the local pilot or a friend's puppet.
+        static bool MakerAt(int owner, out Vector3 at)
+        {
+            at = default;
+            if (owner == Grimoire.LocalPlayerId)
+            {
+                foreach (var p in SimpleFPSController.All)
+                    if (p != null && p.IsLocalViewer) { at = p.transform.position; return true; }
+                return false;
+            }
+            foreach (var a in NetAvatar.All)
+                if (a != null && NetSync.OwnerIdOf(a.Id) == owner) { at = a.transform.position; return true; }
+            return false;
+        }
+
         /// Hover is along the seal's normal: floor up, wall out, ceiling down.
         Vector3 HoverPoint() => _anchorPos + _anchorNrm * DrawingConfig.DormantHoverRange;
 
@@ -477,6 +590,7 @@ namespace SpellyZombie
             a._pendingLin = b.Lineage;
             a._pendingData = b.Data;
             a._hasPending = true;
+            if (a.Feeds == null) a.Feeds = b.Feeds;
             float aWasSrc = a.SrcSize;
             a.SrcSize = FuseSize(a.SrcSize, b.SrcSize);
             a.GrowToSize(aWasSrc); // same curve as every other merge
@@ -577,8 +691,14 @@ namespace SpellyZombie
             // the ghost turns fully real at once
             if (_shapeBody != null) _shapeBody.GetComponent<StateView>()?.ClearFade();
             RefreshLook();
-            ImpactFx(); // the pop of becoming real
+            // the pop of becoming real; a dart leaving is its own voice, small and high (the full one where it lands)
+            if (Mischief == 0) ImpactFx();
+            else Juice.Sound(MischiefLaw.SoundOf((MischiefKind)Mischief), transform.position, 0.45f, 1.35f);
             WorldEvents.Report(WorldEventKind.Spell, transform.position, 2f); // everyone fears it
+            // what it took in asleep joins first and the numbers are read again, before it is
+            // judged a plain stone: a Solid carrying a flame is a meteor
+            if (_hasPending && !_pendingSteam && PendingConjure == null) FoldPending();
+            else RefreshIdentity();
             // a stockpiled spell owes its areas NOW - waking IS the cast.
             // EXCEPT a thrown (primed) one: its areas belong to the IMPACT,
             // so the meteor falls on the victim, not on the thrower's hand.
@@ -591,7 +711,7 @@ namespace SpellyZombie
             // Solid region, and the stone must never steal the meteor.
             // The METEOR itself needs no verb - its authored AREA falls from
             // the sky (the offset), trails, slams, and burns.
-            if (Fusions.Count == 1 && PoolingDone
+            if (Fusions.Count == 1 && PoolingDone && !_hasPending && !_joining
                 && (Fusions[0].Name == "Solid" || Fusions[0].Name == "Liquid"))
             {
                 ManifestState(transform.position, 2f);
@@ -731,7 +851,7 @@ namespace SpellyZombie
                 bool swept = false;
                 float step = inFlight ? Vel.magnitude * dt : 0f;
                 if (step > 0.03f && Physics.Raycast(transform.position, Vel.normalized, out var sweep, step + 0.06f,
-                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)
+                        SweepMask, QueryTriggerInteraction.Ignore)
                     && sweep.collider.GetComponent<SpellParticle>() == null
                     && !(_thrownBy != null && Time.time < _thrownAt + 0.5f && sweep.collider.transform.IsChildOf(_thrownBy)))
                 {
@@ -781,6 +901,17 @@ namespace SpellyZombie
             _seekLift = 0f;
             _meetAt = false;
 
+            // its maker walked away (the ink's own leash): it goes off where it hangs, as F does in the hand
+            float tether = DrawingConfig.SpellLeashMeters;
+            if (tether > 0f && NetGame.IsAuthority && OwnerId >= 0 && !FromMinion && Holder == null && !FlyingAsleep
+                && PoolSettled && Feeds == null && MakerAt(OwnerId, out var maker)
+                && (maker - transform.position).sqrMagnitude > tether * tether)
+            {
+                DrawingWorld.Instance?.LogEvent("left behind: the sleeping spell goes off");
+                Wake();
+                return;
+            }
+
             float reach = AreaReach();
             float r2 = reach * reach;
             float seek2 = DrawingConfig.DormantSeekRange * DrawingConfig.DormantSeekRange;
@@ -808,6 +939,18 @@ namespace SpellyZombie
                     _meetAt = true;
                     return;
                 }
+            }
+
+            // the drawing that raised a golem feeds it: once its runes are one spell, it flies to the golem
+            if (Feeds != null && Holder == null)
+            {
+                // touching already (born inside the body, where nothing ever enters): eaten
+                if (Feeds.TryGetComponent<Collider>(out var maw)
+                    && (maw.ClosestPoint(transform.position) - transform.position).sqrMagnitude < 0.16f
+                    && CreatureCasts.TryFeed(maw, this)) return;
+                _dormantSeek = Feeds;
+                _seekLift = Feeds.localScale.y * 0.5f;
+                return;
             }
 
             bool ownerAcolyte = Sides.IsAcolyte(OwnerId);
@@ -932,7 +1075,6 @@ namespace SpellyZombie
             // floor (the same one a linger uses) an axis is a trace, not a
             // thing it has; a spell with nothing shows nothing.
             var p = PayloadNow;
-            bool any = false;
             float Amount(int axis)
             {
                 if (Mathf.Abs(p.Unit(axis)) < 0.15f) return 0f;
@@ -942,30 +1084,33 @@ namespace SpellyZombie
 
             // the same amounts are heard: each axis has its own sound (Juice.SpellImpact).
             // An acolyte dart carries no numbers: it sounds like the wizard rune it was cast with.
-            if (Mischief != 0) Juice.Sound(MischiefLaw.SoundOf((MischiefKind)Mischief), at);
-            else
+            if (Mischief != 0)
             {
-                for (int ax = 0; ax < _impactHeard.Length; ax++) _impactHeard[ax] = Amount(ax);
-                Juice.SpellImpact(p, _impactHeard, at);
+                // debris is small, so higher and quieter (bigger is louder and lower); a joined dart is
+                // heard as every spell it carries, the others under its own
+                float vol = IsDebris ? 0.6f : 1f, pitch = IsDebris ? 1.25f : 1f;
+                Juice.Sound(MischiefLaw.SoundOf((MischiefKind)Mischief), at, vol, pitch);
+                for (int k = 1; k <= (int)MischiefKind.Transformation; k++)
+                    if (k != Mischief && (MischiefMore & (1 << k)) != 0)
+                        Juice.Sound(MischiefLaw.SoundOf((MischiefKind)k), at, vol * 0.7f, pitch);
+                return; // its burst is its own (MischiefLaw.Land), never the wizard's numbers
             }
+            for (int ax = 0; ax < _impactHeard.Length; ax++) _impactHeard[ax] = Amount(ax);
+            Juice.SpellImpact(p, _impactHeard, at);
 
             float heat = Amount(0);
             if (heat > 0f)
             {
                 Sized(FxLibrary.Spawn(p.Temp > 0f ? lib.HitSpark : lib.IceHit, at), heat);
                 if (p.Temp > 0f) Sized(FxLibrary.Spawn(lib.FireBurst, at), 0.55f * heat);
-                any = true;
             }
             float light = Amount(1);
             if (light > 0f)
-            {
                 Sized(p.Lum > 0f ? FxLibrary.Spawn(lib.HitLight, at) : FxLibrary.SpawnTinted(lib.Poof, at, p.Tint()), light);
-                any = true;
-            }
             float press = Amount(2);
-            if (press > 0f) { Sized(FxLibrary.Spawn(lib.HitThud, at), press); any = true; }
+            if (press > 0f) Sized(FxLibrary.Spawn(lib.HitThud, at), press);
             float aff = Amount(5);
-            if (aff > 0f) { Sized(FxLibrary.Spawn(lib.HitVector, at), aff); any = true; }
+            if (aff > 0f) Sized(FxLibrary.Spawn(lib.HitVector, at), aff);
             float bal = Amount(3);
             if (bal > 0f)
             {
@@ -974,17 +1119,16 @@ namespace SpellyZombie
                     Sized(FxLibrary.Spawn(lib.TextBoing, at + Vector3.up * 0.6f), bal);
                 else
                     Sized(FxLibrary.SpawnTinted(lib.Poof, at, p.Tint()), bal);
-                any = true;
             }
             float state = Amount(4);
             switch (SpellPayload.PhaseOf(p.State))
             {
                 case MatterPhase.Liquid:
-                    Sized(FxLibrary.SpawnTinted(lib.Splash, at, p.Tint()), Mathf.Max(0.3f, state)); any = true; break;
+                    Sized(FxLibrary.SpawnTinted(lib.Splash, at, p.Tint()), Mathf.Max(0.3f, state)); break;
                 case MatterPhase.Gas:
-                    Sized(FxLibrary.Spawn(lib.GasCloud, at, null, 1.2f), 0.4f * Mathf.Max(0.3f, state)); any = true; break;
+                    Sized(FxLibrary.Spawn(lib.GasCloud, at, null, 1.2f), 0.4f * Mathf.Max(0.3f, state)); break;
                 default:
-                    if (state > 0f) { Sized(FxLibrary.Spawn(lib.GroundHit, at), state); any = true; }
+                    if (state > 0f) Sized(FxLibrary.Spawn(lib.GroundHit, at), state);
                     break;
             }
         }
@@ -1022,6 +1166,20 @@ namespace SpellyZombie
 
         /// Every live particle - the sticky hand scans this for grab targets.
         public static IReadOnlyList<SpellParticle> Living => All;
+
+        /// The travel egg's plaything: a mote to look at, never a spell. It stays off the live
+        /// list (nothing seeks, fears, grabs, hears or sends it), touches nothing, is never pooled.
+        public bool Toy { get; private set; }
+
+        public static SpellParticle EmitToy(ParticleKind kind, Vector3 pos, Vector3 dir, float intensity)
+        {
+            if (All.Count >= DrawingConfig.ParticleCap) return null; // a toy never costs a real spell its place
+            var p = Emit(kind, pos, dir, intensity);
+            if (p == null) return null;
+            p.Toy = true;
+            All.Remove(p);
+            return p;
+        }
 
         Renderer _rend;
         float _age, _fearTick, _strikeTick;
@@ -1078,8 +1236,11 @@ namespace SpellyZombie
         void ResetForReuse()
         {
             _dead = false;
+            Toy = false;
             _age = 0f;
             Mischief = 0;
+            MischiefMore = 0;
+            _mightSet = 0;
             WornRow = null;
             _skinRow = null;
             LifeId = ++_lifeSerial;
@@ -1105,6 +1266,9 @@ namespace SpellyZombie
             _biomeOwed = false;
             _mergeQuietAt = 0f;
             _primed = false;
+            _joining = false;
+            Feeds = null;
+            MischiefMore = 0;
             _ballistic = false;
             _thrownBy = null;
             _kickedBodies.Clear();
@@ -1377,9 +1541,13 @@ namespace SpellyZombie
         {
             LeaveBiomes(); // a lvl3 cut short stops imposing too
             if (_dead) return;
+            // a spell dying in somebody's hand empties it without a word: the record says who did it
+            if (Holder != null)
+                Debug.Log($"[SpellyZombie] the held {name} died in a hand. Killed by:\n" + new System.Diagnostics.StackTrace(1, false));
             _dead = true;
             ListenForStays();
             All.Remove(this);
+            if (Toy) { Destroy(gameObject); return; } // it lives on the egg's layer: never back in the pool
             // pooled, keeping its kind-specific look for the next cast
             var stack = PoolFor(_poolKind);
             if (stack.Count < PoolKeep)
@@ -1398,6 +1566,7 @@ namespace SpellyZombie
         {
             if (_dead) return;
             float dt = Time.deltaTime;
+            if (Toy) { ToyFloat(dt); return; }
             _age += dt;
             ListenForStays();
 
@@ -1561,9 +1730,9 @@ namespace SpellyZombie
                 else if (StrikeKind)
                     Vel *= Mathf.Max(0f, 1f - 1.6f * dt); // ease to a hanging stop
 
-                    // MOTES SEEK EACH OTHER
+                    // MOTES SEEK EACH OTHER (a dart seeks nothing but its mark, and nothing seeks it)
                 if (Kind != ParticleKind.Lightning && Kind != ParticleKind.BlackHole
-                    && Kind != ParticleKind.BarrierMote)
+                    && Kind != ParticleKind.BarrierMote && Mischief == 0)
                 {
                     // seal kin first: same-drawing particles attract above
                     // all; foreign ones only when no sibling is in reach.
@@ -1578,7 +1747,7 @@ namespace SpellyZombie
                     for (int i = 0; i < All.Count; i++)
                     {
                         var o = All[i];
-                        if (o == this || o == null || o._dead) continue;
+                        if (o == this || o == null || o._dead || o.Mischief != 0) continue;
                         if (iAmPush)
                         {
                             // arrows seek arrows, Ys seek Ys
@@ -1704,17 +1873,21 @@ namespace SpellyZombie
                         // so merging still works
                         if (!Physics.Raycast(transform.position, Vel.normalized,
                                 out var sweep, step + 0.06f,
-                                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                                SweepMask, QueryTriggerInteraction.Ignore))
                         {
                             float bestD = float.MaxValue;
                             foreach (var th in Physics.RaycastAll(transform.position,
                                 Vel.normalized, step + 0.06f,
-                                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
+                                SweepMask, QueryTriggerInteraction.Collide))
                             {
                                 if (th.collider.GetComponent<SpellParticle>() != null) continue;
                                 if (th.distance < bestD) { bestD = th.distance; sweep = th; }
                             }
                         }
+                        // the thrower's own body is not a landing for the first half second (Touch's rule)
+                        if (sweep.collider != null && _thrownBy != null && Time.time < _thrownAt + 0.5f
+                            && sweep.collider.transform.IsChildOf(_thrownBy))
+                            sweep = default;
                         if (sweep.collider != null)
                         {
                             transform.position = sweep.point + sweep.normal * 0.08f;
@@ -1821,13 +1994,24 @@ namespace SpellyZombie
             return glow + Lum;
         }
 
+        /// A toy only floats: its weight sinks or lifts it and the air slows it, as a free mote
+        /// with nothing near it moves.
+        void ToyFloat(float dt)
+        {
+            Vel += Vector3.down * (EffDensity() - AirDensity) * 2.5f * dt;
+            Vel *= Mathf.Max(0f, 1f - (Kind == ParticleKind.Push ? 0.25f : 1.4f) * dt);
+            transform.position += Vel * dt;
+            if (Vel.sqrMagnitude > 1.2f) transform.rotation = Quaternion.LookRotation(Vel);
+        }
+
         // --------------------------------------------------------- collision --
         void OnTriggerEnter(Collider other)
         {
-            if (_dead) return;
+            if (_dead || Toy) return; // a toy touches nothing
             var op = other.GetComponent<SpellParticle>();
             if (op != null)
             {
+                if (op.Toy) return; // and no spell takes one for a mate
                 // both sides get the event - only one resolves the law
                 if (GetInstanceID() < op.GetInstanceID()) ResolveLaw(this, op);
                 return;
@@ -1835,6 +2019,8 @@ namespace SpellyZombie
             if (other.isTrigger) return;
             if (Dormant)
             {
+                // a summoned golem of its own side eats it while it hovers (never out of a hand)
+                if (PoolingDone && CreatureCasts.TryFeed(other, this)) return;
                 // a thrown conjure ghost fires where it lands; anything else
                 // a preview touches, it ignores
                 if (_wakeOnLand) { _wakeOnLand = false; Wake(); }
@@ -1904,9 +2090,16 @@ namespace SpellyZombie
         static void ResolveLaw(SpellParticle a, SpellParticle b)
         {
             if (a._dead || b._dead) return;
+            if (a.Mischief != 0 && b.Mischief != 0 && a.Dormant && b.Dormant
+                && a.Holder == null && b.Holder == null
+                && !Teams.Enemies(Teams.OfOwner(a.OwnerId), Teams.OfOwner(b.OwnerId)))
+            {
+                JoinDarts(a, b);
+                return;
+            }
             if (a.Mischief != 0 || b.Mischief != 0)
             {
-                // a dart never fuses; a barrier stops it
+                // a dart never fuses with a spell; a barrier stops it
                 var dart = a.Mischief != 0 ? a : b;
                 var other = dart == a ? b : a;
                 if (!dart.Dormant && other.Kind == ParticleKind.BarrierMote) { dart.ImpactFx(); dart.Die(); }
@@ -1930,7 +2123,11 @@ namespace SpellyZombie
                     (a.Dormant ? b : a).Sleep();
                 else
                 {
-                    (a.Dormant ? a : b).Wake();
+                    // a plain Solid or Liquid joins the spell that touched it instead of standing up
+                    var sleeper = a.Dormant ? a : b;
+                    sleeper._joining = true;
+                    sleeper.Wake();
+                    sleeper._joining = false;
                     // a woken conjure-ghost DIED into its conjure just now - the
                     // law must not keep resolving a corpse against a live mote
                     if (a._dead || b._dead) return;
@@ -1961,8 +2158,7 @@ namespace SpellyZombie
                 // ONE LAW, ASLEEP TOO: same axis levels up, different axes
                 // fuse by threshold - lvl3-bound pairs wait as a pending pair
                 // so the biome opens where the ghost WAKES, not where it slept
-                if (SpellTable.IsSteam(a.PayloadNow, b.PayloadNow)
-                    || Mathf.Max(EffLevel(a), EffLevel(b)) >= 2)
+                if (SpellTable.IsSteam(a.PayloadNow, b.PayloadNow))
                 { StorePendingPair(a, b); return; }
                 LevelMerge(a, b);
                 SettleDormantSurvivor(a, b);
@@ -1984,6 +2180,29 @@ namespace SpellyZombie
                 return;
             }
             LevelMerge(a, b);
+        }
+
+        /// Two sleeping darts become one that carries both: the older keeps its look, and
+        /// everything either carried lands together (MischiefLaw.Land).
+        static void JoinDarts(SpellParticle a, SpellParticle b)
+        {
+            var keep = a._clockKey <= b._clockKey ? a : b;
+            var gone = keep == a ? b : a;
+            keep.MischiefMore |= gone.MischiefMore | (1 << gone.Mischief);
+            // their powers add up: two decoy darts are one that lasts twice as long
+            for (int k = 1; k <= (int)MischiefKind.Transformation; k++)
+                if (k == gone.Mischief || (gone.MischiefMore & (1 << k)) != 0)
+                    keep.AddMight((MischiefKind)k, gone.MightOf((MischiefKind)k));
+            float was = keep.SrcSize;
+            keep.SrcSize = FuseSize(keep.SrcSize, gone.SrcSize);
+            keep.GrowToSize(was);
+            if (keep.Feeds == null) keep.Feeds = gone.Feeds;
+            keep.InheritAnchor(gone);
+            keep.Vel = Vector3.zero;
+            keep.ImpactFx();
+            gone.BecameObj = keep;
+            gone.Die();
+            keep.GhostLook();
         }
 
         static void BounceApart(SpellParticle a, SpellParticle b, float force)
@@ -2038,6 +2257,7 @@ namespace SpellyZombie
             // pool payload + ancestry into the survivor
             hi.Lineage |= lo.Lineage;
             hi._primed |= lo._primed; // a thrown ingredient keeps the fuse lit
+            if (hi.Feeds == null) hi.Feeds = lo.Feeds;
             if (hi._thrownBy == null && lo._thrownBy != null) { hi._thrownBy = lo._thrownBy; hi._thrownAt = lo._thrownAt; } // and its thrower's grace
             hi.Data = (hi.Data + lo.Data).Clamped();   // tops out, then drift pulls it back
             // mismatched levels: the weaker half rules the product (law 6);
@@ -2090,7 +2310,7 @@ namespace SpellyZombie
             // falling short parks it at area strength until it eats more.
             // And never mid-pool: two heats of a four-rune seal crossing the
             // biome line must not end the utterance before the rest join.
-            if (lvl >= 3 && PoolingDone && !_primed && OutPowers(SpellLaw.Here(this)))
+            if (lvl >= 3 && PoolingDone && !_primed && !Dormant && OutPowers(SpellLaw.Here(this)))
             {
                 GrammarLevel = 3;
                 BecomeBiome();
@@ -2281,6 +2501,7 @@ namespace SpellyZombie
             float wasSrc = SrcSize;
             SrcSize = FuseSize(SrcSize, food.SrcSize);
             Lineage |= food.Lineage; // ancestry rides EVERY combination
+            if (Feeds == null) Feeds = food.Feeds;
             food.BecameObj = this;   // the food's rune now waits on ME (sustain law)
             _settled = false; // fresh attributes knock it loose
             GrowToSize(wasSrc);
@@ -2291,6 +2512,7 @@ namespace SpellyZombie
             food.Die();
             if (split) TrySplit(spreadLevel);
             RuneGrammar.TryDemon(Lineage, transform.position, SrcSize);
+            RefreshIdentity();
             CheckTransform();
             RefreshLook();
         }
@@ -2434,7 +2656,7 @@ namespace SpellyZombie
             var was = Data;
             NoteOwned();
             RemarkBiome(SpellLaw.Here(this));
-            SpellLaw.Drift(this, DriftPeriod);
+            if (!_primed) SpellLaw.Drift(this, DriftPeriod); // a thrown spell lands as it was made
             if (GrammarLevel >= 3)
             {
                 var held = Data;
@@ -2484,6 +2706,7 @@ namespace SpellyZombie
 
             int n = Physics.OverlapSphereNonAlloc(transform.position, reach,
                 GrammarFX.ScanBuffer, ~0, QueryTriggerInteraction.Ignore);
+            _auraPuppets.Clear();
             for (int i = 0; i < n; i++)
             {
                 var c = GrammarFX.ScanBuffer[i];
@@ -2491,6 +2714,8 @@ namespace SpellyZombie
                 // limb capsules ride the same body - the ROOT pays, once
                 if (c.attachedRigidbody != null
                     && c.GetComponentInParent<SimpleFPSController>() != null) continue;
+                // a friend's body here is only its bone capsules: the nearest one pays, once (below)
+                var puppet = c.attachedRigidbody != null ? c.GetComponentInParent<NetAvatar>() : null;
 
                 // STRONGEST AT CENTRE, which is his own words for what a lvl2
                 // area does. Nothing else in here asks what KIND of particle it
@@ -2503,10 +2728,23 @@ namespace SpellyZombie
                     : c.ClosestPoint(transform.position);
                 float d = (near - transform.position).magnitude;
                 float w = Mathf.Clamp01(1f - d / Mathf.Max(0.01f, reach));
+                if (puppet != null)
+                {
+                    if (!_auraPuppets.TryGetValue(puppet, out var had) || w > had.w) _auraPuppets[puppet] = (c, w);
+                    continue;
+                }
                 HandOver(c, w * DrawingConfig.AuraShare * Power);
                 Pull(c, w);
             }
+            foreach (var kv in _auraPuppets)
+            {
+                HandOver(kv.Value.c, kv.Value.w * DrawingConfig.AuraShare * Power);
+                Pull(kv.Value.c, kv.Value.w);
+            }
         }
+
+        static readonly System.Collections.Generic.Dictionary<NetAvatar, (Collider c, float w)> _auraPuppets
+            = new System.Collections.Generic.Dictionary<NetAvatar, (Collider, float)>();
 
         static readonly Vector3[] _feelers =
             { Vector3.down, Vector3.up, Vector3.left, Vector3.right, Vector3.forward, Vector3.back };
@@ -2820,6 +3058,8 @@ namespace SpellyZombie
                 for (int i = 0; i < Fusions.Count; i++)
                     if (Fusions[i].OnlyLiving) return;
 
+            if (CreatureCasts.Spares(el, OwnerId)) return; // a rampaging body and its own side's spells
+
             // SENT BACK TO WHERE THE SPELL WAS DRAWN is not a flag any more:
             // an attached particle already pulls its host toward its own seal
             // with Affinity, so a recall is a sticky strengthless spell that
@@ -3073,6 +3313,23 @@ namespace SpellyZombie
             if (pose != null) PoseNow(body, pose.Bones);
         }
 
+        /// The same from a pose prefab of the Particle Shapes list, bone by name.
+        public static void PoseNow(Transform body, GameObject pose)
+        {
+            if (body == null || pose == null) return;
+            var want = new Dictionary<string, Transform>();
+            foreach (var t in pose.GetComponentsInChildren<Transform>(true))
+                if (t != pose.transform && !want.ContainsKey(t.name)) want[t.name] = t;
+            var seen = new HashSet<string>();
+            foreach (var t in body.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == body || !seen.Add(t.name) || !want.TryGetValue(t.name, out var from)) continue;
+                t.localPosition = from.localPosition;
+                t.localRotation = from.localRotation;
+                t.localScale = from.localScale;
+            }
+        }
+
         /// The same from a bone list (a creature's dragged handles).
         public static void PoseNow(Transform body, List<BonePose> bones)
         {
@@ -3229,11 +3486,13 @@ namespace SpellyZombie
             // an acolyte's dart: what it hits decides the spell, no grammar, spent at once
             if (Mischief != 0 && !Dormant)
             {
+                if (c.isTrigger) return; // a dart lands on things, never on invisible zones
                 if (_thrownBy != null && Time.time < _thrownAt + 0.5f
                     && c.transform.IsChildOf(_thrownBy)) return;
                 if (MischiefLaw.IsCasterBody(OwnerId, c)) return; // it leaves through its own caster
                 MischiefLaw.Land(this, c);
                 ImpactFx();
+                ThrowDartDebris(transform.position, 3);
                 Die();
                 return;
             }
@@ -3483,6 +3742,9 @@ namespace SpellyZombie
 
         void TouchBody(Component body, Element bodyEl, BodyState board, int owner, Vector3 bodyVel)
         {
+            // blame rides along, as HandOver stamps it on everything else: a body that burns or
+            // freezes from these numbers names this caster, so the kill is theirs
+            if (OwnerId >= 0 && bodyEl != null) bodyEl.Owner = OwnerId;
             Vector3 at = body.transform.position;
             if (Kind == ParticleKind.Flame)
             {
@@ -3976,6 +4238,12 @@ namespace SpellyZombie
                     child._rushSpeed = Mathf.Max(DrawingConfig.AreaHomingSpeed,
                         area.Offset.magnitude * 2.2f); // a meteor STREAKS - 22m up lands in half a second
                     child.Vel = aim * child._rushSpeed;
+                    // the author's own time: a steady speed all the way, no drag to stall a slow one
+                    if (area.ArriveSeconds > 0.01f && back.sqrMagnitude > 0.01f)
+                    {
+                        child.Vel = aim * (back.magnitude / area.ArriveSeconds);
+                        child._coasting = true;
+                    }
                     child.Wake();
                     child.WearArea(area);
                     child.RefreshIdentity_Public(); // a loaded spell dresses NOW, not next beat
@@ -4128,10 +4396,17 @@ namespace SpellyZombie
         /// in the same frame failed.
         TrailRenderer ShowTail()
         {
-            if (_tail == null) _tail = gameObject.AddComponent<TrailRenderer>();
+            if (_tail == null)
+            {
+                _tail = gameObject.AddComponent<TrailRenderer>();
+                _tail.widthCurve = TrailTaper;
+            }
             else if (!_tail.enabled) { _tail.Clear(); _tail.enabled = true; }
             return _tail;
         }
+
+        /// Every spell trail: full width at the thing, a point at the far end.
+        public static readonly AnimationCurve TrailTaper = AnimationCurve.Linear(0f, 1f, 1f, 0f);
 
         void HideTail()
         {
@@ -4148,9 +4423,16 @@ namespace SpellyZombie
             // THE TRAIL IS THE AREA'S, because a trail is part of how an
             // area looks and a bare spell has no look of its own beyond its
             // body.
-            var area = Area;
-            float w = area != null ? area.TrailWidth : 0f;
-            float t = area != null ? area.TrailSeconds : 0f;
+            // an area child keeps its own area's trail (its numbers also read as other spells,
+            // and the first of those has none: that hid the meteor's); a spell wears the widest
+            float w = 0f, t = 0f;
+            if (_isAreaChild && _wornArea != null) { w = _wornArea.TrailWidth; t = _wornArea.TrailSeconds; }
+            else
+                for (int i = 0; i < Fusions.Count; i++)
+                {
+                    var a = SpellBook.Live.Aoe(Fusions[i].Aoe);
+                    if (a != null && a.TrailWidth > w) { w = a.TrailWidth; t = a.TrailSeconds; }
+                }
             if (w <= 0f) { HideTail(); return; }
             var tail = ShowTail();
             tail.time = Mathf.Max(0.05f, t);

@@ -94,6 +94,9 @@ namespace SpellyZombie
             _splitting = true;
 
             int n = Mathf.Max(2, Pieces);
+            // a rune was this body's, not its pieces': they come out plain, pupils too
+            var buff = GetComponent<ZombieBuff>();
+            if (buff != null) buff.End();
             // volume splits n ways, so each piece is the cube root smaller
             float shrink = Mathf.Pow(1f / n, 1f / 3f);
             float pieceMass = _rb.mass / n;
@@ -121,6 +124,9 @@ namespace SpellyZombie
                 // strength follows the new body: smaller means weaker
                 var dmg = copy.GetComponent<Element>();
                 if (dmg != null) dmg.SetStrengthFromBody(copy.transform.localScale.x, pieceMass);
+                // a golem piece answers to the golem beat's name for it, as Golem.Raise names a golem
+                if (dmg != null && copy.TryGetComponent<Golem>(out _)) dmg.Rename(copy.GetInstanceID());
+                if (copy.TryGetComponent<ZombieBuff>(out var copied)) Destroy(copied);
 
                 var s = copy.GetComponent<DensitySplit>();
                 if (s != null) s._checkAt = Time.time + 0.5f; // let it settle before re-judging

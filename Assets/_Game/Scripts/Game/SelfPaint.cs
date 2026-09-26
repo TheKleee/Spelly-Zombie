@@ -58,12 +58,12 @@ namespace SpellyZombie
                 return;
             }
 
-            if (kb.rKey.wasPressedThisFrame)
+            if (Keys.Down(Act.Body))
             {
                 if (IsActive) { Exit(); return; }
                 if (CanEnter()) Enter();
             }
-            if (IsActive && kb.escapeKey.wasPressedThisFrame) { Exit(); return; }
+            if (IsActive && (kb.escapeKey.wasPressedThisFrame || Keys.BackDown)) { Exit(); return; }
             if (!IsActive) return;
 
             PosePicker(kb);
@@ -117,11 +117,11 @@ namespace SpellyZombie
             }
             // F relaxes the pose - unless the grimoire has a target under the
             // cursor (declare/absorb owns F for that press)
-            if (kb.fKey.wasPressedThisFrame && _emotes.IsPosing
+            if (Keys.Down(Act.Drop) && _emotes.IsPosing
                 && !GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach)
             {
                 _emotes.StopToRest();
-                _rebakeIn = PoseSettle;
+                DropShell();
             }
 
             if (_rebakeIn > 0f)
@@ -135,7 +135,16 @@ namespace SpellyZombie
 
         void LoadPose(int slot)
         {
+            int was = _emotes.ActiveSlot;
             _emotes.ToggleSlot(slot); // load (or toggle off) that saved pose
+            if (_emotes.ActiveSlot != was) DropShell(); // an empty slot changes nothing
+        }
+
+        /// The old shell stops being the body the moment a pose starts landing: nothing to draw on
+        /// until RebakeShell bakes the settled shape, never ink on a shape that is not on screen.
+        void DropShell()
+        {
+            GetComponent<CharacterRig>()?.EndBodyPaint();
             _rebakeIn = PoseSettle;
         }
 
@@ -183,9 +192,9 @@ namespace SpellyZombie
             _dist = 2.3f;
             _pan = Vector3.zero;
 
-            // the limb capsules on the bones are the official ink surfaces;
-            // the skinned mesh is looks-only, never a pen target. Relax the
-            // pose first so the canvas holds still.
+            // the pen draws on a shell baked from the skin as it stands and the ink
+            // rides the bone that moves the skin it lands on. Relax the pose first
+            // so the canvas holds still.
             var body = GetComponent<CharacterRig>();
             if (body != null && body.HasBody) body.RelaxForPaint();
 

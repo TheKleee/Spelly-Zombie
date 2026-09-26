@@ -86,12 +86,17 @@ namespace SpellyZombie
 
         /// A point for one acolyte: a biome picked at random, then a spot in it.
         /// Random per acolyte, so they usually separate without being placed.
+        /// Never in water: liquid biomes are not acolyte ground.
         public static bool AcolytePoint(System.Random rng, out Vector3 at)
         {
             at = default;
-            if (_acolyte.Count == 0) return false;
-            return PointIn(_acolyte[rng.Next(_acolyte.Count)], rng, out at);
+            _dry.Clear();
+            foreach (var b in _acolyte) if (b != null && !(b is LiquidBiome)) _dry.Add(b);
+            if (_dry.Count == 0 && WizardBiome != null && !(WizardBiome is LiquidBiome)) _dry.Add(WizardBiome);
+            if (_dry.Count == 0) return false;
+            return PointIn(_dry[rng.Next(_dry.Count)], rng, out at);
         }
+        static readonly List<Biome> _dry = new List<Biome>();
 
         /// Stand the local player at their start, once per scene. Called every
         /// frame; it does nothing until it has a body and a scene it has not
@@ -107,8 +112,11 @@ namespace SpellyZombie
                 Vector3 at;
 
                 // the lobby's host, and anyone alone in it, starts at the book stand and turned to it:
-                // the stand is where a lobby is run. Whoever joins is scattered below, as ever.
-                if (scene == "Lobby" && (!NetGame.Connected || NetGame.IsHost) && LobbyStand.HostSpot(out at, out float yaw))
+                // the stand is where a lobby is run. Whoever joins is scattered below, as ever; one
+                // still connecting (a Steam invite from the menu) is not alone either
+                bool joining = !NetGame.Connected && (NetGame.ClientStarting || SteamLobby.JoinPending);
+                if (scene == "Lobby" && (!NetGame.Connected || NetGame.IsHost) && !joining
+                    && LobbyStand.HostSpot(out at, out float yaw))
                 {
                     FallCatcher.Teleport(p, at);
                     p.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
@@ -216,6 +224,9 @@ namespace SpellyZombie
 
         static readonly HashSet<SimpleFPSController> _placed
             = new HashSet<SimpleFPSController>();
+
+        /// This body already stands at its start in this scene (the travel egg opens on it).
+        public static bool IsPlaced(SimpleFPSController p) => p != null && _placed.Contains(p);
 
         /// Every scene load is a fresh start, INCLUDING reloading the one you
         /// were in - a scene-name check meant a lobby you re-entered put you

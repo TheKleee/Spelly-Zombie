@@ -11,8 +11,10 @@ namespace SpellyZombie
 
     /// ★ HOW A CREATURE LIVES (the Creature Creator). Roams is each body's own
     /// way: a zombie still runs from wands, a golem wanders and fights what it
-    /// sees. Saved as a number, so new ones only ever go at the end.
-    public enum CreatureBehaviour { Roams, Hunts, Guards, Skittish }
+    /// sees. Rampages is a calamity: random spells from its list all over the
+    /// place, never running, untouched by its own side's spells.
+    /// Saved as a number, so new ones only ever go at the end.
+    public enum CreatureBehaviour { Roams, Hunts, Guards, Skittish, Rampages }
 
     /// ★ WHICH BOOK A SPELL LIVES IN. Not which TEAM - which GRIMOIRE. The
     /// two come apart on purpose: an acolyte's curse swaps a wizard's book for
@@ -312,6 +314,11 @@ namespace SpellyZombie
         /// meteor is: an area authored twenty metres up.
         public Vector3 Offset;
 
+        /// Seconds from where it starts to the spell, at a steady speed. 0 = the game's own
+        /// pace (the further it starts, the faster it comes). Slower than 5 m/s it settles
+        /// in instead of slamming.
+        public float ArriveSeconds;
+
         /// Reappears on nearby things that meet the same condition. Fire and
         /// poison; nothing else needs to know about "contagion".
         public bool Spreading;
@@ -421,6 +428,9 @@ namespace SpellyZombie
         }
 
         public static void Forget() { _loaded = null; }
+
+        /// True while this very book is the live one: nothing adopted or saved over it since.
+        public static bool IsLive(SpellBook b) => b != null && _loaded == b;
 
         public static SpellBook Load()
         {

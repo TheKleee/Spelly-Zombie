@@ -127,9 +127,13 @@ namespace SpellyZombie
             _inks.Clear();
             _drawing = null;
             DropShells();
+            DropLitTwins();
             TeardownStage();
+            _islandUp = false; // the scene took its ground with it
+            _islandSeed = 0;
             _fly = null;
             _sel = null;
+            _locked = false;
             _posing = null;
             _sculpt = null;
             _playing = null;
@@ -158,6 +162,7 @@ namespace SpellyZombie
             _savedAs = savedAs;
             _savedIn = savedIn;
             _sel = null;
+            _locked = false;
             if (moveEye && _cam != null)
             {
                 _cam.transform.position = def.CamPos;
@@ -249,6 +254,27 @@ namespace SpellyZombie
             if (kb.rKey.wasPressedThisFrame && !kb.leftCtrlKey.isPressed && !kb.rightCtrlKey.isPressed) TurnSelected(15f);
             if (kb.leftBracketKey.wasPressedThisFrame) ResizeSelected(0.9f);
             if (kb.rightBracketKey.wasPressedThisFrame) ResizeSelected(1.1f);
+            if (kb.fKey.wasPressedThisFrame) FindSelected();
+            if (kb.lKey.wasPressedThisFrame) ToggleLock();
+        }
+
+        /// The picked one locked or free again (the L key, its window's button).
+        void ToggleLock()
+        {
+            _locked = _sel != null && !_locked;
+            if (_winItem != null && _winItem.Visible) BuildItemWindow();
+            Hint();
+        }
+
+        /// ★ FIND IT (his ask: a lost thing could not be found): the eye flies to the picked one,
+        /// looking the way it looked, as close as shows it whole.
+        void FindSelected()
+        {
+            if (_sel == null || _sel.Root == null || _cam == null) return;
+            var b = Bounds(_sel);
+            float half = Mathf.Max(0.05f, Mathf.Min(_cam.fieldOfView, _cam.fieldOfView * _cam.aspect) * 0.5f) * Mathf.Deg2Rad;
+            float dist = Mathf.Max(0.3f, b.extents.magnitude) / Mathf.Sin(half) * 1.1f;
+            _cam.transform.position = b.center - _cam.transform.forward * dist;
         }
 
         void LateUpdate()
@@ -257,8 +283,10 @@ namespace SpellyZombie
             RefreshInk();
             UpdateSelectBox();
             TickStage();
-            // the grid is a helper: never in a clip or a photo taken with I and P either
-            if (_grid != null && !_shooting && _grid.activeSelf == ClipRecorder.Busy) _grid.SetActive(!ClipRecorder.Busy);
+            // the grid is a helper: never in a clip or a photo taken with I and P either, and gone
+            // while the island is the ground
+            bool grid = !ClipRecorder.Busy && !_islandUp;
+            if (_grid != null && !_shooting && _grid.activeSelf != grid) _grid.SetActive(grid);
         }
 
         /// Posing, drawing or placing ends. True when one did.
@@ -285,51 +313,69 @@ namespace SpellyZombie
         Vector3 _grab;            // from the pointer's ground point to the subject, kept while carrying it
         float _dragLift;          // how high above the ground it rides
         float _liftStartY, _rootStartY;
-        static readonly RaycastHit[] _hits = new RaycastHit[64];
+        static readonly RaycastHit[] _hits = new RaycastHit[256];
+        static readonly IComparer<RaycastHit> Nearest =
+            Comparer<RaycastHit>.Create((a, b) => a.distance.CompareTo(b.distance));
+        readonly List<Subject> _under = new List<Subject>(); // what the last press was on, nearest first
+        bool _cycle;              // a plain click now reaches the next one under the pointer
+        bool _locked;             // the picked one is locked: presses in the scene only ever move it
 
         void Press(Vector2 screen)
         {
             var ray = _cam.ScreenPointToRay(screen);
             Physics.SyncTransforms(); // what moved since the last physics step is where it shows
-            // a subject under the pointer is picked up, not placed on again
-            var s = SubjectUnder(ray);
-            if (s != null)
-            {
-                if (_tool == Tool.Place) { _tool = Tool.None; _pick = null; BuildAddWindow(); }
-                Select(s);
-                BeginDrag(s, ray, screen);
-                return;
-            }
+            _cycle = false;
+            // placing (his rule): a click puts it where the pointer meets anything, on what is
+            // already there too, and never picks that instead
             if (_tool == Tool.Place)
             {
                 if (MapCreator.GroundUnder(ray, null, out var at, GroundMask)) PlaceAt(at);
                 return;
             }
+            // ★ LOCKED (his ask): a press anywhere moves the picked one; nothing else is ever picked
+            // by accident, and empty ground never lets it go
+            if (_locked && _sel != null && _sel.Root != null)
+            {
+                BeginDrag(_sel, ray, screen);
+                return;
+            }
+            SubjectsUnder(ray, _under);
+            if (_under.Count > 0)
+            {
+                // the picked one, still under the pointer, stays held: a drag moves it and a
+                // plain click goes on to the one behind it, round and round like layers
+                bool again = _sel != null && _under.Contains(_sel);
+                _cycle = again && _under.Count > 1;
+                var s = again ? _sel : _under[0];
+                if (!again) Select(s);
+                BeginDrag(s, ray, screen);
+                return;
+            }
             Select(null);
         }
 
-        /// The subject the pointer is on: its own shapes first, then the box of an
-        /// effect in front of whatever ground the pointer meets.
-        Subject SubjectUnder(Ray ray)
+        /// Every subject the pointer is on, nearest first: its own shapes up to whatever ground
+        /// the pointer meets, then the boxes of effects in front of that ground.
+        void SubjectsUnder(Ray ray, List<Subject> into)
         {
+            into.Clear();
             float ground = float.MaxValue;
-            if (Physics.Raycast(ray, out var hit, 5000f, GroundMask, QueryTriggerInteraction.Ignore))
-            {
-                var owner = Owner(hit.collider.transform);
-                if (owner != null) return owner;
-                ground = hit.distance;
-            }
-            Subject best = null;
-            int n = Physics.RaycastNonAlloc(ray, _hits, 5000f, 1 << PickLayer, QueryTriggerInteraction.Collide);
+            int n = Physics.RaycastNonAlloc(ray, _hits, 5000f, GroundMask, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(_hits, 0, n, Nearest);
             for (int i = 0; i < n; i++)
             {
-                if (_hits[i].distance >= ground) continue;
                 var owner = Owner(_hits[i].collider.transform);
-                if (owner == null) continue;
-                ground = _hits[i].distance;
-                best = owner;
+                if (owner == null) { ground = _hits[i].distance; break; }
+                if (!into.Contains(owner)) into.Add(owner);
             }
-            return best;
+            n = Physics.RaycastNonAlloc(ray, _hits, 5000f, 1 << PickLayer, QueryTriggerInteraction.Collide);
+            System.Array.Sort(_hits, 0, n, Nearest);
+            for (int i = 0; i < n; i++)
+            {
+                if (_hits[i].distance >= ground) break;
+                var owner = Owner(_hits[i].collider.transform);
+                if (owner != null && !into.Contains(owner)) into.Add(owner);
+            }
         }
 
         Subject Owner(Transform t)
@@ -344,7 +390,9 @@ namespace SpellyZombie
             if (_posing != null && _posing != s) StopPosing();
             if (_playing != null && _playing != s) StopPlaying(true);
             _sel = s;
+            if (s == null) _locked = false; // nothing picked, nothing locked
             if (_winAnims != null && _winAnims.Visible) BuildAnimWindow();
+            if (_winList != null && _winList.Visible) BuildListWindow();
             if (_winItem != null)
             {
                 if (s != null) { _winItem.Show(); BuildItemWindow(); }
@@ -393,7 +441,15 @@ namespace SpellyZombie
         void EndDrag()
         {
             _dragging = false;
-            if (!_dragMoved || _sel == null) return;
+            bool cycle = _cycle;
+            _cycle = false;
+            if (!_dragMoved)
+            {
+                int at = cycle && _sel != null ? _under.IndexOf(_sel) : -1;
+                if (at >= 0) Select(_under[(at + 1) % _under.Count]);
+                return;
+            }
+            if (_sel == null) return;
             Moved(_sel);
             SettleEyes(_sel);
             if (_winItem != null && _winItem.Visible) BuildItemWindow();
@@ -434,8 +490,11 @@ namespace SpellyZombie
 
         // ------------------------------------------------------- selection box --
         LineRenderer _selBox;
+        bool _boxLocked;
+        static readonly Color PickedColor = new Color(1f, 0.82f, 0.25f), LockedColor = new Color(0.35f, 0.8f, 1f);
 
-        /// A gold box around the selected subject, riding along as it moves, turns and grows.
+        /// A gold box around the selected subject, riding along as it moves, turns and grows;
+        /// blue while it is locked.
         void UpdateSelectBox()
         {
             var s = _sel != null && _sel.Root != null ? _sel : null;
@@ -448,7 +507,13 @@ namespace SpellyZombie
                 _selBox.numCornerVertices = 2;
                 _selBox.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 _selBox.receiveShadows = false;
-                _selBox.sharedMaterial = MatterFX.Get(new Color(1f, 0.82f, 0.25f), MoteShade.Opaque);
+                _selBox.sharedMaterial = MatterFX.Get(PickedColor, MoteShade.Opaque);
+                _boxLocked = false;
+            }
+            if (_boxLocked != _locked)
+            {
+                _boxLocked = _locked;
+                _selBox.sharedMaterial = MatterFX.Get(_locked ? LockedColor : PickedColor, MoteShade.Opaque);
             }
             bool on = s != null && !_shooting;
             if (_selBox.gameObject.activeSelf != on) _selBox.gameObject.SetActive(on);
@@ -615,6 +680,7 @@ namespace SpellyZombie
             else if (_posing != null) s = Loc.T("photo.hint.pose");
             else if (_tool == Tool.Ink) s = Loc.T("photo.hint.ink");
             else if (_tool == Tool.Place && _pick != null) s = Loc.F("photo.hint.place", PickName(_pick));
+            else if (_sel != null && _locked) s = Loc.F("photo.hint.locked", MapCreator.KeyName(kb?.lKey, "L"));
             else if (_sel != null)
                 s = Loc.F("photo.hint.picked", MapCreator.KeyName(kb?.rKey, "R"),
                     MapCreator.KeyName(kb?.leftBracketKey, "["), MapCreator.KeyName(kb?.rightBracketKey, "]"));

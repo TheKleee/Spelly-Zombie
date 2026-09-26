@@ -55,7 +55,6 @@ namespace SpellyZombie
         public static void Set(int owner, Mark what, int value)
         {
             if (owner == 0) return; // 0 = no id; hashes and instance ids go negative
-            if (what == Mark.KilledBy) KillLedger.Record(owner, value); // the needles ask "did you ever"
             SetLocal(owner, what, value);
             NetSync.PushMark(owner, what, value);
         }
@@ -65,6 +64,8 @@ namespace SpellyZombie
         public static void SetLocal(int owner, Mark what, int value)
         {
             if (owner == 0) return; // 0 = no id; hashes and instance ids go negative
+            // the needles ask "did you ever", on every machine: their marks show where they can land
+            if (what == Mark.KilledBy) KillLedger.Record(owner, value);
             _marks[new Key { Owner = owner, What = what }] = value;
         }
 

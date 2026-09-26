@@ -26,7 +26,9 @@ namespace SpellyZombie
             public string Proto;         // the messages that host speaks (NetVersion); empty from a build before the gate
             public int Build;
             public float Seen;
+            public float UpStamp;        // unscaled time the lobby went up, as this machine counts; < 0 = unknown
         }
+        static long _upUnix; // this PC's clock when its lobby went up
 
         /// Lobbies heard lately, oldest call first.
         public static readonly List<Found> Lobbies = new List<Found>();
@@ -58,6 +60,7 @@ namespace SpellyZombie
         {
             _calling = on;
             _callingSince = Time.unscaledTime;
+            if (on) _upUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         }
 
         /// The stand's Join list is up: hear the calls.
@@ -83,7 +86,8 @@ namespace SpellyZombie
             // a lobby that is no longer up stops calling
             if (_calling && !NetGame.Connected && !NetGame.ClientStarting && Time.unscaledTime - _callingSince > StartGrace)
                 _calling = false;
-            if (_calling && NetGame.IsHost && Time.unscaledTime >= _nextCall)
+            // an away host calls nothing: the listeners forget it in a few seconds
+            if (_calling && NetGame.IsHost && !SteamLobby.HostAway && Time.unscaledTime >= _nextCall)
             {
                 _nextCall = Time.unscaledTime + CallEvery;
                 SendCall();
@@ -103,7 +107,8 @@ namespace SpellyZombie
                     string.IsNullOrEmpty(NetGame.HostPassword) ? "0" : "1", InGame ? "1" : "0",
                     Esc(SteamLobby.PendingRegion), Esc(string.IsNullOrEmpty(SteamLobby.PendingLang) ? Loc.LanguageCode : SteamLobby.PendingLang),
                     SteamLobby.PendingTags.ToString(),
-                    NetVersion.Proto, NetVersion.Build.ToString()); // added at the end: an older listener reads the first ten
+                    NetVersion.Proto, NetVersion.Build.ToString(), // added at the end: an older listener reads the first ten
+                    _upUnix.ToString()); // when it went up, by this PC's clock
                 var bytes = Encoding.UTF8.GetBytes(packet);
                 _sender.Send(bytes, bytes.Length, new IPEndPoint(IPAddress.Loopback, Port)); // a second window on this PC
                 _sender.Send(bytes, bytes.Length, new IPEndPoint(IPAddress.Broadcast, Port));
@@ -158,6 +163,10 @@ namespace SpellyZombie
             int.TryParse(f[9], out int tags);
             int build = 0;
             if (f.Length > 11) int.TryParse(f[11], out build);
+            long upUnix = 0;
+            if (f.Length > 12) long.TryParse(f[12], out upUnix);
+            float upStamp = upUnix <= 0 ? -1f
+                : Time.unscaledTime - Mathf.Max(0f, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - upUnix);
             string name = Unesc(f[2]);
             if (name.Length > 40) name = name.Substring(0, 40);
             var lobby = new Found
@@ -168,6 +177,7 @@ namespace SpellyZombie
                 Region = Unesc(f[7]), Lang = Unesc(f[8]), Tags = tags,
                 Proto = f.Length > 10 ? f[10] : "", Build = build,
                 Seen = Time.unscaledTime,
+                UpStamp = upStamp,
             };
             string body = string.Join("|", f, 2, f.Length - 2);
             bool changed = !_heard.TryGetValue(f[1], out var was) || was.packet != body;

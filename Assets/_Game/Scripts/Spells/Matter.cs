@@ -62,6 +62,11 @@ namespace SpellyZombie
         /// that stands up from it; the rubble of the world stays wild even
         /// when a spell broke it. The blame stamp is a separate matter.
         public bool SpellBorn;
+        /// The free ice a frozen thing throws when it cracks (Element). Chips
+        /// never stand up: two of them do not join, and one joining real matter
+        /// adds its bulk without counting toward a golem. A golem born inside
+        /// the cold is frozen itself, so chips that stood up bred without end.
+        public bool Chip;
 
         /// Stamp the team, and the blame channel with it.
         public void StampOwner(int owner)
@@ -664,7 +669,9 @@ namespace SpellyZombie
                     if (creature == null || !creature.TryShatter(dmg))
                     {
                         var d = col.collider.GetComponentInParent<Element>();
-                        if (d != null) d.TakeDamage(dmg, $"crushed by {Material}");
+                        // a player crushed names the rock's maker, as its flying hit above does
+                        if (d != null) d.TakeDamage(dmg, $"crushed by {Material}",
+                            NetSync.OwnerOfBody(col.collider) >= 0 ? TeamOwner : -1);
                     }
                     // thud at the impact point, comic WHAM on big damage
                     if (FxLibrary.I != null && col.contactCount > 0)
@@ -688,6 +695,7 @@ namespace SpellyZombie
             if (FuseGraced(a, b)) return false;
             // different materials never combine
             if (a.Material != b.Material) return false;
+            if (a.Chip && b.Chip) return false;
             // gas mixes only with gas
             if ((a.Phase == MatterPhase.Gas) != (b.Phase == MatterPhase.Gas)) return false;
 
@@ -718,13 +726,14 @@ namespace SpellyZombie
                 SyncPhaseCollision();   // it's walk-through from this moment
                 DrawingWorld.Instance?.LogEvent($"the {Material} dissolves into the pool");
             }
-            else
+            else if (!Chip && !o.Chip)
             {
                 FormLevel = Mathf.Min(2, Mathf.Max(FormLevel, o.FormLevel) + 1);
                 // LEVEL 2 IS A GOLEM, NOT A BIGGER LUMP. Same phase meeting
                 // same phase stands up and walks - solid, liquid or gas alike.
                 if (FormLevel >= 2 && RiseAsGolem(merged, o)) return;
             }
+            Chip = false; // whatever a chip joined was real matter
             // the survivor keeps the higher seal side-count
             Edges = Mathf.Max(Edges, o.Edges);
             _baseSize = merged;
@@ -769,6 +778,11 @@ namespace SpellyZombie
             view.Set(Phase);                       // solid, liquid or gas golem
             view.Tint = _info.SolidColor;
             view.DriveTint = true;
+            // the body carries the phase too: its look follows its own State number every beat, and
+            // ground with no state of its own left a stone golem reading as liquid glass
+            var made = g.GetComponent<Element>();
+            if (made != null && Phase != MatterPhase.Liquid)
+                made.WearBorn(new SpellPayload { State = SpellPayload.FromHuman(4, Phase == MatterPhase.Solid ? 80f : -100f) });
 
             var tag = g.GetComponent<SurfaceMaterialTag>();
             if (tag == null) tag = g.gameObject.AddComponent<SurfaceMaterialTag>();

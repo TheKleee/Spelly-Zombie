@@ -22,16 +22,28 @@ namespace SpellyZombie
         public static ChestLid ChestTarget { get; private set; }
 
         static Vector3 _externalAt;
-        static string _externalKey;
+        static string _externalKey, _externalCaption;
         static int _externalFrame = -1;
 
         /// A system beyond the crosshair scan asks for the floating key at a
-        /// world point this frame (used by the declare flow).
-        public static void OfferAt(Vector3 at, string key)
+        /// world point this frame (used by the declare flow), with its words when it has any.
+        public static void OfferAt(Vector3 at, string key, string caption = null)
         {
             _externalAt = at;
             _externalKey = key;
+            _externalCaption = caption;
             _externalFrame = Time.frameCount;
+        }
+
+        static Transform _spellPick;
+        static int _spellFrame = -1;
+
+        /// The spell the grab would take this frame, by the grab's own rule (HandGrab): the E
+        /// goes on it. The grab's cone is far wider than this badge's ray.
+        public static void OfferSpell(Transform spell)
+        {
+            _spellPick = spell;
+            _spellFrame = Time.frameCount;
         }
 
         /// One aim distance for the badge and for the actions it promises.
@@ -112,14 +124,17 @@ namespace SpellyZombie
                     _show = true;
                     danger = true;
                     if (_ui == null) Build();
-                    if (_letter != null && _letter.text != "E") _letter.text = "E";
+                    Letter("E");
                     UIPrompt.Offer("F", Loc.T("carry.down"));
                 }
             }
-            else if (cam != null && !uiBusy
-                && Physics.Raycast(cam.transform.position, cam.transform.forward,
-                    out var hit, Reach, AimMask, QueryTriggerInteraction.Collide))
-                Resolve(hit);
+            else if (cam != null && !uiBusy)
+            {
+                if (Physics.Raycast(cam.transform.position, cam.transform.forward,
+                        out var hit, Reach, AimMask, QueryTriggerInteraction.Collide))
+                    Resolve(hit);
+                if (!_show) PointSpell(); // nothing under the crosshair took the badge
+            }
 
             // external offers apply only when the crosshair scan found nothing
             bool external = !_show && _externalFrame >= Time.frameCount - 1;
@@ -128,7 +143,8 @@ namespace SpellyZombie
                 _anchor = _externalAt + Vector3.up * 0.12f;
                 _show = true;
                 if (_ui == null) Build();
-                if (_letter != null && _letter.text != _externalKey) _letter.text = _externalKey;
+                Letter(_externalKey);
+                if (_caption != null) _caption.text = _externalCaption ?? "";
             }
 
             // 0.1s of stable aim required before the badge shows;
@@ -164,12 +180,16 @@ namespace SpellyZombie
                 if (side != null && hit.distance <= side.Range)
                 {
                     Point(side, side.transform, hit, "E");
+                    // the side E would put you on
+                    if (_caption != null)
+                        _caption.text = acolyte ? Loc.T("side.pillar.wizard") : Loc.T("side.pillar.acolyte");
                     return;
                 }
                 var hat = hit.collider.GetComponentInParent<HatPillar>();
                 if (hat != null && hit.distance <= hat.Range)
                 {
                     Point(hat, hat.transform, hit, "E");
+                    if (_caption != null && !HatPillar.PanelOpen) _caption.text = Loc.T("hat.pillar");
                     return;
                 }
             }
@@ -206,12 +226,8 @@ namespace SpellyZombie
                 }
             }
 
-            var mote = hit.collider.GetComponentInParent<SpellParticle>();
-            if (mote != null && !mote.Dead)
-            {
-                Point(mote, mote.transform, hit, "E");
-                return;
-            }
+            // E takes a spell before anything else it could lift, so the badge says so first
+            if (PointSpell()) return;
 
             var spellMatter = hit.collider.GetComponentInParent<MatterStrike>();
             if (spellMatter != null && spellMatter.SpellForm && spellMatter.OwnerId == me)
@@ -240,6 +256,18 @@ namespace SpellyZombie
             }
         }
 
+        /// The E on the spell the grab would take now. False when it would take none.
+        bool PointSpell()
+        {
+            if (_spellPick == null || _spellFrame != Time.frameCount) return false;
+            Aimed = _spellPick;
+            _anchor = _spellPick.position + Vector3.up * 0.35f;
+            _show = true;
+            if (_ui == null) Build();
+            Letter("E");
+            return true;
+        }
+
         /// Anchors the badge at the hit point plus a small lift - near the
         /// aim, not over the object's top.
         void Point(Component what, Transform over, RaycastHit hit, string key)
@@ -248,7 +276,14 @@ namespace SpellyZombie
             _anchor = hit.point + Vector3.up * 0.35f;
             _show = true;
             if (_ui == null) Build();
-            if (_letter != null && _letter.text != key) _letter.text = key;
+            Letter(key);
+        }
+
+        /// The badge shows what that key is bound to now, on the device in use.
+        void Letter(string written)
+        {
+            string shown = Keys.Shown(written);
+            if (_letter != null && _letter.text != shown) _letter.text = shown;
         }
     }
 }

@@ -65,7 +65,8 @@ namespace SpellyZombie
         void Update()
         {
             var kb = Keyboard.current;
-            if (kb == null || !kb.escapeKey.wasPressedThisFrame || UIKit.Typing) return;
+            bool back = (kb != null && kb.escapeKey.wasPressedThisFrame) || Keys.BackDown;
+            if (!back || UIKit.Typing) return;
             Back();
         }
 
@@ -131,21 +132,99 @@ namespace SpellyZombie
             bool top = string.IsNullOrEmpty(_folder);
             int count = 1 + (top ? 1 : 0) + _folders.Count + _photos.Count;
             var grid = MapCards.Cards(_cards, _cardsW, count, out float nameFrac);
-            MapCards.Mark(MapCards.Card(grid, Loc.T("photos.newphoto"), null, nameFrac, NewPhoto, false), nameFrac, "+");
+            // a photo looks like a print and a folder like a folder; the new ones carry a plus
+            PrintLook(MapCards.Card(grid, Loc.T("photos.newphoto"), null, nameFrac, NewPhoto, false, tile: false), nameFrac, null, true);
             if (top)
-                MapCards.Mark(MapCards.Card(grid, Loc.T("photos.newfolder"), null, nameFrac, NewFolder, false), nameFrac, "+");
+                FolderLook(MapCards.Card(grid, Loc.T("photos.newfolder"), null, nameFrac, NewFolder, false, tile: false), nameFrac, null, true);
             for (int i = 0; i < _folders.Count; i++)
             {
                 int at = i;
                 string f = _folders[i];
-                // a folder reads as a group: its name and how many photos it holds, over its newest picture
-                MapCards.Card(grid, f + "  (" + PhotoLibrary.CountIn(f) + ")", FolderPicture(f), nameFrac, () => Pick(at), _pick == at);
+                // a folder reads as a group: its name and how many photos it holds, its newest picture tucked in it
+                FolderLook(MapCards.Card(grid, f + "  (" + PhotoLibrary.CountIn(f) + ")", null, nameFrac, () => Pick(at), _pick == at, tile: false),
+                    nameFrac, FolderPicture(f), false);
             }
             for (int i = 0; i < _photos.Count; i++)
             {
                 int at = _folders.Count + i;
-                MapCards.Card(grid, _photos[i].Name, PhotoPicture(_photos[i]), nameFrac, () => Pick(at), _pick == at);
+                PrintLook(MapCards.Card(grid, _photos[i].Name, null, nameFrac, () => Pick(at), _pick == at, tile: false),
+                    nameFrac, PhotoPicture(_photos[i]), false);
             }
+        }
+
+        static readonly Color PrintWhite = new Color(0.97f, 0.95f, 0.9f);
+        static readonly Color PrintFace = new Color(0.2f, 0.17f, 0.14f, 0.85f); // an empty picture's tile, as on every card
+        static readonly Color FolderBody = new Color(0.93f, 0.74f, 0.38f), FolderTab = new Color(0.82f, 0.6f, 0.27f);
+
+        /// A photo: a white print with the picture whole on it and more margin under it.
+        static void PrintLook(RectTransform card, float nameFrac, Texture2D picture, bool plus)
+        {
+            var area = LookArea(card, nameFrac);
+            var print = UIKit.Panel(area, null, PrintWhite);
+            UIKit.Stretch(print.rectTransform);
+            var face = UIKit.Panel(print.rectTransform, null, PrintFace);
+            var frt = face.rectTransform;
+            UIKit.Stretch(frt);
+            frt.offsetMin = new Vector2(6f, 16f);
+            frt.offsetMax = new Vector2(-6f, -6f);
+            if (picture != null) Fit(frt, picture);
+            if (plus) MapCards.Mark(card, nameFrac, "+");
+        }
+
+        /// A folder: its tab and its body, the newest picture tucked in it.
+        static void FolderLook(RectTransform card, float nameFrac, Texture2D cover, bool plus)
+        {
+            var area = LookArea(card, nameFrac);
+            Anchor(UIKit.Panel(area, null, FolderTab).rectTransform, new Vector2(0.05f, 0.78f), new Vector2(0.42f, 1f));
+            var body = UIKit.Panel(area, null, FolderBody).rectTransform;
+            Anchor(body, Vector2.zero, new Vector2(1f, 0.86f));
+            if (cover != null)
+            {
+                var slot = UIKit.Group(body, "PhotoFolderCover");
+                Anchor(slot, new Vector2(0.07f, 0.12f), new Vector2(0.93f, 0.8f));
+                Fit(slot, cover);
+            }
+            if (plus) MapCards.Mark(card, nameFrac, "+");
+        }
+
+        /// The part of a card over its name, where its look goes.
+        static RectTransform LookArea(RectTransform card, float nameFrac)
+        {
+            var area = UIKit.Group(card, "PhotoCardLook");
+            area.anchorMin = new Vector2(0f, nameFrac);
+            area.anchorMax = Vector2.one;
+            area.offsetMin = new Vector2(10f, 4f);
+            area.offsetMax = new Vector2(-10f, -8f);
+            return area;
+        }
+
+        static void Anchor(RectTransform rt, Vector2 min, Vector2 max)
+        {
+            rt.anchorMin = min;
+            rt.anchorMax = max;
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+        }
+
+        /// A picture whole in this space whatever its shape (a tall photo is not squashed into a wide card).
+        static void Fit(RectTransform space, Texture2D tex)
+        {
+            var go = new GameObject("Picture", typeof(RectTransform), typeof(RawImage), typeof(AspectRatioFitter));
+            go.transform.SetParent(space, false);
+            var raw = go.GetComponent<RawImage>();
+            raw.texture = tex;
+            raw.raycastTarget = false;
+            var fit = go.GetComponent<AspectRatioFitter>();
+            fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            fit.aspectRatio = tex.width / (float)Mathf.Max(1, tex.height);
+        }
+
+        /// The picked one's picture, as wide as its column, whole whatever its shape.
+        void BigPicture(float W, Texture2D tex)
+        {
+            var frame = UIKit.Group(_detail, "Big");
+            UIKit.Row(frame, W, W * 9f / 16f);
+            MapCards.Picture(frame, null, Vector2.zero, Vector2.one, 0f);
+            if (tex != null) Fit(frame, tex);
         }
 
         void Pick(int at)
@@ -177,7 +256,7 @@ namespace SpellyZombie
         void FolderDetail(float W)
         {
             string f = _folders[_pick];
-            MapCards.Big(_detail, W, FolderPicture(f));
+            BigPicture(W, FolderPicture(f));
             MapCards.Line(_detail, W, f, 26, true, 38f);
             MapCards.Line(_detail, W, Loc.F("photos.count", PhotoLibrary.CountIn(f)), 15);
             CreatorUI.Do(_detail, W, Loc.T("photos.open"), () => Enter(f), CreatorUI.Pick(true), 40f);
@@ -226,7 +305,7 @@ namespace SpellyZombie
 
         void PhotoDetail(PhotoDef p, float W)
         {
-            MapCards.Big(_detail, W, PhotoPicture(p));
+            BigPicture(W, PhotoPicture(p));
             MapCards.Line(_detail, W, p.Name, 26, true, 38f);
             MapCards.Line(_detail, W, p.Width + "x" + p.Height, 15);
             var row = CreatorUI.Row(_detail, W, 44f);

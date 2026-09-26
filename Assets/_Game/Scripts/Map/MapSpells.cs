@@ -27,7 +27,33 @@ namespace SpellyZombie
         {
             var a = Active;
             if (a == null || a.Spells.Count == 0) return true;
-            return sp != null && a.Spells.Contains(sp.Name);
+            return sp != null && a.Names().Contains(sp.Name);
+        }
+
+        // the listed spells, and the spell an allowed spell's area loads: a meteor's falling rock
+        // is a book spell of its own, and it comes with the meteor
+        HashSet<string> _names;
+        SpellBook _namesFor;
+        int _namesCount;
+        float _namesAt;
+
+        HashSet<string> Names()
+        {
+            var book = SpellBook.Live;
+            if (_names != null && _namesFor == book && _namesCount == Spells.Count
+                && Time.unscaledTime < _namesAt + 1f) return _names; // a book edited in play shows within a second
+            _names = new HashSet<string>(Spells);
+            var todo = new List<string>(Spells);
+            for (int i = 0; i < todo.Count; i++)
+            {
+                var host = book.Spell(todo[i]);
+                var area = host != null ? book.Aoe(host.Aoe) : null;
+                if (area != null && !string.IsNullOrEmpty(area.Spell) && _names.Add(area.Spell)) todo.Add(area.Spell);
+            }
+            _namesFor = book;
+            _namesCount = Spells.Count;
+            _namesAt = Time.unscaledTime;
+            return _names;
         }
     }
 }

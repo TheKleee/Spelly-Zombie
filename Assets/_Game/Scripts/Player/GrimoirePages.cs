@@ -109,7 +109,7 @@ namespace SpellyZombie
         {
             if (!_remote) TuckOrDraw(HandGrab.LocalHolding || InkRuneStone.Carried != null);
             // a friend's open book follows their unlocks and side as they land
-            else if (_pageOpen && (OwnedMask() != _cardsShown || _sideShown != ShownSide(OwnerId)))
+            else if (_pageOpen && (BookStamp() != _cardsShown || _sideShown != ShownSide(OwnerId)))
                 RebuildRemote();
             _pageK = Mathf.MoveTowards(_pageK, _pageOpen ? 1f : 0f,
                 Time.deltaTime / Mathf.Max(0.01f, PageSwingSeconds));
@@ -151,7 +151,7 @@ namespace SpellyZombie
             var rune = PageRune;
             bool seal = SealPageOpen, scan = ScanPageOpen, absorb = AbsorbPageOpen;
             int mask = OwnedMask();
-            _cardsShown = mask;
+            _cardsShown = BookStamp();
             _sideShown = ShownSide(OwnerId);
             _page = Mathf.Clamp(_page, 0, Mathf.Max(1, PageCount) - 1);
             Rebuild(mask);
@@ -223,12 +223,18 @@ namespace SpellyZombie
                 if (_open) { _open = false; BookOpen = false; SetCoverOpen(false); ResetPages(); }
                 return;
             }
+            // a rune earned while the book was away: back in hand, it opens on that page
+            if (_earned != RuneType.None && OwnerId == Grimoire.LocalPlayerId)
+            {
+                int earnedPage = PageOf(_earned);
+                if (earnedPage < 0 || Riffle(earnedPage)) _earned = RuneType.None;
+            }
             var kb = Keyboard.current;
             if (kb == null) return;
 
             // G only raises/closes the book (absorb and declare live on F).
             // An outside event can also ask it to open - consumed once.
-            bool toggle = kb.gKey.wasPressedThisFrame;
+            bool toggle = Keys.Down(Act.Book);
             if (_popRequested)
             {
                 _popRequested = false;
@@ -288,6 +294,13 @@ namespace SpellyZombie
                 else if (wheel < -0.01f) step = -1;
                 if (step != 0) _wheelNext = Time.time + WheelCooldown;
             }
+            // a controller turns the pages with its two page buttons
+            if (step == 0 && Time.time >= _wheelNext)
+            {
+                if (Keys.Down(Act.Next)) step = 1;
+                else if (Keys.Down(Act.Prev)) step = -1;
+                if (step != 0) _wheelNext = Time.time + WheelCooldown;
+            }
             if (step != 0) _autoTarget = -1; // a hand on the wheel wins
             else if (_autoTarget >= 0 && Time.time >= _autoNext)
             {
@@ -322,7 +335,7 @@ namespace SpellyZombie
 
             // rebuild when a card lands or the writing bar moved - the bar
             // must fill in front of the player, not on the next flip
-            int stamp = OwnedMask();
+            int stamp = BookStamp();
             if (stamp != _cardsShown || _writingShown != Grimoire.WritingVersion
                 || _sideShown != ShownSide(Grimoire.LocalPlayerId)) // C mid-open = new book
             {
@@ -330,7 +343,7 @@ namespace SpellyZombie
                 _writingShown = Grimoire.WritingVersion;
                 _sideShown = ShownSide(Grimoire.LocalPlayerId);
                 _page = Mathf.Min(_page, pages - 1);
-                Rebuild(stamp);
+                Rebuild(OwnedMask());
             }
         }
 
@@ -377,27 +390,32 @@ namespace SpellyZombie
             if (ArrowNext.activeSelf != next) ArrowNext.SetActive(next);
         }
 
-        /// The book closes when it leaves the hand (third person, stow) -
-        /// it comes back CLOSED, the default.
-        void OnEnable() => Grimoire.Unlocked += OnUnlocked;
+        // A fresh rune of this machine's player. The book only exists in hand (first person, pen
+        // out), and an acolyte earns in a disguise or third person, so the rune is remembered here
+        // and the book opens on its page the moment it is back in hand (Update).
+        static RuneType _earned = RuneType.None;
 
-        /// A fresh rune: the book in hand opens and riffles to its page. A
-        /// disguised acolyte, full hands or a stowed book hold no book at all.
-        void OnUnlocked(int owner, RuneType rune)
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void HookUnlocks()
         {
-            if (_remote || !isActiveAndEnabled || owner != Grimoire.LocalPlayerId) return;
-            int target = PageOf(rune);
-            if (target >= 0) Riffle(target);
+            Grimoire.Unlocked -= NoteEarned; // play mode without a domain reload keeps one hook
+            Grimoire.Unlocked += NoteEarned;
+        }
+
+        static void NoteEarned(int owner, RuneType rune)
+        {
+            if (owner == Grimoire.LocalPlayerId) _earned = rune;
         }
 
         /// The book in hand opens and riffles to a page. A disguised acolyte,
-        /// full hands or a stowed book hold no book at all.
-        void Riffle(int target)
+        /// full hands or a stowed book hold no book at all: false, nothing done.
+        bool Riffle(int target)
         {
-            if (ShapeShift.LocalIsShaped || HandGrab.LocalHolding || SimpleFPSController.ThirdPersonActive) return;
+            if (ShapeShift.LocalIsShaped || HandGrab.LocalHolding || SimpleFPSController.ThirdPersonActive) return false;
             _autoTarget = target;
             if (!_open) { _popRequested = true; _autoNext = Time.time + AutoOpenDelay; }
             else _autoNext = Time.time + AutoFlipEvery;
+            return true;
         }
 
         /// Your first rune, read: the book opens on the seal page, the next
@@ -419,7 +437,6 @@ namespace SpellyZombie
 
         void OnDisable()
         {
-            Grimoire.Unlocked -= OnUnlocked;
             _autoTarget = -1;
             _open = false;
             SetCoverOpen(false);
@@ -546,6 +563,10 @@ namespace SpellyZombie
                 mask |= 1 << (int)c;
             return mask;
         }
+
+        /// What the open spread was built from: the families and how many runes, so a rune of a
+        /// family already owned (Liquid after Solid, the Y after the arrow) still rebuilds the page.
+        int BookStamp() => (Grimoire.RuneCount(OwnerId) << 8) | OwnedMask();
 
         void ClearContent()
         {

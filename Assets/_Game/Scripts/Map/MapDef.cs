@@ -134,6 +134,7 @@ namespace SpellyZombie
         }
 
         static string _rulesKey;
+        static SpellBook _rulesBook; // the book those rules made live
 
         /// The active map's spellbook and rune drawings become the game's, or
         /// the player's own come back. A host tells everyone the book.
@@ -141,10 +142,11 @@ namespace SpellyZombie
         {
             MapPages.Use(Active);
             string key = Active == null ? "" : Active.Name + "|" + Active.BookJson.Length + "|" + Active.RuneSamples.Count;
-            if (key == _rulesKey) return;
+            if (key == _rulesKey && SpellBook.IsLive(_rulesBook)) return; // a host's book taken as a client since: again
             _rulesKey = key;
             if (Active != null && !string.IsNullOrEmpty(Active.BookJson)) SpellBook.Adopt(Active.BookJson);
             else SpellBook.Forget();
+            _rulesBook = SpellBook.Live;
             RuneLibrary.UseMapSamples(Active != null ? Active.SampleList() : null);
             NetSync.PushBook();
         }
@@ -596,6 +598,15 @@ namespace SpellyZombie
         public static IReadOnlyList<(string Name, List<string> Pieces)> Groups { get { Gather(); return _groups; } }
         /// The base scene's own biomes, as data: what the Biomes window places.
         public static IReadOnlyList<BiomeDef> Templates { get { Gather(); return _templates; } }
+
+        /// The island's own layout as a map's biomes, fresh copies to grow (the Map Creator's
+        /// "Start from the island" and the Photo Booth's ground).
+        public static List<BiomeDef> BaseBiomes()
+        {
+            var list = new List<BiomeDef>();
+            foreach (var t in Templates) list.Add(t.Clone());
+            return list;
+        }
 
         public static GameObject Find(string name)
         {

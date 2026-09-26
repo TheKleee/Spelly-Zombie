@@ -78,16 +78,16 @@ namespace SpellyZombie
                 return;
             }
 
-            if (kb.rKey.wasPressedThisFrame)
+            if (Keys.Down(Act.Body))
             {
                 if (IsOpen) { Close(); return; }
                 Open();
             }
             if (!IsOpen) return;
-            if (kb.escapeKey.wasPressedThisFrame) { Close(); return; }
+            if (kb.escapeKey.wasPressedThisFrame || Keys.BackDown) { Close(); return; }
 
             // F relaxes to rest unless the grimoire has a target (declare/absorb owns F)
-            if (kb.fKey.wasPressedThisFrame
+            if (Keys.Down(Act.Drop)
                 && !GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach)
             {
                 _sculpt.ReleaseBone();

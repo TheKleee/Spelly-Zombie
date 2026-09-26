@@ -20,6 +20,13 @@ namespace SpellyZombie
         Transform _follow;
         Rigidbody _rb;
 
+        /// The vessel a hit on this shell belongs to: the shell is its own root object.
+        public static Transform VesselOf(Collider c)
+        {
+            var s = c != null ? c.GetComponentInParent<VesselShell>() : null;
+            return s != null ? s._follow : null;
+        }
+
         /// Build the follower for a vessel. `cargo` is the subtree that must
         /// keep colliding with the shell (the ink ball); the ignore loop
         /// below exempts it.

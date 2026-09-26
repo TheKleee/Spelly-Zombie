@@ -61,7 +61,6 @@ namespace SpellyZombie
         Bounds[] _scanReach = new Bounds[64];
         int _scanTick;
         bool _fullScanNext; // a scan sealed: the next covers all ink, so chains of seals close as before
-        bool _inkDebug; // F12: show what the detector sees (stroke endpoints)
 
         void Awake()
         {
@@ -469,6 +468,8 @@ namespace SpellyZombie
             piece.BornAt = src.BornAt; // cut ink dries when the uncut line would have
             piece.SetColor(src.Color); // a rune tint survives the split on every machine
             piece.State = StrokeState.Open;
+            // body ink keeps its limb: the piece still travels, stays a puppet's, and is kept across scenes
+            if (src.Persistent || src.OnPuppet) piece.Surface = src.Surface;
             piece.CachePersistence();
             piece.ComputeRawShape();
             NetSync.RegisterNetStroke(piece); // same (owner, id) as its source: burns and declares still find it
@@ -528,10 +529,6 @@ namespace SpellyZombie
 
         void Update()
         {
-            // F12: toggle ink debug (endpoint dots)
-            var kb = UnityEngine.InputSystem.Keyboard.current;
-            if (kb != null && kb.f12Key.wasPressedThisFrame) _inkDebug = !_inkDebug;
-
             AutoComplete.Tick(this); // rested drawings finish themselves
 
             // loose Open world ink evaporates; Persistent, drawing and seal ink are exempt
@@ -866,6 +863,14 @@ namespace SpellyZombie
             CreateSeal(boundary, boundary.Count == 1 ? "self-crossing" : $"{boundary.Count} arcs enclosed");
         }
 
+        /// Every line of the loop is body ink (a player's or a zombie's), none of it the world's.
+        static bool BodyLoop(List<SealDetector.LoopEntry> loop)
+        {
+            foreach (var e in loop)
+                if (e.Stroke == null || !e.Stroke.Persistent) return false;
+            return true;
+        }
+
         void CreateSeal(List<SealDetector.LoopEntry> loop, string how)
         {
             // CLIENT: only BODY seals live here - body ink never replicates, so
@@ -904,16 +909,18 @@ namespace SpellyZombie
             seal.CapturePayload(Strokes);
             ActiveSeals.Add(seal);
             if (key != null) _castKeys.Add(key);
-            LogEvent($"SEAL #{seal.Id} ACTIVATED ({how}): {seal.Describe()}");
+            LogEvent($"SEAL #{seal.Id} ACTIVATED ({how}): {seal.Describe()} | player {seal.OwnerId}");
             Juice.Sound(Sfx.SealComplete, seal.PlaneOrigin);
+            // an acolyte's seal on a body makes no spell the others are told of: its close reaches them here
+            if (Grimoires.HeldBy(seal.OwnerId) == BookKind.Acolyte && BodyLoop(loop))
+                NetSync.PushInkFx(NetSync.InkFxChime, seal.PlaneOrigin);
             NetSync.PushSealLook(seal, NetSync.InkLookSealed); // gold ring and rune tints on every machine
             if (seal.OwnerId == Grimoire.LocalPlayerId)
             {
-                FirstSteps.SealDrawn();
-                bool body = true;
-                foreach (var e in loop)
-                    if (e.Stroke == null || !e.Stroke.Persistent) { body = false; break; }
-                if (body) Achievements.Unlock(Achievements.BodyCast);
+                int sealed_ = 0;
+                foreach (var glyph in seal.Runes) if (glyph != null && glyph.Rune != RuneType.None) sealed_++;
+                FirstSteps.SealDrawn(sealed_);
+                if (BodyLoop(loop)) Achievements.Unlock(Achievements.BodyCast);
             }
 
             if (!NetGame.IsAuthority)
@@ -1197,6 +1204,9 @@ namespace SpellyZombie
 
                 bool wasLastInk = s == LastInk;
                 if (wasLastInk) LastInk = null;
+                // your own body ink the others hold: they take what is left of it, piece by piece
+                bool resend = s.NetId != 0 && s.Persistent && !s.OnPuppet && s.OwnerId == Grimoire.LocalPlayerId;
+                _cutPieces.Clear();
 
                 var runs = new List<List<DrawNode>>();
                 List<DrawNode> run = null;
@@ -1215,19 +1225,14 @@ namespace SpellyZombie
                 {
                     var piece = AdoptPiece(s, fragment, allowTiny: false); // specks below MinStrokeNodes vanish
                     if (piece != null && wasLastInk) LastInk = piece; // keep the recording anchor alive
+                    if (piece != null && resend) _cutPieces.Add(piece);
                 }
 
                 s.Retire(); // nodes now belong to the pieces
+                if (resend) NetSync.OnOwnBodyInkCut(s.NetId, _cutPieces);
             }
         }
-
-        void DebugDot(Vector3 world, Color c)
-        {
-            Vector3 sp = Camera.main.WorldToScreenPoint(world);
-            if (sp.z <= 0f) return; // behind the camera
-            GUI.color = c;
-            GUI.DrawTexture(new Rect(sp.x - 4f, Screen.height - sp.y - 4f, 8f, 8f), Texture2D.whiteTexture);
-        }
+        readonly List<Stroke> _cutPieces = new List<Stroke>();
 
         /// Grow the last step to the nearest line end (own start included). Only
         /// the lifted end is assisted; one bridge per pen-up, as visible ink.
@@ -1333,26 +1338,5 @@ namespace SpellyZombie
             using (PerfMarkers.Logs.Auto()) Debug.Log($"[SpellyZombie] {msg}");
         }
 
-        void OnGUI()
-        {
-            // ink debug overlay: green = open endpoints, gold = sealed, white = drawing
-            if (_inkDebug && Camera.main != null)
-            {
-                foreach (var s in Strokes)
-                {
-                    if (!s.Alive || s.First == null || s.Last == null) continue;
-                    Color c = s.State == StrokeState.Open ? new Color(0.3f, 1f, 0.4f)
-                        : s.State == StrokeState.Drawing ? Color.white
-                        : s.State == StrokeState.InSeal ? new Color(1f, 0.8f, 0.25f)
-                        : new Color(0.6f, 0.6f, 0.6f);
-                    DebugDot(s.First.transform.position, c);
-                    DebugDot(s.Last.transform.position, c);
-                }
-                GUI.color = Color.white;
-                GUI.Label(new Rect(10, 224, 560, 20), "F12 ink debug ON: dots = endpoints the detector sees");
-            }
-
-            // no on-screen debug: events go to the console; the F12 overlay is the sole opt-in exception
-        }
     }
 }

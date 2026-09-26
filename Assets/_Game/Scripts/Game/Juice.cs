@@ -60,7 +60,8 @@ namespace SpellyZombie
                 NetSync.PushFx((byte)(FxLibrary.SndClips + (int)id), at, Vector3.zero, Color.white,
                     carrier != null ? carrier.NetId : 0, pitch, 0, volume);
             }
-            Emit(clip, at, volume, pitch, IsSmall(id) ? Shape.Small : IsNear(id) ? Shape.Near : Shape.World, ride);
+            Emit(clip, at, volume, pitch,
+                IsSmall(id) ? Shape.Small : IsNear(id) ? Shape.Near : IsMap(id) ? Shape.Map : Shape.World, ride);
             return true;
         }
 
@@ -105,6 +106,11 @@ namespace SpellyZombie
             var lib = AudioLibrary.I;
             return lib != null ? lib.Clip(id) : null;
         }
+
+        /// What the pot does is news for the whole map: it opens, ink lands in it, it changes
+        /// hands. Heard from anywhere, from the pot's direction, a little louder close by.
+        static bool IsMap(Sfx id) => id == Sfx.PotFromTheSky || id == Sfx.PotTurningAcolyte
+            || id == Sfx.PotTurningWizard;
 
         /// The small sounds of being around (doors, steps, pages, pops) sit under the game:
         /// heard only close by, never across the map.
@@ -159,7 +165,8 @@ namespace SpellyZombie
 
         // ------------------------------------------------------- the voices --
         /// How a sound sits in the world.
-        enum Shape { World, Near, Small, Flat }
+        enum Shape { World, Near, Small, Flat, Map }
+        const float MapRange = 200f; // twice across the island: the far side still hears half
 
         class Voice
         {
@@ -251,6 +258,12 @@ namespace SpellyZombie
                 case Shape.Flat:
                     src.spatialBlend = 0f;
                     src.spread = 0f;
+                    break;
+                case Shape.Map:    // the whole map hears it, from where it happened
+                    src.spatialBlend = 1f;
+                    src.minDistance = 8f;
+                    src.maxDistance = MapRange;
+                    src.spread = 60f;
                     break;
                 default:
                     src.spatialBlend = 0.85f;      // mostly 3D, slightly present everywhere

@@ -87,7 +87,7 @@ namespace SpellyZombie
             if (kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed) return;
 
             // F melts back to idle unless the grimoire has a target (declare/absorb owns F)
-            if (kb.fKey.wasPressedThisFrame && ActiveSlot >= 0
+            if (Keys.Down(Act.Drop) && ActiveSlot >= 0
                 && !GrimoireAbsorb.DeclareInReach && !GrimoireAbsorb.TargetInReach)
             {
                 StopToRest();
@@ -102,6 +102,12 @@ namespace SpellyZombie
             }
 
             if (kb.tKey.wasPressedThisFrame) ToggleSlot(1);
+            // a controller steps through the pose slots (the book owns these buttons while it is open)
+            if (SimpleFPSController.ThirdPersonActive && !GrimoirePages.BookOpen)
+            {
+                if (Keys.Down(Act.Next)) ToggleSlot(ActiveSlot >= 9 || ActiveSlot < 1 ? 1 : ActiveSlot + 1);
+                else if (Keys.Down(Act.Prev)) ToggleSlot(ActiveSlot <= 1 ? 9 : ActiveSlot - 1);
+            }
             for (int slot = 1; slot <= 9; slot++)
             {
                 var key = kb[(Key)((int)Key.Digit1 + slot - 1)];

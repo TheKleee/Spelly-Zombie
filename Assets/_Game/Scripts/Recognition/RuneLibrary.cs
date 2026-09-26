@@ -306,8 +306,8 @@ namespace SpellyZombie
         public static bool IsUnlocked(int ownerId, RuneType type)
         {
             if (type == RuneType.None) return false;
-            // a cursed wizard's book is the curser's: its unlocks are theirs
-            return AllRunesUnlockedForTesting || PracticeHall || Grimoire.HasRune(Grimoires.BookOwnerOf(ownerId), type);
+            // a cursed wizard's acolyte book still reads the wizard's own runes
+            return AllRunesUnlockedForTesting || PracticeHall || Grimoire.HasRune(ownerId, type);
         }
 
         public static RuneCardType CardOf(RuneType type)

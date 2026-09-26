@@ -102,6 +102,7 @@ Shader "Spelly Zombie/State Matter"
                 // a cut-out texture must not write depth where it is see-through
                 a *= SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv).a;
                 clip(a - 0.99);   // anything see-through keeps the old behaviour
+                clip(_StateT - 0.75); // and never under a surface the forward pass still ripples
                 return 0;
             }
             ENDHLSL
@@ -175,11 +176,14 @@ Shader "Spelly Zombie/State Matter"
                     f.z);
             }
 
-            // liquidness peaks at the liquid mark and fades into gas so the two never stack
+            // liquidness peaks at the liquid mark and fades into gas so the two never stack.
+            // It is GONE by 0.75, where the body turns opaque and the SolidDepth pass starts
+            // laying depth for the still mesh: a ripple that ran on to 1.0 under that depth
+            // cut the skin into shards (every golem between State 75 and 150).
             void StateWeights(float t, out float liq, out float gas)
             {
                 gas = 1.0 - saturate((t - 0.1) / 0.4);
-                liq = (1.0 - saturate((t - 0.5) / 0.5)) * (1.0 - gas);
+                liq = (1.0 - saturate((t - 0.5) / 0.25)) * (1.0 - gas);
             }
 
             Varyings vert(Attributes IN)

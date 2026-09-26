@@ -102,6 +102,10 @@ namespace SpellyZombie
         public static readonly float SurfaceOffset = O(nameof(SurfaceOffset), 0.008f); // lift ink off the surface to avoid z-fighting
         public static readonly float MaxStrokeJump = O(nameof(MaxStrokeJump), 0.12f); // hit point jumping further than this in one frame ends the stroke
         public static readonly float MaxStrokeJumpPerMeter = O(nameof(MaxStrokeJumpPerMeter), 0.02f); // tiny distance allowance (fast flicks split; forgiving seals reconnect what should connect)
+        // past the jump above the pen may still be a fast hand: up to this far in one frame the line goes on,
+        // filled along its own curve, as long as the whole way lies on the same canvas
+        public static readonly float MaxStrokeBridge = O(nameof(MaxStrokeBridge), 1.5f);
+        public static readonly float MaxStrokeBridgePerMeter = O(nameof(MaxStrokeBridgePerMeter), 0.5f);
         public static readonly int MinStrokeNodes = Oi(nameof(MinStrokeNodes), 2); // 2 is the minimum that can form a line; arrowhead barbs are that short
         public static readonly float InkWidth = O(nameof(InkWidth), 0.007f); // line renderer width
         public static readonly float InkHaloWidth = O(nameof(InkHaloWidth), 3f); // your own live stroke's pale edge, x InkWidth: dark ink shows on dark ground
@@ -114,6 +118,7 @@ namespace SpellyZombie
         public static readonly float RuneIconScale = O(nameof(RuneIconScale), 100f); // % of the surrounding text size. 100 = no tag emitted
         public static readonly float InkEvaporateSeconds = O(nameof(InkEvaporateSeconds), 60f);    // loose world ink lives this long
         public static readonly float InkLeashMeters = O(nameof(InkLeashMeters), 10f);              // loose ink farther than this from its owner's body goes back to their wand; 0 = off
+        public static readonly float SpellLeashMeters = O(nameof(SpellLeashMeters), 10f);          // a sleeping spell farther than this from its maker's body goes off where it hangs; 0 = off
         /// Rubbed-out ink refills the wand at a loss so casting is never free.
         public static readonly float ScoopRefund = O(nameof(ScoopRefund), 0.5f);
         /// How long a world seal lives after casting before its ink is consumed.
@@ -128,7 +133,7 @@ namespace SpellyZombie
         public static readonly float PotCloseRadius = O(nameof(PotCloseRadius), 2.6f);       // fast refill, spill, defuse, corrupt touch inside this
         public static readonly float PotRefillRange = O(nameof(PotRefillRange), 45f);        // beyond this the refill sits at the floor rate
         public static readonly float PotRefillNearPerSec = O(nameof(PotRefillNearPerSec), 45f);  // ink/s at the pot: a full tank in ~2s standing over it
-        public static readonly float PotRefillFloorPerSec = O(nameof(PotRefillFloorPerSec), 2.5f); // ink/s across the map - never truly dry, never enough to camp on
+        public static readonly float PotRefillFloorPerSec = O(nameof(PotRefillFloorPerSec), 5f); // ink/s each wizard's wand gets anywhere on the map, whatever the team size: a full wand in 20 s
         public static readonly float PotSpillPerSec = O(nameof(PotSpillPerSec), 16f);        // full wand inside the close radius: the tap keeps running, the pot pays; at the floor capacity, scales with the pot (16 = 1% of the pot per second for a lone wizard)
         public static readonly float PotCorruptDrainPerSec = O(nameof(PotCorruptDrainPerSec), 11f); // green evaporation drain rate at the floor capacity; scales with the pot
         public static readonly float PotAcolyteFillPerSec = O(nameof(PotAcolyteFillPerSec), 9f);   // the babysitting tax: their corruption FILLS it; at the floor capacity, scales with the pot
@@ -534,7 +539,6 @@ namespace SpellyZombie
         public static readonly float UnlockMarkHintBadgeMul = O(nameof(UnlockMarkHintBadgeMul), 1.2f); // the waiting page is this many key badges (F, E) wide; the flip grows it to the page
         public static readonly float UnlockNearRange = O(nameof(UnlockNearRange), 4f); // a wizard this close to a disguised acolyte fills the bar
         public static readonly float UnlockNearSeconds = O(nameof(UnlockNearSeconds), 3f); // the fill time
-        public static readonly float UnlockCastRange = O(nameof(UnlockCastRange), 6f); // a spell appearing this close while the bar is full is the attack outcome
         public static readonly float UnlockCorruptAttemptSeconds = O(nameof(UnlockCorruptAttemptSeconds), 1f);
         public static readonly float UnlockNearLeaveSlack = O(nameof(UnlockNearLeaveSlack), 0.6f); // a full bar keeps its wizard this much farther before he counts as gone
         public static readonly float UnlockBlameWaitSeconds = O(nameof(UnlockBlameWaitSeconds), 1.5f); // how long a downed wizard waits for the host's word on who did it
@@ -829,6 +833,7 @@ namespace SpellyZombie
         public static readonly float FallDeathSeconds = O(nameof(FallDeathSeconds), 10f);
         // public lobbies refuse joiners whose estimated ping to the host exceeds this (0 = no gate)
         public static readonly int LobbyMaxPingMs = Oi(nameof(LobbyMaxPingMs), 150);
+        public static readonly float HostAfkMinutes = O(nameof(HostAfkMinutes), 5f); // a host idle this long: the public lobby leaves the lists until they move
         public static readonly float ReviveSeconds = O(nameof(ReviveSeconds), 3f);
         public static readonly float ReviveRange = O(nameof(ReviveRange), 2.5f);
 
@@ -929,6 +934,13 @@ namespace SpellyZombie
         // many creature-raised bodies the whole map holds at once
         public static readonly float CreatureSummonCooldown = O(nameof(CreatureSummonCooldown), 10f);
         public static readonly int CreatureSummonBudget = Oi(nameof(CreatureSummonBudget), 12);
+        // a rampaging creature: seconds between its random spells (each wait
+        // varies by a third), and how far from it they land, in metres
+        public static readonly float RampageCastEvery = O(nameof(RampageCastEvery), 0.8f);
+        public static readonly float RampageReach = O(nameof(RampageReach), 10f);
+        public static readonly float MinionEvaporateShare = O(nameof(MinionEvaporateShare), 0.2f); // a zombie's evaporation dart dries the pot by this share of a player's (1% instead of 5%)
+        public static readonly float FedGolemIdleCastEvery = O(nameof(FedGolemIdleCastEvery), 3f); // a fed golem with nobody to fight throws what it ate this often, seconds
+        public static readonly float FedGolemTint = O(nameof(FedGolemTint), 0.6f);                 // how far a meal pulls the golem's colour toward its own, 0..1
 
         // THE DEMON: it wanders and it throws spells, and it does neither on a
         // schedule anyone can read.

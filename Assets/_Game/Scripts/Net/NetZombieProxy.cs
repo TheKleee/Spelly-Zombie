@@ -227,6 +227,13 @@ namespace SpellyZombie
         bool _moodHeld, _swelling;
         Color? _pupilTint;
 
+        /// The pupils a creature beat's eye bits ask for: red = ridden, yellow = aggressive,
+        /// purple = spreading (his tells). Zombie and golem stand-ins alike.
+        public static Color? PupilOf(byte bits) =>
+            (bits & 8) != 0 ? DrawingConfig.MindControlEyeColor
+            : (bits & 32) != 0 ? DrawingConfig.AggressiveEyeColor
+            : (bits & 64) != 0 ? DrawingConfig.SpreadingEyeColor : (Color?)null;
+
         public void SetEyes(byte bits)
         {
             if (_eyes == null) return;
@@ -237,9 +244,7 @@ namespace SpellyZombie
             else if (_moodHeld) { _eyes.SetMood(EyeMood.Neutral, 0f); _moodHeld = false; }
 
             // pupil colour: red = ridden, yellow = aggressive, purple = spreading (his tells)
-            Color? want = (bits & 8) != 0 ? DrawingConfig.MindControlEyeColor
-                : (bits & 32) != 0 ? DrawingConfig.AggressiveEyeColor
-                : (bits & 64) != 0 ? DrawingConfig.SpreadingEyeColor : (Color?)null;
+            Color? want = PupilOf(bits);
             if (want != _pupilTint)
             {
                 _pupilTint = want;
@@ -326,12 +331,22 @@ namespace SpellyZombie
             if (voiced && fresh) ZombieBrain.Voice(text, transform);
         }
 
-        // the host's paint-freeze trance: the body holds still and the clip pauses
-        bool _tranced;
-        float _animSpeed = 1f;
+        // the paint-freeze trance: the host's (from the snapshot) or this machine's own pen
+        bool _tranced, _hostTranced;
+        float _animSpeed = 1f, _penHeldUntil;
 
-        public void SetTranced(bool on)
+        public void SetTranced(bool on) { _hostTranced = on; Trance(); }
+
+        /// The local pen is on it: the clip pauses now, as the host's PaintFreeze pauses its body.
+        public void PaintHold(float seconds)
         {
+            _penHeldUntil = Mathf.Max(_penHeldUntil, Time.time + seconds);
+            Trance();
+        }
+
+        void Trance()
+        {
+            bool on = _hostTranced || Time.time < _penHeldUntil;
             if (on == _tranced) return;
             _tranced = on;
             if (_anim == null) _anim = GetComponentInChildren<Animator>(true);
@@ -360,6 +375,7 @@ namespace SpellyZombie
                 transform.position = pos;
                 transform.rotation = rot;
             }
+            Trance(); // the local hold runs out on its own clock
             if (_tranced) return;
             if (_anim != null && _anim.isActiveAndEnabled)
             {

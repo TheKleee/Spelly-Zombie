@@ -10,7 +10,7 @@ namespace SpellyZombie
     public class AcolyteDeedWatch : MonoBehaviour
     {
         const int KeyNear = 1000, KeyKill = 3000, KeyMyDeath = 4000, KeyPot = 5000,
-                  KeyZombie = 8000, KeyBase = 9000, KeyScanAim = 9100, KeyRevert = 9200;
+                  KeyZombie = 8000, KeyBase = 9000, KeyScanAim = 9100, KeyRevert = 9200, KeyReveal = 9300;
         const float HeadUp = 2.0f, PotUp = 1.4f, SpotUp = 0.8f, ScanUp = 0.7f, RevertUp = 1.3f, ScanLift = 0.12f;
 
         // the scan mark hangs just over what the object DRAWS, not over its pivot
@@ -37,12 +37,14 @@ namespace SpellyZombie
 
         SimpleFPSController _pilot;
 
-        // a wizard lingering near the disguise: the bar fills, the outcome decides
+        // a wizard lingering near the disguise: the bar fills, and his walking off is the decoy
         class Near { public int Owner; public Transform T; public float Dwell; public bool Full; public int Frame; public int Key; }
         readonly List<Near> _near = new List<Near>();
-        readonly HashSet<int> _motesSeen = new HashSet<int>();
-        readonly List<int> _casters = new List<int>(); // wizards whose spell appeared close this frame
         int _nearSlot;
+
+        // the cloud your own coming out opened: a wizard it catches while it lasts is the reveal
+        Vector3 _exitAt;
+        float _exitBorn, _exitUntil = -1f;
 
         // a wizard who went down: whose kill, and does the page wait for the revive
         class Kill { public int Owner; public int NetId; public Transform T; public Vector3 At; public float Since; public bool Mine; public int Key; }
@@ -60,7 +62,10 @@ namespace SpellyZombie
         bool Local => _pilot != null && _pilot.IsLocalViewer && Sides.LocalIsAcolyte;
         int Me => Grimoire.LocalPlayerId;
         bool Want(AcolyteDeeds.Deed d) => !Grimoire.HasRune(Me, AcolyteDeeds.RuneFor(d));
-        static bool KnownWizard(int owner) => owner >= 0 && Sides.Known(owner) && Sides.Of(owner) == Side.Wizard;
+        // a player this machine has a body for is known: Sides records only switches, so a
+        // player who stays a wizard (the default) is never Known there
+        static bool KnownWizard(int owner) => owner >= 0 && Sides.Of(owner) == Side.Wizard
+            && (Sides.Known(owner) || NetSync.AvatarTransformOf(owner) != null);
 
         void Awake() => _pilot = GetComponent<SimpleFPSController>();
 
@@ -73,6 +78,7 @@ namespace SpellyZombie
             SimpleFPSController.Revived += OnRevived;
             AcolyteDeeds.Granted += OnGranted;
             Grimoire.Unlocked += OnUnlocked;
+            ShapeShift.CameOut += OnCameOut;
         }
 
         void OnDisable()
@@ -84,6 +90,7 @@ namespace SpellyZombie
             SimpleFPSController.Revived -= OnRevived;
             AcolyteDeeds.Granted -= OnGranted;
             Grimoire.Unlocked -= OnUnlocked;
+            ShapeShift.CameOut -= OnCameOut;
             foreach (var n in _near) UnlockMark.Hide(n.Key);
             _near.Clear();
             foreach (var k in _kills) UnlockMark.Hide(k.Key);
@@ -95,13 +102,16 @@ namespace SpellyZombie
             if (!Local) return;
             float dt = Time.deltaTime;
             TickNear(dt);
+            TickExit();
             TickKills();
             TickPot(dt);
             TickBase();
             if (_myDeathPending) UnlockMark.Show(KeyMyDeath, transform, HeadUp, -1f);
         }
 
-        // ------------------------------------------------ 1 and 2: a wizard near --
+        // ------------------------------------ 1: a wizard near, then walking off --
+        // the page hangs over every wizard near your disguise while either rune is
+        // missing (he is the one to poison, too); the bar is the decoy's alone
         void TickNear(float dt)
         {
             bool wantDecoy = Want(AcolyteDeeds.Deed.Decoy);
@@ -124,24 +134,61 @@ namespace SpellyZombie
                 // a wizard down on the spot has not left; his bar just waits
                 NoteWizard(owner, av.transform, me, range, frame, av.Downed ? 0f : dt);
             }
-            // a spell of a nearby wizard appearing close while his bar is full
-            // is the attack outcome
-            CollectCasters(me, DrawingConfig.UnlockCastRange);
 
             for (int i = _near.Count - 1; i >= 0; i--)
             {
                 var n = _near[i];
                 bool here = n.Frame == frame;
+                float bar = !wantDecoy ? -1f : n.Full ? 1f : n.Dwell / DrawingConfig.UnlockNearSeconds;
                 if (n.Full)
                 {
-                    if (here && _casters.Contains(n.Owner)) { Judge(n, AcolyteDeeds.Deed.Reveal); _near.RemoveAt(i); continue; }
                     if (!here) { Judge(n, AcolyteDeeds.Deed.Decoy); _near.RemoveAt(i); continue; }
-                    UnlockMark.Show(n.Key, n.T, HeadUp, 1f);
+                    UnlockMark.Show(n.Key, n.T, HeadUp, bar);
                     continue;
                 }
                 if (!here || n.T == null) { UnlockMark.Hide(n.Key); _near.RemoveAt(i); continue; }
-                UnlockMark.Show(n.Key, n.T, HeadUp, n.Dwell / DrawingConfig.UnlockNearSeconds);
+                UnlockMark.Show(n.Key, n.T, HeadUp, bar);
             }
+        }
+
+        // ------------------------------------- 2: out of the disguise, poison him --
+        void OnCameOut(Vector3 at)
+        {
+            if (!Local || !Want(AcolyteDeeds.Deed.Reveal)) return;
+            _exitAt = at;
+            _exitBorn = Time.time;
+            _exitUntil = Time.time + DrawingConfig.PoisonExitSeconds;
+        }
+
+        void TickExit()
+        {
+            if (_exitUntil < 0f) return;
+            if (Time.time > _exitUntil || !Want(AcolyteDeeds.Deed.Reveal)) { _exitUntil = -1f; return; }
+            // the cloud as it stands now: poison spreads like the Goo row says (PoisonField.Grow)
+            float r = DrawingConfig.PoisonExitRadius;
+            var goo = SpellTable.ByName("Goo");
+            if (goo != null && goo.Spreads)
+                r = Mathf.Min(r + DrawingConfig.SpreadReach, r + DrawingConfig.SpreadShare * (Time.time - _exitBorn));
+            foreach (var av in NetAvatar.All)
+            {
+                if (av == null || av.Downed) continue;
+                int owner = NetSync.OwnerIdOf(av.Id);
+                if (owner == Me || !KnownWizard(owner)) continue;
+                if (Grimoires.HeldBy(owner) == BookKind.Acolyte) continue; // the Life curse: an acolyte's book is an acolyte's immunity
+                if (!InCloud(av.transform.position, _exitAt, r)) continue;
+                Vector3 at = av.transform.position + Vector3.up * HeadUp;
+                UnlockMark.FlipAt(KeyReveal, at, AcolyteDeeds.Grant(Me, AcolyteDeeds.Deed.Reveal, at));
+                _exitUntil = -1f;
+                return;
+            }
+        }
+
+        /// A standing body at `feet` touches a cloud of this radius around `at`.
+        static bool InCloud(Vector3 feet, Vector3 at, float radius)
+        {
+            const float Low = 0.2f, High = 1.7f, Girth = 0.35f;
+            Vector3 onBody = new Vector3(feet.x, Mathf.Clamp(at.y, feet.y + Low, feet.y + High), feet.z);
+            return (onBody - at).sqrMagnitude <= (radius + Girth) * (radius + Girth);
         }
 
         void NoteWizard(int owner, Transform t, Vector3 me, float range, int frame, float dt)
@@ -173,36 +220,6 @@ namespace SpellyZombie
         {
             Vector3 at = n.T != null ? n.T.position + Vector3.up * HeadUp : transform.position + Vector3.up * HeadUp;
             UnlockMark.Flip(n.Key, AcolyteDeeds.Grant(Me, deed, at));
-        }
-
-        /// The wizards whose spells appeared within range this frame. Host
-        /// motes are pooled, so a life id tells a new one; a client sees
-        /// proxies, rebuilt per life.
-        void CollectCasters(Vector3 me, float range)
-        {
-            _casters.Clear();
-            if (_motesSeen.Count > 2048) _motesSeen.Clear();
-            float r2 = range * range;
-            var living = SpellParticle.Living;
-            for (int i = 0; i < living.Count; i++)
-            {
-                var p = living[i];
-                if (p == null) continue;
-                if (!_motesSeen.Add(p.LifeId)) continue;
-                if (p.Dead || p.FromMinion || !KnownWizard(p.OwnerId)) continue;
-                if ((p.transform.position - me).sqrMagnitude <= r2 && !_casters.Contains(p.OwnerId))
-                    _casters.Add(p.OwnerId);
-            }
-            var proxies = NetMoteProxy.Living;
-            for (int i = 0; i < proxies.Count; i++)
-            {
-                var p = proxies[i];
-                if (p == null) continue;
-                if (!_motesSeen.Add(p.GetInstanceID())) continue;
-                if (!KnownWizard(p.OwnerId)) continue;
-                if ((p.transform.position - me).sqrMagnitude <= r2 && !_casters.Contains(p.OwnerId))
-                    _casters.Add(p.OwnerId);
-            }
         }
 
         // ------------------------------------------- 3 and 7: a wizard went down --
@@ -244,6 +261,14 @@ namespace SpellyZombie
 
         Vector3 Spot(Kill k) => (k.T != null ? k.T.position : k.At) + Vector3.up * HeadUp;
 
+        /// The camera is back in the head: a page for that moment lands in front of the eyes.
+        Vector3 InFront(float ahead, float lift)
+        {
+            var eye = _pilot.CameraPivot;
+            return eye != null ? eye.position + eye.forward * ahead + Vector3.up * lift
+                : transform.position + Vector3.up * HeadUp;
+        }
+
         void TickKills()
         {
             for (int i = _kills.Count - 1; i >= 0; i--)
@@ -283,9 +308,7 @@ namespace SpellyZombie
             if (_myDeathPending && Local)
             {
                 // the camera is back in the head: the page lands in front of it
-                var eye = _pilot.CameraPivot;
-                Vector3 at = eye != null ? eye.position + eye.forward * 1.8f + Vector3.up * 0.2f
-                    : transform.position + Vector3.up * HeadUp;
+                Vector3 at = InFront(1.8f, 0.2f);
                 UnlockMark.FlipAt(KeyMyDeath, at, AcolyteDeeds.Grant(Me, AcolyteDeeds.Deed.LifeNeedle, at));
             }
             _myDeathPending = false;
@@ -371,7 +394,8 @@ namespace SpellyZombie
                 if (!UnlockMark.Flip(KeyScanAim, rune)) UnlockMark.FlipAt(KeyScanAim, at + Vector3.up * ScanUp, rune);
                 return;
             }
-            if (rune == RuneType.StateLiquid) { UnlockMark.FlipAt(KeyRevert, at + Vector3.up * RevertUp, rune); return; }
+            // TAB already put the camera back in the head: the page turns in front of it
+            if (rune == RuneType.StateLiquid) { UnlockMark.FlipAt(KeyRevert, InFront(1.8f, 0.2f), rune); return; }
             UnlockMark.FlipAt(KeyBase + (_baseSlot++ & 7), at + Vector3.up * SpotUp, rune);
         }
 
@@ -381,10 +405,7 @@ namespace SpellyZombie
         {
             if (owner != Me || !Local || !IsKit(rune)) return;
             if (rune == _grantRune && _grantFrame == Time.frameCount) return;
-            var eye = _pilot.CameraPivot;
-            Vector3 at = eye != null ? eye.position + eye.forward * 1.5f + Vector3.up * 0.1f
-                : transform.position + Vector3.up * HeadUp;
-            UnlockMark.FlipAt(KeyBase + (_baseSlot++ & 7), at, rune);
+            UnlockMark.FlipAt(KeyBase + (_baseSlot++ & 7), InFront(1.5f, 0.1f), rune);
         }
     }
 }

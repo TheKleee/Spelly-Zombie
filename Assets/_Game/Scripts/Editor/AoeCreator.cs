@@ -92,6 +92,12 @@ namespace SpellyZombie
                     EditorGUILayout.LabelField("It rushes back to the spell from here. Put Y at 20 and it " +
                                                "falls from the sky. Leave it at zero and it sits on the spell.",
                         EditorStyles.wordWrappedMiniLabel);
+                    _aoe.ArriveSeconds = EditorGUILayout.Slider("Arrives in, seconds", _aoe.ArriveSeconds, 0f, 20f);
+                    float far = _aoe.Offset.magnitude;
+                    EditorGUILayout.LabelField(_aoe.ArriveSeconds > 0.01f
+                            ? $"A steady {far / _aoe.ArriveSeconds:0.#} metres a second. Under 5 it settles in, over 5 it slams."
+                            : $"0 = the game's own pace: from here about {far / Mathf.Max(30f, far * 2.2f):0.##} seconds.",
+                        EditorStyles.wordWrappedMiniLabel);
 
                     EditorGUILayout.Space();
                     _aoe.Spreading = EditorGUILayout.Toggle("Spreading", _aoe.Spreading);

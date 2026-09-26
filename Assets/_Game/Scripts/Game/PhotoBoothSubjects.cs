@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
@@ -8,9 +9,9 @@ namespace SpellyZombie
     /// ★ WHAT STANDS IN A PHOTO: still copies built the way the game builds
     /// them (a character as a friend's copy is dressed, a creature as the
     /// creators show it), with every script taken off. Its effects and its
-    /// moves are held at the moment its time slider says; a character is
-    /// posed by its limbs, and a character or a zombie body wears the Creature
-    /// Creator's head, arms, legs, height and width.
+    /// moves are held at the moment its time slider says; a character or a
+    /// zombie body is posed by its limbs and wears the Creature Creator's head,
+    /// arms, legs, height and width.
     public partial class PhotoBooth
     {
         /// One placed thing, standing in the scene.
@@ -32,6 +33,16 @@ namespace SpellyZombie
             public BoxCollider Pick;
             public MaterialPropertyBlock Block;
             public readonly HashSet<Renderer> Painted = new HashSet<Renderer>();
+            public readonly List<Ribbon> Ribbons = new List<Ribbon>(); // its trails, held still
+            public readonly List<Transform> Parts = new List<Transform>(); // an effect's or an area's switchable parts
+        }
+
+        /// A trail as the booth holds it: a still line with the trail's look.
+        class Ribbon
+        {
+            public LineRenderer Line;
+            public float Time;  // how many seconds of path the trail keeps
+            public float Width; // the trail's own width
         }
 
         readonly List<Subject> _subjects = new List<Subject>();
@@ -65,6 +76,11 @@ namespace SpellyZombie
                 default: s.Body = Inert(MapPalette.Find(item.What), s.Root.transform); break;
             }
             if (s.Body == null) Debug.LogWarning($"[SpellyZombie] Photo Booth: nothing to show for {item.Kind} '{item.What}'");
+            if (HasParts(s))
+            {
+                Ribbons(s);
+                GatherParts(s);
+            }
             foreach (var t in s.Root.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = Layer;
             // what the build added (sockets, outfit, eyes, the pose joints) holds still too
             foreach (var mb in s.Root.GetComponentsInChildren<MonoBehaviour>(true))
@@ -72,6 +88,7 @@ namespace SpellyZombie
             Gather(s);
             Place(s); // before its effects run: world-space particles start where it stands
             Hold(s);
+            ApplyParts(s);
             FitPick(s);
             SettleEyes(s);
             return s;
@@ -149,8 +166,16 @@ namespace SpellyZombie
             return null;
         }
 
-        /// The effect names the booth offers, once each.
+        /// The effect names the booth offers, once each, in the order their shown names read.
         static List<string> EffectNames()
+        {
+            var names = EffectFiles();
+            names.Sort((a, b) => string.Compare(EffectName(a), EffectName(b), System.StringComparison.OrdinalIgnoreCase));
+            return names;
+        }
+
+        /// The effects' own file names: what a setup saves and finds them by.
+        static List<string> EffectFiles()
         {
             var names = new List<string>();
             var lib = FxLibrary.I;
@@ -159,6 +184,45 @@ namespace SpellyZombie
                 if (p != null && !names.Contains(p.name)) names.Add(p.name);
             names.Sort(System.StringComparer.OrdinalIgnoreCase);
             return names;
+        }
+
+        static Dictionary<string, string> _effectNames;
+        static readonly HashSet<string> PackWords = new HashSet<string> { "HDR", "3D", "Solo", "PLAIN", "Alt", "WW", "Misc" };
+
+        /// ★ An effect as the booth names it (his go): the pack's file name without its codes, so
+        /// "CFXR2 WW Enemy Explosion" reads "Enemy Explosion". Never translated: placing one shows it.
+        static string EffectName(string file)
+        {
+            if (string.IsNullOrEmpty(file)) return file;
+            if (_effectNames == null)
+            {
+                // two files that clean to the same words read with a number
+                _effectNames = new Dictionary<string, string>();
+                var taken = new Dictionary<string, int>();
+                foreach (var n in EffectFiles())
+                {
+                    string clean = CleanEffectName(n);
+                    taken.TryGetValue(clean, out int k);
+                    taken[clean] = ++k;
+                    _effectNames[n] = k > 1 ? clean + " " + k : clean;
+                }
+            }
+            return _effectNames.TryGetValue(file, out var shown) ? shown : CleanEffectName(file);
+        }
+
+        static string CleanEffectName(string file)
+        {
+            string s = Regex.Replace(file, @"^CFXR\d*\s+", "");
+            s = Regex.Replace(s, @"\((HDR|Loop|Air|Lit|Smaller|Random Color)\)", " ");
+            s = Regex.Replace(s.Replace('_', ' ').Replace('-', ' '), "(?<=[a-z])(?=[A-Z])", " "); // RevealTrail reads Reveal Trail
+            var words = new List<string>();
+            foreach (var w in s.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (w.Length == 1 && char.IsUpper(w[0])) continue; // a variant letter
+                if (int.TryParse(w, out _)) continue;             // a variant number
+                if (!PackWords.Contains(w)) words.Add(w);
+            }
+            return words.Count > 0 ? string.Join(" ", words) : file;
         }
 
         // --------------------------------------------------------- character --
@@ -221,7 +285,66 @@ namespace SpellyZombie
             s.Animator = body.GetComponent<Animator>();
             var moves = CharacterLibrary.Anim;
             if (s.Animator != null && moves != null) s.Clips = AnimNames.Of(moves, out s.ClipNames);
+            if (Editing.Shaded) Shade(body);
             Paint(s);
+        }
+
+        /// ★ SHADED CHARACTERS (his go, the booth only; in the game the flat look stays): a player's
+        /// materials are Unlit, so no light or shadow ever reached them and a hand held in front of
+        /// the chest vanished into it. Here each draws with a lit, matte copy of itself (the same
+        /// colour and picture), shaded by the sun, edged by the back light, shadowed. Eyes stay as they are.
+        static void Shade(GameObject body)
+        {
+            foreach (var r in body.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null || r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer) continue;
+                if (r.GetComponentInParent<GooglyEyes>(true) != null) continue;
+                var mats = r.sharedMaterials;
+                bool changed = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var lit = LitTwin(mats[i]);
+                    if (lit != mats[i]) { mats[i] = lit; changed = true; }
+                }
+                if (changed) r.sharedMaterials = mats;
+            }
+        }
+
+        static readonly Dictionary<Material, Material> _litTwins = new Dictionary<Material, Material>();
+        static Shader _litShader;
+
+        static Material LitTwin(Material m)
+        {
+            if (m == null || m.shader == null || m.shader.name != "Universal Render Pipeline/Unlit") return m;
+            if (m.HasProperty("_Surface") && m.GetFloat("_Surface") > 0.5f) return m; // a see-through one stays as it is
+            if (_litTwins.TryGetValue(m, out var twin) && twin != null) return twin;
+            if (_litShader == null) _litShader = Shader.Find("Universal Render Pipeline/Lit");
+            if (_litShader == null) return m;
+            twin = new Material(_litShader) { name = m.name + " (booth, lit)" };
+            if (m.HasProperty("_BaseColor")) twin.SetColor("_BaseColor", m.GetColor("_BaseColor"));
+            if (m.HasProperty("_BaseMap"))
+            {
+                twin.SetTexture("_BaseMap", m.GetTexture("_BaseMap"));
+                twin.SetTextureScale("_BaseMap", m.GetTextureScale("_BaseMap"));
+                twin.SetTextureOffset("_BaseMap", m.GetTextureOffset("_BaseMap"));
+            }
+            if (m.HasProperty("_AlphaClip") && m.GetFloat("_AlphaClip") > 0.5f)
+            {
+                twin.SetFloat("_AlphaClip", 1f);
+                twin.SetFloat("_Cutoff", m.GetFloat("_Cutoff"));
+                twin.EnableKeyword("_ALPHATEST_ON");
+            }
+            twin.SetFloat("_Smoothness", 0.1f); // matte, like the flat look it stands in for
+            twin.SetFloat("_Metallic", 0f);
+            _litTwins[m] = twin;
+            return twin;
+        }
+
+        /// The booth's lit copies go with the stage.
+        static void DropLitTwins()
+        {
+            foreach (var t in _litTwins.Values) if (t != null) Destroy(t);
+            _litTwins.Clear();
         }
 
         /// The side on the wand and robe, the hat's colour: the paint a friend's copy wears.
@@ -279,6 +402,13 @@ namespace SpellyZombie
             if (cr == null && kind == SpellBody.Zombie)
             {
                 Wardrobe.DressZombie(SocketSet.Build(body, root), 0.35f, s.Item.Seed);
+            }
+
+            // a zombie has the players' skeleton: its limbs pose the same way
+            if (kind == SpellBody.Zombie)
+            {
+                s.Rig = s.Root.AddComponent<EmoteRig>();
+                EmoteRig.Populate(s.Rig, body.GetComponentsInChildren<Transform>(true), root);
             }
 
             s.Animator = body.GetComponentInChildren<Animator>(true);
@@ -379,9 +509,10 @@ namespace SpellyZombie
                 var m = ps.main;
                 len = Mathf.Max(len, m.startDelay.constantMax + m.duration + m.startLifetime.constantMax);
             }
+            foreach (var rb in s.Ribbons) len = Mathf.Max(len, rb.Time);
             var clip = ClipOf(s);
             if (clip != null) len = Mathf.Max(len, clip.length);
-            s.Length = s.Systems.Count > 0 || clip != null ? Mathf.Clamp(len, 0.5f, 15f) : 0f;
+            s.Length = s.Systems.Count > 0 || clip != null || s.Ribbons.Count > 0 ? Mathf.Clamp(len, 0.5f, 15f) : 0f;
         }
 
         /// ★ THE TIME SLIDER: every particle starts again from its own seed and
@@ -389,6 +520,7 @@ namespace SpellyZombie
         void Scrub(Subject s)
         {
             ScrubParticles(s);
+            ShapeRibbons(s);
             var clip = ClipOf(s);
             if (clip != null && s.Animator != null) Sample(s.Animator, clip, Mathf.Clamp(s.Item.Time, 0f, Mathf.Max(0f, s.Length)));
         }
@@ -408,9 +540,11 @@ namespace SpellyZombie
             foreach (var top in s.Tops) top.Simulate(t, true, true, true);
         }
 
-        /// It moved, turned or grew: particles left in the world run again from where it is now.
+        /// It moved, turned or grew: particles left in the world run again from where it is now,
+        /// and a trail's ribbon keeps its width to its size.
         void Moved(Subject s)
         {
+            if (s.Ribbons.Count > 0) { ShapeRibbons(s); FitPick(s); }
             foreach (var ps in s.Systems)
                 if (ps.main.simulationSpace == ParticleSystemSimulationSpace.World) { ScrubParticles(s); FitPick(s); return; }
         }
@@ -630,12 +764,135 @@ namespace SpellyZombie
                     var ps = r.GetComponent<ParticleSystem>();
                     if (ps == null || ps.particleCount == 0) continue;
                 }
-                Bounds rb = r is SkinnedMeshRenderer smr ? ShapeShift.SkinBounds(smr) : r.bounds;
+                Bounds rb = r is SkinnedMeshRenderer smr ? ShapeShift.SkinBounds(smr, measured: true) : r.bounds;
                 if (!any) { b = rb; any = true; }
                 else b.Encapsulate(rb);
             }
+            // a trail's ribbon from its own points (lines are left out above: ink rides on them too)
+            foreach (var ribbon in s.Ribbons)
+            {
+                var line = ribbon.Line;
+                if (line == null || !line.enabled) continue;
+                var pad = Vector3.one * line.widthMultiplier;
+                for (int i = 0; i < line.positionCount; i++)
+                {
+                    var p = new Bounds(line.transform.TransformPoint(line.GetPosition(i)), pad);
+                    if (!any) { b = p; any = true; }
+                    else b.Encapsulate(p);
+                }
+            }
             if (!any) b = new Bounds(root.position + Vector3.up * (0.5f * s.Item.Size), Vector3.one * s.Item.Size);
             return b;
+        }
+
+        // ------------------------------------------------------------ trails --
+        /// ★ A TRAIL HELD STILL (his go): a trail draws only while its thing moves and fades behind
+        /// it, so a photo never caught it. In the booth each trail becomes a still ribbon with its
+        /// look, swept back from where it stands; the time slider says how much of it shows.
+        const float TrailSpeed = 4f;   // metres a second the held trail was drawn at: a running body
+        const float RibbonStep = 0.25f; // metres between its points
+        const float RibbonBend = 0.15f; // how far it curves aside, of its length
+
+        void Ribbons(Subject s)
+        {
+            s.Ribbons.Clear();
+            if (s.Body == null) return;
+            foreach (var trail in s.Body.GetComponentsInChildren<TrailRenderer>(true))
+            {
+                // one renderer to a thing: the line goes on a child of the trail's own
+                var go = new GameObject("~Ribbon") { layer = Layer };
+                go.transform.SetParent(trail.transform, false);
+                var line = go.AddComponent<LineRenderer>();
+                line.useWorldSpace = false; // it moves, turns and grows with the thing
+                line.sharedMaterials = trail.sharedMaterials;
+                line.widthCurve = trail.widthCurve;
+                line.colorGradient = trail.colorGradient;
+                line.numCornerVertices = trail.numCornerVertices;
+                line.numCapVertices = trail.numCapVertices;
+                line.alignment = trail.alignment;
+                line.textureMode = trail.textureMode;
+                line.shadowCastingMode = trail.shadowCastingMode;
+                line.receiveShadows = trail.receiveShadows;
+                line.sortingLayerID = trail.sortingLayerID;
+                line.sortingOrder = trail.sortingOrder;
+                s.Ribbons.Add(new Ribbon { Line = line, Time = trail.time, Width = trail.widthMultiplier });
+                trail.emitting = false;
+                trail.Clear();
+                trail.enabled = false; // the ribbon is its picture now
+            }
+        }
+
+        /// Each ribbon as long as its time holds, head at the thing and the tail behind it
+        /// (the trail's own width and colour run the same way), as wide as the thing is big.
+        void ShapeRibbons(Subject s)
+        {
+            if (s.Ribbons.Count == 0 || s.Root == null) return;
+            float size = Mathf.Abs(s.Root.transform.lossyScale.x);
+            foreach (var ribbon in s.Ribbons)
+            {
+                var line = ribbon.Line;
+                if (line == null) continue;
+                float len = TrailSpeed * Mathf.Clamp(s.Item.Time, 0f, ribbon.Time);
+                int n = Mathf.Clamp(Mathf.CeilToInt(len / RibbonStep) + 1, 2, 64);
+                line.positionCount = n;
+                for (int i = 0; i < n; i++)
+                {
+                    float u = i / (float)(n - 1);
+                    line.SetPosition(i, new Vector3(Mathf.Sin(u * Mathf.PI) * len * RibbonBend, 0f, -u * len));
+                }
+                line.widthMultiplier = ribbon.Width * size;
+                line.enabled = len > 0.01f && PartShown(s, line.transform);
+            }
+        }
+
+        // ------------------------------------------------------------- parts --
+        /// ★ AN EFFECT'S PARTS (his go): whatever in an effect or an area draws or lights (a glow,
+        /// sparks, a light) switches off for the photo on its own, named as the effect names it
+        /// and kept by its path inside it.
+        static bool HasParts(Subject s) => s.Item.Kind == PhotoKind.Effect || s.Item.Kind == PhotoKind.Area;
+
+        void GatherParts(Subject s)
+        {
+            s.Parts.Clear();
+            if (s.Body == null) return;
+            foreach (var t in s.Body.GetComponentsInChildren<Transform>())
+            {
+                bool part = false;
+                foreach (var r in t.GetComponents<Renderer>())
+                    if (r.enabled && !(r is TrailRenderer)) { part = true; break; } // a trail's ribbon is the part
+                if (!part)
+                    foreach (var l in t.GetComponents<Light>())
+                        if (l.enabled) { part = true; break; }
+                if (part) s.Parts.Add(t);
+            }
+        }
+
+        bool PartShown(Subject s, Transform t) =>
+            s.Body == null || !s.Item.Hidden.Contains(PathOf(s.Body.transform, t));
+
+        void ApplyParts(Subject s)
+        {
+            bool ribbons = false;
+            foreach (var t in s.Parts)
+            {
+                if (t == null) continue;
+                bool shown = PartShown(s, t);
+                foreach (var r in t.GetComponents<Renderer>())
+                {
+                    if (r is TrailRenderer) continue;
+                    if (r is LineRenderer) { ribbons = true; continue; } // a ribbon shows by its length too
+                    r.enabled = shown;
+                }
+                foreach (var l in t.GetComponents<Light>()) l.enabled = shown;
+            }
+            if (ribbons) ShapeRibbons(s);
+        }
+
+        /// A part as its effect names it; a ribbon by the trail it holds.
+        static string PartName(Transform t)
+        {
+            string n = t.name == "~Ribbon" && t.parent != null ? t.parent.name : t.name;
+            return CleanEffectName(n.Replace("(Clone)", "").Trim());
         }
 
         /// A thing with no solid shape of its own (an effect, an area) is clicked by a box around it.
@@ -743,6 +1000,7 @@ namespace SpellyZombie
                 case PhotoKind.Creature:
                     if (!string.IsNullOrEmpty(item.What)) return item.What;
                     return Loc.T(item.Body == SpellBody.Golem ? "mc.body.golem" : "mc.body.zombie");
+                case PhotoKind.Effect: return EffectName(item.What);
                 default: return item.What;
             }
         }

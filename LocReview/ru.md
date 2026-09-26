@@ -32,11 +32,11 @@ font lacks them, fill the OtherFont slot on UISkin.
 | chip.precise | Faster drawing | Рисовать быстрее | to draw faster | |
 | chip.erase | Erase ink | Стереть чернила | to erase ink | |
 | chip.absorb | Absorb it | Поглотить | to absorb | |
-| hint.alt | Hold ALT to draw faster | Держи ALT, чтобы рисовать быстрее | hold ALT, in order to draw faster | |
+| hint.alt | Hold {0} to draw faster | Держи {0}, чтобы рисовать быстрее | hold {0}, in order to draw faster | loading hint; {0} = the key bound to precise drawing (ALT) |
 | hint.combine | Draw more runes inside of the same seal to combine them | Нарисуй несколько рун внутри одной печати, и они соединятся | draw several runes inside one seal, and they will join | |
-| hint.lift | Draw ink on things and press E to lift them | Нарисуй чернилами на предмете и нажми E, чтобы поднять его | draw with ink on an object and press E, in order to lift it | |
+| hint.lift | Draw ink on things and press {0} to lift them | Нарисуй чернилами на предмете и нажми {0}, чтобы поднять его | draw with ink on an object and press {0}, in order to lift it | loading hint; {0} = the key or button bound to Use (E) |
 | hint.erase | Erasing returns the ink to your wand | Стёртые чернила возвращаются в палочку | erased ink returns into the wand | |
-| hint.body | Press R to paint runes on your own body | Нажми R, чтобы рисовать руны на своём теле | press R, in order to draw runes on your own body | |
+| hint.body | Press {0} to paint runes on your own body | Нажми {0}, чтобы рисовать руны на своём теле | press {0}, in order to draw runes on your own body | loading hint; {0} = the key or button bound to the body key (R) |
 | hint.pose | Striking a pose can close a body seal and cast it | Поза может замкнуть печать на теле и сотворить её | a pose can close the seal on the body and cast it | сотворить = cast a spell |
 | hint.size | Bigger runes make stronger spells | Чем больше руна, тем сильнее заклинание | the bigger the rune, the stronger the spell | |
 | hint.touch | Lines count as one drawing only when they touch | Линии считаются одним рисунком, только если касаются друг друга | lines count as one drawing only if they touch each other | |
@@ -132,7 +132,7 @@ font lacks them, fill the OtherFont slot on UISkin.
 | tag.quiet | Quiet ok | Можно молча | silently is allowed | |
 | opt.mic.title | Microphone | Микрофон | microphone |  |
 | opt.mic.open | Open mic | Всегда включён | always switched on |  |
-| opt.mic.ptt | Hold V | Держи V | hold V | V is a physical key, kept |
+| opt.mic.ptt | Hold {0} | Держи {0} | hold {0} | Options, Audio, microphone mode button: push to talk; {0} = the key bound to talking (V) |
 | opt.mic.off | Muted | Выключен | switched off |  |
 | opt.tab.game | Game | Игра | game |  |
 | opt.tab.video | Video | Видео | video |  |
@@ -362,6 +362,53 @@ font lacks them, fill the OtherFont slot on UISkin.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Оставленные рисунки. Выбери рисунок, чтобы править его, плюс начинает новый, X убирает | kept drawings. choose drawing to edit it, plus starts new, X removes | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | Читается как {0} | is-read as {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Пока не читается | so-far not is-read | the pad's drawing matches no rune well enough |
+| browse.inlobby | In the lobby | В лобби | in the lobby | lobby list row, after the tags: the host and friends are in the lobby scene (the sandbox), no match running |
+| browse.inmatch | In a match | В матче | in a match | lobby list row, after the tags: a match is running on a map right now |
+| browse.upmin | Up {0} min | Открыто {0} мин | open {0} min | lobby list row: how long the lobby has stood; {0} = whole minutes, under an hour |
+| browse.uph | Up {0} h {1} min | Открыто {0} ч {1} мин | open {0} h {1} min | lobby list row: how long the lobby has stood; {0} = hours, {1} = the minutes past the hour |
+| hint.sealshape | A circle is the weakest seal, a triangle the strongest | Круглая печать слабее всех, треугольная сильнее всех | a round seal is weaker than all, a triangular one stronger than all | loading screen hint; Spell.PowerFor: fewer lines in a seal = stronger, a circle counts as ten |
+| hint.sealline | Draw two sides of a triangle around your runes and {0} closes it | Нарисуй две стороны треугольника вокруг своих рун, и {0} замкнёт его | draw two sides of a triangle around your runes, and {0} will close it | loading screen hint; {0} = the key bound to F; the book closes two straight lines that meet at a corner with the third side |
+| opt.ghost | Ghost lines | Призрачные линии | ghost lines | Game tab of the options: the row for the ghost hand (the lobby lessons and the floating F's drawn previews), answered Off / On |
+| side.pillar.acolyte | Become an acolyte | Стать аколитом | to become an acolyte | caption under the floating E on the lobby's side pillar while you are a wizard; same style as chest.open |
+| side.pillar.wizard | Become a wizard | Стать магом | to become a wizard | caption under the floating E on the lobby's side pillar while you are an acolyte |
+| seal.aim | Seal it, the book draws the ring | Запечатай, книга нарисует кольцо | seal it, the book will draw the ring | caption under the floating F on your own rune while the grimoire is open on the seal page; same style as scan.aim and absorb.aim |
+| mc.area.arrive | Arrives in, seconds | Долетает за, секунд | flies there in, seconds | area editor, under Where it starts: how long the area takes from its start point to the spell |
+| mc.note.arrive | 0 lets the game pick the speed. Slower than 5 metres a second it settles in, faster it slams. | При 0 скорость выбирает игра. Медленнее 5 метров в секунду оно мягко садится, быстрее врезается | at 0 the game chooses the speed. slower than 5 metres per second it lands softly, faster it crashes in | area editor: small note under Arrives in |
+| opt.tab.keys | Controls | Управление | controls | fourth tab of the Options, after Game, Video, Audio: the key and controller button list |
+| keys.note | Click a key or a button, then press the new one. Escape keeps the old one | Нажми на клавишу или кнопку, потом нажми новую. Esc оставит старую | click on a key or a button, then press the new one. Esc will leave the old one | Controls tab: small note above the list |
+| keys.press | Press the new key or button now. Escape keeps the old one | Нажми новую клавишу или кнопку. Esc оставит старую | press the new key or button. Esc will leave the old one | Controls tab: the note while a binding waits for its new key |
+| keys.action | Action | Действие | action | Controls tab: heading of the first column |
+| keys.keyboard | Keyboard | Клавиатура | keyboard | Controls tab: heading of the keyboard and mouse column |
+| keys.pad | Controller | Геймпад | gamepad | Controls tab: heading of the gamepad column |
+| keys.reset | Back to the default keys | Вернуть клавиши по умолчанию | return the keys by default | Controls tab: button that puts every key and button back as shipped |
+| keys.act.forward | Walk forward | Идти вперёд | go forward | Controls tab: an action's name |
+| keys.act.back | Walk back | Идти назад | go back | Controls tab: an action's name |
+| keys.act.left | Walk left | Идти влево | go left | Controls tab: an action's name |
+| keys.act.right | Walk right | Идти вправо | go right | Controls tab: an action's name |
+| keys.act.jump | Jump, fly up | Прыжок, лететь вверх | jump, fly up | Controls tab: jumping, and rising as a ghost |
+| keys.act.crouch | Crouch, fly down | Присесть, лететь вниз | crouch, fly down | Controls tab: crouching, and sinking as a ghost |
+| keys.act.sprint | Run | Бежать | run | Controls tab: sprinting |
+| keys.act.draw | Draw | Рисовать | draw | Controls tab: drawing ink |
+| keys.act.erase | Erase | Стирать | erase | Controls tab: erasing ink |
+| keys.act.precise | Draw faster | Рисовать быстрее | draw faster | Controls tab: the hold key that frees the cursor for faster drawing |
+| keys.act.use | Grab, throw, use | Взять, бросить, использовать | take, throw, use | Controls tab: the one hand key (E) |
+| keys.act.drop | Drop, let go | Бросить, отпустить | drop, release | Controls tab: the release key (F) |
+| keys.act.body | Paint body, pose, watch | Рисовать на теле, поза, смотреть | draw on the body, pose, watch | Controls tab: the body key (R): wizards paint their body, third person poses, acolytes watch their zombies |
+| keys.act.menu | Menu | Меню | menu | Controls tab: the pause menu key |
+| keys.act.ready | Ready | Готов | ready | Controls tab: answering the lobby's ready check with yes |
+| keys.act.notready | Not ready | Не готов | not ready | Controls tab: answering the lobby's ready check with no |
+| keys.act.talk | Push to talk | Нажми, чтобы говорить | press to talk | Controls tab: holding this opens the microphone in push to talk mode |
+| keys.act.prev | Previous page | Предыдущая страница | previous page | Controls tab: a controller button that turns the grimoire back a page, or steps to the previous pose or zombie |
+| keys.act.next | Next page | Следующая страница | next page | Controls tab: a controller button that turns the grimoire forward a page, or steps to the next pose or zombie |
+| watch.many | Watching {0} of {1} · 1-0 picks · Draw a seal on it to blow it | Смотришь {0} из {1} · 1-0 выбирает · Нарисуй на нём печать, чтобы взорвать | you watch {0} of {1} · 1-0 chooses · draw a seal on it to blow it up | prompt bar while an acolyte looks through one of several zombies of theirs: {0} = which one, {1} = how many; the number keys 1 to 0 pick another; a seal drawn on the zombie makes it explode |
+| watch.one | Draw a seal on it to blow it · R leaves | Нарисуй на нём печать, чтобы взорвать · R выходит | draw a seal on it to blow it up · R exits | prompt bar while an acolyte looks through their only zombie |
+| mc.behaviour.rampages | Rampages | Буйствует | rampages | creature behaviour button, after Skittish: a calamity that throws its spells everywhere |
+| mc.note.rampages | Throws random spells from its list all over the place, about one a second, and never runs away. Spells from its own side cannot hurt it. | Швыряет случайные заклинания из своего списка куда попало, примерно одно в секунду, и никогда не убегает. Заклинания своей стороны ему не вредят. | hurls random spells from its list wherever, about one a second, and never runs away. spells of its own side do not harm it | note under the behaviour buttons when Rampages is picked |
+| opt.keys.title | Videos and photos | Видео и фото | video and photo | pause menu, Game tab: heading over the three recorder keys |
+| opt.key.clip | Start or stop a video | Начать или остановить видео | start or stop a video | pause menu, Game tab: beside the I keycap; the same key starts and stops the recording |
+| opt.key.photo | Take a photo | Сделать фото | make a photo | pause menu, Game tab: beside the P keycap |
+| opt.key.folder | Open their folder (in the lobby) | Открыть их папку (в лобби) | open their folder (in the lobby) | pause menu, Game tab: beside the O keycap; opens the folder holding the saved videos and photos, and only works in the lobby |
+| opt.keys.note | Saved in your Videos folder, under Spelly Zombie. The interface is never in them | Сохраняются в папке «Видео», в Spelly Zombie. Интерфейс в них никогда не попадает | they are saved in the 'Video' folder, in Spelly Zombie. the interface never gets into them | pause menu, Game tab: small note under the three recorder keys |
 | ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | В этом лобби версия новее. Выйди из игры и дай Steam обновить твою | in this lobby the version is newer. leave the game and let Steam update yours | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
 | ver.theirs | That lobby runs an older version. Its host has to update the game | В этом лобби версия старее. Его хост должен обновить игру | in this lobby the version is older. its host must update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
 | ver.differs | That lobby runs a different version of the game | В этом лобби другая версия игры | in this lobby there is another version of the game | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
@@ -627,3 +674,4 @@ font lacks them, fill the OtherFont slot on UISkin.
 | mc.side.note | The emoji and the page belong to this side. An acolyte with none of its own shows the wizard's. | Эмодзи и страница принадлежат этой стороне. Если у аколита нет своих, показываются те, что у мага. | emoji and page belong to-this side. if at acolyte no own-ones, are-shown those, which at wizard | note under the side switch |
 | mc.pushes.note | What drawing this rune adds to the seal's numbers, one axis or several. The spells decide what that becomes. | Что рисунок этой руны добавляет к числам печати, по одной оси или по нескольким. Во что это превратится, решают заклинания. | what drawing of-this rune adds to numbers of-seal, along one axis or along several. into what this will-turn, decide spells | note under Pushes |
 | mc.rune.none | Make a rune or pick one from the list | Создай руну или выбери из списка | create rune or choose from list | the Runes creator with nothing picked |
+| opt.stick | Stick sensitivity: {0} | Чувствительность стика: {0} | sensitivity of-the-stick: {0} | the controller's right stick, under Look sensitivity |

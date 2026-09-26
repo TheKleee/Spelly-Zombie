@@ -155,7 +155,7 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             var mode = Mode;
             bool want = mode == MicMode.Open
-                || (mode == MicMode.PushToTalk && kb != null && kb.vKey.isPressed
+                || (mode == MicMode.PushToTalk && Keys.Held(Act.Talk)
                     && !GameMenu.IsOpen && !UIKit.Typing);
             if (want) _tailUntil = Time.time + 0.25f;
             bool send = (want || Time.time < _tailUntil) && Time.time >= GagUntil;
@@ -334,14 +334,12 @@ namespace SpellyZombie
             for (int k = 0; k < Frame; k++) _ship[k] = Mathf.Clamp(frame[k] * _micGain, -1f, 1f);
 
             var data = Adpcm.Encode(_ship, Frame, ref _encIndex);
-            var cm = InstanceFinder.ClientManager;
-            if (cm != null && cm.Started)
-                cm.Broadcast(new NetSync.VoiceMsg
-                {
-                    Owner = NetSync.LocalOwnerId,
-                    Ghost = GhostState.LocalIsGhost,
-                    Data = data,
-                }, Channel.Unreliable);
+            NetSync.ToServer(new NetSync.VoiceMsg
+            {
+                Owner = NetSync.LocalOwnerId,
+                Ghost = GhostState.LocalIsGhost,
+                Data = data,
+            }, Channel.Unreliable);
         }
 
         static float Rms(float[] pcm, int count)

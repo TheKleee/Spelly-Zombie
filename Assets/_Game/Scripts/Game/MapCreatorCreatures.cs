@@ -216,7 +216,7 @@ namespace SpellyZombie
             if (Section(col, W, "creature:behaviour", Loc.T("mc.behaviour"), true, RefreshCreatures))
             {
                 string[] ways = { Loc.T("mc.behaviour.roams"), Loc.T("mc.behaviour.hunts"),
-                    Loc.T("mc.behaviour.guards"), Loc.T("mc.behaviour.skittish") };
+                    Loc.T("mc.behaviour.guards"), Loc.T("mc.behaviour.skittish"), Loc.T("mc.behaviour.rampages") };
                 CreatorUI.Grid(col, W, 2, ways, i => (int)cr.Behaviour == i,
                     i => { cr.Behaviour = (CreatureBehaviour)i; RefreshCreatures(); }, 28f, 13);
                 CreatorUI.Note(col, W, BehaviourNote(cr.Behaviour), 34f);
@@ -239,6 +239,7 @@ namespace SpellyZombie
                 case CreatureBehaviour.Hunts: return Loc.T("mc.note.hunts");
                 case CreatureBehaviour.Guards: return Loc.T("mc.note.guards");
                 case CreatureBehaviour.Skittish: return Loc.T("mc.note.skittish");
+                case CreatureBehaviour.Rampages: return Loc.T("mc.note.rampages");
                 default: return Loc.T("mc.note.roams");
             }
         }

@@ -7,6 +7,7 @@ namespace SpellyZombie
     public class ComboBanner : MonoBehaviour
     {
         float _life = 2.4f, _age;
+        bool _patient; // shown while the travel egg had the screen: it waits to be seen
         RectTransform _ui;
         CanvasGroup _fade;
 
@@ -24,6 +25,7 @@ namespace SpellyZombie
             DontDestroyOnLoad(go); // its group lives on the persistent canvas, so survive scene loads
             var b = go.AddComponent<ComboBanner>();
             _live = b;
+            b._patient = LoadEgg.Leaving;
             b.BuildUI(text, color);
         }
 
@@ -49,6 +51,11 @@ namespace SpellyZombie
 
         void Update()
         {
+            if (_patient)
+            {
+                if (LoadEgg.Leaving) return;
+                _patient = false;
+            }
             _age += Time.deltaTime;
             float t = Mathf.Clamp01(_age / _life);
             if (_fade != null) _fade.alpha = 1f - t * t;

@@ -30,8 +30,13 @@ namespace SpellyZombie
         /// A trip is underway: the shell forming or closed, not yet breaking open.
         public static bool Leaving => _live != null && _live._opening < 0f;
 
+        /// An egg exists at all, breaking open included.
+        public static bool Active => _live != null;
+
         float _form = -1f;               // 0..1 while the shell closes in
         bool Forming => _form >= 0f && _form < 1f;
+        System.Action _load;             // where the forming shell goes when it closes
+        bool _loading;                   // the next scene is asked for and not here yet
 
         /// What the music should sit at: full with no egg, down as the shell
         /// forms, low while it is closed, back up as it breaks apart.
@@ -49,29 +54,85 @@ namespace SpellyZombie
         /// The trip, in order: the shell forms around the eye with the world
         /// still in view, then the loading text rides its dark and the scene
         /// loads, then the new scene breaks it open.
-        public static void Travel(string scene) => Travel(() => SceneManager.LoadScene(scene));
-        public static void Travel(int buildIndex) => Travel(() => SceneManager.LoadScene(buildIndex));
+        public static void Travel(string scene) => Trip(() => SceneManager.LoadScene(scene));
+        public static void Travel(int buildIndex) => Trip(() => SceneManager.LoadScene(buildIndex));
 
-        static void Travel(System.Action load)
+        /// A trip that does something first as the scene changes (once the shell has closed, or at
+        /// once without one): a walk-out leaves the session there, so the world stays in play meanwhile.
+        public static void Travel(string scene, System.Action first)
         {
-            if (_live != null && _live.Forming) return; // the trip is already underway
-            var cam = _live == null ? Camera.main : null;
+            if (!Trip(() => { first(); SceneManager.LoadScene(scene); })) first();
+        }
+
+        /// The host has set out for another scene: this shell closes with the host's and waits,
+        /// held, until the host's arrival carries it on (the phase follow's Travel). CallOff or the
+        /// safety net opens it here again.
+        public static void Hold() => Trip(null);
+
+        /// The trip is off before it left this scene (the host went away): a shell closing in or
+        /// held here opens again where it stands. An egg that has landed opens on its own.
+        public static void CallOff()
+        {
+            if (_live == null || _live._loading || _live._arrivedAt >= 0f || _live._opening >= 0f) return;
+            _live.StopAllCoroutines();
+            _live._form = -1f;
+            _live._load = null;
+            _live.Reveal();
+        }
+
+        /// False when another trip already has the scene change and this one is dropped.
+        static bool Trip(System.Action load)
+        {
+            if (_live != null && _live.Forming)
+            {
+                if (_live._load != null) return false; // a trip keeps its own destination
+                _live._load = load;                    // a held shell takes the host's
+                return true;
+            }
+            if (_live != null && _live._loading) return false; // the next scene is asked for: one load per trip
+            if (_live != null && _live._opening >= 0f)
+            {
+                // still breaking open from the last trip: that egg is done, this trip forms its own
+                var old = _live;
+                _live = null;
+                old._pilot = null; // its OnDestroy must not unstick the feet the new shell sticks
+                if (old._shell != null) old._shell.gameObject.SetActive(false); // gone before the new one forms
+                Destroy(old.gameObject);
+            }
+            if (_live != null)
+            {
+                // closed around the camera already (a dark room, or held): it rides on and opens there, never here
+                _live._arrivedAt = -1f;
+                if (load == null) return true;
+                _live._loading = true;
+                LoadingHints.Show();
+                Debug.Log("[SpellyZombie] egg already closed, loading");
+                load();
+                return true;
+            }
+            var cam = Camera.main;
             if (cam != null && Shader.Find("SpellyZombie/EggDissolve") != null)
             {
                 var go = new GameObject("LoadEgg");
                 DontDestroyOnLoad(go);
                 _live = go.AddComponent<LoadEgg>();
-                GhostState.ReviveLocalNow(); // a lobby ghost stands up for the trip
+                // a lobby ghost stands up for the match; a ghost leaving a map rides home as it is
+                if (SceneManager.GetActiveScene().name == "Lobby") GhostState.ReviveLocalNow();
                 Juice.Sound2D(Sfx.Egg);
-                _live.StartCoroutine(_live.FormThen(cam, load));
-                return;
+                _live._load = load;
+                _live.StartCoroutine(_live.FormThen(cam));
+                return true;
             }
+            if (load == null) return false; // no shell to hold
+            Debug.Log($"[SpellyZombie] no egg for this trip: {(cam == null ? "no main camera" : "no egg shader")}");
             Cover();
+            if (_live != null) _live._loading = true;
             LoadingHints.Show();
             load();
+            return true;
         }
 
-        IEnumerator FormThen(Camera cam, System.Action load)
+        IEnumerator FormThen(Camera cam)
         {
             _cam = cam;
             foreach (var p in SimpleFPSController.All)
@@ -80,17 +141,22 @@ namespace SpellyZombie
             EnsureShell();
             _form = 0f;
             _radius = FarRadius;
-            while (_form < 1f)
+            while (true)
             {
                 _form = Mathf.Min(1f, _form + Time.unscaledDeltaTime / FormSeconds);
                 float e = 1f - (1f - _form) * (1f - _form); // fast from afar, soft landing
                 _radius = Mathf.Lerp(FarRadius, ClosedRadius(), e);
                 if (_mat != null) _mat.SetFloat("_Cut", Mathf.Clamp01(1f - _form / 0.35f)); // embers knit into a shell
+                if (_form >= 1f) break; // closed: the scene is asked for in this same frame
                 yield return null;
             }
             Attach(); // closed: the world masked away, the body wrapped
             LoadingHints.Show();
-            load();
+            Debug.Log($"[SpellyZombie] egg closed in {SceneManager.GetActiveScene().name}" + (_load == null ? ", held for the host" : ", loading"));
+            if (_load == null) yield break; // held: the host's arrival carries it on
+            _loading = true;
+            yield return null; // one frame shown with the hint: the load freezes the picture on screen
+            _load();
         }
 
         /// Closed, the egg stops short of the floor under the eye, so no ground shows
@@ -149,6 +215,7 @@ namespace SpellyZombie
         float _toyIn, _relayerIn, _opening = -1f;
         float _radius = ShellRadius, _openFrom = ShellRadius;
         float _arrivedAt = -1f, _bornAt;
+        float _dark; // seconds of dark room the body has stood through at its start here
 
         public static void Cover()
         {
@@ -161,16 +228,22 @@ namespace SpellyZombie
             var go = new GameObject("LoadEgg");
             DontDestroyOnLoad(go);
             _live = go.AddComponent<LoadEgg>();
-            GhostState.ReviveLocalNow(); // a lobby ghost stands up for the trip
+            // a lobby ghost stands up for the match; a ghost leaving a map rides home as it is
+            if (SceneManager.GetActiveScene().name == "Lobby") GhostState.ReviveLocalNow();
             _live.Attach();
         }
 
         // The trip belongs to the egg: what is on the screen (buttons, chips, meters) steps aside
         // from the moment the shell starts closing in until it breaks open again. The loading text
-        // is the egg's own and stays (LoadingHints sets its group to ignore this one).
+        // is the egg's own and stays (LoadingHints draws on a canvas of its own).
         static void ScreenStepsAside(bool aside)
         {
-            var root = UIKit.Root;
+            StepAside(UIKit.Root, aside);
+            StepAside(UIKit.FloatRoot, aside); // the floating key badges and page cards too
+        }
+
+        static void StepAside(RectTransform root, bool aside)
+        {
             if (root == null) return;
             var group = root.GetComponent<CanvasGroup>();
             if (group == null) group = root.gameObject.AddComponent<CanvasGroup>();
@@ -181,6 +254,7 @@ namespace SpellyZombie
 
         void Awake()
         {
+            GameMenu.CloseForTrip();
             ScreenStepsAside(true);
             _bornAt = Time.unscaledTime;
             _bodiless = Bodiless(SceneManager.GetActiveScene().name);
@@ -199,8 +273,12 @@ namespace SpellyZombie
 
         void OnLoaded(Scene s, LoadSceneMode m)
         {
+            _loading = false;
             _arrivedAt = Time.unscaledTime;
+            _bornAt = Time.unscaledTime; // the safety net counts from each arrival: a joiner's egg rides two loads
+            _dark = 0f;
             _bodiless = Bodiless(s.name);
+            Debug.Log($"[SpellyZombie] egg landed in {s.name}");
             Unwrap();  // the old scene's player is gone
             Attach();  // take the new one
             Warmup.Run(); // what the fight will draw compiles now, behind the closed shell
@@ -301,17 +379,28 @@ namespace SpellyZombie
 
         void TickToys()
         {
-            _toys.RemoveAll(t => t == null || t.Dead);
+            if (_pilot == null) return;
+            Vector3 eye = _cam != null ? _cam.transform.position
+                : _pilot.transform.position + Vector3.up * 1.4f;
+            // a toy that drifted out through the shell is gone; a fresh one comes in its place
+            for (int i = _toys.Count - 1; i >= 0; i--)
+            {
+                var t = _toys[i];
+                if (t != null && !t.Dead && (t.transform.position - eye).sqrMagnitude < _radius * _radius) continue;
+                if (t != null) Destroy(t.gameObject);
+                _toys.RemoveAt(i);
+            }
             _toyIn -= Time.unscaledDeltaTime;
-            if (_toys.Count >= 3 || _toyIn > 0f || _pilot == null) return;
+            if (_toys.Count >= 3 || _toyIn > 0f) return;
             _toyIn = 1.6f;
             ParticleKind kind = Random.value < 0.4f ? ParticleKind.Push
                 : Random.value < 0.5f ? ParticleKind.Light : ParticleKind.Dense;
-            Vector3 eye = _cam != null ? _cam.transform.position
-                : _pilot.transform.position + Vector3.up * 1.4f;
             Vector3 at = eye + Random.insideUnitSphere * (_radius * 0.55f);
-            var p = SpellParticle.Emit(kind, at, Random.onUnitSphere, 0.7f);
-            if (p != null) _toys.Add(p);
+            var p = SpellParticle.EmitToy(kind, at, Random.onUnitSphere, 0.7f);
+            if (p == null) return;
+            foreach (var t in p.GetComponentsInChildren<Transform>(true))
+                t.gameObject.layer = EggLayer; // seen from its first frame
+            _toys.Add(p);
         }
 
         void Update()
@@ -342,14 +431,16 @@ namespace SpellyZombie
             if (Time.unscaledTime - _bornAt > 25f) { Reveal(); return; }
             if (_arrivedAt < 0f) return;
 
+            // the dark room counts from the body standing at its start (a client's is the host's
+            // answer), never from before the load and the island growing; a heavy frame is not
+            // dark time either
+            if (!_bodiless && !SpawnPlan.IsPlaced(_pilot)) return;
+            _dark += Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+
             bool lobby = _bodiless || SceneManager.GetActiveScene().name == "Lobby";
-            bool open = lobby
-                ? Time.unscaledTime - _arrivedAt > 1.1f
-                : NetGame.Connected && !NetGame.IsHost
-                    ? NetSync.HasRound && NetSync.NetPhase == 1
-                    : RoundDirector.RunActive;
+            bool open = lobby || RoundDirector.InMatch; // a map opens on its match, live or already decided
             // the dark room registers before it burns
-            if (open && Time.unscaledTime - _arrivedAt > 1.5f) Reveal();
+            if (open && _dark > 1.5f) Reveal();
         }
 
         /// A trip with nobody inside (the Map Creator's island): no egg to open.
@@ -362,6 +453,9 @@ namespace SpellyZombie
         /// grows away from the eye until it burns out at the horizon.
         void Reveal()
         {
+            Debug.Log("[SpellyZombie] egg opens " + (_arrivedAt >= 0f
+                ? $"{Time.unscaledTime - _arrivedAt:0.0} s after landing ({_dark:0.0} s of dark room)"
+                : "where it closed"));
             ScreenStepsAside(false);
             Unwrap();
             _openFrom = _radius;

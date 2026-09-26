@@ -220,7 +220,7 @@ namespace SpellyZombie
             // Host law: the host opens it everywhere; on a client the host
             // sees this body's downed flag and opens it at the puppet.
             if (Sides.IsAcolytePlayer(this))
-                NetSync.HostAcolyteDeath(transform.position + Vector3.up * 0.9f);
+                NetSync.HostAcolyteDeath(transform.position + Vector3.up * 0.9f, Grimoire.LocalPlayerId);
         }
 
         /// Physical hits shove the player and chip health. At 0 HP the ghost
@@ -479,9 +479,11 @@ namespace SpellyZombie
         /// Under an acolyte's decoy for `seconds`: whenever another wizard is
         /// within DecoyRange your legs run from them; out of range you are yours again.
         public void Decoy(float seconds) => _decoyUntil = Mathf.Max(_decoyUntil, Time.time + seconds);
+        float _decoyHeardAt;
 
         Vector2 DecoyLegs(Vector2 mv)
         {
+            bool was = _decoyFleeing;
             _decoyFleeing = false;
             if (Time.time >= _decoyUntil || IsDowned || IsDead) return mv;
             if (!MischiefLaw.NearestWizard(transform.position, DrawingConfig.DecoyRange, Grimoire.LocalPlayerId, out var wizard))
@@ -491,6 +493,12 @@ namespace SpellyZombie
             if (away.sqrMagnitude < 0.01f) away = transform.forward;
             away.Normalize();
             _decoyFleeing = true;
+            // the legs are the decoy's now: heard by everyone near, once per run
+            if (!was && Time.time >= _decoyHeardAt)
+            {
+                _decoyHeardAt = Time.time + 2f;
+                NetSync.PlayAndPushBodyFx(12, transform.position);
+            }
             return new Vector2(Vector3.Dot(away, transform.right), Vector3.Dot(away, transform.forward)).normalized;
         }
 
@@ -668,7 +676,8 @@ namespace SpellyZombie
         public void Revive()
         {
             IsDowned = false;
-            Health = 50f;
+            Health = 50f;            // the Element comes back as itself (Element.Revive)
+            GetComponent<BodyState>()?.ClearSpellEffects(); // and so does the board: grip, weight, phase
             _dmg.DeadStill = false;  // alive again, the world may touch you
             _soulFled = false;
             if (_heartFx != null) { Destroy(_heartFx); _heartFx = null; } // mended
@@ -738,8 +747,7 @@ namespace SpellyZombie
                         }
                 }
             }
-            // eyes stay visible in every mode: the camera rides in front of
-            // the face, so they are always behind the lens
+            // eyes stay on in every mode; a camera at your own face leaves them out (OwnEyesOff)
             _eyes.SetVisible(true);
             ThirdPersonActive = false;
 
@@ -784,6 +792,57 @@ namespace SpellyZombie
 
         void OnDestroy() => All.Remove(this);
 
+        // ★ YOUR OWN EYES NEVER IN YOUR OWN VIEW (his ask): the lens trails the face on a jump or a
+        // sprint start and the eyes came into the picture. A camera at your face draws them as shadow
+        // only, for that picture alone; other machines draw their own copy of you with its eyes.
+        const float OwnEyesNear = 0.6f;
+        readonly System.Collections.Generic.List<Renderer> _eyeParts = new System.Collections.Generic.List<Renderer>();
+        readonly System.Collections.Generic.List<(Renderer r, UnityEngine.Rendering.ShadowCastingMode was)> _eyesLeftOut
+            = new System.Collections.Generic.List<(Renderer, UnityEngine.Rendering.ShadowCastingMode)>();
+
+        void OnEnable()
+        {
+            UnityEngine.Rendering.RenderPipelineManager.beginCameraRendering += OwnEyesOff;
+            UnityEngine.Rendering.RenderPipelineManager.endCameraRendering += OwnEyesBack;
+        }
+
+        void OnDisable()
+        {
+            UnityEngine.Rendering.RenderPipelineManager.beginCameraRendering -= OwnEyesOff;
+            UnityEngine.Rendering.RenderPipelineManager.endCameraRendering -= OwnEyesBack;
+            OwnEyesBack(default, null);
+        }
+
+        void OwnEyesOff(UnityEngine.Rendering.ScriptableRenderContext ctx, Camera cam)
+        {
+            if (_eyes == null || cam == null || !IsLocalViewer) return;
+            if (ThirdPersonActive || SelfPaint.IsActive || PoseGrab.IsOpen || ZombieWatch.IsOpen) return; // views that look at you
+            if ((cam.transform.position - _eyes.transform.position).sqrMagnitude > OwnEyesNear * OwnEyesNear) return;
+            _eyes.GetComponentsInChildren(false, _eyeParts);
+            foreach (var r in _eyeParts)
+                if (r.enabled && r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly)
+                {
+                    _eyesLeftOut.Add((r, r.shadowCastingMode));
+                    r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+                }
+        }
+
+        void OwnEyesBack(UnityEngine.Rendering.ScriptableRenderContext ctx, Camera cam)
+        {
+            foreach (var (r, was) in _eyesLeftOut) if (r != null) r.shadowCastingMode = was;
+            _eyesLeftOut.Clear();
+        }
+
+        /// The local body answers to "player:" + its owner id on every machine. A body made
+        /// before the session was joined (the lobby loads first, then connects) took its name
+        /// from the old id: the name follows the id, or the host's health and state never find it.
+        public static void RenameLocalBody()
+        {
+            foreach (var p in All)
+                if (p != null && p.IsLocalViewer && p._dmg != null)
+                    p._dmg.Rename(Element.IdFor("player:" + Grimoire.LocalPlayerId));
+        }
+
         /// Where the static first-person eye point sits right now (world) -
         /// CharacterRig calibrates its head-bone camera anchor against this.
         public Vector3 EyeCenterWorld => transform.TransformPoint(new Vector3(0f, _camY, 0f));
@@ -802,7 +861,7 @@ namespace SpellyZombie
             // runs in LateUpdate (post-animation) - snap hard here so the
             // face can't outrun the lens on a sprint start
             if (_cam != null && !ThirdPersonActive && !SelfPaint.IsActive
-                && !PoseGrab.IsOpen && CameraPivot != null && _camForward > 0f)
+                && !PoseGrab.IsOpen && !ZombieWatch.IsOpen && CameraPivot != null && _camForward > 0f)
             {
                 Vector3 fpTarget = _eyeAnchorLocal
                     + CameraPivot.localRotation * new Vector3(0f, 0f, _camForward);
@@ -835,7 +894,7 @@ namespace SpellyZombie
         {
             if (_eyes != null) Destroy(_eyes.gameObject);
             _eyes = fresh;
-            if (_eyes != null) _eyes.SetVisible(true); // behind the lens, never in it
+            if (_eyes != null) _eyes.SetVisible(true); // a camera at the face leaves them out (OwnEyesOff)
         }
 
         void Update()
@@ -867,10 +926,10 @@ namespace SpellyZombie
 
             // ---- cursor handling ----
             // TAB flips the camera; either direction lands on the plain idle
-            if (kb.tabKey.wasPressedThisFrame && !IsDowned && !SelfPaint.IsActive
+            if (Keys.Down(Act.View) && !IsDowned && !SelfPaint.IsActive
                 && ShapeShift.ThirdPersonAllowed) // acolyte with no stored shape: refused
                 ToggleThirdPerson();
-            if (_cam != null && !SelfPaint.IsActive && !PoseGrab.IsOpen) // easel modes own the camera
+            if (_cam != null && !SelfPaint.IsActive && !PoseGrab.IsOpen && !ZombieWatch.IsOpen) // easel modes own the camera
             {
                 if (ThirdPersonActive)
                 {
@@ -904,7 +963,7 @@ namespace SpellyZombie
 
             // Alt precision belongs to the wand (slot 1) in FIRST person; the
             // draw modes and R pose mode free the cursor themselves.
-            bool altPrecision = !ThirdPersonActive && kb.leftAltKey.isPressed
+            bool altPrecision = !ThirdPersonActive && Keys.Held(Act.Precise)
                 && (_slots == null || _slots.PenSelected);
             // ALT IS AN AFFORDANCE, NOT A LESSON. It used to be a one-shot
             // tutorial hint that retired the first time anyone used it and
@@ -917,24 +976,28 @@ namespace SpellyZombie
             bool precision = altPrecision || HeldWeapon.DrawMode || SelfPaint.IsActive
             || PoseGrab.IsOpen || LobbyStand.PanelOpen // book stand menu = real mouse
                 || HatPillar.PanelOpen                      // hat color sliders = same law as the stand
-                || ShapeShift.PoseOpen;                     // acolyte shape posing = same precision cursor
+                || ShapeShift.PoseOpen                      // acolyte shape posing = same precision cursor
+                || ZombieWatch.IsOpen;                      // drawing on your zombie = the same brush cursor
             if (precision)
             {
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
                 if (!_wasPrecision) PrecisionCursor.Apply(); // brush circle, not an arrow
+                // the camera stays put while the cursor is free; a controller's right stick moves the cursor
+                if (altPrecision) Keys.StickCursor(Time.unscaledDeltaTime);
             }
             else if (_wasPrecision)
             {
                 PrecisionCursor.Clear();
                 LockCursor();
             }
-            else if (kb.escapeKey.wasPressedThisFrame)
+            else if (Keys.Down(Act.Menu))
             {
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
             }
-            else if (Cursor.lockState != CursorLockMode.Locked && mouse.leftButton.wasPressedThisFrame)
+            // a click takes the pointer back; a controller has none to click with, touching it does
+            else if (Cursor.lockState != CursorLockMode.Locked && (mouse.leftButton.wasPressedThisFrame || Keys.PadActive))
             {
                 LockCursor();
             }
@@ -943,21 +1006,22 @@ namespace SpellyZombie
             // draw modes: idling, not frozen - no move/jump/crouch (WASD steers
             // the view), but gravity, damage and revives keep running. Getting
             // floored kicks you out of the mode.
-            bool drawingMode = SelfPaint.IsActive || HeldWeapon.DrawMode || PoseGrab.IsOpen;
+            bool drawingMode = SelfPaint.IsActive || HeldWeapon.DrawMode || PoseGrab.IsOpen || ZombieWatch.IsOpen;
             if ((IsDowned || IsSprawled || IsAirTumbling) && HeldWeapon.DrawMode)
                 HeldWeapon.CancelDrawMode();
 
             // ---- look (only while the cursor is captured) ----
             var gp = Gamepad.current;
-            if (Cursor.lockState == CursorLockMode.Locked)
+            if (Cursor.lockState == CursorLockMode.Locked && !ZombieWatch.IsOpen) // the watch owns the camera
             {
                 // steady the hand: the camera slows way down while ink is flowing
                 float sens = SurfaceDrawer.IsPenActive
                     ? LookSensitivity * DrawingConfig.DrawLookSensitivityScale
                     : LookSensitivity;
                 Vector2 d = mouse.delta.ReadValue() * sens;
-                if (gp != null) // right stick - same draw-slowdown applies
-                    d += gp.rightStick.ReadValue() * sens * 1400f * Time.deltaTime;
+                // the right stick: its own sensitivity, the same draw slowdown
+                d += Keys.LookStick * (Keys.StickDegrees * Keys.StickSensitivity * Time.deltaTime
+                    * (SurfaceDrawer.IsPenActive ? DrawingConfig.DrawLookSensitivityScale : 1f));
                 transform.Rotate(0f, d.x, 0f); // yaw spins the body in both modes
                 if (!ThirdPersonActive)
                 {
@@ -979,7 +1043,7 @@ namespace SpellyZombie
                     OnDeathCrossed(); // fires exactly once, the frame the bleed-out runs dry
                 }
                 // camera keels over - the world from the floor
-                if (CameraPivot != null)
+                if (CameraPivot != null && !ZombieWatch.IsOpen)
                 {
                     var e = CameraPivot.localEulerAngles;
                     CameraPivot.localEulerAngles = new Vector3(e.x, e.y,
@@ -992,7 +1056,7 @@ namespace SpellyZombie
                 // then staggers back upright as the timer runs out
                 if (_knockLeft > 0f) _knockLeft -= Time.deltaTime;
                 float targetRoll = _knockLeft > 0f ? 75f : 0f;
-                if (CameraPivot != null)
+                if (CameraPivot != null && !ZombieWatch.IsOpen)
                 {
                     var e = CameraPivot.localEulerAngles;
                     if (Mathf.Abs(Mathf.DeltaAngle(e.z, targetRoll)) > 0.5f)
@@ -1003,7 +1067,7 @@ namespace SpellyZombie
             }
 
             // ---- crouch ----
-            bool wantCrouch = (kb.leftCtrlKey.isPressed || (gp != null && gp.buttonEast.isPressed))
+            bool wantCrouch = Keys.Held(Act.Crouch)
                 && !IsDowned && !drawingMode;
             if (!wantCrouch && IsCrouched)
             {
@@ -1034,14 +1098,8 @@ namespace SpellyZombie
             }
 
             // ---- move ----
-            Vector2 mv = Vector2.zero;
-            // arrows walk too, the book no longer needs them
-            if (kb.wKey.isPressed || kb.upArrowKey.isPressed) mv.y += 1f;
-            if (kb.sKey.isPressed || kb.downArrowKey.isPressed) mv.y -= 1f;
-            if (kb.dKey.isPressed || kb.rightArrowKey.isPressed) mv.x += 1f;
-            if (kb.aKey.isPressed || kb.leftArrowKey.isPressed) mv.x -= 1f;
-            if (gp != null) mv += gp.leftStick.ReadValue();
-            if (mv.sqrMagnitude > 1f) mv.Normalize();
+            // the move keys, the arrows and the left stick (Keys.Move)
+            Vector2 mv = Keys.Move;
             // in draw modes WASD belongs to the view (orbit), not to walking
             if (drawingMode) mv = Vector2.zero;
             mv = PossessedLegs(mv);
@@ -1082,7 +1140,7 @@ namespace SpellyZombie
             {
                 // the stickier, the sooner and the longer the boots refuse
                 _stickPulseAt = Time.time + Mathf.Lerp(3.2f, 1.2f, glue);
-                _feetStuckUntil = Time.time + Mathf.Lerp(0.15f, 0.6f, glue);
+                StickFeet(Mathf.Lerp(0.15f, 0.6f, glue)); // never shortens a longer hold (the travel egg's)
                 NetSync.PlayAndPushBodyFx(8, transform.position + Vector3.up * 0.05f); // glue puff
             }
             _glideMv = Vector2.Lerp(_glideMv, mv, Time.deltaTime * (onGround // skating needs a floor
@@ -1090,7 +1148,7 @@ namespace SpellyZombie
             mv = _glideMv;
             // a Y owns you: inputs walk you the OTHER way
 
-            bool sprint = kb.leftShiftKey.isPressed || (gp != null && gp.leftStickButton.isPressed);
+            bool sprint = Keys.Held(Act.Sprint);
             if (_decoyFleeing) sprint = true; // a decoyed wizard runs
             if (_body != null && !_body.CanSprint) sprint = false; // too heavy to run
             if (_balDev > 0.15f) sprint = false; // glue does not do running (his rule)
@@ -1149,8 +1207,7 @@ namespace SpellyZombie
                 }
 
                 _verticalVelocity = -1f;
-                bool jump = kb.spaceKey.wasPressedThisFrame
-                    || (gp != null && gp.buttonSouth.wasPressedThisFrame);
+                bool jump = Keys.Down(Act.Jump);
                 if (jump && !IsDowned && !IsSprawled && !IsAirTumbling && !drawingMode && !FeetStuck)
                 {
                     // JumpMul is 0 when weight beats strength - the feet simply
@@ -1173,8 +1230,7 @@ namespace SpellyZombie
                 _airTime = 0f;
                 float sink = Gravity * (1f - Mathf.Clamp01(swimIn.Buoyancy));
                 _verticalVelocity = Mathf.Max(_verticalVelocity + sink * Time.deltaTime, -1.6f);
-                bool stroke = kb.spaceKey.wasPressedThisFrame
-                    || (gp != null && gp.buttonSouth.wasPressedThisFrame);
+                bool stroke = Keys.Down(Act.Jump);
                 if (stroke && !IsDowned && !IsSprawled && !drawingMode)
                     _verticalVelocity = JumpSpeed * 0.65f
                         * (_body != null ? _body.JumpMul : 1f);
@@ -1369,6 +1425,13 @@ namespace SpellyZombie
             if (NetSync.SendPushIntent(hit.collider, dir * PushStrength, false)) return;
             var body = hit.collider.attachedRigidbody;
             if (body == null || body.isKinematic) return;
+            // a friend's ragdoll: shoved here at once, and on their machine, where the body really is
+            var doll = body.GetComponentInParent<NetAvatar>();
+            if (doll != null)
+            {
+                doll.DollPushedHere();
+                NetSync.SendDollPush(NetSync.OwnerIdOf(doll.Id), new Vector3(dir.x * PushStrength, 0f, dir.z * PushStrength), hit.point);
+            }
             body.linearVelocity = new Vector3(dir.x * PushStrength, body.linearVelocity.y, dir.z * PushStrength);
             Element.TrackLoose(body); // the clients see it slide
         }

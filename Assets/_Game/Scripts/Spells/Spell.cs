@@ -70,11 +70,16 @@ namespace SpellyZombie
             // closed on a zombie detonates it; wizard seals are unaffected.
             if (Grimoires.HeldBy(seal.OwnerId) == BookKind.Acolyte) // the Life curse hands a wizard this book too
             {
-                var doomed = ZombieUnder(seal.PlaneOrigin, seal.OwnerId);
+                var doomed = ZombieInked(seal);
+                if (doomed == null) doomed = ZombieUnder(seal.PlaneOrigin, seal.OwnerId);
                 if (doomed != null)
                 {
                     doomed.Detonate(SealSizeMul(seal), SealPower(seal));
-                    return null;
+                    // ★ ITS RUNES GO OFF WITH IT (his call): cast where it stood, darts released at once
+                    if (!HoldsRunes(seal)) return null; // a bare ring only blows it up
+                    var cast = AcolyteSummon(seal);
+                    ReleaseDarts(seal.OwnerId, seal.PlaneNormal);
+                    return cast;
                 }
                 return AcolyteSummon(seal);
             }
@@ -89,10 +94,18 @@ namespace SpellyZombie
                     && RuneLibrary.IsUnlocked(DrawerOf(sr, seal.OwnerId), sr.Rune))
                     _sealRunes.Add(sr.Rune);
             var summoning = SpellBook.Live.BodyForSeal(_sealRunes, Grimoires.HeldBy(seal.OwnerId));
+            Golem fed = null;
+            _spent.Clear();
             if (summoning != null)
             {
-                Summon(summoning, seal.OwnerId, seal.PlaneOrigin + seal.PlaneNormal * 0.3f, SealSizeMul(seal));
-                return null;
+                var body = Summon(summoning, seal.OwnerId, seal.PlaneOrigin + seal.PlaneNormal * 0.3f, SealSizeMul(seal));
+                fed = body != null ? body.GetComponent<Golem>() : null;
+                // the runes the summon asks for are spent on it; the rest of the drawing still casts
+                _glyphRunes.Clear();
+                foreach (var sr in seal.Runes)
+                    _glyphRunes.Add(sr.Rune != RuneType.None && sr.Strength > 0.02f
+                        && RuneLibrary.IsUnlocked(DrawerOf(sr, seal.OwnerId), sr.Rune) ? sr.Rune : RuneType.None);
+                SpendOn(summoning, _glyphRunes);
             }
 
             var host = new GameObject($"Spell_{seal.Id}");
@@ -100,6 +113,7 @@ namespace SpellyZombie
             var spell = host.AddComponent<Spell>();
             spell._surface = surface;
             spell._ownerId = seal.OwnerId;
+            spell._feeds = fed;
             spell._remaining = seal.Duration;
             spell._edges = seal.Edges; // triangle = 3 … circle = 10
 
@@ -112,9 +126,10 @@ namespace SpellyZombie
             // no predetermined combo outcomes - zones just run and physics
             // composes whatever it composes
 
-            foreach (var g in seal.Runes)
+            for (int gi = 0; gi < seal.Runes.Count; gi++)
             {
-                if (g.Rune == RuneType.None || g.Strength <= 0.02f) continue;
+                var g = seal.Runes[gi];
+                if (g.Rune == RuneType.None || g.Strength <= 0.02f || _spent.Contains(gi)) continue;
                 float glyphHalf = g.WorldBounds().size.magnitude * 0.5f;
                 // SIZE = the rune's own drawn size; EFFECT RADIUS = the
                 // rune's size relative to its seal; power = the seal's shape.
@@ -157,6 +172,21 @@ namespace SpellyZombie
             WorldEvents.Report(WorldEventKind.Spell, seal.PlaneOrigin, 2f); // a spell made: everyone fears it
 
             return spell;
+        }
+
+        Golem _feeds; // the golem this drawing also raised: its spell flies to it to be eaten
+        static readonly List<SpellParticle> _newDarts = new List<SpellParticle>();
+        static readonly HashSet<int> _spent = new HashSet<int>();
+        static readonly List<RuneType> _glyphRunes = new List<RuneType>();
+
+        /// The glyphs a summon used up: one per rune it asks for, the first that fit
+        /// (a glyph that cannot be used is None in the list).
+        static void SpendOn(SpellDef summoning, List<RuneType> glyphRunes)
+        {
+            _spent.Clear();
+            foreach (var need in summoning.Runes)
+                for (int i = 0; i < glyphRunes.Count; i++)
+                    if (glyphRunes[i] == need && _spent.Add(i)) break;
         }
 
         /// The acolyte summon returns null on purpose: no zones, no Spell
@@ -228,18 +258,62 @@ namespace SpellyZombie
                 // through ZombieOwner, so a seal drawn on the dressed skin
                 // finds its zombie (the dress is a world-space follower)
                 var z = ZombieOwner.From(_sealHits[i]);
-                if (z == null || z.IsDemon) continue;   // demons are not fireworks
-                var mine = z.GetComponent<SummonedZombie>();
-                if (mine == null || mine.SummonedBy != summoner) continue;   // only your own go off
+                if (!Mine(z, summoner)) continue;
                 // ON the zombie, not merely NEAR it - measured to the collider's
                 // surface, so a summon seal drawn on the ground beside one keeps
                 // summoning instead of blowing up the zombie standing there
+                if (_sealHits[i] is MeshCollider shell && !shell.convex) continue; // no ClosestPoint on a concave mesh: the capsule answers
                 float d = (_sealHits[i].ClosestPoint(origin) - origin).sqrMagnitude;
                 if (d > DrawingConfig.DetonateSurfaceSlack * DrawingConfig.DetonateSurfaceSlack)
                     continue;
                 if (d < bestSqr) { bestSqr = d; best = z; }
             }
             return best;
+        }
+
+        /// Any rune the seal holds (a bare ring on a zombie only blows it up).
+        static bool HoldsRunes(Seal seal)
+        {
+            foreach (var rg in seal.Runes)
+                if (rg.Rune != RuneType.None && rg.Strength > 0.02f) return true;
+            return false;
+        }
+
+        /// The darts the last acolyte cast made do not wait at the seal: each flies at once at the
+        /// nearest wizard within a zombie's throw reach, else straight out of the seal, thrown as a
+        /// creature throws its spells. Darts a summon of the same seal eats go to it (Feeds).
+        static void ReleaseDarts(int owner, Vector3 normal)
+        {
+            foreach (var dart in _newDarts)
+            {
+                if (dart == null || dart.Dead || !dart.Dormant || dart.Feeds != null) continue;
+                Vector3 from = dart.transform.position;
+                Vector3 aim = MischiefLaw.NearestWizard(from, DrawingConfig.GooThrowRange, owner, out var at)
+                    ? (at + Vector3.up - from).normalized : normal;
+                dart.PrimeToBlow();
+                dart.Vel = aim * 16f;
+                dart.Wake();
+            }
+        }
+
+        /// The caster's own zombie the ring's ink rides: exact however crowded the spot is.
+        static Zombie ZombieInked(Seal seal)
+        {
+            int summoner = Grimoires.SummonerFor(seal.OwnerId);
+            foreach (var e in seal.Boundary)
+            {
+                var z = e.Stroke != null && e.Stroke.Surface != null ? ZombieOwner.From(e.Stroke.Surface) : null;
+                if (Mine(z, summoner)) return z;
+            }
+            return null;
+        }
+
+        /// Your own summon, never a demon (demons are not fireworks).
+        static bool Mine(Zombie z, int summoner)
+        {
+            if (z == null || z.IsDemon) return false;
+            var mine = z.GetComponent<SummonedZombie>();
+            return mine != null && mine.SummonedBy == summoner;
         }
 
         static readonly System.Collections.Generic.List<SummonOrder> _summonBuf =
@@ -279,9 +353,11 @@ namespace SpellyZombie
             // size; gas reach = the glyph's size relative to its seal;
             // strength = the seal's shape.
             _summonBuf.Clear();
+            _newDarts.Clear();
             bool hasArrow = false, scatter = false;
             int darts = 0;
             var buff = MischiefKind.None;
+            float buffMight = 0f; // the rally runes add up: two of them rally twice as long
             Vector3 marchDir = Vector3.zero;
 
 
@@ -327,20 +403,29 @@ namespace SpellyZombie
                     var p = SpellParticle.Emit(ParticleKind.Liquid, at, normal, g.Strength);
                     p.OwnerId = owner;
                     p.Mischief = (byte)MischiefLaw.Of(g.Rune);
+                    p.AddMight(MischiefLaw.Of(g.Rune), g.Strength * power); // the rune's match times the seal's shape
                     p.SrcSize = g.HalfSize * DrawingConfig.ZoneRadiusScale;
                     p.ApplySizeRatio(SpellParticle.DrawnSizeK(p.SrcSize));
                     p.Sleep(g.Center, normal);
                     p.WearRow(MischiefLaw.RowFor(MischiefLaw.Of(g.Rune))); // the look authored for this spell
+                    _newDarts.Add(p);
                     darts++;
                 }
-                else if (MischiefLaw.IsBuff(MischiefLaw.Of(g.Rune))) buff = MischiefLaw.Of(g.Rune);
+                else if (MischiefLaw.IsBuff(MischiefLaw.Of(g.Rune)))
+                {
+                    if (buff != MischiefLaw.Of(g.Rune)) buffMight = 0f; // one buff at a time, the newest wins
+                    buff = MischiefLaw.Of(g.Rune);
+                    buffMight += g.Strength * power;
+                }
             }
 
             // his buff runes: every zombie of yours alive right now, one buff at a time, the newest wins
             if (buff != MischiefKind.None && _summonBuf.Count == 0)
             {
-                int caught = ZombieBuff.ApplyToAll(Grimoires.SummonerFor(owner), buff, DrawingConfig.MischiefSeconds);
+                int caught = ZombieBuff.ApplyToAll(Grimoires.SummonerFor(owner), buff,
+                    DrawingConfig.MischiefSeconds * Mathf.Max(0.2f, buffMight));
                 DrawingWorld.Instance?.LogEvent(caught == 0 ? "nobody to rally" : $"{caught} of them feel it");
+                if (caught == 0) Juice.Sound(MischiefLaw.SoundOf(buff), origin, 0.35f, 1.35f); // a rally nobody answers: small and high
                 if (!hasArrow) return null;
             }
             if (_summonBuf.Count == 0 && !hasArrow && darts > 0) return null; // the darts wait at the seal
@@ -444,7 +529,7 @@ namespace SpellyZombie
                 if (creature != null && creature.Body == SpellBody.Golem)
                 {
                     var g = Golem.Spawn(spot, sizeMul);
-                    if (g != null) { g.OwnerId = owner; g.Wear(creature); }
+                    if (g != null) { g.OwnerId = Grimoires.SummonerFor(owner); g.Wear(creature); } // a cursed wizard's summons are the curser's
                     continue;
                 }
 
@@ -484,6 +569,8 @@ namespace SpellyZombie
 
                 // a cursed wizard's dead belong to the acolyte whose book he holds
                 summon.Begin(Grimoires.SummonerFor(owner), isRanged, life, _summonBuf[i].GasRadius);
+                // the darts of the same drawing fly to the first of them and are eaten
+                if (i == 0) foreach (var dart in _newDarts) if (dart != null) dart.Feeds = z.transform;
 
                 // THE GROUND MAKES THE CREATURE: raised on the peak = a frost
                 // thing for life, tinted and capped by that place. After Begin
@@ -500,7 +587,9 @@ namespace SpellyZombie
             }
 
             // a buff drawn in the summoning seal catches the newborn and every zombie of yours already up
-            if (buff != MischiefKind.None) ZombieBuff.ApplyToAll(Grimoires.SummonerFor(owner), buff, DrawingConfig.MischiefSeconds);
+            if (buff != MischiefKind.None)
+                ZombieBuff.ApplyToAll(Grimoires.SummonerFor(owner), buff,
+                    DrawingConfig.MischiefSeconds * Mathf.Max(0.2f, buffMight));
 
             // the Liquid deed counts AFTER they stand: more than one of your
             // zombies alive at once, across seals
@@ -524,20 +613,24 @@ namespace SpellyZombie
             if (Grimoires.HeldBy(ownerId) == BookKind.Acolyte)
             {
                 var doomed = ZombieUnder(origin, ownerId);
-                if (doomed != null)
-                {
-                    doomed.Detonate(SizeMulFor(sealRadius), PowerFor(edges));
-                    return null;
-                }
+                if (doomed != null) doomed.Detonate(SizeMulFor(sealRadius), PowerFor(edges));
                 _castGlyphs.Clear();
                 int m = Mathf.Min(runes.Length, 12);
+                bool anyRune = false;
                 for (int i = 0; i < m; i++)
+                {
                     _castGlyphs.Add(new CastGlyph
                     {
                         Rune = (RuneType)runes[i], Strength = Mathf.Clamp01(strengths[i]), Center = centers[i],
                         HalfSize = Mathf.Clamp(sizes[i], 0.01f, 3f), Arrow = pushDirs[i], Drawer = ownerId
                     });
-                return AcolyteCast(ownerId, origin, normal, Mathf.Max(0.05f, sealRadius), PowerFor(edges));
+                    anyRune |= (RuneType)runes[i] != RuneType.None && strengths[i] > 0.02f;
+                }
+                // a friend's seal on their zombie: its runes go off with it too, darts released at once
+                if (doomed != null && !anyRune) return null; // a bare ring only blows it up
+                var cast = AcolyteCast(ownerId, origin, normal, Mathf.Max(0.05f, sealRadius), PowerFor(edges));
+                if (doomed != null) ReleaseDarts(ownerId, normal);
+                return cast;
             }
 
             // a wizard's body seal raises a body exactly as the host's own does (parity)
@@ -549,10 +642,20 @@ namespace SpellyZombie
                     _sealRunes.Add(r);
             }
             var summoning = SpellBook.Live.BodyForSeal(_sealRunes, Grimoires.HeldBy(ownerId));
+            Golem fed = null;
+            _spent.Clear();
             if (summoning != null)
             {
-                Summon(summoning, ownerId, origin + normal * 0.3f, SizeMulFor(sealRadius));
-                return null;
+                var body = Summon(summoning, ownerId, origin + normal * 0.3f, SizeMulFor(sealRadius));
+                fed = body != null ? body.GetComponent<Golem>() : null;
+                _glyphRunes.Clear();
+                for (int i = 0; i < Mathf.Min(runes.Length, 12); i++)
+                {
+                    var r = (RuneType)runes[i];
+                    _glyphRunes.Add(r != RuneType.None && strengths[i] > 0.02f && RuneLibrary.IsUnlocked(ownerId, r)
+                        ? r : RuneType.None);
+                }
+                SpendOn(summoning, _glyphRunes);
             }
 
             var host = new GameObject("Spell_net");
@@ -560,6 +663,7 @@ namespace SpellyZombie
             var spell = host.AddComponent<Spell>();
             spell._surface = SurfaceMaterialType.Flesh;
             spell._ownerId = ownerId;
+            spell._feeds = fed;
             spell._remaining = duration;
             spell._edges = edges;
             spell._bodyThrow = true;
@@ -570,7 +674,7 @@ namespace SpellyZombie
             {
                 var rune = (RuneType)runes[i];
                 float strength = Mathf.Clamp01(strengths[i]);
-                if (rune == RuneType.None || strength <= 0.02f) continue;
+                if (rune == RuneType.None || strength <= 0.02f || _spent.Contains(i)) continue;
                 if (rune == RuneType.DensityDown || rune == RuneType.StickyDown)
                     spell._darkSpread += strength * 0.6f;
                 float glyphHalf = Mathf.Clamp(sizes[i], 0.01f, 3f);
@@ -613,12 +717,13 @@ namespace SpellyZombie
         }
 
         /// A summoning spell raises its creature; one naming a creature the book lacks says so.
-        static void Summon(SpellDef summoning, int owner, Vector3 spot, float k)
+        static GameObject Summon(SpellDef summoning, int owner, Vector3 spot, float k)
         {
             var creature = SpellBook.Live.Creature(summoning.Creature);
-            if (creature != null) RaiseBody(creature, owner, spot, k);
-            else Debug.LogWarning($"[SpellyZombie] '{summoning.Name}' summons '{summoning.Creature}', " +
+            if (creature != null) return RaiseBody(creature, owner, spot, k);
+            Debug.LogWarning($"[SpellyZombie] '{summoning.Name}' summons '{summoning.Creature}', " +
                 "but the book has no such creature.");
+            return null;
         }
 
         /// ★ THE CREATURE A SEAL, A MAP OR A CAST RAISES, the same for the
@@ -798,7 +903,7 @@ namespace SpellyZombie
                     // no caster immunity: a confined combo can pop at the
                     // caster's feet until zones join the dormant model (phase 2)
                     Vector3 away2 = (pilot.transform.position - _pressureCenter).normalized;
-                    pilot.TakeHit((dir * 2f + away2).normalized * kick, 8f);
+                    pilot.TakeHit((dir * 2f + away2).normalized * kick, 8f, "pressure burst", _ownerId);
                     pilot.KnockDown(1.2f); // blast off your feet
                     continue;
                 }
@@ -1033,6 +1138,7 @@ namespace SpellyZombie
                 // the book regions and the axis laws finally get real input.
                 p.Data = RuneSeed(z.Rune, z.Intensity);
                 p.OwnerId = _ownerId;                // dormant wake rules ask whose spell this is
+                p.Feeds = _feeds != null ? _feeds.transform : null;
                 if (i == 0) z.Tracked = p;           // sustain law: the rune WATCHES this one
                 // ground seals cast previews; body/weapon casts are throws,
                 // and throwing activates

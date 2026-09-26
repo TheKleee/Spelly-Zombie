@@ -67,7 +67,8 @@ namespace SpellyZombie
         {
             switch (id)
             {
-                case Id.Pages: return "↑ ↓"; // the mouse wheel; the same arrows the fonts already carry
+                // the mouse wheel, or a controller's two page buttons; arrows the fonts already carry
+                case Id.Pages: return Keys.PadActive ? "← →" : "↑ ↓";
                 case Id.Absorb: return "F";
                 default: return "?";
             }

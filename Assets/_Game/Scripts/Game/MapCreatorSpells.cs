@@ -350,7 +350,7 @@ namespace SpellyZombie
             if (Section(col, W, key, Loc.T("mc.bornas"), true, refresh))
             {
                 CreatorUI.Note(col, W, Loc.T("mc.note.bornas"), 34f);
-                for (int i = 0; i < SpellPayload.AxisCount; i++) AxisRow(col, W, axes, i, null);
+                for (int i = 0; i < SpellPayload.AxisCount; i++) AxisRow(col, W, axes, i, null, creature: true);
             }
         }
 
@@ -420,9 +420,11 @@ namespace SpellyZombie
         }
 
         /// One axis in its own units; `zeroed` hears when it goes to zero (a condition cannot stay a place).
-        void AxisRow(RectTransform b, float W, int[] axes, int i, System.Action<int> zeroed)
+        void AxisRow(RectTransform b, float W, int[] axes, int i, System.Action<int> zeroed, bool creature = false)
         {
-            SpellPayload.SpellRange(i, out int lo, out int hi);
+            int lo, hi;
+            if (creature) SpellPayload.CreatureRange(i, out lo, out hi);
+            else SpellPayload.SpellRange(i, out lo, out hi);
             int axis = i;
             CreatorUI.Number(b, W, Loc.T("axis." + axis), lo, hi, axes[axis], true, v =>
             {
@@ -588,6 +590,8 @@ namespace SpellyZombie
                 CreatorUI.Number(col, W, "X", -30f, 30f, aoe.Offset.x, false, v => aoe.Offset.x = v);
                 CreatorUI.Number(col, W, "Y", -10f, 40f, aoe.Offset.y, false, v => aoe.Offset.y = v);
                 CreatorUI.Number(col, W, "Z", -30f, 30f, aoe.Offset.z, false, v => aoe.Offset.z = v);
+                CreatorUI.Number(col, W, Loc.T("mc.area.arrive"), 0f, 20f, aoe.ArriveSeconds, false, v => aoe.ArriveSeconds = v);
+                CreatorUI.Note(col, W, Loc.T("mc.note.arrive"), 34f);
 
                 CreatorUI.Switch(col, W, Loc.T("mc.area.spreading"), new[] { Loc.T("opt.off"), Loc.T("opt.on") }, aoe.Spreading ? 1 : 0,
                     i => { aoe.Spreading = i == 1; RefreshArea(); });

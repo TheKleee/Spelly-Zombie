@@ -32,11 +32,11 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | chip.precise | Faster drawing | Daha hızlı çiz | draw faster | |
 | chip.erase | Erase ink | Mürekkebi sil | the ink, erase | |
 | chip.absorb | Absorb it | Em | absorb | |
-| hint.alt | Hold ALT to draw faster | Daha hızlı çizmek için ALT tuşunu basılı tut | to draw faster, hold the ALT key pressed | |
+| hint.alt | Hold {0} to draw faster | Daha hızlı çizmek için {0} tuşunu basılı tut | to draw faster, hold the {0} key pressed | loading hint; {0} = the key bound to precise drawing (ALT) |
 | hint.combine | Draw more runes inside of the same seal to combine them | Aynı mührün içine daha çok rün çiz, birleşirler | into the same seal draw more runes, they merge | |
-| hint.lift | Draw ink on things and press E to lift them | Eşyaların üstüne mürekkep çiz ve kaldırmak için E tuşuna bas | draw ink on top of objects and to lift press the E key | |
+| hint.lift | Draw ink on things and press {0} to lift them | Eşyaların üstüne mürekkep çiz ve kaldırmak için {0} tuşuna bas | draw ink on top of objects and to lift press the {0} key | loading hint; {0} = the key or button bound to Use (E) |
 | hint.erase | Erasing returns the ink to your wand | Silmek mürekkebi asana geri verir | erasing gives the ink back to your wand | asa = wand, staff |
-| hint.body | Press R to paint runes on your own body | Kendi bedenine rün çizmek için R tuşuna bas | to draw runes on your own body press the R key | |
+| hint.body | Press {0} to paint runes on your own body | Kendi bedenine rün çizmek için {0} tuşuna bas | to draw runes on your own body press the {0} key | loading hint; {0} = the key or button bound to the body key (R) |
 | hint.pose | Striking a pose can close a body seal and cast it | Bir poz, bedendeki mührü kapatıp büyüyü atabilir | a pose can close the seal on the body and throw the spell | büyü atmak = cast a spell, literally "throw magic" |
 | hint.size | Bigger runes make stronger spells | Büyük rünler daha güçlü büyü yapar | big runes make stronger magic | |
 | hint.touch | Lines count as one drawing only when they touch | Çizgiler ancak birbirine değerse tek çizim sayılır | lines only if touching each other count as one drawing | |
@@ -132,7 +132,7 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | tag.quiet | Quiet ok | Sessiz de olur | quiet also works | |
 | opt.mic.title | Microphone | Mikrofon | microphone |  |
 | opt.mic.open | Open mic | Hep açık | always open |  |
-| opt.mic.ptt | Hold V | V basılı | V pressed | V is a physical key, kept |
+| opt.mic.ptt | Hold {0} | {0} basılı | {0} pressed | Options, Audio, microphone mode button: push to talk; {0} = the key bound to talking (V) |
 | opt.mic.off | Muted | Kapalı | closed |  |
 | opt.tab.game | Game | Oyun | game |  |
 | opt.tab.video | Video | Görüntü | image |  |
@@ -362,6 +362,53 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Saklanan çizimler. Düzenlemek için birini seç, artı yenisini başlatır, X birini kaldırır | kept drawings. to-edit for one choose, plus new-one starts, X one removes | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | {0} olarak okunuyor | {0} as is-being-read | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Henüz okunamıyor | yet cannot-be-read | the pad's drawing matches no rune well enough |
+| browse.inlobby | In the lobby | Lobide | in the lobby | lobby list row, after the tags: the host and friends are in the lobby scene (the sandbox), no match running |
+| browse.inmatch | In a match | Maçta | in the match | lobby list row, after the tags: a match is running on a map right now |
+| browse.upmin | Up {0} min | {0} dk'dır açık | open for {0} min | lobby list row: how long the lobby has stood; {0} = whole minutes, under an hour |
+| browse.uph | Up {0} h {1} min | {0} sa {1} dk'dır açık | open for {0} h {1} min | lobby list row: how long the lobby has stood; {0} = hours, {1} = the minutes past the hour |
+| hint.sealshape | A circle is the weakest seal, a triangle the strongest | Daire en zayıf mühürdür, üçgen en güçlüsü | a circle is the weakest seal, a triangle the strongest | loading screen hint; Spell.PowerFor: fewer lines in a seal = stronger, a circle counts as ten |
+| hint.sealline | Draw two sides of a triangle around your runes and {0} closes it | Rünlerinin çevresine bir üçgenin iki kenarını çiz, {0} onu kapatır | draw two sides of a triangle around your runes, {0} closes it | loading screen hint; {0} = the key bound to F; the book closes two straight lines that meet at a corner with the third side |
+| opt.ghost | Ghost lines | Hayalet çizgiler | ghost lines | Game tab of the options: the row for the ghost hand (the lobby lessons and the floating F's drawn previews), answered Off / On |
+| side.pillar.acolyte | Become an acolyte | Mürit ol | be an acolyte | caption under the floating E on the lobby's side pillar while you are a wizard; same style as chest.open |
+| side.pillar.wizard | Become a wizard | Büyücü ol | be a wizard | caption under the floating E on the lobby's side pillar while you are an acolyte |
+| seal.aim | Seal it, the book draws the ring | Mühürle, kitap halkayı çizer | seal it, the book draws the ring | caption under the floating F on your own rune while the grimoire is open on the seal page; same style as scan.aim and absorb.aim |
+| mc.area.arrive | Arrives in, seconds | Varış süresi, saniye | arrival time, seconds | area editor, under Where it starts: how long the area takes from its start point to the spell |
+| mc.note.arrive | 0 lets the game pick the speed. Slower than 5 metres a second it settles in, faster it slams. | 0 olursa hızı oyun seçer. Saniyede 5 metreden yavaşsa yumuşakça konar, hızlıysa çarpar | if it is 0 the game chooses the speed. if slower than 5 metres per second it lands softly, if fast it hits | area editor: small note under Arrives in |
+| opt.tab.keys | Controls | Kontroller | controls | fourth tab of the Options, after Game, Video, Audio: the key and controller button list |
+| keys.note | Click a key or a button, then press the new one. Escape keeps the old one | Bir tuşa ya da düğmeye tıkla, sonra yenisine bas. Esc eskisini bırakır | click a key or a button, then press the new one. Esc leaves the old one | Controls tab: small note above the list |
+| keys.press | Press the new key or button now. Escape keeps the old one | Şimdi yeni tuşa ya da düğmeye bas. Esc eskisini bırakır | now press the new key or button. Esc leaves the old one | Controls tab: the note while a binding waits for its new key |
+| keys.action | Action | Eylem | action | Controls tab: heading of the first column |
+| keys.keyboard | Keyboard | Klavye | keyboard | Controls tab: heading of the keyboard and mouse column |
+| keys.pad | Controller | Oyun kolu | game pad | Controls tab: heading of the gamepad column |
+| keys.reset | Back to the default keys | Varsayılan tuşlara dön | return to the default keys | Controls tab: button that puts every key and button back as shipped |
+| keys.act.forward | Walk forward | İleri yürü | walk forward | Controls tab: an action's name |
+| keys.act.back | Walk back | Geri yürü | walk back | Controls tab: an action's name |
+| keys.act.left | Walk left | Sola yürü | walk left | Controls tab: an action's name |
+| keys.act.right | Walk right | Sağa yürü | walk right | Controls tab: an action's name |
+| keys.act.jump | Jump, fly up | Zıpla, yukarı uç | jump, fly up | Controls tab: jumping, and rising as a ghost |
+| keys.act.crouch | Crouch, fly down | Eğil, aşağı uç | bend, fly down | Controls tab: crouching, and sinking as a ghost |
+| keys.act.sprint | Run | Koş | run | Controls tab: sprinting |
+| keys.act.draw | Draw | Çiz | draw | Controls tab: drawing ink |
+| keys.act.erase | Erase | Sil | erase | Controls tab: erasing ink |
+| keys.act.precise | Draw faster | Daha hızlı çiz | draw faster | Controls tab: the hold key that frees the cursor for faster drawing |
+| keys.act.use | Grab, throw, use | Tut, fırlat, kullan | hold, throw, use | Controls tab: the one hand key (E) |
+| keys.act.drop | Drop, let go | Bırak | let go | Controls tab: the release key (F) |
+| keys.act.body | Paint body, pose, watch | Bedeni boya, poz ver, izle | paint the body, pose, watch | Controls tab: the body key (R): wizards paint their body, third person poses, acolytes watch their zombies |
+| keys.act.menu | Menu | Menü | menu | Controls tab: the pause menu key |
+| keys.act.ready | Ready | Hazır | ready | Controls tab: answering the lobby's ready check with yes |
+| keys.act.notready | Not ready | Hazır değil | not ready | Controls tab: answering the lobby's ready check with no |
+| keys.act.talk | Push to talk | Bas konuş | press and talk | Controls tab: holding this opens the microphone in push to talk mode |
+| keys.act.prev | Previous page | Önceki sayfa | previous page | Controls tab: a controller button that turns the grimoire back a page, or steps to the previous pose or zombie |
+| keys.act.next | Next page | Sonraki sayfa | next page | Controls tab: a controller button that turns the grimoire forward a page, or steps to the next pose or zombie |
+| watch.many | Watching {0} of {1} · 1-0 picks · Draw a seal on it to blow it | {1} taneden {0}. izleniyor · 1-0 seçer · Patlatmak için üstüne mühür çiz | watching number {0} of {1} · 1-0 picks · draw a seal on it to blow it up | prompt bar while an acolyte looks through one of several zombies of theirs: {0} = which one, {1} = how many; the number keys 1 to 0 pick another; a seal drawn on the zombie makes it explode |
+| watch.one | Draw a seal on it to blow it · R leaves | Patlatmak için üstüne mühür çiz · R çıkar | draw a seal on it to blow it up · R exits | prompt bar while an acolyte looks through their only zombie |
+| mc.behaviour.rampages | Rampages | Azgın | raging | creature behaviour button, after Skittish: a calamity that throws its spells everywhere |
+| mc.note.rampages | Throws random spells from its list all over the place, about one a second, and never runs away. Spells from its own side cannot hurt it. | Listesinden rastgele büyüleri her yere fırlatır, aşağı yukarı saniyede bir, ve asla kaçmaz. Kendi tarafının büyüleri ona zarar vermez. | throws random spells from its list everywhere, roughly one a second, and never flees. its own side's spells do not harm it | note under the behaviour buttons when Rampages is picked |
+| opt.keys.title | Videos and photos | Videolar ve fotoğraflar | videos and photos | pause menu, Game tab: heading over the three recorder keys |
+| opt.key.clip | Start or stop a video | Videoyu başlat ya da durdur | start or stop the video | pause menu, Game tab: beside the I keycap; the same key starts and stops the recording |
+| opt.key.photo | Take a photo | Fotoğraf çek | take a photo | pause menu, Game tab: beside the P keycap |
+| opt.key.folder | Open their folder (in the lobby) | Klasörlerini aç (lobide) | open their folder (in the lobby) | pause menu, Game tab: beside the O keycap; opens the folder holding the saved videos and photos, and only works in the lobby |
+| opt.keys.note | Saved in your Videos folder, under Spelly Zombie. The interface is never in them | Videolar klasöründe, Spelly Zombie içine kaydedilir. Arayüz bunlarda hiç görünmez | they are saved in the Videos folder, inside Spelly Zombie. the interface never shows in them | pause menu, Game tab: small note under the three recorder keys |
 | ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | O lobinin sürümü daha yeni. Oyundan çık ve Steam seninkini güncellesin | that lobby's version is newer. leave the game and let Steam update yours | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
 | ver.theirs | That lobby runs an older version. Its host has to update the game | O lobinin sürümü daha eski. Hostunun oyunu güncellemesi gerek | that lobby's version is older. its host needs to update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
 | ver.differs | That lobby runs a different version of the game | O lobi oyunun başka bir sürümünü kullanıyor | that lobby uses another version of the game | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
@@ -627,3 +674,4 @@ if the hand-drawn skin font lacks them, fill the OtherFont slot on UISkin.
 | mc.side.note | The emoji and the page belong to this side. An acolyte with none of its own shows the wizard's. | Emoji ve sayfa bu tarafa ait. Müridin kendine ait yoksa büyücününki görünür. | emoji and page this side-to belong. acolyte's own-of none-if wizard's-one appears | note under the side switch |
 | mc.pushes.note | What drawing this rune adds to the seal's numbers, one axis or several. The spells decide what that becomes. | Bu rünü çizmenin mührün sayılarına ne eklediği, tek eksende ya da birkaçında. Bunun neye dönüşeceğine büyüler karar verir. | this rune drawing's seal's numbers-to what adds, one axis-in or several-in. this's what-to will-turn spells decide | note under Pushes |
 | mc.rune.none | Make a rune or pick one from the list | Bir rün yap ya da listeden birini seç | a rune make or list-from one choose | the Runes creator with nothing picked |
+| opt.stick | Stick sensitivity: {0} | Analog çubuk hassasiyeti: {0} | analog stick sensitivity: {0} | analog çubuk = analog stick |

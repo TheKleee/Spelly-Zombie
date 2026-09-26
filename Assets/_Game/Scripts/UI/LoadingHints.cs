@@ -12,12 +12,24 @@ namespace SpellyZombie
     /// SceneManager.LoadScene.
     public class LoadingHints : MonoBehaviour
     {
-        // split with the chips: chips teach moment-to-moment keys, these teach systems
-        static readonly string[] Keys =
+        // split with the chips: chips teach moment-to-moment keys, these teach systems.
+        // A hint that names a key names the one bound now.
+        static readonly System.Func<string>[] Lines =
         {
-            "hint.alt", "hint.combine", "hint.lift", "hint.erase",
-            "hint.body", "hint.pose", "hint.size", "hint.touch",
-            "hint.declare", "hint.trance", "hint.wake", "hint.ghost",
+            () => Loc.F("hint.alt", Keys.Label(Act.Precise)),
+            () => Loc.T("hint.combine"),
+            () => Loc.F("hint.lift", Keys.Label(Act.Use)),
+            () => Loc.T("hint.erase"),
+            () => Loc.F("hint.body", Keys.Label(Act.Body)),
+            () => Loc.T("hint.pose"),
+            () => Loc.T("hint.size"),
+            () => Loc.T("hint.touch"),
+            () => Loc.T("hint.declare"),
+            () => Loc.T("hint.trance"),
+            () => Loc.T("hint.wake"),
+            () => Loc.T("hint.ghost"),
+            () => Loc.T("hint.sealshape"),
+            () => Loc.F("hint.sealline", Keys.Label(Act.Drop)),
         };
 
         const float HoldSeconds = 2.2f;
@@ -29,10 +41,9 @@ namespace SpellyZombie
         RectTransform _ui;
         Image _back;
         Text _tip;
-        float _bornAt;
+        float _bornAt, _upAt; // _upAt: when this trip's hint came up (the log's clock)
         bool _sceneArrived;
         float _arrivedAt;
-        bool _eggSeen;         // an egg closed around the camera at some point
         float _release = -1f;  // when the fade began
         float _backA = 1f;     // the black panel: up only while nothing else covers
 
@@ -50,6 +61,7 @@ namespace SpellyZombie
             var go = new GameObject("LoadingHints");
             DontDestroyOnLoad(go);
             _live = go.AddComponent<LoadingHints>();
+            Debug.Log("[SpellyZombie] hint up");
         }
 
         void Awake()
@@ -60,6 +72,7 @@ namespace SpellyZombie
 
         void OnDestroy()
         {
+            if (_release < 0f) Debug.Log($"[SpellyZombie] hint removed early, {Time.unscaledTime - _upAt:0.0} s after it came up");
             SceneManager.sceneLoaded -= OnLoaded;
             if (_live == this) _live = null;
             UIKit.Retire(_ui);
@@ -73,24 +86,34 @@ namespace SpellyZombie
 
         void Restart()
         {
+            if (_release >= 0f) _upAt = Time.unscaledTime; // fading from the last trip: a new trip's hint
             _bornAt = Time.unscaledTime;
             _sceneArrived = false;
-            _eggSeen = false;
             _release = -1f;
-            _backA = 1f;
-            SetAlpha(1f, 1f);
+            if (!LoadEgg.Closed) _backA = 1f; // a shell already closed keeps its dark, no black flash
+            SetAlpha(1f, _backA);
         }
+
+        const int SortingOrder = 90; // over UIKit's canvas (80)
 
         void Build()
         {
-            _bornAt = Time.unscaledTime;
-            _ui = UIKit.Group(UIKit.Root, "LoadingScreen");
+            _bornAt = _upAt = Time.unscaledTime;
+            // a canvas of its own: the egg hides UIKit's canvas for the whole trip, and took the hint with it
+            var canvas = gameObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = SortingOrder;
+            var scaler = gameObject.AddComponent<CanvasScaler>();
+            var like = UIKit.Root.GetComponent<CanvasScaler>(); // sized like the rest of the UI
+            if (like != null)
+            {
+                scaler.uiScaleMode = like.uiScaleMode;
+                scaler.referenceResolution = like.referenceResolution;
+                scaler.screenMatchMode = like.screenMatchMode;
+                scaler.matchWidthOrHeight = like.matchWidthOrHeight;
+            }
+            _ui = UIKit.Group((RectTransform)transform, "LoadingScreen");
             UIKit.Stretch(_ui);
-            // the egg hides the rest of the screen for the trip; its own text stays
-            var own = _ui.GetComponent<CanvasGroup>();
-            if (own == null) own = _ui.gameObject.AddComponent<CanvasGroup>();
-            own.ignoreParentGroups = true;
-            own.blocksRaycasts = false;
             // opaque until the egg closes around the camera: the unloaded
             // scene must never show through, and neither must a frame of the
             // new one before the egg has it
@@ -98,10 +121,10 @@ namespace SpellyZombie
             UIKit.Stretch((RectTransform)_back.transform);
             BuildInkDrift();
 
-            int pick = Random.Range(0, Keys.Length);
-            if (pick == _lastPick) pick = (pick + 1) % Keys.Length;
+            int pick = Random.Range(0, Lines.Length);
+            if (pick == _lastPick) pick = (pick + 1) % Lines.Length;
             _lastPick = pick;
-            _tip = UIKit.Label(_ui, Loc.T(Keys[pick]), 22,
+            _tip = UIKit.Label(_ui, Lines[pick](), 22,
                 new Color(0.95f, 0.9f, 0.78f), TextAnchor.MiddleCenter, true);
             UIKit.Stretch((RectTransform)_tip.transform);
         }
@@ -144,7 +167,6 @@ namespace SpellyZombie
         void Update()
         {
             if (_ui == null) { Destroy(gameObject); return; }
-            _ui.SetAsLastSibling(); // newly built scene UI must not cover the veil
 
             float dt = Time.unscaledDeltaTime;
             for (int i = 0; i < _drift.Count; i++)
@@ -159,24 +181,22 @@ namespace SpellyZombie
             // with no egg closed around the camera, and drops the moment
             // there is one
             bool eggClosed = LoadEgg.Closed;
-            if (eggClosed) _eggSeen = true;
-            _backA = eggClosed ? Mathf.MoveTowards(_backA, 0f, dt / 0.25f) : 1f;
+            bool opening = LoadEgg.Active && !LoadEgg.Leaving;
+            // the panel never comes back over the egg breaking open
+            _backA = eggClosed || opening ? Mathf.MoveTowards(_backA, 0f, dt / 0.25f) : 1f;
 
-            // a load that never lands must not trap the player behind a veil
-            if (!_sceneArrived)
-            {
-                if (Time.unscaledTime - _bornAt > 12f) Destroy(gameObject);
-                SetAlpha(1f, _backA);
-                return;
-            }
-
-            // the hint rides the dark until the egg begins to open; with no
-            // egg it holds long enough to read
+            // ★ HIS CALL: with an egg the hint stays the whole trip, every load and wait included,
+            // and goes the moment the egg begins to open; with no egg it holds long enough to read,
+            // and a load that never lands must not trap the player behind a veil
             if (_release < 0f)
             {
-                bool done = _eggSeen ? !eggClosed : Time.unscaledTime - _arrivedAt > HoldSeconds;
+                bool done = LoadEgg.Active ? opening
+                    : _sceneArrived ? Time.unscaledTime - _arrivedAt > HoldSeconds
+                    : Time.unscaledTime - _bornAt > 12f;
                 if (!done) { SetAlpha(1f, _backA); return; }
                 _release = Time.unscaledTime;
+                Debug.Log($"[SpellyZombie] hint fades after {_release - _upAt:0.0} s up: " + (LoadEgg.Active ? "the egg is opening"
+                    : _sceneArrived ? "no egg, read time after the load is up" : "no egg and no load in 12 s"));
             }
             float a = 1f - (Time.unscaledTime - _release) / FadeSeconds;
             if (a <= 0f) { Destroy(gameObject); return; }

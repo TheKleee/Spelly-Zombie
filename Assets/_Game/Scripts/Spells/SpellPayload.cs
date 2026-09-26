@@ -309,6 +309,14 @@ namespace SpellyZombie
             }
         }
 
+        /// A creature's range: a spell's, except Strength, which is its health.
+        public const int CreatureStrengthMax = 5000;
+        public static void CreatureRange(int axis, out int lo, out int hi)
+        {
+            SpellRange(axis, out lo, out hi);
+            if (axis == 6) hi = CreatureStrengthMax;
+        }
+
         /// ★ THE LINE. How far along an axis, in HUMAN units, a thing has to
         /// be before it counts as that thing at all. Per axis, because "hot
         /// enough to be fire" and "bright enough to be light" are not the same

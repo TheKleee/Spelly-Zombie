@@ -6,16 +6,17 @@ using UnityEngine.UI;
 namespace SpellyZombie
 {
     /// ★ THE BOOTH'S WINDOWS, the Map Creator's kind: Add (what can be placed),
-    /// the picked thing's own window, Ink, Light and look, and Photo (the name,
-    /// the folder, the canvas, what is behind, where it is taken).
+    /// Objects (everything placed, by name), the picked thing's own window, Ink,
+    /// Light and look, and Photo (the name, the folder, the canvas, what is
+    /// behind, where it is taken).
     public partial class PhotoBooth
     {
         RectTransform _ui;
-        CreatorWindow _winAdd, _winItem, _winInk, _winLook, _winPhoto, _winAnims;
+        CreatorWindow _winAdd, _winItem, _winInk, _winLook, _winPhoto, _winAnims, _winList;
         readonly HashSet<string> _open = new HashSet<string>();
         string _newFolder = "";
 
-        CreatorWindow[] AllWindows() => new[] { _winAdd, _winItem, _winInk, _winLook, _winPhoto, _winAnims };
+        CreatorWindow[] AllWindows() => new[] { _winAdd, _winItem, _winInk, _winLook, _winPhoto, _winAnims, _winList };
 
         void BuildUI()
         {
@@ -33,6 +34,8 @@ namespace SpellyZombie
             _winItem = CreatorWindow.Create(_ui, "WinItem", "", new Vector2(right, -104f), 400f, 700f);
             _winAnims = CreatorWindow.Create(_ui, "WinAnims", Loc.T("photo.anims"), new Vector2(right - 336f, -104f), 320f, 560f);
             _winAnims.Hide();
+            _winList = CreatorWindow.Create(_ui, "WinList", Loc.T("photo.list"), new Vector2(372f, -104f), 300f, 560f);
+            _winList.Hide();
             _winAnims.Closed = () => { StopPlaying(true); BuildItemWindow(); };
             _winPhoto.Hide();
             _winInk.Hide();
@@ -52,6 +55,7 @@ namespace SpellyZombie
             BuildLookWindow();
             BuildPhotoWindow();
             BuildAnimWindow();
+            BuildListWindow();
         }
 
         /// A language change mid-edit builds every word again; each window keeps
@@ -90,7 +94,7 @@ namespace SpellyZombie
             back.raycastTarget = true;
             back.name = "Ribbon";
             var rt = back.rectTransform;
-            UIKit.Place(rt, new Vector2(0.5f, 1f), new Vector2(0f, -8f), new Vector2(640f, 58f));
+            UIKit.Place(rt, new Vector2(0.5f, 1f), new Vector2(0f, -8f), new Vector2(800f, 58f));
             var row = UIKit.Group(rt, "RibbonRow");
             UIKit.Stretch(row);
             row.offsetMin = new Vector2(12f, 10f);
@@ -108,6 +112,7 @@ namespace SpellyZombie
                     if (w.Visible) build();
                 }, CreatorUI.Pick(false), 15);
             Tab(Loc.T("photo.add"), () => _winAdd, BuildAddWindow);
+            Tab(Loc.T("photo.list"), () => _winList, BuildListWindow);
             Tab(Loc.T("photo.ink"), () => _winInk, BuildInkWindow);
             Tab(Loc.T("photo.look"), () => _winLook, BuildLookWindow);
             Tab(Loc.T("photo.photo"), () => _winPhoto, BuildPhotoWindow);
@@ -165,6 +170,17 @@ namespace SpellyZombie
             CreatorUI.Note(b, W, Loc.T("photo.add.note"), 30f);
             var book = SpellBook.Live;
 
+            if (CreatorUI.Section(b, W, _open, "add:ground", Loc.T("photo.ground"), false, BuildAddWindow))
+            {
+                CreatorUI.Grid(b, W, 2, new List<string> { Loc.T("mc.none"), Loc.T("photo.ground.island") },
+                    i => (i == 1) == Editing.Island, i =>
+                    {
+                        SetIsland(i == 1, false);
+                        BuildAddWindow();
+                    }, 28f, 12);
+                if (Editing.Island) CreatorUI.Do(b, W, Loc.T("photo.ground.again"), () => SetIsland(true, true), null, 30f);
+            }
+
             if (CreatorUI.Section(b, W, _open, "add:characters", Loc.T("photo.add.characters"), true, BuildAddWindow))
                 Picks(b, W, new List<PhotoDef.Item> { Character(false), Character(true) });
 
@@ -221,6 +237,42 @@ namespace SpellyZombie
             }, 28f, 12);
         }
 
+        // ------------------------------------------------------ objects window --
+        /// ★ EVERYTHING PLACED, by name (his ask): picked here to change it, however it stands
+        /// among the others and without moving anything to reach it.
+        void BuildListWindow()
+        {
+            var w = _winList;
+            if (w == null) return;
+            float keep = Keep(w);
+            w.Clear();
+            var b = w.Body;
+            float W = w.Width;
+            CreatorUI.Note(b, W, Loc.T("photo.list.note"), 44f);
+            if (_subjects.Count == 0) CreatorUI.Note(b, W, Loc.T("photo.add.empty"), 22f);
+            else
+            {
+                // the same name twice reads with a number
+                var names = new List<string>(_subjects.Count);
+                var count = new Dictionary<string, int>();
+                foreach (var s in _subjects)
+                {
+                    string n = PickName(s.Item);
+                    count.TryGetValue(n, out int k);
+                    count[n] = ++k;
+                    names.Add(k > 1 ? n + " " + k : n);
+                }
+                // picked again here: the eye goes to it
+                CreatorUI.Grid(b, W, 1, names, i => i < _subjects.Count && _subjects[i] == _sel, i =>
+                {
+                    if (i >= _subjects.Count) return;
+                    if (_subjects[i] == _sel) FindSelected();
+                    else Select(_subjects[i]);
+                }, 28f, 13);
+            }
+            Restore(w, keep);
+        }
+
         bool IsPick(PhotoDef.Item item) =>
             _tool == Tool.Place && _pick != null && _pick.Kind == item.Kind && _pick.What == item.What
             && _pick.Body == item.Body && _pick.Acolyte == item.Acolyte;
@@ -252,8 +304,11 @@ namespace SpellyZombie
             w.Title.text = PickName(it);
 
             var row = CreatorUI.Row(b, W);
+            UIKit.Button(row, Loc.T("photo.find"), FindSelected, CreatorUI.Pick(false), 14);
             UIKit.Button(row, Loc.T("mc.duplicate"), () => Duplicate(s), CreatorUI.Pick(false), 14);
             UIKit.Button(row, Loc.T("creator.delete"), DeleteSelected, CreatorUI.Red, 14);
+            // locked: presses in the scene only move this one (lit while on)
+            CreatorUI.Do(b, W, _locked ? Loc.T("photo.unlock") : Loc.T("photo.lock"), ToggleLock, CreatorUI.Pick(_locked), 32f);
 
             // where it stands, how it turns, how big it is
             CreatorUI.Number(b, W, "", -5f, 40f, Mathf.Clamp(LiftOf(s), -5f, 40f), false, v => Lift(s, v),
@@ -279,15 +334,40 @@ namespace SpellyZombie
                     BuildItemWindow();
                 }, CreatorUI.Pick(shown), 34f);
             }
-            if (s.Systems.Count > 0 && s.Length > 0f)
+            if ((s.Systems.Count > 0 || s.Ribbons.Count > 0) && s.Length > 0f)
                 CreatorUI.Number(b, W, "", 0f, s.Length, Mathf.Clamp(it.Time, 0f, s.Length), false, v =>
                 {
                     it.Time = v;
                     Retime(s);
                 }, TimeSay);
 
+            // an effect's or an area's parts, each on or off (lit = in the photo)
+            if (s.Parts.Count > 1 && s.Body != null
+                && CreatorUI.Section(b, W, _open, "item:parts", Loc.T("photo.parts"), false, BuildItemWindow))
+            {
+                var names = new List<string>(s.Parts.Count);
+                var count = new Dictionary<string, int>();
+                foreach (var t in s.Parts)
+                {
+                    string n = t != null ? PartName(t) : "?";
+                    count.TryGetValue(n, out int k);
+                    count[n] = ++k;
+                    names.Add(k > 1 ? n + " " + k : n);
+                }
+                CreatorUI.Grid(b, W, 2, names, i => s.Parts[i] != null && PartShown(s, s.Parts[i]), i =>
+                {
+                    if (s.Parts[i] == null) return;
+                    string path = PathOf(s.Body.transform, s.Parts[i]);
+                    if (!it.Hidden.Remove(path)) it.Hidden.Add(path);
+                    ApplyParts(s);
+                    FitPick(s);
+                    BuildItemWindow();
+                }, 26f, 12);
+            }
+
             if (it.Kind == PhotoKind.Character) CharacterRows(s, b, W);
             if (it.Kind == PhotoKind.Creature) ColorRows(s, b, W);
+            if (s.Rig != null) PoseRows(s, b, W);
             if (s.Eyes != null) EyeRows(s, b, W);
             if (HasBuild(s) && CreatorUI.Section(b, W, _open, "item:body", Loc.T("photo.body"), false, BuildItemWindow))
             {
@@ -416,33 +496,34 @@ namespace SpellyZombie
                     BuildItemWindow();
                 }, null, 30f);
             }
+        }
 
-            if (s.Rig != null)
+        /// Posing by the limbs, back to standing, or a pose saved in the Pose Studio: anything with the players' skeleton.
+        void PoseRows(Subject s, RectTransform b, float W)
+        {
+            bool posing = _posing == s;
+            var pose = CreatorUI.Row(b, W, 36f);
+            UIKit.Button(pose, posing ? Loc.T("photo.pose.stop") : Loc.T("photo.pose.start"), () =>
             {
-                bool posing = _posing == s;
-                var pose = CreatorUI.Row(b, W, 36f);
-                UIKit.Button(pose, posing ? Loc.T("photo.pose.stop") : Loc.T("photo.pose.start"), () =>
+                if (_posing == s) StopPosing();
+                else StartPosing(s);
+            }, CreatorUI.Pick(posing), 14);
+            UIKit.Button(pose, Loc.T("photo.pose.relax"), () =>
+            {
+                Relax(s);
+                BuildItemWindow();
+            }, CreatorUI.Pick(false), 14);
+            var poses = EmoteLibrary.Poses;
+            if (poses.Count == 0) CreatorUI.Note(b, W, Loc.T("photo.pose.none"), 30f);
+            else
+            {
+                var names = new List<string>();
+                foreach (var p in poses) names.Add(p != null ? p.name : "");
+                CreatorUI.Dropdown(b, W, _open, "item:poses", Loc.T("photo.pose.saved"), "", names, i => false, i =>
                 {
-                    if (_posing == s) StopPosing();
-                    else StartPosing(s);
-                }, CreatorUI.Pick(posing), 14);
-                UIKit.Button(pose, Loc.T("photo.pose.relax"), () =>
-                {
-                    Relax(s);
-                    BuildItemWindow();
-                }, CreatorUI.Pick(false), 14);
-                var poses = EmoteLibrary.Poses;
-                if (poses.Count == 0) CreatorUI.Note(b, W, Loc.T("photo.pose.none"), 30f);
-                else
-                {
-                    var names = new List<string>();
-                    foreach (var p in poses) names.Add(p != null ? p.name : "");
-                    CreatorUI.Dropdown(b, W, _open, "item:poses", Loc.T("photo.pose.saved"), "", names, i => false, i =>
-                    {
-                        var target = _sel;
-                        if (target != null) WearPose(target, poses[i]);
-                    }, BuildItemWindow);
-                }
+                    var target = _sel;
+                    if (target != null) WearPose(target, poses[i]);
+                }, BuildItemWindow);
             }
         }
 
@@ -550,6 +631,14 @@ namespace SpellyZombie
 
             if (CreatorUI.Section(b, W, _open, "look:light", Loc.T("photo.light"), true, BuildLookWindow))
             {
+                // characters in light and shadow, or flat as in the game (lit = shaded)
+                CreatorUI.Do(b, W, Loc.T("photo.shade"), () =>
+                {
+                    d.Shaded = !d.Shaded;
+                    foreach (var s in _subjects.ToArray())
+                        if (s.Item.Kind == PhotoKind.Character) Restand(s);
+                    BuildLookWindow();
+                }, CreatorUI.Pick(d.Shaded), 30f);
                 var (turn, height, power) = SunNow();
                 CreatorUI.Number(b, W, "", 0f, 360f, turn, true, v => { TakeSun(); d.SunTurn = v; ApplyLight(); },
                     v => Loc.T("photo.sun.turn") + ": " + Mathf.RoundToInt(v) + "°");
@@ -737,6 +826,12 @@ namespace SpellyZombie
         /// Keeps this setup to open and edit again, with its picture for the card.
         void Save()
         {
+            if (Store()) Flash(Loc.F("photo.stored", Editing.Name));
+        }
+
+        /// The setup and its card picture written: Save, and every photo taken. False when it failed (said on screen).
+        bool Store()
+        {
             CaptureAll();
             CaptureCamera();
             var d = Editing;
@@ -753,13 +848,13 @@ namespace SpellyZombie
             {
                 Debug.LogError($"[SpellyZombie] Photo Booth: the setup could not be saved: {e}");
                 FlashError(Loc.T("photo.failed"));
-                return;
+                return false;
             }
             _savedAs = d.Name;
             _savedIn = d.Folder;
             d.SavedAs = d.Name;
             BuildPhotoWindow();
-            Flash(Loc.F("photo.stored", d.Name));
+            return true;
         }
 
         /// A fresh setup on the same stage, from the same eye.
@@ -772,6 +867,8 @@ namespace SpellyZombie
                 Folder = old.Folder,
                 CamPos = old.CamPos, CamYaw = old.CamYaw, CamPitch = old.CamPitch, Lens = old.Lens,
                 Width = old.Width, Height = old.Height,
+                Background = old.Background, BackColor = old.BackColor,
+                Island = old.Island, IslandSeed = old.IslandSeed,
             }, null, null, false);
         }
     }

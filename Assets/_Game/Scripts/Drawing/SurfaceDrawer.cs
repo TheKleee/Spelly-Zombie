@@ -21,6 +21,8 @@ namespace SpellyZombie
         Vector3 _lastHitLocal;     // ...and where, in ITS space - so its motion cancels
         Vector3 _smoothedLocal, _lastNormalLocal; // the pen's smoothed point and normal in that space, for the tail
         Vector3 _smoothedPoint;  // jitter-filtered, nodes are placed here
+        bool _bridging;          // a fast hand's jump is being carried on as one line
+        bool _fillLeftCanvas;    // the last gap could not be filled because the way left the canvas
         bool _suppressUntilRelease;
         bool _erasing;           // crosshair feedback
         PlayerInk _ink;
@@ -111,9 +113,6 @@ namespace SpellyZombie
             }
 
             // eraser: right-click or left trigger
-            var gp = Gamepad.current;
-            bool gpDraw = gp != null && gp.rightTrigger.ReadValue() > 0.4f;
-            bool gpErase = gp != null && gp.leftTrigger.ReadValue() > 0.4f;
 
             // any open menu owns the mouse - no drawing through panels
             if (GameMenu.IsOpen || HatPillar.PanelOpen || LobbyStand.PanelOpen
@@ -127,9 +126,9 @@ namespace SpellyZombie
             }
 
             // no wand (or dry) = no drawing, and the press says so
-            if (mouse.leftButton.wasPressedThisFrame && !WandState.LocalCanDraw) Juice.Sound2D(Sfx.WandDry);
-            bool penHeld = (mouse.leftButton.isPressed || gpDraw) && WandState.LocalCanDraw;
-            bool erasing = mouse.rightButton.isPressed || gpErase;
+            if (Keys.Down(Act.Draw) && !WandState.LocalCanDraw) Juice.Sound2D(Sfx.WandDry);
+            bool penHeld = Keys.Held(Act.Draw) && WandState.LocalCanDraw;
+            bool erasing = Keys.Held(Act.Erase);
             // eraser lifted: the ink changed - re-read what's left (preview)
             if (_wasErasing && !erasing && DrawingWorld.Instance != null)
             {
@@ -145,6 +144,7 @@ namespace SpellyZombie
             _erasing = erasing;
             bool penDown = penHeld && !erasing;
             IsPenActive = penHeld || erasing;
+            if (SelfPaint.IsActive && IsPenActive) Physics.SyncTransforms(); // the shell rides a body that may have moved since the last physics step
 
             if (!penHeld)
                 _suppressUntilRelease = false;
@@ -234,11 +234,24 @@ namespace SpellyZombie
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             hit = default;
             float best = float.MaxValue;
+            SkinnedMeshRenderer asked = null;
             for (int i = 0; i < count; i++)
             {
                 var h = _aimHits[i];
                 if (h.collider == null || h.distance >= best) continue;
                 if (h.collider.GetComponentInParent<SpellParticle>() != null) continue;
+                // a zombie's colliders (a fitted capsule, a bind-pose shell) only say the ray is at
+                // it: the ink goes on its skin as posed, or the pen passes it by
+                var skin = SkinHit.OfZombie(h.collider);
+                if (skin != null)
+                {
+                    if (skin == asked) continue;
+                    asked = skin;
+                    if (!SkinHit.Raycast(skin, ray, best, out var p, out var n, out var d)) continue;
+                    h.point = p;
+                    h.normal = n;
+                    h.distance = d;
+                }
                 best = h.distance;
                 hit = h;
             }
@@ -253,7 +266,7 @@ namespace SpellyZombie
             if (t.name == "PaintShell" && SelfPaint.ActiveRoot != null)
             {
                 var rig = SelfPaint.ActiveRoot.GetComponent<CharacterRig>();
-                var limb = rig != null ? rig.NearestLimbSurface(hit.point) : null;
+                var limb = rig != null ? rig.SkinBone(hit) : null;
                 if (limb != null) t = limb;
             }
             return t.name.StartsWith("mixamorig:") ? t : null;
@@ -297,12 +310,12 @@ namespace SpellyZombie
                 return;
             }
 
-            // the shell is just the canvas - body ink parents to the nearest limb
+            // the shell is just the canvas - body ink parents to the bone that moves that skin
             Transform surface = hit.collider.transform;
             if (surface.name == "PaintShell" && SelfPaint.ActiveRoot != null)
             {
                 var rig = SelfPaint.ActiveRoot.GetComponent<CharacterRig>();
-                var limb = rig != null ? rig.NearestLimbSurface(hit.point) : null;
+                var limb = rig != null ? rig.SkinBone(hit) : null;
                 if (limb != null) surface = limb;
             }
 
@@ -319,7 +332,11 @@ namespace SpellyZombie
                 // a host zombie's stand-in: the ink rides its root, the same
                 // frame the host mounts it in; the host freezes the real one
                 var proxy = hit.collider.GetComponentInParent<NetZombieProxy>();
-                if (proxy != null) surface = proxy.transform;
+                if (proxy != null)
+                {
+                    surface = proxy.transform;
+                    proxy.PaintHold(DrawingConfig.ZombiePaintFreezeSeconds); // held here at once, as the host holds its own
+                }
             }
 
             // jump tolerance grows with distance: a small mouse flick sweeps a lot
@@ -347,8 +364,16 @@ namespace SpellyZombie
                 }
                 EndStroke(penLifted: false); // still drawing - don't re-read yet
             }
-            else if (jumped)
-                EndStroke(penLifted: false); // a shove or a flick: this line ends, the next starts here
+            // a fast hand is not a lifted pen: within the bridge limit the line goes on, and the gap
+            // filler below decides - it lays the way here only when all of it is on this same canvas
+            if (_current != null && jumped)
+            {
+                float bridge = Mathf.Max(DrawingConfig.MaxStrokeBridge, hit.distance * DrawingConfig.MaxStrokeBridgePerMeter);
+                _bridging = surface == _current.Surface && Vector3.Distance(hit.point, lastPoint) <= bridge;
+                if (!_bridging) EndStroke(penLifted: false); // a shove or a teleport: this line ends, the next starts here
+            }
+            // the smoothed pen takes a few frames to arrive: the bridge lasts until it has
+            else if (_bridging && Vector3.Distance(_smoothedPoint, hit.point) <= allowedJump) _bridging = false;
 
             if (_current == null)
             {
@@ -368,7 +393,14 @@ namespace SpellyZombie
                 // frame-rate-independent jitter smoothing (tau = 0 degrades to raw input)
                 float tau = DrawingConfig.DrawSmoothingTime;
                 float k = tau > 0f ? 1f - Mathf.Exp(-Time.deltaTime / tau) : 1f;
-                _smoothedPoint = Vector3.Lerp(_smoothedPoint, hit.point, k);
+                // on the canvas, like the jump: a moving body carries the pen's last point
+                Vector3 prev = surface != null && surface == _lastHitSurface
+                    ? surface.TransformPoint(_smoothedLocal) : _smoothedPoint;
+                _smoothedPoint = Vector3.Lerp(prev, hit.point, k);
+                // a skin has steps (an arm over the chest): the pen's own ray puts the lerp back on it
+                if (SkinHit.OfZombie(hit.collider) != null
+                    && OnSameSurface(_smoothedPoint, hit, surface, allowedJump, out var onSkin, out _))
+                    _smoothedPoint = onSkin;
             }
 
             _lastHitPoint = hit.point;
@@ -400,6 +432,9 @@ namespace SpellyZombie
                 LayFill(hit, surface);
                 return;
             }
+            // the way here left the canvas (an edge, a gap, another thing in between): the line ends
+            // as it always did, and the next frame starts a new one under the pen
+            if (_bridging && _fillLeftCanvas) { EndStroke(penLifted: false); return; }
 
             if (last != null && !Pay(OnSurface(last), _smoothedPoint)) return;
 
@@ -440,6 +475,7 @@ namespace SpellyZombie
         /// is no gap, or it cannot be filled here - the caller lays its one node.
         bool PlanFill(DrawNode last, RaycastHit hit, Transform surface)
         {
+            _fillLeftCanvas = false;
             _fillPoints.Clear();
             _fillNormals.Clear();
             Vector3 a = OnSurface(last);
@@ -499,7 +535,10 @@ namespace SpellyZombie
                 Vector3 p = Vector3.Lerp(_curve[seg - 1], _curve[seg],
                     segLen > 1e-6f ? Mathf.Clamp01((want - walked) / segLen) : 0f);
                 if (!OnSameSurface(p, hit, surface, tolerance, out var onSurf, out var normal))
+                {
+                    _fillLeftCanvas = true;
                     return false; // not on this canvas: the frame lays its one node
+                }
                 _fillPoints.Add(onSurf);
                 _fillNormals.Add(normal);
             }
@@ -559,14 +598,19 @@ namespace SpellyZombie
             Vector3 dir = point - eye;
             if (dir.sqrMagnitude < 1e-8f) return false;
             if (!AimHit(new Ray(eye, dir.normalized), out var probe)) return false;
-            if (probe.collider != hit.collider) return false;
+            if (probe.collider != hit.collider)
+            {
+                // one zombie is one canvas, whichever of its colliders led to the skin
+                var skin = SkinHit.OfZombie(probe.collider);
+                if (skin == null || skin != SkinHit.OfZombie(hit.collider)) return false;
+            }
             if (Vector3.Distance(probe.point, point) > tolerance) return false;
             // body paint: ink belongs to the limb nearest it, so a fill that
             // reached across a joint waits for the frame that aims there
             if (hit.collider.transform.name == "PaintShell" && SelfPaint.ActiveRoot != null)
             {
                 var rig = SelfPaint.ActiveRoot.GetComponent<CharacterRig>();
-                var limb = rig != null ? rig.NearestLimbSurface(probe.point) : null;
+                var limb = rig != null ? rig.SkinBone(probe) : null;
                 if (limb != null && limb != surface) return false;
             }
             onSurface = probe.point;
@@ -688,6 +732,7 @@ namespace SpellyZombie
         /// split (bone seam, aim jump) - only the rune reading waits for release.
         void EndStroke(bool penLifted = true)
         {
+            _bridging = false;
             if (_current == null) return;
             var stroke = _current;
             _current = null;

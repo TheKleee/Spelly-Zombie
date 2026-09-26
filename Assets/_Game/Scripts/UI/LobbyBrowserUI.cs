@@ -100,7 +100,8 @@ namespace SpellyZombie
                 var name = UIKit.Label(parent, line, 14, Color.white, TextAnchor.MiddleLeft, true);
                 UIKit.Place((RectTransform)name.transform, new Vector2(0f, 1f), new Vector2(rx + 8f, ry - 2f), new Vector2(width - 300f, 18f));
 
-                var sub = UIKit.Label(parent, TagLine(l), 11, new Color(0.75f, 0.82f, 0.75f), TextAnchor.MiddleLeft);
+                var sub = UIKit.Label(parent, WithStanding(TagLine(l), l.InGame, l.UpStamp), 11,
+                    new Color(0.75f, 0.82f, 0.75f), TextAnchor.MiddleLeft);
                 UIKit.Place((RectTransform)sub.transform, new Vector2(0f, 1f), new Vector2(rx + 8f, ry - 21f), new Vector2(width - 300f, 14f));
 
                 var id = l.Id;
@@ -132,7 +133,8 @@ namespace SpellyZombie
                     + (l.Locked ? "   " + Loc.T("browse.locked") : "");
                 var name = UIKit.Label(parent, line, 14, Color.white, TextAnchor.MiddleLeft, true);
                 UIKit.Place((RectTransform)name.transform, new Vector2(0f, 1f), new Vector2(rx + 46f, ry - 2f), new Vector2(width - 338f, 18f));
-                var sub = UIKit.Label(parent, TagLine(l.Region, l.Lang, l.Tags), 11, new Color(0.75f, 0.82f, 0.75f), TextAnchor.MiddleLeft);
+                var sub = UIKit.Label(parent, WithStanding(TagLine(l.Region, l.Lang, l.Tags), l.InGame, l.UpStamp), 11,
+                    new Color(0.75f, 0.82f, 0.75f), TextAnchor.MiddleLeft);
                 UIKit.Place((RectTransform)sub.transform, new Vector2(0f, 1f), new Vector2(rx + 46f, ry - 21f), new Vector2(width - 338f, 14f));
 
                 string address = l.Address, proto = l.Proto;
@@ -192,6 +194,20 @@ namespace SpellyZombie
         }
 
         public static string TagLine(SteamLobby.PublicLobby l) => TagLine(l.Region, l.Lang, l.Tags);
+
+        /// The tags, then what the lobby is doing and how long it has stood: "In the lobby · Up 12 min".
+        static string WithStanding(string tags, bool inGame, float upStamp)
+        {
+            var sb = new System.Text.StringBuilder(tags);
+            if (sb.Length > 0) sb.Append(" · ");
+            sb.Append(inGame ? Loc.T("browse.inmatch") : Loc.T("browse.inlobby"));
+            if (upStamp >= 0f)
+            {
+                int m = Mathf.Max(0, Mathf.FloorToInt((Time.unscaledTime - upStamp) / 60f));
+                sb.Append(" · ").Append(m < 60 ? Loc.F("browse.upmin", m) : Loc.F("browse.uph", m / 60, m % 60));
+            }
+            return sb.ToString();
+        }
 
         public static string TagLine(string region, string lang, int tags)
         {

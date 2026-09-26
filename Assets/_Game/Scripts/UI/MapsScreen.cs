@@ -63,7 +63,7 @@ namespace SpellyZombie
         {
             if (_shared && MapWorkshop.Stamp != _stamp) { _stamp = MapWorkshop.Stamp; Rebuild(); }
             var kb = Keyboard.current;
-            if (kb != null && kb.escapeKey.wasPressedThisFrame && !UIKit.Typing) Close();
+            if (((kb != null && kb.escapeKey.wasPressedThisFrame) || Keys.BackDown) && !UIKit.Typing) Close();
         }
 
         void Build()

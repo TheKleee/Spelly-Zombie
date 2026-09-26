@@ -92,11 +92,13 @@ namespace SpellyZombie
             mrt.offsetMin = mrt.offsetMax = Vector2.zero;
         }
 
-        public static RectTransform Card(RectTransform grid, string name, Texture2D picture, float nameFrac, Action click, bool lit)
+        /// `tile` false: no picture part, for a card that draws its own look over its name.
+        public static RectTransform Card(RectTransform grid, string name, Texture2D picture, float nameFrac, Action click, bool lit,
+            bool tile = true)
         {
             var card = UIKit.Button(grid, "", click, CreatorUI.Pick(lit), 13);
             var crt = (RectTransform)card.transform;
-            Picture(crt, picture, new Vector2(0f, nameFrac), Vector2.one, 8f);
+            if (tile) Picture(crt, picture, new Vector2(0f, nameFrac), Vector2.one, 8f);
             var label = UIKit.Label(crt, name, 16, UIKit.Ink, TextAnchor.MiddleCenter, true);
             var nrt = label.rectTransform;
             nrt.anchorMin = Vector2.zero;

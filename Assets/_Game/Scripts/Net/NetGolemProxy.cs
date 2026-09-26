@@ -13,6 +13,12 @@ namespace SpellyZombie
         Color _skin = Color.gray;
         public int OwnerId = -1; // from the snapshot, for the ghost and the achievements
         public int Id;           // the host's instance id, the snapshot key
+        bool _adopted;           // a living object: this machine's own copy of the prop is the stand-in
+        float _bodyScale;        // its size in golem scale (LivingObject.PutEyes)
+        bool _ownEyes;           // the eyes PutEyes made here, which go when its life does
+
+        /// A living object's stand-in: this machine's own copy of the prop.
+        public bool Adopted => _adopted;
 
         /// A ghost drives it on the host.
         public bool Possessed { get; private set; }
@@ -95,6 +101,27 @@ namespace SpellyZombie
             return proxy;
         }
 
+        /// A living object's stand-in: the prop this machine already has, freed the way the host
+        /// freed it, moved by the golem beat and wearing the eyes the host put on it (the same
+        /// LivingObject.PutEyes, from the host's pose), never a golem body.
+        public static NetGolemProxy Adopt(int id, GameObject body, Vector3 pos, Quaternion rot)
+        {
+            if (body == null) return null;
+            if (body.TryGetComponent<NetPropGhost>(out var ghost)) Destroy(ghost); // the golem beat moves it now
+            body.transform.SetPositionAndRotation(pos, rot); // the host's upright decides which face wears the eyes
+            Liftable.MakePhysicsLegal(body.transform);        // the hull the host's freeing made, before any body
+            if (!body.TryGetComponent<Rigidbody>(out var rb)) rb = body.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            var proxy = body.AddComponent<NetGolemProxy>();
+            proxy.Id = id;
+            proxy._adopted = true;
+            proxy._glide.Push(pos, rot, Vector3.zero);
+            proxy._eyes = LivingObject.PutEyes(body.transform, out proxy._bodyScale, out proxy._ownEyes);
+            if (proxy._eyes != null) proxy._eyes.Facing = null; // they look out of its own front
+            LivingObject.Era++;
+            return proxy;
+        }
+
         StateView _view;
         byte _look = 254;
         CreatureDef _worn;
@@ -121,7 +148,8 @@ namespace SpellyZombie
 
         // ---- eyes: mood, red pupils, the charge swell ----
         GooglyEyes _eyes;
-        bool _moodHeld, _pupilsRed, _swelling;
+        bool _moodHeld, _swelling;
+        Color? _pupilTint;
 
         public void SetEyes(byte bits)
         {
@@ -130,11 +158,11 @@ namespace SpellyZombie
             if (mood != EyeMood.Neutral) { _eyes.SetMood(mood, 0.3f); _moodHeld = true; }
             else if (_moodHeld) { _eyes.SetMood(EyeMood.Neutral, 0f); _moodHeld = false; }
 
-            bool red = (bits & 8) != 0;
-            if (red != _pupilsRed)
+            Color? want = NetZombieProxy.PupilOf(bits); // red ridden, yellow aggressive, purple spreading
+            if (want != _pupilTint)
             {
-                _pupilsRed = red;
-                _eyes.SetPupilTint(red ? DrawingConfig.MindControlEyeColor : (Color?)null);
+                _pupilTint = want;
+                _eyes.SetPupilTint(want);
             }
             bool swell = (bits & 16) != 0;
             if (swell && !_swelling)
@@ -208,15 +236,23 @@ namespace SpellyZombie
                 transform.position = pos;
                 transform.rotation = rot;
             }
-            _feet.TickHeavy(transform.position, transform.localScale.y, false, Time.deltaTime);
+            _feet.TickHeavy(transform.position, _bodyScale > 0f ? _bodyScale : transform.localScale.y, false, Time.deltaTime);
         }
         readonly Footfalls _feet = new Footfalls();
 
         /// Snapshot stopped listing it: the host says it came apart. Its burst
         /// and thud already arrived from the host (FxMsg), so nothing plays twice.
-        public void Vanish()
+        public void Vanish(bool heard = true)
         {
-            Destroy(gameObject);
+            if (!_adopted) { Destroy(gameObject); return; }
+            // a living object only went back to rest: the prop stays, its eyes and this go, and the life
+            // leaves it as a ghost leaves a body (not when it broke, and not when the host went away)
+            if (heard && TryGetComponent<Element>(out var el) && el.Health > 0f)
+                Juice.Sound(Sfx.GhostOut, _eyes != null ? _eyes.transform.position : transform.position, 1f, 1.2f, false);
+            if (_eyes != null && _ownEyes) Destroy(_eyes.gameObject);
+            if (TryGetComponent<Element>(out var dmg)) dmg.BurdenOverride = -1f; // SetBurden wrote it
+            LivingObject.Era++;
+            Destroy(this);
         }
     }
 }

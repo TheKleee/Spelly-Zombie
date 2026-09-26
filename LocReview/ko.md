@@ -31,11 +31,11 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | chip.precise | Faster drawing | 더 빨리 그리기 | more quickly drawing | |
 | chip.erase | Erase ink | 잉크 지우기 | ink erasing | |
 | chip.absorb | Absorb it | 흡수하기 | absorbing | |
-| hint.alt | Hold ALT to draw faster | ALT를 누른 채 그리면 더 빠르다 | with ALT held down, if you draw, it is faster | |
+| hint.alt | Hold {0} to draw faster | {0} 키를 누른 채 그리면 더 빠르다 | with the {0} key held down, if you draw, it is faster | loading hint; {0} = the key bound to precise drawing (ALT) |
 | hint.combine | Draw more runes inside of the same seal to combine them | 같은 마법진 안에 룬을 더 그리면 서로 합쳐진다 | inside the same magic circle, if you draw more runes, they merge with each other | 마법진 (magic circle) for "seal" |
-| hint.lift | Draw ink on things and press E to lift them | 물건에 잉크를 그리고 E를 누르면 들어 올린다 | on an object draw ink and press E, then it lifts up | |
+| hint.lift | Draw ink on things and press {0} to lift them | 물건에 잉크를 그리고 {0} 키를 누르면 들어 올린다 | on an object draw ink and press the {0} key, then it lifts up | loading hint; {0} = the key or button bound to Use (E) |
 | hint.erase | Erasing returns the ink to your wand | 지운 잉크는 지팡이로 돌아간다 | erased ink returns to the wand | |
-| hint.body | Press R to paint runes on your own body | R을 누르면 내 몸에 룬을 그린다 | if you press R, you draw runes on my body | Korean says "my body" where English says "your own" |
+| hint.body | Press {0} to paint runes on your own body | {0} 키를 누르면 내 몸에 룬을 그린다 | if you press the {0} key, you draw runes on my body | loading hint; {0} = the key or button bound to the body key (R) |
 | hint.pose | Striking a pose can close a body seal and cast it | 포즈를 잡으면 몸의 마법진이 닫히고 발동한다 | if you take a pose, the body's magic circle closes and activates | |
 | hint.size | Bigger runes make stronger spells | 룬이 클수록 마법이 세다 | the bigger the rune, the stronger the magic | 세다 = strong, colloquial |
 | hint.touch | Lines count as one drawing only when they touch | 선은 서로 닿아 있을 때만 하나의 그림이다 | lines are one picture only when touching each other | |
@@ -131,7 +131,7 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | tag.quiet | Quiet ok | 조용해도 괜찮음 | even quiet is okay | |
 | opt.mic.title | Microphone | 마이크 | mic |  |
 | opt.mic.open | Open mic | 항상 켬 | always on |  |
-| opt.mic.ptt | Hold V | V 눌러 말하기 | press V to talk | V is a physical key, kept |
+| opt.mic.ptt | Hold {0} | {0} 눌러 말하기 | press {0} to talk | Options, Audio, microphone mode button: push to talk; {0} = the key bound to talking (V) |
 | opt.mic.off | Muted | 음소거 | mute |  |
 | opt.tab.game | Game | 게임 | game |  |
 | opt.tab.video | Video | 영상 | video |  |
@@ -361,6 +361,53 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | 남긴 그림. 고르면 고칠 수 있고, +는 새 그림, X는 지우기 | left drawings. choosing lets you fix it, + is a new drawing, X is erasing | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | 읽힘: {0} | read: {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | 아직 못 읽어 | can't read yet | the pad's drawing matches no rune well enough |
+| browse.inlobby | In the lobby | 로비에 있음 | is in the lobby | lobby list row, after the tags: the host and friends are in the lobby scene (the sandbox), no match running |
+| browse.inmatch | In a match | 경기 중 | in a match | lobby list row, after the tags: a match is running on a map right now |
+| browse.upmin | Up {0} min | 연 지 {0}분 | {0} min since it opened | lobby list row: how long the lobby has stood; {0} = whole minutes, under an hour |
+| browse.uph | Up {0} h {1} min | 연 지 {0}시간 {1}분 | {0} hours {1} min since it opened | lobby list row: how long the lobby has stood; {0} = hours, {1} = the minutes past the hour |
+| hint.sealshape | A circle is the weakest seal, a triangle the strongest | 둥근 마법진이 제일 약하고 삼각형이 제일 세다 | a round magic circle is the weakest and a triangle is the strongest | loading screen hint; Spell.PowerFor: fewer lines in a seal = stronger, a circle counts as ten |
+| hint.sealline | Draw two sides of a triangle around your runes and {0} closes it | 룬 둘레에 삼각형의 두 변을 그리고 {0} 키를 누르면 닫힌다 | draw two sides of a triangle around the runes and press the {0} key, it closes | loading screen hint; {0} = the key bound to F; the book closes two straight lines that meet at a corner with the third side |
+| opt.ghost | Ghost lines | 유령 선 | ghost lines | Game tab of the options: the row for the ghost hand (the lobby lessons and the floating F's drawn previews), answered Off / On |
+| side.pillar.acolyte | Become an acolyte | 사도가 되기 | becoming an acolyte | caption under the floating E on the lobby's side pillar while you are a wizard; same style as chest.open |
+| side.pillar.wizard | Become a wizard | 마법사가 되기 | becoming a wizard | caption under the floating E on the lobby's side pillar while you are an acolyte |
+| seal.aim | Seal it, the book draws the ring | 감싸자, 책이 마법진을 그려 줘 | let's wrap it, the book draws the magic circle for you | caption under the floating F on your own rune while the grimoire is open on the seal page; same style as scan.aim and absorb.aim |
+| mc.area.arrive | Arrives in, seconds | 도착까지 걸리는 시간, 초 | time taken until arrival, seconds | area editor, under Where it starts: how long the area takes from its start point to the spell |
+| mc.note.arrive | 0 lets the game pick the speed. Slower than 5 metres a second it settles in, faster it slams. | 0이면 게임이 속도를 정해. 초속 5미터보다 느리면 살며시 내려앉고, 빠르면 내리꽂혀 | if 0 the game sets the speed. slower than 5 metres per second it settles down softly, faster it slams in | area editor: small note under Arrives in |
+| opt.tab.keys | Controls | 조작 | controls | fourth tab of the Options, after Game, Video, Audio: the key and controller button list |
+| keys.note | Click a key or a button, then press the new one. Escape keeps the old one | 키나 버튼을 클릭한 다음 새 것을 눌러. Esc를 누르면 그대로야 | click a key or a button, then press the new one. press Esc and it stays as it is | Controls tab: small note above the list |
+| keys.press | Press the new key or button now. Escape keeps the old one | 지금 새 키나 버튼을 눌러. Esc를 누르면 그대로야 | press the new key or button now. press Esc and it stays as it is | Controls tab: the note while a binding waits for its new key |
+| keys.action | Action | 동작 | action | Controls tab: heading of the first column |
+| keys.keyboard | Keyboard | 키보드 | keyboard | Controls tab: heading of the keyboard and mouse column |
+| keys.pad | Controller | 컨트롤러 | controller | Controls tab: heading of the gamepad column |
+| keys.reset | Back to the default keys | 기본 키로 되돌리기 | put back to the default keys | Controls tab: button that puts every key and button back as shipped |
+| keys.act.forward | Walk forward | 앞으로 걷기 | walk forward | Controls tab: an action's name |
+| keys.act.back | Walk back | 뒤로 걷기 | walk backward | Controls tab: an action's name |
+| keys.act.left | Walk left | 왼쪽으로 걷기 | walk to the left | Controls tab: an action's name |
+| keys.act.right | Walk right | 오른쪽으로 걷기 | walk to the right | Controls tab: an action's name |
+| keys.act.jump | Jump, fly up | 점프, 위로 날기 | jump, fly up | Controls tab: jumping, and rising as a ghost |
+| keys.act.crouch | Crouch, fly down | 앉기, 아래로 날기 | sit, fly down | Controls tab: crouching, and sinking as a ghost |
+| keys.act.sprint | Run | 달리기 | run | Controls tab: sprinting |
+| keys.act.draw | Draw | 그리기 | draw | Controls tab: drawing ink |
+| keys.act.erase | Erase | 지우기 | erase | Controls tab: erasing ink |
+| keys.act.precise | Draw faster | 더 빨리 그리기 | draw faster | Controls tab: the hold key that frees the cursor for faster drawing |
+| keys.act.use | Grab, throw, use | 잡기, 던지기, 쓰기 | grab, throw, use | Controls tab: the one hand key (E) |
+| keys.act.drop | Drop, let go | 놓기 | let go | Controls tab: the release key (F) |
+| keys.act.body | Paint body, pose, watch | 몸에 그리기, 포즈, 보기 | draw on the body, pose, watch | Controls tab: the body key (R): wizards paint their body, third person poses, acolytes watch their zombies |
+| keys.act.menu | Menu | 메뉴 | menu | Controls tab: the pause menu key |
+| keys.act.ready | Ready | 준비 완료 | ready | Controls tab: answering the lobby's ready check with yes |
+| keys.act.notready | Not ready | 아직 | not yet | Controls tab: answering the lobby's ready check with no |
+| keys.act.talk | Push to talk | 눌러서 말하기 | press to talk | Controls tab: holding this opens the microphone in push to talk mode |
+| keys.act.prev | Previous page | 이전 페이지 | previous page | Controls tab: a controller button that turns the grimoire back a page, or steps to the previous pose or zombie |
+| keys.act.next | Next page | 다음 페이지 | next page | Controls tab: a controller button that turns the grimoire forward a page, or steps to the next pose or zombie |
+| watch.many | Watching {0} of {1} · 1-0 picks · Draw a seal on it to blow it | {1}마리 중 {0}번째를 보는 중 · 1-0으로 고른다 · 그 위에 마법진을 그리면 터진다 | looking at the {0}th of {1} · pick with 1-0 · draw a magic circle on it and it bursts | prompt bar while an acolyte looks through one of several zombies of theirs: {0} = which one, {1} = how many; the number keys 1 to 0 pick another; a seal drawn on the zombie makes it explode |
+| watch.one | Draw a seal on it to blow it · R leaves | 그 위에 마법진을 그리면 터진다 · R로 나간다 | draw a magic circle on it and it bursts · leave with R | prompt bar while an acolyte looks through their only zombie |
+| mc.behaviour.rampages | Rampages | 날뛴다 | runs wild | creature behaviour button, after Skittish: a calamity that throws its spells everywhere |
+| mc.note.rampages | Throws random spells from its list all over the place, about one a second, and never runs away. Spells from its own side cannot hurt it. | 목록의 마법을 아무 데나 마구 던져, 대략 1초에 하나씩. 절대 도망가지 않아. 자기 편 마법으로는 다치지 않아 | throws the list's spells anywhere wildly, about one per second. never runs away. it is not hurt by its own side's spells | note under the behaviour buttons when Rampages is picked |
+| opt.keys.title | Videos and photos | 영상과 사진 | videos and photos | pause menu, Game tab: heading over the three recorder keys |
+| opt.key.clip | Start or stop a video | 영상 녹화 시작 또는 멈춤 | start or stop video recording | pause menu, Game tab: beside the I keycap; the same key starts and stops the recording |
+| opt.key.photo | Take a photo | 사진 찍기 | take a photo | pause menu, Game tab: beside the P keycap |
+| opt.key.folder | Open their folder (in the lobby) | 저장 폴더 열기 (로비에서) | open the save folder (in the lobby) | pause menu, Game tab: beside the O keycap; opens the folder holding the saved videos and photos, and only works in the lobby |
+| opt.keys.note | Saved in your Videos folder, under Spelly Zombie. The interface is never in them | 동영상 폴더의 Spelly Zombie에 저장된다. 화면 표시는 찍히지 않는다 | saved in Spelly Zombie in the Videos folder. the on-screen display is not captured | pause menu, Game tab: small note under the three recorder keys |
 | ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | 그 로비는 더 새 버전이다. 게임을 끄고 Steam이 업데이트하게 해 | that lobby is a newer version. turn the game off and let Steam update it | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
 | ver.theirs | That lobby runs an older version. Its host has to update the game | 그 로비는 옛 버전이다. 호스트가 게임을 업데이트해야 한다 | that lobby is an old version. the host has to update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
 | ver.differs | That lobby runs a different version of the game | 그 로비는 게임 버전이 다르다 | that lobby's game version is different | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
@@ -626,3 +673,4 @@ the noun form (기) for buttons, as Korean games label them. No honorifics.
 | mc.side.note | The emoji and the page belong to this side. An acolyte with none of its own shows the wizard's. | 이모지와 페이지는 이 편의 것. 사도용이 없으면 마법사 것을 보여 줘 | emoji and page are this side's. if there's none for the acolyte, show the wizard's | note under the side switch |
 | mc.pushes.note | What drawing this rune adds to the seal's numbers, one axis or several. The spells decide what that becomes. | 이 룬을 그리면 마법진 수치에 무엇이 더해지는지. 축 하나든 여러 개든 돼. 그게 뭐가 될지는 마법이 정해 | what gets added to the seal's numbers when you draw this rune. one axis or several is fine. magic decides what it becomes | note under Pushes |
 | mc.rune.none | Make a rune or pick one from the list | 룬을 만들거나 목록에서 골라 | make a rune or choose from the list | the Runes creator with nothing picked |
+| opt.stick | Stick sensitivity: {0} | 스틱 감도: {0} | stick sensitivity: {0} | same pattern as 시점 감도 |

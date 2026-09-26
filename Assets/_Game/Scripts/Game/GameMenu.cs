@@ -8,13 +8,20 @@ namespace SpellyZombie
     public static class ActiveScene
     {
         public static string Name { get; private set; } = "";
+        /// Its build index, as world messages carry it.
+        public static byte Index { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Hook()
         {
-            Name = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            UnityEngine.SceneManagement.SceneManager.activeSceneChanged +=
-                (_, next) => Name = next.name;
+            var now = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            Name = now.name;
+            Index = (byte)now.buildIndex;
+            UnityEngine.SceneManagement.SceneManager.activeSceneChanged += (_, next) =>
+            {
+                Name = next.name;
+                Index = (byte)next.buildIndex;
+            };
         }
     }
 
@@ -27,8 +34,10 @@ namespace SpellyZombie
 
         bool _options, _langPick, _micPick, _resPick, _quitCheck;
         bool _fromMainMenu;   // opened by the main menu's Options: no pause, Back closes
-        int _tab; // 0 game, 1 video, 2 audio
-        float _sens;
+        int _tab; // 0 game, 1 video, 2 audio, 3 controls
+        Act _bindAct; // the binding waiting for its key (Controls tab)
+        bool _bindPad, _binding;
+        float _sens, _stickSens;
         static GameMenu _i;
 
         /// The main menu's Options: the same page as in play.
@@ -65,6 +74,7 @@ namespace SpellyZombie
         {
             _i = this;
             _sens = PlayerPrefs.GetFloat("sz_look_sens", 0.12f);
+            _stickSens = Keys.StickSensitivity;
             AudioListener.volume = AudioOptions.Master;
         }
 
@@ -80,23 +90,26 @@ namespace SpellyZombie
 
         void Update()
         {
-            var kb = Keyboard.current;
-            if (kb == null || PoseStudio.IsOpen) return;
+            if (PoseStudio.IsOpen) return;
             // the MAIN MENU owns its screen - no pause menu on top of it
             if (ActiveScene.Name == "Menu")
             {
                 // only its own Options page may sit on top of the main menu
-                if (IsOpen && (!_fromMainMenu || kb.escapeKey.wasPressedThisFrame)) Close();
+                if (IsOpen && (!_fromMainMenu || MenuKey())) Close();
                 return;
             }
-            if (kb.escapeKey.wasPressedThisFrame)
+            if (MenuKey())
             {
                 if (MapPicker.IsOpen) MapPicker.Close(); // Esc closes the picker first
                 else if (!IsOpen && PhotoBooth.Escape()) { } // the booth's posing, ink or placing ends first
                 else if (IsOpen) Close();
-                else Open();
+                else if (!LoadEgg.Leaving) Open(); // the egg has the screen: no menu nobody can see
             }
         }
+
+        /// The menu key or button; on a controller B closes an open menu or map picker too. Not
+        /// while a binding waits for its key: Escape belongs to that then.
+        bool MenuKey() => !Keys.Listening && (Keys.Down(Act.Menu) || ((IsOpen || MapPicker.IsOpen) && Keys.BackDown));
 
         RectTransform _ui;
 
@@ -118,12 +131,54 @@ namespace SpellyZombie
             BuildUI();
         }
 
+        /// What the Controls tab calls each action.
+        static string ActName(Act a)
+        {
+            switch (a)
+            {
+                case Act.Forward: return Loc.T("keys.act.forward");
+                case Act.Back: return Loc.T("keys.act.back");
+                case Act.Left: return Loc.T("keys.act.left");
+                case Act.Right: return Loc.T("keys.act.right");
+                case Act.Jump: return Loc.T("keys.act.jump");
+                case Act.Crouch: return Loc.T("keys.act.crouch");
+                case Act.Sprint: return Loc.T("keys.act.sprint");
+                case Act.Draw: return Loc.T("keys.act.draw");
+                case Act.Erase: return Loc.T("keys.act.erase");
+                case Act.Precise: return Loc.T("keys.act.precise");
+                case Act.Use: return Loc.T("keys.act.use");
+                case Act.Drop: return Loc.T("keys.act.drop");
+                case Act.Book: return Loc.T("chip.grimoire");
+                case Act.Body: return Loc.T("keys.act.body");
+                case Act.View: return Loc.T("chip.third");
+                case Act.Menu: return Loc.T("keys.act.menu");
+                case Act.Ready: return Loc.T("keys.act.ready");
+                case Act.NotReady: return Loc.T("keys.act.notready");
+                case Act.Talk: return Loc.T("keys.act.talk");
+                case Act.Prev: return Loc.T("keys.act.prev");
+                case Act.Next: return Loc.T("keys.act.next");
+                case Act.Video: return Loc.T("opt.key.clip");
+                case Act.Photo: return Loc.T("opt.key.photo");
+                default: return Loc.T("opt.key.folder");
+            }
+        }
+
+        /// A trip takes the screen: an open menu closes (the egg hides it, and it came back on the
+        /// other side over a locked cursor).
+        public static void CloseForTrip()
+        {
+            if (_i != null && IsOpen) _i.Close();
+        }
+
         void Close()
         {
+            Keys.Cancel();
+            _binding = false;
             IsOpen = false;
             _fromMainMenu = false;
             Time.timeScale = 1f;
             PlayerPrefs.SetFloat("sz_look_sens", _sens);
+            PlayerPrefs.SetFloat(Keys.StickSensPref, _stickSens);
             PlayerPrefs.Save();
             if (_ui != null) Destroy(_ui.gameObject);
             _ui = null;
@@ -136,8 +191,12 @@ namespace SpellyZombie
             }
         }
 
+        RectTransform _scrollAt; // the options list, for its place across a rebuild
+
         void BuildUI()
         {
+            float keepScroll = _scrollAt != null ? _scrollAt.anchoredPosition.y : 0f;
+            _scrollAt = null;
             UIKit.Retire(_ui); // never re-adopt the dying menu same-frame
             var skin = UISkin.I;
             _ui = UIKit.Group(UIKit.Root, "PauseMenu");
@@ -251,11 +310,13 @@ namespace SpellyZombie
                 // three tabs, all visible, the open one lit; the rows below them
                 // scroll inside a fixed window so no tab can run off the screen
                 var tabs = UIKit.Segments(pr, 300f, 36f, 6f);
-                TabButton(tabs, 0, "opt.tab.game");
-                TabButton(tabs, 1, "opt.tab.video");
-                TabButton(tabs, 2, "opt.tab.audio");
+                TabButton(tabs, 0, Loc.T("opt.tab.game"));
+                TabButton(tabs, 1, Loc.T("opt.tab.video"));
+                TabButton(tabs, 2, Loc.T("opt.tab.audio"));
+                TabButton(tabs, 3, Loc.T("opt.tab.keys"));
                 UIKit.Gap(pr, 6f);
                 var at = UIKit.Scroll(pr, "OptionsScroll", 300f, 420f, 5f);
+                _scrollAt = at;
                 const float W = 288f;
 
                 if (_tab == 0)
@@ -267,6 +328,16 @@ namespace SpellyZombie
                         sensLabel.text = Loc.F("opt.sens", _sens.ToString("0.00"));
                         foreach (var p in SimpleFPSController.All)
                             if (p != null) p.LookSensitivity = _sens;
+                    }), W, 26f);
+                    UIKit.Gap(at, 4f);
+
+                    // the right stick has its own: 1.0 turns as it always did
+                    var stickLabel = UIKit.Row(UIKit.Label(at, Loc.F("opt.stick", _stickSens.ToString("0.0")), 15, UIKit.Ink, TextAnchor.MiddleLeft, true), W, 22f);
+                    UIKit.Row(UIKit.Slider(at, 0.3f, 3f, _stickSens, v =>
+                    {
+                        _stickSens = Mathf.Round(v * 10f) / 10f; // tenths
+                        stickLabel.text = Loc.F("opt.stick", _stickSens.ToString("0.0"));
+                        Keys.StickSensitivity = _stickSens;
                     }), W, 26f);
                     UIKit.Gap(at, 4f);
 
@@ -289,6 +360,20 @@ namespace SpellyZombie
                         12, new Color(0.35f, 0.28f, 0.2f), TextAnchor.MiddleCenter, true);
                     hint.resizeTextForBestFit = false;
                     UIKit.Row(hint, W, -1f); // as tall as its lines
+
+                    // the ghost hand: the lobby lessons and the floating F's drawn previews
+                    Choice("opt.ghost", OffOn(), GhostHand.Enabled ? 1 : 0, i => GhostHand.Enabled = i == 1);
+
+                    // the recorder's keys (ClipRecorder): nothing else in the game names them
+                    UIKit.Gap(at, 8f);
+                    UIKit.Row(UIKit.Label(at, Loc.T("opt.keys.title"), 15, UIKit.Ink, TextAnchor.MiddleLeft, true), W, 22f);
+                    KeyRow(at, W, Keys.KeyLabel(Act.Video), Loc.T("opt.key.clip"));
+                    KeyRow(at, W, Keys.KeyLabel(Act.Photo), Loc.T("opt.key.photo"));
+                    KeyRow(at, W, Keys.KeyLabel(Act.Folder), Loc.T("opt.key.folder"));
+                    var keysNote = UIKit.Label(at, Loc.T("opt.keys.note"),
+                        12, new Color(0.35f, 0.28f, 0.2f), TextAnchor.MiddleCenter, true);
+                    keysNote.resizeTextForBestFit = false;
+                    UIKit.Row(keysNote, W, -1f);
                 }
                 else if (_tab == 1)
                 {
@@ -308,7 +393,7 @@ namespace SpellyZombie
                     Choice("opt.fps", new[] { Loc.T("opt.off"), "60", "120", "144", "240" }, VideoOptions.FpsIndex, VideoOptions.SetFps);
                     Choice("opt.vsync", OffOn(), VideoOptions.VSync ? 1 : 0, i => VideoOptions.SetVSync(i == 1));
                 }
-                else
+                else if (_tab == 2)
                 {
                     VolumeRow("opt.volume", AudioOptions.Master, AudioOptions.SetMaster);
                     VolumeRow("opt.music", AudioOptions.Music, AudioOptions.SetMusic);
@@ -318,9 +403,9 @@ namespace SpellyZombie
                     // the pick is seen to work; then one mute button per other player ----
                     UIKit.Row(UIKit.Label(at, Loc.T("opt.mic.title"), 15, UIKit.Ink, TextAnchor.MiddleLeft, true), W, 22f);
                     var modes = UIKit.Segments(at, W, 36f, 6f);
-                    ModeButton(modes, VoiceChat.MicMode.Open, "opt.mic.open");
-                    ModeButton(modes, VoiceChat.MicMode.PushToTalk, "opt.mic.ptt");
-                    ModeButton(modes, VoiceChat.MicMode.Off, "opt.mic.off");
+                    ModeButton(modes, VoiceChat.MicMode.Open, Loc.T("opt.mic.open"));
+                    ModeButton(modes, VoiceChat.MicMode.PushToTalk, Loc.F("opt.mic.ptt", Keys.Label(Act.Talk)));
+                    ModeButton(modes, VoiceChat.MicMode.Off, Loc.T("opt.mic.off"));
                     var devs = Microphone.devices;
                     string micName = string.IsNullOrEmpty(VoiceChat.Device) ? Loc.T("opt.mic.default") : VoiceChat.Device;
                     if (devs != null && devs.Length > 1)
@@ -351,26 +436,104 @@ namespace SpellyZombie
                     }
                 }
 
+                else if (_tab == 3)
+                {
+                    // every action: its name, its key, its controller button. A click waits for the new one.
+                    var note = UIKit.Label(at, _binding ? Loc.T("keys.press") : Loc.T("keys.note"),
+                        12, new Color(0.35f, 0.28f, 0.2f), TextAnchor.MiddleCenter, true);
+                    note.resizeTextForBestFit = false;
+                    UIKit.Row(note, W, -1f);
+                    BindRow(Loc.T("keys.action"), Loc.T("keys.keyboard"), Loc.T("keys.pad"), null, null);
+                    foreach (var act in Keys.Listed)
+                    {
+                        var a = act;
+                        bool waitKey = _binding && _bindAct == a && !_bindPad, waitPad = _binding && _bindAct == a && _bindPad;
+                        BindRow(ActName(a),
+                            waitKey ? "..." : Dash(Keys.KeyLabel(a)), waitPad ? "..." : Dash(Keys.PadLabel(a)),
+                            () => Bind(a, false), () => Bind(a, true));
+                    }
+                    UIKit.Gap(at, 4f);
+                    OptionButton(Loc.T("keys.reset"), () => { Keys.Cancel(); _binding = false; Keys.ResetAll(); BuildUI(); });
+                }
+
                 UIKit.Gap(pr, 6f);
                 UIKit.Row(UIKit.Button(pr, Loc.T("menu.back"),
-                    () => { if (_fromMainMenu) Close(); else { _options = false; BuildUI(); } }, grey), 300f, 44f);
+                    () => { Keys.Cancel(); _binding = false; if (_fromMainMenu) Close(); else { _options = false; BuildUI(); } }, grey), 300f, 44f);
+                // a click rebuilds the page: the list stays where it was scrolled to
+                at.anchoredPosition = new Vector2(at.anchoredPosition.x, keepScroll);
                 return;
+
+                string Dash(string label) => string.IsNullOrEmpty(label) ? "-" : label;
+
+                void Bind(Act a, bool pad)
+                {
+                    _bindAct = a; _bindPad = pad; _binding = true;
+                    Keys.Rebind(a, pad, () => { _binding = false; BuildUI(); });
+                    BuildUI();
+                }
+
+                // a name and two buttons on one line; without actions it is the heading of the list
+                void BindRow(string name, string key, string pad, System.Action onKey, System.Action onPad)
+                {
+                    var row = UIKit.Group(at, "BindRow");
+                    UIKit.Row(row, W, 30f);
+                    if (UIKit.WasAdopted(row)) return;
+                    var lay = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+                    lay.spacing = 4f;
+                    lay.childAlignment = TextAnchor.MiddleLeft;
+                    lay.childControlWidth = true;
+                    lay.childControlHeight = true;
+                    lay.childForceExpandWidth = false;
+                    lay.childForceExpandHeight = true;
+                    var label = UIKit.Label(row, name, 13, UIKit.Ink, TextAnchor.MiddleLeft, true);
+                    UIKit.Row(label, 118f, 30f);
+                    if (onKey == null)
+                    {
+                        UIKit.Row(UIKit.Label(row, key, 12, UIKit.Ink, TextAnchor.MiddleCenter, true), 81f, 30f);
+                        UIKit.Row(UIKit.Label(row, pad, 12, UIKit.Ink, TextAnchor.MiddleCenter, true), 81f, 30f);
+                        return;
+                    }
+                    UIKit.Row(UIKit.Button(row, key, onKey, grey, 13), 81f, 30f);
+                    UIKit.Row(UIKit.Button(row, pad, onPad, grey, 13), 81f, 30f);
+                }
+
+                // one key and what it does; the line grows when a language needs two lines
+                void KeyRow(RectTransform into, float width, string key, string does)
+                {
+                    var row = UIKit.Group(into, "KeyRow");
+                    UIKit.Row(row, width, -1f);
+                    if (UIKit.WasAdopted(row)) return;
+                    var lay = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+                    lay.spacing = 10f;
+                    lay.childAlignment = TextAnchor.MiddleLeft;
+                    lay.childControlWidth = true;
+                    lay.childControlHeight = true;
+                    lay.childForceExpandWidth = false;
+                    lay.childForceExpandHeight = false;
+                    var cap = UIKit.Keycap(row, key, 26f);
+                    UIKit.Row(cap, cap.sizeDelta.x, cap.sizeDelta.y);
+                    var label = UIKit.Label(row, does, 15, UIKit.Ink, TextAnchor.MiddleLeft, true);
+                    label.resizeTextForBestFit = false;
+                    var room = label.gameObject.AddComponent<LayoutElement>();
+                    room.flexibleWidth = 1f;
+                }
 
                 void OptionButton(string label, System.Action act)
                     => UIKit.Row(UIKit.Button(at, label, act, grey, 16), W, 36f);
 
-                void ModeButton(RectTransform row, VoiceChat.MicMode mode, string key)
+                void ModeButton(RectTransform row, VoiceChat.MicMode mode, string label)
                 {
                     bool on = VoiceChat.Mode == mode;
-                    UIKit.Row(UIKit.Button(row, Loc.T(key), () => { VoiceChat.Mode = mode; BuildUI(); },
+                    UIKit.Row(UIKit.Button(row, label, () => { VoiceChat.Mode = mode; BuildUI(); },
                         skin != null ? (on ? skin.ButtonBrown : skin.ButtonGrey) : null, 15), 90f, 36f);
                 }
 
-                void TabButton(RectTransform row, int tab, string key)
+                void TabButton(RectTransform row, int tab, string label)
                 {
                     bool on = _tab == tab;
-                    UIKit.Row(UIKit.Button(row, Loc.T(key), () => { _tab = tab; BuildUI(); },
-                        skin != null ? (on ? skin.ButtonBrown : skin.ButtonGrey) : null, 16), 90f, 36f);
+                    // four tabs share the 300 of the row (three gaps of 6): at 90 each the fourth hung off the panel
+                    UIKit.Row(UIKit.Button(row, label, () => { Keys.Cancel(); _binding = false; _tab = tab; _scrollAt = null; BuildUI(); },
+                        skin != null ? (on ? skin.ButtonBrown : skin.ButtonGrey) : null, 16), 70.5f, 36f);
                 }
 
                 // one setting: its name, then every value at once with the current one lit
@@ -414,15 +577,13 @@ namespace SpellyZombie
                 MenuButton(Loc.T("menu.restart"), () =>
                 {
                     Close();
+                    string at = ActiveScene.Name;
+                    if (at != "Lobby" && at != "Menu") RoundDirector.RestartOnLoad(); // a map restarts its match
                     LoadEgg.Travel(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
                 });
             MenuButton(Loc.T("menu.options"), () => { _options = true; BuildUI(); });
             if (NetGame.Connected && !NetGame.IsHost)
-                MenuButton(Loc.T("menu.leave"), () =>
-                {
-                    FishNet.InstanceFinder.ClientManager.StopConnection();
-                    Close();
-                }, grey);
+                MenuButton(Loc.T("menu.leave"), LeaveHere, grey);
             if (NetGame.Connected && NetGame.IsHost)
                 MenuButton(Loc.T("menu.delete"), () =>
                 {
@@ -448,9 +609,19 @@ namespace SpellyZombie
             if (MapCreator.Active) { Close(); MapCreator.ExitToMenu(); return; } // the creator goes back to the maps
             if (PhotoBooth.Active) { Close(); PhotoBooth.ExitToMenu(); return; }  // the booth goes back to the photos
             if (here != "Lobby") RoundDirector.Abandon(); // dropped, not decided
+            NetSync.WalkingOut();
+            Close();
+            // the world stays in view and in play while the shell closes; the session is left as the scene changes
+            LoadEgg.Travel(here == "Lobby" ? "Menu" : "Lobby", NetSync.LeaveSession);
+        }
+
+        /// A guest walks out of the session: off the Steam lobby and the connection, never the
+        /// "host left" road. In the lobby they stay; a match goes home as Quit does.
+        void LeaveHere()
+        {
+            if (ActiveScene.Name != "Lobby") { QuitHere(); return; }
             NetSync.LeaveSession();
             Close();
-            LoadEgg.Travel(here == "Lobby" ? "Menu" : "Lobby");
         }
 
         /// Editor-aware quit - the one copy.

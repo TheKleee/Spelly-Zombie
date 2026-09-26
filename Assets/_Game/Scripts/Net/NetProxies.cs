@@ -188,11 +188,13 @@ namespace SpellyZombie
 
         public static NetMoteProxy Build(int id, byte shape, Color32 tint, Vector3 pos)
         {
-            // ★ THE SAME POSED BLOB THE HOST IS WEARING. The shape index is
-            // into the authored list, which is identical in every copy of a
-            // build - so a client shows a tornado as a tornado without a name
-            // being sent for every particle in every snapshot.
-            var art = CollectionManager.ParticleShapeAt(shape) ?? CollectionManager.ParticleBlob;
+            // ★ THE SAME POSED BLOB THE HOST IS WEARING. The body is always the blob; the shape
+            // index names the pose it is put in, from the authored list, which is identical in
+            // every copy of a build. Those shape prefabs hold bones and no mesh: built from one,
+            // a client's spell had nothing to draw (only Solid, which has no shape, showed).
+            var blob = CollectionManager.ParticleBlob;
+            var pose = CollectionManager.ParticleShapeAt(shape);
+            var art = blob != null ? blob : pose;
 
             GameObject go;
             if (art != null)
@@ -200,6 +202,7 @@ namespace SpellyZombie
                 go = Instantiate(art, pos, Quaternion.identity);
                 foreach (var col in go.GetComponentsInChildren<Collider>(true))
                     Destroy(col);   // a proxy is a picture, never a body
+                if (blob != null && pose != null) SpellParticle.PoseNow(go.transform, pose);
             }
             else
             {
@@ -242,6 +245,7 @@ namespace SpellyZombie
         public byte Shape;
         /// Which spellbook row's authored look it wears, from the snapshot; 255 none.
         public byte Look = 255;
+        public byte Darts;        // the acolyte darts the host's mote carries, a bit per MischiefKind
 
         byte _flags;
         float _reach;
@@ -347,7 +351,11 @@ namespace SpellyZombie
             float trailSeconds = booked ? (aoe != null ? aoe.TrailSeconds : 0f) : row != null ? row.TrailSeconds : 0f;
             if (trailWidth > 0f)
             {
-                if (_tail == null) _tail = gameObject.AddComponent<TrailRenderer>();
+                if (_tail == null)
+                {
+                    _tail = gameObject.AddComponent<TrailRenderer>();
+                    _tail.widthCurve = SpellParticle.TrailTaper;
+                }
                 _tail.time = Mathf.Max(0.05f, trailSeconds);
                 _tail.widthMultiplier = trailWidth;
                 _tail.minVertexDistance = 0.08f;
@@ -379,6 +387,8 @@ namespace SpellyZombie
         int _rides;
         /// Held or riding on the host (net id), 0 when loose.
         public int Rides => _rides;
+        /// In a hand or thrown on the host: the grab passes it by, as the host's own does.
+        public bool Claimed => (_flags & 2) != 0;
 
         /// Hang onto what the host says it caught, so it travels with its
         /// victim on every screen instead of being lerped after them.

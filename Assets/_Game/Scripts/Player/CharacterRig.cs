@@ -145,6 +145,21 @@ namespace SpellyZombie
         bool _ragdolling;
         /// Where the body lies: a doll is knocked about on its own, metres from the root it fell from.
         public Vector3 BodyCenter => _ragdolling && _hips != null ? _hips.position : transform.position;
+
+        /// A friend walked into this doll on their machine: the bone nearest the spot takes the same shove here.
+        public void PushDoll(Vector3 vel, Vector3 at)
+        {
+            if (!_ragdolling) return;
+            Rigidbody best = null;
+            float bestD = float.MaxValue;
+            foreach (var rb in _ragdoll)
+            {
+                if (rb == null || rb.isKinematic) continue;
+                float d = (rb.worldCenterOfMass - at).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = rb; }
+            }
+            if (best != null) best.linearVelocity = new Vector3(vel.x, best.linearVelocity.y, vel.z);
+        }
         bool _customBody;
         float _bob;
         float _pitchShown; // eased head-follows-aim pitch (relaxes in 3rd person)
@@ -548,6 +563,7 @@ namespace SpellyZombie
         public void RelaxForPaint()
         {
             if (_anim != null) _anim.enabled = false;
+            GetComponent<EmotePlayer>()?.Interrupt(); // a melt still running would pull the body off the canvas
             var rig = GetComponent<EmoteRig>();
             if (rig != null)
                 foreach (var j in rig.Joints)
@@ -770,6 +786,45 @@ namespace SpellyZombie
             return best;
         }
 
+        // the body mesh's triangles and skin weights, read once: every shell bake keeps its triangle order
+        int[] _skinTris;
+        BoneWeight[] _skinWeights;
+        Transform[] _skinBones;
+
+        /// The bone that moves the skin under a pen hit: on the paint shell, the heaviest weight at
+        /// the hit triangle's nearest corner, so the ink rides that skin in any pose. Any other hit
+        /// falls back to the nearest limb capsule.
+        public Transform SkinBone(RaycastHit hit)
+        {
+            var mesh = _smr != null ? _smr.sharedMesh : null;
+            if (_paintShell != null && hit.collider != null && hit.collider.transform == _paintShell
+                && hit.triangleIndex >= 0 && mesh != null && mesh.isReadable)
+            {
+                if (_skinTris == null)
+                {
+                    _skinTris = mesh.triangles;
+                    _skinWeights = mesh.boneWeights;
+                    _skinBones = _smr.bones;
+                }
+                int t = hit.triangleIndex * 3;
+                Vector3 b = hit.barycentricCoordinate;
+                int corner = b.x >= b.y && b.x >= b.z ? 0 : b.y >= b.z ? 1 : 2;
+                int v = t + 2 < _skinTris.Length ? _skinTris[t + corner] : -1;
+                if (v >= 0 && v < _skinWeights.Length)
+                {
+                    var w = _skinWeights[v];
+                    int bone = w.boneIndex0;
+                    float most = w.weight0;
+                    if (w.weight1 > most) { bone = w.boneIndex1; most = w.weight1; }
+                    if (w.weight2 > most) { bone = w.boneIndex2; most = w.weight2; }
+                    if (w.weight3 > most) bone = w.boneIndex3;
+                    var picked = bone >= 0 && bone < _skinBones.Length ? _skinBones[bone] : null;
+                    if (picked != null && picked.name.StartsWith("mixamorig:")) return picked;
+                }
+            }
+            return NearestLimbSurface(hit.point);
+        }
+
         /// Session over: every ink node on the shell is handed to its nearest
         /// bone, so the drawing rides the animation forever; the shell dies.
         public void EndBodyPaint()
@@ -784,6 +839,7 @@ namespace SpellyZombie
             }
             var shellCol = _paintShell.GetComponent<MeshCollider>();
             if (shellCol != null) DestroyBake(shellCol.sharedMesh); // no leaked bakes
+            _paintShell.gameObject.SetActive(false); // no pen lands on it for the rest of this frame
             Destroy(_paintShell.gameObject);
             _paintShell = null;
         }

@@ -26,6 +26,9 @@ namespace SpellyZombie
             }
         }
 
+        /// The canvas when there is one; asking never builds it.
+        public static RectTransform RootIfBuilt => _canvas != null ? (RectTransform)_canvas.transform : null;
+
         public static Font Font
         {
             get
@@ -86,7 +89,8 @@ namespace SpellyZombie
         static bool ModalOpen =>
             GameMenu.IsOpen || UIKit.Typing || HatPillar.PanelOpen
             || LobbyStand.PanelOpen || PoseStudio.IsOpen
-            || ActiveScene.Name == "Menu";
+            || ActiveScene.Name == "Menu"
+            || LoadEgg.Leaving; // a trip shows its loading text; the egg hides the rest
 
         /// Ticked by SideBootstrap, which survives scene loads.
         public static void TickImmersive()
@@ -464,6 +468,7 @@ namespace SpellyZombie
         /// A little keycap glyph — "[E]" done properly with the button sprite.
         public static RectTransform Keycap(RectTransform parent, string key, float size = 34f)
         {
+            key = Keys.Shown(key); // "E" is written in the code; the player sees what Use is bound to
             var cap = Group(parent, "Key_" + key);
             if (WasAdopted(cap)) return cap;
             cap.sizeDelta = new Vector2(size * 1.25f, size);
@@ -855,12 +860,13 @@ namespace SpellyZombie
             if (_group.gameObject.activeSelf != strong) _group.gameObject.SetActive(strong);
             if (strong)
             {
-                if (_wantKey != _capKey || _cap == null) // == null: self-heal a dead cap
+                string capSig = _wantKey + "#" + Keys.Stamp; // a rebind or a change of device redraws it
+                if (capSig != _capKey || _cap == null) // == null: self-heal a dead cap
                 {
                     UIKit.Retire(_cap); // never re-adopted same frame
                     _cap = UIKit.Keycap(_group, _wantKey, 32f);
                     UIKit.Place(_cap, new Vector2(0f, 0.5f), new Vector2(28f, 0f), _cap.sizeDelta);
-                    _capKey = _wantKey;
+                    _capKey = capSig;
                 }
                 _label.text = _wantText;
                 _label.color = _wantColor;
@@ -871,7 +877,7 @@ namespace SpellyZombie
             if (_chipRow.gameObject.activeSelf != chips) _chipRow.gameObject.SetActive(chips);
             if (!chips) return;
 
-            string sig = "";
+            string sig = Keys.Stamp + "#";
             for (int i = 0; i < _chips.Count; i++)
                 sig += _chips[i].Key + "|" + _chips[i].Text + "|";
             if (sig == _chipSig) return;

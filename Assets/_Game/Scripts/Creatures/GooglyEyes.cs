@@ -204,6 +204,24 @@ namespace SpellyZombie
             return true;
         }
 
+        /// The pair's own layout, in its own space: half the gap between the eyeballs' centres,
+        /// one eyeball across, and their mean centre (LivingObject glues the pair onto a surface).
+        public bool Layout(out float half, out float size, out Vector3 centre)
+        {
+            half = size = 0f;
+            centre = Vector3.zero;
+            if (!IsAlive) WireEyeballs(out _);
+            if (!IsAlive) return false;
+            Vector3 l = transform.InverseTransformPoint(_leftEye.position);
+            Vector3 r = transform.InverseTransformPoint(_rightEye.position);
+            half = Vector3.Distance(l, r) * 0.5f;
+            centre = (l + r) * 0.5f;
+            var mf = _leftEye.GetComponent<MeshFilter>();
+            float mesh = mf != null && mf.sharedMesh != null ? mf.sharedMesh.bounds.size.x : 1f;
+            size = mesh * Mathf.Abs(_leftEye.lossyScale.x) / Mathf.Max(1e-6f, Mathf.Abs(transform.lossyScale.x));
+            return size > 0f;
+        }
+
         /// Brains call this to hold a mood for a while (auto-mood resumes after).
         public void SetMood(EyeMood mood, float seconds)
         {
@@ -301,7 +319,7 @@ namespace SpellyZombie
             {
                 LookTarget = evt.Pos;
                 float dist = Vector3.Distance(transform.position, evt.Pos);
-                Mood = evt.Intensity >= 2f
+                Mood = evt.Intensity >= WorldEvents.Loud
                     ? (dist < 8f ? EyeMood.Scared : EyeMood.Wowed)
                     : EyeMood.Neutral;
             }

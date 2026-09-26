@@ -169,12 +169,95 @@ namespace SpellyZombie
             return best;
         }
 
-        /// The light, the look and the background as the setup says.
+        /// The ground, the light, the look and the background as the setup says.
         void ApplyStage()
         {
+            SyncIsland();
             ApplyLight();
             ApplyLook();
             ApplyBackground();
+        }
+
+        // ------------------------------------------------------------ ground --
+        /// ★ GROUND (his ask: "why can't we add ground... an image in the actual environment"):
+        /// the island's own biomes grow around the subjects, the Map Creator's way, from the
+        /// setup's seed; none = the empty stage. It is the world behind a photo.
+        bool _islandUp;
+        int _islandSeed;
+
+        /// The ground as the setup says, grown again only when it differs from what stands.
+        void SyncIsland()
+        {
+            bool want = Editing.Island;
+            if (want == _islandUp && (!want || Editing.IslandSeed == _islandSeed)) return;
+            var map = FindFirstObjectByType<SpellyMap>();
+            if (map == null) return;
+            MapDef.StandDownAuthored();
+            if (want)
+            {
+                MapDef.BuildBiomes(new MapDef { OwnBiomes = true, Biomes = MapPalette.BaseBiomes() });
+                map.Generate(Editing.IslandSeed);
+            }
+            else
+            {
+                MapDef.BuildBiomes(new MapDef { OwnBiomes = true });
+                map.ClearGenerated();
+            }
+            _islandUp = want;
+            _islandSeed = Editing.IslandSeed;
+        }
+
+        /// Picked in Add: the island or none, another island when `again`. Everything placed rises
+        /// or sinks with the ground under it (what stands on something else stays on it); the photo
+        /// shows the world, so the island is in it.
+        void SetIsland(bool on, bool again)
+        {
+            if (on == Editing.Island && !again) return;
+            var was = new float[_subjects.Count];
+            for (int i = 0; i < _subjects.Count; i++)
+                if (_subjects[i].Root != null) was[i] = StageGround(_subjects[i].Root.transform.position);
+            float eyeWas = _cam != null ? StageGround(_cam.transform.position) : 0f;
+            Editing.Island = on;
+            if (on && (again || Editing.IslandSeed == 0)) Editing.IslandSeed = Random.Range(1, int.MaxValue);
+            if (on) Editing.Background = 0;
+            SyncIsland();
+            Physics.SyncTransforms();
+            for (int i = 0; i < _subjects.Count; i++)
+            {
+                var s = _subjects[i];
+                if (s.Root == null) continue;
+                var t = s.Root.transform;
+                t.position += Vector3.up * (StageGround(t.position) - was[i]);
+                s.Item.Pos = t.position;
+                Moved(s);
+                SettleEyes(s);
+            }
+            if (_cam != null)
+            {
+                // the eye moves with the ground too, and never ends up inside a hill
+                var p = _cam.transform.position;
+                float g = StageGround(p);
+                p.y = Mathf.Max(p.y + g - eyeWas, g + 1.5f);
+                _cam.transform.position = p;
+            }
+            ApplyBackground();
+            BuildPhotoWindow();
+            CommitStep();
+        }
+
+        /// The stage's own ground under a point: the island's terrain while it stands, else the
+        /// zero plane. Never a tree or a house on it.
+        float StageGround(Vector3 at)
+        {
+            if (!_islandUp) return 0f;
+            foreach (var t in Terrain.activeTerrains)
+            {
+                if (t == null || t.terrainData == null) continue;
+                Vector3 o = t.transform.position, size = t.terrainData.size;
+                if (at.x < o.x || at.z < o.z || at.x > o.x + size.x || at.z > o.z + size.z) continue;
+                return o.y + t.SampleHeight(at);
+            }
+            return 0f;
         }
 
         void ApplyLight()
@@ -211,13 +294,16 @@ namespace SpellyZombie
         {
             if (_volume == null) return;
             var d = Editing;
+            // a transparent photo keeps the grade (his go) but never a glow, a blur or dark corners:
+            // they would spill past what is there, and its edges stay clean
+            bool clean = d.Background == 2;
             Set(_grade.postExposure, _baseExposure + d.Brightness, d.Brightness != 0f);
             Set(_grade.contrast, Mathf.Clamp(_baseContrast + d.Contrast, -100f, 100f), d.Contrast != 0f);
             Set(_grade.saturation, Mathf.Clamp(_baseSaturation + d.Saturation, -100f, 100f), d.Saturation != 0f);
             Set(_white.temperature, Mathf.Clamp(_baseTemp + d.Warmth, -100f, 100f), d.Warmth != 0f);
-            Set(_bloom.intensity, Mathf.Max(0f, _baseGlow + d.Glow), d.Glow != 0f);
-            Set(_vignette.intensity, Mathf.Clamp01(_baseVignette + d.Vignette), d.Vignette != 0f);
-            bool blur = d.Blur > 0.001f;
+            Set(_bloom.intensity, clean ? 0f : Mathf.Max(0f, _baseGlow + d.Glow), clean || d.Glow != 0f);
+            Set(_vignette.intensity, clean ? 0f : Mathf.Clamp01(_baseVignette + d.Vignette), clean || d.Vignette != 0f);
+            bool blur = !clean && d.Blur > 0.001f;
             _dof.active = blur;
             _dof.mode.overrideState = blur;
             _dof.mode.value = DepthOfFieldMode.Bokeh;
@@ -249,11 +335,11 @@ namespace SpellyZombie
                     data.renderPostProcessing = true;
                     RenderSettings.fog = false;
                     break;
-                case 2: // see-through: the grey stands for nothing, the photo has no look on it
+                case 2: // see-through: the grey stands for nothing; the grade shows as the photo takes it
                     _cam.cullingMask = 1 << Layer;
                     _cam.clearFlags = CameraClearFlags.SolidColor;
                     _cam.backgroundColor = new Color(0.5f, 0.5f, 0.5f);
-                    data.renderPostProcessing = false;
+                    data.renderPostProcessing = true;
                     RenderSettings.fog = false;
                     break;
                 default:
@@ -263,6 +349,7 @@ namespace SpellyZombie
                     RenderSettings.fog = _fog0;
                     break;
             }
+            ApplyLook(); // a transparent photo keeps its edges clean: no glow, blur or dark corners
         }
 
         /// Every frame: the rim follows the eye, the eyes that look at it follow it too.
@@ -380,6 +467,9 @@ namespace SpellyZombie
             try { png = Shoot(Editing.Width, Editing.Height, Editing.Background, CropShare()); }
             catch (System.Exception e) { Debug.LogError($"[SpellyZombie] Photo Booth: the photo failed: {e}"); }
             if (png == null) { FlashError(Loc.T("photo.failed")); return; }
+            // his rule: a photo taken is a setup saved, so it shows in the photos with its picture
+            // and opens again to edit; leaving the booth never loses it
+            if (!Store()) return;
             string path;
             try { path = PhotoLibrary.WritePhoto(Editing.Folder, Editing.Name, png); }
             catch (System.Exception e)
@@ -392,10 +482,14 @@ namespace SpellyZombie
             Flash(Loc.F("photo.taken", Path.GetFileName(path)));
         }
 
-        /// The setup's picture for its card: the eye's whole view, small.
+        /// The setup's picture for its card: the photo as it is framed, small, in its own shape.
         byte[] Thumbnail()
         {
-            try { return Shoot(640, 360, Editing.Background == 2 ? 1 : Editing.Background, 1f); }
+            float aspect = Editing.Width / (float)Mathf.Max(1, Editing.Height);
+            bool wide = aspect >= 16f / 9f;
+            int w = wide ? 640 : Mathf.Max(16, Mathf.RoundToInt(360f * aspect));
+            int h = wide ? Mathf.Max(16, Mathf.RoundToInt(640f / aspect)) : 360;
+            try { return Shoot(w, h, Editing.Background == 2 ? 1 : Editing.Background, CropShare()); }
             catch (System.Exception e)
             {
                 Debug.LogWarning($"[SpellyZombie] Photo Booth: no picture for the card: {e.Message}");
@@ -413,7 +507,7 @@ namespace SpellyZombie
             bool grid = _grid != null && _grid.activeSelf;
             if (grid) _grid.SetActive(false);
             var go = new GameObject("~PhotoShot");
-            Texture2D a = null, b = null;
+            Texture2D a = null, b = null, g = null;
             try
             {
                 var cam = go.AddComponent<Camera>();
@@ -427,7 +521,7 @@ namespace SpellyZombie
                 data.volumeLayerMask = mine.volumeLayerMask;
                 data.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
                 data.antialiasingQuality = AntialiasingQuality.High;
-                data.renderPostProcessing = background != 2;
+                data.renderPostProcessing = true;
                 bool fog = RenderSettings.fog;
                 if (background == 0)
                 {
@@ -445,9 +539,13 @@ namespace SpellyZombie
                 {
                     if (background == 2)
                     {
+                        // the see-through from a plain pair (a grade would bend the black against the
+                        // white), the colours from one taken with the look on
+                        g = Render(cam, w, h, new Color(0f, 0f, 0f, 0f), true);
+                        data.renderPostProcessing = false;
                         a = Render(cam, w, h, new Color(0f, 0f, 0f, 0f), true);
                         b = Render(cam, w, h, new Color(1f, 1f, 1f, 0f), true);
-                        Cutout(a, b);
+                        Cutout(a, b, g);
                     }
                     else a = Render(cam, w, h, Editing.BackColor, false);
                 }
@@ -458,6 +556,7 @@ namespace SpellyZombie
             {
                 if (a != null) Destroy(a);
                 if (b != null) Destroy(b);
+                if (g != null) Destroy(g);
                 Destroy(go);
                 if (grid && _grid != null) _grid.SetActive(true);
                 _shooting = false;
@@ -492,43 +591,26 @@ namespace SpellyZombie
             }
         }
 
-        /// Over black and over white: what is solid is the same in both, what is
-        /// not there turns from black to white, and a glow sits between. The
-        /// colour sliders are laid on here, since a see-through photo takes no look.
-        void Cutout(Texture2D black, Texture2D white)
+        /// Over black and over white without the look: what is solid is the same in both, what is
+        /// not there turns from black to white, and a glow sits between. That is the see-through;
+        /// the colours come from `graded` (the same view with the game's grade and the sliders on,
+        /// over black), freed from the black under whatever is part see-through.
+        static void Cutout(Texture2D black, Texture2D white, Texture2D graded)
         {
             var bp = black.GetPixels32();
             var wp = white.GetPixels32();
+            var gp = graded.GetPixels32();
             var lin = new float[256];
             for (int i = 0; i < 256; i++) lin[i] = Mathf.GammaToLinearSpace(i / 255f);
-            float gain = Mathf.Pow(2f, Editing.Brightness);
-            float contrast = 1f + Editing.Contrast / 100f;
-            float saturation = 1f + Editing.Saturation / 100f;
-            float warm = Editing.Warmth / 100f;
-            bool grade = Editing.Brightness != 0f || Editing.Contrast != 0f || Editing.Saturation != 0f || Editing.Warmth != 0f;
             for (int i = 0; i < bp.Length; i++)
             {
-                Color32 k = bp[i], w = wp[i];
-                float br = lin[k.r], bg = lin[k.g], bb = lin[k.b];
+                Color32 k = bp[i], w = wp[i], c = gp[i];
                 // how much of the white came through, the least of the three
-                float through = Mathf.Min(lin[w.r] - br, Mathf.Min(lin[w.g] - bg, lin[w.b] - bb));
+                float through = Mathf.Min(lin[w.r] - lin[k.r], Mathf.Min(lin[w.g] - lin[k.g], lin[w.b] - lin[k.b]));
                 float alpha = Mathf.Clamp01(1f - through);
                 if (alpha < 0.002f) { bp[i] = new Color32(0, 0, 0, 0); continue; }
-                float r = br / alpha, g = bg / alpha, b = bb / alpha;
-                if (grade)
-                {
-                    r *= gain * (1f + warm * 0.2f);
-                    g *= gain;
-                    b *= gain * (1f - warm * 0.2f);
-                    float y = r * 0.2126f + g * 0.7152f + b * 0.0722f;
-                    r = y + (r - y) * saturation;
-                    g = y + (g - y) * saturation;
-                    b = y + (b - y) * saturation;
-                    r = 0.18f + (r - 0.18f) * contrast;
-                    g = 0.18f + (g - 0.18f) * contrast;
-                    b = 0.18f + (b - 0.18f) * contrast;
-                }
-                bp[i] = new Color32(Enc(r), Enc(g), Enc(b), (byte)Mathf.RoundToInt(alpha * 255f));
+                bp[i] = new Color32(Enc(lin[c.r] / alpha), Enc(lin[c.g] / alpha), Enc(lin[c.b] / alpha),
+                    (byte)Mathf.RoundToInt(alpha * 255f));
             }
             black.SetPixels32(bp);
             black.Apply(false);

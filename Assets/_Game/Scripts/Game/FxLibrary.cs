@@ -54,6 +54,17 @@ namespace SpellyZombie
         public GameObject HitVector;   // arrow/Y slamming home
         public GameObject HitThud;     // rock-on-rock, dense thumps
         public GameObject Blood;       // wound drips - the walking HP readout
+        // the acolyte's mischief (Spells/Mischief.cs): each dart lands as its own thing
+        public GameObject MischiefDecoy;          // the decoy dart lands
+        public GameObject MischiefReveal;         // the reveal dart lands
+        public GameObject MischiefDeathNeedle;    // the death needle lands
+        public GameObject MischiefLifeNeedle;     // the life needle lands
+        public GameObject MischiefEvaporation;    // the evaporation ink lands
+        public GameObject MischiefTransformation; // the transformation ink lands
+        public GameObject MischiefAggressive;     // the aggressive rally, on each zombie it reaches
+        public GameObject MischiefSpreading;      // the spreading rally, on each zombie it reaches
+        public GameObject DecoyHop;               // a decoyed object hops away: a puff each hop
+        public GameObject RevealMark;             // on whatever a reveal dart marked
 
         [Header("WARM UP")]
         [Tooltip("Optional. Shader variants recorded in play (Project Settings > Graphics > Shader Loading > " +
@@ -202,6 +213,12 @@ namespace SpellyZombie
                     var main = ps.main;
                     main.startColor = c;
                 }
+                // a trail wears the tint too, fading out along its length
+                foreach (var tr in go.GetComponentsInChildren<TrailRenderer>(true))
+                {
+                    tr.startColor = c;
+                    tr.endColor = new Color(c.r, c.g, c.b, 0f);
+                }
                 var keeper = go.GetComponent<FxReturn>();
                 if (keeper != null) { keeper.Tinted = true; keeper.Tint = c; }
             }
@@ -247,6 +264,9 @@ namespace SpellyZombie
             // a comic WHAM or POW is heard as well as read, on every machine that shows it
             if (!_warming && I != null && (prefab == I.TextWham || prefab == I.TextPow))
                 Juice.Sound(Sfx.Wham, pos, 1f, Random.Range(0.92f, 1.08f), false);
+            // a decoyed thing's hop is heard as a jump, small and high
+            if (!_warming && I != null && prefab == I.DecoyHop)
+                Juice.Sound(Sfx.Jump, pos, 0.8f, Random.Range(1.15f, 1.3f), false);
 
             if (!_pool.TryGetValue(prefab, out var stack))
                 _pool[prefab] = stack = new Stack<GameObject>();
@@ -260,6 +280,7 @@ namespace SpellyZombie
                 _origin[fx] = prefab;
                 keeper = fx.AddComponent<FxReturn>();
                 keeper.Systems = fx.GetComponentsInChildren<ParticleSystem>(true); // cached ONCE - reuse spawns stay alloc-free
+                keeper.Trails = fx.GetComponentsInChildren<TrailRenderer>(true);
                 // a pooled effect must NOT delete itself, or the pool hands out corpses
                 foreach (var ps in keeper.Systems)
                 {
@@ -278,6 +299,11 @@ namespace SpellyZombie
                 if (keeper == null) keeper = fx.AddComponent<FxReturn>();
                 if (keeper.Systems == null)
                     keeper.Systems = fx.GetComponentsInChildren<ParticleSystem>(true);
+                if (keeper.Trails == null)
+                    keeper.Trails = fx.GetComponentsInChildren<TrailRenderer>(true);
+                // a reused trail starts here, never with a line from where it last was
+                foreach (var tr in keeper.Trails)
+                    if (tr != null) tr.Clear();
                 foreach (var ps in keeper.Systems)
                 {
                     if (ps == null) continue;
@@ -341,6 +367,8 @@ namespace SpellyZombie
     {
         /// The instance's particle systems, cached at build (spares a GetComponentsInChildren per pooled spawn).
         public ParticleSystem[] Systems;
+        /// Its trails, cached the same way: cleared on every reuse.
+        public TrailRenderer[] Trails;
 
         // the relay waits a frame so the caller's scale and tint ride along
         [System.NonSerialized] public GameObject Prefab;

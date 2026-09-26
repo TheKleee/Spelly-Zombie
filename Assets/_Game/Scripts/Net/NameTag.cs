@@ -1,16 +1,23 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace SpellyZombie
 {
     /// A friend's Steam name over their head. In the lobby everyone's shows; in a match only
     /// your own team's, so acolytes find each other under their disguises and the other side
-    /// learns nothing. The same world text the zombies mumble with.
+    /// learns nothing. One size on screen at any distance, gone past ShowTo, and always flat
+    /// to the screen: each camera turns the names to itself right before it draws.
     public class NameTag : MonoBehaviour
     {
-        const float AboveHead = 0.45f;   // metres over the head bone, or over the top of a worn object
-        const float FullSizeTo = 8f;     // past this the letters grow with the distance, so far names stay readable
-        const float MaxGrow = 4f;
+        const float AboveHead = 0.45f; // metres over the head bone, or over the top of a worn object
+        const float SizeAt = 8f;       // every name keeps the size on screen it has at 8 m: close up it never grows
+        const float ShowTo = 25f;      // past this a name is gone, so it never dwarfs a far player
+        const float FadeOver = 3f;     // it fades out over the last metres instead of popping
         const int MaxLetters = 24;
+        static readonly Color Ink = new Color(1f, 0.97f, 0.88f);
+
+        static readonly List<NameTag> _live = new List<NameTag>();
 
         NetAvatar _avatar;
         TextMesh _text;
@@ -24,6 +31,15 @@ namespace SpellyZombie
             avatar.gameObject.AddComponent<NameTag>()._avatar = avatar;
         }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void Hook()
+        {
+            RenderPipelineManager.beginCameraRendering -= BeforeCamera;
+            RenderPipelineManager.beginCameraRendering += BeforeCamera;
+        }
+
+        void OnEnable() => _live.Add(this);
+
         void LateUpdate()
         {
             if (_avatar == null) return;
@@ -35,20 +51,34 @@ namespace SpellyZombie
             if (!_shown || _text == null) return;
 
             var head = _avatar.Head;
-            Vector3 at = _avatar.Disguised ? transform.position + Vector3.up * (_wornTop + AboveHead)
+            _text.transform.position = _avatar.Disguised ? transform.position + Vector3.up * (_wornTop + AboveHead)
                 : head != null ? head.position + Vector3.up * AboveHead
                 : transform.position + Vector3.up * 2.2f;
-            _text.transform.position = at;
-            ZombieBrain.FaceMumble(_text);
+        }
 
-            var cam = Camera.main;
-            float far = cam != null ? Vector3.Distance(cam.transform.position, at) : 0f;
-            _text.transform.localScale = Vector3.one * Mathf.Clamp(far / FullSizeTo, 1f, MaxGrow);
+        /// Right before a camera draws: every name turned flat to its screen, sized by its
+        /// distance to it, faded out at the edge of ShowTo.
+        static void BeforeCamera(ScriptableRenderContext context, Camera cam)
+        {
+            if (cam == null || cam.cameraType != CameraType.Game) return;
+            var view = cam.transform;
+            foreach (var tag in _live)
+            {
+                if (tag == null || !tag._shown || tag._text == null) continue;
+                var t = tag._text.transform;
+                float far = Vector3.Distance(view.position, t.position);
+                t.rotation = view.rotation;
+                t.localScale = Vector3.one * Mathf.Max(0.05f, far / SizeAt);
+                float alpha = 1f - Mathf.Clamp01((far - (ShowTo - FadeOver)) / FadeOver);
+                if (!Mathf.Approximately(tag._text.color.a, alpha))
+                    tag._text.color = new Color(Ink.r, Ink.g, Ink.b, alpha);
+            }
         }
 
         // a body switched off takes its name with it; the next look brings it back
         void OnDisable()
         {
+            _live.Remove(this);
             if (_text != null) _text.gameObject.SetActive(false);
             _shown = false;
             _lookIn = 0f;
@@ -77,7 +107,7 @@ namespace SpellyZombie
                 _text.transform.SetParent(null, true);
                 _text.richText = false; // a name is letters, never markup
                 _text.characterSize = 0.07f;
-                _text.color = new Color(1f, 0.97f, 0.88f);
+                _text.color = Ink;
             }
             if (_text != null)
             {

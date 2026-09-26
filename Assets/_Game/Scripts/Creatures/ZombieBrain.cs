@@ -116,7 +116,8 @@ namespace SpellyZombie
             _home = other._home;
             _hasHome = other._hasHome;
         }
-        bool Steady => Behaviour == CreatureBehaviour.Hunts || Behaviour == CreatureBehaviour.Guards;
+        bool Steady => Behaviour == CreatureBehaviour.Hunts || Behaviour == CreatureBehaviour.Guards
+            || Behaviour == CreatureBehaviour.Rampages;
         bool Guarding => Behaviour == CreatureBehaviour.Guards && _hasHome;
         bool OutsidePost(Vector3 at) => Guarding && (at - _home).sqrMagnitude > GuardRange * GuardRange;
         /// The aggression rune's minute: nothing scares it either. ZombieBuff sets and clears it.
@@ -270,9 +271,7 @@ namespace SpellyZombie
             if (_mumble != null)
             {
                 if (now > _mumbleUntil) _mumble.text = "";
-                _mumble.transform.rotation = Camera.main != null
-                    ? Quaternion.LookRotation(_mumble.transform.position - Camera.main.transform.position)
-                    : _mumble.transform.rotation;
+                FaceMumble(_mumble);
             }
         }
 
@@ -857,10 +856,15 @@ namespace SpellyZombie
         /// Faces the bubble at whoever is looking, host body and stand-in alike.
         public static void FaceMumble(TextMesh mumble)
         {
-            if (mumble == null || Camera.main == null) return;
-            mumble.transform.rotation =
-                Quaternion.LookRotation(mumble.transform.position - Camera.main.transform.position);
+            if (mumble == null) return;
+            var eye = ViewEye();
+            if (eye != null) mumble.transform.rotation = Quaternion.LookRotation(mumble.transform.position - eye.Value);
         }
+
+        /// Where this machine looks from: a ghost's own camera (the body scripts park it at the body
+        /// until the ghost flies it, late in the frame), else the main camera.
+        public static Vector3? ViewEye() =>
+            GhostState.LocalViewPoint ?? (Camera.main != null ? Camera.main.transform.position : (Vector3?)null);
 
         /// Hard zombie-on-zombie contact can spark a brawl; wall bumps re-plan patrol (floor normals don't count).
         void OnCollisionEnter(Collision col)

@@ -15,9 +15,9 @@ namespace SpellyZombie
         /// object are both under the cursor.
         public static bool TargetInReach { get; private set; }
 
-        /// True while F would DECLARE the aimed drawing (book open on a rune
-        /// page or the seal page). WeaponSlots yields the F weapon-drop while
-        /// either this or TargetInReach is up.
+        /// True while F would act on the aimed drawing: finish it as the open rune
+        /// page's rune, or ring your runes (any time no rune page is open). WeaponSlots
+        /// yields the F weapon-drop while either this or TargetInReach is up.
         public static bool DeclareInReach { get; private set; }
 
         SimpleFPSController _pilot;
@@ -37,7 +37,7 @@ namespace SpellyZombie
         readonly List<Stroke> _tintKeep = new List<Stroke>();    // scratch, so Highlight allocates nothing
         readonly List<Color> _tintKeepWas = new List<Color>();
         RuneType _inkRune;      // the rune the open page lets you declare
-        bool _inkSeal;          // the SEAL page lets this drawing be traced
+        bool _inkSeal;          // these are runes and no rune page is open: F rings them
         bool _fizzledInSight;   // an unreadable drawing is aimed - teach the flow
         float _fizzleShowUntil; // chip grace so aim wobble can't strobe the lesson
         float _inkScan;
@@ -53,12 +53,12 @@ namespace SpellyZombie
 
         /// The floating F rides the highlighted drawing itself - midway along
         /// the aimed stroke, where the eye already is.
-        void ShowDeclareBadge()
+        void ShowDeclareBadge(string caption = null)
         {
             var s = _lastSeed;
             if (s == null || s.First == null || s.Last == null) return;
             AimBadge.OfferAt(
-                (s.First.transform.position + s.Last.transform.position) * 0.5f, "F");
+                (s.First.transform.position + s.Last.transform.position) * 0.5f, "F", caption);
         }
 
         /// Aim lost: the whole ink read clears together - members, hash, rune,
@@ -72,30 +72,91 @@ namespace SpellyZombie
         }
 
         void Awake() => _pilot = GetComponent<SimpleFPSController>();
-        void OnDisable() { TargetInReach = false; DeclareInReach = false; Highlight(null); }
+        void OnDisable() => StandDown();
+
+        /// No offer: nothing lit, nothing previewed, F free for the others.
+        void StandDown()
+        {
+            TargetInReach = false;
+            DeclareInReach = false;
+            Highlight(null);
+            EndPreview();
+        }
+
+        // ---- what F is about to draw, drawn in light first (the ghost hand) ----
+        readonly GhostHand _preview = new GhostHand();
+        (int hash, int what) _previewKey; // the drawing on show and the act: a rune, or -1 the seal
+        float _previewRetryAt;
+        static bool _previewLive;
+
+        /// What F would draw is being drawn in light over the aimed ink (the lobby lessons wait).
+        public static bool PreviewLive => _previewLive;
+
+        /// The hand draws what F does here: the seal around the runes, or the page's rune in the
+        /// drawing's place, as far as the wand can pay for it. Each loop reads the ink afresh.
+        void Preview(int what)
+        {
+            if (!GhostHand.Enabled || !_pilot.IsLocalViewer || GameMenu.IsOpen || PoseStudio.IsOpen)
+            { EndPreview(); return; }
+            // the drawing, the act, and the ink around it: a new line beside the runes changes the seal
+            var key = (_lastHash ^ (_lastStrokeCount * 7919), what);
+            if (key != _previewKey) { _preview.Clear(); _previewKey = key; _previewRetryAt = 0f; }
+            if (!_preview.Alive)
+            {
+                if (Time.time < _previewRetryAt) { _previewLive = false; return; }
+                _previewRetryAt = Time.time + 0.5f; // nothing to draw here: asked again in a moment, not every frame
+                if (!BeginPreview(what)) { _previewLive = false; return; }
+            }
+            _preview.Animate(Time.deltaTime);
+            _previewLive = _preview.Alive;
+        }
+
+        bool BeginPreview(int what)
+        {
+            List<List<Vector3>> paths;
+            Vector3 normal;
+            float back = 0f; // the ink of yours F burns first comes back to the wand
+            if (what < 0)
+            {
+                if (!AutoComplete.SealPath(_inkMembers, out var ring, out normal, out var sides)) return false;
+                paths = new List<List<Vector3>> { ring };
+                if (sides != null) foreach (var s in sides) back += s.PathLength();
+            }
+            else
+            {
+                if (!AutoComplete.RuneLines(_inkMembers, (RuneType)what, out paths, out _, out normal)) return false;
+                foreach (var m in _inkMembers) if (m != null && m.Alive) back += m.PathLength();
+            }
+            foreach (var p in paths) GhostHand.Lift(p, normal * 0.01f);
+            return _preview.Begin("~GhostHandPreview", paths, null, GhostHand.DrawSeconds,
+                AutoComplete.AffordableMetres(back));
+        }
+
+        void EndPreview()
+        {
+            if (_preview.Alive) _preview.Clear();
+            _previewLive = false;
+        }
 
         void Update()
         {
-            if (_pilot == null || _pilot.IsDowned)
-            { TargetInReach = false; DeclareInReach = false; Highlight(null); return; }
+            if (_pilot == null || _pilot.IsDowned) { StandDown(); return; }
 
             // acolytes declare but never absorb - Best() is not consulted for them
             bool acolyteHand = Sides.IsAcolyte(Grimoire.LocalPlayerId);
 
             // while carrying, F belongs to drop - all declare/absorb prompts stand down
-            if (HandGrab.LocalHolding)
-            { TargetInReach = false; DeclareInReach = false; Highlight(null); return; }
+            if (HandGrab.LocalHolding) { StandDown(); return; }
 
             var kb = Keyboard.current;
             // first person aims with the crosshair, third person with the
             // camera, the easel with the cursor
-            if (kb == null)
-            { TargetInReach = false; DeclareInReach = false; Highlight(null); return; }
+            if (kb == null) { StandDown(); return; }
 
             // ABSORBING IS AIM + F, like the acolyte's scan. The source itself
             // is only a label; the badge already decided it has something to
             // teach and that we are close enough, so this just takes it.
-            if (kb.fKey.wasPressedThisFrame && !UIKit.Typing
+            if (Keys.Down(Act.Drop) && !UIKit.Typing
                 && !GameMenu.IsOpen && !PoseStudio.IsOpen
                 && AimBadge.Aimed is AbsorbSource source)
             {
@@ -109,13 +170,17 @@ namespace SpellyZombie
             TargetInReach = target != null;
             if (target == null)
             {
-                // no absorbable object: declare flow (rune page stamps, seal page traces)
+                // no absorbable object: F acts on your ink (a rune page finishes the rune, any other time it rings the runes)
                 ScanInk();
                 // an OBJECT under the acolyte's aim owns F for scanning - the
                 // declare only speaks when no scan target is on offer
                 bool scanWins = acolyteHand && AimBadge.ScanTarget != null;
-                bool declRune = !scanWins && _inkRune != RuneType.None && _inkMembers.Count > 0;
-                bool declSeal = !scanWins && _inkSeal && _inkMembers.Count > 0;
+                // while the pen or the eraser works the ink is not read (ScanInk), so the last
+                // offer would stand over the rune beside the one being drawn: F waits, and it
+                // waits for the book's own drawing to finish
+                bool free = !scanWins && !SurfaceDrawer.IsPenActive && !AutoComplete.Running;
+                bool declRune = free && _inkRune != RuneType.None && _inkMembers.Count > 0;
+                bool declSeal = free && _inkSeal && _inkMembers.Count > 0;
                 DeclareInReach = declRune || declSeal;
                 Highlight(DeclareInReach ? _inkMembers : null);
 
@@ -129,15 +194,18 @@ namespace SpellyZombie
                     GrimoirePages.RequestOpen();
                 }
                 if (hovered == null) _poppedFor = null;
+                if (!declRune && !declSeal) EndPreview();
                 if (declRune)
                 {
                     ShowDeclareBadge();
-                    if (kb.fKey.wasPressedThisFrame) DeclareInk();
+                    Preview((int)_inkRune); // the rune, drawn in light where it will be
+                    if (Keys.Down(Act.Drop)) DeclareInk();
                 }
                 else if (declSeal)
                 {
-                    ShowDeclareBadge();
-                    if (kb.fKey.wasPressedThisFrame) DeclareSeal();
+                    ShowDeclareBadge(Loc.T("seal.aim"));
+                    Preview(-1); // the seal, drawn in light around the runes
+                    if (Keys.Down(Act.Drop)) DeclareSeal();
                 }
                 else if (_fizzledInSight || Time.time < _fizzleShowUntil)
                 {
@@ -145,7 +213,7 @@ namespace SpellyZombie
                     if (_fizzledInSight) _fizzleShowUntil = Time.time + 0.6f;
                 }
 
-                if (!DeclareInReach && kb.fKey.wasPressedThisFrame && GrimoirePages.BookOpen
+                if (!DeclareInReach && Keys.Down(Act.Drop) && GrimoirePages.BookOpen
                     && (GrimoirePages.SealPageOpen || GrimoirePages.PageRune != RuneType.None))
                     DrawingWorld.Instance?.LogEvent(
                         "the book has nothing selected. aim at one of your own LINES (it lights up when the book has it)");
@@ -153,6 +221,7 @@ namespace SpellyZombie
             }
             DeclareInReach = false;
             Highlight(null); // an absorbable thing took the key - drop the ink highlight
+            EndPreview();
 
             // ABSORB WINS THE KEY when both are possible
             if (!ReferenceEquals(target, _promptTarget) || _absorbPrompt == null)
@@ -162,7 +231,7 @@ namespace SpellyZombie
             }
             UIPrompt.Show("F", _absorbPrompt, new Color(0.85f, 0.8f, 1f));
             Hints.Offer(Hints.Id.Absorb);
-            if (kb.fKey.wasPressedThisFrame)
+            if (Keys.Down(Act.Drop))
             {
                 target.AbsorbInto(Grimoire.LocalPlayerId);
                 Hints.Retire(Hints.Id.Absorb);
@@ -344,21 +413,7 @@ namespace SpellyZombie
             bool readsFine = _lastReadAs != RuneType.None
                 && _lastReadScore >= DrawingConfig.MinRuneScore;
 
-            // seal page: world runes only. Body ink is excluded; body seals close via poses.
-            if (GrimoirePages.BookOpen && GrimoirePages.SealPageOpen)
-            {
-                bool onBody = false;
-                foreach (var m in _inkMembers)
-                    if (m.Persistent) { onBody = true; break; }
-                // aimed at a rune: the whole group it would seal lights up.
-                // Anything else offers nothing: the seal page acts on runes only
-                bool runes = !onBody && AutoComplete.LooksLikeRunes(_inkMembers);
-                if (runes && DrawingWorld.Instance != null)
-                    AutoComplete.GatherGroup(_inkMembers, DrawingWorld.Instance.Strokes);
-                _inkSeal = runes;
-                return;
-            }
-
+            // a rune page owns F: the book finishes the aimed drawing as that rune
             var page = GrimoirePages.PageRune;
             if (GrimoirePages.BookOpen && page != RuneType.None
                 && RuneLibrary.IsUnlocked(Grimoire.LocalPlayerId, page))
@@ -374,7 +429,21 @@ namespace SpellyZombie
                 return;
             }
 
-            // book closed (or elsewhere): an unreadable, undeclared drawing
+            // ANY OTHER TIME F RINGS THE RUNES: book shut, the seal page, the first page. World
+            // runes only; body ink is excluded, body seals close via poses.
+            bool onBody = false;
+            foreach (var m in _inkMembers)
+                if (m.Persistent) { onBody = true; break; }
+            if (!onBody && AutoComplete.LooksLikeRunes(_inkMembers, (_lastReadAs, _lastReadScore)))
+            {
+                // the whole group it would seal lights up
+                if (DrawingWorld.Instance != null)
+                    AutoComplete.GatherGroup(_inkMembers, DrawingWorld.Instance.Strokes);
+                _inkSeal = true;
+                return;
+            }
+
+            // not a rune: an unreadable, undeclared drawing
             // in sight pops the hint that this feature exists
             bool anyDeclared = false;
             foreach (var m in _inkMembers)
@@ -382,13 +451,14 @@ namespace SpellyZombie
             _fizzledInSight = !readsFine && !anyDeclared;
         }
 
-        /// Seal page + F: the ring draws itself around the runes near the aimed
+        /// F on your own runes: the ring draws itself around the runes near the aimed
         /// one, from the wand's ink. No rune there = nothing happens.
         void DeclareSeal()
         {
             var world = DrawingWorld.Instance;
             if (world == null) return;
             Highlight(null); // put the real colours back before the seal repaints them
+            EndPreview();    // the real one is drawn now
             var group = new List<Stroke>(_inkMembers);
             AutoComplete.GatherGroup(group, world.Strokes);
             if (AutoComplete.SealGroup(group))
@@ -409,6 +479,7 @@ namespace SpellyZombie
         void DeclareInk()
         {
             Highlight(null);
+            EndPreview(); // the real one is drawn now
             // the page names the rune and the game finishes the drawing as it,
             // animated, from the wand; the scribble never teaches the matcher
             if (AutoComplete.Manual(new List<Stroke>(_inkMembers), _inkRune))

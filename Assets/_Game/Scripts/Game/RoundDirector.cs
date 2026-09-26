@@ -48,7 +48,17 @@ namespace SpellyZombie
             Instance._phase = Phase.Idle;
             Instance._winner = 0;
             Instance._ending = Achievements.Ending.None;
-            _startOnLoad = false;
+            _startScene = null;
+        }
+
+        /// Solo Restart on a map: the map loads again and a fresh match begins on it.
+        public static void RestartOnLoad()
+        {
+            if (Instance == null) return;
+            Instance._phase = Phase.Idle;
+            Instance._winner = 0;
+            Instance._ending = Achievements.Ending.None;
+            _startScene = SceneManager.GetActiveScene().name;
         }
 
         Phase _phase = Phase.Idle;
@@ -106,8 +116,9 @@ namespace SpellyZombie
 
             RefreshPlayers();
 
-            // only the HOST referees - clients read match state off the wire
-            if (NetGame.Connected && !NetGame.IsHost) return;
+            // only the HOST referees - clients read match state off the wire. A guest never boots
+            // a map match of its own, not even the moment it walks out on one
+            if (NetGame.Connected && !NetGame.IsHost) { _bootChecked = true; return; }
 
             if (NetGame.IsHost)
             {
@@ -126,9 +137,7 @@ namespace SpellyZombie
             switch (_phase)
             {
                 case Phase.Idle:
-                    if (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame)
-                        StartRun();
-                    else if (!_bootChecked && _players.Count > 0)
+                    if (!_bootChecked && _players.Count > 0)
                     {
                         _bootChecked = true;
                         // a map played straight from the editor runs a real match;
@@ -152,7 +161,7 @@ namespace SpellyZombie
 
         const string LobbySceneName = "Lobby";
         static string GameSceneName => MatchLobby.SelectedScene; // the host's lobby pick, a saved map's base scene
-        static bool _startOnLoad;
+        static string _startScene; // the scene whose arrival begins a match
 
         void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
         void OnDisable() => SceneManager.sceneLoaded -= OnSceneLoaded;
@@ -165,10 +174,11 @@ namespace SpellyZombie
                 _phase = Phase.Idle;
                 _winner = 0;
                 _ending = Achievements.Ending.None;
+                _netPush = 0f; // the clients held on the map come home now
             }
 
-            if (!_startOnLoad || scene.name != GameSceneName) return;
-            _startOnLoad = false;
+            if (_startScene == null || scene.name != _startScene) return;
+            _startScene = null;
             BeginLive();
         }
 
@@ -180,7 +190,8 @@ namespace SpellyZombie
             {
                 if (Application.CanStreamedLevelBeLoaded(GameSceneName))
                 {
-                    _startOnLoad = true;
+                    _startScene = GameSceneName;
+                    NetSync.SendTrip(GameSceneName); // the clients' shells close with this one
                     LoadEgg.Travel(GameSceneName); // the shell forms, then everyone travels dark
                     return;
                 }
@@ -217,10 +228,9 @@ namespace SpellyZombie
             _hadAcolytes = AnySide(Side.Acolyte, aliveOnly: false);
 
             _phase = Phase.Live;
-            // the start word follows the map's teams; asked of the scene itself, it may have just loaded
-            ComboBanner.Show(MapRules.StartWords(SceneManager.GetActiveScene().name), new Color(1f, 0.85f, 0.4f));
+            _netPush = 0f; // the clients held in the lobby come now
             var p0 = _players.Count > 0 && _players[0] != null ? _players[0].transform.position : Vector3.zero;
-            StartCue(p0);
+            StartShow(p0);
             DrawingWorld.Instance?.LogEvent($"the match is on. {Mathf.RoundToInt(_clock / 60f)} minutes");
         }
 
@@ -468,6 +478,15 @@ namespace SpellyZombie
         }
 
         /// The referee cues, on the machine that hears them: the start, and how it ended for this side.
+        /// The match-start words and sound: the host's as it lands on the map, a client's as it
+        /// lands after it (NetSync owes it the start it heard in the lobby).
+        public static void StartShow(Vector3 at)
+        {
+            // the start word follows the map's teams; asked of the scene itself, it may have just loaded
+            ComboBanner.Show(MapRules.StartWords(SceneManager.GetActiveScene().name), new Color(1f, 0.85f, 0.4f));
+            StartCue(at);
+        }
+
         public static void StartCue(Vector3 at)
         {
             if (!Juice.Sound2D(Sfx.MatchStart)) Juice.Drum(at);
@@ -492,6 +511,7 @@ namespace SpellyZombie
                 _ending = Achievements.Ending.None;
                 return;
             }
+            if (!LoadEgg.Leaving) NetSync.SendTrip(LobbySceneName); // once, as this shell starts closing
             LoadEgg.Travel(LobbySceneName);
         }
 

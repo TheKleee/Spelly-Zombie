@@ -49,7 +49,7 @@ namespace SpellyZombie
             if (UIKit.Typing) return;
 
             var kb = Keyboard.current;
-            if (kb == null || !kb.eKey.wasPressedThisFrame) return;
+            if (!Keys.Down(Act.Use)) return;
 
             Sides.Toggle(Sides.LocalPlayerId);
             p.Health = Sides.MaxHealthFor(Sides.LocalPlayerId);

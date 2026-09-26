@@ -26,6 +26,7 @@ namespace SpellyZombie
 
         void Start()
         {
+            SteamLobby.ShowIdle();
             BuildUI();
             Loc.Changed += BuildUI; // the captions follow a language change
             if (MapsScreen.OpenOnMenu) { MapsScreen.OpenOnMenu = false; MapsScreen.Open(); } // back from the creator

@@ -15,9 +15,9 @@ namespace SpellyZombie
         /// acolyte is looking through a corpse.
         public static bool IsOpen => Local != null && Local._open;
 
-        /// The zombie currently on screen, or null. The detonation reads this
-        /// so a seal drawn in this mode knows what it is drawn on.
-        public static SummonedZombie Watched =>
+        /// The body currently on screen (the zombie itself on the host, its
+        /// stand-in on a client), or null.
+        public static Transform Watched =>
             Local != null && Local._open ? Local.Current : null;
 
         static ZombieWatch Local;
@@ -25,7 +25,7 @@ namespace SpellyZombie
         /// A big enough blast closes overwatch. Driven by Shove.
         public static void Blown() { if (Local != null && Local._open) Local.Close(); }
 
-        readonly List<SummonedZombie> _mine = new List<SummonedZombie>();
+        readonly List<Transform> _mine = new List<Transform>();
         int _index = -1;
         bool _open;
         Vector3 _pin;
@@ -34,7 +34,7 @@ namespace SpellyZombie
         /// Camera lifecycle: EaselOrbit borrow / orbit / release.
         readonly EaselOrbit.Borrowed _view = new EaselOrbit.Borrowed();
 
-        SummonedZombie Current =>
+        Transform Current =>
             _index >= 0 && _index < _mine.Count ? _mine[_index] : null;
 
         void Awake() => Local = this;
@@ -43,17 +43,35 @@ namespace SpellyZombie
         /// Every living zombie this acolyte raised, capped at the ten. Rebuilt
         /// each frame because they expire on their own clock - a watched zombie
         /// that dies mid-look must not leave the camera staring at nothing.
-        void Gather()
+        void Gather() => MineInto(_mine);
+
+        /// The local acolyte's living zombies. On the host they are the zombies
+        /// themselves; on a client the host's zombies are stand-ins, and whose
+        /// they are comes with the snapshot.
+        static void MineInto(List<Transform> into)
         {
-            _mine.Clear();
+            into.Clear();
+            int me = Grimoire.LocalPlayerId;
             foreach (var z in Zombie.All)
             {
+                if (into.Count >= DrawingConfig.AcolyteZombieCap) return;
                 if (z == null) continue;
                 var mine = z.GetComponent<SummonedZombie>();
-                if (mine == null || mine.SummonedBy != Grimoire.LocalPlayerId) continue;
-                _mine.Add(mine);
-                if (_mine.Count >= DrawingConfig.AcolyteZombieCap) break;
+                if (mine != null && mine.SummonedBy == me) into.Add(z.transform);
             }
+            foreach (var p in NetZombieProxy.All)
+            {
+                if (into.Count >= DrawingConfig.AcolyteZombieCap) return;
+                if (p != null && p.OwnerId == me) into.Add(p.transform);
+            }
+        }
+
+        static readonly List<Transform> _any = new List<Transform>();
+        /// Does the local acolyte have a zombie to look through? (The R chip asks.)
+        public static bool OwnsAny()
+        {
+            MineInto(_any);
+            return _any.Count > 0;
         }
 
         void Update()
@@ -79,7 +97,7 @@ namespace SpellyZombie
             Gather();
             if (_open && _mine.Count == 0) { Close(); return; }
 
-            if (kb.rKey.wasPressedThisFrame)
+            if (Keys.Down(Act.Body))
             {
                 if (_open) { Close(); return; }
                 if (_mine.Count == 0)
@@ -93,8 +111,8 @@ namespace SpellyZombie
 
             if (!_open) return;
 
-            if (kb.tabKey.wasPressedThisFrame || kb.fKey.wasPressedThisFrame
-                || kb.escapeKey.wasPressedThisFrame) { Close(); return; }
+            if (Keys.Down(Act.View) || Keys.Down(Act.Drop)
+                || kb.escapeKey.wasPressedThisFrame || Keys.BackDown) { Close(); return; }
 
             // 1..9 then 0 - ten keys for the ten zombies
             for (int i = 0; i < 9; i++)
@@ -103,13 +121,16 @@ namespace SpellyZombie
                 if (key != null && key.wasPressedThisFrame) Look(i);
             }
             if (kb.digit0Key.wasPressedThisFrame) Look(9);
+            // a controller steps through them
+            if (_mine.Count > 1 && Keys.Down(Act.Next)) Look((_index + 1) % _mine.Count);
+            if (_mine.Count > 1 && Keys.Down(Act.Prev)) Look((_index - 1 + _mine.Count) % _mine.Count);
 
             // the watched one expired while you were looking at it
             if (Current == null) Look(0);
 
             UIPrompt.Show("R", _mine.Count > 1
-                ? $"watching {_index + 1} of {_mine.Count}  ·  1-0 picks  ·  draw a seal on it to blow it"
-                : "draw a seal on it to blow it  ·  R leaves",
+                ? Loc.F("watch.many", _index + 1, _mine.Count)
+                : Loc.T("watch.one"),
                 new Color(0.6f, 1f, 0.55f));
         }
 
@@ -147,10 +168,10 @@ namespace SpellyZombie
 
             // tight camera leash - a free orbit would turn each zombie into a
             // scouting camera
-            float lift = Mathf.Max(0.3f, z.transform.localScale.y * 1.1f);
+            float lift = Mathf.Max(0.3f, z.localScale.y * 1.1f);
             float near = lift * 1.8f;
             _view.Orbit(Keyboard.current, Mouse.current,
-                z.transform.position + Vector3.up * lift,
+                z.position + Vector3.up * lift,
                 zoomMin: near, zoomMax: near * 1.35f);
         }
     }

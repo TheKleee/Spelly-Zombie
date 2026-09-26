@@ -132,7 +132,7 @@ namespace SpellyZombie
             var pilot = SimpleFPSController.All.Count > 0 ? SimpleFPSController.All[0] : null;
             bool floored = pilot != null
                 && (pilot.IsDowned || pilot.IsSprawled || pilot.IsAirTumbling);
-            if (kb.rKey.wasPressedThisFrame && !floored)
+            if (Keys.Down(Act.Body) && !floored)
             {
                 DrawMode = !DrawMode;
                 if (DrawMode)

@@ -676,11 +676,11 @@ namespace SpellyZombie
             float range = Mathf.Max(close + 1f, DrawingConfig.PotRefillRange);
             float t = Mathf.Clamp01((d - close) / (range - close));
             float falloff = (1f - t) * (1f - t); // near fast, far crawls
-            float rate = Mathf.Lerp(DrawingConfig.PotRefillFloorPerSec,
-                DrawingConfig.PotRefillNearPerSec, falloff);
-
-            // rate split by wizard count: the pot feels the same total draw at any team size
-            rate /= Mathf.Max(1, Sides.CountOn(Side.Wizard));
+            // the tap at the pot is shared by the wizards, so the pot feels the same draw at any
+            // team size; the trickle far from it is each wand's own and never shrinks with the team
+            float floor = DrawingConfig.PotRefillFloorPerSec;
+            float near = DrawingConfig.PotRefillNearPerSec / Mathf.Max(1, Sides.CountOn(Side.Wizard));
+            float rate = Mathf.Max(floor, Mathf.Lerp(floor, near, falloff));
 
             float amount = rate * dt;
             ink.Award(amount);

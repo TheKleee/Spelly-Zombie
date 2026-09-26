@@ -15,6 +15,7 @@ namespace SpellyZombie
             public Vector3 Normal;    // bone-local
             public Vector3[] Pts;     // bone-local
             public int Declared;
+            public int Id;            // its wire id when kept: withdrawn when it comes back under a new one
         }
 
         static List<SavedStroke> _kept; // survives scene loads in-process only
@@ -63,6 +64,7 @@ namespace SpellyZombie
                         s.Nodes[0] != null ? s.Nodes[0].SurfaceNormal : s.Surface.forward),
                     Pts = pts.ToArray(),
                     Declared = (int)s.DeclaredRune,
+                    Id = s.NetId,
                 });
             }
             _kept = snap;
@@ -88,6 +90,11 @@ namespace SpellyZombie
                     bones[t.name] = t;
             if (bones.Count == 0) return; // not built yet, retry next frame
 
+            // the lines come back under new ids: the old ones go from every copy and cache first
+            var oldIds = new List<int>();
+            foreach (var saved in _kept) if (saved.Id != 0) oldIds.Add(saved.Id);
+            NetSync.ForgetOwnBodyInk(oldIds);
+
             foreach (var saved in _kept)
             {
                 if (saved.Pts == null || saved.Pts.Length < 2) continue;
@@ -106,7 +113,7 @@ namespace SpellyZombie
                 DrawingWorld.Instance.Register(s);
                 for (int i = 0; i < saved.Pts.Length; i++)
                     s.AddNode(DrawNode.Create(s, i,
-                        bone.TransformPoint(saved.Pts[i]), normal, bone));
+                        bone.TransformPoint(saved.Pts[i]), normal, bone, lifted: true));
                 // silent skips the reading, the claim and the net send - it
                 // ships here like a fresh body stroke (a no-op offline)
                 DrawingWorld.Instance.CompleteStroke(s,

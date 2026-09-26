@@ -75,10 +75,10 @@ namespace SpellyZombie
             bool typing = UIKit.Typing || (PoseStudio.IsOpen && GUIUtility.keyboardControl != 0);
             if (kb != null && !typing)
             {
-                if (kb.iKey.wasPressedThisFrame) ToggleClip();
-                if (kb.pKey.wasPressedThisFrame) TakePhoto();
+                if (Keys.Down(Act.Video)) ToggleClip();
+                if (Keys.Down(Act.Photo)) TakePhoto();
                 // never in a match: a file window over the game takes the player out of it
-                if (kb.oKey.wasPressedThisFrame && ActiveScene.Name == "Lobby") OpenFolder();
+                if (Keys.Down(Act.Folder) && ActiveScene.Name == "Lobby") OpenFolder();
             }
             if (_clip != null) TickClip();
             TickPhoto();
@@ -525,7 +525,6 @@ namespace SpellyZombie
         Text _time, _toast;
         Image[] _blink;
         float _toastUntil, _blinkUntil;
-        int _shownSeconds = -1;
         const float BlinkSeconds = 0.3f;
 
         void EnsureUI()

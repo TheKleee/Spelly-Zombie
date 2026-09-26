@@ -28,6 +28,10 @@ namespace SpellyZombie
         /// at: where the deed happened; every other machine poofs there.
         /// quiet: a starting kit, no toast and no book flip. Every machine
         /// sets kits itself, so a quiet grant is never relayed.
+        /// The lobby cheat filled this player's book (SideBootstrap.UnlockWholeBook): no achievement
+        /// counts runes until the match start resets the books.
+        public static bool Cheated;
+
         public static void UnlockRune(int owner, RuneType rune, Vector3? at = null, bool quiet = false)
         {
             if (!_runesByOwner.TryGetValue(owner, out var set))
@@ -43,7 +47,7 @@ namespace SpellyZombie
                 if (fresh)
                 {
                     if (!quiet) RuneToast.Show(rune);
-                    Achievements.RuneLearned(RuneCount(owner));
+                    if (!Cheated) Achievements.RuneLearned(RuneCount(owner));
                     if (!quiet) Unlocked?.Invoke(owner, rune);
                 }
             }
@@ -56,14 +60,25 @@ namespace SpellyZombie
             }
         }
 
-        /// A remote machine's unlock arriving over the wire (netcode §1).
+        /// A remote machine's unlock arriving over the wire (netcode §1), with the side it was
+        /// earned on: one for the book they are not holding here goes on its shelf.
+        public static void UnlockRemote(int owner, int card, int rune, Side side)
+        {
+            if (side != Sides.Of(owner))
+            {
+                if (rune >= 0) Shelf(owner, side).Add((RuneType)rune);
+                return;
+            }
+            UnlockRemote(owner, card, rune);
+        }
+
         public static void UnlockRemote(int owner, int card, int rune)
         {
             if (rune >= 0)
             {
                 if (!_runesByOwner.TryGetValue(owner, out var set))
                     _runesByOwner[owner] = set = new HashSet<RuneType>();
-                if (set.Add((RuneType)rune) && owner == LocalPlayerId) Achievements.RuneLearned(RuneCount(owner));
+                if (set.Add((RuneType)rune) && owner == LocalPlayerId && !Cheated) Achievements.RuneLearned(RuneCount(owner));
                 // the family record rides along, same as a local unlock
                 if (!_byOwner.TryGetValue(owner, out var fams))
                     _byOwner[owner] = fams = new HashSet<RuneCardType>();
@@ -102,6 +117,12 @@ namespace SpellyZombie
                 _writing[(newId, key.rune)] = v;
             }
             _dropScratch.Clear();
+            foreach (Side side in System.Enum.GetValues(typeof(Side)))
+                if (_shelf.TryGetValue((oldId, side), out var kept))
+                {
+                    _shelf.Remove((oldId, side));
+                    _shelf[(newId, side)] = kept;
+                }
         }
 
         // ---- writing level: 0..1 per rune, this run, local player only.
@@ -166,7 +187,7 @@ namespace SpellyZombie
         public static IReadOnlyCollection<RuneCardType> CardsOf(int owner) =>
             _byOwner.TryGetValue(owner, out var set) ? (IReadOnlyCollection<RuneCardType>)set : System.Array.Empty<RuneCardType>();
 
-        /// Rebuild the owner's book to exactly this kit (side switch).
+        /// Rebuild the owner's book to exactly this kit.
         /// Deliberately not Drop(): the writing meters survive - handwriting
         /// belongs to the player, not the side.
         public static void SetKit(int owner, params RuneType[] runes)
@@ -176,10 +197,58 @@ namespace SpellyZombie
             if (owner == LocalPlayerId && RuneCount(owner) > (runes != null ? runes.Length : 0))
                 Debug.Log($"[SpellyZombie] your book starts over: {RuneCount(owner)} runes down to the kit of {(runes != null ? runes.Length : 0)}. Asked by:\n"
                     + new System.Diagnostics.StackTrace(1, false));
+            Replace(owner, runes);
+        }
+
+        static void Replace(int owner, IEnumerable<RuneType> runes)
+        {
             _byOwner.Remove(owner);
             _runesByOwner.Remove(owner);
             if (runes != null)
                 foreach (var r in runes) UnlockRune(owner, r, quiet: true);
+        }
+
+        // ---- the lobby keeps both books: what was learned on a side waits while the other is played
+        static readonly Dictionary<(int owner, Side side), HashSet<RuneType>> _shelf =
+            new Dictionary<(int, Side), HashSet<RuneType>>();
+
+        static HashSet<RuneType> Shelf(int owner, Side side)
+        {
+            if (!_shelf.TryGetValue((owner, side), out var kept))
+                _shelf[(owner, side)] = kept = new HashSet<RuneType>();
+            return kept;
+        }
+
+        /// Every rune this machine knows of, with whose it is and the side it was earned on:
+        /// the books in hand and the ones on the shelf (the host's welcome to a joiner).
+        public static void EachRune(System.Action<int, Side, RuneType> visit)
+        {
+            foreach (var kv in _runesByOwner)
+            {
+                var side = Sides.Of(kv.Key);
+                foreach (var r in kv.Value) if (r != RuneType.None) visit(kv.Key, side, r);
+            }
+            foreach (var kv in _shelf)
+                foreach (var r in kv.Value) if (r != RuneType.None) visit(kv.Key.owner, kv.Key.side, r);
+        }
+
+        /// A side switch in the lobby: the book being left goes on its shelf as it is, and the
+        /// other side's comes down as it was left, on top of that side's kit.
+        public static void SwitchBook(int owner, Side from, Side to, RuneType[] kit)
+        {
+            var leaving = Shelf(owner, from);
+            leaving.Clear();
+            foreach (var r in RunesOf(owner)) leaving.Add(r);
+
+            var book = new List<RuneType>();
+            if (kit != null) book.AddRange(kit);
+            if (_shelf.TryGetValue((owner, to), out var kept))
+            {
+                foreach (var r in kept)
+                    if (r != RuneType.None && !book.Contains(r)) book.Add(r);
+                _shelf.Remove((owner, to));
+            }
+            Replace(owner, book);
         }
 
         /// A match starts every player's book over: each keeps only the kit
@@ -188,6 +257,8 @@ namespace SpellyZombie
         /// wire fills them in as they earn.
         public static void ResetForMatch(IEnumerable<int> owners, System.Func<int, RuneType[]> kitOf)
         {
+            _shelf.Clear(); // the book left on the shelf starts over too
+            Cheated = false;
             _writing.Clear();
             WritingVersion++;
             foreach (var owner in new List<int>(owners))
@@ -203,6 +274,7 @@ namespace SpellyZombie
         {
             _byOwner.Remove(owner);
             _runesByOwner.Remove(owner);
+            foreach (Side side in System.Enum.GetValues(typeof(Side))) _shelf.Remove((owner, side));
             _dropScratch.Clear();
             foreach (var key in _writing.Keys)
                 if (key.owner == owner) _dropScratch.Add(key);

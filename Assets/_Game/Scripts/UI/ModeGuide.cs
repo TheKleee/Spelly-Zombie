@@ -60,7 +60,7 @@ namespace SpellyZombie
             // acolyte crossroads: third person is the disguise
             if (ShapeShift.LocalIsShaped) return; // ShapeShift's own line covers it
 
-            bool dead = OwnsAZombie();
+            bool dead = ZombieWatch.OwnsAny();
             if (!ShapeShift.HasStoredShape)
             {
                 UIPrompt.Offer("G", Loc.T("chip.grimoire"));
@@ -87,22 +87,12 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             if (kb != null)
             {
-                if (kb.spaceKey.isPressed) _ghostUpTaught = true;
-                if (kb.leftCtrlKey.isPressed) _ghostDownTaught = true;
+                if (Keys.Held(Act.Jump)) _ghostUpTaught = true;
+                if (Keys.Held(Act.Crouch)) _ghostDownTaught = true;
             }
             if (!_ghostUpTaught) UIPrompt.Offer("SPACE", Loc.T("chip.up"));
             if (!_ghostDownTaught) UIPrompt.Offer("CTRL", Loc.T("chip.down"));
         }
 
-        bool OwnsAZombie()
-        {
-            foreach (var z in Zombie.All)
-            {
-                if (z == null) continue;
-                var mine = z.GetComponent<SummonedZombie>();
-                if (mine != null && mine.SummonedBy == Grimoire.LocalPlayerId) return true;
-            }
-            return false;
-        }
     }
 }

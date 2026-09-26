@@ -89,6 +89,18 @@ namespace SpellyZombie
             if (gone != null) gone._left = 0f; // its own Update runs the death path
         }
 
+        /// It serves `owner` now (the Life Needle): its aura changes sides with it, here and on every client.
+        public void Serve(int owner)
+        {
+            SummonedBy = owner;
+            if (_gas == null) return;
+            _gas.Team = owner < 0 ? (Side?)null : Sides.Of(owner);
+            _gas.Owner = owner;
+            _gas.OwnerViaMinion = owner >= 0;
+            NetSync.PushField(2, _gas.transform.position, _gas.Radius, Mathf.Max(1f, _left + 1f),
+                gameObject.GetInstanceID(), owner, owner >= 0);
+        }
+
         public void Begin(int owner, bool ranged, float seconds, float gasRadius)
         {
             SummonedBy = owner;
@@ -104,9 +116,10 @@ namespace SpellyZombie
             // the aura serves the summoner's side: a wizard's demon must not gas its wizard; no summoner, no side
             _gas.Team = owner < 0 ? (Side?)null : Sides.Of(owner);
             _gas.Owner = owner;
+            _gas.OwnerViaMinion = owner >= 0;
             // clients ride the same aura on this zombie's stand-in
             NetSync.PushField(2, _gas.transform.position, auraRadius, seconds + 1f,
-                gameObject.GetInstanceID());
+                gameObject.GetInstanceID(), owner, owner >= 0);
             Paint();
         }
 

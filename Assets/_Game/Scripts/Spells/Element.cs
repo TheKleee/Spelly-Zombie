@@ -126,7 +126,10 @@ namespace SpellyZombie
         void Awake()
         {
             _body = GetComponent<Rigidbody>();
-            _authored = Time.timeSinceLevelLoad < 1f;
+            // born with the scene = authored (SceneBirth); the clock alone lied in builds, where
+            // the lobby's Awakes still read the main menu's minutes and every prop became a
+            // runtime spawn named by instance id, which no other machine could find
+            _authored = SceneBirth.Loading(gameObject.scene) || Time.timeSinceLevelLoad < 1f;
 
             // what older prefabs authored, read across once
             if (Natural.Strength <= 0f)
@@ -392,7 +395,7 @@ namespace SpellyZombie
             // Solo is the host with nobody connected, so this is not a
             // single-player branch.
             StepBounces(Time.deltaTime); // pure look: every machine bounces its own bodies
-            if (!NetGame.IsAuthority) return;
+            if (!NetGame.IsAuthority) { DriftOwnBody(); return; }
 
             // the picture goes out on its own slower beat - what things ARE
             // changes far less often than the simulation ticks
@@ -423,6 +426,27 @@ namespace SpellyZombie
 
         double _beatAt = -1.0;
         bool _far;
+
+        static float _ownBodyAt;
+
+        /// ★ A CLIENT'S OWN BODY COMES HOME BY ITSELF. What a spell pushes onto a
+        /// remote player is shipped to that player's machine and lands on their own
+        /// Element, and the host's turns never reach it: its light, heat, grip and
+        /// weight stayed where the last push left them (blinded until the session
+        /// ended). The drift only: wounds, spreading and what it does to others stay
+        /// the host's.
+        static void DriftOwnBody()
+        {
+            float now = Time.time;
+            if (now < _ownBodyAt + BeatSeconds) return;
+            float span = _ownBodyAt <= 0f ? BeatSeconds : Mathf.Min(now - _ownBodyAt, 1f);
+            _ownBodyAt = now;
+            var body = ById(IdFor("player:" + Grimoire.LocalPlayerId));
+            if (body == null || body._dead) return;
+            var here = SpellLaw.Here(body, out var spell);
+            SpellLaw.Drift(body, span, here, spell);
+            body.ShowState();
+        }
 
         // where the players are, and what they look through, this frame
         static readonly List<Vector3> _watchers = new List<Vector3>();
@@ -552,7 +576,7 @@ namespace SpellyZombie
             _lookShaped = _lookPilot != null || _lookPuppet != null
                        || GetComponent<Creature>() != null
                        || GetComponent<NetZombieProxy>() != null
-                       || GetComponent<NetGolemProxy>() != null;
+                       || (TryGetComponent<NetGolemProxy>(out var golemProxy) && !golemProxy.Adopted); // a living prop swells as a prop, as on the host
         }
 
         void ApplyPhysicalAxes()
@@ -1215,7 +1239,7 @@ namespace SpellyZombie
             if (_dead) return;
             if (GetComponent<SimpleFPSController>() != null) return; // pilots have TakeHit
             if (GetComponent<NetAvatar>() != null) return;           // a puppet: the kick travels to its owner
-            if (GetComponentInParent<Creature>() != null) return;    // creatures have their own hit acting
+            if (GetComponentInParent<Creature>() != null || GetComponent<Golem>() != null) return; // creatures and living objects have their own hit acting
             var rb = GetComponent<Rigidbody>();
             if (rb != null && !rb.isKinematic)
             {
@@ -1353,6 +1377,7 @@ namespace SpellyZombie
                     var ice = Matter.Spawn(SurfaceMaterialType.Water, MatterPhase.Solid,
                         0.16f, transform.position + d * 0.3f);
                     if (ice == null) continue;
+                    ice.Chip = true;
                     ice.Temperature = -30f;
                     ice.StampOwner(Owner);
                     var sd = ice.gameObject.AddComponent<SpellDebris>();
@@ -1377,15 +1402,36 @@ namespace SpellyZombie
             // what it hit takes damage too
             var other = col.collider != null
                 ? col.collider.GetComponentInParent<Element>() : null;
-            if (other != null && other != this && !GolemSpares(other) && !SparesBoss(other))
-                other.TakeDamage(dmg * 0.7f, $"hit by {name}");
+            if (other != null && other != this && !GolemSpares(other) && !SparesBoss(other) && !StandInOnPlayer(other))
+            {
+                // a body that knocks a player names whoever it answers to
+                int by = -1; bool via = false;
+                if (IsPlayer(other)) by = Teams.OwnerOf(this, out via);
+                other.TakeDamage(dmg * 0.7f, $"hit by {name}", by, via);
+            }
         }
 
+        /// A client's stand-in for the host's creature never bills a player: the host already
+        /// billed that contact on its own copy.
+        bool StandInOnPlayer(Element other) =>
+            !NetGame.IsAuthority && IsPlayer(other)
+            && (GetComponentInParent<NetGolemProxy>() != null || GetComponentInParent<NetZombieProxy>() != null);
+
         /// Clears the dead flag on lobby respawn; restoring Health alone is not enough.
+        /// Alive with this much strength. Back FROM THE DEAD it comes back as itself: the numbers
+        /// that killed it go with the death (a body revived at the cold that froze it died again on
+        /// the next beat, and its stand-in pushed that cold to its owner for ever). A write on a
+        /// living thing is only its strength: a heal is not a revive.
         public void Revive(float health)
         {
+            bool wasDead = _dead;
             _dead = false;
-            Health = health;
+            if (!wasDead) { Health = health; return; }
+            Owner = -1; // a new life: the blame of the last one stays with it
+            var d = Natural;
+            d.Strength = health;
+            Data = d;
+            ShowState();
         }
 
         /// A thing too weak for its own mass buckles - the scenery obeys the
@@ -1494,6 +1540,7 @@ namespace SpellyZombie
             if (Health > 0f || _dead) return;
             _dead = true;
             StandDown();
+            if (PathNamed) Debug.Log($"[SpellyZombie] {name} is gone, the host says (net {NetId})");
             OnDeath?.Invoke(CauseName(cause));
             if (!RemoveOnDeath) return;
             // the host's lobby law, mirrored: authored props come back, the rest die for real
@@ -1524,7 +1571,7 @@ namespace SpellyZombie
                 _dead = true;
             StandDown();
                 using (PerfMarkers.Logs.Auto())
-                    Debug.Log($"[SpellyZombie] {name} destroyed by {cause}");
+                    Debug.Log($"[SpellyZombie] {name} destroyed by {cause}" + (PathNamed ? $" (net {NetId})" : ""));
                 OnDeath?.Invoke(cause);
                 if (!RemoveOnDeath) return;
                 // in the lobby, authored props respawn; creatures and runtime spawns die for real

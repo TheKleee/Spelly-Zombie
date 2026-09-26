@@ -59,7 +59,7 @@ namespace SpellyZombie
         }
 
         /// Renderer bounds transformed into `frame`'s local space (corner-wise).
-        static Bounds LocalBounds(Transform frame, Renderer[] rends)
+        internal static Bounds LocalBounds(Transform frame, Renderer[] rends)
         {
             var b = new Bounds(Vector3.zero, Vector3.zero);
             bool first = true;

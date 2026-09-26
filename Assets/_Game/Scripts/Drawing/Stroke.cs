@@ -76,6 +76,9 @@ namespace SpellyZombie
 
         LineRenderer _line;
         GameObject _lineGo;
+        /// The stroke's lines (its parts and halo sit under it); they live outside the surface until
+        /// a carried stroke settles as a ribbon on it.
+        public GameObject LineObject => _lineGo;
         LineRenderer _halo; // the pale edge under your own ink while the pen is down
         float _haloAlpha;
         readonly List<LineRenderer> _extra = new List<LineRenderer>(); // runs after visual breaks

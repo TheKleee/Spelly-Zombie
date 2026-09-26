@@ -33,11 +33,11 @@ lines lose their emphasis on purpose.
 | chip.precise | Faster drawing | 速く描く | draw fast | |
 | chip.erase | Erase ink | インクを消す | ink, erase | |
 | chip.absorb | Absorb it | 吸収する | absorb | |
-| hint.alt | Hold ALT to draw faster | ALTを押したまま描くと速い | ALT, while holding, if you draw, it is fast | |
+| hint.alt | Hold {0} to draw faster | {0}を押したまま描くと速い | {0}, while holding, if you draw, it is fast | loading hint; {0} = the key bound to precise drawing (ALT) |
 | hint.combine | Draw more runes inside of the same seal to combine them | 同じ魔法陣の中にルーンを重ねて描くと組み合わさる | inside the same magic circle, if you draw runes stacked, they get combined | 魔法陣 (magic circle) for "seal", the JRPG word every player knows |
-| hint.lift | Draw ink on things and press E to lift them | 物にインクを描いてEで持ち上げる | on things, draw ink, with E lift up | |
+| hint.lift | Draw ink on things and press {0} to lift them | 物にインクを描いて{0}で持ち上げる | on things, draw ink, with {0} lift up | loading hint; {0} = the key or button bound to Use (E) |
 | hint.erase | Erasing returns the ink to your wand | 消したインクは杖にもどる | erased ink returns to the wand | |
-| hint.body | Press R to paint runes on your own body | Rで自分の体にルーンを描く | with R, on your own body, draw runes | |
+| hint.body | Press {0} to paint runes on your own body | {0}で自分の体にルーンを描く | with {0}, on your own body, draw runes | loading hint; {0} = the key or button bound to the body key (R) |
 | hint.pose | Striking a pose can close a body seal and cast it | ポーズをとると体の魔法陣が閉じて発動する | when you take a pose, the body's magic circle closes and activates | 発動 = the standard game word for a spell going off |
 | hint.size | Bigger runes make stronger spells | 大きいルーンほど強い魔法になる | the bigger the rune, the stronger the magic becomes | |
 | hint.touch | Lines count as one drawing only when they touch | 線は触れ合っているときだけ一つの絵になる | lines, only when touching each other, become one picture | |
@@ -133,7 +133,7 @@ lines lose their emphasis on purpose.
 | tag.quiet | Quiet ok | 無言でもOK | even silent is OK | 無言 = "no talking", the lobby word for mute players |
 | opt.mic.title | Microphone | マイク | mic |  |
 | opt.mic.open | Open mic | 常時オン | always on |  |
-| opt.mic.ptt | Hold V | Vで話す | talk with V | V is a physical key, kept |
+| opt.mic.ptt | Hold {0} | {0}で話す | talk with {0} | Options, Audio, microphone mode button: push to talk; {0} = the key bound to talking (V) |
 | opt.mic.off | Muted | ミュート | mute |  |
 | opt.tab.game | Game | ゲーム | game |  |
 | opt.tab.video | Video | 映像 | video |  |
@@ -363,6 +363,53 @@ lines lose their emphasis on purpose.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | 残した絵。選ぶとその絵を直せる。＋で新しい絵、Xで消す | left drawings. choosing lets you fix that drawing. with + a new drawing, with X erase | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | 読みとり: {0} | reading: {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | まだ読みとれない | can't read yet | the pad's drawing matches no rune well enough |
+| browse.inlobby | In the lobby | ロビー待機中 | standing by in the lobby | lobby list row, after the tags: the host and friends are in the lobby scene (the sandbox), no match running |
+| browse.inmatch | In a match | 試合中 | in a match | lobby list row, after the tags: a match is running on a map right now |
+| browse.upmin | Up {0} min | 開設 {0} 分 | open {0} min | lobby list row: how long the lobby has stood; {0} = whole minutes, under an hour |
+| browse.uph | Up {0} h {1} min | 開設 {0} 時間 {1} 分 | open {0} hours {1} min | lobby list row: how long the lobby has stood; {0} = hours, {1} = the minutes past the hour |
+| hint.sealshape | A circle is the weakest seal, a triangle the strongest | 丸い魔法陣はいちばん弱く、三角形がいちばん強い | a round magic circle is the weakest, a triangle is the strongest | loading screen hint; Spell.PowerFor: fewer lines in a seal = stronger, a circle counts as ten |
+| hint.sealline | Draw two sides of a triangle around your runes and {0} closes it | ルーンのまわりに三角形の2辺を描くと、{0} で閉じられる | draw two sides of a triangle around the runes, and with {0} it can be closed | loading screen hint; {0} = the key bound to F; the book closes two straight lines that meet at a corner with the third side |
+| opt.ghost | Ghost lines | ゴーストの線 | ghost lines | Game tab of the options: the row for the ghost hand (the lobby lessons and the floating F's drawn previews), answered Off / On |
+| side.pillar.acolyte | Become an acolyte | アコライトになる | become an acolyte | caption under the floating E on the lobby's side pillar while you are a wizard; same style as chest.open |
+| side.pillar.wizard | Become a wizard | 魔法使いになる | become a wizard | caption under the floating E on the lobby's side pillar while you are an acolyte |
+| seal.aim | Seal it, the book draws the ring | 囲もう、本が魔法陣を描く | let's surround it, the book draws the magic circle | caption under the floating F on your own rune while the grimoire is open on the seal page; same style as scan.aim and absorb.aim |
+| mc.area.arrive | Arrives in, seconds | 到着までの秒数 | seconds until arrival | area editor, under Where it starts: how long the area takes from its start point to the spell |
+| mc.note.arrive | 0 lets the game pick the speed. Slower than 5 metres a second it settles in, faster it slams. | 0ならゲームが速さを決める。秒速5メートルより遅いとそっと着き、速いとたたきつける | if 0 the game decides the speed. slower than 5 metres per second it arrives softly, faster it slams down | area editor: small note under Arrives in |
+| opt.tab.keys | Controls | 操作 | controls | fourth tab of the Options, after Game, Video, Audio: the key and controller button list |
+| keys.note | Click a key or a button, then press the new one. Escape keeps the old one | キーかボタンをクリックして、新しいものを押す。Escで元のまま | click a key or a button, then press the new one. with Esc it stays as it was | Controls tab: small note above the list |
+| keys.press | Press the new key or button now. Escape keeps the old one | 新しいキーかボタンを押して。Escで元のまま | press the new key or button. with Esc it stays as it was | Controls tab: the note while a binding waits for its new key |
+| keys.action | Action | 動作 | action | Controls tab: heading of the first column |
+| keys.keyboard | Keyboard | キーボード | keyboard | Controls tab: heading of the keyboard and mouse column |
+| keys.pad | Controller | コントローラー | controller | Controls tab: heading of the gamepad column |
+| keys.reset | Back to the default keys | 初期設定に戻す | return to the initial settings | Controls tab: button that puts every key and button back as shipped |
+| keys.act.forward | Walk forward | 前に歩く | walk forward | Controls tab: an action's name |
+| keys.act.back | Walk back | 後ろに歩く | walk backward | Controls tab: an action's name |
+| keys.act.left | Walk left | 左に歩く | walk left | Controls tab: an action's name |
+| keys.act.right | Walk right | 右に歩く | walk right | Controls tab: an action's name |
+| keys.act.jump | Jump, fly up | ジャンプ、上に飛ぶ | jump, fly up | Controls tab: jumping, and rising as a ghost |
+| keys.act.crouch | Crouch, fly down | しゃがむ、下に飛ぶ | crouch, fly down | Controls tab: crouching, and sinking as a ghost |
+| keys.act.sprint | Run | 走る | run | Controls tab: sprinting |
+| keys.act.draw | Draw | 描く | draw | Controls tab: drawing ink |
+| keys.act.erase | Erase | 消す | erase | Controls tab: erasing ink |
+| keys.act.precise | Draw faster | 速く描く | draw fast | Controls tab: the hold key that frees the cursor for faster drawing |
+| keys.act.use | Grab, throw, use | つかむ、投げる、使う | grab, throw, use | Controls tab: the one hand key (E) |
+| keys.act.drop | Drop, let go | 落とす、放す | drop, release | Controls tab: the release key (F) |
+| keys.act.body | Paint body, pose, watch | 体に描く、ポーズ、見る | draw on the body, pose, watch | Controls tab: the body key (R): wizards paint their body, third person poses, acolytes watch their zombies |
+| keys.act.menu | Menu | メニュー | menu | Controls tab: the pause menu key |
+| keys.act.ready | Ready | 準備OK | ready OK | Controls tab: answering the lobby's ready check with yes |
+| keys.act.notready | Not ready | まだ | not yet | Controls tab: answering the lobby's ready check with no |
+| keys.act.talk | Push to talk | 押して話す | press to talk | Controls tab: holding this opens the microphone in push to talk mode |
+| keys.act.prev | Previous page | 前のページ | previous page | Controls tab: a controller button that turns the grimoire back a page, or steps to the previous pose or zombie |
+| keys.act.next | Next page | 次のページ | next page | Controls tab: a controller button that turns the grimoire forward a page, or steps to the next pose or zombie |
+| watch.many | Watching {0} of {1} · 1-0 picks · Draw a seal on it to blow it | {1}体中{0}体目を見ている · 1〜0で選ぶ · 魔法陣を描くと爆発する | looking at number {0} of {1} bodies · pick with 1 to 0 · drawing a magic circle makes it explode | prompt bar while an acolyte looks through one of several zombies of theirs: {0} = which one, {1} = how many; the number keys 1 to 0 pick another; a seal drawn on the zombie makes it explode |
+| watch.one | Draw a seal on it to blow it · R leaves | 魔法陣を描くと爆発する · Rで戻る | drawing a magic circle makes it explode · go back with R | prompt bar while an acolyte looks through their only zombie |
+| mc.behaviour.rampages | Rampages | 暴れまわる | rampages around | creature behaviour button, after Skittish: a calamity that throws its spells everywhere |
+| mc.note.rampages | Throws random spells from its list all over the place, about one a second, and never runs away. Spells from its own side cannot hurt it. | リストの魔法をランダムにあちこちへ、だいたい1秒に1回投げて、決して逃げない。味方の魔法ではダメージを受けない | throws the list's spells at random here and there, about once a second, and never runs away. it takes no damage from its own side's spells | note under the behaviour buttons when Rampages is picked |
+| opt.keys.title | Videos and photos | 動画と写真 | videos and photos | pause menu, Game tab: heading over the three recorder keys |
+| opt.key.clip | Start or stop a video | 動画の録画を始める・止める | start / stop recording a video | pause menu, Game tab: beside the I keycap; the same key starts and stops the recording |
+| opt.key.photo | Take a photo | 写真を撮る | take a photo | pause menu, Game tab: beside the P keycap |
+| opt.key.folder | Open their folder (in the lobby) | 保存フォルダを開く（ロビーで） | open the save folder (in the lobby) | pause menu, Game tab: beside the O keycap; opens the folder holding the saved videos and photos, and only works in the lobby |
+| opt.keys.note | Saved in your Videos folder, under Spelly Zombie. The interface is never in them | ビデオフォルダの「Spelly Zombie」に保存される。画面の表示は写らない | saved in 'Spelly Zombie' in the Videos folder. the on-screen display is not captured | pause menu, Game tab: small note under the three recorder keys |
 | ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | そのロビーは新しいバージョン。ゲームを終了してSteamで更新しよう | that lobby is a newer version. quit the game and update it on Steam | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
 | ver.theirs | That lobby runs an older version. Its host has to update the game | そのロビーは古いバージョン。ホストがゲームを更新しないと入れない | that lobby is an older version. unless the host updates the game you cannot get in | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
 | ver.differs | That lobby runs a different version of the game | そのロビーはゲームのバージョンが違う | that lobby's game version is different | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
@@ -628,3 +675,4 @@ lines lose their emphasis on purpose.
 | mc.side.note | The emoji and the page belong to this side. An acolyte with none of its own shows the wizard's. | 絵文字とページはこのチームのもの。アコライト用がなければ魔法使いのものを見せる | emoji and page belong to this team. if there is none for the acolyte, the wizard's is shown | note under the side switch |
 | mc.pushes.note | What drawing this rune adds to the seal's numbers, one axis or several. The spells decide what that becomes. | このルーンを描くと魔法陣の数値に何が足されるか。軸はひとつでも複数でもいい。それが何になるかは魔法が決める | what is added to the seal's numbers when drawing this rune. one axis or several is fine. magic decides what it becomes | note under Pushes |
 | mc.rune.none | Make a rune or pick one from the list | ルーンを作るか、リストから選ぼう | make a rune or let's choose from the list | the Runes creator with nothing picked |
+| opt.stick | Stick sensitivity: {0} | スティックの感度: {0} | stick's sensitivity: {0} | same pattern as 視点の感度 |

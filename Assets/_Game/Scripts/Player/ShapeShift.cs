@@ -14,6 +14,8 @@ namespace SpellyZombie
     {
         /// Shaped acolytes cannot draw (SurfaceDrawer reads this).
         public static bool LocalIsShaped { get; private set; }
+        /// The local acolyte chose to come out of a disguise and the exit cloud opened here.
+        public static event System.Action<Vector3> CameOut;
 
         /// Is that body hiding as a prop right now. Golems and throws ask this.
         /// Only the local body is known: remote disguises are not mirrored yet,
@@ -24,6 +26,7 @@ namespace SpellyZombie
         /// the disguise camera. The controller's Tab toggle consults this.
         public static bool ThirdPersonAllowed =>
             !Forced && (Sides.Of(Grimoire.LocalPlayerId) != Side.Acolyte
+            || LocalIsShaped // the way back to yourself is never refused: the thing you copied may be gone
             || (Local != null && Local._storedShape != null));
 
         static ShapeShift Local;
@@ -122,6 +125,9 @@ namespace SpellyZombie
             hold.SetActive(false);
             var worn = Instantiate(source.gameObject, hold.transform, false);
             worn.name = "WornShape";
+            // a living object's eyes are its life, not its look
+            foreach (var t in worn.GetComponentsInChildren<Transform>(true))
+                if (t != null && t != worn.transform && t.name == LivingObject.EyesName) DestroyImmediate(t.gameObject);
             Strip(worn);
             worn.transform.SetParent(parent, false);
             Destroy(hold);
@@ -174,8 +180,21 @@ namespace SpellyZombie
 
         void OnDisable() => Unwear(false);
 
+        float _viewAt = -1f; // the last TAB of this player's own hand
+
         void Update()
         {
+            if (Keys.Down(Act.View)) _viewAt = Time.unscaledTime;
+            if (_wearPending && _pilot != null)
+            {
+                _wearPending = false;
+                if (_storedShape != null)
+                {
+                    if (!SimpleFPSController.ThirdPersonActive) _pilot.EnterThirdPerson();
+                    BecomeObject(_storedShape);
+                }
+            }
+
             var kb = Keyboard.current;
             if (kb == null || UIKit.Typing || GameMenu.IsOpen || PoseStudio.IsOpen) return;
             if (_pilot == null) return;
@@ -190,7 +209,7 @@ namespace SpellyZombie
             if (_forcedUntil > 0f)
             {
                 _forcedUntil = 0f;
-                Unwear(puff: false);
+                Unwear(puff: false, heard: true); // himself again: heard by everyone, no exit cloud
                 if (SimpleFPSController.ThirdPersonActive) _pilot.ToggleThirdPerson();
             }
 
@@ -211,14 +230,14 @@ namespace SpellyZombie
             }
             if (_pilot.IsDowned) { if (LocalIsShaped) Unwear(); return; }
 
-            if (kb.fKey.wasPressedThisFrame) TryScan();
+            if (Keys.Down(Act.Drop)) TryScan();
 
             // ★ THE HOME BIOME DRESSES YOU (his design): TAB with an empty
             // wardrobe grants ONE random shape from your natural biome -
             // "your spawn biome is your home and your body is showing". A
             // brand-new acolyte has a working hide from second one; scanning
             // deliberately stays strictly better because you don't pick.
-            if (kb.tabKey.wasPressedThisFrame && _storedShape == null
+            if (Keys.Down(Act.View) && _storedShape == null
                 && !SimpleFPSController.ThirdPersonActive)
             {
                 var home = MyHomeBiome();
@@ -264,20 +283,25 @@ namespace SpellyZombie
             if (LocalIsShaped && !SimpleFPSController.ThirdPersonActive)
             {
                 AcolyteDeeds.RevertedToSelf(Grimoire.LocalPlayerId, transform.position);
+                float puffedAt = _puffAt;
                 Unwear();
+                // your own choice to come out, and it opened a cloud: the Reveal deed watches it
+                if (_puffAt != puffedAt && Time.unscaledTime - _viewAt < 0.25f)
+                    CameOut?.Invoke(transform.position + Vector3.up * 0.9f); // his own TAB, never a blast
             }
             // re-wear the existing clone - re-cloning the source would copy
-            // the green the scan painted onto it
+            // the green the scan painted onto it. Only a clone of the stored shape:
+            // one left from a scanned thing that is gone would show here, not what the others get
             else if (!LocalIsShaped && SimpleFPSController.ThirdPersonActive && _storedShape != null)
             {
-                if (_worn != null) Wear();
+                if (_worn != null && _wornKey == _storedKey) Wear();
                 else BecomeObject(_storedShape);
             }
 
             if (!LocalIsShaped) { if (_posing) SetPosing(false); return; }
 
-            if (kb.rKey.wasPressedThisFrame) SetPosing(!_posing);
-            if (_posing && kb.escapeKey.wasPressedThisFrame) SetPosing(false);
+            if (Keys.Down(Act.Body)) SetPosing(!_posing);
+            if (_posing && (kb.escapeKey.wasPressedThisFrame || Keys.BackDown)) SetPosing(false);
 
             if (!_posing)
             {
@@ -526,6 +550,7 @@ namespace SpellyZombie
         /// Null until the first scan; TAB reads this to decide if it may switch.
         Transform _storedShape;
         string _storedKey;      // its address on every machine (ScenePath or LentKey)
+        string _wornKey;        // the address the clone in _worn was made from
         Biome _storedHome;      // the biome that raised it - the wearer's ground while worn
         Vector3 _storedHomeAt;  // where it was raised: the ground sum there is the home
         Vector3 _sourceLossy = Vector3.one; // the object's world size, held while worn
@@ -557,11 +582,18 @@ namespace SpellyZombie
 
         static Mesh _bake;
 
-        /// The skin as it is posed right now, in world space.
-        public static Bounds SkinBounds(SkinnedMeshRenderer smr)
+        /// The skin as it is posed right now, in world space. `measured`: mounted the way SkinHit.Mount
+        /// finds fits its model (the Photo Booth, where the zombie's model came out lying down).
+        public static Bounds SkinBounds(SkinnedMeshRenderer smr, bool measured = false)
         {
             if (smr.sharedMesh == null) return smr.bounds;
             if (_bake == null) _bake = new Mesh();
+            if (measured && SkinHit.Mount(smr, out bool scaled, out bool own))
+            {
+                smr.BakeMesh(_bake, scaled);
+                _bake.RecalculateBounds();
+                return SkinHit.World(_bake.bounds, SkinHit.Placement(smr.transform, own));
+            }
             smr.BakeMesh(_bake, true); // scale baked in: world = position + rotation * vertex
             _bake.RecalculateBounds();
             Bounds local = _bake.bounds;
@@ -653,16 +685,20 @@ namespace SpellyZombie
             Local._storedHome = home;
             Local._storedHomeAt = t.position;
             Local._storedGroundOffset = Local.CenterHeightAboveGround(t);
-            if (forcedSeconds > 0f) Local._forcedUntil = Time.time + forcedSeconds;
-            if (!SimpleFPSController.ThirdPersonActive) Local._pilot.EnterThirdPerson();
-            Local.BecomeObject(t);
+            if (forcedSeconds > 0f) Local._forcedUntil = Mathf.Max(Local._forcedUntil, Time.time + forcedSeconds); // a second dart only lengthens it
+            // worn on this body's next turn: the ink can land inside a physics step, where
+            // Unity refuses to strip the copy
+            Local._wearPending = true;
         }
+
+        bool _wearPending;
 
         void BecomeObject(Transform source)
         {
             if (_pilot != null && _pilot.IsLocalViewer) Achievements.Unlock(Achievements.Disguise);
             if (_worn != null) Destroy(_worn);
             _worn = CloneShape(source, transform);
+            _wornKey = _storedKey;
             _sourceLossy = source.lossyScale;
             _worn.transform.localScale = _sourceLossy;
             _wornRot = source.rotation; // exactly as it stood
@@ -685,7 +721,7 @@ namespace SpellyZombie
         void Wear(bool poof = false)
         {
             if (_worn == null) return;
-            _hidden.Clear();
+            // what an earlier shape hid stays on the list: already off, it would not be found again
             foreach (var r in GetComponentsInChildren<Renderer>(true))
             {
                 if (r == null || !r.enabled) continue;
@@ -702,7 +738,7 @@ namespace SpellyZombie
 
         float _puffAt = -999f;
 
-        void Unwear(bool puff = true)
+        void Unwear(bool puff = true, bool heard = false)
         {
             bool wasShaped = LocalIsShaped;
             foreach (var r in _hidden)
@@ -714,8 +750,8 @@ namespace SpellyZombie
             if (wasShaped)
             {
                 GroundOn(false);
-                if (puff) Juice.Sound(Sfx.AcolyteBack, transform.position + Vector3.up * 0.9f);
-                PushDisguise(false, puff);
+                if (puff || heard) Juice.Sound(Sfx.AcolyteBack, transform.position + Vector3.up * 0.9f);
+                PushDisguise(false, puff, heard);
             }
 
             // leaving the disguise releases poison - never touches acolytes.
@@ -725,7 +761,7 @@ namespace SpellyZombie
                 && Time.time >= _puffAt + DrawingConfig.PoisonExitCooldown)
             {
                 _puffAt = Time.time;
-                NetSync.HostDisguiseExit(transform.position + Vector3.up * 0.9f);
+                NetSync.HostDisguiseExit(transform.position + Vector3.up * 0.9f, Grimoire.LocalPlayerId);
             }
         }
 

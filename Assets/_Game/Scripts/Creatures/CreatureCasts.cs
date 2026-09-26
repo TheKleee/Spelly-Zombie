@@ -73,9 +73,17 @@ namespace SpellyZombie
             // thrown like a player's throw: it leaves through the caster and
             // its areas raise where it lands, never at the head
             p.PrimeToBlow(caster);
+            var dart = MischiefLaw.KindOfRow(def.Name);
+            if (MischiefLaw.IsDart(dart))
+            {
+                // an acolyte's dart: what it hits decides the spell, it carries no numbers
+                p.Mischief = (byte)dart;
+                p.WearRow(def);
+                Juice.Sound(MischiefLaw.SoundOf(dart), muzzle, 0.45f, 1.35f); // leaving its head as a dart leaves a hand
+            }
             // NOT Clamped(): the clamp floors Strength at 0, which stripped
             // the goo's -9 bite and stopped it ever fusing into Goo at all
-            p.Data = def.Payload;
+            else p.Data = def.Payload;
             p.OwnerId = owner;
             p.FromMinion = true;
             p.SrcSize = DrawingConfig.RuneSizeMin * 2f;
@@ -84,6 +92,117 @@ namespace SpellyZombie
             p.Wake();
             p.RefreshIdentity_Public();
             return true;
+        }
+
+        // ----------------------------------------------------------- feeding --
+        /// A sleeping spell touched a body: a summoned golem or zombie of the spell's side eats it.
+        public static bool TryFeed(Collider body, SpellParticle meal)
+        {
+            if (body == null || meal == null) return false;
+            var g = body.GetComponentInParent<Golem>();
+            if (g != null) return g.TryEat(meal);
+            var z = ZombieOwner.From(body);
+            if (z == null) z = body.GetComponentInParent<Zombie>();
+            return z != null && z.TryEat(meal);
+        }
+
+        /// Somebody's summon, a sleeping spell of the same side, on the machine that runs the world.
+        /// Never one in somebody's hand: a held spell is the hand's (holding is stasis).
+        public static bool CanFeed(int bodyOwner, SpellParticle meal) =>
+            NetGame.IsAuthority && bodyOwner >= 0 && meal != null && !meal.Dead && meal.Dormant && meal.OwnerId >= 0
+            && meal.Holder == null
+            && !Teams.Enemies(Teams.OfOwner(bodyOwner), Teams.OfOwner(meal.OwnerId));
+
+        /// ★ WHAT EATING DOES (his idea): the spells the meal was join what the body casts, on top of
+        /// what it had, and the meal's numbers become its own nature and colour, so a golem that ate
+        /// a flame is a fire being at home in its own heat. Returns what it learned, for the log.
+        public static string Feed(List<string> abilities, Element body, StateView view, SpellParticle meal)
+        {
+            string learned = "";
+            void Learn(string spell)
+            {
+                if (string.IsNullOrEmpty(spell)) return;
+                if (!abilities.Contains(spell)) abilities.Add(spell);
+                learned += (learned.Length > 0 ? " + " : "") + spell;
+            }
+
+            if (meal.Mischief != 0)
+            {
+                // a dart is its spell, not its numbers: every dart it carried
+                for (int k = 1; k <= (int)MischiefKind.Transformation; k++)
+                    if (k == meal.Mischief || (meal.MischiefMore & (1 << k)) != 0)
+                        Learn(MischiefLaw.RowName((MischiefKind)k));
+                return learned;
+            }
+
+            // the named combinations (the ones with an area); a bare rune when that is all it was
+            bool named = false;
+            foreach (var s in meal.Fusions) if (!s.IsSummon && (s.HasAoe || s.AnyBiome)) named = true;
+            foreach (var s in meal.Fusions)
+                if (!s.IsSummon && (!named || s.HasAoe || s.AnyBiome)) Learn(s.Name);
+
+            if (body != null)
+            {
+                var food = meal.PayloadNow;
+                var nature = body.Natural;
+                var now = body.Data;
+                for (int i = 0; i < 6; i++) { nature[i] += food[i]; now[i] += food[i]; } // a mote's heat is already a difference
+                if (food.Strength > 0f) { nature.Strength += food.Strength; now.Strength += food.Strength; }
+                float hp = now.Strength;
+                body.Natural = nature.Clamped();
+                now = now.Clamped();
+                now.Strength = hp; // the clamp is not a heal and not a wound
+                body.Data = now;
+                if (view != null)
+                {
+                    view.Tint = Color.Lerp(view.Tint, food.Tint(), DrawingConfig.FedGolemTint);
+                    view.DriveTint = true;
+                }
+            }
+            return learned;
+        }
+
+        // ---------------------------------------------------------- rampages --
+        static readonly HashSet<Object> _rampaging = new HashSet<Object>();
+
+        /// A body says whether it rampages (on every Wear, and false when it goes).
+        public static void MarkRampaging(Object body, bool on)
+        {
+            if (on) _rampaging.Add(body);
+            else _rampaging.Remove(body);
+        }
+
+        /// ★ A CALAMITY (Rampages): a random spell from its list at a random spot
+        /// on the ground around it, whoever is there. `next` is the body's clock.
+        /// True when it cast.
+        public static bool Rampage(List<string> abilities, int owner, Vector3 head, Transform body, ref float next,
+            float every = -1f, float nearest = 2f)
+        {
+            if (Time.time < next) return false;
+            next = Time.time + (every > 0f ? every : DrawingConfig.RampageCastEvery) * Random.Range(0.67f, 1.33f);
+            int count = CastableCount(abilities);
+            if (count == 0) return false;
+            string spell = Pick(abilities, Random.Range(0, count));
+            // aimed at the ground: a level throw runs out of speed in the air and hovers there
+            float turn = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+            Vector3 spot = body.position + new Vector3(Mathf.Sin(turn), 0f, Mathf.Cos(turn))
+                * Random.Range(nearest, Mathf.Max(nearest + 0.5f, DrawingConfig.RampageReach));
+            Vector3 aim = spot - head;
+            if (aim.sqrMagnitude < 0.01f) return false;
+            aim.Normalize();
+            return Cast(spell, owner, head + aim * 0.4f, aim, body.position, ClearReach(body), body);
+        }
+
+        /// ★ A CALAMITY WALKS THROUGH ITS OWN SIDE'S SPELLS (his ask): a rampaging
+        /// body takes nothing from spells of its team, its own barrage included.
+        public static bool Spares(Element body, int spellOwner)
+        {
+            if (_rampaging.Count == 0 || body == null) return false;
+            int team;
+            if (body.TryGetComponent(out Golem g) && _rampaging.Contains(g)) team = g.OwnerId;
+            else if (body.TryGetComponent(out Zombie z) && _rampaging.Contains(z)) team = z.OwnerId;
+            else return false;
+            return !Teams.Enemies(Teams.OfOwner(spellOwner), Teams.OfOwner(team));
         }
 
         static bool Summon(SpellDef def, int owner, Vector3 spot)

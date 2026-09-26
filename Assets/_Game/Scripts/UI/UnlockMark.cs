@@ -17,6 +17,7 @@ namespace SpellyZombie
         const float FadeSeconds = 0.35f;
         const float RiseSeconds = 0.15f;  // a new mark eases in
         const float BarGap = 4f;
+        const float BarHeight = 14f; // on screen, whatever the card is scaled to: the fill inside is 8 tall
         const float Aspect = 1024f / 742f; // his page spread
 
         /// The waiting mark is a key badge wide, like F and E; the flip grows it to the page.
@@ -181,14 +182,18 @@ namespace SpellyZombie
             var q = UIKit.Label(rt, "?", Mathf.RoundToInt(h * 0.62f), Ink, TextAnchor.MiddleCenter, true);
             UIKit.Stretch((RectTransform)q.transform);
 
+            // the card shrinks to a hint, the bar keeps its screen size: as wide as the '?' page
+            float hint = HintScale;
             var skin = UISkin.I;
-            var size = new Vector2(w * 0.6f, 7f);
-            var bar = UIKit.Bar(rt, skin != null ? skin.ProgressGreen : null, size);
-            UIKit.Place(bar.Rt, new Vector2(0.5f, 0f), new Vector2(0f, -BarGap), size);
+            var size = new Vector2(w * hint, BarHeight);
+            var bar = UIKit.Bar(rt, skin != null ? skin.ProgressGreen : null, size,
+                skin != null ? (Color?)null : new Color(0.35f, 0.8f, 0.3f));
+            UIKit.Place(bar.Rt, new Vector2(0.5f, 0f), new Vector2(0f, -BarGap / hint), size);
             bar.Rt.pivot = new Vector2(0.5f, 1f); // hangs below the page
+            bar.Rt.localScale = Vector3.one / hint;
             bar.Rt.gameObject.SetActive(false);
 
-            rt.localScale = Vector3.one * HintScale; // a hint, not the page yet
+            rt.localScale = Vector3.one * hint; // a hint, not the page yet
 
             m.Card = rt;
             m.Cg = cg;

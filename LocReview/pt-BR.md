@@ -33,11 +33,11 @@ Steam box says.
 | chip.precise | Faster drawing | Desenhar mais rápido | draw faster | |
 | chip.erase | Erase ink | Apagar tinta | erase ink | |
 | chip.absorb | Absorb it | Absorver | absorb | |
-| hint.alt | Hold ALT to draw faster | Segure ALT para desenhar mais rápido | hold ALT to draw faster | |
+| hint.alt | Hold {0} to draw faster | Segure {0} para desenhar mais rápido | hold {0} to draw faster | loading hint; {0} = the key bound to precise drawing (ALT) |
 | hint.combine | Draw more runes inside of the same seal to combine them | Desenhe mais runas dentro do mesmo selo para combiná-las | draw more runes inside the same seal to combine them | |
-| hint.lift | Draw ink on things and press E to lift them | Desenhe tinta nas coisas e aperte E para levantá-las | draw ink on things and press E to lift them | aperte = press, the Brazilian verb |
+| hint.lift | Draw ink on things and press {0} to lift them | Desenhe tinta nas coisas e aperte {0} para levantá-las | draw ink on things and press {0} to lift them | loading hint; {0} = the key or button bound to Use (E) |
 | hint.erase | Erasing returns the ink to your wand | Apagar devolve a tinta para a sua varinha | erasing gives the ink back to your wand | |
-| hint.body | Press R to paint runes on your own body | Aperte R para pintar runas no seu próprio corpo | press R to paint runes on your own body | |
+| hint.body | Press {0} to paint runes on your own body | Aperte {0} para pintar runas no seu próprio corpo | press {0} to paint runes on your own body | loading hint; {0} = the key or button bound to the body key (R) |
 | hint.pose | Striking a pose can close a body seal and cast it | Fazer uma pose pode fechar um selo do corpo e lançá-lo | making a pose can close a body seal and cast it | lançar = cast a spell |
 | hint.size | Bigger runes make stronger spells | Runas maiores fazem feitiços mais fortes | bigger runes make stronger spells | |
 | hint.touch | Lines count as one drawing only when they touch | As linhas só contam como um desenho quando se tocam | the lines only count as one drawing when they touch | |
@@ -133,7 +133,7 @@ Steam box says.
 | tag.quiet | Quiet ok | Sem falar também pode | without talking is also allowed | |
 | opt.mic.title | Microphone | Microfone | microphone |  |
 | opt.mic.open | Open mic | Sempre aberto | always open |  |
-| opt.mic.ptt | Hold V | Segure V | hold V | V is a physical key, kept |
+| opt.mic.ptt | Hold {0} | Segure {0} | hold {0} | Options, Audio, microphone mode button: push to talk; {0} = the key bound to talking (V) |
 | opt.mic.off | Muted | Mudo | mute |  |
 | opt.tab.game | Game | Jogo | game |  |
 | opt.tab.video | Video | Vídeo | video |  |
@@ -363,6 +363,53 @@ Steam box says.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Desenhos guardados. Escolha um para mexer nele, o mais começa um novo, X tira um | drawings kept. choose one to work in-it, the plus starts a new, X removes one | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | Lido como {0} | read as {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Ainda não dá para ler | still not gives to read | the pad's drawing matches no rune well enough |
+| browse.inlobby | In the lobby | Na sala | in the room | lobby list row, after the tags: the host and friends are in the lobby scene (the sandbox), no match running |
+| browse.inmatch | In a match | Em partida | in a match | lobby list row, after the tags: a match is running on a map right now |
+| browse.upmin | Up {0} min | Aberta há {0} min | open for {0} min | lobby list row: how long the lobby has stood; {0} = whole minutes, under an hour |
+| browse.uph | Up {0} h {1} min | Aberta há {0} h {1} min | open for {0} h {1} min | lobby list row: how long the lobby has stood; {0} = hours, {1} = the minutes past the hour |
+| hint.sealshape | A circle is the weakest seal, a triangle the strongest | Um círculo é o selo mais fraco, um triângulo o mais forte | a circle is the weakest seal, a triangle the strongest | loading screen hint; Spell.PowerFor: fewer lines in a seal = stronger, a circle counts as ten |
+| hint.sealline | Draw two sides of a triangle around your runes and {0} closes it | Desenhe dois lados de um triângulo em volta das suas runas e {0} o fecha | draw two sides of a triangle around your runes and {0} closes it | loading screen hint; {0} = the key bound to F; the book closes two straight lines that meet at a corner with the third side |
+| opt.ghost | Ghost lines | Linhas fantasma | ghost lines | Game tab of the options: the row for the ghost hand (the lobby lessons and the floating F's drawn previews), answered Off / On |
+| side.pillar.acolyte | Become an acolyte | Vire acólito | turn acolyte | caption under the floating E on the lobby's side pillar while you are a wizard; same style as chest.open |
+| side.pillar.wizard | Become a wizard | Vire mago | turn wizard | caption under the floating E on the lobby's side pillar while you are an acolyte |
+| seal.aim | Seal it, the book draws the ring | Sele, o livro desenha o anel | seal it, the book draws the ring | caption under the floating F on your own rune while the grimoire is open on the seal page; same style as scan.aim and absorb.aim |
+| mc.area.arrive | Arrives in, seconds | Chega em, segundos | arrives in, seconds | area editor, under Where it starts: how long the area takes from its start point to the spell |
+| mc.note.arrive | 0 lets the game pick the speed. Slower than 5 metres a second it settles in, faster it slams. | Com 0 o jogo escolhe a velocidade. A menos de 5 metros por segundo ele pousa, mais rápido ele bate com tudo | with 0 the game chooses the speed. at less than 5 metres per second it lands, faster it hits with everything | area editor: small note under Arrives in |
+| opt.tab.keys | Controls | Controles | controls | fourth tab of the Options, after Game, Video, Audio: the key and controller button list |
+| keys.note | Click a key or a button, then press the new one. Escape keeps the old one | Clique em uma tecla ou botão e aperte o novo. Esc mantém o antigo | click on a key or button and press the new one. Esc keeps the old one | Controls tab: small note above the list |
+| keys.press | Press the new key or button now. Escape keeps the old one | Aperte agora a tecla ou o botão novo. Esc mantém o antigo | press the new key or button now. Esc keeps the old one | Controls tab: the note while a binding waits for its new key |
+| keys.action | Action | Ação | action | Controls tab: heading of the first column |
+| keys.keyboard | Keyboard | Teclado | keyboard | Controls tab: heading of the keyboard and mouse column |
+| keys.pad | Controller | Controle | controller | Controls tab: heading of the gamepad column |
+| keys.reset | Back to the default keys | Voltar às teclas padrão | return to the default keys | Controls tab: button that puts every key and button back as shipped |
+| keys.act.forward | Walk forward | Andar para frente | walk forward | Controls tab: an action's name |
+| keys.act.back | Walk back | Andar para trás | walk backward | Controls tab: an action's name |
+| keys.act.left | Walk left | Andar para a esquerda | walk to the left | Controls tab: an action's name |
+| keys.act.right | Walk right | Andar para a direita | walk to the right | Controls tab: an action's name |
+| keys.act.jump | Jump, fly up | Pular, voar para cima | jump, fly upward | Controls tab: jumping, and rising as a ghost |
+| keys.act.crouch | Crouch, fly down | Agachar, voar para baixo | crouch, fly downward | Controls tab: crouching, and sinking as a ghost |
+| keys.act.sprint | Run | Correr | run | Controls tab: sprinting |
+| keys.act.draw | Draw | Desenhar | draw | Controls tab: drawing ink |
+| keys.act.erase | Erase | Apagar | erase | Controls tab: erasing ink |
+| keys.act.precise | Draw faster | Desenhar mais rápido | draw faster | Controls tab: the hold key that frees the cursor for faster drawing |
+| keys.act.use | Grab, throw, use | Pegar, jogar, usar | grab, throw, use | Controls tab: the one hand key (E) |
+| keys.act.drop | Drop, let go | Soltar | let go | Controls tab: the release key (F) |
+| keys.act.body | Paint body, pose, watch | Pintar o corpo, posar, olhar | paint the body, pose, watch | Controls tab: the body key (R): wizards paint their body, third person poses, acolytes watch their zombies |
+| keys.act.menu | Menu | Menu | menu | Controls tab: the pause menu key |
+| keys.act.ready | Ready | Pronto | ready | Controls tab: answering the lobby's ready check with yes |
+| keys.act.notready | Not ready | Não pronto | not ready | Controls tab: answering the lobby's ready check with no |
+| keys.act.talk | Push to talk | Apertar para falar | press to talk | Controls tab: holding this opens the microphone in push to talk mode |
+| keys.act.prev | Previous page | Página anterior | previous page | Controls tab: a controller button that turns the grimoire back a page, or steps to the previous pose or zombie |
+| keys.act.next | Next page | Próxima página | next page | Controls tab: a controller button that turns the grimoire forward a page, or steps to the next pose or zombie |
+| watch.many | Watching {0} of {1} · 1-0 picks · Draw a seal on it to blow it | Olhando {0} de {1} · 1-0 escolhe · Desenhe um selo nele para explodi-lo | watching {0} of {1} · 1-0 chooses · draw a seal on it to explode it | prompt bar while an acolyte looks through one of several zombies of theirs: {0} = which one, {1} = how many; the number keys 1 to 0 pick another; a seal drawn on the zombie makes it explode |
+| watch.one | Draw a seal on it to blow it · R leaves | Desenhe um selo nele para explodi-lo · R sai | draw a seal on it to explode it · R exits | prompt bar while an acolyte looks through their only zombie |
+| mc.behaviour.rampages | Rampages | Descontrolada | out of control | creature behaviour button, after Skittish: a calamity that throws its spells everywhere |
+| mc.note.rampages | Throws random spells from its list all over the place, about one a second, and never runs away. Spells from its own side cannot hurt it. | Joga feitiços aleatórios da sua lista para todo lado, mais ou menos um por segundo, e nunca foge. Feitiços do próprio lado não a machucam. | throws random spells from its list everywhere, about one per second, and never flees. spells from its own side do not hurt it | note under the behaviour buttons when Rampages is picked |
+| opt.keys.title | Videos and photos | Vídeos e fotos | videos and photos | pause menu, Game tab: heading over the three recorder keys |
+| opt.key.clip | Start or stop a video | Começar ou parar um vídeo | start or stop a video | pause menu, Game tab: beside the I keycap; the same key starts and stops the recording |
+| opt.key.photo | Take a photo | Tirar uma foto | take a photo | pause menu, Game tab: beside the P keycap |
+| opt.key.folder | Open their folder (in the lobby) | Abrir a pasta deles (na sala) | open their folder (in the room) | pause menu, Game tab: beside the O keycap; opens the folder holding the saved videos and photos, and only works in the lobby |
+| opt.keys.note | Saved in your Videos folder, under Spelly Zombie. The interface is never in them | Ficam na sua pasta Vídeos, dentro de Spelly Zombie. A interface nunca aparece neles | they stay in your Videos folder, inside Spelly Zombie. the interface never appears in them | pause menu, Game tab: small note under the three recorder keys |
 | ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | Essa sala usa uma versão mais nova. Saia do jogo e deixe o Steam atualizar o seu | that room uses a newer version. leave the game and let Steam update yours | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
 | ver.theirs | That lobby runs an older version. Its host has to update the game | Essa sala usa uma versão mais velha. O anfitrião dela precisa atualizar o jogo | that room uses an older version. its host needs to update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
 | ver.differs | That lobby runs a different version of the game | Essa sala usa outra versão do jogo | that room uses another version of the game | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
@@ -628,3 +675,4 @@ Steam box says.
 | mc.side.note | The emoji and the page belong to this side. An acolyte with none of its own shows the wizard's. | O emoji e a página são deste lado. Se o acólito não tiver os dele, aparecem os do mago. | the emoji and the page are of-this side. if the acolyte not has those of-him, appear those of-the wizard | note under the side switch |
 | mc.pushes.note | What drawing this rune adds to the seal's numbers, one axis or several. The spells decide what that becomes. | O que desenhar esta runa soma aos números do selo, em um eixo ou em vários. Os feitiços decidem no que isso vira. | what drawing this rune adds to-the numbers of-the seal, in one axis or in several. the spells decide in-what that turns | note under Pushes |
 | mc.rune.none | Make a rune or pick one from the list | Crie uma runa ou escolha uma da lista | create a rune or choose one of-the list | the Runes creator with nothing picked |
+| opt.stick | Stick sensitivity: {0} | Sensibilidade do analógico: {0} | sensitivity of-the analog: {0} | analógico = the stick in Brazilian controller menus |

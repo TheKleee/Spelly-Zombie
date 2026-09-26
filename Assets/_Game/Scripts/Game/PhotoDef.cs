@@ -18,8 +18,11 @@ namespace SpellyZombie
         public Vector3 CamPos = new Vector3(0f, 2.5f, -7f);
         public float CamYaw, CamPitch = 12f, Lens = 50f;
         public int Width = 1920, Height = 1080;
-        public int Background;                 // 0 the world, 1 a colour, 2 see-through
+        public int Background = 2;             // 0 the world, 1 a colour, 2 see-through (his call: most photos are thumbnails)
         public Color BackColor = new Color(0.25f, 0.55f, 0.9f);
+        public bool Island;                    // the island's ground grows around the subjects
+        public int IslandSeed;                 // which island
+        public bool Shaded = true;             // characters take light and shadow (the booth only)
         public bool SunMoved;                  // false = the scene's own sun
         public float SunTurn, SunHeight = 50f, SunPower = 1f;
         public float Rim, RimTurn = 180f;
@@ -58,6 +61,8 @@ namespace SpellyZombie
             public bool LookAtCamera = true;
             public float Height = 1f, Width = 1f, Head = 1f, Arms = 1f, Legs = 1f;
             public List<JointPose> Pose = new List<JointPose>();
+            // an effect or an area: the parts switched off, by their path inside it
+            public List<string> Hidden = new List<string>();
 
             public Item Clone() => JsonUtility.FromJson<Item>(JsonUtility.ToJson(this));
         }
@@ -83,7 +88,11 @@ namespace SpellyZombie
                 if (d == null) return null;
                 if (d.Items == null) d.Items = new List<Item>();
                 if (d.Inks == null) d.Inks = new List<Ink>();
-                foreach (var it in d.Items) if (it.Pose == null) it.Pose = new List<JointPose>();
+                foreach (var it in d.Items)
+                {
+                    if (it.Pose == null) it.Pose = new List<JointPose>();
+                    if (it.Hidden == null) it.Hidden = new List<string>();
+                }
                 foreach (var k in d.Inks) if (k.Points == null) k.Points = new List<Vector3>();
                 return d;
             }

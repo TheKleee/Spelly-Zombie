@@ -779,7 +779,7 @@ namespace SpellyZombie
         void StartFromBase()
         {
             Editing.Biomes.Clear();
-            foreach (var t in MapPalette.Templates) Editing.Biomes.Add(t.Clone());
+            Editing.Biomes.AddRange(MapPalette.BaseBiomes());
             Select(Sel.None, -1);
             RebuildViews();
             Generate();

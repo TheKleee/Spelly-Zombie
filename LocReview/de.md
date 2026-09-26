@@ -31,11 +31,11 @@ nouns as German grammar needs. Lobby is the word German players use.
 | chip.precise | Faster drawing | Schneller zeichnen | faster draw | |
 | chip.erase | Erase ink | Tinte wegwischen | ink wipe away | |
 | chip.absorb | Absorb it | Absorbieren | absorb | |
-| hint.alt | Hold ALT to draw faster | ALT halten, um schneller zu zeichnen | ALT hold, in order to draw faster | |
+| hint.alt | Hold {0} to draw faster | {0} halten, um schneller zu zeichnen | {0} hold, in order to draw faster | loading hint; {0} = the key bound to precise drawing (ALT) |
 | hint.combine | Draw more runes inside of the same seal to combine them | Zeichne mehr Runen in dasselbe Siegel, um sie zu verbinden | draw more runes into the same seal, in order to connect them | |
-| hint.lift | Draw ink on things and press E to lift them | Male Tinte auf Dinge und drück E, um sie zu heben | paint ink on things and press E, in order to lift them | drück = spoken imperative of drücken |
+| hint.lift | Draw ink on things and press {0} to lift them | Male Tinte auf Dinge und drück {0}, um sie zu heben | paint ink on things and press {0}, in order to lift them | loading hint; {0} = the key or button bound to Use (E) |
 | hint.erase | Erasing returns the ink to your wand | Wegwischen gibt die Tinte an deinen Zauberstab zurück | wiping away gives the ink back to your wand | |
-| hint.body | Press R to paint runes on your own body | Drück R, um Runen auf deinen eigenen Körper zu malen | press R, in order to paint runes on your own body | |
+| hint.body | Press {0} to paint runes on your own body | Drück {0}, um Runen auf deinen eigenen Körper zu malen | press {0}, in order to paint runes on your own body | loading hint; {0} = the key or button bound to the body key (R) |
 | hint.pose | Striking a pose can close a body seal and cast it | Eine Pose kann ein Körpersiegel schließen und wirken | a pose can close a body seal and cast | wirken = cast a spell |
 | hint.size | Bigger runes make stronger spells | Größere Runen machen stärkere Zauber | bigger runes make stronger spells | |
 | hint.touch | Lines count as one drawing only when they touch | Linien zählen nur als eine Zeichnung, wenn sie sich berühren | lines count only as one drawing when they touch each other | |
@@ -131,7 +131,7 @@ nouns as German grammar needs. Lobby is the word German players use.
 | tag.quiet | Quiet ok | Still ist ok | quiet is ok | |
 | opt.mic.title | Microphone | Mikrofon | microphone |  |
 | opt.mic.open | Open mic | Immer an | always on |  |
-| opt.mic.ptt | Hold V | V halten | hold V | V is a physical key, kept |
+| opt.mic.ptt | Hold {0} | {0} halten | hold {0} | Options, Audio, microphone mode button: push to talk; {0} = the key bound to talking (V) |
 | opt.mic.off | Muted | Stumm | silent |  |
 | opt.tab.game | Game | Spiel | game |  |
 | opt.tab.video | Video | Grafik | graphics |  |
@@ -361,6 +361,53 @@ nouns as German grammar needs. Lobby is the word German players use.
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | Behaltene Zeichnungen. Wähl eine, um sie zu bearbeiten, das Plus fängt eine neue an, X entfernt eine | kept drawings. choose one to it to edit, the plus starts a new on, X removes one | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | Wird gelesen als {0} | is read as {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | Noch nicht lesbar | still not readable | the pad's drawing matches no rune well enough |
+| browse.inlobby | In the lobby | In der Lobby | in the lobby | lobby list row, after the tags: the host and friends are in the lobby scene (the sandbox), no match running |
+| browse.inmatch | In a match | Im Match | in the match | lobby list row, after the tags: a match is running on a map right now |
+| browse.upmin | Up {0} min | Seit {0} Min. offen | open for {0} min | lobby list row: how long the lobby has stood; {0} = whole minutes, under an hour |
+| browse.uph | Up {0} h {1} min | Seit {0} Std. {1} Min. offen | open for {0} h {1} min | lobby list row: how long the lobby has stood; {0} = hours, {1} = the minutes past the hour |
+| hint.sealshape | A circle is the weakest seal, a triangle the strongest | Ein Kreis ist das schwächste Siegel, ein Dreieck das stärkste | a circle is the weakest seal, a triangle the strongest | loading screen hint; Spell.PowerFor: fewer lines in a seal = stronger, a circle counts as ten |
+| hint.sealline | Draw two sides of a triangle around your runes and {0} closes it | Zeichne zwei Seiten eines Dreiecks um deine Runen, und {0} schließt es | draw two sides of a triangle around your runes, and {0} closes it | loading screen hint; {0} = the key bound to F; the book closes two straight lines that meet at a corner with the third side |
+| opt.ghost | Ghost lines | Geisterlinien | ghost lines | Game tab of the options: the row for the ghost hand (the lobby lessons and the floating F's drawn previews), answered Off / On |
+| side.pillar.acolyte | Become an acolyte | Werde Akolyth | become an acolyte | caption under the floating E on the lobby's side pillar while you are a wizard; same style as chest.open |
+| side.pillar.wizard | Become a wizard | Werde Zauberer | become a wizard | caption under the floating E on the lobby's side pillar while you are an acolyte |
+| seal.aim | Seal it, the book draws the ring | Versiegeln, das Buch malt den Ring | seal, the book paints the ring | caption under the floating F on your own rune while the grimoire is open on the seal page; same style as scan.aim and absorb.aim |
+| mc.area.arrive | Arrives in, seconds | Kommt an in, Sekunden | arrives in, seconds | area editor, under Where it starts: how long the area takes from its start point to the spell |
+| mc.note.arrive | 0 lets the game pick the speed. Slower than 5 metres a second it settles in, faster it slams. | Bei 0 wählt das Spiel das Tempo. Langsamer als 5 Meter pro Sekunde setzt es sich, schneller schlägt es ein | at 0 the game picks the pace. slower than 5 metres per second it settles, faster it strikes | area editor: small note under Arrives in |
+| opt.tab.keys | Controls | Steuerung | controls | fourth tab of the Options, after Game, Video, Audio: the key and controller button list |
+| keys.note | Click a key or a button, then press the new one. Escape keeps the old one | Klick auf eine Taste oder einen Knopf und drück dann den neuen. Esc behält den alten | click on a key or a button and then press the new one. Esc keeps the old one | Controls tab: small note above the list |
+| keys.press | Press the new key or button now. Escape keeps the old one | Drück jetzt die neue Taste oder den neuen Knopf. Esc behält den alten | press the new key or the new button now. Esc keeps the old one | Controls tab: the note while a binding waits for its new key |
+| keys.action | Action | Aktion | action | Controls tab: heading of the first column |
+| keys.keyboard | Keyboard | Tastatur | keyboard | Controls tab: heading of the keyboard and mouse column |
+| keys.pad | Controller | Controller | controller | Controls tab: heading of the gamepad column |
+| keys.reset | Back to the default keys | Zurück zu den Standardtasten | back to the standard keys | Controls tab: button that puts every key and button back as shipped |
+| keys.act.forward | Walk forward | Vorwärts gehen | go forward | Controls tab: an action's name |
+| keys.act.back | Walk back | Rückwärts gehen | go backward | Controls tab: an action's name |
+| keys.act.left | Walk left | Nach links gehen | go to the left | Controls tab: an action's name |
+| keys.act.right | Walk right | Nach rechts gehen | go to the right | Controls tab: an action's name |
+| keys.act.jump | Jump, fly up | Springen, hochfliegen | jump, fly up | Controls tab: jumping, and rising as a ghost |
+| keys.act.crouch | Crouch, fly down | Ducken, runterfliegen | duck, fly down | Controls tab: crouching, and sinking as a ghost |
+| keys.act.sprint | Run | Rennen | run | Controls tab: sprinting |
+| keys.act.draw | Draw | Zeichnen | draw | Controls tab: drawing ink |
+| keys.act.erase | Erase | Radieren | erase | Controls tab: erasing ink |
+| keys.act.precise | Draw faster | Schneller zeichnen | draw faster | Controls tab: the hold key that frees the cursor for faster drawing |
+| keys.act.use | Grab, throw, use | Greifen, werfen, benutzen | grab, throw, use | Controls tab: the one hand key (E) |
+| keys.act.drop | Drop, let go | Fallen lassen, loslassen | let fall, let go | Controls tab: the release key (F) |
+| keys.act.body | Paint body, pose, watch | Körper bemalen, posieren, zusehen | paint the body, pose, watch | Controls tab: the body key (R): wizards paint their body, third person poses, acolytes watch their zombies |
+| keys.act.menu | Menu | Menü | menu | Controls tab: the pause menu key |
+| keys.act.ready | Ready | Bereit | ready | Controls tab: answering the lobby's ready check with yes |
+| keys.act.notready | Not ready | Nicht bereit | not ready | Controls tab: answering the lobby's ready check with no |
+| keys.act.talk | Push to talk | Drücken zum Sprechen | press to speak | Controls tab: holding this opens the microphone in push to talk mode |
+| keys.act.prev | Previous page | Vorherige Seite | previous page | Controls tab: a controller button that turns the grimoire back a page, or steps to the previous pose or zombie |
+| keys.act.next | Next page | Nächste Seite | next page | Controls tab: a controller button that turns the grimoire forward a page, or steps to the next pose or zombie |
+| watch.many | Watching {0} of {1} · 1-0 picks · Draw a seal on it to blow it | Du siehst {0} von {1} · 1-0 wählt · Zeichne ein Siegel darauf, um ihn zu sprengen | you see {0} of {1} · 1-0 chooses · draw a seal on it to blow him up | prompt bar while an acolyte looks through one of several zombies of theirs: {0} = which one, {1} = how many; the number keys 1 to 0 pick another; a seal drawn on the zombie makes it explode |
+| watch.one | Draw a seal on it to blow it · R leaves | Zeichne ein Siegel darauf, um ihn zu sprengen · R verlässt | draw a seal on it to blow him up · R leaves | prompt bar while an acolyte looks through their only zombie |
+| mc.behaviour.rampages | Rampages | Tobt | rages | creature behaviour button, after Skittish: a calamity that throws its spells everywhere |
+| mc.note.rampages | Throws random spells from its list all over the place, about one a second, and never runs away. Spells from its own side cannot hurt it. | Wirft zufällige Zauber aus ihrer Liste überallhin, etwa einen pro Sekunde, und flieht nie. Zauber der eigenen Seite können ihr nichts anhaben. | throws random spells from its list everywhere, about one per second, and never flees. spells of its own side can do nothing to it | note under the behaviour buttons when Rampages is picked |
+| opt.keys.title | Videos and photos | Videos und Fotos | videos and photos | pause menu, Game tab: heading over the three recorder keys |
+| opt.key.clip | Start or stop a video | Ein Video starten oder stoppen | a video start or stop | pause menu, Game tab: beside the I keycap; the same key starts and stops the recording |
+| opt.key.photo | Take a photo | Ein Foto machen | a photo make | pause menu, Game tab: beside the P keycap |
+| opt.key.folder | Open their folder (in the lobby) | Ihren Ordner öffnen (in der Lobby) | their folder open (in the lobby) | pause menu, Game tab: beside the O keycap; opens the folder holding the saved videos and photos, and only works in the lobby |
+| opt.keys.note | Saved in your Videos folder, under Spelly Zombie. The interface is never in them | Gespeichert in deinem Videos-Ordner, unter Spelly Zombie. Die Anzeige ist nie mit drauf | saved in your Videos folder, under Spelly Zombie. the display is never on it too | pause menu, Game tab: small note under the three recorder keys |
 | ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | Diese Lobby hat eine neuere Version. Beende das Spiel und lass Steam deins aktualisieren | this lobby has a newer version. end the game and let Steam update yours | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
 | ver.theirs | That lobby runs an older version. Its host has to update the game | Diese Lobby hat eine ältere Version. Ihr Host muss das Spiel aktualisieren | this lobby has an older version. its host must update the game | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
 | ver.differs | That lobby runs a different version of the game | Diese Lobby hat eine andere Version des Spiels | this lobby has another version of the game | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
@@ -626,3 +673,4 @@ nouns as German grammar needs. Lobby is the word German players use.
 | mc.side.note | The emoji and the page belong to this side. An acolyte with none of its own shows the wizard's. | Emoji und Seite gehören zu dieser Seite. Hat der Akolyth keine eigenen, zeigt er die des Zauberers. | emoji and page belong to this side. has the acolyte no own-ones, shows he those of-the wizard | note under the side switch |
 | mc.pushes.note | What drawing this rune adds to the seal's numbers, one axis or several. The spells decide what that becomes. | Was das Zeichnen dieser Rune zu den Zahlen des Siegels hinzufügt, auf einer Achse oder mehreren. Die Zauber entscheiden, was daraus wird. | what the drawing of-this rune to the numbers of-the seal adds, on one axis or several. the spells decide what from-it becomes | note under Pushes |
 | mc.rune.none | Make a rune or pick one from the list | Mach eine Rune oder wähl eine aus der Liste | make a rune or choose one from the list | the Runes creator with nothing picked |
+| opt.stick | Stick sensitivity: {0} | Stick-Empfindlichkeit: {0} | stick sensitivity: {0} | the controller's right stick, under Look sensitivity |

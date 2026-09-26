@@ -32,11 +32,11 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | chip.precise | Faster drawing | 画得更快 | draw faster | |
 | chip.erase | Erase ink | 擦掉墨水 | wipe off ink | |
 | chip.absorb | Absorb it | 吸收 | absorb | |
-| hint.alt | Hold ALT to draw faster | 按住ALT画得更快 | hold ALT, draw faster | |
+| hint.alt | Hold {0} to draw faster | 按住{0}画得更快 | hold {0}, draw faster | loading hint; {0} = the key bound to precise drawing (ALT) |
 | hint.combine | Draw more runes inside of the same seal to combine them | 在同一个法阵里多画几个符文，它们就会合在一起 | inside the same magic array draw a few more runes, they will merge together | 法阵 = magic array, the fantasy word for a drawn seal |
-| hint.lift | Draw ink on things and press E to lift them | 在东西上画墨水，按E就能举起来 | draw ink on things, press E and you can lift them | |
+| hint.lift | Draw ink on things and press {0} to lift them | 在东西上画墨水，按{0}就能举起来 | draw ink on things, press {0} and you can lift them | loading hint; {0} = the key or button bound to Use (E) |
 | hint.erase | Erasing returns the ink to your wand | 擦掉的墨水会回到魔杖里 | wiped-off ink returns into the magic wand | |
-| hint.body | Press R to paint runes on your own body | 按R在自己身上画符文 | press R, draw runes on your own body | |
+| hint.body | Press {0} to paint runes on your own body | 按{0}在自己身上画符文 | press {0}, draw runes on your own body | loading hint; {0} = the key or button bound to the body key (R) |
 | hint.pose | Striking a pose can close a body seal and cast it | 摆个姿势可以合上身上的法阵并施放 | striking a pose can close the array on the body and cast it | 施放 = cast a spell, the standard game verb |
 | hint.size | Bigger runes make stronger spells | 符文越大，魔法越强 | the bigger the rune, the stronger the magic | |
 | hint.touch | Lines count as one drawing only when they touch | 线条只有碰在一起才算一幅画 | lines count as one picture only when touching | |
@@ -132,7 +132,7 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | tag.quiet | Quiet ok | 不说话也行 | not talking is also fine | |
 | opt.mic.title | Microphone | 麦克风 | microphone |  |
 | opt.mic.open | Open mic | 常开 | always open |  |
-| opt.mic.ptt | Hold V | 按住V说话 | hold V to talk | V is a physical key, kept |
+| opt.mic.ptt | Hold {0} | 按住{0}说话 | hold {0} to talk | Options, Audio, microphone mode button: push to talk; {0} = the key bound to talking (V) |
 | opt.mic.off | Muted | 静音 | silence |  |
 | opt.tab.game | Game | 游戏 | game |  |
 | opt.tab.video | Video | 画面 | picture |  |
@@ -362,6 +362,53 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | mc.kept | Kept drawings. Pick one to work on it, the plus starts a new one, X removes one | 保留的画。选一幅来修改，加号开始新的一幅，X删除 | kept drawings. pick one to modify, plus starts a new one, X deletes | heading over the drawing tiles of this rune on this map |
 | mc.reads | Reads as {0} | 识别为：{0} | recognized as: {0} | what the pad's drawing is read as right now; {0} a rune name |
 | mc.reads.none | Not readable yet | 还认不出来 | still can't recognize | the pad's drawing matches no rune well enough |
+| browse.inlobby | In the lobby | 在房间里 | in the room | lobby list row, after the tags: the host and friends are in the lobby scene (the sandbox), no match running |
+| browse.inmatch | In a match | 对局中 | in a match | lobby list row, after the tags: a match is running on a map right now |
+| browse.upmin | Up {0} min | 已开 {0} 分钟 | open for {0} minutes | lobby list row: how long the lobby has stood; {0} = whole minutes, under an hour |
+| browse.uph | Up {0} h {1} min | 已开 {0} 小时 {1} 分钟 | open for {0} hours {1} minutes | lobby list row: how long the lobby has stood; {0} = hours, {1} = the minutes past the hour |
+| hint.sealshape | A circle is the weakest seal, a triangle the strongest | 圆形法阵最弱，三角形最强 | a round magic circle is the weakest, a triangle the strongest | loading screen hint; Spell.PowerFor: fewer lines in a seal = stronger, a circle counts as ten |
+| hint.sealline | Draw two sides of a triangle around your runes and {0} closes it | 在符文周围画出三角形的两条边，按 {0} 就能合上它 | draw two sides of a triangle around the runes, press {0} and it closes | loading screen hint; {0} = the key bound to F; the book closes two straight lines that meet at a corner with the third side |
+| opt.ghost | Ghost lines | 幽灵线条 | ghost lines | Game tab of the options: the row for the ghost hand (the lobby lessons and the floating F's drawn previews), answered Off / On |
+| side.pillar.acolyte | Become an acolyte | 变成侍祭 | turn into an acolyte | caption under the floating E on the lobby's side pillar while you are a wizard; same style as chest.open |
+| side.pillar.wizard | Become a wizard | 变成巫师 | turn into a wizard | caption under the floating E on the lobby's side pillar while you are an acolyte |
+| seal.aim | Seal it, the book draws the ring | 围起来，书会画出法阵 | surround it, the book will draw the magic circle | caption under the floating F on your own rune while the grimoire is open on the seal page; same style as scan.aim and absorb.aim |
+| mc.area.arrive | Arrives in, seconds | 到达用时，秒 | time to arrive, seconds | area editor, under Where it starts: how long the area takes from its start point to the spell |
+| mc.note.arrive | 0 lets the game pick the speed. Slower than 5 metres a second it settles in, faster it slams. | 0表示由游戏决定速度。慢于每秒5米会轻轻落下，更快就会砸下来 | 0 means the game decides the speed. slower than 5 metres per second it lands gently, faster it smashes down | area editor: small note under Arrives in |
+| opt.tab.keys | Controls | 操作 | controls | fourth tab of the Options, after Game, Video, Audio: the key and controller button list |
+| keys.note | Click a key or a button, then press the new one. Escape keeps the old one | 点一下按键或按钮，再按新的。按Esc保留原来的 | click a key or a button, then press the new one. pressing Esc keeps the original | Controls tab: small note above the list |
+| keys.press | Press the new key or button now. Escape keeps the old one | 现在按下新的按键或按钮。按Esc保留原来的 | now press the new key or button. pressing Esc keeps the original | Controls tab: the note while a binding waits for its new key |
+| keys.action | Action | 动作 | action | Controls tab: heading of the first column |
+| keys.keyboard | Keyboard | 键盘 | keyboard | Controls tab: heading of the keyboard and mouse column |
+| keys.pad | Controller | 手柄 | gamepad | Controls tab: heading of the gamepad column |
+| keys.reset | Back to the default keys | 恢复默认按键 | restore the default keys | Controls tab: button that puts every key and button back as shipped |
+| keys.act.forward | Walk forward | 向前走 | walk forward | Controls tab: an action's name |
+| keys.act.back | Walk back | 向后走 | walk backward | Controls tab: an action's name |
+| keys.act.left | Walk left | 向左走 | walk left | Controls tab: an action's name |
+| keys.act.right | Walk right | 向右走 | walk right | Controls tab: an action's name |
+| keys.act.jump | Jump, fly up | 跳跃，向上飞 | jump, fly upward | Controls tab: jumping, and rising as a ghost |
+| keys.act.crouch | Crouch, fly down | 蹲下，向下飞 | crouch, fly downward | Controls tab: crouching, and sinking as a ghost |
+| keys.act.sprint | Run | 跑 | run | Controls tab: sprinting |
+| keys.act.draw | Draw | 画 | draw | Controls tab: drawing ink |
+| keys.act.erase | Erase | 擦掉 | rub off | Controls tab: erasing ink |
+| keys.act.precise | Draw faster | 画得更快 | draw faster | Controls tab: the hold key that frees the cursor for faster drawing |
+| keys.act.use | Grab, throw, use | 抓、扔、用 | grab, throw, use | Controls tab: the one hand key (E) |
+| keys.act.drop | Drop, let go | 放下，松手 | put down, let go | Controls tab: the release key (F) |
+| keys.act.body | Paint body, pose, watch | 画身体、摆姿势、观看 | paint the body, strike a pose, watch | Controls tab: the body key (R): wizards paint their body, third person poses, acolytes watch their zombies |
+| keys.act.menu | Menu | 菜单 | menu | Controls tab: the pause menu key |
+| keys.act.ready | Ready | 准备好了 | ready | Controls tab: answering the lobby's ready check with yes |
+| keys.act.notready | Not ready | 还没好 | not ready yet | Controls tab: answering the lobby's ready check with no |
+| keys.act.talk | Push to talk | 按住说话 | hold to talk | Controls tab: holding this opens the microphone in push to talk mode |
+| keys.act.prev | Previous page | 上一页 | previous page | Controls tab: a controller button that turns the grimoire back a page, or steps to the previous pose or zombie |
+| keys.act.next | Next page | 下一页 | next page | Controls tab: a controller button that turns the grimoire forward a page, or steps to the next pose or zombie |
+| watch.many | Watching {0} of {1} · 1-0 picks · Draw a seal on it to blow it | 正在看第{0}个，共{1}个 · 1-0选择 · 在它身上画法阵就能引爆 | now looking at number {0}, {1} in all · 1-0 chooses · draw a magic array on its body to set it off | prompt bar while an acolyte looks through one of several zombies of theirs: {0} = which one, {1} = how many; the number keys 1 to 0 pick another; a seal drawn on the zombie makes it explode |
+| watch.one | Draw a seal on it to blow it · R leaves | 在它身上画法阵就能引爆 · R离开 | draw a magic array on its body to set it off · R leaves | prompt bar while an acolyte looks through their only zombie |
+| mc.behaviour.rampages | Rampages | 横冲直撞 | charges about wildly | creature behaviour button, after Skittish: a calamity that throws its spells everywhere |
+| mc.note.rampages | Throws random spells from its list all over the place, about one a second, and never runs away. Spells from its own side cannot hurt it. | 把清单里的魔法随机扔得到处都是，大约每秒一个，从不逃跑。自己一方的魔法伤不到它 | throws the spells in the list randomly all over, about one per second, never runs away. its own side's spells cannot hurt it | note under the behaviour buttons when Rampages is picked |
+| opt.keys.title | Videos and photos | 视频和照片 | videos and photos | pause menu, Game tab: heading over the three recorder keys |
+| opt.key.clip | Start or stop a video | 开始或停止录视频 | start or stop recording a video | pause menu, Game tab: beside the I keycap; the same key starts and stops the recording |
+| opt.key.photo | Take a photo | 拍一张照片 | take one photo | pause menu, Game tab: beside the P keycap |
+| opt.key.folder | Open their folder (in the lobby) | 打开它们的文件夹（在房间里） | open their folder (in the room) | pause menu, Game tab: beside the O keycap; opens the folder holding the saved videos and photos, and only works in the lobby |
+| opt.keys.note | Saved in your Videos folder, under Spelly Zombie. The interface is never in them | 保存在“视频”文件夹的 Spelly Zombie 里。界面不会被拍进去 | saved in Spelly Zombie inside the 'Videos' folder. the interface will not be captured | pause menu, Game tab: small note under the three recorder keys |
 | ver.mine | That lobby runs a newer version. Quit the game and let Steam update yours | 那个房间的版本更新。退出游戏，让Steam更新你的游戏 | that room's version is newer. quit the game and let Steam update your game | top of the screen, stays for the session: the player tried to join a lobby whose host has a newer build; Steam never updates a running game |
 | ver.theirs | That lobby runs an older version. Its host has to update the game | 那个房间的版本太旧。房主得先更新游戏 | that room's version is too old. the room owner has to update the game first | top of the screen for ten seconds: the player tried to join a lobby whose host has an older build |
 | ver.differs | That lobby runs a different version of the game | 那个房间的游戏版本不一样 | that room's game version is not the same | top of the screen for ten seconds: the builds differ and it is not known which one is newer (the editor, a build not started from Steam) |
@@ -627,3 +674,4 @@ spoken Chinese, 你 (never 您), doubled verbs for casual suggestions (试试,
 | mc.side.note | The emoji and the page belong to this side. An acolyte with none of its own shows the wizard's. | 表情符号和书页属于这个阵营。侍祭没有自己的，就显示巫师的 | emoji and page belong to this camp. if the acolyte has none of its own, the wizard's shows | note under the side switch |
 | mc.pushes.note | What drawing this rune adds to the seal's numbers, one axis or several. The spells decide what that becomes. | 画这个符文会给法阵的数值加上什么，可以是一个轴或几个轴。变成什么由魔法决定 | what drawing this rune adds to the seal's numbers, can be one axis or several. what it becomes is decided by the magic | note under Pushes |
 | mc.rune.none | Make a rune or pick one from the list | 新建一个符文，或从列表里选一个 | new-build a rune, or from list pick one | the Runes creator with nothing picked |
+| opt.stick | Stick sensitivity: {0} | 摇杆灵敏度: {0} | stick sensitivity: {0} | same pattern as 视角灵敏度 |

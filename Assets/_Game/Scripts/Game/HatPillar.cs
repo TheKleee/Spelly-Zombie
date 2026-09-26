@@ -61,7 +61,7 @@ namespace SpellyZombie
             // walking away still closes an open panel
             var kb = Keyboard.current;
             if (ReferenceEquals(AimBadge.Aimed, this) && !UIKit.Typing
-                && kb != null && kb.eKey.wasPressedThisFrame && !GameMenu.IsOpen)
+                && Keys.Down(Act.Use) && !GameMenu.IsOpen)
             {
                 if (PanelOpen) Close();
                 else Open();
@@ -71,8 +71,28 @@ namespace SpellyZombie
             {
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
-                if (kb != null && kb.escapeKey.wasPressedThisFrame) Close();
+                if (Keys.Down(Act.Menu) || Keys.BackDown) Close();
+                else PadWheel();
             }
+        }
+
+        float _padPush; // how far the right stick was pushed last frame
+
+        /// A controller turns the wheel with its right stick: the way it points is the hue,
+        /// how far it is pushed the saturation.
+        void PadWheel()
+        {
+            Vector2 stick = Keys.PadActive ? Keys.LookStick : Vector2.zero;
+            float push = Mathf.Clamp01(stick.magnitude);
+            // a stick let go springs back through every paler colour: only a push that holds or grows picks
+            bool lettingGo = (_padPush - push) / Mathf.Max(Time.unscaledDeltaTime, 0.001f) > 3f;
+            _padPush = push;
+            if (push < 0.2f || lettingGo) return;
+            float h = Mathf.Atan2(stick.y, stick.x) / (Mathf.PI * 2f);
+            if (h < 0f) h += 1f;
+            if (Mathf.Abs(Mathf.DeltaAngle(h * 360f, _h * 360f)) < 1f && Mathf.Abs(push - _s) < 0.01f && _v == 1f) return;
+            _h = h; _s = push; _v = 1f;
+            Repaint();
         }
 
         void Open()

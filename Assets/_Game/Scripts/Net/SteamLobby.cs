@@ -44,6 +44,14 @@ namespace SpellyZombie
         /// One-line human status for menu/status labels.
         public static string Status { get; private set; } = "";
 
+        /// Back in the main menu: the last word of a lobby that is gone ("Lobby deleted")
+        /// gives way to the plain line again.
+        public static void ShowIdle()
+        {
+            if (NetGame.Connected) return;
+            Status = SteamReady ? Loc.F("steam.ready", SteamFriends.GetPersonaName()) : Loc.T("steam.offline");
+        }
+
         enum Pending { None, Host, Client }
 
         CSteamID _lobby;
@@ -70,7 +78,12 @@ namespace SpellyZombie
             public string Lang;   // code from Loc.Languages
             public int Tags;      // bitmask into TagKeys
             public bool InGame;   // a match is running right now
+            public float UpStamp; // unscaled time the lobby went up, as this machine counts; < 0 = unknown
         }
+
+        /// The host has not touched the controls for HostAfkMinutes: a public lobby is off
+        /// the lists (friends can still come) until they move again.
+        public static bool HostAway { get; private set; }
 
         /// The host flips this when a match starts/ends; rows show it.
         public static void SetInGame(bool on)
@@ -130,6 +143,14 @@ namespace SpellyZombie
             _cbEnter = Callback<LobbyEnter_t>.Create(OnLobbyEnter);
             _cbJoinRequested = Callback<GameLobbyJoinRequested_t>.Create(
                 r => SteamMatchmaking.JoinLobby(r.m_steamIDLobby)); // overlay "Join Game"
+            // an invite accepted while the game was closed: Steam starts it with +connect_lobby <id>
+            var args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i + 1 < args.Length; i++)
+                if (args[i] == "+connect_lobby" && ulong.TryParse(args[i + 1], out ulong invited))
+                {
+                    SteamMatchmaking.JoinLobby(new CSteamID(invited));
+                    break;
+                }
             _crBrowse = CallResult<LobbyMatchList_t>.Create(OnBrowseList);
             // measure our network coordinates now so ping estimates exist by
             // the time anyone browses a lobby
@@ -144,6 +165,12 @@ namespace SpellyZombie
 
         /// True while this machine hosts a live lobby (Steam or LAN).
         public static bool Hosting => NetGame.IsHost;
+
+        /// A Steam join is on its way: the lobby is entered, the connection not started yet.
+        public static bool JoinPending => I != null && I._pending == Pending.Client;
+
+        /// A listed lobby its host's game has not stamped for this long is left over.
+        const long StaleSeconds = 120;
 
         /// Refill the public lobby list. Worldwide on purpose: the list shows
         /// each row's estimated ping and the player picks.
@@ -165,6 +192,16 @@ namespace SpellyZombie
                     var id = SteamMatchmaking.GetLobbyByIndex(i);
                     string name = SteamMatchmaking.GetLobbyData(id, "sz_name");
                     int.TryParse(SteamMatchmaking.GetLobbyData(id, "sz_tags"), out int tags);
+                    if (SteamMatchmaking.GetLobbyData(id, "sz_afk") == "1") continue; // the host is away from the keys
+                    // a lobby its host's game no longer stamps is left over (a game that closed badly)
+                    uint.TryParse(SteamMatchmaking.GetLobbyData(id, "sz_beat"), out uint beat);
+                    if (beat == 0 || (long)SteamUtils.GetServerRealTime() - beat > StaleSeconds) continue;
+                    if (SteamMatchmaking.GetLobbyData(id, "sz_owner") == SteamUser.GetSteamID().m_SteamID.ToString())
+                        continue; // your own: nothing to join
+                    // how long it has stood: Steam's clock on both ends
+                    uint.TryParse(SteamMatchmaking.GetLobbyData(id, "sz_up"), out uint up);
+                    float upStamp = up == 0 ? -1f
+                        : Time.unscaledTime - Mathf.Max(0f, (float)((long)SteamUtils.GetServerRealTime() - up));
                     Lobbies.Add(new PublicLobby
                     {
                         Id = id,
@@ -177,6 +214,7 @@ namespace SpellyZombie
                         Lang = SteamMatchmaking.GetLobbyData(id, "sz_lang"),
                         Tags = tags,
                         InGame = SteamMatchmaking.GetLobbyData(id, "sz_ingame") == "1",
+                        UpStamp = upStamp,
                     });
                 }
             // best connection first, unknown ping last
@@ -285,6 +323,8 @@ namespace SpellyZombie
                 return;
             }
             if (NetGame.Connected || _pending != Pending.None || _creating) return;
+            // a lobby still held from an earlier session goes first: one lobby per host
+            if (_lobby.IsValid()) { SteamMatchmaking.LeaveLobby(_lobby); _lobby = default; }
             _creating = true;
             _isPrivate = friendsPrivate;
             _hostPassword = friendsPrivate ? "" : (password ?? "").Trim();
@@ -328,6 +368,10 @@ namespace SpellyZombie
                 SteamMatchmaking.SetLobbyData(_lobby, "sz_pwh", Hash(_hostPassword));
             SteamMatchmaking.SetLobbyData(_lobby, "sz_maxping",
                 DrawingConfig.LobbyMaxPingMs.ToString("0"));
+            SteamMatchmaking.SetLobbyData(_lobby, "sz_up", SteamUtils.GetServerRealTime().ToString()); // the lists count from here
+            SteamMatchmaking.SetLobbyData(_lobby, "sz_afk", "0");
+            SteamMatchmaking.SetLobbyData(_lobby, "sz_owner", SteamUser.GetSteamID().m_SteamID.ToString());
+            SteamMatchmaking.SetLobbyData(_lobby, "sz_beat", SteamUtils.GetServerRealTime().ToString());
             PublishPingLocation();
 
             _pending = Pending.Host;
@@ -372,8 +416,8 @@ namespace SpellyZombie
 
         void OnLobbyEnter(LobbyEnter_t r)
         {
-            if (_pending == Pending.Host || InstanceFinder.ServerManager.Started)
-                return; // the host's own lobby entry
+            if (_pending == Pending.Host || NetGame.IsHost)
+                return; // the host's own lobby entry (no manager yet in the menu: nobody hosts there)
             if (r.m_EChatRoomEnterResponse != (uint)EChatRoomEnterResponse.k_EChatRoomEnterResponseSuccess)
             {
                 Status = Loc.T("steam.noenter");
@@ -398,6 +442,9 @@ namespace SpellyZombie
             EnterVillage();
         }
 
+        /// Seconds of silence before the LAN road gives a connection up for gone.
+        const float LanTimeoutSeconds = 20f;
+
         // ------------------------------------------- deferred FishNet start --
         void EnterVillage()
         {
@@ -409,6 +456,24 @@ namespace SpellyZombie
 
         void Update()
         {
+            // a host away from the keys: the public lobby steps out of the lists until they move again
+            bool away = NetGame.IsHost && NetGame.Connected
+                && Keys.IdleSeconds > DrawingConfig.HostAfkMinutes * 60f;
+            if (away != HostAway)
+            {
+                HostAway = away;
+                if (SteamReady && _lobby.IsValid() && !_isPrivate
+                    && SteamMatchmaking.GetLobbyOwner(_lobby) == SteamUser.GetSteamID())
+                {
+                    // friends-only: gone from every search, friends and invites still get in
+                    SteamMatchmaking.SetLobbyType(_lobby,
+                        away ? ELobbyType.k_ELobbyTypeFriendsOnly : ELobbyType.k_ELobbyTypePublic);
+                    SteamMatchmaking.SetLobbyData(_lobby, "sz_afk", away ? "1" : "0");
+                }
+                Debug.Log(away ? "[SpellyZombie] the host is away from the keys: the lobby is off the lists until they move"
+                    : "[SpellyZombie] the host is back: the lobby is listed again");
+            }
+
             // ping coordinates drift; a hosting lobby republishes every 30s
             // (also covers the first publish when Steam hadn't measured yet)
             if (SteamReady && _lobby.IsValid() && Time.unscaledTime >= _plocRefresh
@@ -416,11 +481,16 @@ namespace SpellyZombie
             {
                 _plocRefresh = Time.unscaledTime + 30f;
                 PublishPingLocation();
+                // still hosting it: the lists keep it (StaleSeconds)
+                if (NetGame.IsHost && NetGame.Connected)
+                    SteamMatchmaking.SetLobbyData(_lobby, "sz_beat", SteamUtils.GetServerRealTime().ToString());
             }
 
             if (_pending == Pending.None) return;
+            // still riding into the Lobby scene: the manager can outlive it, and a road opened
+            // anywhere else takes the lobby's welcome in a scene that does not hold it
+            if (!NetGame.HasManager || SceneManager.GetActiveScene().name != "Lobby") return;
             var nm = InstanceFinder.NetworkManager;
-            if (nm == null) return; // still riding into the Lobby scene
 
             UseSteamTransport(nm);
             if (_pending == Pending.Host)
@@ -441,6 +511,14 @@ namespace SpellyZombie
         void UseSteamTransport(FishNet.Managing.NetworkManager nm)
         {
             var mp = nm.GetComponent<FishNet.Transporting.Multipass.Multipass>();
+            // the LAN road waits half an hour of silence before it drops a connection: a client
+            // that crashed kept its puppet standing on the host that long
+            var lan = nm.GetComponent<FishNet.Transporting.Tugboat.Tugboat>();
+            if (lan != null && lan.GetTimeout(true) > LanTimeoutSeconds)
+            {
+                lan.SetTimeout(LanTimeoutSeconds, true);
+                lan.SetTimeout(LanTimeoutSeconds, false);
+            }
             if (mp == null)
             {
                 Debug.LogError("[SpellyZombie] The Lobby's NetworkManager needs a Multipass transport holding Tugboat and FishySteamworks.", nm);

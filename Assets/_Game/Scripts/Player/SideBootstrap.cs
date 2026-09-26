@@ -35,6 +35,30 @@ namespace SpellyZombie
 
         static RuneType[] KitFor(Side side) => side == Side.Acolyte ? AcolyteKit : WizardKit;
 
+        /// LOBBY TEST CHEAT: every rune of the book this player holds, without the deeds or the
+        /// absorbs. The match start resets every book, so none of it reaches a match. Returns how
+        /// many were new. Granted quietly (no toasts) but announced to the other machines.
+        public static int UnlockWholeBook(int owner)
+        {
+            var runes = new System.Collections.Generic.List<RuneType>();
+            if (Grimoires.HeldBy(owner) == BookKind.Acolyte)
+            {
+                runes.AddRange(RuneLibrary.AcolyteKit);
+                runes.AddRange(RuneLibrary.AcolyteMischief);
+            }
+            else
+            {
+                for (int r = (int)RuneType.HeatUp; r <= (int)RuneType.DensityDown; r++) runes.Add((RuneType)r);
+                foreach (var def in SpellBook.Live.runes)
+                    if (def != null && !def.BuiltIn) runes.Add(def.Type); // his made runes too
+            }
+            Grimoire.Cheated = true;
+            int added = 0;
+            foreach (var r in runes)
+                if (!Grimoire.HasRune(owner, r)) { Grimoire.UnlockRune(owner, r, null, quiet: true); added++; }
+            return added;
+        }
+
         /// The match starts every player's book over at their side's kit:
         /// the lobby is practice, what was learned there stays there.
         public static void ResetBooksForMatch()
@@ -44,12 +68,16 @@ namespace SpellyZombie
             Grimoire.ResetForMatch(owners, o => KitFor(Sides.Of(o)));
         }
 
-        /// Changing side REPLACES the book, lobby included - you become that
-        /// side with that side's starting state. The old lobby-only-adds rule
-        /// let a wizard carry push and pull into the acolyte, who owns nothing.
+        /// Changing side changes the book: a wizard's runes never ride into the acolyte's, who
+        /// earns their own. The book being left waits as it was (Grimoire.SwitchBook), so in the
+        /// lobby what was learned on a side is learned once; a match starts every book over.
         static void OnSideChanged(int owner, Side side)
         {
-            Grimoire.SetKit(owner, side == Side.Acolyte ? AcolyteKit : WizardKit);
+            // on the record when it happens to the local player mid-match: who asked
+            if (owner == Grimoire.LocalPlayerId && !RoundDirector.InLobby)
+                Debug.Log($"[SpellyZombie] your side changed to {side} outside the lobby. Asked by:\n"
+                    + new System.Diagnostics.StackTrace(1, false));
+            Grimoire.SwitchBook(owner, side == Side.Acolyte ? Side.Wizard : Side.Acolyte, side, KitFor(side));
         }
 
         /// The starting pair - WIZARDS ONLY. An acolyte opens with an empty
@@ -103,6 +131,8 @@ namespace SpellyZombie
                     if (p.GetComponent<ModeGuide>() == null) p.gameObject.AddComponent<ModeGuide>();
                     // the situations that earn an acolyte a mischief glyph
                     if (p.GetComponent<AcolyteDeedWatch>() == null) p.gameObject.AddComponent<AcolyteDeedWatch>();
+                    // your needles show whom they can take their revenge on
+                    if (p.GetComponent<NeedleMarks>() == null) p.gameObject.AddComponent<NeedleMarks>();
                     // the chosen hat color survives scene loads and sessions
                     HatColor.Dress(p);
 

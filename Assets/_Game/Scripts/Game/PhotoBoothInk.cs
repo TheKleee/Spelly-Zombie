@@ -204,6 +204,8 @@ namespace SpellyZombie
         // ------------------------------------------------------------ shells --
         /// A skinned body with no shape of its own (a zombie, a spell) gets its
         /// pose baked into a shell while the pen is out, the way body paint does.
+        /// Judged skin by skin: a zombie's hat or clothes having a shape once left
+        /// its whole body without one, and the pen found nothing to land on.
         readonly Dictionary<Collider, SkinnedMeshRenderer> _shells = new Dictionary<Collider, SkinnedMeshRenderer>();
 
         void BakeShells()
@@ -212,22 +214,35 @@ namespace SpellyZombie
             foreach (var s in _subjects)
             {
                 if (s.Root == null) continue;
-                bool solid = false;
-                foreach (var c in s.Root.GetComponentsInChildren<Collider>())
-                    if (c != null && c.enabled && !c.isTrigger) { solid = true; break; }
-                if (solid) continue;
                 foreach (var smr in s.Root.GetComponentsInChildren<SkinnedMeshRenderer>())
                 {
-                    if (smr == null || !smr.enabled || smr.sharedMesh == null) continue;
+                    if (smr == null || !smr.enabled || smr.sharedMesh == null || LimbsSolid(smr)) continue;
+                    // mounted the way SkinHit.Mount finds fits this model: always baking with scale at
+                    // the renderer's position and rotation laid the zombie's shell on its side, and the
+                    // pen never met it
+                    bool known = SkinHit.Mount(smr, out bool scaled, out bool own);
                     var mesh = new Mesh { name = "InkShell" };
-                    smr.BakeMesh(mesh, true); // scale baked in: world = position + rotation * vertex
+                    smr.BakeMesh(mesh, !known || scaled);
                     var go = new GameObject("~InkShell") { layer = Layer };
                     go.transform.SetPositionAndRotation(smr.transform.position, smr.transform.rotation);
+                    if (known && own) go.transform.localScale = smr.transform.lossyScale; // the renderer's whole transform
                     var mc = go.AddComponent<MeshCollider>();
                     mc.sharedMesh = mesh;
                     _shells[mc] = smr;
                 }
             }
+        }
+
+        /// A skin whose bones carry shapes of their own (a player's limbs): the pen lands on those.
+        static bool LimbsSolid(SkinnedMeshRenderer smr)
+        {
+            foreach (var b in smr.bones)
+            {
+                if (b == null) continue;
+                foreach (var c in b.GetComponents<Collider>())
+                    if (c.enabled && !c.isTrigger) return true;
+            }
+            return false;
         }
 
         void DropShells()

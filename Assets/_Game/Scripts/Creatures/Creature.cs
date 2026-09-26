@@ -237,7 +237,10 @@ namespace SpellyZombie
             bool spared = pilot != null && TryGetComponent<Golem>(out var g)
                 && (g.OwnerId < 0 || Teams.OfOwner(g.OwnerId) == Teams.Of(pilot));
             if (pilot != null && !spared)
-                pilot.TakeHit(col.relativeVelocity * 0.25f, dmg * 0.6f);
+            {
+                int by = Teams.OwnerOf(this, out bool via); // whoever this body answers to
+                pilot.TakeHit(col.relativeVelocity * 0.25f, dmg * 0.6f, $"hit by {name}", by, via);
+            }
 
             if (TryShatter(dmg)) return; // frozen = brittle, triple payout
             // a boss never breaks itself on its own crashes (his call); every other creature pays

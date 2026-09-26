@@ -3,17 +3,23 @@ using UnityEngine;
 
 namespace SpellyZombie
 {
-    /// ★ THE FIRST STEPS, in the lobby: a see-through blue hand draws in front
-    /// of you what your own hand has never drawn. Never drew a rune: it draws
-    /// Push on the ground, again and again. Drew one but never a seal: it draws
-    /// the ring around your latest rune (around a faint rune of its own once
-    /// yours is gone). Both done: it never comes back. Local only, never ink;
-    /// off with the hints switch. Your first rune also opens the book on the
-    /// seal page, the way an absorb opens it on the new rune's page.
+    /// ★ THE FIRST STEPS, in the lobby while you are alone in it: a glowing blue
+    /// line draws in front of you, a glowing bead riding its tip. Three lessons, in
+    /// order: a rune (Push) on the ground; the ring around your latest rune
+    /// (around a faint one of its own once yours is gone); two runes inside ONE
+    /// ring. A lesson you have never done repeats until you do it. One you
+    /// have done before comes back as a reminder on every launch: a few times,
+    /// or until you do it again. Local only, never ink; off with the hints
+    /// switch or the ghost lines switch. Your first rune ever also opens the
+    /// book on the seal page.
     public class FirstSteps : MonoBehaviour
     {
-        const string RuneKey = "sz_first_rune", SealKey = "sz_first_seal";
-        static bool _loaded, _runeDone, _sealDone;
+        const string RuneKey = "sz_first_rune", SealKey = "sz_first_seal", ComboKey = "sz_first_combo";
+        const int ReminderTimes = 4;      // how often a lesson you already know plays per launch
+        static bool _loaded, _runeDone, _sealDone, _comboDone;
+        // this launch: done again, or shown often enough as a reminder
+        static readonly bool[] _seenNow = new bool[3];
+        static readonly int[] _shown = new int[3];
         static readonly List<Stroke> _lastRune = new List<Stroke>();
 
         public static bool RuneDone { get { Load(); return _runeDone; } }
@@ -25,6 +31,16 @@ namespace SpellyZombie
             _loaded = true;
             _runeDone = PlayerPrefs.GetInt(RuneKey, 0) != 0;
             _sealDone = PlayerPrefs.GetInt(SealKey, 0) != 0;
+            _comboDone = PlayerPrefs.GetInt(ComboKey, 0) != 0;
+        }
+
+        static bool EverDone(int lesson) => lesson == 0 ? _runeDone : lesson == 1 ? _sealDone : _comboDone;
+
+        /// The lesson to show now: the first one not done (or reminded enough) this launch. -1 none.
+        static int Lesson()
+        {
+            for (int i = 0; i < 3; i++) if (!_seenNow[i]) return i;
+            return -1;
         }
 
         /// A drawing of your own hand read as a rune (DrawingWorld, pen-up).
@@ -33,30 +49,44 @@ namespace SpellyZombie
             Load();
             _lastRune.Clear();
             if (cluster != null) _lastRune.AddRange(cluster);
-            if (_runeDone) return;
-            _runeDone = true;
-            PlayerPrefs.SetInt(RuneKey, 1);
-            PlayerPrefs.Save();
-            GrimoirePages.ShowSealPage(); // the next thing to learn
+            _seenNow[0] = true;
+            bool first = !_runeDone;
+            if (first)
+            {
+                _runeDone = true;
+                PlayerPrefs.SetInt(RuneKey, 1);
+                PlayerPrefs.Save();
+            }
+            // the next thing to learn: the book opens on the seal page, where F rings the rune by
+            // itself. The first time ever, anywhere; after that a reminder while the ring lesson plays
+            if (first || (!_seenNow[1] && LessonsOn())) GrimoirePages.ShowSealPage();
         }
 
-        /// A seal of your own closed (DrawingWorld.CreateSeal).
-        public static void SealDrawn()
+        /// The lobby is the sandbox only while you are alone in it, and the hints switch rules.
+        static bool LessonsOn() => ActiveScene.Name == "Lobby" && Hints.Enabled && GhostHand.Enabled
+            && NetSync.RemoteCount == 0;
+
+        /// A seal of your own closed (DrawingWorld.CreateSeal), holding this many runes.
+        public static void SealDrawn(int runes)
         {
             Load();
-            if (_sealDone) return;
-            _sealDone = true;
-            PlayerPrefs.SetInt(SealKey, 1);
-            PlayerPrefs.Save();
+            _seenNow[0] = _seenNow[1] = true;
+            if (runes >= 2) _seenNow[2] = true;
+            bool save = false;
+            if (!_sealDone) { _sealDone = true; PlayerPrefs.SetInt(SealKey, 1); save = true; }
+            if (runes >= 2 && !_comboDone) { _comboDone = true; PlayerPrefs.SetInt(ComboKey, 1); save = true; }
+            if (save) PlayerPrefs.Save();
         }
 
         /// Options: the lessons from the start again (with the hints).
         public static void ResetAll()
         {
             Load();
-            _runeDone = _sealDone = false;
+            _runeDone = _sealDone = _comboDone = false;
+            for (int i = 0; i < 3; i++) { _seenNow[i] = false; _shown[i] = 0; }
             PlayerPrefs.DeleteKey(RuneKey);
             PlayerPrefs.DeleteKey(SealKey);
+            PlayerPrefs.DeleteKey(ComboKey);
             PlayerPrefs.Save();
         }
 
@@ -71,38 +101,32 @@ namespace SpellyZombie
         // ------------------------------------------------------ the ghost hand
         const float Ahead = 2.4f;          // metres in front of you
         const float Size = 0.5f;           // the rune's larger side
-        const float Width = 0.012f;        // the line
-        const float DrawSeconds = 1.2f;    // a whole lesson drawn, whatever its size
-        const float Hold = 0.8f, FadeSeconds = 0.35f, Rest = 0.35f;
-        static readonly Color Ink = new Color(0.45f, 0.75f, 1f, 0.6f);
-        static readonly Color Faint = new Color(0.45f, 0.75f, 1f, 0.22f);
-
-        GameObject _ghost;                                       // a scene object: dies with the scene
-        readonly List<LineRenderer> _lines = new List<LineRenderer>();
+        readonly GhostHand _hand = new GhostHand();
         readonly List<List<Vector3>> _paths = new List<List<Vector3>>();
-        readonly List<float> _lengths = new List<float>();
-        float _total, _t;
-        int _state;                                              // 0 drawing, 1 holding, 2 fading, 3 resting
-        bool _ringLesson;
+        int _lesson = -1;                                        // the one on show: 0 rune, 1 ring, 2 two runes in one ring
         Vector3 _spot;
 
         void Update()
         {
             Load();
-            if (_runeDone && _sealDone) { Clear(); return; }
-            if (ActiveScene.Name != "Lobby" || !Hints.Enabled || GameMenu.IsOpen || LoadEgg.Closed) { Clear(); return; }
+            int lesson = Lesson();
+            if (lesson < 0) { Clear(); return; }
+            if (!LessonsOn() || GameMenu.IsOpen || LoadEgg.Closed) { Clear(); return; }
+            // the floating F draws its own preview with the hand: one thing drawn at a time
+            if (GrimoireAbsorb.PreviewLive) { Clear(); return; }
             var pilot = LocalPilot();
             if (pilot == null) { Clear(); return; }
 
-            bool ring = _runeDone;
-            if (_ghost == null || ring != _ringLesson)
+            if (!_hand.Alive || lesson != _lesson)
             {
                 Clear();
-                if (!Begin(pilot, ring)) return;
+                if (!Begin(pilot, lesson)) return;
+                // a lesson you already know is a reminder: a few times, then it lets you be
+                if (EverDone(lesson) && ++_shown[lesson] > ReminderTimes) { _seenNow[lesson] = true; Clear(); return; }
             }
             // walked off mid-lesson: it starts over where you are
             if (Vector3.Distance(pilot.transform.position, _spot) > 7f) { Clear(); return; }
-            Animate();
+            _hand.Animate(Time.deltaTime);
         }
 
         static SimpleFPSController LocalPilot()
@@ -114,24 +138,23 @@ namespace SpellyZombie
 
         void Clear()
         {
-            if (_ghost != null) Destroy(_ghost);
-            _ghost = null;
-            _lines.Clear(); _paths.Clear(); _lengths.Clear();
+            _hand.Clear();
+            _paths.Clear();
         }
 
-        /// One lesson laid out: the rune ahead on the ground, or the ring around
-        /// your rune. False when there is no ground to draw on.
-        bool Begin(SimpleFPSController pilot, bool ring)
+        /// One lesson laid out: the rune ahead on the ground, the ring around your rune, or
+        /// two runes and the one ring around both. False when there is no ground to draw on.
+        bool Begin(SimpleFPSController pilot, int lesson)
         {
-            _ringLesson = ring;
-            _paths.Clear(); _lengths.Clear();
+            _lesson = lesson;
+            bool ring = lesson == 1;
+            _paths.Clear();
             var pivot = pilot.CameraPivot;
             Vector3 fwd = pivot != null ? pivot.forward : pilot.transform.forward;
             fwd.y = 0f;
             if (fwd.sqrMagnitude < 1e-4f) fwd = pilot.transform.forward;
             fwd.Normalize();
 
-            _ghost = new GameObject("~FirstStepsGhost");
             List<List<Vector3>> still = null; // the faint rune a ring is drawn around
 
             if (ring && RingAroundYours(out var ringPath))
@@ -144,44 +167,36 @@ namespace SpellyZombie
                     && !Ground(pilot.transform.position + fwd * (Ahead * 0.5f), out at))
                 { Clear(); return false; }
                 _spot = at;
-                var glyph = GlyphOnGround(at, fwd);
-                if (glyph == null) { Clear(); return false; }
-                if (!ring) _paths.AddRange(glyph);
+                if (lesson == 2)
+                {
+                    // push and pull side by side, then ONE ring around the two
+                    Vector3 side = Vector3.Cross(Vector3.up, fwd).normalized * (Size * 0.62f);
+                    var left = GlyphOnGround(RuneType.Repel, at - side, fwd, Size * 0.8f);
+                    var right = GlyphOnGround(RuneType.Attract, at + side, fwd, Size * 0.8f);
+                    if (left == null || right == null) { Clear(); return false; }
+                    _paths.AddRange(left);
+                    _paths.AddRange(right);
+                    var both = new List<List<Vector3>>(left);
+                    both.AddRange(right);
+                    _paths.Add(RingAround(both, at, fwd));
+                }
                 else
                 {
-                    still = glyph;
-                    _paths.Add(RingAround(glyph, at, fwd));
+                    var glyph = GlyphOnGround(RuneType.Repel, at, fwd, Size);
+                    if (glyph == null) { Clear(); return false; }
+                    if (!ring) _paths.AddRange(glyph);
+                    else
+                    {
+                        still = glyph;
+                        _paths.Add(RingAround(glyph, at, fwd));
+                    }
                 }
             }
 
-            foreach (var p in _paths) { float l = Length(p); _lengths.Add(l); }
-            _total = 0f;
-            foreach (var l in _lengths) _total += l;
-            if (_total < 0.05f) { Clear(); return false; }
-
-            if (still != null)
-                foreach (var p in still) Fill(Line(p, Faint), p, float.MaxValue);
-            _lines.Clear(); // the faint rune stays whole; only the lines below animate
-            foreach (var p in _paths) Line(p, Ink);
-            _state = 0; _t = 0f;
+            // two runes and a ring take their time
+            float drawFor = GhostHand.DrawSeconds * (_paths.Count > 2 ? 3 : 1);
+            if (!_hand.Begin("~FirstStepsGhost", _paths, still, drawFor)) { Clear(); return false; }
             return true;
-        }
-
-        LineRenderer Line(List<Vector3> path, Color c)
-        {
-            var go = new GameObject("Line");
-            go.transform.SetParent(_ghost.transform, false);
-            var lr = go.AddComponent<LineRenderer>();
-            lr.sharedMaterial = MatterFX.Get(c, MoteShade.Transparent);
-            lr.widthMultiplier = Width;
-            lr.useWorldSpace = true;
-            lr.numCapVertices = 3;
-            lr.numCornerVertices = 3;
-            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            lr.receiveShadows = false;
-            lr.positionCount = 0;
-            _lines.Add(lr);
-            return lr;
         }
 
         /// The ground under a point, off the ink and off every body.
@@ -202,16 +217,16 @@ namespace SpellyZombie
             return best < float.MaxValue;
         }
 
-        /// The push arrow (Repel), Size across, flat on the ground at `at`, its up pointing
-        /// away from you: the way a drawing on the floor reads from where you stand.
-        static List<List<Vector3>> GlyphOnGround(Vector3 at, Vector3 fwd)
+        /// A rune, `size` across, flat on the ground at `at`, its up pointing away from you:
+        /// the way a drawing on the floor reads from where you stand.
+        static List<List<Vector3>> GlyphOnGround(RuneType rune, Vector3 at, Vector3 fwd, float size)
         {
-            var sample = RuneLibrary.SamplePath(RuneType.Repel);
+            var sample = RuneLibrary.SamplePath(rune);
             if (sample == null || sample.Count == 0) return null;
             Vector2 min = new Vector2(float.MaxValue, float.MaxValue), max = new Vector2(float.MinValue, float.MinValue);
             foreach (var s in sample) foreach (var q in s) { min = Vector2.Min(min, q); max = Vector2.Max(max, q); }
             float extent = Mathf.Max(1e-3f, Mathf.Max(max.x - min.x, max.y - min.y));
-            float k = Size / extent;
+            float k = size / extent;
             Vector2 c = (min + max) * 0.5f;
             Vector3 right = Vector3.Cross(Vector3.up, fwd).normalized;
             var result = new List<List<Vector3>>();
@@ -234,7 +249,7 @@ namespace SpellyZombie
             return Ground(p, out var at) ? at + Vector3.up * 0.01f : p + Vector3.up * 0.01f;
         }
 
-        /// The ring the seal page would draw around a glyph on the ground.
+        /// The ring F would draw around a glyph on the ground: the seal's own ellipse.
         static List<Vector3> RingAround(List<List<Vector3>> glyph, Vector3 at, Vector3 fwd)
         {
             Vector3 right = Vector3.Cross(Vector3.up, fwd).normalized;
@@ -247,11 +262,12 @@ namespace SpellyZombie
                     minX = Mathf.Min(minX, x); maxX = Mathf.Max(maxX, x);
                     minY = Mathf.Min(minY, y); maxY = Mathf.Max(maxY, y);
                 }
-            return Ellipse(at, right, fwd, minX, maxX, minY, maxY, p => OnGround(p));
+            return AutoComplete.Ellipse(at, right, fwd, minX, maxX, minY, maxY, p => OnGround(p));
         }
 
-        /// The ring around your latest rune, on its own surface. False when that
-        /// ink is gone, far, or on a body (a body seal is its own lesson).
+        /// The ring F would draw around your latest rune, on its own surface: the very path
+        /// AutoComplete draws. False when that ink is gone, far, or on a body (a body seal is
+        /// its own lesson).
         bool RingAroundYours(out List<Vector3> ring)
         {
             ring = null;
@@ -259,113 +275,13 @@ namespace SpellyZombie
             foreach (var s in _lastRune)
                 if (s != null && s.Alive && !s.Persistent && s.Nodes.Count > 0) members.Add(s);
             if (members.Count == 0) return false;
-            if (!RuneGlyph.Frame(members, out var origin, out var right, out var up, out var normal)) return false;
             var pilot = LocalPilot();
-            if (pilot == null || Vector3.Distance(pilot.transform.position, origin) > 8f) return false;
-            float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
-            foreach (var s in members)
-                foreach (var n in s.Nodes)
-                {
-                    if (n == null) continue;
-                    Vector3 d = n.transform.position - origin;
-                    float x = Vector3.Dot(d, right), y = Vector3.Dot(d, up);
-                    minX = Mathf.Min(minX, x); maxX = Mathf.Max(maxX, x);
-                    minY = Mathf.Min(minY, y); maxY = Mathf.Max(maxY, y);
-                }
-            if (minX > maxX) return false;
-            var surface = members[0].Surface;
-            _spot = origin;
-            ring = Ellipse(origin, right, up, minX, maxX, minY, maxY,
-                p => AutoComplete.OnSurface(p, normal, surface) + normal * 0.01f);
+            Vector3 at = members[0].Centroid();
+            if (pilot == null || Vector3.Distance(pilot.transform.position, at) > 8f) return false;
+            if (!AutoComplete.SealPath(members, out ring, out var normal, out _)) return false;
+            GhostHand.Lift(ring, normal * 0.01f);
+            _spot = at;
             return true;
-        }
-
-        /// The seal page's own ring: an ellipse hugging the box, the corners
-        /// inside it, the margin the book keeps.
-        static List<Vector3> Ellipse(Vector3 origin, Vector3 right, Vector3 up,
-            float minX, float maxX, float minY, float maxY, System.Func<Vector3, Vector3> onto)
-        {
-            float m = DrawingConfig.AutoSealMargin;
-            Vector2 c = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
-            float rx = (maxX - minX) * 0.5f * 1.42f + m, ry = (maxY - minY) * 0.5f * 1.42f + m;
-            const int N = 48;
-            var ring = new List<Vector3>(N + 1);
-            for (int i = 0; i <= N; i++)
-            {
-                float a = -Mathf.PI * 0.5f + i * Mathf.PI * 2f / N; // starts at the bottom, like a hand would
-                Vector2 q = c + new Vector2(Mathf.Cos(a) * rx, Mathf.Sin(a) * ry);
-                ring.Add(onto(origin + right * q.x + up * q.y));
-            }
-            return ring;
-        }
-
-        static float Length(List<Vector3> path)
-        {
-            float l = 0f;
-            for (int i = 1; i < path.Count; i++) l += Vector3.Distance(path[i - 1], path[i]);
-            return l;
-        }
-
-        /// The line up to `upTo` metres along its path, the tip interpolated.
-        /// Returns the point count set.
-        static int Fill(LineRenderer lr, List<Vector3> path, float upTo)
-        {
-            if (path.Count == 0) { lr.positionCount = 0; return 0; }
-            var pts = new List<Vector3>(path.Count + 1) { path[0] };
-            float acc = 0f;
-            for (int i = 1; i < path.Count; i++)
-            {
-                float seg = Vector3.Distance(path[i - 1], path[i]);
-                if (acc + seg >= upTo)
-                {
-                    pts.Add(Vector3.Lerp(path[i - 1], path[i], seg > 1e-6f ? (upTo - acc) / seg : 1f));
-                    break;
-                }
-                acc += seg;
-                pts.Add(path[i]);
-            }
-            lr.positionCount = pts.Count;
-            lr.SetPositions(pts.ToArray());
-            return pts.Count;
-        }
-
-        void Animate()
-        {
-            _t += Time.deltaTime;
-            switch (_state)
-            {
-                case 0: // the hand draws, line by line
-                {
-                    float drawn = _total * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(_t / DrawSeconds));
-                    float acc = 0f;
-                    for (int i = 0; i < _paths.Count; i++)
-                    {
-                        float have = Mathf.Clamp(drawn - acc, 0f, _lengths[i]);
-                        if (have <= 0f) _lines[i].positionCount = 0;
-                        else Fill(_lines[i], _paths[i], have);
-                        acc += _lengths[i];
-                    }
-                    if (_t >= DrawSeconds) { _state = 1; _t = 0f; }
-                    break;
-                }
-                case 1:
-                    if (_t >= Hold) { _state = 2; _t = 0f; }
-                    break;
-                case 2: // it thins away
-                {
-                    float k = 1f - Mathf.Clamp01(_t / FadeSeconds);
-                    foreach (var lr in _lines)
-                    {
-                        lr.widthMultiplier = Width * Mathf.Max(0.05f, k);
-                        lr.sharedMaterial = MatterFX.Get(new Color(Ink.r, Ink.g, Ink.b, Ink.a * k), MoteShade.Transparent);
-                    }
-                    if (_t >= FadeSeconds) { _state = 3; _t = 0f; }
-                    break;
-                }
-                default: // a breath, then again where you now stand
-                    if (_t >= Rest) Clear();
-                    break;
-            }
         }
     }
 }

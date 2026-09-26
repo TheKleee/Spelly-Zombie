@@ -42,10 +42,12 @@ namespace SpellyZombie
         /// the parent chain) - such ink is never consumed by spell resolution.
         public bool OnPersistentSurface { get; private set; }
 
-        public static DrawNode Create(Stroke stroke, int index, Vector3 position, Vector3 normal, Transform surface)
+        /// `lifted`: the point is already a node position (a copy off the wire, a kept stroke), off the surface once.
+        public static DrawNode Create(Stroke stroke, int index, Vector3 position, Vector3 normal, Transform surface,
+            bool lifted = false)
         {
             var go = new GameObject($"Node_{stroke.Id}_{index}");
-            go.transform.position = position + normal * DrawingConfig.SurfaceOffset;
+            go.transform.position = lifted ? position : position + normal * DrawingConfig.SurfaceOffset;
             if (surface != null)
                 go.transform.SetParent(surface, worldPositionStays: true);
             var node = go.AddComponent<DrawNode>();

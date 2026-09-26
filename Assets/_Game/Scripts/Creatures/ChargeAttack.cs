@@ -31,8 +31,10 @@ namespace SpellyZombie
         Rigidbody _rb;
         Element _me2;
         float _lentStrength;   // what the charge is holding up, given back after
+        float _healthBeforeLoan;
         Creature _me;
         GooglyEyes _eyes;
+        Golem _golem; // a golem turns and sounds by its own body (a living object's root is tilted, import-scaled)
 
         /// True while it is telling, running or shaking it off - the brain
         /// must not steer, and its own impact must not wound it.
@@ -54,6 +56,13 @@ namespace SpellyZombie
                 _rb.linearVelocity = new Vector3(0f, _rb.linearVelocity.y, 0f);
         }
 
+        /// Over at once, the strength loan paid back: a living object going back to rest.
+        public void Settle()
+        {
+            _beat = Beat.Idle;
+            TakeStrengthBack();
+        }
+
         /// The beat as the golem snapshot carries it: 0 idle, 1 tell, 2 run, 3 recover.
         public byte BeatWire => (byte)_beat;
 
@@ -62,6 +71,7 @@ namespace SpellyZombie
             _rb = GetComponent<Rigidbody>();
             _me = GetComponent<Creature>();
             _eyes = GetComponentInChildren<GooglyEyes>();
+            _golem = GetComponent<Golem>();
         }
 
         /// Ask for a charge at a target. Refused while cooling down, already
@@ -81,9 +91,9 @@ namespace SpellyZombie
             _until = Time.time + DrawingConfig.ChargeTellSeconds;
 
             // the tell: a hop in place and wide angry eyes; a golem says so too, lower the bigger it is
-            if (GetComponentInParent<Golem>() != null)
-                Juice.Sound(Sfx.GolemCroak, transform.position + Vector3.up * transform.localScale.y, 1f,
-                    Mathf.Lerp(1.2f, 0.6f, Mathf.InverseLerp(0.5f, 3f, transform.localScale.y)));
+            if (_golem != null)
+                Juice.Sound(Sfx.GolemCroak, transform.position + Vector3.up * _golem.BodyScale, 1f,
+                    Mathf.Lerp(1.2f, 0.6f, Mathf.InverseLerp(0.5f, 3f, _golem.BodyScale)));
             if (TellClip != null) OneShotClip.Play(gameObject, TellClip);
             if (_rb != null && !_rb.isKinematic)
                 _rb.AddForce(Vector3.up * DrawingConfig.ChargeTellHop, ForceMode.VelocityChange);
@@ -109,10 +119,9 @@ namespace SpellyZombie
                     _beat = Beat.Run;
                     _until = Time.time + DrawingConfig.ChargeRunSeconds;
                     // a golem's run is heard coming, and the sound runs with it; bigger is lower
-                    var golem = GetComponentInParent<Golem>();
-                    if (golem != null)
+                    if (_golem != null)
                         Juice.Sound(Sfx.GolemCharge, transform.position, 1f,
-                            Mathf.Lerp(1.12f, 0.8f, Mathf.InverseLerp(0.5f, 3f, transform.localScale.y)), true, transform);
+                            Mathf.Lerp(1.12f, 0.8f, Mathf.InverseLerp(0.5f, 3f, _golem.BodyScale)), true, transform);
                 }
                 else if (_beat == Beat.Recover) { _beat = Beat.Idle; TakeStrengthBack(); return; }
                 else { Stop(); return; }
@@ -125,7 +134,8 @@ namespace SpellyZombie
             Vector3 want = _dir * (DrawingConfig.ChargeSpeed * Reach * mul);
             var v = _rb.linearVelocity;
             _rb.linearVelocity = new Vector3(want.x, v.y, want.z);
-            transform.rotation = Quaternion.LookRotation(_dir, Vector3.up);
+            if (_golem != null) _golem.TurnTo(_golem.Facing(_dir), 1f);
+            else transform.rotation = Quaternion.LookRotation(_dir, Vector3.up);
         }
 
         void Stop()
@@ -160,6 +170,7 @@ namespace SpellyZombie
             if (_me2 == null || _lentStrength > 0f) return;
             _lentStrength = _me2.MaxStrength * (DrawingConfig.ChargeStrengthMul - 1f);
             if (_lentStrength <= 0f) { _lentStrength = 0f; return; }
+            _healthBeforeLoan = _me2.Health;
             _me2.MaxStrength += _lentStrength;
             _me2.Health += _lentStrength;
         }
@@ -171,6 +182,8 @@ namespace SpellyZombie
                 _me2.MaxStrength = Mathf.Max(1f, _me2.MaxStrength - _lentStrength);
                 // it keeps whatever the charge cost it; only the loan goes back
                 _me2.Health = Mathf.Min(_me2.Health, _me2.MaxStrength);
+                // a boss is not mended by its own charge: it ends no higher than it began
+                if (GetComponent<BossMark>() != null) _me2.Health = Mathf.Min(_me2.Health, _healthBeforeLoan);
                 _lentStrength = 0f;
             }
             if (_me2 != null && _recoilOwed > 0f)
@@ -208,6 +221,7 @@ namespace SpellyZombie
             int chOwner = -1;
             var zo = GetComponentInParent<Zombie>();
             if (zo != null) chOwner = zo.OwnerId;
+            bool chVia = zo != null; // a zombie's charge is its summoner's through the minion, a golem's is its owner's own
             var go = GetComponentInParent<Golem>();
             if (go != null) chOwner = go.OwnerId;
             // a wild golem is a nuisance, not an executioner: a hit that grows
@@ -256,7 +270,7 @@ namespace SpellyZombie
             var player = c.collider.GetComponentInParent<SimpleFPSController>();
             if (player != null)
             {
-                player.TakeHit(ShoveFor(player.GetComponent<Element>()), hit, $"{name} charge", chOwner, true);
+                player.TakeHit(ShoveFor(player.GetComponent<Element>()), hit, $"{name} charge", chOwner, chVia);
                 if (FxLibrary.I != null) FxLibrary.Spawn(FxLibrary.I.TextPow, spot + Vector3.up * 1.2f);
                 if (pays) OweRecoil();
             }
@@ -265,7 +279,7 @@ namespace SpellyZombie
                 var dmg = c.collider.GetComponentInParent<Element>();
                 if (dmg != null && dmg.gameObject != gameObject)
                 {
-                    dmg.TakeDamage(hit, $"{name} charge", chOwner, true);
+                    dmg.TakeDamage(hit, $"{name} charge", chOwner, chVia);
                     // a remote player's puppet is a player hit too: their own
                     // body takes the shove, and the same POW everyone sees
                     var av = dmg.GetComponentInParent<NetAvatar>();

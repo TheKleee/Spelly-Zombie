@@ -52,6 +52,7 @@ namespace SpellyZombie
         Vector3 _camOffset;        // glides between views instead of snapping
         SpellParticle _ridden;
         Rigidbody _rbRidden;   // conjured spell matter: liquids, solids, combos
+        int _riddenLife;       // the ridden spell's LifeId when taken
         Zombie _zombie;
         Golem _golem;
         float _noGrabUntil;
@@ -63,13 +64,85 @@ namespace SpellyZombie
         float _remoteShine;
         // on a client the creatures are the host's stand-ins; the host drives
         Transform _proxy;
-        byte _proxyKind;           // 1 zombie, 2 golem
+        byte _proxyKind;           // 1 zombie, 2 golem, 3 spell
         int _proxyId;
         float _askUntil;
+        int _askedSpell, _skipSpell; // a spell asked for, and one the host kept quiet about
+        float _skipUntil;
+
+        /// A ghost takes a spell of its own side, or a teammate's where wizards and acolytes play as one
+        /// team; unowned ink (id 0) belongs to nobody. The host judges a client's ghost by this same rule.
+        public static bool CanRide(SpellParticle p, int ghostOwner)
+            => p != null && !p.Dead && MayRideSpellOf(p.OwnerId, ghostOwner);
+
+        /// The owner half of that rule; conjured matter flying as a spell rides by it too.
+        public static bool MayRideSpellOf(int spellOwner, int ghostOwner)
+            => spellOwner != 0 && (Sides.Of(spellOwner) == Sides.Of(ghostOwner)
+                || !Teams.Enemies(Teams.OfOwner(spellOwner), Teams.OfOwner(ghostOwner)));
+
+        /// How fast a ridden spell is steered, with the sprint key and without.
+        public static float RideSpeed(bool fast) => fast ? 14f : 7f;
+
+        /// HOST: one of this machine's own ghosts rides this spell.
+        public static bool LocalRides(SpellParticle p)
+        {
+            if (p == null) return false;
+            foreach (var g in All) if (g != null && g._ridden == p) return true;
+            return false;
+        }
+
+        /// HOST: another ghost stole this spell (his call): whoever of ours rode it is thrown off.
+        public static void DropSpell(SpellParticle p)
+        {
+            if (p == null) return;
+            foreach (var g in All)
+            {
+                if (g == null || g._ridden != p) continue;
+                g._ridden = null;
+                g._third = false;
+                g._noGrabUntil = Time.time + 0.8f;
+                GhostChime(g._ghost.position);
+                DrawingWorld.Instance?.LogEvent("a ghost stole your spell");
+            }
+        }
+
+        /// Where a rider sits in what it rides, on every machine: a zombie's eyes, a golem's seat,
+        /// a spell's or a lump of matter's heart.
+        public static Vector3 SeatIn(Transform ridden)
+        {
+            if (ridden.TryGetComponent<NetZombieProxy>(out var zp)) return zp.HeadAt;
+            if (ridden.TryGetComponent<NetGolemProxy>(out var gp)) return gp.SeatAt;
+            if (ridden.TryGetComponent<Zombie>(out var z)) return z.HeadAt;
+            if (ridden.TryGetComponent<Golem>(out var g)) return g.SeatAt;
+            return ridden.position;
+        }
+
+        /// The reins of a ridden spell: where the ghost looks, sideways, up and down.
+        Vector3 SpellReins()
+        {
+            Vector2 mv = Keys.Move; // the move keys and the left stick
+            Vector3 drive = _ghost.forward * mv.y + _ghost.right * mv.x;
+            if (Keys.Held(Act.Jump)) drive += Vector3.up;
+            if (Keys.Held(Act.Crouch)) drive -= Vector3.up;
+            return drive.sqrMagnitude > 0.001f ? drive.normalized : Vector3.zero;
+        }
 
         public bool IsGhost { get; private set; }
         /// Riding something right now: a spell, conjured matter, a zombie, a golem, or the host's stand-in for one.
         public bool Driving => _ridden != null || _rbRidden != null || _zombie != null || _golem != null || _proxy != null;
+
+        /// What it rides, for the presence: the ride kinds by the host's id (4 = matter), 0 = nothing.
+        public byte RideOf(out int id)
+        {
+            id = 0;
+            if (_proxyId != 0) { id = _proxyId; return _proxyKind; }
+            if (_zombie != null) { id = _zombie.gameObject.GetInstanceID(); return 1; }
+            if (_golem != null) { id = _golem.gameObject.GetInstanceID(); return 2; }
+            if (_ridden != null && !_ridden.Dead) { id = _ridden.gameObject.GetInstanceID(); return 3; }
+            var lump = _rbRidden != null ? _rbRidden.GetComponentInParent<Matter>() : null;
+            if (lump != null) { id = lump.gameObject.GetInstanceID(); return 4; }
+            return 0;
+        }
         /// Live corpse position, not where the death happened: the body you can SEE. A downed body is
         /// a doll, and a crowd shoves it metres away from the root it fell from; home, a rescuer's
         /// reach and the spirit's start all mean the doll.
@@ -108,6 +181,18 @@ namespace SpellyZombie
                     var kb0 = Keyboard.current;
                     if (kb0 != null && kb0.kKey.wasPressedThisFrame && !UIKit.Typing && !GameMenu.IsOpen)
                         _pilot.DieOutright(); // bypasses the sandbox mercy heal
+                    // F10 = every rune of the book you hold, to test spells without the deeds (lobby only)
+                    if (kb0 != null && kb0.f10Key.wasPressedThisFrame && !UIKit.Typing && !GameMenu.IsOpen)
+                    {
+                        int added = SideBootstrap.UnlockWholeBook(Grimoire.LocalPlayerId);
+                        DrawingWorld.Instance?.LogEvent(added > 0
+                            ? $"lobby cheat: {added} runes unlocked" : "lobby cheat: this book is already full");
+                        if (added > 0)
+                        {
+                            Juice.Sound2D(Sfx.RuneComplete);
+                            GrimoirePages.RequestOpen(); // the new pages, in hand
+                        }
+                    }
                 }
                 if (_pilot.IsDead) Rise();
                 else if (_pilot.IsLocalViewer) OfferRescue();
@@ -157,22 +242,32 @@ namespace SpellyZombie
 
             if (!ReferenceEquals(_proxy, null))
             {
+                if (_proxy == null) _proxy = NetSync.RideProxy(_proxyKind, _proxyId); // a spell that changed shape got a new stand-in, same id
                 if (_proxy == null) { LeaveProxy(false); return; } // the host's snapshot dropped it
                 DriveProxy();
                 return;
             }
 
-            if (_ridden != null && _ridden.Dead)
+            if (_ridden != null && (_ridden.Dead || _ridden.LifeId != _riddenLife)) // a pooled spell reborn is another one
             {
-                _ridden = null;
-                _third = false;
+                // merged away: ride on in what it became (his call), unless a ghost has that one
+                var into = _ridden.Dead && _ridden.LifeId == _riddenLife ? _ridden.BecameObj as SpellParticle : null;
+                if (into != null && !into.Dead && CanRide(into, OwnerId) && !NetSync.SpellRidden(into) && !LocalRides(into))
+                {
+                    _ridden = into;
+                    _riddenLife = into.LifeId;
+                }
+                else
+                {
+                    _ridden = null;
+                    _third = false;
+                }
             }
             if (_ridden != null)
             {
-                var kbD = Keyboard.current;
-                if (kbD != null && !GameMenu.IsOpen && !UIKit.Typing)
+                if (!GameMenu.IsOpen && !UIKit.Typing)
                 {
-                    if (kbD.fKey.wasPressedThisFrame)
+                    if (Keys.Down(Act.Drop))
                     {
                         _ridden.Coast(); // it flies on at the speed it was given, it does not glide to a stop
                         _ridden = null;
@@ -182,17 +277,11 @@ namespace SpellyZombie
                         DrawingWorld.Instance?.LogEvent("you release the spell");
                         return;
                     }
-                    Vector3 drive = Vector3.zero;
-                    if (kbD.wKey.isPressed) drive += _ghost.forward;
-                    if (kbD.sKey.isPressed) drive -= _ghost.forward;
-                    if (kbD.dKey.isPressed) drive += _ghost.right;
-                    if (kbD.aKey.isPressed) drive -= _ghost.right;
-                    if (kbD.spaceKey.isPressed) drive += Vector3.up;
-                    if (kbD.leftCtrlKey.isPressed) drive -= Vector3.up;
+                    Vector3 drive = SpellReins();
                     if (drive.sqrMagnitude > 0.001f)
-                        _ridden.Steer(drive.normalized, kbD.leftShiftKey.isPressed ? 14f : 7f);
+                        _ridden.Steer(drive, RideSpeed(Keys.Held(Act.Sprint)));
                 }
-                _ghost.position = _ridden.transform.position;
+                _ghost.position = SeatIn(_ridden.transform);
                 return;
             }
 
@@ -211,6 +300,31 @@ namespace SpellyZombie
             }
 
             if (Time.time < _noGrabUntil) return; // just released: no instant regrab
+
+            // on a client a spell is the host's stand-in, a picture with no collider: the ghost
+            // reaches it by distance, the host's own reach (0.6 m past the spell's round body)
+            if (NetGame.Connected && !NetGame.IsAuthority && Time.time >= _askUntil)
+            {
+                // the host says nothing when it refuses: not that spell again for a while
+                if (_askedSpell != 0) { _skipSpell = _askedSpell; _skipUntil = Time.time + 3f; _askedSpell = 0; }
+                NetMoteProxy near = null;
+                float nearSqr = float.MaxValue;
+                foreach (var mp in NetMoteProxy.Living)
+                {
+                    if (mp == null || mp.OwnerId == 0 || Sides.Of(mp.OwnerId) != Sides.Of(OwnerId)) continue;
+                    if (mp.HostId == _skipSpell && Time.time < _skipUntil) continue;
+                    float reach = 0.6f + 0.5f * mp.transform.localScale.x;
+                    float d = (mp.transform.position - _ghost.position).sqrMagnitude;
+                    if (d <= reach * reach && d < nearSqr) { nearSqr = d; near = mp; }
+                }
+                if (near != null)
+                {
+                    NetSync.SendRideAsk(3, near.HostId, true);
+                    _askedSpell = near.HostId;
+                    _askUntil = Time.time + 0.6f;
+                    return;
+                }
+            }
 
             foreach (var h in Physics.OverlapSphere(_ghost.position, 0.6f,
                          Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
@@ -269,8 +383,7 @@ namespace SpellyZombie
                 // conjured matter in spell form: liquid, solid, and what
                 // combinations made of them - all of it rides like a spell
                 var strike = h.GetComponentInParent<MatterStrike>();
-                if (strike != null && strike.SpellForm && strike.OwnerId != 0
-                    && Sides.Of(strike.OwnerId) == Sides.Of(OwnerId)
+                if (strike != null && strike.SpellForm && MayRideSpellOf(strike.OwnerId, OwnerId)
                     && strike.GetComponent<Rigidbody>() != null)
                 {
                     _rbRidden = strike.GetComponent<Rigidbody>();
@@ -281,10 +394,10 @@ namespace SpellyZombie
                 }
 
                 var p = h.GetComponentInParent<SpellParticle>();
-                if (p == null || p.Dead) continue;
-                // unowned ink (id 0) belongs to nobody and cannot be driven
-                if (p.OwnerId == 0 || Sides.Of(p.OwnerId) != Sides.Of(OwnerId)) continue;
+                if (!CanRide(p, OwnerId) || LocalRides(p)) continue;
+                NetSync.StealSpell(p); // occupied is occupied, but a ghost can steal it (his call)
                 _ridden = p;
+                _riddenLife = p.LifeId;
                 if (p.Dormant) p.Wake();
                 _third = true;
                 GhostChime(_ghost.position);
@@ -312,11 +425,10 @@ namespace SpellyZombie
             }
 
             var brain = _zombie.GetComponent<ZombieBrain>();
-            var kb = Keyboard.current;
-            if (brain == null || kb == null) return;
+            if (brain == null) return;
 
             bool uiBusy = GameMenu.IsOpen || UIKit.Typing;
-            if (!uiBusy && kb.fKey.wasPressedThisFrame)
+            if (!uiBusy && Keys.Down(Act.Drop))
             {
                 _noGrabUntil = Time.time + 0.8f;
                 GhostChime(_ghost.position);
@@ -330,21 +442,17 @@ namespace SpellyZombie
             Vector3 move = Vector3.zero;
             if (!uiBusy)
             {
-                if (kb.wKey.isPressed) move += fwd;
-                if (kb.sKey.isPressed) move -= fwd;
-                if (kb.dKey.isPressed) move += right;
-                if (kb.aKey.isPressed) move -= right;
+                Vector2 mv = Keys.Move; // the move keys and the left stick
+                move += fwd * mv.y + right * mv.x;
             }
             bool moving = move.sqrMagnitude > 0.01f;
             brain.MoveDir = moving ? move.normalized : Vector3.zero;
             brain.SpeedScale = moving ? 1f : 0f;
             if (fwd.sqrMagnitude > 0.01f) _zombie.PossessedFace = fwd.normalized;
 
-            _ghost.position = _zombie.HeadAt;
+            _ghost.position = SeatIn(_zombie.transform);
 
-            var mouse = Mouse.current;
-            if (!uiBusy && mouse != null && (mouse.leftButton.wasPressedThisFrame
-                || mouse.rightButton.wasPressedThisFrame))
+            if (!uiBusy && (Keys.Down(Act.Draw) || Keys.Down(Act.Erase)))
                 _zombie.GhostAbility(_ghost.forward);   // the FULL look: casts pitch too
         }
 
@@ -354,7 +462,7 @@ namespace SpellyZombie
             var kb = Keyboard.current;
             if (kb != null && !GameMenu.IsOpen && !UIKit.Typing)
             {
-                if (kb.fKey.wasPressedThisFrame)
+                if (Keys.Down(Act.Drop))
                 {
                     _rbRidden = null;
                     _third = false;
@@ -364,15 +472,13 @@ namespace SpellyZombie
                     return;
                 }
                 Vector3 drive = Vector3.zero;
-                if (kb.wKey.isPressed) drive += _ghost.forward;
-                if (kb.sKey.isPressed) drive -= _ghost.forward;
-                if (kb.dKey.isPressed) drive += _ghost.right;
-                if (kb.aKey.isPressed) drive -= _ghost.right;
-                if (kb.spaceKey.isPressed) drive += Vector3.up;
-                if (kb.leftCtrlKey.isPressed) drive -= Vector3.up;
+                Vector2 mv = Keys.Move; // the move keys and the left stick
+                drive += _ghost.forward * mv.y + _ghost.right * mv.x;
+                if (Keys.Held(Act.Jump)) drive += Vector3.up;
+                if (Keys.Held(Act.Crouch)) drive -= Vector3.up;
                 if (drive.sqrMagnitude > 0.001f)
                     _rbRidden.linearVelocity = Vector3.MoveTowards(_rbRidden.linearVelocity,
-                        drive.normalized * (kb.leftShiftKey.isPressed ? 14f : 7f),
+                        drive.normalized * (Keys.Held(Act.Sprint) ? 14f : 7f),
                         26f * Time.deltaTime);
             }
             _ghost.position = _rbRidden.transform.position;
@@ -388,10 +494,8 @@ namespace SpellyZombie
         /// Same reins as the zombie: WASD walks it, F lets go, a click charges.
         void DriveGolem()
         {
-            var kb = Keyboard.current;
-            if (kb == null) return;
             bool uiBusy = GameMenu.IsOpen || UIKit.Typing;
-            if (!uiBusy && kb.fKey.wasPressedThisFrame)
+            if (!uiBusy && Keys.Down(Act.Drop))
             {
                 _noGrabUntil = Time.time + 0.8f;
                 GhostChime(_ghost.position);
@@ -405,19 +509,15 @@ namespace SpellyZombie
             Vector3 move = Vector3.zero;
             if (!uiBusy)
             {
-                if (kb.wKey.isPressed) move += fwd;
-                if (kb.sKey.isPressed) move -= fwd;
-                if (kb.dKey.isPressed) move += right;
-                if (kb.aKey.isPressed) move -= right;
+                Vector2 mv = Keys.Move; // the move keys and the left stick
+                move += fwd * mv.y + right * mv.x;
             }
             _golem.PossessedMove = move.sqrMagnitude > 0.01f ? move.normalized : Vector3.zero;
             if (fwd.sqrMagnitude > 0.01f) _golem.PossessedFace = fwd.normalized;
 
-            _ghost.position = _golem.SeatAt; // inside the body, hat out the top; the view is from its eyes
+            _ghost.position = SeatIn(_golem.transform); // inside the body, hat out the top; the view is from its eyes
 
-            var mouse = Mouse.current;
-            if (!uiBusy && mouse != null && (mouse.leftButton.wasPressedThisFrame
-                || mouse.rightButton.wasPressedThisFrame))
+            if (!uiBusy && (Keys.Down(Act.Draw) || Keys.Down(Act.Erase)))
                 _golem.GhostAbility(_ghost.forward);
         }
 
@@ -436,15 +536,27 @@ namespace SpellyZombie
             foreach (var g in All)
             {
                 if (g == null || !g.IsGhost || g._ghostCam == null) continue;
-                if (!on) { if (g._proxyId == id) g.LeaveProxy(false); return; }
+                if (!on)
+                {
+                    if (g._proxyId != id) return;
+                    g.LeaveProxy(false);
+                    g._noGrabUntil = Time.time + 0.8f; // thrown off (a steal, a death): no instant regrab
+                    return;
+                }
                 var t = NetSync.RideProxy(kind, id);
                 if (t == null) return;
                 g._proxy = t;
                 g._proxyKind = kind;
                 g._proxyId = id;
                 g._third = true;
-                g.SetProxyEyes(false);
+                g._askedSpell = 0;
                 GhostChime(g._ghost.position);
+                if (kind == 3)
+                {
+                    DrawingWorld.Instance?.LogEvent("you combine with the spell");
+                    return;
+                }
+                g.SetProxyEyes(false);
                 Achievements.Unlock(kind == 1 ? Achievements.RideZombie : Achievements.RideGolem);
                 DrawingWorld.Instance?.LogEvent(kind == 1
                     ? "you take the zombie. LMB uses what it is" : "you take the golem. click to charge");
@@ -456,15 +568,23 @@ namespace SpellyZombie
         /// the stand-in the snapshots move.
         void DriveProxy()
         {
-            var kb = Keyboard.current;
-            if (kb == null) return;
             bool uiBusy = GameMenu.IsOpen || UIKit.Typing;
-            if (!uiBusy && kb.fKey.wasPressedThisFrame)
+            if (!uiBusy && Keys.Down(Act.Drop))
             {
                 _noGrabUntil = Time.time + 0.8f;
                 GhostChime(_ghost.position);
-                DrawingWorld.Instance?.LogEvent(_proxyKind == 1 ? "you release the zombie" : "you release the golem");
+                DrawingWorld.Instance?.LogEvent(_proxyKind == 3 ? "you release the spell"
+                    : _proxyKind == 1 ? "you release the zombie" : "you release the golem");
                 LeaveProxy(true);
+                return;
+            }
+
+            // a spell: the same reins the host's own ghost holds, steered over there
+            if (_proxyKind == 3)
+            {
+                NetSync.SendRideDrive(_proxyId, uiBusy ? Vector3.zero : SpellReins(), _ghost.forward, false,
+                    !uiBusy && Keys.Held(Act.Sprint));
+                _ghost.position = SeatIn(_proxy);
                 return;
             }
 
@@ -473,20 +593,14 @@ namespace SpellyZombie
             Vector3 move = Vector3.zero;
             if (!uiBusy)
             {
-                if (kb.wKey.isPressed) move += fwd;
-                if (kb.sKey.isPressed) move -= fwd;
-                if (kb.dKey.isPressed) move += right;
-                if (kb.aKey.isPressed) move -= right;
+                Vector2 mv = Keys.Move; // the move keys and the left stick
+                move += fwd * mv.y + right * mv.x;
             }
-            var mouse = Mouse.current;
-            bool ability = !uiBusy && mouse != null
-                && (mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame);
+            bool ability = !uiBusy && (Keys.Down(Act.Draw) || Keys.Down(Act.Erase));
             NetSync.SendRideDrive(_proxyId, move.sqrMagnitude > 0.01f ? move.normalized : Vector3.zero,
                 _ghost.forward, ability);
 
-            var zp = _proxyKind == 1 ? _proxy.GetComponent<NetZombieProxy>() : null;
-            var gp = _proxyKind == 2 ? _proxy.GetComponent<NetGolemProxy>() : null;
-            _ghost.position = zp != null ? zp.HeadAt : gp != null ? gp.SeatAt : _proxy.position;
+            _ghost.position = SeatIn(_proxy);
         }
 
         void LeaveProxy(bool tellHost)
@@ -495,6 +609,7 @@ namespace SpellyZombie
             SetProxyEyes(true);
             _proxy = null;
             _proxyId = 0;
+            _proxyKind = 0;
             _third = false;
         }
 
@@ -516,7 +631,7 @@ namespace SpellyZombie
             {
                 foreach (var g in All)
                     if (g != null && g.IsGhost && g._ghostCam != null)
-                        return g._ghostCam.transform.position;
+                        return g._eyeAt;
                 return null;
             }
         }
@@ -606,6 +721,7 @@ namespace SpellyZombie
                 // LateUpdate instead.
                 _bodyCam = GetComponentInChildren<Camera>(true);
                 _ghostCam = _bodyCam;
+                _eyeAt = _ghostCam.transform.position;
                 var eye = _pilot.CameraPivot != null ? _pilot.CameraPivot : transform;
                 _yaw = eye.eulerAngles.y;
                 _pitch = 10f;
@@ -693,7 +809,7 @@ namespace SpellyZombie
 
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
             {
-                Vector2 d = mouse.delta.ReadValue() * 0.08f;
+                Vector2 d = mouse.delta.ReadValue() * 0.08f + Keys.LookStick * (140f * Keys.StickSensitivity * Time.unscaledDeltaTime);
                 _yaw += d.x;
                 _pitch = Mathf.Clamp(_pitch - d.y, -85f, 85f);
             }
@@ -703,16 +819,16 @@ namespace SpellyZombie
                 || _zombie != null || !ReferenceEquals(_proxy, null)) return; // driving something else
 
             Vector3 move = Vector3.zero;
-            bool w = kb.wKey.isPressed;
-            if (w) move += _ghost.forward;
+            Vector2 mv = Keys.Move; // the move keys and the left stick
+            bool w = mv.y > 0.1f;
+            if (w) move += _ghost.forward * mv.y;
             if (!ForwardOnly || w)
             {
                 float trim = ForwardOnly ? 0.7f : 1f;
-                if (!ForwardOnly && kb.sKey.isPressed) move -= _ghost.forward;
-                if (kb.dKey.isPressed) move += _ghost.right * trim;
-                if (kb.aKey.isPressed) move -= _ghost.right * trim;
-                if (kb.spaceKey.isPressed) move += Vector3.up * trim;
-                if (kb.leftCtrlKey.isPressed) move -= Vector3.up * trim;
+                if (!ForwardOnly && mv.y < 0f) move += _ghost.forward * mv.y;
+                move += _ghost.right * (mv.x * trim);
+                if (Keys.Held(Act.Jump)) move += Vector3.up * trim;
+                if (Keys.Held(Act.Crouch)) move -= Vector3.up * trim;
             }
             if (move.sqrMagnitude > 0.001f)
                 _ghost.position += move.normalized * (GhostSpeed * Time.deltaTime);
@@ -727,7 +843,7 @@ namespace SpellyZombie
 
         static float _forceReviveAt = -1f;
         /// The death needle: dead now, back on your feet by yourself after `seconds`.
-        public static void ReviveIn(float seconds) => _forceReviveAt = Time.time + seconds;
+        public static void ReviveIn(float seconds) => _forceReviveAt = Mathf.Max(_forceReviveAt, Time.time + seconds); // a second needle only lengthens it
 
         void TickRevive()
         {
@@ -845,7 +961,7 @@ namespace SpellyZombie
             // driving a zombie puts the camera inside its head
             bool inZombie = (!ReferenceEquals(_zombie, null) && _zombie != null)
                          || (!ReferenceEquals(_golem, null) && _golem != null)
-                         || (!ReferenceEquals(_proxy, null) && _proxy != null);
+                         || (_proxyKind != 3 && !ReferenceEquals(_proxy, null) && _proxy != null); // a ridden spell is seen from behind
             Vector3 want = inZombie
                 ? new Vector3(0f, 0.02f, 0.18f)
                 : _third
@@ -869,7 +985,11 @@ namespace SpellyZombie
             }
             HideEyes(eyes);
             _ghostCam.transform.SetPositionAndRotation(viewFrom + look * _camOffset, look);
+            _eyeAt = _ghostCam.transform.position;
         }
+
+        // where the ghost camera was put last: until this runs each frame, the body scripts have it parked at the body
+        Vector3 _eyeAt;
 
         // ------------------------------------------- the teammate's side --
         /// The nearest revivable body for a living player: dead, same side,

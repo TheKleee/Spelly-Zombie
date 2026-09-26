@@ -18,7 +18,7 @@ namespace SpellyZombie
     /// lobby and breaks in ways nobody can read.
     public static class NetVersion
     {
-        const int Salt = 1; // bump when the wire changes in a way the message layouts do not show
+        const int Salt = 2; // bump when the wire changes in a way the message layouts do not show (2: the mischief effect slots)
         const float NoticeSeconds = 10f;
 
         static string _proto;

@@ -68,6 +68,33 @@ namespace SpellyZombie
         public int OwnerId = -1;
         /// The size it was raised at: Spawn's clamped size multiplier.
         public float SizeMul = 1f;
+        /// A living object's own upright (a kit prop's root stands tilted): the brain turns it by
+        /// this. Identity for a golem.
+        [HideInInspector] public Quaternion Tilt = Quaternion.identity;
+        /// A living object's middle in its own space: it turns about that. Zero for a golem.
+        [HideInInspector] public Vector3 TurnCenter;
+        /// A living object's size in golem scale (LivingObject); 0 = a golem, its own scale says.
+        [HideInInspector] public float ObjectScale;
+        /// How big it stands, in golem scale: its steps and its sounds go by this.
+        public float BodyScale => ObjectScale > 0f ? ObjectScale : transform.localScale.y;
+        /// Where the body faces along the ground.
+        public Vector3 Forward => transform.rotation * Quaternion.Inverse(Tilt) * Vector3.forward;
+        /// The body turned to face `dir`, standing as it stands.
+        public Quaternion Facing(Vector3 dir) => Quaternion.LookRotation(dir, Vector3.up) * Tilt;
+        /// The aggression rune (ZombieBuff): nothing scares it.
+        [System.NonSerialized] public bool BuffFearless;
+
+        /// A turn toward `want` about its middle (his rule), never its pivot.
+        public void TurnTo(Quaternion want, float t)
+        {
+            Vector3 keep = transform.TransformPoint(TurnCenter);
+            transform.rotation = Quaternion.Slerp(transform.rotation, want, t);
+            if (TurnCenter != Vector3.zero) transform.position += keep - transform.TransformPoint(TurnCenter);
+        }
+
+        /// Where its spells leave: a golem's head, a living object's eyes.
+        Vector3 CastFrom => ObjectScale > 0f && _eyes != null ? _eyes.transform.position
+            : transform.position + Vector3.up * (transform.localScale.y * 0.9f);
 
         // how it lives: its definition's behaviour (Wear); one that wore none is
         // skittish when it serves nobody and roams when it serves someone.
@@ -119,11 +146,17 @@ namespace SpellyZombie
         {
             if (_dmg == null) _dmg = GetComponent<Element>();
             All.Add(this);
+            // the halves of a split are copies that never Wear: they rampage by the copied behaviour
+            if (Behaviour == CreatureBehaviour.Rampages) CreatureCasts.MarkRampaging(this, true);
         }
 
         void OnDisable() => All.Remove(this);
 
-        void OnDestroy() => Carried.Remove(this);
+        void OnDestroy()
+        {
+            Carried.Remove(this);
+            CreatureCasts.MarkRampaging(this, false);
+        }
 
         /// What colour it came out of the ground: clients paint their copy with
         /// this rather than re-deriving a biome they cannot see.
@@ -172,6 +205,7 @@ namespace SpellyZombie
             _behaviour = spell.Behaviour;
             _behaviourSet = true;
             _guardRange = spell.GuardRange;
+            CreatureCasts.MarkRampaging(this, spell.Behaviour == CreatureBehaviour.Rampages);
 
             var charge = GetComponent<ChargeAttack>();
             if (charge != null)
@@ -193,9 +227,26 @@ namespace SpellyZombie
             new System.Collections.Generic.List<string>();
         public CreatureDef Worn { get; private set; }
 
-        float _castCooldown;
+        float _castCooldown, _rampageAt;
         int _castTurn;
         BossMark _boss;
+
+        // ---- a summoned golem eats its side's sleeping spells ----
+        bool _fed;
+
+        /// A sleeping spell of its side touched it (CreatureCasts.TryFeed): eaten, by the one feeding rule.
+        public bool TryEat(SpellParticle meal)
+        {
+            if (_dmg == null || !CreatureCasts.CanFeed(OwnerId, meal)) return false;
+            string learned = CreatureCasts.Feed(Abilities, _dmg, GetComponent<StateView>(), meal);
+            _fed = true;
+            _castCooldown = 0f;
+            _rampageAt = Time.time + 1f;
+            if (_eyes != null) { _eyes.SetMood(EyeMood.Mad, 1.5f); _eyes.Swell(0.5f, 1.4f); }
+            meal.EatenBy(this);
+            DrawingWorld.Instance?.LogEvent(learned.Length > 0 ? $"the golem eats it: now it casts {learned}" : "the golem eats it");
+            return true;
+        }
 
         /// A boss reaches as far as it is big (his pick): its sight, casts and
         /// charge grow with its size. Every other golem reaches 1.
@@ -220,11 +271,11 @@ namespace SpellyZombie
             if (spell == null || _castCooldown > 0f || dist > DrawingConfig.GooThrowRange * Reach || to.sqrMagnitude < 0.01f)
                 return false;
             Vector3 face = to.normalized;
-            if (Vector3.Dot(transform.forward, face) < 0.9f) return false; // it walks round to face it first
+            if (Vector3.Dot(Forward, face) < 0.9f) return false; // it walks round to face it first
             float wait = CreatureCasts.Cooldown(spell);
             _castCooldown = _boss != null ? _boss.WaitAfterCast(wait) : wait;
             _castTurn++;
-            Vector3 head = transform.position + Vector3.up * (transform.localScale.y * 0.9f);
+            Vector3 head = CastFrom;
             Vector3 muzzle = head + face * 0.4f;
             // thrown at the body's middle, so a tall one does not throw over heads
             Vector3 aim = (prey.position + Vector3.up * LockOn.AimHeight(prey) - muzzle).normalized;
@@ -299,19 +350,7 @@ namespace SpellyZombie
             {
                 rb.mass = Mathf.Max(DrawingConfig.GolemMinMass,
                     DrawingConfig.GolemBaseMass * scale * scale * scale);
-                // A SMALL GOLEM MOVES FURTHER PER STEP THAN IT IS WIDE. At
-                // charge speed a 0.08m body travels ~0.2m per physics tick, so
-                // Discrete collision walks it straight through the terrain and
-                // it is gone. Sweeping is the only thing that catches it. A big
-                // one cannot outrun its own width: the cheaper speculative test.
-                rb.collisionDetectionMode = scale < DrawingConfig.GolemSweepBelow
-                    ? CollisionDetectionMode.ContinuousDynamic : CollisionDetectionMode.ContinuousSpeculative;
-                rb.interpolation = RigidbodyInterpolation.Interpolate;
-                // the script owns facing (yaw-only slerp in Step). Free
-                // physics rotation let every hop landing pitch the body
-                // nose-down faster than the slerp recovered - the golem
-                // spent its life staring at the ground.
-                rb.freezeRotation = true;
+                Moves(rb, scale);
             }
 
             // ★ A REAL COLLIDER, HIS ORDER: the shape body renders far larger
@@ -362,6 +401,27 @@ namespace SpellyZombie
             return g;
         }
 
+        /// How a golem body moves, a living object's too (`scale` in golem scale).
+        public static void Moves(Rigidbody rb, float scale)
+        {
+            // A SMALL GOLEM MOVES FURTHER PER STEP THAN IT IS WIDE. At
+            // charge speed a 0.08m body travels ~0.2m per physics tick, so
+            // Discrete collision walks it straight through the terrain and
+            // it is gone. Sweeping is the only thing that catches it. A big
+            // one cannot outrun its own width: the cheaper speculative test.
+            rb.collisionDetectionMode = scale < DrawingConfig.GolemSweepBelow
+                ? CollisionDetectionMode.ContinuousDynamic : CollisionDetectionMode.ContinuousSpeculative;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            // the script owns facing (yaw-only slerp in Step). Free
+            // physics rotation let every hop landing pitch the body
+            // nose-down faster than the slerp recovered - the golem
+            // spent its life staring at the ground.
+            rb.freezeRotation = true;
+        }
+
+        /// It rises whole, as Raise gives a golem: a living object's first moments are shielded too.
+        public void ShieldBirth() => _safeUntil = Time.time + DrawingConfig.GolemBirthShield;
+
         void Awake()
         {
             _lookAt = Time.time + Random.value * DrawingConfig.GolemLookSeconds; // spread across frames
@@ -393,10 +453,18 @@ namespace SpellyZombie
             if (_dmg == null) _dmg = GetComponent<Element>();
             if (_dmg != null)
             {
-                _dmg.OnDeath += _ => Poof();
+                // the Element outlives this component where a machine takes the brain off its copy:
+                // a wound arriving then (a client's health message) found nothing to ask
+                _dmg.OnDeath += _ =>
+                {
+                    if (this == null) return;
+                    if (GetComponent<LivingObject>() == null) Poof(); // a living object breaks as the object it is
+                    Spread();
+                };
                 // every wound reads: a chip of it flies off where it was hit
                 _dmg.OnDamaged += (amount, _) =>
                 {
+                    if (this == null) return;
                     Felt();
                     if (amount < 2f) return;
                     var view = GetComponent<StateView>();
@@ -421,14 +489,27 @@ namespace SpellyZombie
             if (FxLibrary.I != null)
                 FxLibrary.SpawnTinted(FxLibrary.I.Poof, transform.position + Vector3.up * 0.2f, c);
             // it goes as what it was made of (stone crumbles, water splashes, gas whooshes): bigger is louder and lower
-            float big = Mathf.InverseLerp(0.5f, 3f, transform.localScale.y);
+            float big = Mathf.InverseLerp(0.5f, 3f, BodyScale);
             var phase = view != null ? view.Phase : MatterPhase.Solid;
             Sfx end = phase == MatterPhase.Liquid ? Sfx.LiquidImpact : phase == MatterPhase.Gas ? Sfx.ExpandImpact : Sfx.BreakStone;
             if (!Juice.Sound(end, transform.position, Mathf.Lerp(0.55f, 1f, big), Mathf.Lerp(1.15f, 0.8f, big)))
                 Juice.Thud(transform.position);
         }
 
+        /// Spreading (the acolyte's rune): killed, it comes apart the way a golem does (DensitySplit),
+        /// the pieces without the rune. A living object has no split: it breaks as the object.
+        void Spread()
+        {
+            if (!TryGetComponent<ZombieBuff>(out var buff) || !buff.Active || buff.Kind != MischiefKind.Spreading) return;
+            if (!TryGetComponent<DensitySplit>(out var split)) return;
+            if (Possessed) PossessBy(false); // the pieces copy the body as it stands: eyes showing
+            if (!enabled) BeReleased();       // and on its own feet
+            split.Split();
+        }
+
         float _left = DrawingConfig.GolemLifeSeconds;
+        /// Seconds before it goes back to rest (a living object's are its needle's).
+        public float LifeLeft { get => _left; set => _left = value; }
         /// A map creature (CreatureSpawn): no visitor's clock.
         [HideInInspector] public bool Permanent; // serialized: the halves of a split keep it
 
@@ -439,7 +520,7 @@ namespace SpellyZombie
         void Turn()
         {
             // its steps, by the rule its stand-ins on the other machines use
-            _feet.TickHeavy(transform.position, transform.localScale.y, false, Time.deltaTime);
+            _feet.TickHeavy(transform.position, BodyScale, false, Time.deltaTime);
 
             // one that slipped through the world dies where you last saw it,
             // rather than falling forever out of sight
@@ -453,6 +534,12 @@ namespace SpellyZombie
             _left -= Time.deltaTime;
             if (_left <= 0f)
             {
+                // a living object is still that object: its life ends where it stands, its charge spent first
+                if (TryGetComponent<LivingObject>(out var life))
+                {
+                    if (_charge == null || !_charge.Busy) life.Sleep();
+                    return;
+                }
                 Poof();
                 DrawingWorld.Instance?.LogEvent("the golem crumbles back to rest");
                 Destroy(gameObject);
@@ -516,7 +603,7 @@ namespace SpellyZombie
             // afterwards the golem just stands there shaking it off
             if (_charge != null && _charge.Busy) return;
 
-            float mul = _me != null ? _me.SpeedMultiplier : 1f;
+            float mul = _me != null ? _me.SpeedMultiplier : _dmg != null ? _dmg.StrengthMul : 1f; // a living object slows as it is hurt, as a creature does
             if (mul <= 0.01f) return;
 
             if (Possessed)
@@ -528,8 +615,7 @@ namespace SpellyZombie
                     Step(_wander, mul);
                 }
                 else if (PossessedFace.sqrMagnitude > 0.01f)
-                    transform.rotation = Quaternion.Slerp(transform.rotation,
-                        Quaternion.LookRotation(PossessedFace, Vector3.up), 6f * Time.fixedDeltaTime);
+                    TurnTo(Facing(PossessedFace), 6f * Time.fixedDeltaTime);
                 return;
             }
 
@@ -540,8 +626,14 @@ namespace SpellyZombie
             float moved = stepped.magnitude / Mathf.Max(1e-4f, dt);
             _lastPos = transform.position;
             var behaviour = Behaviour;
-            bool wild = behaviour == CreatureBehaviour.Skittish; // the nerve: wands and spells scare it
-            bool steady = behaviour == CreatureBehaviour.Hunts || behaviour == CreatureBehaviour.Guards;
+            bool wild = behaviour == CreatureBehaviour.Skittish && !BuffFearless; // the nerve: wands and spells scare it
+            bool rampage = behaviour == CreatureBehaviour.Rampages;
+            // its own barrage would scare anything else away
+            bool steady = behaviour == CreatureBehaviour.Hunts || behaviour == CreatureBehaviour.Guards || rampage || _fed || BuffFearless;
+            if (rampage && CreatureCasts.Rampage(Abilities, OwnerId,
+                    CastFrom, transform, ref _rampageAt)
+                && _eyes != null)
+                _eyes.Swell(0.4f, 1.3f);
 
             // ★ EVERYONE FEARS A SPELL BEING MADE (his rule): a fresh spell
             // or a blast nearby sends the golem off the other way, no charge.
@@ -600,6 +692,13 @@ namespace SpellyZombie
                     Debug.Log($"[SpellyZombie] golem (owner {OwnerId}/{Teams.OfOwner(OwnerId)}) " +
                         $"HUNTS {prey.name} ({TeamOf(prey)})");
             }
+
+            // a fed golem with nobody to fight shows what it ate: a throw now and then, away from its feet
+            if (_fed && !rampage && prey == null && CreatureCasts.Rampage(Abilities, OwnerId,
+                    CastFrom, transform, ref _rampageAt,
+                    DrawingConfig.FedGolemIdleCastEvery, 4f)
+                && _eyes != null)
+                _eyes.Swell(0.4f, 1.3f);
 
             // ---- nerve (wild only): what scares it this tick, per second ----
             if (wild)
@@ -669,7 +768,7 @@ namespace SpellyZombie
                     return;
                 }
                 _blocked = 0f;
-                if (TryCast(prey, to, dist)) return;
+                if (!rampage && TryCast(prey, to, dist)) return;
                 // a guard charges only what stands on its ground; the rest it casts at
                 if (_charge != null && (!Guarding || OnGround(prey.position)) && _charge.TryStart(prey.position))
                 {
@@ -714,8 +813,7 @@ namespace SpellyZombie
             // a guard never steps past its ground: at the edge it plants and faces what it wants
             if (LeavingGround(_wander))
             {
-                transform.rotation = Quaternion.Slerp(transform.rotation,
-                    Quaternion.LookRotation(_wander, Vector3.up), 6f * dt);
+                TurnTo(Facing(_wander), 6f * dt);
                 _wander = Vector3.zero;
             }
             Step(_wander, mul);
@@ -821,8 +919,7 @@ namespace SpellyZombie
             var v = _rb.linearVelocity;
             _rb.linearVelocity = new Vector3(want.x, v.y, want.z);
             if (dir.sqrMagnitude > 0.01f)
-                transform.rotation = Quaternion.Slerp(transform.rotation,
-                    Quaternion.LookRotation(dir, Vector3.up), 6f * Time.fixedDeltaTime);
+                TurnTo(Facing(dir), 6f * Time.fixedDeltaTime);
 
             if (Time.time < _skipAt) return;
             _skipAt = Time.time + DrawingConfig.GolemSkipEvery / Mathf.Max(0.2f, mul);
@@ -875,7 +972,7 @@ namespace SpellyZombie
             float halfCos = Mathf.Cos(DrawingConfig.GolemSightAngle * 0.5f * Mathf.Deg2Rad);
             Vector3 eye = _eyes != null ? _eyes.transform.position
                 : transform.position + Vector3.up * (0.5f * transform.lossyScale.y);
-            Vector3 fwd = transform.forward;
+            Vector3 fwd = Forward;
             fwd.y = 0f;
             fwd.Normalize();
             bool Notices(Transform t, float sqr)
@@ -981,7 +1078,8 @@ namespace SpellyZombie
             if (!_looked) { _looked = true; _skin = root.GetComponentInChildren<SkinnedMeshRenderer>(); }
             _above = _skin != null && _skin.sharedMesh != null
                 ? Mathf.Max(0.1f, ShapeShift.SkinBounds(_skin).max.y - root.position.y)
-                : root.localScale.y * 0.95f;
+                // plain meshes (a living object): what it renders, never its root's import scale
+                : Mathf.Max(0.1f, ShapeShift.FindObjectBounds(root).max.y - root.position.y);
             return _above;
         }
     }

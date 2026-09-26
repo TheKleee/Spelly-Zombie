@@ -213,7 +213,10 @@ namespace SpellyZombie
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("BEHAVIOUR", EditorStyles.boldLabel);
-            c.Behaviour = (CreatureBehaviour)GUILayout.Toolbar((int)c.Behaviour, new[] { "Roams", "Hunts", "Guards", "Skittish" });
+            c.Behaviour = (CreatureBehaviour)GUILayout.Toolbar((int)c.Behaviour, new[] { "Roams", "Hunts", "Guards", "Skittish", "Rampages" });
+            if (c.Behaviour == CreatureBehaviour.Rampages)
+                EditorGUILayout.LabelField("Throws random spells from its list all over the place, about one a second, " +
+                                           "and never runs. Spells from its own side cannot hurt it.", EditorStyles.wordWrappedMiniLabel);
             if (c.Behaviour == CreatureBehaviour.Guards)
                 c.GuardRange = Mathf.Round(EditorGUILayout.Slider("Guard distance (m)", c.GuardRange, 3f, 40f));
             c.Boss = EditorGUILayout.Toggle(new GUIContent("Boss", "Everyone sees its health. A counting environment team stands while one lives."), c.Boss);
@@ -224,7 +227,7 @@ namespace SpellyZombie
                                        "a zombie born hot is at home in fire. Strength is its health.", EditorStyles.wordWrappedMiniLabel);
             for (int i = 0; i < SpellPayload.AxisCount; i++)
             {
-                SpellPayload.SpellRange(i, out int lo, out int hi);
+                SpellPayload.CreatureRange(i, out int lo, out int hi);
                 c.Axis[i] = EditorGUILayout.IntSlider(
                     new GUIContent(SpellCreator.Names[i] + SpellPayload.UnitName(i), SpellCreator.Poles[i]), c.Axis[i], lo, hi);
             }
